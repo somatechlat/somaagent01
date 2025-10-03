@@ -164,6 +164,7 @@ class MemoryDashboard(ApiHandler):
 
             memory = await Memory.get_by_subdir(memory_subdir, preload_knowledge=False)
 
+            all_docs_map = await memory.get_all_docs()
             memories = []
 
             if search_query:
@@ -176,8 +177,7 @@ class MemoryDashboard(ApiHandler):
                 memories = docs
             else:
                 # If no search query, get all memories from specified area(s)
-                all_docs = memory.db.get_all_docs()
-                for doc_id, doc in all_docs.items():
+                for doc_id, doc in all_docs_map.items():
                     # Apply area filter if specified
                     if area_filter and doc.metadata.get("area", "") != area_filter:
                         continue
@@ -205,7 +205,7 @@ class MemoryDashboard(ApiHandler):
             conversation_count = total_memories - knowledge_count
 
             # Get total count of all memories in database (unfiltered)
-            total_db_count = len(memory.db.get_all_docs())
+            total_db_count = len(all_docs_map)
 
             return {
                 "success": True,
