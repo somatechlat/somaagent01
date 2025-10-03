@@ -133,6 +133,14 @@ My VS Code instance:
 ![VS Code instance](res/dev/devinst-13.png)
 
 
+## SomaBrain memory backend
+
+- Agent Zero now relies on the local SomaBrain service for all long-term memory operations. The service listens on `http://127.0.0.1:9696` by default, matching the local control plane configuration.
+- If your instance runs elsewhere, export `SOMA_BASE_URL` before starting Agent Zero (for example `export SOMA_BASE_URL=http://host.docker.internal:9696` when launching from inside Docker). Optional headers can be provided via `SOMA_API_KEY` (Bearer token) and `SOMA_TENANT_ID`.
+- Soma is enabled automatically. To fall back to the legacy FAISS store for troubleshooting, set `SOMA_ENABLED=false` in your environment before launching the app.
+- The built-in memory dashboard and extensions now read and write directly to SomaBrain, so changes made via Soma will appear instantly in Agent Zero and vice versa.
+
+
 # 🎉 Congratulations! 🚀
 
 You have successfully set up a complete Agent Zero development environment! You now have:
