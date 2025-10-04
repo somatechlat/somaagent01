@@ -1,0 +1,22 @@
+{
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "type": "graph",
+      "title": "SLM Latency",
+      "targets": [
+        {"expr": "avg_over_time(slm_latency_seconds[5m])", "legendFormat": "avg"}
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Budget Events",
+      "targets": [
+        {"expr": "sum by (tenant,status)(increase(budget_events_total[15m]))"}
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "title": "SomaAgent 01 Overview",
+  "uid": "somaagent01"
+}
