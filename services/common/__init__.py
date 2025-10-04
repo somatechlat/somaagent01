@@ -10,6 +10,7 @@ from . import (
     budget_manager,
     requeue_store,
     telemetry_store,
+    skm_client,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "budget_manager",
     "requeue_store",
     "telemetry_store",
+    "skm_client",
 ]

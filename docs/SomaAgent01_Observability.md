@@ -7,6 +7,7 @@
   - SLM latency (`slm_latency_seconds` time series).
   - Budget events table (increase of `budget_events_total`).
 - Import into Grafana (OSS) to visualize agent health.
+- k6 load test located at `scripts/run_load_test.js` (run with `k6 run scripts/run_load_test.js`).
 
 ## Metrics Endpoints
 - Gateway/worker/tool/audio services expose Prometheus metrics via default `/metrics`.
