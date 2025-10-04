@@ -92,8 +92,32 @@ class ConversationWorker:
 
         tenant = event.get("metadata", {}).get("tenant", "default")
 
-        budget_check = await self.budgets.consume(tenant, event.get("persona_id"), 0)
+        persona_id = event.get("persona_id")
+        budget_check = await self.budgets.consume(tenant, persona_id, 0)
         limit = budget_check.limit_tokens
+        if limit and budget_check.total_tokens >= limit:
+            budget_response = {
+                "event_id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "role": "assistant",
+                "message": "Token budget exceeded for this persona/tenant.",
+                "metadata": {"source": "budget"},
+            }
+            await self.telemetry.emit_budget(
+                tenant=tenant,
+                persona_id=persona_id,
+                delta_tokens=0,
+                total_tokens=budget_check.total_tokens,
+                limit_tokens=limit,
+                status="limit_reached",
+            )
+            await self.store.append_event(
+                session_id,
+                {"type": "assistant", **budget_response},
+            )
+            await self.bus.publish(self.settings["outbound"], budget_response)
+            return
 
         start_time = time.time()
         try:
@@ -113,13 +137,13 @@ class ConversationWorker:
 
         latency = time.time() - start_time
         total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-        budget_result = await self.budgets.consume(tenant, event.get("persona_id"), total_tokens)
+        budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
         if not budget_result.allowed:
             response_text = "Token budget exceeded for this persona/tenant."
 
         await self.telemetry.emit_slm(
             session_id=session_id,
-            persona_id=event.get("persona_id"),
+            persona_id=persona_id,
             tenant=tenant,
             model=slm_kwargs.get("model", self.slm.default_model),
             latency_seconds=latency,
