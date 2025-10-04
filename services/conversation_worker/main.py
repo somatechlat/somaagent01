@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 import uuid
 from typing import Any
 
@@ -15,6 +16,8 @@ from services.common.session_repository import (
 )
 from services.common.slm_client import ChatMessage, SLMClient
 from services.common.model_profiles import ModelProfileStore
+from services.common.budget_manager import BudgetManager
+from services.common.telemetry import TelemetryPublisher
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -32,6 +35,8 @@ class ConversationWorker:
         self.store = PostgresSessionStore()
         self.slm = SLMClient()
         self.profile_store = ModelProfileStore()
+        self.budgets = BudgetManager()
+        self.telemetry = TelemetryPublisher(self.bus)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
 
     async def start(self) -> None:
@@ -85,8 +90,14 @@ class ConversationWorker:
             if model_profile.kwargs:
                 slm_kwargs.update(model_profile.kwargs)
 
+        tenant = event.get("metadata", {}).get("tenant", "default")
+
+        budget_check = await self.budgets.consume(tenant, event.get("persona_id"), 0)
+        limit = budget_check.limit_tokens
+
+        start_time = time.time()
         try:
-            response_text = await self.slm.chat(messages, **slm_kwargs)
+            response_text, usage = await self.slm.chat(messages, **slm_kwargs)
         except Exception as exc:
             LOGGER.exception("SLM request failed")
             response_text = "I encountered an error while generating a reply."
@@ -98,6 +109,32 @@ class ConversationWorker:
                     "details": str(exc),
                 },
             )
+            usage = {"input_tokens": 0, "output_tokens": 0}
+
+        latency = time.time() - start_time
+        total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+        budget_result = await self.budgets.consume(tenant, event.get("persona_id"), total_tokens)
+        if not budget_result.allowed:
+            response_text = "Token budget exceeded for this persona/tenant."
+
+        await self.telemetry.emit_slm(
+            session_id=session_id,
+            persona_id=event.get("persona_id"),
+            tenant=tenant,
+            model=slm_kwargs.get("model", self.slm.default_model),
+            latency_seconds=latency,
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            metadata={"deployment_mode": self.deployment_mode},
+        )
+        await self.telemetry.emit_budget(
+            tenant=tenant,
+            persona_id=event.get("persona_id"),
+            delta_tokens=total_tokens,
+            total_tokens=budget_result.total_tokens,
+            limit_tokens=budget_result.limit_tokens,
+            status="allowed" if budget_result.allowed else "limit_reached",
+        )
 
         response_event = {
             "event_id": str(uuid.uuid4()),

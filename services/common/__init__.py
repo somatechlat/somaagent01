@@ -6,6 +6,8 @@ from . import (
     slm_client,
     policy_client,
     model_profiles,
+    telemetry,
+    budget_manager,
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "slm_client",
     "policy_client",
     "model_profiles",
+    "telemetry",
+    "budget_manager",
 ]
