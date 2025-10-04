@@ -14,6 +14,7 @@ from services.common.session_repository import (
     ensure_schema,
 )
 from services.common.slm_client import ChatMessage, SLMClient
+from services.common.model_profiles import ModelProfileStore
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -30,9 +31,12 @@ class ConversationWorker:
         self.cache = RedisSessionCache()
         self.store = PostgresSessionStore()
         self.slm = SLMClient()
+        self.profile_store = ModelProfileStore()
+        self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
 
     async def start(self) -> None:
         await ensure_schema(self.store)
+        await self.profile_store.ensure_schema()
         await self.store.append_event(
             "system",
             {
@@ -68,8 +72,21 @@ class ConversationWorker:
         if not messages or messages[-1].role != "user":
             messages.append(ChatMessage(role="user", content=event.get("message", "")))
 
+        model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
+        slm_kwargs: dict[str, Any] = {}
+        if model_profile:
+            slm_kwargs.update(
+                {
+                    "model": model_profile.model,
+                    "base_url": model_profile.base_url,
+                    "temperature": model_profile.temperature,
+                }
+            )
+            if model_profile.kwargs:
+                slm_kwargs.update(model_profile.kwargs)
+
         try:
-            response_text = await self.slm.chat(messages)
+            response_text = await self.slm.chat(messages, **slm_kwargs)
         except Exception as exc:
             LOGGER.exception("SLM request failed")
             response_text = "I encountered an error while generating a reply."
