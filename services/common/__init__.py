@@ -8,6 +8,8 @@ from . import (
     model_profiles,
     telemetry,
     budget_manager,
+    requeue_store,
+    telemetry_store,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "model_profiles",
     "telemetry",
     "budget_manager",
+    "requeue_store",
+    "telemetry_store",
 ]

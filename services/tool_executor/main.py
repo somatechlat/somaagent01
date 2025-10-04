@@ -4,12 +4,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 import uuid
 from typing import Any
 
 from services.common.event_bus import KafkaEventBus
 from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from services.common.session_repository import PostgresSessionStore
+from services.common.requeue_store import RequeueStore
 from services.tool_executor.tools import AVAILABLE_TOOLS, ToolExecutionError
 
 LOGGER = logging.getLogger(__name__)
@@ -21,13 +23,12 @@ class ToolExecutor:
         self.bus = KafkaEventBus()
         self.policy = PolicyClient()
         self.store = PostgresSessionStore()
-        self.cache = RedisSessionCache()
+        self.requeue = RequeueStore()
         self.settings = {
             "requests": os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
             "results": os.getenv("TOOL_RESULTS_TOPIC", "tool.results"),
             "group": os.getenv("TOOL_EXECUTOR_GROUP", "tool-executor"),
         }
-        self.requeue_prefix = os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
 
     async def start(self) -> None:
         await self.bus.consume(
@@ -46,20 +47,21 @@ class ToolExecutor:
             LOGGER.error("Invalid tool request", extra={"event": event})
             return
 
-        allow = await self._check_policy(
-            tenant=tenant,
-            persona_id=persona_id,
-            tool_name=tool_name,
-            event=event,
-        )
-        if not allow:
-            await self._enqueue_requeue(event)
-            await self._publish_result(
-                event,
-                status="blocked",
-                payload={"message": "Policy denied tool execution."},
+        if not event.get("metadata", {}).get("requeue_override"):
+            allow = await self._check_policy(
+                tenant=tenant,
+                persona_id=persona_id,
+                tool_name=tool_name,
+                event=event,
             )
-            return
+            if not allow:
+                await self._enqueue_requeue(event)
+                await self._publish_result(
+                    event,
+                    status="blocked",
+                    payload={"message": "Policy denied tool execution."},
+                )
+                return
 
         tool = AVAILABLE_TOOLS.get(tool_name)
         if not tool:
@@ -116,7 +118,10 @@ class ToolExecutor:
 
     async def _enqueue_requeue(self, event: dict[str, Any]) -> None:
         key = f"{self.requeue_prefix}:{event.get('event_id', uuid.uuid4())}"
-        await self.cache.set(key, event)
+        identifier = event.get("event_id") or str(uuid.uuid4())
+        payload = dict(event)
+        payload["timestamp"] = time.time()
+        await self.requeue.add(identifier, payload)
 
 
 async def main() -> None:
