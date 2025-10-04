@@ -11,6 +11,7 @@ from . import (
     requeue_store,
     telemetry_store,
     skm_client,
+    router_client,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "requeue_store",
     "telemetry_store",
     "skm_client",
+    "router_client",
 ]

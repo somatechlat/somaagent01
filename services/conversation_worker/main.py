@@ -19,6 +19,7 @@ from services.common.model_profiles import ModelProfileStore
 from services.common.budget_manager import BudgetManager
 from services.common.telemetry import TelemetryPublisher
 from services.common.skm_client import SKMClient, ProgressPayload
+from services.common.router_client import RouterClient
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -39,6 +40,7 @@ class ConversationWorker:
         self.budgets = BudgetManager()
         self.telemetry = TelemetryPublisher(self.bus)
         self.skm = SKMClient()
+        self.router = RouterClient()
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
 
     async def start(self) -> None:
@@ -80,6 +82,17 @@ class ConversationWorker:
             messages.append(ChatMessage(role="user", content=event.get("message", "")))
 
         model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
+        if model_profile and os.getenv("ROUTER_URL"):
+            routed = await self.router.route(
+                role="dialogue",
+                deployment_mode=self.deployment_mode,
+                candidates=[model_profile.model],
+            )
+            if routed:
+                slm_kwargs["model"] = routed.model
+                if routed.score:
+                    slm_kwargs.setdefault("metadata", {})
+                    slm_kwargs["metadata"]["router_score"] = routed.score
         slm_kwargs: dict[str, Any] = {}
         if model_profile:
             slm_kwargs.update(
@@ -191,6 +204,7 @@ async def main() -> None:
     finally:
         await worker.slm.close()
         await worker.skm.close()
+        await worker.router.close()
 
 
 if __name__ == "__main__":
