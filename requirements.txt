@@ -42,3 +42,11 @@ crontab==1.0.1
 pathspec>=0.12.1
 psutil>=7.0.0
 soundfile==0.13.1
+fastapi==0.115.2
+uvicorn[standard]==0.32.0
+aiokafka==0.10.0
+redis==5.0.1
+asyncpg==0.29.0
+sqlalchemy==2.0.32
+pydantic==2.9.2
+pydantic-settings==2.3.1
