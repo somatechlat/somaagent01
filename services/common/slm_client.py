@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Sequence, Tuple
 
 import httpx
 
@@ -32,7 +32,7 @@ class SLMClient:
         base_url: Optional[str] = None,
         temperature: Optional[float] = None,
         **kwargs: Any,
-    ) -> str:
+    ) -> Tuple[str, dict[str, int]]:
         chosen_model = model or self.default_model
         url = f"{(base_url or self.base_url).rstrip('/')}/v1/chat/completions"
         payload = {
@@ -51,7 +51,13 @@ class SLMClient:
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         try:
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
+            usage_dict = {
+                "input_tokens": int(usage.get("prompt_tokens", 0)),
+                "output_tokens": int(usage.get("completion_tokens", 0)),
+            }
+            return content, usage_dict
         except (KeyError, IndexError) as exc:  # pragma: no cover - unexpected schema
             LOGGER.error("Unexpected response from SLM", extra={"data": data})
             raise RuntimeError("Invalid response from SLM") from exc
