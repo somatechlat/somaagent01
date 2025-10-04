@@ -6,11 +6,17 @@ import uuid
 from typing import Any, Optional
 
 from services.common.event_bus import KafkaEventBus
+from services.common.telemetry_store import TelemetryStore
 
 
 class TelemetryPublisher:
-    def __init__(self, bus: Optional[KafkaEventBus] = None) -> None:
+    def __init__(
+        self,
+        bus: Optional[KafkaEventBus] = None,
+        store: Optional[TelemetryStore] = None,
+    ) -> None:
         self.bus = bus or KafkaEventBus()
+        self.store = store or TelemetryStore()
         self.topics = {
             "slm": "slm.metrics",
             "tool": "tool.metrics",
@@ -44,6 +50,7 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self.bus.publish(self.topics["slm"], event)
+        await self.store.insert_slm(event)
 
     async def emit_tool(
         self,
@@ -68,6 +75,7 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self.bus.publish(self.topics["tool"], event)
+        await self.store.insert_tool(event)
 
     async def emit_budget(
         self,
@@ -92,3 +100,4 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self.bus.publish(self.topics["budget"], event)
+        await self.store.insert_budget(event)
