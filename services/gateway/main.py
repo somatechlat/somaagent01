@@ -52,6 +52,19 @@ class MessagePayload(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
+class QuickActionPayload(BaseModel):
+    session_id: str | None = None
+    persona_id: str | None = None
+    action: str
+    metadata: dict[str, str] = Field(default_factory=dict)
+
+
+QUICK_ACTIONS: dict[str, str] = {
+    "summarize": "Summarize the recent conversation for the operator.",
+    "next_steps": "Suggest the next three actionable steps.",
+    "status_report": "Provide a short status report of current progress.",
+}
+
 @app.post("/v1/session/message")
 async def enqueue_message(
     payload: MessagePayload,
@@ -78,6 +91,35 @@ async def enqueue_message(
         raise HTTPException(status_code=502, detail="Unable to enqueue message") from exc
 
     # Cache most recent metadata for quick lookup.
+    await cache.set(f"session:{session_id}:meta", {"persona_id": payload.persona_id or ""})
+    await store.append_event(session_id, {"type": "user", **event})
+
+    return JSONResponse({"session_id": session_id, "event_id": event_id})
+
+
+@app.post("/v1/session/action")
+async def enqueue_quick_action(
+    payload: QuickActionPayload,
+    bus: Annotated[KafkaEventBus, Depends(get_event_bus)],
+    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+) -> JSONResponse:
+    template = QUICK_ACTIONS.get(payload.action)
+    if not template:
+        raise HTTPException(status_code=400, detail="Unknown action")
+
+    session_id = payload.session_id or str(uuid.uuid4())
+    event_id = str(uuid.uuid4())
+    event = {
+        "event_id": event_id,
+        "session_id": session_id,
+        "persona_id": payload.persona_id,
+        "message": template,
+        "attachments": [],
+        "metadata": {**payload.metadata, "source": "quick_action", "action": payload.action},
+    }
+
+    await bus.publish("conversation.inbound", event)
     await cache.set(f"session:{session_id}:meta", {"persona_id": payload.persona_id or ""})
     await store.append_event(session_id, {"type": "user", **event})
 
