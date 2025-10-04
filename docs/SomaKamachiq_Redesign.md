@@ -79,3 +79,6 @@ Legend: SLM runtime, DevX, Observability, Security work continue in parallel to 
 
 ---
 This blueprint should be treated as the canonical reference for engineers and operators implementing the SomaKamachiq agent.
+
+## 11. Infrastructure Profiles
+Detailed infrastructure specifications for LOCAL, DEVELOPMENT, and ENTERPRISE deployments are maintained in `docs/SomaAgent01_Infrastructure.md`. All services—Kafka, Redis, Postgres, Qdrant, ClickHouse, vLLM, Whisper, Vault, OPA/OpenFGA, Prometheus stack—are provisioned via open-source tooling (Docker Compose for LOCAL; Kubernetes + Argo CD + Helm/Terraform for shared and enterprise clusters).

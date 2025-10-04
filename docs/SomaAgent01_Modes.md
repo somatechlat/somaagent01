@@ -41,3 +41,6 @@ SomaAgent 01 must adapt its infrastructure footprint, policy posture, and learni
 2. Create GitOps manifests for each mode (dev/test/training/prod) referencing the OSS stack.
 3. Update documentation and UI to display active mode and warnings when in permissive states.
 4. Integrate mode awareness into policy client, model selector, telemetry exports, and SomaBrain namespace handling.
+
+## Infrastructure Reference
+For detailed OSS infrastructure stacks per mode (Docker Compose for LOCAL, Kubernetes overlays for DEVELOPMENT/TRAINING/PRODUCTION), see `docs/SomaAgent01_Infrastructure.md`.
