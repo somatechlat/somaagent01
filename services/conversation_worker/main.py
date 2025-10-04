@@ -18,6 +18,7 @@ from services.common.slm_client import ChatMessage, SLMClient
 from services.common.model_profiles import ModelProfileStore
 from services.common.budget_manager import BudgetManager
 from services.common.telemetry import TelemetryPublisher
+from services.common.skm_client import SKMClient, ProgressPayload
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -37,6 +38,7 @@ class ConversationWorker:
         self.profile_store = ModelProfileStore()
         self.budgets = BudgetManager()
         self.telemetry = TelemetryPublisher(self.bus)
+        self.skm = SKMClient()
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
 
     async def start(self) -> None:
@@ -140,6 +142,15 @@ class ConversationWorker:
         budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
         if not budget_result.allowed:
             response_text = "Token budget exceeded for this persona/tenant."
+            await self.skm.publish_progress(
+                ProgressPayload(
+                    session_id=session_id,
+                    persona_id=event.get("persona_id"),
+                    status="budget_limit",
+                    detail="Token budget exceeded",
+                    metadata={"tenant": tenant},
+                )
+            )
 
         await self.telemetry.emit_slm(
             session_id=session_id,
@@ -179,6 +190,7 @@ async def main() -> None:
         await worker.start()
     finally:
         await worker.slm.close()
+        await worker.skm.close()
 
 
 if __name__ == "__main__":
