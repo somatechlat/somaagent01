@@ -10,6 +10,10 @@ SomaAgent 01 must expose precise, real-time telemetry—especially token spend, 
   - Input tokens, output tokens, total tokens.
   - Latency (p50, p95, p99), queue delay, GPU utilization.
   - Model ID, persona ID, tenant, role, deployment mode, cost estimation (derived from token/GPU rates).
+- **Escalation LLM Tier**
+  - Decision reason, source SLM analysis snapshot, router metadata.
+  - OSS model ID, base URL, latency, token mix, per-call cost estimate.
+  - Success vs. fallback/error counts for high-risk escalations.
 - **Tool Execution**
   - Duration, success/failure, exits, stdout/stderr size, attachments.
   - Policy verdicts (allow, warn, block, override).
@@ -22,19 +26,19 @@ SomaAgent 01 must expose precise, real-time telemetry—especially token spend, 
 
 ## Data Flow (OSS Components)
 1. **Producers**
-   - Conversation Worker emits `slm.metrics`, `conversation.metrics`, `policy.events` to Kafka.
+  - Conversation Worker emits `slm.metrics`, `llm.escalation.metrics`, `conversation.metrics`, `policy.events` to Kafka.
    - Tool Executor emits `tool.metrics`.
    - Audio Service emits `audio.metrics`.
 2. **Streaming & Storage**
-   - Kafka topics ingested into ClickHouse (`slm_metrics`, `tool_metrics`, `conversation_metrics`, `audio_metrics`).
+  - Kafka topics ingested into ClickHouse (`slm_metrics`, `escalation_metrics`, `tool_metrics`, `conversation_metrics`, `audio_metrics`).
    - Redis maintains rolling totals for budget checks.
    - Postgres stores per-session summaries for quick UI access.
 3. **Dashboards & Alerts**
    - Prometheus-backed dashboards show live spend, latency, refusal rate, audio quality.
    - Alertmanager warns on threshold breaches (token budget, refusal spike, audio failures).
 4. **Exports & Billing**
-   - Scheduled jobs export CSV/Parquet for finance (per tenant/persona/model).
-   - APIs (`GET /v1/telemetry/tokens`, `/budget/summary`) allow external systems to consume data.
+  - Scheduled jobs export CSV/Parquet for finance (per tenant/persona/model).
+  - APIs (`GET /v1/telemetry/tokens`, `/budget/summary`) allow external systems to consume data.
 
 ## UI Integration
 - Session workspace displays cost per response and cumulative session totals.
@@ -53,7 +57,7 @@ SomaAgent 01 must expose precise, real-time telemetry—especially token spend, 
 - Telemetry also feeds anomaly detection (unexpected latency spikes, accuracy drift) that can trigger automatic fallback or human review.
 
 ## Implementation Tasks
-1. Instrument vLLM, llama.cpp, Whisper, and tool executor to emit metrics to Kafka with JSON Schema validation.
+1. Instrument the managed Soma SLM API client, Whisper, and tool executor to emit metrics to Kafka with JSON Schema validation.
 2. Set up ClickHouse tables + materialized views for cost aggregation.
 3. Build UI components displaying metrics in session view, admin dashboards, and alerts.
 4. Implement budget enforcement hooks in policy client and model selector.

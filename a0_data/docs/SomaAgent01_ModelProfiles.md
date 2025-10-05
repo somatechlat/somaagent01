@@ -17,14 +17,14 @@ Payload:
   "role": "dialogue",
   "deployment_mode": "PRODUCTION",
   "model": "meta-llama/Meta-Llama-3.1-70B-Instruct",
-  "base_url": "http://vllm-production:8000",
+  "base_url": "https://slm.somaagent01.dev/v1",
   "temperature": 0.1,
   "extra": {"top_p": 0.9}
 }
 ```
 
 ## Conversation Worker Integration
-The conversation worker (`services/conversation_worker/main.py`) fetches the active profile for the `dialogue` role based on `SOMA_AGENT_MODE`. If none is found it falls back to environment defaults (`SLM_MODEL`, `SLM_BASE_URL`). Profiles can include additional kwargs (e.g., `top_p`) which are passed directly to the vLLM OpenAI-compatible endpoint.
+The conversation worker (`services/conversation_worker/main.py`) fetches the active profile for the `dialogue` role based on `SOMA_AGENT_MODE`. If none is found it falls back to environment defaults (`SLM_MODEL`, `SLM_BASE_URL`). Profiles can include additional kwargs (e.g., `top_p`) which are passed directly to the Soma SLM API (OpenAI-compatible).
 
 ## Storage Schema
 ```

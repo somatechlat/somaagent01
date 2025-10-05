@@ -3,7 +3,7 @@
 # SomaAgent 01 – Sprint 0A & 0B Execution Plan
 
 ## Sprint Goals
-- Provision the full OSS infrastructure baseline required by SomaAgent 01 (Kafka/KRaft, Redis, Postgres, Qdrant, ClickHouse, Whisper, vLLM, OPA/OpenFGA, Vault, Prometheus stack).
+- Provision the full OSS infrastructure baseline required by SomaAgent 01 (Kafka/KRaft, Redis, Postgres, Qdrant, ClickHouse, Whisper, Soma SLM API connector, OPA/OpenFGA, Vault, Prometheus stack).
 - Establish GitOps/CI pipelines and developer tooling for deterministic environments.
 - Deliver a FastAPI gateway skeleton wired to Kafka with Redis/Postgres session repositories and WebSocket/SSE streaming stubs.
 

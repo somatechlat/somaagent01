@@ -1,8 +1,2 @@
-services:
-  agent-zero:
-    container_name: agent-zero
-    image: agent0ai/agent-zero:latest
-    volumes:
-      - ./agent-zero:/a0
-    ports:
-      - "50080:80"
+# This file is intentionally left blank.
+# Use infra/docker-compose.somaagent01.yaml as the single source of truth.

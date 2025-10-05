@@ -62,6 +62,21 @@ class TelemetryStore:
                     occurred_at TIMESTAMPTZ DEFAULT NOW()
                 );
 
+                CREATE TABLE IF NOT EXISTS escalation_metrics (
+                    id SERIAL PRIMARY KEY,
+                    session_id TEXT,
+                    persona_id TEXT,
+                    tenant TEXT,
+                    model TEXT,
+                    latency_seconds DOUBLE PRECISION,
+                    input_tokens INTEGER,
+                    output_tokens INTEGER,
+                    decision_reason TEXT,
+                    status TEXT,
+                    metadata JSONB,
+                    occurred_at TIMESTAMPTZ DEFAULT NOW()
+                );
+
                 CREATE TABLE IF NOT EXISTS model_scores (
                     id SERIAL PRIMARY KEY,
                     model TEXT NOT NULL,
@@ -128,6 +143,27 @@ class TelemetryStore:
                 event.get("delta_tokens"),
                 event.get("total_tokens"),
                 event.get("limit_tokens"),
+                event.get("status"),
+                json.dumps(event.get("metadata", {}), ensure_ascii=False),
+            )
+
+    async def insert_escalation(self, event: dict[str, Any]) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO escalation_metrics
+                    (session_id, persona_id, tenant, model, latency_seconds, input_tokens, output_tokens, decision_reason, status, metadata)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                """,
+                event.get("session_id"),
+                event.get("persona_id"),
+                event.get("tenant"),
+                event.get("model"),
+                event.get("latency_seconds"),
+                event.get("input_tokens"),
+                event.get("output_tokens"),
+                event.get("decision_reason"),
                 event.get("status"),
                 json.dumps(event.get("metadata", {}), ensure_ascii=False),
             )

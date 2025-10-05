@@ -25,6 +25,8 @@ from services.common.schema_validator import validate_event
 from services.common.skm_client import SKMClient, ProgressPayload
 from services.common.router_client import RouterClient
 from services.common.tenant_config import TenantConfig
+from services.common.escalation import EscalationDecision, decide_escalation
+from services.common.model_costs import estimate_escalation_cost
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -98,6 +100,10 @@ class ConversationWorker:
         self.router = RouterClient()
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
         self.preprocessor = ConversationPreprocessor()
+        self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+        self.escalation_fallback_enabled = (
+            os.getenv("ESCALATION_FALLBACK_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+        )
 
     async def _stream_response(
         self,
@@ -165,6 +171,40 @@ class ConversationWorker:
         except Exception as exc:
             LOGGER.warning("Streaming unavailable, falling back to single response", extra={"error": str(exc)})
             return await self.slm.chat(messages, **slm_kwargs)
+
+    async def _invoke_escalation_response(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        messages: List[ChatMessage],
+        slm_kwargs: Dict[str, Any],
+    ) -> tuple[str, dict[str, int], float, str, str | None]:
+        profile = await self.profile_store.get("escalation", self.deployment_mode)
+        escalation_kwargs = dict(slm_kwargs)
+        base_url = escalation_kwargs.pop("base_url", None)
+        model = escalation_kwargs.pop("model", None)
+        temperature = escalation_kwargs.pop("temperature", None)
+
+        if profile:
+            base_url = profile.base_url
+            model = profile.model
+            temperature = profile.temperature
+            if profile.kwargs:
+                escalation_kwargs.update(profile.kwargs)
+
+        start_time = time.time()
+        text, usage = await self.slm.chat(
+            messages,
+            model=model,
+            base_url=base_url,
+            temperature=temperature,
+            **escalation_kwargs,
+        )
+        latency = time.time() - start_time
+        if not text:
+            raise RuntimeError("Empty response from escalation LLM")
+        return text, usage, latency, model or self.slm.default_model, base_url
 
     async def start(self) -> None:
         await ensure_schema(self.store)
@@ -264,6 +304,18 @@ class ConversationWorker:
                     slm_kwargs.setdefault("metadata", {})
                     slm_kwargs["metadata"]["router_score"] = routed.score
 
+        metadata_for_decision = dict(enriched_metadata)
+        metadata_for_decision.pop("analysis", None)
+
+        decision = EscalationDecision(False, "disabled", {"enabled": False})
+        if self.escalation_enabled:
+            decision = decide_escalation(
+                message=event.get("message", ""),
+                analysis=analysis_dict,
+                event_metadata=metadata_for_decision,
+                fallback_enabled=self.escalation_fallback_enabled,
+            )
+
         persona_id = event.get("persona_id")
         budget_check = await self.budgets.consume(tenant, persona_id, 0)
         limit = budget_check.limit_tokens
@@ -292,29 +344,89 @@ class ConversationWorker:
             await self.bus.publish(self.settings["outbound"], budget_response)
             return
 
-        start_time = time.time()
-        try:
-            response_text, usage = await self._generate_response(
-                session_id=session_id,
-                persona_id=persona_id,
-                messages=messages,
-                slm_kwargs=slm_kwargs,
-                analysis_metadata=analysis_dict,
-            )
-        except Exception as exc:
-            LOGGER.exception("SLM request failed")
-            response_text = "I encountered an error while generating a reply."
-            await self.store.append_event(
-                session_id,
-                {
-                    "type": "error",
-                    "event_id": str(uuid.uuid4()),
-                    "details": str(exc),
-                },
-            )
-            usage = {"input_tokens": 0, "output_tokens": 0}
+        response_text = ""
+        usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+        latency = 0.0
+        model_used = slm_kwargs.get("model", self.slm.default_model)
+        path = "slm"
+        escalation_metadata: dict[str, Any] | None = None
 
-        latency = time.time() - start_time
+        if self.escalation_enabled and decision.should_escalate:
+            try:
+                (
+                    response_text,
+                    usage,
+                    latency,
+                    model_used,
+                    escalation_base_url,
+                ) = await self._invoke_escalation_response(
+                    session_id=session_id,
+                    persona_id=persona_id,
+                    messages=messages,
+                    slm_kwargs=slm_kwargs,
+                )
+                path = "escalation"
+                escalation_metadata = {
+                    "deployment_mode": self.deployment_mode,
+                    "analysis": analysis_dict,
+                    "decision": decision.metadata,
+                    "base_url": escalation_base_url,
+                }
+                cost_estimate = estimate_escalation_cost(
+                    model_used,
+                    input_tokens=usage.get("input_tokens", 0),
+                    output_tokens=usage.get("output_tokens", 0),
+                )
+                if cost_estimate is not None:
+                    escalation_metadata["cost_estimate_usd"] = cost_estimate
+            except Exception as exc:
+                path = "slm"
+                LOGGER.exception("Escalation LLM invocation failed")
+                error_metadata = {
+                    "error": str(exc),
+                    "deployment_mode": self.deployment_mode,
+                    "analysis": analysis_dict,
+                    "decision": decision.metadata,
+                }
+                await self.telemetry.emit_escalation_llm(
+                    session_id=session_id,
+                    persona_id=persona_id,
+                    tenant=tenant,
+                    model=model_used,
+                    latency_seconds=0.0,
+                    input_tokens=0,
+                    output_tokens=0,
+                    decision_reason=decision.reason,
+                    status="error",
+                    metadata=error_metadata,
+                )
+                decision = EscalationDecision(False, "fallback_after_error", {**decision.metadata, "error": str(exc)})
+
+        if path == "slm":
+            start_time = time.time()
+            try:
+                response_text, usage = await self._generate_response(
+                    session_id=session_id,
+                    persona_id=persona_id,
+                    messages=messages,
+                    slm_kwargs=slm_kwargs,
+                    analysis_metadata=analysis_dict,
+                )
+            except Exception as exc:
+                LOGGER.exception("SLM request failed")
+                response_text = "I encountered an error while generating a reply."
+                await self.store.append_event(
+                    session_id,
+                    {
+                        "type": "error",
+                        "event_id": str(uuid.uuid4()),
+                        "details": str(exc),
+                    },
+                )
+                usage = {"input_tokens": 0, "output_tokens": 0}
+            latency = time.time() - start_time
+            model_used = slm_kwargs.get("model", self.slm.default_model)
+
         total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
         budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
         if not budget_result.allowed:
@@ -329,21 +441,41 @@ class ConversationWorker:
                 )
             )
 
-        await self.telemetry.emit_slm(
-            session_id=session_id,
-            persona_id=persona_id,
-            tenant=tenant,
-            model=slm_kwargs.get("model", self.slm.default_model),
-            latency_seconds=latency,
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
-            metadata={
+        if path == "escalation":
+            await self.telemetry.emit_escalation_llm(
+                session_id=session_id,
+                persona_id=persona_id,
+                tenant=tenant,
+                model=model_used,
+                latency_seconds=latency,
+                input_tokens=usage.get("input_tokens", 0),
+                output_tokens=usage.get("output_tokens", 0),
+                decision_reason=decision.reason,
+                status="success",
+                metadata=escalation_metadata,
+            )
+        else:
+            slm_metadata = {
                 "deployment_mode": self.deployment_mode,
                 "intent": analysis_dict["intent"],
                 "sentiment": analysis_dict["sentiment"],
                 "tags": analysis_dict["tags"],
-            },
-        )
+                "escalation_decision": {
+                    "should_escalate": decision.should_escalate,
+                    "reason": decision.reason,
+                    "metadata": decision.metadata,
+                },
+            }
+            await self.telemetry.emit_slm(
+                session_id=session_id,
+                persona_id=persona_id,
+                tenant=tenant,
+                model=model_used,
+                latency_seconds=latency,
+                input_tokens=usage.get("input_tokens", 0),
+                output_tokens=usage.get("output_tokens", 0),
+                metadata=slm_metadata,
+            )
         await self.telemetry.emit_budget(
             tenant=tenant,
             persona_id=event.get("persona_id"),
@@ -353,13 +485,25 @@ class ConversationWorker:
             status="allowed" if budget_result.allowed else "limit_reached",
         )
 
+        response_source = "escalation_llm" if path == "escalation" else "slm"
+        escalation_payload = None
+        if path == "escalation":
+            escalation_payload = {
+                "reason": decision.reason,
+                "metadata": decision.metadata,
+            }
+
         response_event = {
             "event_id": str(uuid.uuid4()),
             "session_id": session_id,
             "persona_id": event.get("persona_id"),
             "role": "assistant",
             "message": response_text,
-            "metadata": {"source": "slm", "analysis": analysis_dict},
+            "metadata": {
+                "source": response_source,
+                "analysis": analysis_dict,
+                "escalation": escalation_payload,
+            },
         }
 
         validate_event(response_event, "conversation_event")

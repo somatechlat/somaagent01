@@ -53,7 +53,7 @@ SomaAgent 01 must expose precise, real-time telemetry—especially token spend, 
 - Telemetry also feeds anomaly detection (unexpected latency spikes, accuracy drift) that can trigger automatic fallback or human review.
 
 ## Implementation Tasks
-1. Instrument vLLM, llama.cpp, Whisper, and tool executor to emit metrics to Kafka with JSON Schema validation.
+1. Instrument the managed Soma SLM API client, Whisper, and tool executor to emit metrics to Kafka with JSON Schema validation.
 2. Set up ClickHouse tables + materialized views for cost aggregation.
 3. Build UI components displaying metrics in session view, admin dashboards, and alerts.
 4. Implement budget enforcement hooks in policy client and model selector.

@@ -12,6 +12,8 @@ from . import (
     telemetry_store,
     skm_client,
     router_client,
+    escalation,
+    model_costs,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     "telemetry_store",
     "skm_client",
     "router_client",
+    "escalation",
+    "model_costs",
 ]

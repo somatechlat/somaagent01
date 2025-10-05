@@ -1,4 +1,4 @@
-version: '3.9'
+name: SomaAgent01
 
 services:
   kafka:
@@ -16,7 +16,7 @@ services:
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
       - KAFKA_ENABLE_KRAFT=yes
     ports:
-      - "9092:9092"
+      - "9095:9092"
     volumes:
       - kafka_data:/bitnami/kafka
 
@@ -25,7 +25,7 @@ services:
     container_name: soma-redis
     command: ["redis-server", "--save", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
 
@@ -37,12 +37,71 @@ services:
       - POSTGRES_PASSWORD=soma
       - POSTGRES_DB=somaagent01
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: soma-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: soma-clickhouse
+    environment:
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "8123:8123"
+      - "9002:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: soma-prometheus
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: soma-vault
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=dev-root
+    ports:
+      - "8200:8200"
+
+  opa:
+    image: openpolicyagent/opa:0.64.0
+    container_name: soma-opa
+    command: ["run", "--server", "--set=decision_logs.console=true"]
+    ports:
+      - "8181:8181"
+
+  openfga:
+    image: openfga/openfga:v1.8.3
+    container_name: soma-openfga
+    ports:
+      - "8081:8081"
+
+  whisper:
+    image: ghcr.io/ggerganov/whisper.cpp:latest
+    container_name: soma-whisper
+    command: ["/bin/sh", "-c", "./main -m models/ggml-base.en.bin --server 0.0.0.0:9001"]
+    ports:
+      - "9001:9001"
+    profiles: ["speech"]
+
   delegation-gateway:
-    image: agent-zero-dev:latest
+    image: somaagent01-dev:latest
     container_name: soma-delegation-gateway
     command: ["python3", "-m", "uvicorn", "services.delegation_gateway.main:app", "--host", "0.0.0.0", "--port", "8015"]
     environment:
@@ -50,21 +109,30 @@ services:
       - DELEGATION_TOPIC=somastack.delegation
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
+      - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+    depends_on:
+      - kafka
+      - postgres
+      - redis
     ports:
       - "8015:8015"
     volumes:
-      - ./a0_data:/a0
+      - ../a0_data:/a0
 
   delegation-worker:
-    image: agent-zero-dev:latest
+    image: somaagent01-dev:latest
     container_name: soma-delegation-worker
     command: ["python3", "-m", "services.delegation_worker.main"]
     environment:
       - LOG_LEVEL=INFO
       - DELEGATION_TOPIC=somastack.delegation
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+    depends_on:
+      - kafka
+      - redis
     volumes:
-      - ./a0_data:/a0
+      - ../a0_data:/a0
 
 networks:
   default:
@@ -74,3 +142,5 @@ volumes:
   kafka_data:
   redis_data:
   postgres_data:
+  qdrant_data:
+  clickhouse_data:

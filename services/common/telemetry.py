@@ -22,6 +22,7 @@ class TelemetryPublisher:
             "tool": "tool.metrics",
             "audio": "audio.metrics",
             "budget": "budget.events",
+            "escalation": "llm.escalation.metrics",
         }
 
     async def emit_slm(
@@ -101,3 +102,35 @@ class TelemetryPublisher:
         }
         await self.bus.publish(self.topics["budget"], event)
         await self.store.insert_budget(event)
+
+    async def emit_escalation_llm(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        tenant: str,
+        model: str,
+        latency_seconds: float,
+        input_tokens: int,
+        output_tokens: int,
+        decision_reason: str,
+        status: str = "success",
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> None:
+        event = {
+            "event_id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "persona_id": persona_id,
+            "tenant": tenant,
+            "model": model,
+            "latency_seconds": latency_seconds,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "decision_reason": decision_reason,
+            "status": status,
+            "timestamp": time.time(),
+            "metadata": metadata or {},
+        }
+        await self.bus.publish(self.topics["escalation"], event)
+        await self.store.insert_escalation(event)
