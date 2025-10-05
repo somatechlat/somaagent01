@@ -16,9 +16,11 @@ from services.common.session_repository import PostgresSessionStore
 from services.common.requeue_store import RequeueStore
 from services.common.telemetry import TelemetryPublisher
 from services.common.schema_validator import validate_event
+from services.tool_executor.execution_engine import ExecutionEngine
 from services.tool_executor.resource_manager import ResourceManager, default_limits
 from services.tool_executor.sandbox_manager import SandboxManager
-from services.tool_executor.tools import AVAILABLE_TOOLS, ToolExecutionError
+from services.tool_executor.tool_registry import ToolRegistry
+from services.tool_executor.tools import ToolExecutionError
 from services.common.tenant_config import TenantConfig
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +36,8 @@ class ToolExecutor:
         self.requeue = RequeueStore()
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
+        self.tool_registry = ToolRegistry()
+        self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
         self.telemetry = TelemetryPublisher(self.bus)
         self.requeue_prefix = os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.settings = {
@@ -43,6 +47,9 @@ class ToolExecutor:
         }
 
     async def start(self) -> None:
+        await self.resources.initialize()
+        await self.sandbox.initialize()
+        await self.tool_registry.load_all_tools()
         await self.bus.consume(
             self.settings["requests"],
             self.settings["group"],
@@ -81,7 +88,7 @@ class ToolExecutor:
                 )
                 return
 
-        tool = AVAILABLE_TOOLS.get(tool_name)
+        tool = self.tool_registry.get(tool_name)
         if not tool:
             await self._publish_result(
                 event,
@@ -92,19 +99,18 @@ class ToolExecutor:
             )
             return
 
-        async with self.resources.reserve():
-            try:
-                result = await self.sandbox.run(tool.run, args, default_limits())
-            except ToolExecutionError as exc:
-                LOGGER.error("Tool execution failed", extra={"tool": tool_name, "error": str(exc)})
-                await self._publish_result(
-                    event,
-                    status="error",
-                    payload={"message": str(exc)},
-                    execution_time=0.0,
-                    metadata=metadata,
-                )
-                return
+        try:
+            result = await self.execution_engine.execute(tool, args, default_limits())
+        except ToolExecutionError as exc:
+            LOGGER.error("Tool execution failed", extra={"tool": tool_name, "error": str(exc)})
+            await self._publish_result(
+                event,
+                status="error",
+                payload={"message": str(exc)},
+                execution_time=0.0,
+                metadata=metadata,
+            )
+            return
 
         result_metadata = dict(metadata)
         if getattr(result, "logs", None):

@@ -76,7 +76,6 @@ The SomaAgent 01 codebase has successfully implemented the core event-driven arc
 
 ### 3. Observability
 - ❌ No Prometheus dashboards committed
-- ❌ No Grafana configurations
 - ❌ No OpenTelemetry distributed tracing
 - ❌ Missing key metrics endpoints
 - ❌ No alerting rules

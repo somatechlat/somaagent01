@@ -25,6 +25,10 @@ class SandboxManager:
     execute in-process but centralise timeout and logging.
     """
 
+    async def initialize(self) -> None:
+        # Placeholder for future container pool warmup.
+        return None
+
     async def run(
         self,
         func: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]],

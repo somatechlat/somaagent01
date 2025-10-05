@@ -106,6 +106,11 @@ class PostgresSessionStore(SessionStore):
             )
         return [json.loads(r["payload"]) for r in rows]
 
+    async def close(self) -> None:
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
+
 
 MIGRATION_SQL = """
 CREATE TABLE IF NOT EXISTS session_events (

@@ -8,7 +8,7 @@
 
 ## 🎯 OBJECTIVES
 
-1. Deploy Prometheus/Grafana stack with custom dashboards
+1. Deploy Prometheus monitoring stack with alerting
 2. Implement OpenTelemetry distributed tracing
 3. Add comprehensive metrics to all services
 4. Create alerting rules for SLO violations
@@ -235,76 +235,9 @@ groups:
         expr: histogram_quantile(0.95, sum(rate(slm_latency_seconds_bucket[5m])) by (model, le))
 ```
 
-### 2. Grafana Dashboards
+### 2. Metrics Implementation
 
-#### 2.1 Overview Dashboard
-**File**: `infra/observability/dashboards/overview.json`
-```json
-{
-  "dashboard": {
-    "title": "SomaAgent 01 - Overview",
-    "panels": [
-      {
-        "title": "Request Rate",
-        "targets": [{
-          "expr": "sum(rate(http_requests_total[5m])) by (service)"
-        }],
-        "type": "graph"
-      },
-      {
-        "title": "Error Rate",
-        "targets": [{
-          "expr": "sum(rate(http_requests_total{status=~'5..'}[5m])) by (service)"
-        }],
-        "type": "graph"
-      },
-      {
-        "title": "p95 Latency",
-        "targets": [{
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))"
-        }],
-        "type": "graph"
-      },
-      {
-        "title": "Active Sessions",
-        "targets": [{
-          "expr": "count(session_last_activity) > 0"
-        }],
-        "type": "stat"
-      }
-    ]
-  }
-}
-```
-
-#### 2.2 Conversation Worker Dashboard
-**File**: `infra/observability/dashboards/conversation_worker.json`
-- Message processing rate
-- SLM invocation latency by model
-- Token consumption rate
-- Budget limit violations
-- Intent classification distribution
-- Streaming vs non-streaming ratio
-
-#### 2.3 Tool Executor Dashboard
-**File**: `infra/observability/dashboards/tool_executor.json`
-- Tool execution rate by tool name
-- Success/failure ratio
-- Policy block rate
-- Sandbox resource usage
-- Execution latency distribution
-
-#### 2.4 Infrastructure Dashboard
-**File**: `infra/observability/dashboards/infrastructure.json`
-- Kafka consumer lag
-- Redis memory usage
-- Postgres connection pool
-- Qdrant vector operations
-- ClickHouse query performance
-
-### 3. Metrics Implementation
-
-#### 3.1 Gateway Metrics
+#### 2.1 Gateway Metrics
 **File**: `services/gateway/metrics.py`
 ```python
 """Prometheus metrics for gateway service"""
@@ -377,7 +310,7 @@ def track_request(method: str, endpoint: str):
     return decorator
 ```
 
-#### 3.2 Conversation Worker Metrics
+#### 2.2 Conversation Worker Metrics
 **File**: `services/conversation_worker/metrics.py`
 ```python
 """Prometheus metrics for conversation worker"""
@@ -442,7 +375,7 @@ intent_classification_total = Counter(
 )
 ```
 
-#### 3.3 Tool Executor Metrics
+#### 2.3 Tool Executor Metrics
 **File**: `services/tool_executor/metrics.py`
 ```python
 """Prometheus metrics for tool executor"""
@@ -492,9 +425,9 @@ resource_usage_memory_bytes = Histogram(
 )
 ```
 
-### 4. OpenTelemetry Tracing
+### 3. OpenTelemetry Tracing
 
-#### 4.1 Tracing Configuration
+#### 3.1 Tracing Configuration
 **File**: `services/common/tracing.py`
 ```python
 """OpenTelemetry distributed tracing setup"""
@@ -546,7 +479,7 @@ async def my_function():
         pass
 ```
 
-#### 4.2 Trace Context Propagation
+#### 3.2 Trace Context Propagation
 **File**: `services/common/trace_context.py`
 ```python
 """Trace context propagation across Kafka"""
@@ -568,9 +501,9 @@ def extract_trace_context(event: Dict[str, Any]) -> None:
     return ctx
 ```
 
-### 5. Dead Letter Queue (DLQ)
+### 4. Dead Letter Queue (DLQ)
 
-#### 5.1 DLQ Implementation
+#### 4.1 DLQ Implementation
 **File**: `services/common/dlq.py`
 ```python
 """Dead Letter Queue for failed events"""
@@ -619,9 +552,9 @@ class DeadLetterQueue:
             )
 ```
 
-### 6. Structured Logging
+### 5. Structured Logging
 
-#### 6.1 JSON Logging Configuration
+#### 5.1 JSON Logging Configuration
 **File**: `services/common/logging_config.py`
 ```python
 """Structured JSON logging configuration"""
@@ -671,7 +604,7 @@ def setup_logging():
 
 ### Week 1
 - [ ] Setup Prometheus with scrape configs
-- [ ] Create Grafana dashboards
+- [ ] Add recording rules for key SLOs
 - [ ] Add metrics to gateway service
 - [ ] Add metrics to conversation worker
 - [ ] Add metrics to tool executor
@@ -691,7 +624,7 @@ def setup_logging():
 
 1. ✅ All services expose /metrics endpoint
 2. ✅ Prometheus scrapes all services successfully
-3. ✅ 5+ Grafana dashboards deployed
+3. ✅ Recording rules cover key SLOs and KPIs
 4. ✅ Alert rules fire correctly in test scenarios
 5. ✅ Distributed traces span gateway → worker → executor
 6. ✅ DLQ captures and stores failed events
@@ -702,7 +635,7 @@ def setup_logging():
 
 ## 📊 SUCCESS METRICS
 
-- **Dashboard Coverage**: 100% of services
+- **Metric Coverage**: 100% of services expose key metrics
 - **Alert Coverage**: All SLOs have alerts
 - **Trace Sampling**: 10% of requests traced
 - **MTTR**: < 15 minutes with observability tools
