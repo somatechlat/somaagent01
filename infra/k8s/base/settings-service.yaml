@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: settings-service
+  labels:
+    app.kubernetes.io/name: settings-service
+    app.kubernetes.io/part-of: somaagent01
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: settings-service
+  ports:
+    - name: http
+      port: 8011
+      targetPort: http
