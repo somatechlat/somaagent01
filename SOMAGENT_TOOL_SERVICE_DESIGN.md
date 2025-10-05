@@ -4,6 +4,11 @@
 
 Based on the SomaKamachiq architecture, the agent should **NOT** be constrained by Docker sandboxing that limits its OS capabilities. Instead, the agent should call external orchestrated services that have the full power to execute complex operations.
 
+### 📌 Current Status (Sprint 1B)
+- The tool executor shipped in this repository (`services/tool_executor/main.py`) already behaves as an orchestrator: it validates policy, looks up the requested tool, runs through the sandbox abstraction, and publishes results to Kafka.
+- Execution is still in-process while the dedicated SomaKamachiq service is being built. The new registry and execution engine provide the seam where remote execution clients will plug in.
+- Built-in tools are intentionally lightweight Python adapters. High-power operations (browser, shell, Docker) will live inside SomaKamachiq services before being exposed to agents.
+
 ## 🔄 **Corrected Architecture Pattern**
 
 ```
@@ -255,10 +260,10 @@ This aligns perfectly with the SomaKamachiq architecture:
 
 ## 💡 **Immediate Next Steps**
 
-1. **Rename and Refactor**: Current `services/tool_executor` → `SomaGent` service
-2. **Service API Design**: Define clean request/response contracts
-3. **Agent Simplification**: Reduce agent to service orchestration
-4. **Kafka Patterns**: Implement proper async service communication
-5. **Policy Integration**: Move policy enforcement to service boundary
+1. **Service API Design**: Finalise the request/response contracts between the agent-side executor and SomaKamachiq services.
+2. **Remote Execution Client**: Replace the in-process sandbox with RPC calls to SomaKamachiq (containers, browser automation, OS access).
+3. **Policy Integration**: Enforce OPA/OpenFGA decisions at the SomaKamachiq boundary and honour overrides via requeue.
+4. **Telemetry Expansion**: Capture resource usage, sandbox logs, and audit trails emitted by the remote services.
+5. **Tool Catalogue**: Surface the available remote tools via the registry so agents can advertise capabilities dynamically.
 
 This approach gives the agent full power through service orchestration while maintaining security and scalability. The agent becomes the "brain" that orchestrates powerful external capabilities rather than being limited by its own execution constraints.

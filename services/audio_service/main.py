@@ -15,7 +15,10 @@ from fastapi import Depends, FastAPI, HTTPException
 from faster_whisper import WhisperModel
 from pydantic import BaseModel, Field
 
+from jsonschema import ValidationError
+
 from services.common.event_bus import KafkaEventBus
+from services.common.schema_validator import validate_event
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -68,6 +71,7 @@ async def transcribe_audio(
         "persona_id": payload.persona_id,
         "message": transcript,
         "metadata": {**payload.metadata, "source": "audio"},
+        "role": "user",
     }
 
     audio_metrics = {
@@ -79,6 +83,12 @@ async def transcribe_audio(
         "energy": float(np.sqrt(np.mean(np.square(samples)))),
         "metadata": payload.metadata,
     }
+
+    try:
+        validate_event(conversation_event, "conversation_event")
+    except ValidationError as exc:  # pragma: no cover - validation failure unlikely
+        LOGGER.error("Invalid conversation event", extra={"error": exc.message})
+        raise HTTPException(status_code=500, detail="Conversation event validation failed") from exc
 
     await bus.publish("conversation.inbound", conversation_event)
     await bus.publish("audio.metrics", audio_metrics)

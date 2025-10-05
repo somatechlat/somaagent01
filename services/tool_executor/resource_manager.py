@@ -18,8 +18,21 @@ class ResourceManager:
     """Tracks concurrent executions to avoid exhausting the host."""
 
     def __init__(self, max_concurrent: int | None = None) -> None:
-        limit = max_concurrent or int(os.getenv("TOOL_EXECUTOR_MAX_CONCURRENT", "4"))
-        self._semaphore = asyncio.Semaphore(max(1, limit))
+        self._limit = max_concurrent or int(os.getenv("TOOL_EXECUTOR_MAX_CONCURRENT", "4"))
+        self._semaphore = asyncio.Semaphore(max(1, self._limit))
+
+    async def initialize(self) -> None:
+        # Placeholder for future resource discovery hooks (GPU, CPU quotas, etc.).
+        return None
+
+    async def can_execute(self) -> bool:
+        try:
+            self._semaphore.acquire_nowait()
+        except ValueError:
+            return False
+        else:
+            self._semaphore.release()
+            return True
 
     @asynccontextmanager
     async def reserve(self) -> asyncio.Semaphore:

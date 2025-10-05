@@ -1,10 +1,11 @@
 """Async client for OSS SLM/LLM endpoints (OpenAI-compatible)."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Sequence, Tuple
+from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple
 
 import httpx
 
@@ -61,6 +62,44 @@ class SLMClient:
         except (KeyError, IndexError) as exc:  # pragma: no cover - unexpected schema
             LOGGER.error("Unexpected response from SLM", extra={"data": data})
             raise RuntimeError("Invalid response from SLM") from exc
+
+    async def chat_stream(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        temperature: Optional[float] = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[Dict[str, Any]]:
+        chosen_model = model or self.default_model
+        url = f"{(base_url or self.base_url).rstrip('/')}/v1/chat/completions"
+        payload = {
+            "model": chosen_model,
+            "messages": [message.__dict__ for message in messages],
+            "temperature": temperature if temperature is not None else float(os.getenv("SLM_TEMPERATURE", "0.2")),
+            "stream": True,
+        }
+        if kwargs:
+            payload.update(kwargs)
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        async with self._client.stream("POST", url, json=payload, headers=headers) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if data_str == "[DONE]":
+                    break
+                try:
+                    data = json.loads(data_str)
+                except json.JSONDecodeError:  # pragma: no cover - defensive
+                    LOGGER.warning("Skipping malformed stream chunk", extra={"chunk": data_str})
+                    continue
+                yield data
 
     async def close(self) -> None:
         await self._client.aclose()

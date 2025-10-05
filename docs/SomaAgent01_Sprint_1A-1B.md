@@ -7,31 +7,30 @@
 - Launch the Tool Executor service and integrate OPA/OpenFGA policy checks with requeue support.
 - Deliver initial UI/CLI tooling for inspecting sessions, models, and policy statuses.
 
+## Status Snapshot (Codebase as of Sprint 1B)
+- Conversation worker exists and processes messages via Kafka, applying model profiles and budget checks, but still lacks streaming tokens, preprocessing, and typed domain entities (`services/conversation_worker/main.py`).
+- Tool executor has been refactored with registry/execution engine abstractions, policy checks, schema validation, and telemetry (`services/tool_executor`). Remote SomaKamachiq execution is still pending.
+- Requeue service API is available, yet automated retries from the conversation worker and UI dashboards remain to be implemented.
+- No dedicated session inspection UI or developer replay tooling has landed in the repository.
+
 ## Sprint 1A (Weeks 3–4) – Conversation Worker & OSS SLM Pre-Processing
 
 ### Deliverables
-1. **Conversation Worker Service**
-   - New package `services/conversation_worker` consuming `conversation.inbound`.
-   - Rehydrate session context (persona ID, history pointers, attachments) from Redis/Postgres repositories.
-   - Invoke OSS SLM preprocessing pipeline (intent classification, slot extraction, safety tags) using vLLM-hosted Llama 3 8B or Mistral 7B.
-   - Call primary LLM via model profile (initial default: Llama 3 70B or Mixtral) and stream partial tokens back through `conversation.outbound`.
-   - Persist results to Postgres event store, including token counts and latency metrics.
+1. **Conversation Worker Service** – *Partially delivered*
+   - Kafka consumer, session persistence, policy/budget checks implemented.
+   - Lightweight preprocessing (intent/sentiment/tags) and streaming token delivery added; deeper OSS pipelines still pending.
 
-2. **Stateful Entities**
-   - Domain models (`ConversationTurn`, `ToolCall`, `PolicyVerdict`, `MemoryOperation`) with serialization helpers.
-   - History manager that supports replay, truncation, and summarization for long sessions.
+2. **Stateful Entities** – *Not started*
+   - Domain models/history manager still pending.
 
-3. **Legacy Code Refactor**
-   - Remove direct use of `python/helpers/persist_chat.py` / `tmp/chats`.
-   - Strip inline tool execution from `agent.py`; convert to functions callable by the worker (pure orchestration logic).
+3. **Legacy Code Refactor** – *In progress*
+   - Core agent no longer executes tools inline, but legacy helpers (e.g., `python/helpers/persist_chat.py`) remain.
 
-4. **Streaming Enhancements**
-   - Implement partial token events (`status: streaming`) with correlation IDs in Kafka.
-   - WebSocket client updates to render partial responses and status lines.
+4. **Streaming Enhancements** – *Partially delivered*
+   - Streaming deltas emitted on `conversation.outbound`; WebSocket/SSE clients receive partial tokens. UI rendering remains to be updated.
 
-5. **Developer Utilities**
-   - CLI `scripts/replay_session.py` to replay events from Postgres/Kafka for debugging.
-   - Unit/integration tests covering SLM preprocessing, LLM invocation, streaming output.
+5. **Developer Utilities** – *Not started*
+   - Replay CLI added (`scripts/replay_session.py`); additional automated tests remain outstanding.
 
 ### Acceptance Criteria
 - End-to-end test: send message → conversation worker produces streaming response → session state persisted.
@@ -46,27 +45,20 @@
 ## Sprint 1B (Week 5) – Tool Executor, Policy Enforcement, Requeue Flow
 
 ### Deliverables
-1. **Tool Executor Service**
-   - Kafka consumer at `tool.requests`, executing adapters from `python/tools` in isolated workers (Docker sandbox / Firecracker).
-   - Emit results to `tool.results`, including stdout/stderr, attachments, execution time, exit status.
+1. **Tool Executor Service** – *Partially delivered*
+   - Registry/execution engine, schema validation, telemetry, and policy checks are live. Remote sandboxing via SomaKamachiq still needs implementation.
 
-2. **Policy Client Integration**
-   - Shared `policy_client` module calling SKM Policy Engine (`/v1/evaluate`) with context (tenant, persona, tool, payload).
-   - Wrap conversation worker memory writes and tool requests with policy checks.
-   - On denial or OPA failure, publish `policy.blocked` event and store entry in Redis/Postgres requeue store.
+2. **Policy Client Integration** – *Partially delivered*
+   - Tool executor calls the policy client; conversation worker still needs policy hooks around memory writes and tool requests.
 
-3. **Requeue Management**
-   - API endpoints (`POST /v1/policy/requeue/{id}/resolve`) for admins to re-evaluate or override blocks (with audit trail).
-   - Background job (conversation worker) polling requeue store and retrying actions once policy passes.
+3. **Requeue Management** – *Partially delivered*
+   - Requeue API exists; automatic retries and UI tooling remain outstanding.
 
-4. **User Interface Enhancements**
-   - Session inspector panel showing tool calls, policy decisions, and memory operations with status icons.
-   - Model profile summary (read-only) displayed during conversation for operator awareness.
+4. **User Interface Enhancements** – *Not started*
+   - No session inspector or model profile dashboard committed.
 
-5. **Testing & Observability**
-   - Integration tests covering tool execution success/failure, policy block/unblock path, requeue retries.
-   - Metrics: `tool_execution_duration_seconds`, `policy_blocked_total`, `requeue_pending_total`.
-   - Logs enriched with trace IDs, constitution hash, tenant ID, persona ID.
+5. **Testing & Observability** – *In progress*
+   - Basic telemetry (SLM/tool metrics) is emitted, but dedicated integration tests and additional metrics are pending.
 
 ### Acceptance Criteria
 - Tool executor processes sample requests (e.g., code execution, web search) with policy gating.

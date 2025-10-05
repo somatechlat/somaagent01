@@ -49,7 +49,7 @@ This document coordinates the parallel execution of 4 critical sprints (A, B, C,
 **Lead Focus**: SRE, Observability Engineering  
 **Key Deliverables**: 9 items
 - Prometheus configuration
-- Grafana dashboards (5+)
+- Prometheus recording rules & runbooks
 - OpenTelemetry tracing
 - Alert rules
 - DLQ implementation
@@ -94,7 +94,7 @@ This document coordinates the parallel execution of 4 critical sprints (A, B, C,
 |--------|---------|---------|-----------|----------|--------|
 | **A** | Complete Helm | Argo CD apps | Dagger pipeline | Dev cluster deploy | Documentation |
 | **B** | Integration tests | E2E tests | Performance tests | CI integration | Coverage reports |
-| **C** | OTEL tracing | Trace propagation | DLQ impl | Grafana dashboards | Runbooks |
+| **C** | OTEL tracing | Trace propagation | DLQ impl | Recording rules/KPIs | Runbooks |
 | **D** | Session UI frontend | Model dashboard | Auto-retry worker | Secret rotation | Security audit |
 
 **Week 2 Target**: 100% completion + acceptance criteria validation
@@ -138,7 +138,7 @@ Sprint D (Security) → Multi-Tenant Deploy
 
 ### Observability Validation
 - [ ] Prometheus scrapes all services
-- [ ] 5+ Grafana dashboards deployed
+- [ ] Prometheus recording rules cover critical SLOs
 - [ ] Distributed traces span all services
 - [ ] Alerts fire correctly in test scenarios
 
@@ -212,7 +212,7 @@ Resolution: Sprint A will share manifest by EOD
 **Friday Week 1 Integration Session** (4 hours):
 - Sprint A: Deploy dev K8s cluster
 - Sprint B: Run full test suite
-- Sprint C: Deploy Prometheus + Grafana
+- Sprint C: Expand Prometheus coverage and alerting
 - Sprint D: Enable rate limiting + RLS
 
 **Monday Week 2 Validation**:
