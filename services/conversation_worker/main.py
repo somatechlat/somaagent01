@@ -20,6 +20,7 @@ from services.common.budget_manager import BudgetManager
 from services.common.telemetry import TelemetryPublisher
 from services.common.skm_client import SKMClient, ProgressPayload
 from services.common.router_client import RouterClient
+from services.common.tenant_config import TenantConfig
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -37,7 +38,8 @@ class ConversationWorker:
         self.store = PostgresSessionStore()
         self.slm = SLMClient()
         self.profile_store = ModelProfileStore()
-        self.budgets = BudgetManager()
+        self.tenant_config = TenantConfig()
+        self.budgets = BudgetManager(tenant_config=self.tenant_config)
         self.telemetry = TelemetryPublisher(self.bus)
         self.skm = SKMClient()
         self.router = RouterClient()
@@ -81,18 +83,9 @@ class ConversationWorker:
         if not messages or messages[-1].role != "user":
             messages.append(ChatMessage(role="user", content=event.get("message", "")))
 
+        tenant = event.get("metadata", {}).get("tenant", "default")
+
         model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
-        if model_profile and os.getenv("ROUTER_URL"):
-            routed = await self.router.route(
-                role="dialogue",
-                deployment_mode=self.deployment_mode,
-                candidates=[model_profile.model],
-            )
-            if routed:
-                slm_kwargs["model"] = routed.model
-                if routed.score:
-                    slm_kwargs.setdefault("metadata", {})
-                    slm_kwargs["metadata"]["router_score"] = routed.score
         slm_kwargs: dict[str, Any] = {}
         if model_profile:
             slm_kwargs.update(
@@ -104,8 +97,24 @@ class ConversationWorker:
             )
             if model_profile.kwargs:
                 slm_kwargs.update(model_profile.kwargs)
+        routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
 
-        tenant = event.get("metadata", {}).get("tenant", "default")
+        if model_profile and os.getenv("ROUTER_URL"):
+            candidates = [slm_kwargs.get("model", model_profile.model)] if slm_kwargs else [model_profile.model]
+            if routing_allow:
+                candidates = [candidate for candidate in candidates if candidate in routing_allow]
+            if routing_deny:
+                candidates = [candidate for candidate in candidates if candidate not in routing_deny]
+            if candidates:
+                routed = await self.router.route(
+                    role="dialogue",
+                    deployment_mode=self.deployment_mode,
+                    candidates=candidates,
+                )
+                if routed:
+                    slm_kwargs["model"] = routed.model
+                    slm_kwargs.setdefault("metadata", {})
+                    slm_kwargs["metadata"]["router_score"] = routed.score
 
         persona_id = event.get("persona_id")
         budget_check = await self.budgets.consume(tenant, persona_id, 0)

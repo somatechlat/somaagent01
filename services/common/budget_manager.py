@@ -7,6 +7,8 @@ from typing import Optional
 
 import redis.asyncio as redis
 
+from services.common.tenant_config import TenantConfig
+
 
 @dataclass
 class BudgetResult:
@@ -16,11 +18,12 @@ class BudgetResult:
 
 
 class BudgetManager:
-    def __init__(self, url: Optional[str] = None) -> None:
+    def __init__(self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None) -> None:
         self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.prefix = os.getenv("BUDGET_PREFIX", "budget:tokens")
         self.limit = int(os.getenv("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)
+        self.tenant_config = tenant_config or TenantConfig()
 
     async def consume(self, tenant: str, persona_id: Optional[str], tokens: int) -> BudgetResult:
         if tokens <= 0:
@@ -50,6 +53,10 @@ class BudgetManager:
         return datetime.utcnow().strftime("%Y%m%d")
 
     def _limit_for(self, tenant: str, persona_id: Optional[str]) -> Optional[int]:
+        config_limit = self.tenant_config.get_budget_limit(tenant, persona_id)
+        if config_limit is not None:
+            return config_limit if config_limit > 0 else None
+
         env_key = f"BUDGET_LIMIT_{tenant.upper()}"
         persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
         if persona_key in os.environ:

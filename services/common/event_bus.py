@@ -64,6 +64,10 @@ class KafkaEventBus:
             await self._producer.start()
         return self._producer
 
+    async def healthcheck(self) -> None:
+        producer = await self._ensure_producer()
+        await producer.client.force_metadata_update()
+
     async def publish(self, topic: str, payload: dict[str, Any]) -> None:
         producer = await self._ensure_producer()
         message = json.dumps(payload, ensure_ascii=False).encode("utf-8")

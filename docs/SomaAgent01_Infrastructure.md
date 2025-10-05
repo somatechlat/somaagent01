@@ -6,8 +6,8 @@ SomaAgent 01 operates on three canonical infrastructure profiles. Each profile r
 
 ## 1. LOCAL (Workstation)
 - **Orchestration**: Docker Compose (`infra/docker-compose.somaagent01.yaml`).
-- **Core Services**: Kafka (Bitnami KRaft), Redis, Postgres, Qdrant, ClickHouse, vLLM (CPU), Whisper (CPU), Vault dev mode, OPA (permissive), OpenFGA.
-- **Observability**: Prometheus, Loki, Tempo (bundled in compose).
+- **Core Services**: Kafka (Bitnami KRaft), Redis, Postgres, Qdrant, ClickHouse, vLLM (CPU), Whisper (CPU), Vault dev mode, OPA (permissive), OpenFGA, Delegation gateway/worker.
+- **Observability**: Prometheus (bundled in compose).
 - **Networking**: All services bound to localhost; no ingress controller required.
 - **Usage**: Solo development, quick smoke tests, replaying sessions.
 
@@ -23,7 +23,7 @@ SomaAgent 01 operates on three canonical infrastructure profiles. Each profile r
   - Whisper ASR (GPU deployments with autoscaling).
   - Vault (HA) with Kubernetes auth; secrets injected via Vault Agent sidecars.
   - OPA + OpenFGA (policy enforcement namespaces).
-  - Prometheus Operator, Loki, Tempo, Grafana/SomaSuite dashboards.
+  - Prometheus Operator with SomaSuite dashboards.
 - **Networking**: Kong/Envoy ingress with mTLS, cert-manager for TLS.
 - **Usage**: Team development, integration testing, nightly benchmarks.
 
@@ -40,7 +40,7 @@ SomaAgent 01 operates on three canonical infrastructure profiles. Each profile r
   - Whisper GPU pools with autoscaling and queue length metrics.
   - Vault Enterprise (HSM backed) for secrets + PKI; integrations with Service Mesh (Istio/Linkerd).
   - OPA Gatekeeper for admission control; OpenFGA for relationship authorization.
-  - Prometheus + Thanos, Loki + object storage, Tempo + object storage.
+  - Prometheus + Thanos (object storage for long-term metrics).
 - **Networking**: Global load balancing (CloudFront/Cloud Armor/Cloud DNS). Kong/Envoy edge with WAF, mTLS, JWT validation. Zero-trust network policies via Cilium/Calico.
 - **Usage**: Tenant-facing production with SLAs, compliance evidence, automated failover and disaster recovery.
 
@@ -60,8 +60,8 @@ infra/
 ## Observability Expectations
 - Prometheus scrape configs aligned per profile; Thanos enabled in enterprise.
 - Alerting rules vary by mode (development warnings vs production paging).
-- Tempo traces cross-service (gateway → worker → tool executor → SomaBrain).
-- Loki logs structured with tenant/persona/mode for searchability.
+- Tracing pipelines remain pluggable (gateway → worker → tool executor → SomaBrain).
+- Logs structured with tenant/persona/mode for searchability.
 
 ## Security
 - Vault is the single source of secrets beyond LOCAL mode.

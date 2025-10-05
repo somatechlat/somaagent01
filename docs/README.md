@@ -13,6 +13,8 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 
 ### Your experience with Agent Zero starts now!
 
+- **Runbook**: See [operations runbook](SomaAgent01_Runbook.md) for incident handling and day-2 procedures.
+
 - **Download Agent Zero:** Follow the [installation guide](installation.md) to download and run Agent Zero.
 - **Join the Community:** Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community to discuss ideas, ask questions, and collaborate with other contributors.
 - **Share your Work:** Share your Agent Zero creations, workflows and discoverings on our [Show and Tell](https://github.com/agent0ai/agent-zero/discussions/categories/show-and-tell) area on GitHub.

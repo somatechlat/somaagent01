@@ -34,7 +34,7 @@ This document captures the canonical plan for transforming Agent Zero into the S
 - **ClickHouse**: Analytics warehouse for latency, refusal, cost, audio quality, model scores.
 - **Qdrant**: Encrypted embedding store for audio/text features; synchronized with SomaBrain knowledge graph.
 - **Vault**: Secret rotation and service credentials; integrates with GitOps deployments.
-- **Prometheus/Tempo/Loki**: Observability stack feeding SomaSuite dashboards.
+- **Prometheus stack**: Observability stack feeding SomaSuite dashboards.
 
 ## 6. Audio & Conversational Experience
 - Whisper (FasterWhisper) handles ASR with diarization; vectors derived (log-mel, MFCC, RMS) stored per tenant/persona.
@@ -52,7 +52,7 @@ This document captures the canonical plan for transforming Agent Zero into the S
 ## 8. Sprint Roadmap (12 Weeks)
 | Sprint | Focus | Key Deliverables |
 |--------|-------|------------------|
-| **0A (0-1)** | Foundations | Deploy Kafka, Redis, Postgres, Qdrant, ClickHouse, Whisper, vLLM, OPA/OpenFGA, Vault; Prometheus/Loki/Tempo; GitOps (Argo CD) and CI (Dagger + GitHub Actions); docker-compose dev stack; rename docs to SomaKamachiq. |
+| **0A (0-1)** | Foundations | Deploy Kafka, Redis, Postgres, Qdrant, ClickHouse, Whisper, vLLM, OPA/OpenFGA, Vault; Prometheus stack; GitOps (Argo CD) and CI (Dagger + GitHub Actions); docker-compose dev stack; rename docs to SomaKamachiq. |
 | **0B (2)** | Event Skeleton | Kafka client abstraction; Redis/Postgres session repository; FastAPI gateway with enqueue + SSE/WebSocket stubs; initial model profile UI layout. |
 | **1A (3-4)** | Conversation Worker | Remove file persistence; conversation worker consuming `conversation.inbound`; integrate OSS SLM intent layer; streaming responses; session inspector UI. |
 | **1B (5)** | Tool + Policy | Tool executor service; OPA/OpenFGA client gating memory/tool calls; requeue store + endpoints; policy dashboards; UI status indicators. |

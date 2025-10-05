@@ -45,7 +45,7 @@ SomaAgent 01 is the flagship tenant-aware automation agent that sits at the hear
 6. **SLM/LLM Invocation** – Agent call executed (Litellm). Results streamed to Canvas panes and stored in Postgres.
 7. **Tool Execution / Delegation** – Tool call or sub-agent task enqueued (`agent.tool` topic). Workers execute locally or forward to SomaAgent Server via delegation gateway.
 8. **Feedback Loop** – Agent posts `/context/feedback` to SomaBrain. Memory event saved; routing outcome appended to preference dataset.
-9. **Observation & Alerts** – Metrics/traces/logs shipped through OTEL collector to Prometheus/Loki/Tempo.
+9. **Observation & Alerts** – Metrics/traces/logs shipped through OTEL collector to Prometheus stack.
 
 ## 4. Dynamic Routing & Learning
 
@@ -112,7 +112,7 @@ SomaAgent 01 is the flagship tenant-aware automation agent that sits at the hear
 | Autoscaling | HPA (CPU, queue length), KEDA for Kafka-driven workers. |
 | CI/CD | GitHub Actions → image registry → ArgoCD/Flux. Terraform provisions infra. |
 | Secrets | Vault or cloud secrets manager (CSI driver). |
-| Observability | OTEL collector → Prometheus/Grafana + Loki/Tempo. |
+| Observability | OTEL collector → Prometheus stack. |
 | Chaos | Litmus or custom jobs hitting Kafka/Redis/SomaBrain to verify resilience. |
 
 ## 8. Modes & Deployment Profiles

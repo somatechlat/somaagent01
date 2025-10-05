@@ -30,7 +30,7 @@ SomaAgent 01 must expose precise, real-time telemetry—especially token spend, 
    - Redis maintains rolling totals for budget checks.
    - Postgres stores per-session summaries for quick UI access.
 3. **Dashboards & Alerts**
-   - SomaSuite (Grafana) dashboards show live spend, latency, refusal rate, audio quality.
+   - Prometheus-backed dashboards show live spend, latency, refusal rate, audio quality.
    - Alertmanager warns on threshold breaches (token budget, refusal spike, audio failures).
 4. **Exports & Billing**
    - Scheduled jobs export CSV/Parquet for finance (per tenant/persona/model).
@@ -58,3 +58,6 @@ SomaAgent 01 must expose precise, real-time telemetry—especially token spend, 
 3. Build UI components displaying metrics in session view, admin dashboards, and alerts.
 4. Implement budget enforcement hooks in policy client and model selector.
 5. Define export pipelines and integration tests ensuring telemetry is captured end-to-end with no mocks.
+
+## Alerts
+- `TelemetryWorkerDown`: fires when Prometheus fails to scrape the telemetry worker for more than one minute (see `infra/observability/alerts.yml`).

@@ -12,6 +12,7 @@ import os
 import uuid
 from typing import Annotated, AsyncIterator
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -156,3 +157,59 @@ async def shutdown_event() -> None:
     # Ensure background producers are closed on shutdown
     bus = KafkaEventBus()
     await bus.close()
+
+
+@app.get("/health")
+async def health_check(
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
+) -> JSONResponse:
+    components: dict[str, dict[str, str]] = {}
+    overall_status = "ok"
+
+    def record_status(name: str, status: str, detail: str | None = None) -> None:
+        nonlocal overall_status
+        components[name] = {"status": status}
+        if detail:
+            components[name]["detail"] = detail
+        if status == "down":
+            overall_status = "down"
+        elif status == "degraded" and overall_status == "ok":
+            overall_status = "degraded"
+
+    try:
+        await store.ping()
+        record_status("postgres", "ok")
+    except Exception as exc:  # pragma: no cover - external dependency
+        record_status("postgres", "down", str(exc))
+
+    try:
+        await cache.ping()
+        record_status("redis", "ok")
+    except Exception as exc:  # pragma: no cover - external dependency
+        record_status("redis", "down", str(exc))
+
+    kafka_bus = KafkaEventBus()
+    try:
+        await kafka_bus.healthcheck()
+        record_status("kafka", "ok")
+    except Exception as exc:  # pragma: no cover - external dependency
+        record_status("kafka", "down", str(exc))
+    finally:
+        await kafka_bus.close()
+
+    async def check_http_target(name: str, url: str | None) -> None:
+        if not url:
+            return
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+            record_status(name, "ok")
+        except Exception as exc:  # pragma: no cover - external dependency
+            record_status(name, "degraded", str(exc))
+
+    await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
+    await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
+
+    return JSONResponse({"status": overall_status, "components": components})

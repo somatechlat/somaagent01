@@ -45,7 +45,7 @@ This roadmap tracks the rapid-development sprints required to launch SomaAgent 0
 - Metrics: <1% failed delegation, trace linking across agents
 
 ## Sprint 6 – Observability & SLO Enforcement *(Weeks 11-12)*
-- Unified dashboards (Prometheus/Grafana), latency/error alerts
+- Unified dashboards (Prometheus dashboards), latency/error alerts
 - Tracing instrumentation (OpenTelemetry)
 - Chaos tests: Kafka outage, Redis latency, SomaBrain failure
 - Autonomic mode detection: monitor SomaBrain/LLM/Network health, publish state to UI, ensure queue replay on recovery
@@ -53,9 +53,9 @@ This roadmap tracks the rapid-development sprints required to launch SomaAgent 0
 - Metrics: alert noise <5%, auto-recovery success, chaos reports archived
 
 ## Sprint 7 – Production Hardening *(Weeks 13-14)*
-- Load tests to target RPS +20% headroom
+- Load tests to target RPS +20% headroom (k6 script in `scripts/loadtest_k6.js`)
 - Security review (WAF rules, secret rotation, pen test triage)
-- Documentation: runbooks, admin manual, compliance checklists
+- Documentation: runbooks (`docs/SomaAgent01_Runbook.md`), admin manual, compliance checklists
 - Metrics: all SLOs met, incident drills passed
 
 ## Continuous Backlog
