@@ -3,7 +3,7 @@
 # SomaAgent 01 – Sprint 0A & 0B Execution Plan
 
 ## Sprint Goals
-- Provision the full OSS infrastructure baseline required by SomaAgent 01 (Kafka/KRaft, Redis, Postgres, Qdrant, ClickHouse, Whisper, vLLM, OPA/OpenFGA, Vault, Prometheus/Loki/Tempo).
+- Provision the full OSS infrastructure baseline required by SomaAgent 01 (Kafka/KRaft, Redis, Postgres, Qdrant, ClickHouse, Whisper, vLLM, OPA/OpenFGA, Vault, Prometheus stack).
 - Establish GitOps/CI pipelines and developer tooling for deterministic environments.
 - Deliver a FastAPI gateway skeleton wired to Kafka with Redis/Postgres session repositories and WebSocket/SSE streaming stubs.
 
@@ -22,8 +22,8 @@
    - Terraform/Kustomize overlays for dev/test/prod clusters.
 
 2. **Observability Baseline**
-   - Prometheus, Alertmanager, Loki, Tempo via Helm; service monitors for Kafka, Redis, Postgres, vLLM, Whisper.
-   - Seed Grafana/SomaSuite dashboards (cluster health, Kafka lag, GPU utilization).
+   - Prometheus and Alertmanager via Helm; service monitors for Kafka, Redis, Postgres, vLLM, Whisper.
+   - Seed Prometheus dashboards (cluster health, Kafka lag, GPU utilization).
 
 3. **Developer Tooling**
    - `docker-compose.somaagent01.yaml` standing up Kafka, Redis, Postgres, Qdrant, ClickHouse, vLLM CPU, Whisper CPU.

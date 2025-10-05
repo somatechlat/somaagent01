@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: somaagent
+
+resources:
+  - namespace.yaml
+  - telemetry-worker-deployment.yaml
+  - telemetry-worker-service.yaml
+  - delegation-gateway-deployment.yaml
+  - delegation-gateway-service.yaml

@@ -1396,6 +1396,7 @@ input:checked + .slider:before {
 
 
 
+
 .status-icon {
   display: flex;
   justify-content: center;
@@ -1407,23 +1408,41 @@ input:checked + .slider:before {
   height: 18px;
 }
 
-.connected-circle,
-.disconnected-circle {
-  -webkit-transition: all 0.3s ease;
-  transition: all 0.3s ease;
+.status-icon .connected-circle,
+.status-icon .degraded-circle,
+.status-icon .disconnected-circle {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  fill: none;
+  stroke-width: 0;
 }
 
-.connected-circle {
+.status-icon .connected-circle {
+  fill: #00c340;
   animation: heartbeat 1.5s ease-in-out infinite;
   transform-origin: center;
 }
 
-.connected {
-  color: #00c340;
+.status-icon[data-status="ok"] .connected-circle {
+  opacity: 1;
 }
 
-.disconnected {
-  color: #e40138;
+.status-icon .degraded-circle {
+  stroke: #f59e0b;
+  stroke-width: 3;
+}
+
+.status-icon[data-status="degraded"] .degraded-circle {
+  opacity: 1;
+}
+
+.status-icon .disconnected-circle {
+  stroke: #e40138;
+  stroke-width: 3;
+}
+
+.status-icon[data-status="down"] .disconnected-circle {
+  opacity: 1;
 }
 
 .font-bold {

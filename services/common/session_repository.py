@@ -23,6 +23,10 @@ class SessionCache(ABC):
     @abstractmethod
     async def delete(self, key: str) -> None: ...
 
+    async def ping(self) -> None:
+        """Optional health check hook."""
+        return None
+
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None) -> None:
@@ -45,6 +49,9 @@ class RedisSessionCache(SessionCache):
     async def delete(self, key: str) -> None:
         await self._client.delete(key)
 
+    async def ping(self) -> None:
+        await self._client.ping()
+
 
 class SessionStore(ABC):
     @abstractmethod
@@ -65,6 +72,11 @@ class PostgresSessionStore(SessionStore):
         if self._pool is None:
             self._pool = await asyncpg.create_pool(self.dsn, min_size=1, max_size=5)
         return self._pool
+
+    async def ping(self) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("SELECT 1")
 
     async def append_event(self, session_id: str, event: dict[str, Any]) -> None:
         pool = await self._ensure_pool()

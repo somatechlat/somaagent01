@@ -61,24 +61,6 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
 
-  tempo:
-    image: grafana/tempo:2.5.0
-    container_name: soma-tempo
-    command: ["-config.file=/etc/tempo.yml"]
-    volumes:
-      - ./observability/tempo.yml:/etc/tempo.yml:ro
-    ports:
-      - "3200:3200"
-
-  loki:
-    image: grafana/loki:3.1.0
-    container_name: soma-loki
-    command: ["-config.file=/etc/loki/local-config.yaml"]
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./observability/loki-config.yml:/etc/loki/local-config.yaml:ro
-
   prometheus:
     image: prom/prometheus:v2.53.0
     container_name: soma-prometheus
@@ -87,6 +69,7 @@ services:
       - "9090:9090"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
 
   vault:
     image: hashicorp/vault:1.17
@@ -129,6 +112,27 @@ services:
     command: ["/bin/sh", "-c", "./main -m models/ggml-large-v3.bin --server 0.0.0.0:9001"]
     ports:
       - "9001:9001"
+
+  delegation-gateway:
+    image: agent0ai/agent-zero:latest
+    container_name: soma-delegation-gateway
+    command: ["uvicorn", "services.delegation_gateway.main:app", "--host", "0.0.0.0", "--port", "8015"]
+    environment:
+      - LOG_LEVEL=INFO
+      - DELEGATION_TOPIC=somastack.delegation
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
+    ports:
+      - "8015:8015"
+
+  delegation-worker:
+    image: agent0ai/agent-zero:latest
+    container_name: soma-delegation-worker
+    command: ["python", "-m", "services.delegation_worker.main"]
+    environment:
+      - LOG_LEVEL=INFO
+      - DELEGATION_TOPIC=somastack.delegation
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
 networks:
   default:

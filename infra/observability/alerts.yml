@@ -1,0 +1,11 @@
+groups:
+  - name: somaagent-alerts
+    rules:
+      - alert: TelemetryWorkerDown
+        expr: up{job="telemetry_worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Telemetry worker offline"
+          description: "Prometheus has not scraped telemetry_worker for 1 minute."

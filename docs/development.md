@@ -1,3 +1,11 @@
+### Delegation gateway service
+
+A lightweight delegation gateway now exposes `/v1/delegation/task` for posting tasks onto the `somastack.delegation` topic. Use `uvicorn services.delegation_gateway.main:app --port 8015` during local testing; the service records task metadata in Postgres until callbacks land. Clients can poll `/v1/delegation/task/{task_id}` or POST to `/callback` when downstream workers finish.
+
+### Tenant policy configuration
+
+Budgets, routing allowlists, and fail-open behaviour can now be managed via `conf/tenants.yaml`. Each tenant block supports `fail_open`, optional per-persona `budgets`, and routing `allow`/`deny` lists. Update the file and restart the services to apply changes locally; Kubernetes environments should mount the file or inject it via ConfigMap.
+
 # Development manual for Agent Zero
 This guide will show you how to setup a local development environment for Agent Zero in a VS Code compatible IDE, including proper debugger.
 
@@ -131,6 +139,24 @@ My Dockerized instance:
 
 My VS Code instance:
 ![VS Code instance](res/dev/devinst-13.png)
+
+
+### Health status indicator
+
+The status glyph beside the clock polls `/health` every few seconds. Green indicates full connectivity, amber reflects degraded dependencies, and red means the gateway cannot reach critical services. Hover over the icon to see component-level detail gathered from Postgres, Redis, Kafka, and optional telemetry/delegation health endpoints.
+
+### Prometheus alert rules
+
+### Delegation load testing
+
+Run `k6 run scripts/loadtest_k6.js` (set `GATEWAY_URL` to your deployment) to exercise the delegation gateway under load. The script ramps to 50 RPS and verifies 200 responses. Combine with Prometheus dashboards to observe latency and error-rate SLOs.
+
+
+Prometheus now ships with `infra/observability/alerts.yml`, which raises an alert if the telemetry worker stops exposing metrics for more than a minute. Mount this file alongside `prometheus.yml` in docker-compose or your Kubernetes manifests and extend the rule set with additional SLOs.
+
+### Chaos testing quick start
+
+To rehearse failure recovery, stop individual containers in `docker-compose.somaagent01.yaml` (for example `docker compose stop kafka`) and watch `/health` degrade before bringing the service back up. In Kubernetes you can achieve the same by scaling a deployment to zero; Prometheus and the UI status indicator will flag the outage once scrapes fail.
 
 
 ## SomaBrain memory backend

@@ -27,6 +27,7 @@ let context = "";
 let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
+let healthState = { status: "unknown", components: {} };
 
 // Initialize the toggle button
 setupSidebarToggle();
@@ -315,17 +316,37 @@ function getConnectionStatus() {
   return connectionStatus;
 }
 
-function setConnectionStatus(connected) {
-  connectionStatus = connected;
-  if (globalThis.Alpine && timeDate) {
-    const statusIconEl = timeDate.querySelector(".status-icon");
-    if (statusIconEl) {
-      const statusIcon = Alpine.$data(statusIconEl);
-      if (statusIcon) {
-        statusIcon.connected = connected;
-      }
-    }
+function setConnectionStatus(status, components = null) {
+  let indicatorStatus;
+  if (typeof status === "string") {
+    indicatorStatus = status;
+    connectionStatus = status === "ok";
+  } else {
+    indicatorStatus = status ? "ok" : "down";
+    connectionStatus = !!status;
   }
+
+  const statusIconEl = document.getElementById("status-indicator");
+  if (statusIconEl) {
+    statusIconEl.dataset.status = indicatorStatus;
+    const tooltip = formatHealthTooltip(components, indicatorStatus);
+    statusIconEl.setAttribute("title", tooltip);
+  }
+}
+
+function formatHealthTooltip(components, status) {
+  const header = `Health: ${status}`;
+  if (!components || Object.keys(components).length === 0) {
+    return header;
+  }
+  const lines = Object.entries(components).map(([name, info]) => {
+    if (info && typeof info === "object") {
+      const detail = info.detail ? ` (${info.detail})` : "";
+      return `${name}: ${info.status ?? "unknown"}${detail}`;
+    }
+    return `${name}: ${info}`;
+  });
+  return `${header}\n${lines.join("\n")}`;
 }
 
 let lastLogVersion = 0;
@@ -397,7 +418,7 @@ async function poll() {
     }
 
     // Update status icon state
-    setConnectionStatus(true);
+    setConnectionStatus("ok");
 
     // Update chats list and sort by created_at time (newer first)
     let chatsAD = null;
@@ -508,11 +529,42 @@ async function poll() {
     lastLogGuid = response.log_guid;
   } catch (error) {
     console.error("Error:", error);
-    setConnectionStatus(false);
+    setConnectionStatus("down");
   }
 
   return updated;
 }
+
+async function monitorHealth() {
+  while (true) {
+    try {
+      const response = await fetch("/health", {
+        method: "GET",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      healthState = {
+        status: data.status || "ok",
+        components: data.components || {},
+      };
+      setConnectionStatus(healthState.status, healthState.components);
+    } catch (error) {
+      healthState = {
+        status: "down",
+        components: {
+          gateway: { status: "down", detail: error?.message || "unreachable" },
+        },
+      };
+      setConnectionStatus(healthState.status, healthState.components);
+    }
+    await sleep(5000);
+  }
+}
+
+monitorHealth().catch((error) => console.error("Health monitor failed", error));
 
 function afterMessagesUpdate(logs) {
   if (localStorage.getItem("speech") == "true") {
