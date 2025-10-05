@@ -21,7 +21,7 @@ cp example.env .env
 Update `.env` with local API keys or service endpoints as needed.
 
 ## Docker Compose Stack
-The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseline (Kafka, Redis, Postgres, ClickHouse, Qdrant, vLLM CPU, Whisper CPU).
+The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseline (Kafka, Redis, Postgres, ClickHouse, Qdrant, Whisper CPU). The conversational SLM is accessed via the managed Soma SLM API configured through `SLM_BASE_URL`, so no local LLM container is pulled.
 
 ```bash
 cd infra

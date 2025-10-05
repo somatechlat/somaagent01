@@ -6,7 +6,7 @@ SomaAgent 01 operates on three canonical infrastructure profiles. Each profile r
 
 ## 1. LOCAL (Workstation)
 - **Orchestration**: Docker Compose (`infra/docker-compose.somaagent01.yaml`).
-- **Core Services**: Kafka (Bitnami KRaft), Redis, Postgres, Qdrant, ClickHouse, vLLM (CPU), Whisper (CPU), Vault dev mode, OPA (permissive), OpenFGA, Delegation gateway/worker.
+- **Core Services**: Kafka (Bitnami KRaft), Redis, Postgres, Qdrant, ClickHouse, Whisper (CPU), Vault dev mode, OPA (permissive), OpenFGA, Delegation gateway/worker. The SLM tier is consumed via the managed Soma SLM API (`SLM_BASE_URL`) so no heavyweight model container is required locally.
 - **Observability**: Prometheus (bundled in compose).
 - **Networking**: All services bound to localhost; no ingress controller required.
 - **Usage**: Solo development, quick smoke tests, replaying sessions.
@@ -19,7 +19,7 @@ SomaAgent 01 operates on three canonical infrastructure profiles. Each profile r
   - Redis cluster (Redis Operator) with TLS/ACLs.
   - Postgres HA (Patroni or CrunchyData) with Timescale extension.
   - Qdrant & ClickHouse stateful sets (persistent volumes + backups).
-  - vLLM deployment (GPU DaemonSet or Deployment with NVIDIA operator).
+  - Soma SLM connector (points to the managed SLM API; no in-cluster LLM deployment).
   - Whisper ASR (GPU deployments with autoscaling).
   - Vault (HA) with Kubernetes auth; secrets injected via Vault Agent sidecars.
   - OPA + OpenFGA (policy enforcement namespaces).
@@ -36,7 +36,7 @@ SomaAgent 01 operates on three canonical infrastructure profiles. Each profile r
   - Postgres HA (Citus or Patroni) with synchronous replicas, PITR backups.
   - Qdrant federated clusters (encryption at rest, tenant isolation).
   - ClickHouse Cloud/Cluster with replicated shards for analytics.
-  - vLLM GPU pools with autoscaling, GPU quota enforcement, MIG partitioning if available.
+  - Managed Soma SLM API endpoints with autoscaling; no tenant-owned LLM GPUs required.
   - Whisper GPU pools with autoscaling and queue length metrics.
   - Vault Enterprise (HSM backed) for secrets + PKI; integrations with Service Mesh (Istio/Linkerd).
   - OPA Gatekeeper for admission control; OpenFGA for relationship authorization.

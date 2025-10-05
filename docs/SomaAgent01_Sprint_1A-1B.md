@@ -39,7 +39,7 @@
 - Metrics exported: `conversation_requests_total`, `conversation_latency_seconds`, `slm_intent_duration_seconds`.
 
 ### Risks & Mitigations
-- **SLM latency**: enable batching in vLLM, profile prompts, provide fallback to smaller models when under load.
+- **SLM latency**: coordinate batching through the managed Soma SLM API, profile prompts, provide fallback to smaller models when under load.
 - **State consistency**: thorough tests + transactional writes to Postgres ensure history integrity.
 
 ## Sprint 1B (Week 5) – Tool Executor, Policy Enforcement, Requeue Flow

@@ -17,7 +17,7 @@
 - These topics feed downstream analytics (ClickHouse) and alerting in later sprints.
 
 ## Conversation Worker Changes
-- Measures LLM latency and token usage from the vLLM response (`usage.prompt_tokens`, `usage.completion_tokens`).
+- Measures SLM latency and token usage from the managed Soma SLM API response (`usage.prompt_tokens`, `usage.completion_tokens`).
 - Emits telemetry and budget events via the shared publisher.
 - Applies model profiles per deployment mode (LOCAL/DEV/TRAINING/PRODUCTION).
 

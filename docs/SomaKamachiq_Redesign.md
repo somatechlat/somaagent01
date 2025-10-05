@@ -21,7 +21,7 @@ This document captures the canonical plan for transforming Agent Zero into the S
 - Session state stores persona ID, model profile override, energy/tone metrics, and governance metadata.
 
 ## 4. Open-Source SLM & LLM Strategy
-- **Pre-SLM Layer**: Llama 3 8B Instruct, Mistral 7B, or Phi-3 Mini (served via vLLM or llama.cpp) handle intent, slot extraction, tool ranking, and quick heuristics before the main LLM.
+- **Pre-SLM Layer**: Llama 3 8B Instruct, Mistral 7B, or Phi-3 Mini (served via the managed Soma SLM API, which is operated centrally on lightweight inference infrastructure) handle intent, slot extraction, tool ranking, and quick heuristics before the main LLM.
 - **Primary LLM**: Configurable per role; defaults to OSS (e.g., Mixtral, Codestral) with optional adapters for external providers.
 - **Embeddings**: BGE-large or Instructor XL for retrieval; vectors stored in Qdrant and mirrored to SomaBrain.
 - **Model Profiles Table**: Stores role → {pre-SLM, primary, fallback, temperature, max tokens}. Profiles can vary per deployment mode (developer/test/production) and per tenant.
@@ -52,7 +52,7 @@ This document captures the canonical plan for transforming Agent Zero into the S
 ## 8. Sprint Roadmap (12 Weeks)
 | Sprint | Focus | Key Deliverables |
 |--------|-------|------------------|
-| **0A (0-1)** | Foundations | Deploy Kafka, Redis, Postgres, Qdrant, ClickHouse, Whisper, vLLM, OPA/OpenFGA, Vault; Prometheus stack; GitOps (Argo CD) and CI (Dagger + GitHub Actions); docker-compose dev stack; rename docs to SomaKamachiq. |
+| **0A (0-1)** | Foundations | Deploy Kafka, Redis, Postgres, Qdrant, ClickHouse, Whisper, Soma SLM API integration, OPA/OpenFGA, Vault; Prometheus stack; GitOps (Argo CD) and CI (Dagger + GitHub Actions); docker-compose dev stack; rename docs to SomaKamachiq. |
 | **0B (2)** | Event Skeleton | Kafka client abstraction; Redis/Postgres session repository; FastAPI gateway with enqueue + SSE/WebSocket stubs; initial model profile UI layout. |
 | **1A (3-4)** | Conversation Worker | Remove file persistence; conversation worker consuming `conversation.inbound`; integrate OSS SLM intent layer; streaming responses; session inspector UI. |
 | **1B (5)** | Tool + Policy | Tool executor service; OPA/OpenFGA client gating memory/tool calls; requeue store + endpoints; policy dashboards; UI status indicators. |
@@ -81,4 +81,4 @@ Legend: SLM runtime, DevX, Observability, Security work continue in parallel to 
 This blueprint should be treated as the canonical reference for engineers and operators implementing the SomaKamachiq agent.
 
 ## 11. Infrastructure Profiles
-Detailed infrastructure specifications for LOCAL, DEVELOPMENT, and ENTERPRISE deployments are maintained in `docs/SomaAgent01_Infrastructure.md`. All services—Kafka, Redis, Postgres, Qdrant, ClickHouse, vLLM, Whisper, Vault, OPA/OpenFGA, Prometheus stack—are provisioned via open-source tooling (Docker Compose for LOCAL; Kubernetes + Argo CD + Helm/Terraform for shared and enterprise clusters).
+Detailed infrastructure specifications for LOCAL, DEVELOPMENT, and ENTERPRISE deployments are maintained in `docs/SomaAgent01_Infrastructure.md`. All services—Kafka, Redis, Postgres, Qdrant, ClickHouse, Whisper, the Soma SLM API, Vault, OPA/OpenFGA, Prometheus stack—are provisioned via open-source tooling (Docker Compose for LOCAL; Kubernetes + Argo CD + Helm/Terraform for shared and enterprise clusters).

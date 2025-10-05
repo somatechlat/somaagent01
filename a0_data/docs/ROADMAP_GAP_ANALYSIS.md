@@ -15,7 +15,7 @@ The SomaAgent 01 codebase has successfully implemented the core event-driven arc
 ## ✅ COMPLETED COMPONENTS
 
 ### Infrastructure (Sprint 0A)
-- ✅ Docker Compose stack with all OSS services (Kafka, Redis, Postgres, Qdrant, ClickHouse, vLLM, Whisper, Vault, OPA, OpenFGA, Prometheus)
+- ✅ Docker Compose stack with all OSS services (Kafka, Redis, Postgres, Qdrant, ClickHouse, Whisper, Vault, OPA, OpenFGA, Prometheus) plus connector configuration for the managed Soma SLM API
 - ✅ Event bus implementation with Kafka producers/consumers
 - ✅ Session storage with Redis cache and Postgres persistence
 
@@ -108,7 +108,7 @@ The SomaAgent 01 codebase has successfully implemented the core event-driven arc
 
 ### Sprint 2 (Dynamic Router & SLM Tier)
 - ❌ Groq/HuggingFace provider integration
-- ❌ SLM stack deployment automation (Phi-3, Llama 3.1 8B, Mistral 7B)
+- ❌ SLM connector deployment automation (Phi-3, Llama 3.1 8B, Mistral 7B profiles via managed Soma SLM API)
 - ❌ Routing policy engine with bandit learning
 - ❌ Routing decision caching in Redis
 - ❌ Admin API for routing policies

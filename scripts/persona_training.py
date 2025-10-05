@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import uuid
 
 import httpx
@@ -44,7 +43,7 @@ async def post_persona_notes(persona: str, notes: str, repository: str) -> None:
             "role": f"training_notes_{persona}",
             "deployment_mode": "TRAINING",
             "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
-            "base_url": "http://vllm:8000",
+            "base_url": "https://slm.somaagent01.dev/v1",
             "temperature": 0.2,
             "extra": {"notes": notes},
         }

@@ -20,7 +20,7 @@ class ChatMessage:
 
 class SLMClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
-        self.base_url = base_url or os.getenv("SLM_BASE_URL", "http://vllm:8000")
+        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
         self.default_model = model or os.getenv("SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
         self.api_key = os.getenv("SLM_API_KEY")  # optional for authenticated gateways
         self._client = httpx.AsyncClient(timeout=30.0)
