@@ -1,5 +1,2 @@
-# Register Playwright pytest plugin providing the page/context fixtures
-pytest_plugins = [
-	"pytest_playwright",
-	"playwright.sync_api",
-]
+# Disable nested pytest plugin collection
+__test__ = False

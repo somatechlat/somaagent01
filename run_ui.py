@@ -34,7 +34,8 @@ webapp = Flask("app", static_folder=get_abs_path("./webui"), static_url_path="/"
 webapp.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 webapp.config.update(
     JSON_SORT_KEYS=False,
-    SESSION_COOKIE_NAME="session_" + runtime.get_runtime_id(),  # bind the session cookie name to runtime id to prevent session collision on same host
+    # Use a static session cookie name. Previously the name included a runtime‑generated ID, which created a new cookie on every restart and resulted in many orphaned sessions. A fixed name allows Flask to reuse the same session store.
+    SESSION_COOKIE_NAME="session",
     SESSION_COOKIE_SAMESITE="Strict",
     SESSION_PERMANENT=True,
     PERMANENT_SESSION_LIFETIME=timedelta(days=1)
@@ -214,7 +215,10 @@ def run():
     # Get configuration from environment
     port = runtime.get_web_ui_port()
     host = (
-        runtime.get_arg("host") or dotenv.get_dotenv_value("WEB_UI_HOST") or "localhost"
+        runtime.get_arg("host")
+        or os.getenv("WEB_UI_HOST")
+        or dotenv.get_dotenv_value("WEB_UI_HOST")
+        or "localhost"
     )
     server = None
 

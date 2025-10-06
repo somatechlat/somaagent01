@@ -1,2 +1,2 @@
-# Enable Playwright pytest plugin
-pytest_plugins = ["playwright.sync_api"]
+# Disable pytest plugin collection for this nested conftest
+__test__ = False

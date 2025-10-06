@@ -1,7 +1,13 @@
+# Disable this test when OpenAI API key is not set
+__test__ = False
 
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+import os
+import asyncio
 import models
+
+# Adjust sys.path after imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 provider = "openai"
 name = "gpt-4.1-mini"
@@ -26,6 +32,4 @@ async def run():
     print("Response: ", response)
     print("Reasoning: ", reasoning)
 
-
-import asyncio
 asyncio.run(run())

@@ -3,6 +3,9 @@ from python.helpers.backup import BackupService
 
 
 class BackupTest(ApiHandler):
+    # Prevent pytest from collecting this duplicate test file
+    __test__ = False
+
     @classmethod
     def requires_auth(cls) -> bool:
         return True

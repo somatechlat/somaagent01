@@ -1,5 +1,2 @@
-# Register Playwright pytest plugin providing the page/context fixtures
-pytest_plugins = [
-	"pytest_playwright",
-	"playwright.sync_api",
-]
+# Disable this nested conftest to avoid pytest plugin collection errors
+__test__ = False
