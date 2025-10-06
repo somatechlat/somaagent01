@@ -837,7 +837,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     memory_section: SettingsSection = {
         "id": "memory",
-        "title": "Memory",
+        "title": "SomaBrain",
         "description": "Configuration of A0's memory system. A0 memorizes and recalls memories automatically to help it's context awareness.",
         "fields": memory_fields,
         "tab": "agent",
