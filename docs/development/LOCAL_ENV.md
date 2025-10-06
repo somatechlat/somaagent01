@@ -20,10 +20,15 @@ cp example.env .env
 ```
 Update `.env` with local API keys or service endpoints as needed.
 ## Docker Compose Stack
-The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseline (Kafka, Redis, Postgres, ClickHouse, Qdrant, Whisper CPU) plus the delegation gateway/worker pair and the Agent UI (Flask + Supervisor). The conversational SLM is accessed via the managed Soma SLM API configured through `SLM_BASE_URL`, and long-term memory traffic is routed to the shared `somafractalmemoryserver` instance on port `9595`.
+The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseline (Kafka, Redis, Postgres, ClickHouse, Qdrant, Whisper CPU) plus the delegation gateway/worker pair and the Agent UI (Flask + Supervisor). The conversational SLM is accessed via the managed Soma SLM API configured through `SLM_BASE_URL`, and long-term memory traffic is routed to the managed SomaBrain endpoint at `http://localhost:9696`.
 
 ### End-to-end startup
-1. **Attach the memory service** – ensure your `somafractalmemoryserver` container is running and joined to the external Docker network `somaagent01` (`docker network connect somaagent01 somafractalmemoryserver`).
+1. **Verify the SomaBrain endpoint** – the agent only talks to the live brain at `http://localhost:9696`. Confirm it responds before starting Compose:
+	```bash
+	curl -sf http://localhost:9696/healthz
+	```
+	A successful health check ensures the delegation services can reach the real memory provider.
+  	> **Container note:** When those services run inside Docker they automatically remap the brain URL to `http://host.docker.internal:9696` so containers can reach the host network. Override the alias with `SOMA_CONTAINER_HOST_ALIAS`, disable the heuristic via `SOMA_DISABLE_CONTAINER_CHECK=1`, or force it on (useful for local tests) with `SOMA_FORCE_CONTAINER=1`.
 2. **Free the Agent UI port** – port **7001** is reserved permanently for the local Agent UI. Stop any process bound to that port (`lsof -i :7001`).
 3. **Launch the stack** – the helper script preflights every dependency and enforces the static UI port:
 	```bash

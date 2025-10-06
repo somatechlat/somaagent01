@@ -4,7 +4,7 @@ from python.helpers.tool import Tool, Response
 
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
-BASE_URL = os.environ.get("SOMA_BASE_URL", "http://somafractalmemoryserver:9595").rstrip("/")
+BASE_URL = os.environ.get("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
 RECALL_URL = f"{BASE_URL}/recall"
 HEADERS = {
     "Content-Type": "application/json",

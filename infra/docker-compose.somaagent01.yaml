@@ -202,7 +202,7 @@ services:
       - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
       - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
       - PYTHONPATH=/a0
-      - SOMA_BASE_URL=http://somafractalmemoryserver:9595
+      - SOMA_BASE_URL=http://localhost:9696
     depends_on:
       kafka:
         condition: service_healthy
@@ -223,7 +223,7 @@ services:
     command: ["/exe/initialize.sh", "development"]
     working_dir: /a0
     environment:
-      - SOMA_BASE_URL=http://somafractalmemoryserver:9595
+      - SOMA_BASE_URL=http://localhost:9696
       - PYTHONPATH=/a0
     depends_on:
       kafka:
@@ -257,7 +257,7 @@ services:
       - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
       - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
       - PYTHONPATH=/a0
-      - SOMA_BASE_URL=http://somafractalmemoryserver:9595
+      - SOMA_BASE_URL=http://localhost:9696
     depends_on:
       kafka:
         condition: service_healthy
