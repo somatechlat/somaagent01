@@ -9,7 +9,8 @@ def wait_for_ai_response(page, previous_count):
     selector = ".message-ai, .message-agent-response"
     # Wait until number of matching elements increases using only the expression argument
     page.wait_for_function(
-        f"document.querySelectorAll('{selector}').length > {previous_count}"
+        f"document.querySelectorAll('{selector}').length > {previous_count}",
+        timeout=60000,
     )
     # Return the latest message text
     messages = page.query_selector_all(selector)

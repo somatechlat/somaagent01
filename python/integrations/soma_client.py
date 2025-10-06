@@ -14,7 +14,7 @@ sensible defaults and exposes helpers for common headers and payload shapes.
 Environment variables:
 
 * ``SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
-  ``http://127.0.0.1:9696`` which matches the local development cluster.
+    ``http://localhost:9696`` which matches the local development cluster.
 * ``SOMA_API_KEY``: Optional API key.  When provided the client sends it in an
   ``Authorization: Bearer`` header (or a custom header if
   ``SOMA_AUTH_HEADER`` is supplied).
@@ -35,25 +35,12 @@ instead of instantiating the class directly.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
-import socket
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 
 import httpx
-from urllib.parse import urlparse
-
-
-def _host_resolves(url: str) -> bool:
-    parsed = urlparse(url)
-    hostname = parsed.hostname
-    if not hostname:
-        return False
-    try:
-        socket.getaddrinfo(hostname, None)
-        return True
-    except socket.gaierror:
-        return False
 
 
 def _default_base_url() -> str:
@@ -61,16 +48,7 @@ def _default_base_url() -> str:
     if env_override:
         return env_override.rstrip("/")
 
-    if os.path.exists("/.dockerenv"):
-        for candidate in (
-            "http://somafractalmemoryserver:9595",
-            "http://somafractalmemory:9595",
-            "http://delegation-gateway:8015",
-        ):
-            if _host_resolves(candidate):
-                return candidate.rstrip("/")
-
-    return "http://127.0.0.1:9696"
+    return "http://localhost:9696"
 
 
 DEFAULT_BASE_URL = _default_base_url()
@@ -79,6 +57,61 @@ DEFAULT_NAMESPACE = os.environ.get("SOMA_NAMESPACE")
 
 TENANT_HEADER = os.environ.get("SOMA_TENANT_HEADER", "X-Tenant-ID")
 AUTH_HEADER = os.environ.get("SOMA_AUTH_HEADER", "Authorization")
+
+
+logger = logging.getLogger(__name__)
+
+
+def _truthy_env(var_name: str) -> bool:
+    value = os.environ.get(var_name)
+    if value is None:
+        return False
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def _running_inside_container() -> bool:
+    if _truthy_env("SOMA_FORCE_CONTAINER"):
+        return True
+    if _truthy_env("SOMA_DISABLE_CONTAINER_CHECK"):
+        return False
+
+    if os.path.exists("/.dockerenv"):
+        return True
+
+    try:
+        with open("/proc/self/cgroup", "r", encoding="utf-8", errors="ignore") as stream:
+            contents = stream.read()
+        if any(token in contents for token in ("docker", "kubepods", "containerd")):
+            return True
+    except FileNotFoundError:
+        pass
+
+    return False
+
+
+def _normalize_base_url(raw_base_url: str) -> str:
+    base_url = raw_base_url.rstrip("/")
+
+    try:
+        url = httpx.URL(base_url)
+    except Exception:
+        return base_url
+
+    host = url.host
+    if host in {"localhost", "127.0.0.1"} and _running_inside_container():
+        override_host = os.environ.get("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
+        if override_host:
+            candidate = url.copy_with(host=override_host)
+            adapted = str(candidate).rstrip("/")
+            if adapted != base_url:
+                logger.debug(
+                    "SomaClient remapped base URL from %s to %s to reach host SomaBrain from container",
+                    base_url,
+                    adapted,
+                )
+            return adapted
+
+    return base_url
 
 
 class SomaClientError(RuntimeError):
@@ -117,7 +150,7 @@ class SomaClient:
         timeout: float = DEFAULT_TIMEOUT,
         verify_ssl: Optional[bool] = None,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = _normalize_base_url(base_url)
         self.namespace = namespace
         self._tenant_id = tenant_id or os.environ.get("SOMA_TENANT_ID")
         self._api_key = api_key or os.environ.get("SOMA_API_KEY")
