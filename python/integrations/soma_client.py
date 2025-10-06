@@ -47,7 +47,7 @@ DEFAULT_BASE_URL = (
     or (
         "http://delegation-gateway:8015"
         if os.path.exists("/.dockerenv")
-        else "http://127.0.0.1:28015"
+        else "http://127.0.0.1:9696"
     )
 ).rstrip("/")
 DEFAULT_TIMEOUT = float(os.environ.get("SOMA_TIMEOUT_SECONDS", "30"))

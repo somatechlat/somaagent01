@@ -6,25 +6,21 @@ from python.helpers import settings
 
 class RecallWait(Extension):
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
-
+        self.agent.context.log.log(type="debug", heading="RecallWait: execute called", content=f"iteration={loop_data.iteration}")
         set = settings.get_settings()
-
         task = self.agent.get_data(DATA_NAME_TASK_MEMORIES)
         iter = self.agent.get_data(DATA_NAME_ITER_MEMORIES) or 0
-
+        self.agent.context.log.log(type="debug", heading="RecallWait: retrieved task", content=f"task={'exists' if task else 'None'}, iter={iter}")
         if task and not task.done():
-
-            # if memory recall is set to delayed mode, do not await on the iteration it was called
             if set["memory_recall_delayed"]:
                 if iter == loop_data.iteration:
-                    # insert info about delayed memory to extras
                     delay_text = self.agent.read_prompt("memory.recall_delay_msg.md")
                     loop_data.extras_temporary["memory_recall_delayed"] = delay_text
+                    self.agent.context.log.log(type="debug", heading="RecallWait: delayed mode, inserted delay text")
                     return
-            
-            # otherwise await the task
+            self.agent.context.log.log(type="debug", heading="RecallWait: awaiting task")
             await task
-
+            self.agent.context.log.log(type="debug", heading="RecallWait: task completed")
         # task = self.agent.get_data(DATA_NAME_TASK_SOLUTIONS)
         # if task and not task.done():
         #     # self.agent.context.log.set_progress("Recalling solutions...")

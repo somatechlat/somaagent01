@@ -119,18 +119,21 @@ services:
     image: somaagent01-dev:latest
     container_name: somaAgent01_delegation-gateway
     command: ["python3", "-m", "uvicorn", "services.delegation_gateway.main:app", "--host", "0.0.0.0", "--port", "8015"]
+    working_dir: /a0
     environment:
       - LOG_LEVEL=INFO
       - DELEGATION_TOPIC=somastack.delegation
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
       - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+      - PYTHONPATH=/a0
     depends_on:
       - kafka
       - postgres
       - redis
     ports:
       - "28015:8015"
+      - "9696:8015"
     restart: unless-stopped
     volumes:
       - ../a0_data:/a0

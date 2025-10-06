@@ -2,7 +2,6 @@ import asyncio
 from python.helpers.extension import Extension
 from python.helpers.memory import Memory
 from agent import LoopData
-from python.tools.memory_load import DEFAULT_THRESHOLD as DEFAULT_MEMORY_THRESHOLD
 from python.helpers import dirty_json, errors, settings, log 
 
 
@@ -21,11 +20,13 @@ class RecallMemories(Extension):
     # THRESHOLD = DEFAULT_MEMORY_THRESHOLD
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
-
+        # Debug log start of recall execution
+        self.agent.context.log.log(type="debug", heading="RecallMemories: execute called", content=f"iteration={loop_data.iteration}")
         set = settings.get_settings()
 
         # turned off in settings?
         if not set["memory_recall_enabled"]:
+            self.agent.context.log.log(type="debug", heading="RecallMemories: disabled via settings")
             return
 
         # every X iterations (or the first one) recall memories
@@ -40,12 +41,15 @@ class RecallMemories(Extension):
             task = asyncio.create_task(
                 self.search_memories(loop_data=loop_data, log_item=log_item, **kwargs)
             )
+            self.agent.context.log.log(type="debug", heading="RecallMemories: task created")
         else:
             task = None
+            self.agent.context.log.log(type="debug", heading="RecallMemories: skipped this iteration")
 
         # set to agent to be able to wait for it
         self.agent.set_data(DATA_NAME_TASK, task)
         self.agent.set_data(DATA_NAME_ITER, loop_data.iteration)
+        self.agent.context.log.log(type="debug", heading="RecallMemories: task stored in agent data")
 
     async def search_memories(self, log_item: log.LogItem, loop_data: LoopData, **kwargs):
 
