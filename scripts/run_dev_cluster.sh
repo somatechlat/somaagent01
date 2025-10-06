@@ -36,6 +36,7 @@ export WHISPER_PORT=$(find_free_port 9001)
 export DELEGATION_GATEWAY_PORT=$(find_free_port 8015)
 export GATEWAY_PORT=$(find_free_port 8001)
 export UI_PORT=$(find_free_port 50001)
+export WEB_UI_PORT=$UI_PORT
 
 # Print chosen ports for verification.
 cat <<EOF

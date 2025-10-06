@@ -31,8 +31,17 @@ RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
 # post installation steps
 RUN bash /ins/post_install.sh $BRANCH
 
-# Ensure uvicorn is installed for FastAPI services
-RUN pip install "uvicorn[standard]"
+# Install pip and uvicorn using system python, with break-system-packages to bypass external environment restrictions
+RUN apt-get update && apt-get install -y python3-pip && \
+    python3 -m pip install --break-system-packages "uvicorn[standard]" && \
+    python3 -m pip install --break-system-packages "fastapi[all]" && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Playwright and its browsers for UI testing
+RUN python3 -m pip install --break-system-packages playwright && \
+    python3 -m playwright install chromium && \
+    python3 -m playwright install firefox && \
+    python3 -m playwright install webkit
 
 # Expose ports
 EXPOSE 22 80 9000-9009
