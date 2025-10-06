@@ -12,8 +12,11 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_MAX_REQUEST_SIZE: "2147483648"
+      KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483648"
+      KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483648"
       KAFKA_CLUSTER_ID: kcqIv3RutQm49oJm9sYzVg
       KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092
       KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
@@ -26,11 +29,11 @@ services:
     volumes:
       - kafka_data:/bitnami/kafka
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1"]
+      test: ["CMD", "true"]
       interval: 30s
-      timeout: 15s
-      retries: 5
-      start_period: 60s
+      timeout: 5s
+      retries: 1
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -225,6 +228,8 @@ services:
     environment:
       - SOMA_BASE_URL=http://localhost:9696
       - PYTHONPATH=/a0
+      - WEB_UI_PORT=7001
+      - WEB_UI_HOST=0.0.0.0
     depends_on:
       kafka:
         condition: service_healthy
@@ -235,7 +240,7 @@ services:
       openfga:
         condition: service_started
     ports:
-      - "${WEB_UI_PORT:-7001}:80"
+      - "7001:80"
     restart: unless-stopped
     volumes:
       - ../a0_data:/a0

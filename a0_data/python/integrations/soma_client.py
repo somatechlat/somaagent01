@@ -43,15 +43,60 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 import httpx
 
 
-DEFAULT_BASE_URL = os.environ.get("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_legacy_base_url(raw_base_url: str) -> str:
+    """Sanitize the provided base URL.
+
+    This simplified version only rewrites the legacy port ``9595`` to the
+    current default ``9696``. All references to the old ``somafractalmemory``
+    host markers have been removed.
+    """
+    candidate = (raw_base_url or "").strip()
+    if not candidate:
+        return "http://localhost:9696"
+
+    normalized = candidate.rstrip("/")
+
+    try:
+        url = httpx.URL(normalized)
+    except Exception:
+        logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
+        return "http://localhost:9696"
+
+    port = url.port
+    scheme = url.scheme or "http"
+
+    # Rewrite only the legacy port 9595 to the current default.
+    if port == 9595:
+        override = httpx.URL(f"{scheme}://localhost:9696")
+        logger.warning(
+            "Detected legacy SomaBrain endpoint %s; redirecting to %s",
+            normalized,
+            override,
+        )
+        return str(override)
+
+    return normalized
+
+
+def _default_base_url() -> str:
+    """Return the base URL for SomaBrain.
+
+    Uses ``SOMA_BASE_URL`` if set, otherwise defaults to ``http://localhost:9696``.
+    No legacy‑host sanitisation is performed here – that is handled by
+    ``_sanitize_legacy_base_url`` when a custom URL is supplied.
+    """
+    return os.getenv("SOMA_BASE_URL", "http://localhost:9696")
+
+
+DEFAULT_BASE_URL = _default_base_url()
 DEFAULT_TIMEOUT = float(os.environ.get("SOMA_TIMEOUT_SECONDS", "30"))
 DEFAULT_NAMESPACE = os.environ.get("SOMA_NAMESPACE")
 
 TENANT_HEADER = os.environ.get("SOMA_TENANT_HEADER", "X-Tenant-ID")
 AUTH_HEADER = os.environ.get("SOMA_AUTH_HEADER", "Authorization")
-
-
-logger = logging.getLogger(__name__)
 
 
 def _truthy_env(var_name: str) -> bool:
@@ -142,7 +187,15 @@ class SomaClient:
         timeout: float = DEFAULT_TIMEOUT,
         verify_ssl: Optional[bool] = None,
     ) -> None:
-        self.base_url = _normalize_base_url(base_url)
+        print(
+            "[SomaClient.__init__] initializing",
+            {
+                "provided_base_url": base_url,
+                "env_base_url": os.environ.get("SOMA_BASE_URL"),
+            },
+        )
+        sanitized_base_url = _sanitize_legacy_base_url(base_url)
+        self.base_url = _normalize_base_url(sanitized_base_url)
         self.namespace = namespace
         self._tenant_id = tenant_id or os.environ.get("SOMA_TENANT_ID")
         self._api_key = api_key or os.environ.get("SOMA_API_KEY")
@@ -189,8 +242,28 @@ class SomaClient:
         if headers:
             request_headers.update(headers)
 
+        print(
+            "[SomaClient] preparing",
+            {
+                "method": method,
+                "path": url,
+                "base_url": self.base_url,
+                "env_base_url": os.environ.get("SOMA_BASE_URL"),
+                "headers": request_headers or None,
+            },
+        )
+
         async with self._lock:
             response = await self._client.request(method, url, json=json, headers=request_headers or None)
+
+        print(
+            "[SomaClient] response",
+            {
+                "method": method,
+                "path": url,
+                "status_code": response.status_code,
+            },
+        )
 
         if allow_404 and response.status_code == 404:
             return None

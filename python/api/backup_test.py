@@ -1,3 +1,6 @@
+# Disable this test file to avoid duplicate module import
+__test__ = False
+
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.backup import BackupService
 

@@ -1,4 +1,3 @@
-
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models
@@ -29,3 +28,6 @@ async def run():
 
 import asyncio
 asyncio.run(run())
+
+# Disable this duplicate test file
+__test__ = False
