@@ -42,7 +42,14 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 import httpx
 
 
-DEFAULT_BASE_URL = os.environ.get("SOMA_BASE_URL", "http://127.0.0.1:9696").rstrip("/")
+DEFAULT_BASE_URL = (
+    os.getenv("SOMA_BASE_URL")
+    or (
+        "http://delegation-gateway:8015"
+        if os.path.exists("/.dockerenv")
+        else "http://127.0.0.1:28015"
+    )
+).rstrip("/")
 DEFAULT_TIMEOUT = float(os.environ.get("SOMA_TIMEOUT_SECONDS", "30"))
 DEFAULT_NAMESPACE = os.environ.get("SOMA_NAMESPACE")
 

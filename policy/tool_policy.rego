@@ -12,3 +12,8 @@ allow {
   input.resource == "timestamp"
   input.context.args.format != "DENY"
 }
+
+allow {
+  input.action == "memory.write"
+  input.resource == "conversation_memory"
+}
