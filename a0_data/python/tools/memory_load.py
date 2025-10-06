@@ -1,10 +1,11 @@
 import httpx
-from python.helpers.memory import Memory
+import os
 from python.helpers.tool import Tool, Response
 
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
-RECALL_URL = "http://host.docker.internal:9696/recall"
+BASE_URL = os.environ.get("SOMA_BASE_URL", "http://somafractalmemoryserver:9595").rstrip("/")
+RECALL_URL = f"{BASE_URL}/recall"
 HEADERS = {
     "Content-Type": "application/json",
     "X-Tenant-ID": "sandbox"

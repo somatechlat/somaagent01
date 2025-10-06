@@ -1,6 +1,7 @@
 import argparse
 import inspect
 import secrets
+import socket
 from typing import TypeVar, Callable, Awaitable, Union, overload, cast
 from python.helpers import dotenv, rfc, settings, files
 import asyncio
@@ -113,7 +114,7 @@ def _get_rfc_password() -> str:
 def _get_rfc_url() -> str:
     set = settings.get_settings()
     url = set["rfc_url"]
-    if not "://" in url:
+    if "://" not in url:
         url = "http://"+url
     if url.endswith("/"):
         url = url[:-1]
@@ -141,18 +142,36 @@ def call_development_function_sync(func: Union[Callable[..., T], Callable[..., A
     return cast(T, result)
 
 
+def _find_available_port(preferred: int) -> int:
+    port = preferred
+    while port < 65535:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                port += 1
+                continue
+        return port
+    raise RuntimeError("No available port found in range")
+
+
 def get_web_ui_port():
-    web_ui_port = (
+    requested_port = (
         get_arg("port")
         or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0))
         or 5000
     )
-    return web_ui_port
+    if is_dockerized():
+        return requested_port
+    return _find_available_port(requested_port)
 
 def get_tunnel_api_port():
-    tunnel_api_port = (
+    requested_port = (
         get_arg("tunnel_api_port")
         or int(dotenv.get_dotenv_value("TUNNEL_API_PORT", 0))
         or 55520
     )
-    return tunnel_api_port
+    if is_dockerized():
+        return requested_port
+    return _find_available_port(requested_port)

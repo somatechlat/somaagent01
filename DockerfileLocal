@@ -43,6 +43,18 @@ RUN python3 -m pip install --break-system-packages playwright && \
     python3 -m playwright install firefox && \
     python3 -m playwright install webkit
 
+# Install aiokafka for Kafka event bus
+RUN python3 -m pip install --break-system-packages aiokafka
+
+# Install asyncpg for async PostgreSQL access
+RUN python3 -m pip install --break-system-packages asyncpg
+
+# Install latest redis (asyncio support)
+RUN python3 -m pip install --break-system-packages "redis>=5.0"
+
+# Install jsonschema for event validation
+RUN python3 -m pip install --break-system-packages jsonschema
+
 # Expose ports
 EXPOSE 22 80 9000-9009
 
