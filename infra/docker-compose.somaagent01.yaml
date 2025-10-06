@@ -5,31 +5,47 @@ services:
     image: bitnami/kafka:latest
     container_name: somaAgent01_kafka
     environment:
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_LISTENERS=INTERNAL://kafka:9092,CONTROLLER://kafka:9093
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9092
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_ENABLE_KRAFT=yes
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: INTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CLUSTER_ID: kcqIv3RutQm49oJm9sYzVg
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_ENABLE_KRAFT: "yes"
     ports:
-      - "29092:9092"
+      - "${KAFKA_PORT:-0}:9092"
     restart: unless-stopped
     volumes:
       - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
 
   redis:
     image: redis:7-alpine
     container_name: somaAgent01_redis
     command: ["redis-server", "--save", "--appendonly", "yes"]
     ports:
-      - "26379:6379"
+      - "${REDIS_PORT:-0}:6379"
     restart: unless-stopped
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   postgres:
     image: postgres:16-alpine
@@ -38,18 +54,27 @@ services:
       - POSTGRES_USER=soma
       - POSTGRES_PASSWORD=soma
       - POSTGRES_DB=somaagent01
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_INITDB_ARGS=--data-checksums
     ports:
-      - "25432:5432"
+      - "${POSTGRES_PORT:-0}:5432"
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   qdrant:
     image: qdrant/qdrant:v1.11.0
     container_name: somaAgent01_qdrant
     ports:
-      - "26666:6333"
-      - "26667:6334"
+      - "${QDRANT_HTTP_PORT:-0}:6333"
+      - "${QDRANT_GRPC_PORT:-0}:6334"
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
@@ -60,8 +85,8 @@ services:
     environment:
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     ports:
-      - "28181:8123"
-      - "28190:9000"
+      - "${CLICKHOUSE_HTTP_PORT:-0}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-0}:9000"
     restart: unless-stopped
     volumes:
       - clickhouse_data:/var/lib/clickhouse
@@ -71,42 +96,76 @@ services:
     container_name: somaAgent01_prometheus
     command: ["--config.file=/etc/prometheus/prometheus.yml"]
     ports:
-      - "29090:9090"
+      - "${PROMETHEUS_PORT:-0}:9090"
     restart: unless-stopped
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
 
   vault:
     image: hashicorp/vault:1.17
     container_name: somaAgent01_vault
+    command: ["server", "-config=/vault/config/config.hcl"]
     environment:
-      - VAULT_DEV_ROOT_TOKEN_ID=dev-root
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_API_ADDR=http://vault:8200
+    cap_add:
+      - IPC_LOCK
     ports:
-      - "29200:8200"
+      - "${VAULT_PORT:-0}:8200"
     restart: unless-stopped
+    volumes:
+      - vault_data:/vault/file
+      - ./vault/config:/vault/config
+    healthcheck:
+      test: ["CMD-SHELL", "vault status >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   opa:
     image: openpolicyagent/opa:0.64.0
     container_name: somaAgent01_opa
     command: ["run", "--server", "--set=decision_logs.console=true"]
     ports:
-      - "29181:8181"
+      - "${OPA_PORT:-0}:8181"
     restart: unless-stopped
 
   openfga:
     image: openfga/openfga:v1.8.3
     container_name: somaAgent01_openfga
+    command: [
+      "run",
+      "--grpc-addr",
+      "0.0.0.0:8081",
+      "--http-addr",
+      "0.0.0.0:8080",
+      "--datastore-engine",
+      "postgres",
+      "--datastore-uri",
+      "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable",
+      "--datastore-max-open-conns",
+      "50",
+      "--datastore-max-idle-conns",
+      "10",
+      "--datastore-auto-migrate"
+    ]
     ports:
-      - "28281:8081"
+      - "${OPENFGA_GRPC_PORT:-0}:8081"
+      - "${OPENFGA_HTTP_PORT:-0}:8080"
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   whisper:
     image: ghcr.io/ggerganov/whisper.cpp:latest
     container_name: somaAgent01_whisper
     command: ["/bin/sh", "-c", "./main -m models/ggml-base.en.bin --server 0.0.0.0:9001"]
     ports:
-      - "29901:9001"
+      - "${WHISPER_PORT:-0}:9001"
     restart: unless-stopped
     profiles: ["speech"]
 
@@ -127,13 +186,18 @@ services:
       - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
       - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
       - PYTHONPATH=/a0
+      - SOMA_BASE_URL=http://somafractalmemoryserver:9595
     depends_on:
-      - kafka
-      - postgres
-      - redis
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
-      - "28015:8015"
-      - "9696:8015"
+      - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"
+      - "${DELEGATION_GATEWAY_PORT_SECONDARY:-0}:8015"
+      - "${WEB_UI_PORT:-0}:80"
     restart: unless-stopped
     volumes:
       - ../a0_data:/a0
@@ -147,20 +211,39 @@ services:
     image: somaagent01-dev:latest
     container_name: somaAgent01_delegation-worker
     command: ["python3", "-m", "services.delegation_worker.main"]
+    working_dir: /a0
     environment:
       - LOG_LEVEL=INFO
       - DELEGATION_TOPIC=somastack.delegation
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
       - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+      - PYTHONPATH=/a0
+      - SOMA_BASE_URL=http://somafractalmemoryserver:9595
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ../a0_data:/a0
 
+  kafka-init:
+    image: bitnami/kafka:latest
+    container_name: somaAgent01_kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic somastack.delegation --partitions 3 --replication-factor 1"]
+    restart: "no"
+
 networks:
   default:
+    external: true
     name: somaagent01
 
 volumes:
@@ -169,3 +252,5 @@ volumes:
   postgres_data:
   qdrant_data:
   clickhouse_data:
+  prometheus_data:
+  vault_data:
