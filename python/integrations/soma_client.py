@@ -39,6 +39,7 @@ import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
+import time
 
 import httpx
 
@@ -213,6 +214,12 @@ class SomaClient:
         )
         self._lock = asyncio.Lock()
 
+        # Simple circuit breaker state
+        self._cb_failures: int = 0
+        self._cb_open_until: float = 0.0
+        self._CB_THRESHOLD: int = 3
+        self._CB_COOLDOWN_SEC: float = 15.0
+
     @classmethod
     def get(cls) -> "SomaClient":
         if cls._instance is None:
@@ -239,6 +246,13 @@ class SomaClient:
         headers: Optional[Mapping[str, str]] = None,
         allow_404: bool = False,
     ) -> Any:
+        # Short-circuit if breaker is open
+        now = time.time()
+        if self._cb_open_until and now < self._cb_open_until:
+            raise SomaClientError(
+                f"SomaBrain unavailable (circuit open for {int(self._cb_open_until - now)}s); please try again shortly"
+            )
+
         url = path if path.startswith("/") else f"/{path}"
         request_headers: Dict[str, str] = {}
         if headers:
@@ -255,8 +269,15 @@ class SomaClient:
             },
         )
 
-        async with self._lock:
-            response = await self._client.request(method, url, json=json, headers=request_headers or None)
+        try:
+            async with self._lock:
+                response = await self._client.request(method, url, json=json, headers=request_headers or None)
+        except httpx.RequestError as e:
+            # Network / transport-level failure: record failure and wrap as SomaClientError
+            self._cb_failures += 1
+            if self._cb_failures >= self._CB_THRESHOLD:
+                self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
+            raise SomaClientError(f"SomaBrain request {method} {url} failed: {str(e)}")
 
         print(
             "[SomaClient] response",
@@ -268,6 +289,9 @@ class SomaClient:
         )
 
         if allow_404 and response.status_code == 404:
+            # success path; reset breaker
+            self._cb_failures = 0
+            self._cb_open_until = 0.0
             return None
 
         if response.status_code >= 400:
@@ -276,9 +300,17 @@ class SomaClient:
                 detail = response.json().get("detail")  # type: ignore[assignment]
             except Exception:
                 detail = response.text or None
+            # 5xx considered failure for breaker purposes
+            if response.status_code >= 500:
+                self._cb_failures += 1
+                if self._cb_failures >= self._CB_THRESHOLD:
+                    self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
             raise SomaClientError(
                 f"SomaBrain request {method} {url} failed: {response.status_code} {detail or response.text}"
             )
+        # success path; reset breaker
+        self._cb_failures = 0
+        self._cb_open_until = 0.0
         if response.headers.get("content-type", "").startswith("application/json"):
             return response.json()
         return response.text

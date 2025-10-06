@@ -628,13 +628,17 @@ class _SomaDocStore:
 
     async def refresh(self) -> Dict[str, Document]:
         async with self._lock:
-            data = await self._client.migrate_export(
-                include_wm=SOMA_CACHE_INCLUDE_WM,
-                wm_limit=SOMA_CACHE_WM_LIMIT,
-            )
-            memories = data.get("memories", []) if isinstance(data, Mapping) else []
-            self._cache = self._parse_memories(memories)
-            self._cache_valid = True
+            try:
+                data = await self._client.migrate_export(
+                    include_wm=SOMA_CACHE_INCLUDE_WM,
+                    wm_limit=SOMA_CACHE_WM_LIMIT,
+                )
+                memories = data.get("memories", []) if isinstance(data, Mapping) else []
+                self._cache = self._parse_memories(memories)
+                self._cache_valid = True
+            except SomaClientError as exc:
+                PrintStyle.error(f"SomaBrain export failed (cache kept): {exc}")
+                self._cache_valid = False
             return self._cache
 
     async def _ensure_cache(self) -> Dict[str, Document]:

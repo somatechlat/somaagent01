@@ -22,6 +22,7 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores.utils import (
     DistanceStrategy,
 )
+# Note: Embeddings imported for type annotations; keep import to avoid breaking types
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
 
@@ -30,6 +31,7 @@ import numpy as np
 from python.helpers.print_style import PrintStyle
 from . import files
 from python.helpers import knowledge_import
+# Note: Log imported for type annotations; LogItem used in signatures
 from python.helpers.log import Log, LogItem
 from agent import Agent
 import models
@@ -628,13 +630,18 @@ class _SomaDocStore:
 
     async def refresh(self) -> Dict[str, Document]:
         async with self._lock:
-            data = await self._client.migrate_export(
-                include_wm=SOMA_CACHE_INCLUDE_WM,
-                wm_limit=SOMA_CACHE_WM_LIMIT,
-            )
-            memories = data.get("memories", []) if isinstance(data, Mapping) else []
-            self._cache = self._parse_memories(memories)
-            self._cache_valid = True
+            try:
+                data = await self._client.migrate_export(
+                    include_wm=SOMA_CACHE_INCLUDE_WM,
+                    wm_limit=SOMA_CACHE_WM_LIMIT,
+                )
+                memories = data.get("memories", []) if isinstance(data, Mapping) else []
+                self._cache = self._parse_memories(memories)
+                self._cache_valid = True
+            except SomaClientError as exc:
+                # Keep existing cache (if any) and mark as invalid to retry later
+                PrintStyle.error(f"SomaBrain export failed (cache kept): {exc}")
+                self._cache_valid = False
             return self._cache
 
     async def _ensure_cache(self) -> Dict[str, Document]:

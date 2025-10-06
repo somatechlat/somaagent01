@@ -1,46 +1,98 @@
-import httpx
-import os
+from collections.abc import Mapping
+
 from python.helpers.tool import Tool, Response
+from python.integrations.soma_client import SomaClient, SomaClientError
 
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
-# Determine recall endpoint based on execution environment.
-# Inside Docker containers use the internal delegation‑gateway service name.
-# Outside Docker (local dev) default to the host‑exposed port.
-if os.path.exists("/.dockerenv"):
-    RECALL_URL = "http://delegation-gateway:8015/recall"
-else:
-    RECALL_URL = "http://127.0.0.1:28015/recall"
-HEADERS = {
-    "Content-Type": "application/json",
-    "X-Tenant-ID": "sandbox"
-}
 
 class MemoryLoad(Tool):
     async def execute(self, query="", threshold=DEFAULT_THRESHOLD,
                       limit=DEFAULT_LIMIT, filter="", **kwargs):
-        # Build payload for external recall endpoint
-        payload = {"query": query, "top_k": limit}
+        client = SomaClient.get()
+        universe = None
+        if getattr(self.agent, "config", None):
+            universe = getattr(self.agent.config, "memory_subdir", None)
+
         try:
-            resp = httpx.post(RECALL_URL, json=payload, headers=HEADERS, timeout=5.0)
-            data = resp.json()
-        except Exception:
+            top_k = int(limit)
+        except (TypeError, ValueError):
+            top_k = DEFAULT_LIMIT
+        top_k = max(1, top_k)
+
+        try:
+            numeric_threshold = float(threshold)
+        except (TypeError, ValueError):
+            numeric_threshold = DEFAULT_THRESHOLD
+        if numeric_threshold < 0:
+            numeric_threshold = 0.0
+
+        filter_text = (filter or "").strip().lower()
+
+        try:
+            response = await client.recall(
+                query,
+                top_k=top_k,
+                universe=universe,
+            )
+        except (SomaClientError, Exception):
             result = self.agent.read_prompt("fw.memories_not_found.md", query=query)
             return Response(message=result, break_loop=False)
-        # Extract payloads from wm and memory arrays
-        docs = []
-        for entry in data.get("wm", []) + data.get("memory", []):
-            if isinstance(entry, dict) and "payload" in entry:
-                docs.append(entry["payload"])
-        if not docs:
+
+        entries = []
+        if isinstance(response, Mapping):
+            wm_entries = response.get("wm", [])
+            memory_entries = response.get("memory", [])
+            if isinstance(wm_entries, list):
+                entries.extend(wm_entries)
+            if isinstance(memory_entries, list):
+                entries.extend(memory_entries)
+
+        results: list[str] = []
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                continue
+            payload = entry.get("payload") if isinstance(entry.get("payload"), Mapping) else None
+
+            score_value: float | None = None
+            raw_score = entry.get("score")
+            if isinstance(raw_score, (int, float)):
+                score_value = float(raw_score)
+            else:
+                raw_score = entry.get("similarity")
+                if isinstance(raw_score, (int, float)):
+                    score_value = float(raw_score)
+
+            if score_value is not None and score_value < numeric_threshold:
+                continue
+
+            message: str | None = None
+            if payload:
+                content = payload.get("content")
+                if isinstance(content, str) and content.strip():
+                    message = content.strip()
+                else:
+                    text = payload.get("text")
+                    if isinstance(text, str) and text.strip():
+                        message = text.strip()
+            else:
+                content = entry.get("content")
+                if isinstance(content, str) and content.strip():
+                    message = content.strip()
+
+            if not message and payload:
+                message = str(payload)
+            if not message:
+                message = str(entry)
+
+            if message:
+                if filter_text and filter_text not in message.lower():
+                    continue
+                results.append(message)
+
+        if not results:
             result = self.agent.read_prompt("fw.memories_not_found.md", query=query)
         else:
-            # Format each payload (show content if present)
-            formatted = []
-            for p in docs:
-                if isinstance(p, dict) and "content" in p:
-                    formatted.append(str(p["content"]))
-                else:
-                    formatted.append(str(p))
-            result = "\n\n".join(formatted)
+            result = "\n\n".join(dict.fromkeys(results))
+
         return Response(message=result, break_loop=False)
