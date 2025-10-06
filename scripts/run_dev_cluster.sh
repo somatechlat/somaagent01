@@ -14,8 +14,23 @@
 #   UI (gateway) 8001
 #   Web UI 50002 (exposed by run_ui container)
 
-# Track reserved ports to avoid duplicates during assignment.
-declare -A RESERVED_PORTS=()
+# Track reserved ports to avoid duplicates during assignment (portable implementation).
+RESERVED_PORTS=""
+
+reserve_port() {
+  RESERVED_PORTS="$RESERVED_PORTS $1"
+}
+
+is_reserved() {
+  case " $RESERVED_PORTS " in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Reserve the agent UI port up-front so no other service grabs it.
+AGENT_UI_PORT=7001
+reserve_port "$AGENT_UI_PORT"
 
 # Function to find a free port starting from a base value.
 find_free_port() {
@@ -25,40 +40,67 @@ find_free_port() {
       ((port++))
       continue
     fi
-    if [[ -n "${RESERVED_PORTS[$port]}" ]]; then
+    if is_reserved "$port"; then
       ((port++))
       continue
     fi
-    RESERVED_PORTS[$port]=1
+    reserve_port "$port"
     echo $port
     return
   done
 }
 
 # Map of environment variable names to preferred starting ports.
-declare -A PORT_MAP=(
-  [KAFKA_PORT]=29092
-  [REDIS_PORT]=26379
-  [POSTGRES_PORT]=25432
-  [QDRANT_HTTP_PORT]=26666
-  [QDRANT_GRPC_PORT]=26667
-  [CLICKHOUSE_HTTP_PORT]=28181
-  [CLICKHOUSE_NATIVE_PORT]=28190
-  [PROMETHEUS_PORT]=29090
-  [VAULT_PORT]=29200
-  [OPA_PORT]=29181
-  [OPENFGA_GRPC_PORT]=28281
-  [OPENFGA_HTTP_PORT]=28280
-  [WHISPER_PORT]=29901
-  [DELEGATION_GATEWAY_PORT_PRIMARY]=28015
-  [DELEGATION_GATEWAY_PORT_SECONDARY]=9697
-  [WEB_UI_PORT]=50001
+PORT_VARS=(
+  KAFKA_PORT
+  REDIS_PORT
+  POSTGRES_PORT
+  QDRANT_HTTP_PORT
+  QDRANT_GRPC_PORT
+  CLICKHOUSE_HTTP_PORT
+  CLICKHOUSE_NATIVE_PORT
+  PROMETHEUS_PORT
+  VAULT_PORT
+  OPA_PORT
+  OPENFGA_GRPC_PORT
+  OPENFGA_HTTP_PORT
+  WHISPER_PORT
+  DELEGATION_GATEWAY_PORT_PRIMARY
+  DELEGATION_GATEWAY_PORT_SECONDARY
+)
+
+PORT_BASES=(
+  29092
+  26379
+  25432
+  26666
+  26667
+  28181
+  28190
+  29090
+  29200
+  29181
+  28281
+  28280
+  29901
+  28015
+  9697
 )
 
 # Detect and assign ports (override defaults if occupied).
-for var in "${!PORT_MAP[@]}"; do
-  export "$var"="$(find_free_port "${PORT_MAP[$var]}")"
+for idx in "${!PORT_VARS[@]}"; do
+  var=${PORT_VARS[$idx]}
+  base=${PORT_BASES[$idx]}
+  export "$var"="$(find_free_port "$base")"
 done
+
+# Enforce static agent UI port (7001) and fail fast if unavailable.
+if lsof -iTCP -sTCP:LISTEN -P | grep -q "\b$AGENT_UI_PORT\b"; then
+  echo "Error: Required agent UI port $AGENT_UI_PORT is already in use." >&2
+  echo "Please free the port or stop the process using it, then rerun this script." >&2
+  exit 1
+fi
+export WEB_UI_PORT=$AGENT_UI_PORT
 
 # Print chosen ports for verification.
 cat <<EOF
@@ -78,7 +120,7 @@ Port assignments:
   Whisper:        $WHISPER_PORT
   Delegation GW A:$DELEGATION_GATEWAY_PORT_PRIMARY
   Delegation GW B:$DELEGATION_GATEWAY_PORT_SECONDARY
-  Web UI:         $WEB_UI_PORT
+  Web UI:         $WEB_UI_PORT (static)
 EOF
 
 # Export variables for Docker Compose substitution.

@@ -1,3 +1,9 @@
+import os
+
+
+UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7001")
+
+
 def wait_for_ai_response(page, previous_count):
     """Wait for a new AI message to appear after previous count."""
     selector = ".message-ai, .message-agent-response"
@@ -12,7 +18,7 @@ def wait_for_ai_response(page, previous_count):
 def test_memory_and_tool_flow(page):
     """End‑to‑end test: save memory, recall it, and use a tool via the UI."""
     # Open the UI
-    page.goto("http://localhost:50001")
+    page.goto(UI_BASE_URL)
     page.wait_for_selector("#chat-input", timeout=10000)
 
     # Helper to send a message and get response

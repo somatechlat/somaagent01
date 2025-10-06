@@ -19,14 +19,35 @@ Copy environment defaults:
 cp example.env .env
 ```
 Update `.env` with local API keys or service endpoints as needed.
-
 ## Docker Compose Stack
-The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseline (Kafka, Redis, Postgres, ClickHouse, Qdrant, Whisper CPU). The conversational SLM is accessed via the managed Soma SLM API configured through `SLM_BASE_URL`, so no local LLM container is pulled.
+The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseline (Kafka, Redis, Postgres, ClickHouse, Qdrant, Whisper CPU) plus the delegation gateway/worker pair and the Agent UI (Flask + Supervisor). The conversational SLM is accessed via the managed Soma SLM API configured through `SLM_BASE_URL`, and long-term memory traffic is routed to the shared `somafractalmemoryserver` instance on port `9595`.
+
+### End-to-end startup
+1. **Attach the memory service** – ensure your `somafractalmemoryserver` container is running and joined to the external Docker network `somaagent01` (`docker network connect somaagent01 somafractalmemoryserver`).
+2. **Free the Agent UI port** – port **7001** is reserved permanently for the local Agent UI. Stop any process bound to that port (`lsof -i :7001`).
+3. **Launch the stack** – the helper script preflights every dependency and enforces the static UI port:
+	```bash
+	./scripts/run_dev_cluster.sh
+	```
+	The script prints the effective host bindings for Kafka, Postgres, delegation gateway, etc. If port 7001 is unavailable the script aborts so you can remediate before retrying.
+4. **Verify services** – once Compose reports all containers as started, validate the allocations:
+	```bash
+	cd infra
+	docker compose -f docker-compose.somaagent01.yaml ps
+	curl -I http://127.0.0.1:7001/
+	```
+	A `200 OK` confirms the Agent UI is reachable on the expected port.
+
+### Manual Compose launch
+If you invoke Compose yourself, export the same static binding first and then start the stack:
 
 ```bash
+export WEB_UI_PORT=7001
 cd infra
 docker compose -f docker-compose.somaagent01.yaml up -d
 ```
+
+Retrieve dynamic port assignments as needed with `docker compose port SERVICE CONTAINER_PORT` (for example `docker compose -f docker-compose.somaagent01.yaml port delegation-gateway 8015`).
 
 ### Smoke Test
 With the stack running, exercise the event pipeline:
@@ -49,13 +70,21 @@ python scripts/replay_session.py $SESSION_ID --follow
 ```
 
 ### Streaming Interfaces
-- **WebSocket**: `ws://localhost:8001/v1/session/<SESSION_ID>/stream`
-- **SSE**: `http://localhost:8001/v1/session/<SESSION_ID>/events`
+Define a helper to retrieve the delegated gateway port:
+
+```bash
+GATEWAY_PORT=$(docker compose -f infra/docker-compose.somaagent01.yaml port delegation-gateway 8015 | awk -F: '{print $2}')
+```
+
+- **WebSocket**: `ws://localhost:${GATEWAY_PORT}/v1/session/<SESSION_ID>/stream`
+- **SSE**: `http://localhost:${GATEWAY_PORT}/v1/session/<SESSION_ID>/events`
+
+The Agent UI is always available at `http://localhost:7001/`.
 
 Use tools like `wscat` or `curl`:
 ```bash
-wscat -c ws://localhost:8001/v1/session/$SESSION_ID/stream
-curl -N http://localhost:8001/v1/session/$SESSION_ID/events
+wscat -c ws://localhost:${GATEWAY_PORT}/v1/session/$SESSION_ID/stream
+curl -N http://localhost:${GATEWAY_PORT}/v1/session/$SESSION_ID/events
 ```
 
 ### Authentication & Policy (optional)
@@ -79,7 +108,7 @@ docker compose -f docker-compose.somaagent01.yaml down
 ## Troubleshooting
 | Symptom | Check |
 |---------|-------|
-| Kafka connection refused | Ensure compose stack is running and `KAFKA_BOOTSTRAP_SERVERS` points to `localhost:9092`. |
+| Kafka connection refused | Ensure the compose stack is running and `KAFKA_BOOTSTRAP_SERVERS` matches the host binding from `docker compose port kafka 9092`. |
 | Redis auth errors | Match `REDIS_URL` in `.env` with the compose-provisioned credentials. |
 | Tool executor fails to validate result | Confirm `schemas/tool_result.json` exists and package dependencies (`jsonschema`) installed. |
 
