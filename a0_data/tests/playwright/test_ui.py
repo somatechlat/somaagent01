@@ -1,9 +1,13 @@
+import os
 import re
+
+
+UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7001")
 
 def test_basic_chat_flow(page):
     """End‑to‑end UI smoke test against the running container."""
     # Open the UI
-    page.goto("http://localhost:50001")
+    page.goto(UI_BASE_URL)
     # Wait for the chat input to be attached and visible – the sidebar overlay is hidden by default
     page.wait_for_selector("#chat-input", timeout=10000)
 

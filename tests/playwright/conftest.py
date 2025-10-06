@@ -1,2 +1,5 @@
-# Register Playwright pytest plugin
-pytest_plugins = ["playwright.sync_api"]
+# Register Playwright pytest plugin providing the page/context fixtures
+pytest_plugins = [
+	"pytest_playwright",
+	"playwright.sync_api",
+]

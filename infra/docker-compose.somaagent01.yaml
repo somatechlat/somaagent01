@@ -106,7 +106,7 @@ services:
   vault:
     image: hashicorp/vault:1.17
     container_name: somaAgent01_vault
-    command: ["server", "-config=/vault/config/config.hcl"]
+    command: ["vault", "server", "-config=/vault/config/config.hcl"]
     environment:
       - VAULT_ADDR=http://0.0.0.0:8200
       - VAULT_API_ADDR=http://vault:8200
@@ -149,13 +149,29 @@ services:
       "--datastore-max-open-conns",
       "50",
       "--datastore-max-idle-conns",
-      "10",
-      "--datastore-auto-migrate"
+      "10"
     ]
     ports:
       - "${OPENFGA_GRPC_PORT:-0}:8081"
       - "${OPENFGA_HTTP_PORT:-0}:8080"
     restart: unless-stopped
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  openfga-migrate:
+    image: openfga/openfga:v1.8.3
+    container_name: somaAgent01_openfga-migrate
+    command: [
+      "migrate",
+      "--datastore-engine",
+      "postgres",
+      "--datastore-uri",
+      "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable"
+    ]
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
@@ -197,7 +213,29 @@ services:
     ports:
       - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"
       - "${DELEGATION_GATEWAY_PORT_SECONDARY:-0}:8015"
-      - "${WEB_UI_PORT:-0}:80"
+    restart: unless-stopped
+    volumes:
+      - ../a0_data:/a0
+
+  agent-ui:
+    image: somaagent01-dev:latest
+    container_name: somaAgent01_agent-ui
+    command: ["/exe/initialize.sh", "development"]
+    working_dir: /a0
+    environment:
+      - SOMA_BASE_URL=http://somafractalmemoryserver:9595
+      - PYTHONPATH=/a0
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      openfga:
+        condition: service_started
+    ports:
+      - "${WEB_UI_PORT:-7001}:80"
     restart: unless-stopped
     volumes:
       - ../a0_data:/a0
