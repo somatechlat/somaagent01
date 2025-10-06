@@ -1,10 +1,16 @@
 import httpx
-from python.helpers.memory import Memory
+import os
 from python.helpers.tool import Tool, Response
 
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
-RECALL_URL = "http://host.docker.internal:9696/recall"
+# Determine recall endpoint based on execution environment.
+# Inside Docker containers use the internal delegation‑gateway service name.
+# Outside Docker (local dev) default to the host‑exposed port.
+if os.path.exists("/.dockerenv"):
+    RECALL_URL = "http://delegation-gateway:8015/recall"
+else:
+    RECALL_URL = "http://127.0.0.1:28015/recall"
 HEADERS = {
     "Content-Type": "application/json",
     "X-Tenant-ID": "sandbox"

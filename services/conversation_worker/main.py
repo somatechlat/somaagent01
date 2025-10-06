@@ -22,11 +22,13 @@ from services.common.model_profiles import ModelProfileStore
 from services.common.budget_manager import BudgetManager
 from services.common.telemetry import TelemetryPublisher
 from services.common.schema_validator import validate_event
+from services.common.policy_client import PolicyClient
 from services.common.skm_client import SKMClient, ProgressPayload
 from services.common.router_client import RouterClient
 from services.common.tenant_config import TenantConfig
 from services.common.escalation import EscalationDecision, decide_escalation
 from services.common.model_costs import estimate_escalation_cost
+from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -95,6 +97,8 @@ class ConversationWorker:
         self.profile_store = ModelProfileStore()
         self.tenant_config = TenantConfig()
         self.budgets = BudgetManager(tenant_config=self.tenant_config)
+        self.policy_client = PolicyClient(tenant_config=self.tenant_config)
+        self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         self.telemetry = TelemetryPublisher(self.bus)
         self.skm = SKMClient()
         self.router = RouterClient()
@@ -243,6 +247,52 @@ class ConversationWorker:
         enriched_metadata["analysis"] = analysis_dict
         event["metadata"] = enriched_metadata
 
+        tenant = enriched_metadata.get("tenant", "default")
+        persona_id = event.get("persona_id")
+
+        allowed = await self.policy_enforcer.check_message_policy(
+            tenant=tenant,
+            persona_id=persona_id,
+            message=event.get("message", ""),
+            metadata=enriched_metadata,
+        )
+        if not allowed:
+            policy_record = {
+                "type": "policy_denied",
+                "event_id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "message": event.get("message", ""),
+                "metadata": {
+                    "source": "policy",
+                    "analysis": analysis_dict,
+                    "policy": {
+                        "action": "conversation.send",
+                        "status": "denied",
+                    },
+                },
+            }
+            await self.store.append_event(session_id, policy_record)
+
+            denial_response = {
+                "event_id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "role": "assistant",
+                "message": "Message blocked by policy. Please contact your administrator if you believe this is an error.",
+                "metadata": {
+                    "source": "policy",
+                    "analysis": analysis_dict,
+                    "policy": {
+                        "action": "conversation.send",
+                        "status": "denied",
+                    },
+                },
+            }
+            validate_event(denial_response, "conversation_event")
+            await self.bus.publish(self.settings["outbound"], denial_response)
+            return
+
         await self.store.append_event(session_id, {"type": "user", **event})
 
         # Build conversation history (last 20 events).
@@ -271,7 +321,7 @@ class ConversationWorker:
         )
         messages.insert(0, analysis_prompt)
 
-        tenant = event.get("metadata", {}).get("tenant", "default")
+
 
         model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
         slm_kwargs: dict[str, Any] = {}
@@ -316,7 +366,6 @@ class ConversationWorker:
                 fallback_enabled=self.escalation_fallback_enabled,
             )
 
-        persona_id = event.get("persona_id")
         budget_check = await self.budgets.consume(tenant, persona_id, 0)
         limit = budget_check.limit_tokens
         if limit and budget_check.total_tokens >= limit:
@@ -520,6 +569,7 @@ async def main() -> None:
         await worker.slm.close()
         await worker.skm.close()
         await worker.router.close()
+        await worker.policy_client.close()
 
 
 if __name__ == "__main__":
