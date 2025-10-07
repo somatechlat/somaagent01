@@ -1,4 +1,5 @@
 """Policy enforcement via OPA/OpenFGA."""
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,11 @@ class PolicyRequest:
 
 
 class PolicyClient:
-    def __init__(self, base_url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None) -> None:
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        tenant_config: Optional[TenantConfig] = None,
+    ) -> None:
         self.base_url = base_url or os.getenv("POLICY_BASE_URL", "http://opa:8181")
         self.data_path = os.getenv("POLICY_DATA_PATH", "/v1/data/soma/allow")
         self._client = httpx.AsyncClient(timeout=10.0)
@@ -56,7 +61,8 @@ class PolicyClient:
             response = await self._client.post(url, json=payload)
             if response.status_code != 200:
                 LOGGER.error(
-                    "OPA request failed", extra={"status": response.status_code, "body": response.text}
+                    "OPA request failed",
+                    extra={"status": response.status_code, "body": response.text},
                 )
                 response.raise_for_status()
             data: dict[str, Any] = response.json()
@@ -74,7 +80,9 @@ class PolicyClient:
         await self._client.aclose()
 
     def _cache_key(self, request: PolicyRequest) -> tuple[Any, ...]:
-        context_items = tuple(sorted((k, self._freeze(v)) for k, v in request.context.items()))
+        context_items = tuple(
+            sorted((k, self._freeze(v)) for k, v in request.context.items())
+        )
         return (
             request.tenant,
             request.persona_id,

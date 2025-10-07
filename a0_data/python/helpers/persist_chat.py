@@ -26,8 +26,10 @@ def get_chat_folder_path(ctxid: str):
     """
     return files.get_abs_path(CHATS_FOLDER, ctxid)
 
+
 def get_chat_msg_files_folder(ctxid: str):
     return files.get_abs_path(get_chat_folder_path(ctxid), "messages")
+
 
 def save_tmp_chat(context: AgentContext):
     """Save context to the chats folder"""

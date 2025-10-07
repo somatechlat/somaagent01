@@ -1,4 +1,5 @@
 """Async client for OSS SLM/LLM endpoints (OpenAI-compatible)."""
+
 from __future__ import annotations
 
 import json
@@ -20,8 +21,12 @@ class ChatMessage:
 
 class SLMClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
-        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
-        self.default_model = model or os.getenv("SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
+        self.base_url = base_url or os.getenv(
+            "SLM_BASE_URL", "https://slm.somaagent01.dev/v1"
+        )
+        self.default_model = model or os.getenv(
+            "SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct"
+        )
         self.api_key = os.getenv("SLM_API_KEY")  # optional for authenticated gateways
         self._client = httpx.AsyncClient(timeout=30.0)
 
@@ -39,7 +44,11 @@ class SLMClient:
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else float(os.getenv("SLM_TEMPERATURE", "0.2")),
+            "temperature": (
+                temperature
+                if temperature is not None
+                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
+            ),
             "stream": False,
         }
         if kwargs:
@@ -77,7 +86,11 @@ class SLMClient:
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else float(os.getenv("SLM_TEMPERATURE", "0.2")),
+            "temperature": (
+                temperature
+                if temperature is not None
+                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
+            ),
             "stream": True,
         }
         if kwargs:
@@ -86,7 +99,9 @@ class SLMClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        async with self._client.stream("POST", url, json=payload, headers=headers) as response:
+        async with self._client.stream(
+            "POST", url, json=payload, headers=headers
+        ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -97,7 +112,9 @@ class SLMClient:
                 try:
                     data = json.loads(data_str)
                 except json.JSONDecodeError:  # pragma: no cover - defensive
-                    LOGGER.warning("Skipping malformed stream chunk", extra={"chunk": data_str})
+                    LOGGER.warning(
+                        "Skipping malformed stream chunk", extra={"chunk": data_str}
+                    )
                     continue
                 yield data
 

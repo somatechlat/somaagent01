@@ -5,6 +5,7 @@ This module centralises access to JSON schemas stored in the repository's
 without duplicating file-loading logic. Schemas are loaded lazily and cached
 after the first use to avoid repeated disk I/O during long-running services.
 """
+
 from __future__ import annotations
 
 import functools
@@ -43,7 +44,9 @@ def _get_validator(schema_name: str) -> Draft7Validator:
     with schema_file.open("r", encoding="utf-8") as handle:
         schema = json.load(handle)
     if "$id" not in schema:
-        resolver = jsonschema.RefResolver(base_uri=schema_file.as_uri(), referrer=schema)
+        resolver = jsonschema.RefResolver(
+            base_uri=schema_file.as_uri(), referrer=schema
+        )
         return Draft7Validator(schema, resolver=resolver)
     return Draft7Validator(schema)
 

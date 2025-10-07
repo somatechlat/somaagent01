@@ -1,4 +1,5 @@
 """Sandbox manager for executing tools with basic resource controls."""
+
 from __future__ import annotations
 
 import asyncio
@@ -51,4 +52,6 @@ class SandboxManager:
             payload = {"message": str(exc)}
             logs.append(f"Unhandled exception: {exc}")
         duration = time.time() - start
-        return SandboxExecutionResult(status=status, payload=payload, execution_time=duration, logs=logs)
+        return SandboxExecutionResult(
+            status=status, payload=payload, execution_time=duration, logs=logs
+        )

@@ -5,6 +5,7 @@ APIs. They do not perform any network operations yet but capture the
 request/response structure so the conversation worker can emit progress
 and provisioning hooks without introducing mocks.
 """
+
 from __future__ import annotations
 
 import logging

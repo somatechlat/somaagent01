@@ -3,6 +3,7 @@
 This allows the legacy layout to run alongside the new SomaAgent 01 services
 without relying on the old Flask stack.
 """
+
 from __future__ import annotations
 
 import logging

@@ -40,6 +40,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
 import time
+from weakref import WeakKeyDictionary
 
 import httpx
 
@@ -63,7 +64,9 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     try:
         url = httpx.URL(normalized)
     except Exception:
-        logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
+        logger.warning(
+            "Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate
+        )
         return "http://localhost:9696"
 
     port = url.port
@@ -119,7 +122,9 @@ def _running_inside_container() -> bool:
         return True
 
     try:
-        with open("/proc/self/cgroup", "r", encoding="utf-8", errors="ignore") as stream:
+        with open(
+            "/proc/self/cgroup", "r", encoding="utf-8", errors="ignore"
+        ) as stream:
             contents = stream.read()
         if any(token in contents for token in ("docker", "kubepods", "containerd")):
             return True
@@ -139,7 +144,9 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = os.environ.get("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
+        override_host = os.environ.get(
+            "SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal"
+        )
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -206,13 +213,18 @@ class SomaClient:
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
-        self._client = httpx.AsyncClient(
-            base_url=self.base_url,
-            timeout=httpx.Timeout(timeout),
-            headers=self._build_default_headers(),
-            verify=verify_ssl if verify_ssl is not None else True,
-        )
-        self._lock = asyncio.Lock()
+        self._client_params = {
+            "base_url": self.base_url,
+            "timeout": httpx.Timeout(timeout),
+            "headers": self._build_default_headers(),
+            "verify": verify_ssl if verify_ssl is not None else True,
+        }
+        self._clients: WeakKeyDictionary[
+            asyncio.AbstractEventLoop, httpx.AsyncClient
+        ] = WeakKeyDictionary()
+        self._locks: WeakKeyDictionary[
+            asyncio.AbstractEventLoop, asyncio.Lock
+        ] = WeakKeyDictionary()
 
         # Simple circuit breaker state
         self._cb_failures: int = 0
@@ -227,12 +239,41 @@ class SomaClient:
         return cls._instance
 
     async def close(self) -> None:
-        await self._client.aclose()
+        for client in list(self._clients.values()):
+            await client.aclose()
+        self._clients.clear()
+        self._locks.clear()
+
+    def _get_loop(self) -> asyncio.AbstractEventLoop:
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.get_event_loop()
+
+    def _get_lock(self) -> asyncio.Lock:
+        loop = self._get_loop()
+        lock = self._locks.get(loop)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[loop] = lock
+        return lock
+
+    def _get_client(self) -> httpx.AsyncClient:
+        loop = self._get_loop()
+        client = self._clients.get(loop)
+        if client is None:
+            client = httpx.AsyncClient(**self._client_params)
+            self._clients[loop] = client
+        return client
 
     def _build_default_headers(self) -> Dict[str, str]:
         headers: Dict[str, str] = {}
         if self._api_key:
-            headers[AUTH_HEADER] = f"Bearer {self._api_key}" if AUTH_HEADER.lower() == "authorization" else self._api_key
+            headers[AUTH_HEADER] = (
+                f"Bearer {self._api_key}"
+                if AUTH_HEADER.lower() == "authorization"
+                else self._api_key
+            )
         if self._tenant_id:
             headers[TENANT_HEADER] = self._tenant_id
         return headers
@@ -270,8 +311,10 @@ class SomaClient:
         )
 
         try:
-            async with self._lock:
-                response = await self._client.request(method, url, json=json, headers=request_headers or None)
+            async with self._get_lock():
+                response = await self._get_client().request(
+                    method, url, json=json, headers=request_headers or None
+                )
         except httpx.RequestError as e:
             # Network / transport-level failure: record failure and wrap as SomaClientError
             self._cb_failures += 1

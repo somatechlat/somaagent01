@@ -1,4 +1,5 @@
 """Postgres-backed telemetry store."""
+
 from __future__ import annotations
 
 import json

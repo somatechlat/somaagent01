@@ -9,3 +9,49 @@ groups:
         annotations:
           summary: "Telemetry worker offline"
           description: "Prometheus has not scraped telemetry_worker for 1 minute."
+      - alert: DelegationGatewayDown
+        expr: up{job="delegation-gateway"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Delegation gateway unreachable"
+          description: "No successful scrapes for delegation-gateway job in the last 2 minutes."
+      - alert: DelegationGatewayHighErrorRate
+        expr: |
+          sum(rate(delegation_gateway_requests_total{status=~"5.."}[5m]))
+            /
+          clamp_min(sum(rate(delegation_gateway_requests_total[5m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Delegation gateway error rate above 5%"
+          description: "5xx responses from delegation gateway exceeded 5% over the last 10 minutes."
+      - alert: DelegationGatewayHighLatencyP95
+        expr: histogram_quantile(
+                0.95,
+                sum by (le) (rate(delegation_gateway_request_duration_seconds_bucket[5m]))
+              ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Delegation gateway p95 latency above 1s"
+          description: "95th percentile request latency has stayed above 1s for 10 minutes."
+      - alert: OpenfgaDown
+        expr: up{job="openfga"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "OpenFGA exporter unreachable"
+          description: "Prometheus cannot scrape the OpenFGA metrics endpoint."
+      - alert: OpaDown
+        expr: up{job="opa"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OPA metrics endpoint unreachable"
+          description: "Open Policy Agent has not responded to scrapes for 2 minutes."

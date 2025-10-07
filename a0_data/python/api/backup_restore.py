@@ -16,17 +16,21 @@ class BackupRestore(ApiHandler):
 
     async def process(self, input: dict, request: Request) -> dict | Response:
         # Handle file upload
-        if 'backup_file' not in request.files:
+        if "backup_file" not in request.files:
             return {"success": False, "error": "No backup file provided"}
 
-        backup_file: FileStorage = request.files['backup_file']
-        if backup_file.filename == '':
+        backup_file: FileStorage = request.files["backup_file"]
+        if backup_file.filename == "":
             return {"success": False, "error": "No file selected"}
 
         # Get restore configuration from form data
-        metadata_json = request.form.get('metadata', '{}')
-        overwrite_policy = request.form.get('overwrite_policy', 'overwrite')  # overwrite, skip, backup
-        clean_before_restore = request.form.get('clean_before_restore', 'false').lower() == 'true'
+        metadata_json = request.form.get("metadata", "{}")
+        overwrite_policy = request.form.get(
+            "overwrite_policy", "overwrite"
+        )  # overwrite, skip, backup
+        clean_before_restore = (
+            request.form.get("clean_before_restore", "false").lower() == "true"
+        )
 
         try:
             metadata = json.loads(metadata_json)
@@ -43,7 +47,7 @@ class BackupRestore(ApiHandler):
                 restore_exclude_patterns=restore_exclude_patterns,
                 overwrite_policy=overwrite_policy,
                 clean_before_restore=clean_before_restore,
-                user_edited_metadata=metadata
+                user_edited_metadata=metadata,
             )
 
             # Load all chats from the chats folder
@@ -56,11 +60,8 @@ class BackupRestore(ApiHandler):
                 "skipped_files": result["skipped_files"],
                 "errors": result["errors"],
                 "backup_metadata": result["backup_metadata"],
-                "clean_before_restore": result.get("clean_before_restore", False)
+                "clean_before_restore": result.get("clean_before_restore", False),
             }
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}

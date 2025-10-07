@@ -1,9 +1,10 @@
 """Tenant configuration loader for budgets and governance settings."""
+
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import yaml
 

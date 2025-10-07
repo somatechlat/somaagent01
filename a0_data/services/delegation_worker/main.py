@@ -1,8 +1,8 @@
 """Delegation worker that consumes task queue events."""
+
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 from typing import Any
@@ -32,7 +32,9 @@ class DelegationWorker:
         try:
             validate_event(event, "delegation_task")
         except ValidationError as exc:
-            LOGGER.error("Invalid delegation event", extra={"error": exc.message, "event": event})
+            LOGGER.error(
+                "Invalid delegation event", extra={"error": exc.message, "event": event}
+            )
             return
 
         task_id = event["task_id"]

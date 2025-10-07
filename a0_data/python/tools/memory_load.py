@@ -6,9 +6,16 @@ from python.integrations.soma_client import SomaClient, SomaClientError
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
 
+
 class MemoryLoad(Tool):
-    async def execute(self, query="", threshold=DEFAULT_THRESHOLD,
-                      limit=DEFAULT_LIMIT, filter="", **kwargs):
+    async def execute(
+        self,
+        query="",
+        threshold=DEFAULT_THRESHOLD,
+        limit=DEFAULT_LIMIT,
+        filter="",
+        **kwargs
+    ):
         client = SomaClient.get()
         universe = None
         if getattr(self.agent, "config", None):
@@ -52,7 +59,11 @@ class MemoryLoad(Tool):
         for entry in entries:
             if not isinstance(entry, Mapping):
                 continue
-            payload = entry.get("payload") if isinstance(entry.get("payload"), Mapping) else None
+            payload = (
+                entry.get("payload")
+                if isinstance(entry.get("payload"), Mapping)
+                else None
+            )
 
             score_value: float | None = None
             raw_score = entry.get("score")
@@ -76,6 +87,11 @@ class MemoryLoad(Tool):
                     text = payload.get("text")
                     if isinstance(text, str) and text.strip():
                         message = text.strip()
+                    else:
+                        # New fallback for 'what' field in payload
+                        what = payload.get("what")
+                        if isinstance(what, str) and what.strip():
+                            message = what.strip()
             else:
                 # Fallback to top‑level content fields
                 content = entry.get("content")
@@ -84,7 +100,7 @@ class MemoryLoad(Tool):
 
             # Additional fallback: use common metadata keys if no explicit content
             if not message:
-                for key in ["fact", "summary", "value", "title", "text"]:
+                for key in ["fact", "summary", "value", "title", "text", "what"]:
                     val = entry.get(key)
                     if isinstance(val, str) and val.strip():
                         message = val.strip()

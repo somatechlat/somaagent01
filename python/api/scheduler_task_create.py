@@ -1,7 +1,14 @@
 from python.helpers.api import ApiHandler, Input, Output, Request
 from python.helpers.task_scheduler import (
-    TaskScheduler, ScheduledTask, AdHocTask, PlannedTask, TaskSchedule,
-    serialize_task, parse_task_schedule, parse_task_plan, TaskType
+    TaskScheduler,
+    ScheduledTask,
+    AdHocTask,
+    PlannedTask,
+    TaskSchedule,
+    serialize_task,
+    parse_task_schedule,
+    parse_task_plan,
+    TaskType,
 )
 from python.helpers.localization import Localization
 from python.helpers.print_style import PrintStyle
@@ -34,7 +41,9 @@ class SchedulerTaskCreate(ApiHandler):
         token: str = input.get("token", "")
 
         # Debug log the token value
-        printer.print(f"Token received from frontend: '{token}' (type: {type(token)}, length: {len(token) if token else 0})")
+        printer.print(
+            f"Token received from frontend: '{token}' (type: {type(token)}, length: {len(token) if token else 0})"
+        )
 
         # Generate a random token if empty or not provided
         if not token:
@@ -54,13 +63,13 @@ class SchedulerTaskCreate(ApiHandler):
             # Handle different schedule formats (string or object)
             if isinstance(schedule, str):
                 # Parse the string schedule
-                parts = schedule.split(' ')
+                parts = schedule.split(" ")
                 task_schedule = TaskSchedule(
                     minute=parts[0] if len(parts) > 0 else "*",
                     hour=parts[1] if len(parts) > 1 else "*",
                     day=parts[2] if len(parts) > 2 else "*",
                     month=parts[3] if len(parts) > 3 else "*",
-                    weekday=parts[4] if len(parts) > 4 else "*"
+                    weekday=parts[4] if len(parts) > 4 else "*",
                 )
             elif isinstance(schedule, dict):
                 # Use our standardized parsing function
@@ -78,7 +87,7 @@ class SchedulerTaskCreate(ApiHandler):
                 schedule=task_schedule,
                 attachments=attachments,
                 context_id=context_id,
-                timezone=timezone
+                timezone=timezone,
             )
         elif plan:
             # Create a planned task
@@ -94,7 +103,7 @@ class SchedulerTaskCreate(ApiHandler):
                 prompt=prompt,
                 plan=task_plan,
                 attachments=attachments,
-                context_id=context_id
+                context_id=context_id,
             )
         else:
             # Create an ad-hoc task
@@ -105,7 +114,7 @@ class SchedulerTaskCreate(ApiHandler):
                 prompt=prompt,
                 token=token,
                 attachments=attachments,
-                context_id=context_id
+                context_id=context_id,
             )
             # Verify token after creation
             if isinstance(task, AdHocTask):
@@ -128,9 +137,9 @@ class SchedulerTaskCreate(ApiHandler):
         task_dict = serialize_task(task)
 
         # Debug log the serialized task
-        if task_dict and task_dict.get('type') == 'adhoc':
-            printer.print(f"Serialized adhoc task, token in response: '{task_dict.get('token')}'")
+        if task_dict and task_dict.get("type") == "adhoc":
+            printer.print(
+                f"Serialized adhoc task, token in response: '{task_dict.get('token')}'"
+            )
 
-        return {
-            "task": task_dict
-        }
+        return {"task": task_dict}

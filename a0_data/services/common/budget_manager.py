@@ -1,4 +1,5 @@
 """Budget manager for SomaAgent 01."""
+
 from __future__ import annotations
 
 import os
@@ -18,14 +19,18 @@ class BudgetResult:
 
 
 class BudgetManager:
-    def __init__(self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None) -> None:
+    def __init__(
+        self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
+    ) -> None:
         self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.prefix = os.getenv("BUDGET_PREFIX", "budget:tokens")
         self.limit = int(os.getenv("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)
         self.tenant_config = tenant_config or TenantConfig()
 
-    async def consume(self, tenant: str, persona_id: Optional[str], tokens: int) -> BudgetResult:
+    async def consume(
+        self, tenant: str, persona_id: Optional[str], tokens: int
+    ) -> BudgetResult:
         if tokens <= 0:
             current = await self._get_total(tenant, persona_id)
             return BudgetResult(True, current, self._limit_for(tenant, persona_id))
@@ -58,7 +63,9 @@ class BudgetManager:
             return config_limit if config_limit > 0 else None
 
         env_key = f"BUDGET_LIMIT_{tenant.upper()}"
-        persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
+        persona_key = (
+            f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
+        )
         if persona_key in os.environ:
             return int(os.getenv(persona_key, "0")) or None
         limit = int(os.getenv(env_key, "0"))

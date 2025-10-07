@@ -47,7 +47,9 @@ class VisionLoad(Tool):
                     except Exception as e:
                         self.images_dict[path] = None
                         PrintStyle().error(f"Error processing image {path}: {e}")
-                        self.agent.context.log.log("warning", f"Error processing image {path}: {e}")
+                        self.agent.context.log.log(
+                            "warning", f"Error processing image {path}: {e}"
+                        )
 
         return Response(message="dummy", break_loop=False)
 
@@ -72,7 +74,9 @@ class VisionLoad(Tool):
                         }
                     )
             # append as raw message content for LLMs with vision tokens estimate
-            msg = history.RawMessage(raw_content=content, preview="<Base64 encoded image data>")
+            msg = history.RawMessage(
+                raw_content=content, preview="<Base64 encoded image data>"
+            )
             self.agent.hist_add_message(
                 False, content=msg, tokens=TOKENS_ESTIMATE * len(content)
             )

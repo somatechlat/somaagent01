@@ -1,4 +1,5 @@
 """Requeue management service for SomaAgent 01."""
+
 from __future__ import annotations
 
 import logging
@@ -57,7 +58,9 @@ async def resolve_requeue(
 
 
 @app.delete("/v1/requeue/{requeue_id}")
-async def delete_requeue(requeue_id: str, store: RequeueStore = Depends(get_store)) -> dict[str, str]:
+async def delete_requeue(
+    requeue_id: str, store: RequeueStore = Depends(get_store)
+) -> dict[str, str]:
     await store.remove(requeue_id)
     return {"status": "deleted"}
 

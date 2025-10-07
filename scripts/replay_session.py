@@ -3,14 +3,13 @@
 Usage:
     python scripts/replay_session.py SESSION_ID [--limit N] [--follow]
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
 import sys
-import time
-from typing import Any
 
 from services.common.session_repository import PostgresSessionStore
 
@@ -36,8 +35,12 @@ async def replay(session_id: str, limit: int | None, follow: bool) -> None:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Replay session events from Postgres")
     parser.add_argument("session_id", help="Session identifier")
-    parser.add_argument("--limit", type=int, default=None, help="Maximum number of events to retrieve")
-    parser.add_argument("--follow", action="store_true", help="Stream new events as they arrive")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Maximum number of events to retrieve"
+    )
+    parser.add_argument(
+        "--follow", action="store_true", help="Stream new events as they arrive"
+    )
     return parser.parse_args(argv)
 
 

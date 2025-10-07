@@ -8,6 +8,7 @@ class FieldOption(TypedDict):
     value: str
     label: str
 
+
 class ProviderManager:
     _instance = None
     _raw: Optional[Dict[str, List[Dict[str, str]]]] = None  # full provider data
@@ -72,12 +73,13 @@ class ProviderManager:
         """Returns a list of providers for a given type (e.g., 'chat', 'embedding')."""
         return self._options.get(provider_type, []) if self._options else []
 
-
     def get_raw_providers(self, provider_type: str) -> List[Dict[str, str]]:
         """Return raw provider dictionaries for advanced use-cases."""
         return self._raw.get(provider_type, []) if self._raw else []
 
-    def get_provider_config(self, provider_type: str, provider_id: str) -> Optional[Dict[str, str]]:
+    def get_provider_config(
+        self, provider_type: str, provider_id: str
+    ) -> Optional[Dict[str, str]]:
         """Return the metadata dict for a single provider id (case-insensitive)."""
         provider_id_low = provider_id.lower()
         for p in self.get_raw_providers(provider_type):
@@ -96,6 +98,10 @@ def get_raw_providers(provider_type: str) -> List[Dict[str, str]]:
     return ProviderManager.get_instance().get_raw_providers(provider_type)
 
 
-def get_provider_config(provider_type: str, provider_id: str) -> Optional[Dict[str, str]]:
+def get_provider_config(
+    provider_type: str, provider_id: str
+) -> Optional[Dict[str, str]]:
     """Return metadata for a single provider (None if not found)."""
-    return ProviderManager.get_instance().get_provider_config(provider_type, provider_id) 
+    return ProviderManager.get_instance().get_provider_config(
+        provider_type, provider_id
+    )

@@ -15,7 +15,11 @@ from services.common.model_costs import estimate_escalation_cost
 def test_decide_escalation_basic(metadata, expected):
     decision = decide_escalation(
         message="Please fix the production outage in kubernetes cluster.",
-        analysis={"intent": "problem_report", "sentiment": "negative", "tags": ["infrastructure"]},
+        analysis={
+            "intent": "problem_report",
+            "sentiment": "negative",
+            "tags": ["infrastructure"],
+        },
         event_metadata=metadata,
         fallback_enabled=False,
     )
@@ -27,7 +31,11 @@ def test_decide_escalation_complexity_tags():
         message="""We need a step-by-step migration plan for this legacy service.
         The task touches infrastructure, networking, and compliance requirements.
         Provide thorough reasoning.""",
-        analysis={"intent": "action_request", "sentiment": "neutral", "tags": ["infrastructure", "code", "testing"]},
+        analysis={
+            "intent": "action_request",
+            "sentiment": "neutral",
+            "tags": ["infrastructure", "code", "testing"],
+        },
         event_metadata={"complexity": "advanced"},
         fallback_enabled=False,
     )
@@ -56,4 +64,7 @@ def test_estimate_escalation_cost_known_model():
 
 
 def test_estimate_escalation_cost_unknown_model():
-    assert estimate_escalation_cost("unknown/model", input_tokens=100, output_tokens=100) is None
+    assert (
+        estimate_escalation_cost("unknown/model", input_tokens=100, output_tokens=100)
+        is None
+    )

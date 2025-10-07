@@ -58,3 +58,5 @@ websockets==14.0
 prometheus-client==0.20.0
 PyYAML==6.0.2
 PyJWT==2.9.0
+black==25.9.0
+ruff==0.13.3

@@ -4,7 +4,17 @@ import os
 import random
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+)
+from weakref import WeakKeyDictionary
 
 from langchain.storage import InMemoryByteStore, LocalFileStore
 from langchain.embeddings import CacheBackedEmbeddings
@@ -14,7 +24,6 @@ from python.helpers import guids
 from langchain_community.vectorstores import FAISS
 
 # faiss needs to be patched for python 3.12 on arm #TODO remove once not needed
-from python.helpers import faiss_monkey_patch
 import faiss
 
 
@@ -22,7 +31,6 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores.utils import (
     DistanceStrategy,
 )
-from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
 
 import numpy as np
@@ -30,12 +38,16 @@ import numpy as np
 from python.helpers.print_style import PrintStyle
 from . import files
 from python.helpers import knowledge_import
-from python.helpers.log import Log, LogItem
+from python.helpers.log import LogItem
 from agent import Agent
 import models
 import logging
 from simpleeval import simple_eval
-from python.integrations.soma_client import SomaClient, SomaClientError, SomaMemoryRecord
+from python.integrations.soma_client import (
+    SomaClient,
+    SomaClientError,
+    SomaMemoryRecord,
+)
 
 
 # Raise the log level so WARNING messages aren't shown
@@ -566,7 +578,9 @@ class SomaMemory:
     async def search_similarity_threshold(
         self, query: str, limit: int, threshold: float, filter: str = ""
     ) -> List[Document]:
-        return await self._docstore.search_similarity_threshold(query, limit, threshold, filter)
+        return await self._docstore.search_similarity_threshold(
+            query, limit, threshold, filter
+        )
 
     async def delete_documents_by_query(
         self, query: str, threshold: float, filter: str = ""
@@ -624,10 +638,20 @@ class _SomaDocStore:
         self._client = memory._client
         self._cache: Dict[str, Document] = {}
         self._cache_valid = False
-        self._lock = asyncio.Lock()
+        self._locks: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
+            WeakKeyDictionary()
+        )
+
+    def _get_lock(self) -> asyncio.Lock:
+        loop = asyncio.get_running_loop()
+        lock = self._locks.get(loop)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[loop] = lock
+        return lock
 
     async def refresh(self) -> Dict[str, Document]:
-        async with self._lock:
+        async with self._get_lock():
             try:
                 data = await self._client.migrate_export(
                     include_wm=SOMA_CACHE_INCLUDE_WM,
@@ -680,13 +704,19 @@ class _SomaDocStore:
             metadata = dict(doc.metadata)
             doc_id = metadata.get("id") or guids.generate_id(10)
             metadata["id"] = doc_id
-            coord = metadata.get("coord") or metadata.get("soma_coord") or self._generate_coord(doc_id)
+            coord = (
+                metadata.get("coord")
+                or metadata.get("soma_coord")
+                or self._generate_coord(doc_id)
+            )
             metadata["coord"] = coord
             metadata["soma_coord"] = coord
             payload = self._build_payload(metadata, doc.page_content)
             try:
                 coord_str = self._format_coord(coord)
-                await self._client.remember(payload, coord=coord_str, universe=self.memory.memory_subdir)
+                await self._client.remember(
+                    payload, coord=coord_str, universe=self.memory.memory_subdir
+                )
             except SomaClientError as exc:
                 PrintStyle.error(f"Failed to store memory via SomaBrain: {exc}")
                 continue
@@ -770,12 +800,16 @@ class _SomaDocStore:
             await self.delete_documents_by_ids(ids)
         return matches
 
-    def _build_payload(self, metadata: MutableMapping[str, Any], content: str) -> Dict[str, Any]:
+    def _build_payload(
+        self, metadata: MutableMapping[str, Any], content: str
+    ) -> Dict[str, Any]:
         payload: Dict[str, Any] = dict(metadata)
         payload.setdefault("memory_type", metadata.get("memory_type", "episodic"))
         payload.setdefault("importance", metadata.get("importance", 1))
         payload.setdefault("area", metadata.get("area", MemoryArea.MAIN.value))
-        payload.setdefault("universe", metadata.get("universe", self.memory.memory_subdir))
+        payload.setdefault(
+            "universe", metadata.get("universe", self.memory.memory_subdir)
+        )
 
         timestamp_val = metadata.get("timestamp")
         numeric_timestamp: float | None = None
@@ -787,7 +821,9 @@ class _SomaDocStore:
                 numeric_timestamp = float(timestamp_val)
             except ValueError:
                 try:
-                    numeric_timestamp = datetime.fromisoformat(timestamp_val).timestamp()
+                    numeric_timestamp = datetime.fromisoformat(
+                        timestamp_val
+                    ).timestamp()
                 except ValueError:
                     numeric_timestamp = None
 
@@ -882,7 +918,9 @@ class _SomaDocStore:
         ]
         content = next((c for c in content_candidates if isinstance(c, str)), "")
         metadata.setdefault("area", metadata.get("area", MemoryArea.MAIN.value))
-        metadata.setdefault("universe", metadata.get("universe", self.memory.memory_subdir))
+        metadata.setdefault(
+            "universe", metadata.get("universe", self.memory.memory_subdir)
+        )
         return Document(page_content=content, metadata=metadata)
 
 

@@ -1,4 +1,5 @@
 """Telemetry publisher for SomaAgent 01."""
+
 from __future__ import annotations
 
 import time

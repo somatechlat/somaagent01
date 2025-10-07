@@ -1,4 +1,5 @@
 """Tool registry helpers for the SomaAgent 01 tool executor."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -32,7 +33,9 @@ class ToolRegistry:
             self.register(tool)
 
     def register(self, tool: BaseTool, *, description: Optional[str] = None) -> None:
-        definition = ToolDefinition(name=tool.name, handler=tool, description=description)
+        definition = ToolDefinition(
+            name=tool.name, handler=tool, description=description
+        )
         self._tools[tool.name] = definition
 
     def get(self, name: str) -> Optional[ToolDefinition]:

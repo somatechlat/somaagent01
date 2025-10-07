@@ -1,7 +1,6 @@
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.memory import Memory
 from python.helpers import files
-from models import ModelConfig, ModelType
 from langchain_core.documents import Document
 
 
@@ -95,7 +94,7 @@ class MemoryDashboard(ApiHandler):
             else:
                 return {
                     "success": False,
-                    "error": f"Failed to delete any memories.",
+                    "error": "Failed to delete any memories.",
                 }
 
         except Exception as e:
@@ -195,7 +194,9 @@ class MemoryDashboard(ApiHandler):
                     memories = memories[:limit]
 
             # Format memories for the dashboard
-            formatted_memories = [self._format_memory_for_dashboard(m) for m in memories]
+            formatted_memories = [
+                self._format_memory_for_dashboard(m) for m in memories
+            ]
 
             # Get summary statistics
             total_memories = len(formatted_memories)

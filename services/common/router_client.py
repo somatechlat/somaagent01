@@ -1,4 +1,5 @@
 """Client for the dynamic router service."""
+
 from __future__ import annotations
 
 import os

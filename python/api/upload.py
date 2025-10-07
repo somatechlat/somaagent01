@@ -13,14 +13,13 @@ class UploadFile(ApiHandler):
 
         for file in file_list:
             if file and self.allowed_file(file.filename):  # Check file type
-                filename = secure_filename(file.filename) # type: ignore
+                filename = secure_filename(file.filename)  # type: ignore
                 file.save(files.get_abs_path("tmp/upload", filename))
                 saved_filenames.append(filename)
 
         return {"filenames": saved_filenames}  # Return saved filenames
 
-
-    def allowed_file(self,filename):
+    def allowed_file(self, filename):
         return True
         # ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "txt", "pdf", "csv", "html", "json", "md"}
         # return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS

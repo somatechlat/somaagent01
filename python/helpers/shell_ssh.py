@@ -5,6 +5,7 @@ import re
 from typing import Tuple
 from python.helpers.log import Log
 from python.helpers.print_style import PrintStyle
+
 # from python.helpers.strings import calculate_valid_match_lengths
 
 
@@ -207,6 +208,7 @@ class SSHInteractiveSession:
 
         return data
 
+
 def clean_string(input_string):
     # Remove ANSI escape codes
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
@@ -216,9 +218,9 @@ def clean_string(input_string):
     cleaned = cleaned.replace("\x00", "")
 
     # remove ipython \r\r\n> sequences from the start
-    cleaned = re.sub(r'^[ \r]*(?:\r*\n>[ \r]*)*', '', cleaned)
+    cleaned = re.sub(r"^[ \r]*(?:\r*\n>[ \r]*)*", "", cleaned)
     # also remove any amount of '> ' sequences from the start
-    cleaned = re.sub(r'^(>\s*)+', '', cleaned)
+    cleaned = re.sub(r"^(>\s*)+", "", cleaned)
 
     # Replace '\r\n' with '\n'
     cleaned = cleaned.replace("\r\n", "\n")

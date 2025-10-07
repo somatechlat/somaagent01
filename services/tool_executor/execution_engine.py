@@ -1,11 +1,15 @@
 """Execution engine orchestration for the SomaAgent 01 tool executor."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict
 
 from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
-from services.tool_executor.sandbox_manager import SandboxExecutionResult, SandboxManager
+from services.tool_executor.sandbox_manager import (
+    SandboxExecutionResult,
+    SandboxManager,
+)
 from services.tool_executor.tool_registry import ToolDefinition
 
 
@@ -42,4 +46,3 @@ class ExecutionEngine:
             execution_time=sandbox_result.execution_time,
             logs=sandbox_result.logs,
         )
-

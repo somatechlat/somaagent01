@@ -9,6 +9,7 @@ from python.helpers.api import (
 )
 from python.helpers import runtime
 
+
 class GetCsrfToken(ApiHandler):
 
     @classmethod
@@ -24,10 +25,12 @@ class GetCsrfToken(ApiHandler):
             session["csrf_token"] = secrets.token_urlsafe(32)
         token = session["csrf_token"]
         runtime_id = runtime.get_runtime_id()
-        response = jsonify({
-            "token": token,
-            "runtime_id": runtime_id,
-        })
+        response = jsonify(
+            {
+                "token": token,
+                "runtime_id": runtime_id,
+            }
+        )
         secure = request.is_secure if hasattr(request, "is_secure") else False
         response.set_cookie(
             f"csrf_token_{runtime_id}",

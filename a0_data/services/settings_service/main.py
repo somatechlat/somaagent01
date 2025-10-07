@@ -1,4 +1,5 @@
 """Settings service for managing model profiles."""
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,8 @@ async def startup_event() -> None:
 
 @app.get("/v1/model-profiles")
 async def list_profiles(
-    deployment_mode: str | None = None,
     store: Annotated[ModelProfileStore, Depends(get_store)],
+    deployment_mode: str | None = None,
 ) -> list[ModelProfile]:
     return await store.list(deployment_mode)
 

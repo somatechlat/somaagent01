@@ -1,4 +1,8 @@
-import asyncio, os, sys, platform, errno
+import asyncio
+import os
+import sys
+import platform
+import errno
 
 _IS_WIN = platform.system() == "Windows"
 if _IS_WIN:
@@ -22,7 +26,8 @@ class TTYSession:
         self.encoding = encoding
         self.echo = echo  # ← store preference
         self._proc = None
-        self._buf = asyncio.Queue()
+        self._pump_task = None
+        self._buf: asyncio.Queue[str] | None = None
 
     def __del__(self):
         # Simple cleanup on object destruction
@@ -45,6 +50,7 @@ class TTYSession:
             self._proc = await _spawn_posix_pty(
                 self.cmd, self.cwd, self.env, self.echo
             )  # ← pass echo
+        self._buf = asyncio.Queue()
         self._pump_task = asyncio.create_task(self._pump_stdout())
 
     async def close(self):
@@ -61,6 +67,7 @@ class TTYSession:
             await self._proc.wait()
         self._proc = None
         self._pump_task = None
+        self._buf = None
 
     async def send(self, data: str | bytes):
         if self._proc is None:
@@ -101,6 +108,8 @@ class TTYSession:
 
     async def read(self, timeout=None):
         # Return any decoded text the child produced, or None on timeout
+        if self._buf is None:
+            raise RuntimeError("TTYSpawn buffer is not initialized; did you call start()?")
         try:
             return await asyncio.wait_for(self._buf.get(), timeout)
         except asyncio.TimeoutError:
@@ -137,6 +146,8 @@ class TTYSession:
     async def _pump_stdout(self):
         if self._proc is None:
             raise RuntimeError("TTYSpawn is not started")
+        if self._buf is None:
+            raise RuntimeError("TTYSpawn buffer is not initialized")
         reader = self._proc.stdout
         while True:
             chunk = await reader.read(4096)  # grab whatever is ready # type: ignore
@@ -149,7 +160,10 @@ class TTYSession:
 
 
 async def _spawn_posix_pty(cmd, cwd, env, echo):
-    import pty, asyncio, os, termios
+    import pty
+    import asyncio
+    import os
+    import termios
 
     master, slave = pty.openpty()
 

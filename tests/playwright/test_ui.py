@@ -4,6 +4,7 @@ import re
 
 UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7001")
 
+
 def test_basic_chat_flow(page):
     """End‑to‑end UI smoke test against the running container."""
     # Open the UI
@@ -26,9 +27,9 @@ def test_basic_chat_flow(page):
     # Grab the first matching element's text
     response_text = page.inner_text(response_selector)
     assert response_text, "Assistant response was empty"
-    assert re.search(r"hello|hi|greeting", response_text, re.I), (
-        f"Unexpected response content: {response_text!r}"
-    )
+    assert re.search(
+        r"hello|hi|greeting", response_text, re.I
+    ), f"Unexpected response content: {response_text!r}"
 
     # ---- Additional E2E verification: Save Chat ----
     # Expect a download when clicking the Save Chat button (id=loadChat)
@@ -36,7 +37,9 @@ def test_basic_chat_flow(page):
         page.click("#loadChat")
     download = download_info.value
     # Verify the download has a JSON filename (Agent Zero saves chats as .json)
-    assert download.suggested_filename.endswith('.json'), f"Unexpected download filename: {download.suggested_filename}"
+    assert download.suggested_filename.endswith(
+        ".json"
+    ), f"Unexpected download filename: {download.suggested_filename}"
     # Optionally, you could save the file to a temp location and inspect its contents:
     # path = download.path()
     # assert path.read_text().strip().startswith('{'), "Downloaded chat file does not contain JSON"
