@@ -8,6 +8,7 @@ to clients. Real deployments should run this behind Kong/Envoy with mTLS.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -26,8 +27,15 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 
 from services.common.event_bus import KafkaEventBus, iterate_topic
 from services.common.schema_validator import validate_event
@@ -43,6 +51,64 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+REQUEST_COUNTER = Counter(
+    "gateway_requests_total",
+    "Total HTTP requests processed by the gateway",
+    labelnames=("method", "route", "status"),
+)
+REQUEST_LATENCY = Histogram(
+    "gateway_request_latency_seconds",
+    "Latency of HTTP requests handled by the gateway",
+    labelnames=("route",),
+)
+KAFKA_PUBLISH_COUNTER = Counter(
+    "gateway_kafka_publish_total",
+    "Count of Kafka publish attempts from the gateway",
+    labelnames=("topic", "status"),
+)
+STREAMED_EVENTS_COUNTER = Counter(
+    "gateway_streamed_events_total",
+    "Outbound events streamed to clients",
+    labelnames=("transport",),
+)
+ACTIVE_WEBSOCKETS = Gauge(
+    "gateway_active_websockets",
+    "Current number of active WebSocket connections",
+)
+SOMA_AGENT_HUB_STATUS = Gauge(
+    "soma_agent_hub_up",
+    "Availability of the SomaAgentHub OpenAPI endpoint as probed by the gateway",
+    labelnames=("endpoint",),
+)
+SOMA_AGENT_HUB_LATENCY = Histogram(
+    "soma_agent_hub_openapi_latency_seconds",
+    "Latency fetching the SomaAgentHub OpenAPI document",
+    labelnames=("endpoint",),
+)
+
+
+def _resolve_route_label(request: Request) -> str:
+    route = request.scope.get("route")  # FastAPI injects the APIRoute here
+    if route and getattr(route, "path", None):
+        return route.path
+    return request.url.path
+
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    route_label = _resolve_route_label(request)
+    start_time = time.perf_counter()
+    status_code = "500"
+    try:
+        response = await call_next(request)
+        status_code = str(response.status_code)
+        return response
+    finally:
+        duration = time.perf_counter() - start_time
+        REQUEST_COUNTER.labels(request.method, route_label, status_code).inc()
+        REQUEST_LATENCY.labels(route_label).observe(duration)
 
 
 def get_event_bus() -> KafkaEventBus:
@@ -113,6 +179,20 @@ JWKS_TIMEOUT_SECONDS = float(os.getenv("GATEWAY_JWKS_TIMEOUT_SECONDS", "3"))
 
 JWKS_CACHE: dict[str, tuple[list[dict[str, Any]], float]] = {}
 
+SOMA_AGENT_HUB_URL = os.getenv(
+    "SOMA_AGENT_HUB_URL", "http://host.docker.internal:60000"
+)
+SOMA_AGENT_HUB_OPENAPI_PATH = os.getenv(
+    "SOMA_AGENT_HUB_OPENAPI_PATH", "/openapi.json"
+)
+SOMA_AGENT_HUB_CHECK_INTERVAL = float(
+    os.getenv("SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS", "60")
+)
+SOMA_AGENT_HUB_TIMEOUT = float(os.getenv("SOMA_AGENT_HUB_TIMEOUT_SECONDS", "3"))
+SOMA_AGENT_HUB_MONITOR_ENABLED = os.getenv(
+    "SOMA_AGENT_HUB_MONITOR_ENABLED", "true"
+).lower() in {"1", "true", "yes", "on"}
+
 
 def _extract_tenant(claims: Dict[str, Any]) -> str | None:
     for key in JWT_TENANT_CLAIMS:
@@ -142,6 +222,60 @@ def _apply_auth_metadata(
         if key not in merged and value is not None:
             merged[key] = value
     return merged
+
+
+SESSION_META_PREFIX = "session:{session_id}:meta"
+
+
+async def _load_session_context(
+    session_id: str, cache: RedisSessionCache, store: PostgresSessionStore
+) -> dict[str, Any]:
+    cache_key = SESSION_META_PREFIX.format(session_id=session_id)
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    envelope = await store.get_envelope(session_id)
+    if not envelope:
+        return {}
+
+    context = {
+        "persona_id": envelope.persona_id or "",
+        "metadata": envelope.metadata,
+    }
+    await cache.set(cache_key, context, ttl=900)
+    return context
+
+
+async def _hydrate_session_envelope(
+    *,
+    session_id: str,
+    requested_persona: str | None,
+    metadata: Dict[str, Any],
+    cache: RedisSessionCache,
+    store: PostgresSessionStore,
+) -> tuple[str | None, Dict[str, Any]]:
+    if not session_id:
+        return requested_persona, metadata
+
+    context = await _load_session_context(session_id, cache, store)
+    merged_metadata = {**context.get("metadata", {}), **metadata}
+    persona = requested_persona or context.get("persona_id") or None
+    return persona, merged_metadata
+
+
+async def _persist_session_context(
+    session_id: str,
+    persona_id: str | None,
+    metadata: Dict[str, Any],
+    cache: RedisSessionCache,
+) -> None:
+    cache_key = SESSION_META_PREFIX.format(session_id=session_id)
+    payload = {
+        "persona_id": persona_id or "",
+        "metadata": metadata,
+    }
+    await cache.set(cache_key, payload, ttl=900)
 
 
 async def _get_jwks_keys() -> list[dict[str, Any]]:
@@ -294,6 +428,61 @@ async def authorize_request(
     return auth_metadata
 
 
+async def _monitor_soma_agent_hub() -> None:
+    endpoint = f"{SOMA_AGENT_HUB_URL.rstrip('/')}{SOMA_AGENT_HUB_OPENAPI_PATH}"
+    interval = max(5.0, SOMA_AGENT_HUB_CHECK_INTERVAL)
+    previous_up: float | None = None
+
+    while True:
+        start = time.perf_counter()
+        up_value = 0.0
+        try:
+            async with httpx.AsyncClient(timeout=SOMA_AGENT_HUB_TIMEOUT) as client:
+                response = await client.get(endpoint)
+                response.raise_for_status()
+            latency = time.perf_counter() - start
+            SOMA_AGENT_HUB_LATENCY.labels(endpoint).observe(latency)
+            up_value = 1.0
+            if previous_up == 0.0:
+                LOGGER.info(
+                    "SomaAgentHub probe recovered",
+                    extra={"endpoint": endpoint, "latency_seconds": latency},
+                )
+        except Exception as exc:
+            latency = time.perf_counter() - start
+            if previous_up != 0.0:
+                LOGGER.warning(
+                    "SomaAgentHub probe failed",
+                    extra={
+                        "endpoint": endpoint,
+                        "error": str(exc),
+                        "latency_seconds": latency,
+                    },
+                )
+        SOMA_AGENT_HUB_STATUS.labels(endpoint).set(up_value)
+        previous_up = up_value
+        await asyncio.sleep(interval)
+
+
+@app.on_event("startup")
+async def _start_background_tasks() -> None:
+    if not SOMA_AGENT_HUB_MONITOR_ENABLED:
+        return
+    if getattr(app.state, "hub_monitor_task", None):
+        return
+    app.state.hub_monitor_task = asyncio.create_task(_monitor_soma_agent_hub())
+
+
+@app.on_event("shutdown")
+async def _stop_background_tasks() -> None:
+    task = getattr(app.state, "hub_monitor_task", None)
+    if not task:
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
 @app.post("/v1/session/message")
 async def enqueue_message(
     payload: MessagePayload,
@@ -307,14 +496,22 @@ async def enqueue_message(
     metadata = _apply_auth_metadata(payload.metadata, auth_metadata)
 
     session_id = payload.session_id or str(uuid.uuid4())
+    persona_id, hydrated_metadata = await _hydrate_session_envelope(
+        session_id=session_id,
+        requested_persona=payload.persona_id,
+        metadata=metadata,
+        cache=cache,
+        store=store,
+    )
+
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
         "session_id": session_id,
-        "persona_id": payload.persona_id,
+        "persona_id": persona_id,
         "message": payload.message,
         "attachments": payload.attachments,
-        "metadata": metadata,
+        "metadata": hydrated_metadata,
         "role": "user",
     }
 
@@ -322,17 +519,15 @@ async def enqueue_message(
 
     try:
         await bus.publish("conversation.inbound", event)
+        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "success").inc()
     except Exception as exc:  # pragma: no cover - needs live Kafka
         LOGGER.exception("Failed to publish inbound event")
+        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "error").inc()
         raise HTTPException(
             status_code=502, detail="Unable to enqueue message"
         ) from exc
 
-    # Cache most recent metadata for quick lookup.
-    cache_payload = {"persona_id": payload.persona_id or ""}
-    if metadata.get("tenant"):
-        cache_payload["tenant"] = metadata["tenant"]
-    await cache.set(f"session:{session_id}:meta", cache_payload)
+    await _persist_session_context(session_id, event["persona_id"], event["metadata"], cache)
     await store.append_event(session_id, {"type": "user", **event})
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
@@ -354,24 +549,34 @@ async def enqueue_quick_action(
     metadata = _apply_auth_metadata(payload.metadata, auth_metadata)
 
     session_id = payload.session_id or str(uuid.uuid4())
+    persona_id, hydrated_metadata = await _hydrate_session_envelope(
+        session_id=session_id,
+        requested_persona=payload.persona_id,
+        metadata={**metadata, "source": "quick_action", "action": payload.action},
+        cache=cache,
+        store=store,
+    )
+
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
         "session_id": session_id,
-        "persona_id": payload.persona_id,
+        "persona_id": persona_id,
         "message": template,
         "attachments": [],
-        "metadata": {**metadata, "source": "quick_action", "action": payload.action},
+        "metadata": hydrated_metadata,
         "role": "user",
     }
 
     validate_event(event, "conversation_event")
 
-    await bus.publish("conversation.inbound", event)
-    cache_payload = {"persona_id": payload.persona_id or ""}
-    if event["metadata"].get("tenant"):
-        cache_payload["tenant"] = event["metadata"]["tenant"]
-    await cache.set(f"session:{session_id}:meta", cache_payload)
+    try:
+        await bus.publish("conversation.inbound", event)
+        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "success").inc()
+    except Exception as exc:  # pragma: no cover - needs live Kafka
+        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "error").inc()
+        raise HTTPException(status_code=502, detail="Unable to enqueue message") from exc
+    await _persist_session_context(session_id, event["persona_id"], event["metadata"], cache)
     await store.append_event(session_id, {"type": "user", **event})
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
@@ -390,14 +595,17 @@ async def websocket_stream(
     session_id: str,
 ) -> None:
     await websocket.accept()
+    ACTIVE_WEBSOCKETS.inc()
     try:
         async for event in stream_events(session_id):
+            STREAMED_EVENTS_COUNTER.labels("websocket").inc()
             await websocket.send_json(event)
     except WebSocketDisconnect:
         LOGGER.info("WebSocket disconnected", extra={"session_id": session_id})
     except Exception:  # pragma: no cover - live streaming only
         LOGGER.exception("WebSocket streaming error")
     finally:
+        ACTIVE_WEBSOCKETS.dec()
         if not websocket.client_state.closed:
             await websocket.close()
 
@@ -405,6 +613,7 @@ async def websocket_stream(
 async def sse_stream(session_id: str) -> AsyncIterator[str]:
     async for event in stream_events(session_id):
         data = json.dumps(event)
+        STREAMED_EVENTS_COUNTER.labels("sse").inc()
         yield f"data: {data}\n\n"
 
 
@@ -484,3 +693,8 @@ async def health_check(
     await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
 
     return JSONResponse({"status": overall_status, "components": components})
+
+
+@app.get("/metrics")
+def metrics_endpoint() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
