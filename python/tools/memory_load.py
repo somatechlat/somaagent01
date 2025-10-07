@@ -67,6 +67,7 @@ class MemoryLoad(Tool):
                 continue
 
             message: str | None = None
+            # Prefer explicit content fields in payload
             if payload:
                 content = payload.get("content")
                 if isinstance(content, str) and content.strip():
@@ -76,12 +77,20 @@ class MemoryLoad(Tool):
                     if isinstance(text, str) and text.strip():
                         message = text.strip()
             else:
+                # Fallback to top‑level content fields
                 content = entry.get("content")
                 if isinstance(content, str) and content.strip():
                     message = content.strip()
 
-            if not message and payload:
-                message = str(payload)
+            # Additional fallback: use common metadata keys if no explicit content
+            if not message:
+                for key in ["fact", "summary", "value", "title", "text"]:
+                    val = entry.get(key)
+                    if isinstance(val, str) and val.strip():
+                        message = val.strip()
+                        break
+
+            # If still no message, serialize the entry for debugging
             if not message:
                 message = str(entry)
 
@@ -93,6 +102,11 @@ class MemoryLoad(Tool):
         if not results:
             result = self.agent.read_prompt("fw.memories_not_found.md", query=query)
         else:
+            # Store raw results in conversation context for later use
+            try:
+                self.agent.extras_temporary["memory_load_results"] = results
+            except Exception:
+                pass
             result = "\n\n".join(dict.fromkeys(results))
 
         return Response(message=result, break_loop=False)
