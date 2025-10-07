@@ -334,11 +334,21 @@ function setConnectionStatus(status, components = null) {
     statusIconEl.setAttribute("title", tooltip);
   }
   if (offlineBanner) {
-    // Show banner when not ok
     if (indicatorStatus !== "ok") {
       offlineBanner.classList.remove("hidden");
+      // Show toast notification once when going offline
+      if (!window.__offlineNotified) {
+        notificationStore.frontendWarning(
+          "SomaBrain offline – messages will be saved locally.",
+          "Offline",
+          5
+        );
+        window.__offlineNotified = true;
+      }
     } else {
       offlineBanner.classList.add("hidden");
+      // Reset flag when back online
+      window.__offlineNotified = false;
     }
   }
 }

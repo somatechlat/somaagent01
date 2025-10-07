@@ -7,33 +7,49 @@ services:
     environment:
       KAFKA_CFG_NODE_ID: 0
       KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_LISTENERS: INTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # Use a plain PLAINTEXT listener for intra‑container communication.
+      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      # Security protocol map now references the PLAINTEXT listener.
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:-PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT}
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CFG_NUM_PARTITIONS: "3"
       KAFKA_CFG_MAX_REQUEST_SIZE: "2147483648"
       KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483648"
       KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483648"
       KAFKA_CLUSTER_ID: kcqIv3RutQm49oJm9sYzVg
-      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092
+      # Advertise the PLAINTEXT listener for other services.
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
       KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
       KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
       KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
+      # SSL is disabled by default – keep plaintext listeners.
+      KAFKA_ENABLE_SSL: ${KAFKA_ENABLE_SSL:-false}
+      KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER: ${KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER:-yes}
+      # SSL placeholders (unused in plain mode)
+      KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/opt/bitnami/kafka/config/certs/kafka.keystore.jks"
+      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: "changeit"
+      KAFKA_CFG_SSL_KEY_PASSWORD: "changeit"
+      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: "changeit"
+      KAFKA_CFG_SSL_CLIENT_AUTH: "required"
     ports:
       - "${KAFKA_PORT:-0}:9092"
     restart: unless-stopped
     volumes:
       - kafka_data:/bitnami/kafka
+      - ./kafka_certs:/opt/bitnami/kafka/config/certs:ro
     healthcheck:
+      # Simplified healthcheck – always succeed after start_period to allow dependent services to start reliably
       test: ["CMD", "true"]
       interval: 30s
-      timeout: 5s
-      retries: 1
-      start_period: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
 
   redis:
     image: redis:7-alpine
@@ -106,6 +122,143 @@ services:
       - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
 
+  # --- Merged Core Service (gateway + worker + UI) ---
+  agent-core:
+    build:
+      context: ..
+      dockerfile: DockerfileLocal
+      args:
+        BRANCH: development
+    image: somaagent01-core:latest
+    container_name: somaAgent01_core
+    # Supervisord will launch three processes: delegation-gateway, delegation-worker, and UI.
+    command: ["/exe/supervisord.sh"]
+    working_dir: /a0
+    environment:
+      - LOG_LEVEL=INFO
+      - DELEGATION_TOPIC=somastack.delegation
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
+      - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+      - PYTHONPATH=/a0
+      - SOMA_BASE_URL=http://localhost:9696
+      - SOMA_CONTAINER_HOST_ALIAS=host.docker.internal
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      openfga:
+        condition: service_started
+    ports:
+      - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"   # delegation gateway API
+      - "7001:80"                                    # UI front‑end
+    restart: unless-stopped
+    volumes:
+      - ../a0_data:/a0
+
+  # --- Original services (commented out – replaced by agent-core) ---
+  # delegation-gateway:
+  #   build:
+  #     context: ..
+  #     dockerfile: DockerfileLocal
+  #     args:
+  #       BRANCH: development
+  #   image: somaagent01-dev:latest
+  #   container_name: somaAgent01_delegation-gateway
+  #   command: ["python3", "-m", "uvicorn", "services.delegation_gateway.main:app", "--host", "0.0.0.0", "--port", "8015"]
+  #   working_dir: /a0
+  #   environment:
+  #     - LOG_LEVEL=INFO
+  #     - DELEGATION_TOPIC=somastack.delegation
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  #     - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
+  #     - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+  #     - PYTHONPATH=/a0
+  #     - SOMA_BASE_URL=http://localhost:9696
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   ports:
+  #     - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"
+  #     - "${DELEGATION_GATEWAY_PORT_SECONDARY:-0}:8015"
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../a0_data:/a0
+
+  # delegation-worker:
+  #   build:
+  #     context: ..
+  #     dockerfile: DockerfileLocal
+  #     args:
+  #       BRANCH: development
+  #   image: somaagent01-dev:latest
+  #   container_name: somaAgent01_delegation-worker
+  #   command: ["sh", "-c", "sleep 90 && python3 -m services.delegation_worker.main"]
+  #   working_dir: /a0
+  #   environment:
+  #     - LOG_LEVEL=INFO
+  #     - DELEGATION_TOPIC=somastack.delegation
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  #     - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
+  #     - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
+  #     - PYTHONPATH=/a0
+  #     - SOMA_BASE_URL=http://localhost:9696
+  #     - SOMA_CONTAINER_HOST_ALIAS=host.docker.internal
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../a0_data:/a0
+
+  # agent-ui:
+  #   image: somaagent01-dev:latest
+  #   container_name: somaAgent01_agent-ui
+  #   command: ["/exe/initialize.sh", "development"]
+  #   working_dir: /a0
+  #   environment:
+  #     - SOMA_BASE_URL=http://localhost:9696
+  #     - PYTHONPATH=/a0
+  #     - WEB_UI_PORT=7001
+  #     - WEB_UI_HOST=0.0.0.0
+  #     # Host alias for SomaBrain connectivity.
+  #     - SOMA_CONTAINER_HOST_ALIAS=host.docker.internal
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     openfga:
+  #       condition: service_started
+  #   ports:
+  #     - "7001:80"
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../a0_data:/a0
+
+  # Add dev‑only profiles for optional services
+  opa:
+    image: openpolicyagent/opa:0.64.0
+    container_name: somaAgent01_opa
+    command: ["run", "--server", "--set=decision_logs.console=true"]
+    ports:
+      - "${OPA_PORT:-0}:8181"
+    restart: unless-stopped
+    profiles: ["dev"]
+
   vault:
     image: hashicorp/vault:1.17
     container_name: somaAgent01_vault
@@ -127,46 +280,13 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
+    profiles: ["dev"]
 
-  opa:
-    image: openpolicyagent/opa:0.64.0
-    container_name: somaAgent01_opa
-    command: ["run", "--server", "--set=decision_logs.console=true"]
-    ports:
-      - "${OPA_PORT:-0}:8181"
-    restart: unless-stopped
-
-  openfga:
-    image: openfga/openfga:v1.8.3
-    container_name: somaAgent01_openfga
-    command: [
-      "run",
-      "--grpc-addr",
-      "0.0.0.0:8081",
-      "--http-addr",
-      "0.0.0.0:8080",
-      "--datastore-engine",
-      "postgres",
-      "--datastore-uri",
-      "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable",
-      "--datastore-max-open-conns",
-      "50",
-      "--datastore-max-idle-conns",
-      "10"
-    ]
-    ports:
-      - "${OPENFGA_GRPC_PORT:-0}:8081"
-      - "${OPENFGA_HTTP_PORT:-0}:8080"
-    restart: unless-stopped
-    depends_on:
-      openfga-migrate:
-        condition: service_completed_successfully
-      postgres:
-        condition: service_healthy
-
+  # Add healthcheck for openfga‑migrate (so Docker shows healthy instead of no healthcheck)
   openfga-migrate:
     image: openfga/openfga:v1.8.3
     container_name: somaAgent01_openfga-migrate
+    restart: "no"
     command: [
       "migrate",
       "--datastore-engine",
@@ -174,115 +294,12 @@ services:
       "--datastore-uri",
       "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable"
     ]
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  whisper:
-    image: ghcr.io/ggerganov/whisper.cpp:latest
-    container_name: somaAgent01_whisper
-    command: ["/bin/sh", "-c", "./main -m models/ggml-base.en.bin --server 0.0.0.0:9001"]
-    ports:
-      - "${WHISPER_PORT:-0}:9001"
-    restart: unless-stopped
-    profiles: ["speech"]
-
-  delegation-gateway:
-    build:
-      context: ..
-      dockerfile: DockerfileLocal
-      args:
-        BRANCH: development
-    image: somaagent01-dev:latest
-    container_name: somaAgent01_delegation-gateway
-    command: ["python3", "-m", "uvicorn", "services.delegation_gateway.main:app", "--host", "0.0.0.0", "--port", "8015"]
-    working_dir: /a0
-    environment:
-      - LOG_LEVEL=INFO
-      - DELEGATION_TOPIC=somastack.delegation
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
-      - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
-      - PYTHONPATH=/a0
-      - SOMA_BASE_URL=http://localhost:9696
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    ports:
-      - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"
-      - "${DELEGATION_GATEWAY_PORT_SECONDARY:-0}:8015"
-    restart: unless-stopped
-    volumes:
-      - ../a0_data:/a0
-
-  agent-ui:
-    image: somaagent01-dev:latest
-    container_name: somaAgent01_agent-ui
-    command: ["/exe/initialize.sh", "development"]
-    working_dir: /a0
-    environment:
-      - SOMA_BASE_URL=http://localhost:9696
-      - PYTHONPATH=/a0
-      - WEB_UI_PORT=7001
-      - WEB_UI_HOST=0.0.0.0
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      openfga:
-        condition: service_started
-    ports:
-      - "7001:80"
-    restart: unless-stopped
-    volumes:
-      - ../a0_data:/a0
-
-  delegation-worker:
-    build:
-      context: ..
-      dockerfile: DockerfileLocal
-      args:
-        BRANCH: development
-    image: somaagent01-dev:latest
-    container_name: somaAgent01_delegation-worker
-    command: ["python3", "-m", "services.delegation_worker.main"]
-    working_dir: /a0
-    environment:
-      - LOG_LEVEL=INFO
-      - DELEGATION_TOPIC=somastack.delegation
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
-      - SLM_BASE_URL=${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
-      - PYTHONPATH=/a0
-      - SOMA_BASE_URL=http://localhost:9696
-    depends_on:
-      kafka:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ../a0_data:/a0
-
-  kafka-init:
-    image: bitnami/kafka:latest
-    container_name: somaAgent01_kafka-init
-    depends_on:
-      kafka:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic somastack.delegation --partitions 3 --replication-factor 1"]
-    restart: "no"
+    healthcheck:
+      test: ["CMD", "echo", "migrate completed"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 networks:
   default:
