@@ -1,5 +1,7 @@
 x-agent-env: &agent-env
   PYTHONPATH: /a0
+  PATH: /opt/venv-a0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  VIRTUAL_ENV: /opt/venv-a0
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   KAFKA_SECURITY_PROTOCOL: PLAINTEXT
@@ -56,6 +58,7 @@ services:
   kafka:
     image: bitnami/kafka:latest
     container_name: somaAgent01_kafka
+    profiles: ["core"]
     environment:
       KAFKA_CFG_NODE_ID: 0
       KAFKA_CFG_PROCESS_ROLES: broker,controller
@@ -94,6 +97,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: somaAgent01_redis
+    profiles: ["core"]
     command: ["redis-server", "--save", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-0}:6379"
@@ -109,6 +113,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaAgent01_postgres
+    profiles: ["core"]
     environment:
       - POSTGRES_USER=soma
       - POSTGRES_PASSWORD=soma
@@ -216,6 +221,7 @@ services:
     image: openfga/openfga:v1.8.3
     container_name: somaAgent01_openfga-migrate
     restart: "no"
+    profiles: ["optional"]
     command:
       [
         "migrate",
@@ -224,13 +230,11 @@ services:
         "--datastore-uri",
         "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable",
       ]
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   delegation:
     <<: *agent-service
     container_name: somaAgent01_delegation
+    profiles: ["optional"]
     command: ["/usr/bin/supervisord","-c","/etc/supervisor/conf.d/delegation.conf"]
     working_dir: /a0
     environment:
@@ -269,6 +273,7 @@ services:
       dockerfile: docker/openfga/Dockerfile
     image: somaagent01-openfga:latest
     container_name: somaAgent01_openfga
+    profiles: ["optional"]
     environment:
       - OPENFGA_GRPC_ADDR=0.0.0.0:8081
       - OPENFGA_HTTP_ADDR=0.0.0.0:8080
@@ -298,6 +303,7 @@ services:
     container_name: somaAgent01_agent-ui
     command: ["/exe/initialize.sh", "development"]
     working_dir: /a0
+    profiles: ["dev"]
     environment:
       SOMA_BASE_URL: http://host.docker.internal:9696
       SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
@@ -321,6 +327,7 @@ services:
   gateway:
     <<: *agent-service
     container_name: somaAgent01_gateway
+    profiles: ["core"]
     command:
       [
         "python3",
@@ -338,24 +345,48 @@ services:
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
     ports:
       - "${GATEWAY_PORT:-8010}:8010"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   conversation-worker:
     <<: *agent-service
     container_name: somaAgent01_conversation-worker
+    profiles: ["core"]
     command: ["python3", "-m", "services.conversation_worker.main"]
     environment:
       <<: *agent-env
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   tool-executor:
     <<: *agent-service
     container_name: somaAgent01_tool-executor
+    profiles: ["core"]
     command: ["python3", "-m", "services.tool_executor.main"]
     environment:
       <<: *agent-env
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   settings-service:
     <<: *agent-service
     container_name: somaAgent01_settings-service
+    profiles: ["core"]
     command:
       [
         "python3",
@@ -372,30 +403,18 @@ services:
       PORT: "8011"
     ports:
       - "${SETTINGS_PORT:-8011}:8011"
-
-  requeue-service:
-    <<: *agent-service
-    container_name: somaAgent01_requeue-service
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.requeue_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8012",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8012"
-    ports:
-      - "${REQUEUE_PORT:-8012}:8012"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   router:
     <<: *agent-service
     container_name: somaAgent01_router
+    profiles: ["core"]
     command:
       [
         "python3",
@@ -412,30 +431,18 @@ services:
       PORT: "8013"
     ports:
       - "${ROUTER_PORT:-8013}:8013"
-
-  canvas-service:
-    <<: *agent-service
-    container_name: somaAgent01_canvas-service
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.canvas_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8014",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8014"
-    ports:
-      - "${CANVAS_PORT:-8014}:8014"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   audio-service:
     <<: *agent-service
     container_name: somaAgent01_audio-service
+    profiles: ["optional"]
     command:
       [
         "python3",
@@ -455,15 +462,79 @@ services:
       WHISPER_COMPUTE: ${WHISPER_COMPUTE:-int8}
     ports:
       - "${AUDIO_PORT:-8016}:8016"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  canvas-service:
+    <<: *agent-service
+    container_name: somaAgent01_canvas-service
+    profiles: ["optional"]
+    command:
+      [
+        "python3",
+        "-m",
+        "uvicorn",
+        "services.canvas_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8014",
+      ]
+    environment:
+      <<: *agent-env
+      PORT: "8014"
+    ports:
+      - "${CANVAS_PORT:-8014}:8014"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   scoring-job:
     <<: *agent-service
     container_name: somaAgent01_scoring-job
+    profiles: ["optional"]
     command: ["python3", "-m", "services.scoring_job.main"]
     environment:
       <<: *agent-env
       SCORING_INTERVAL_SECONDS: ${SCORING_INTERVAL_SECONDS:-3600}
       SCORING_WINDOW_HOURS: ${SCORING_WINDOW_HOURS:-6}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  requeue-service:
+    <<: *agent-service
+    container_name: somaAgent01_requeue-service
+    profiles: ["optional"]
+    command:
+      [
+        "python3",
+        "-m",
+        "uvicorn",
+        "services.requeue_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8012",
+      ]
+    environment:
+      <<: *agent-env
+      PORT: "8012"
+    ports:
+      - "${REQUEUE_PORT:-8012}:8012"
 
 networks:
   default:

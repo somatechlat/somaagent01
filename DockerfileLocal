@@ -58,6 +58,9 @@ RUN python3 -m pip install --break-system-packages jsonschema
 # Install Prometheus client library for metrics exposition
 RUN python3 -m pip install --break-system-packages prometheus-client
 
+# Install PyJWT (required by gateway)
+RUN python3 -m pip install --break-system-packages "PyJWT>=2.9.0"
+
 # Expose ports
 EXPOSE 22 80 9000-9009
 
