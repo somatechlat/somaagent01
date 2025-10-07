@@ -24,6 +24,7 @@ This runbook summarises day-2 operations for the core SomaAgent services across 
 | Budget hard-stop | Users receive “Token budget exceeded” immediately | Inspect `conf/tenants.yaml` for budget overrides | Adjust limits and redeploy, confirm Redis counters reset |
 | Delegation backlog | `delegation_tasks` status stuck in `queued` | Confirm worker running; check downstream processors | Manually replay tasks via `UPDATE` or re-enqueue |
 | Canvas disconnects | UI canvas badge turns amber | Check `/v1/canvas/{session}/stream` connectivity | Restart canvas service, refresh UI |
+| SomaClient event-loop binding error | Gateway or worker logs show `RuntimeError: Event loop is closed` or `Event bound to a different loop`; outbound memory calls stall | Rebuild the shared image `docker compose -f infra/docker-compose.somaagent01.yaml build delegation-gateway delegation-worker agent-ui` and redeploy the trio; ensure `.venv` pulls the patched `SomaClient` | Run the multi-loop probe:<br>`source .venv/bin/activate && python scripts/checks/somaclient_event_loop.py` (prints `ok`) and watch container logs for healthy memory calls |
 
 ## Deployment Playbook
 
