@@ -1,5 +1,11 @@
 name: SomaAgent01
 
+# Base `docker compose up` launches the shared runtime (Kafka, Redis, Postgres,
+# OpenFGA/OPA, gateway, conversation worker, tool executor). Enable additional
+# services by setting `COMPOSE_PROFILES=dev` for local tooling or
+# `COMPOSE_PROFILES=prod` for production-facing APIs before running Compose.
+# Grafana is intentionally excluded until the custom visualization stack is ready.
+
 x-agent-env: &agent-env
   PYTHONPATH: /a0
   LOG_LEVEL: INFO
@@ -26,6 +32,15 @@ x-agent-env: &agent-env
   SOMA_BASE_URL: http://host.docker.internal:9696
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
+  CONVERSATION_METRICS_PORT: ${CONVERSATION_METRICS_PORT:-9301}
+  CONVERSATION_METRICS_HOST: 0.0.0.0
+  TOOL_EXECUTOR_METRICS_PORT: ${TOOL_EXECUTOR_METRICS_PORT:-9401}
+  TOOL_EXECUTOR_METRICS_HOST: 0.0.0.0
+  SOMA_AGENT_HUB_URL: http://host.docker.internal:60000
+  SOMA_AGENT_HUB_OPENAPI_PATH: /openapi.json
+  SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS: ${SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS:-60}
+  SOMA_AGENT_HUB_TIMEOUT_SECONDS: ${SOMA_AGENT_HUB_TIMEOUT_SECONDS:-3}
+  SOMA_AGENT_HUB_MONITOR_ENABLED: ${SOMA_AGENT_HUB_MONITOR_ENABLED:-true}
 
 x-agent-depends: &agent-depends
   kafka:
@@ -131,6 +146,7 @@ services:
       start_period: 40s
 
   qdrant:
+    profiles: ["dev", "prod"]
     image: qdrant/qdrant:v1.11.0
     container_name: somaAgent01_qdrant
     ports:
@@ -141,6 +157,7 @@ services:
       - qdrant_data:/qdrant/storage
 
   clickhouse:
+    profiles: ["prod"]
     image: clickhouse/clickhouse-server:24.8
     container_name: somaAgent01_clickhouse
     environment:
@@ -153,6 +170,7 @@ services:
       - clickhouse_data:/var/lib/clickhouse
 
   prometheus:
+    profiles: ["dev", "prod"]
     image: prom/prometheus:v2.53.0
     container_name: somaAgent01_prometheus
     command: ["--config.file=/etc/prometheus/prometheus.yml"]
@@ -164,24 +182,9 @@ services:
       - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
 
-  grafana:
-    image: grafana/grafana:11.3.0
-    container_name: somaAgent01_grafana
-    environment:
-      - GF_SECURITY_DISABLE_INITIAL_ADMIN_PASSWORD=true
-      - GF_USERS_DEFAULT_THEME=system
-    ports:
-      - "${GRAFANA_PORT:-0}:3000"
-    restart: unless-stopped
-    depends_on:
-      prometheus:
-        condition: service_started
-    volumes:
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
 
   vault:
+    profiles: ["prod"]
     image: hashicorp/vault:1.17
     container_name: somaAgent01_vault
     command: ["vault", "server", "-config=/vault/config/config.hcl"]
@@ -228,6 +231,7 @@ services:
         condition: service_healthy
 
   delegation:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_delegation
     command: ["/usr/bin/supervisord","-c","/etc/supervisor/conf.d/delegation.conf"]
@@ -293,6 +297,7 @@ services:
         condition: service_completed_successfully
 
   agent-ui:
+    profiles: ["dev"]
     <<: *agent-service
     container_name: somaAgent01_agent-ui
     command: ["/exe/initialize.sh", "development"]
@@ -344,6 +349,8 @@ services:
     command: ["python3", "-m", "services.conversation_worker.main"]
     environment:
       <<: *agent-env
+    ports:
+      - "${CONVERSATION_METRICS_PORT:-9301}:9301"
 
   tool-executor:
     <<: *agent-service
@@ -351,8 +358,11 @@ services:
     command: ["python3", "-m", "services.tool_executor.main"]
     environment:
       <<: *agent-env
+    ports:
+      - "${TOOL_EXECUTOR_METRICS_PORT:-9401}:9401"
 
   settings-service:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_settings-service
     command:
@@ -373,6 +383,7 @@ services:
       - "${SETTINGS_PORT:-8011}:8011"
 
   requeue-service:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_requeue-service
     command:
@@ -393,6 +404,7 @@ services:
       - "${REQUEUE_PORT:-8012}:8012"
 
   router:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_router
     command:
@@ -413,6 +425,7 @@ services:
       - "${ROUTER_PORT:-8013}:8013"
 
   canvas-service:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_canvas-service
     command:
@@ -433,6 +446,7 @@ services:
       - "${CANVAS_PORT:-8014}:8014"
 
   audio-service:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_audio-service
     command:
@@ -456,6 +470,7 @@ services:
       - "${AUDIO_PORT:-8016}:8016"
 
   scoring-job:
+    profiles: ["prod"]
     <<: *agent-service
     container_name: somaAgent01_scoring-job
     command: ["python3", "-m", "services.scoring_job.main"]
@@ -477,4 +492,3 @@ volumes:
   clickhouse_data:
   prometheus_data:
   vault_data:
-  grafana_data:

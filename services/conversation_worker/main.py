@@ -30,9 +30,71 @@ from services.common.tenant_config import TenantConfig
 from services.common.escalation import EscalationDecision, decide_escalation
 from services.common.model_costs import estimate_escalation_cost
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
+from prometheus_client import Counter, Histogram, start_http_server
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+
+MESSAGE_PROCESSING_COUNTER = Counter(
+    "conversation_worker_messages_total",
+    "Total number of conversation events processed",
+    labelnames=("result",),
+)
+MESSAGE_LATENCY = Histogram(
+    "conversation_worker_processing_seconds",
+    "Time spent handling conversation events",
+    labelnames=("path",),
+)
+ESCALATION_ATTEMPTS = Counter(
+    "conversation_worker_escalations_total",
+    "Count of escalation attempts",
+    labelnames=("status",),
+)
+
+_METRICS_SERVER_STARTED = False
+
+
+def _compose_outbound_metadata(
+    base: Dict[str, Any] | None,
+    *,
+    source: str,
+    status: str | None = None,
+    analysis: Dict[str, Any] | None = None,
+    extra: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Merge hydrated session metadata into outbound payloads without mutation."""
+
+    merged: Dict[str, Any] = dict(base or {})
+    ingress_source = merged.get("source")
+    if ingress_source and ingress_source != source:
+        merged.setdefault("ingress_source", ingress_source)
+    merged["source"] = source
+    if status is not None:
+        merged["status"] = status
+    if analysis is not None:
+        merged["analysis"] = analysis
+    if extra:
+        merged.update(extra)
+    return merged
+
+
+def ensure_metrics_server() -> None:
+    global _METRICS_SERVER_STARTED
+    if _METRICS_SERVER_STARTED:
+        return
+    metrics_port = int(os.getenv("CONVERSATION_METRICS_PORT", "9301"))
+    if metrics_port <= 0:
+        LOGGER.warning("Metrics server disabled", extra={"port": metrics_port})
+        _METRICS_SERVER_STARTED = True
+        return
+    metrics_host = os.getenv("CONVERSATION_METRICS_HOST", "0.0.0.0")
+    start_http_server(metrics_port, addr=metrics_host)
+    LOGGER.info(
+        "Conversation worker metrics server started",
+        extra={"host": metrics_host, "port": metrics_port},
+    )
+    _METRICS_SERVER_STARTED = True
 
 
 @dataclass
@@ -90,6 +152,7 @@ class ConversationPreprocessor:
 
 class ConversationWorker:
     def __init__(self) -> None:
+        ensure_metrics_server()
         self.settings = {
             "inbound": os.getenv("CONVERSATION_INBOUND", "conversation.inbound"),
             "outbound": os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
@@ -127,6 +190,7 @@ class ConversationWorker:
         messages: List[ChatMessage],
         slm_kwargs: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
+        base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
@@ -139,17 +203,20 @@ class ConversationWorker:
             content_piece = delta.get("content", "")
             if content_piece:
                 buffer.append(content_piece)
+                metadata = _compose_outbound_metadata(
+                    base_metadata,
+                    source="slm",
+                    status="streaming",
+                    analysis=analysis_metadata,
+                    extra={"stream_index": len(buffer)},
+                )
                 streaming_event = {
                     "event_id": str(uuid.uuid4()),
                     "session_id": session_id,
                     "persona_id": persona_id,
                     "role": "assistant",
                     "message": "".join(buffer),
-                    "metadata": {
-                        "source": "slm",
-                        "status": "streaming",
-                        "analysis": analysis_metadata,
-                    },
+                    "metadata": metadata,
                 }
                 await self.bus.publish(self.settings["outbound"], streaming_event)
             finish_reason = choice.get("finish_reason")
@@ -177,6 +244,7 @@ class ConversationWorker:
         messages: List[ChatMessage],
         slm_kwargs: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
+        base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
         try:
             return await self._stream_response(
@@ -185,6 +253,7 @@ class ConversationWorker:
                 messages=messages,
                 slm_kwargs=slm_kwargs,
                 analysis_metadata=analysis_metadata,
+                base_metadata=base_metadata,
             )
         except Exception as exc:
             LOGGER.warning(
@@ -245,9 +314,20 @@ class ConversationWorker:
         )
 
     async def _handle_event(self, event: dict[str, Any]) -> None:
+        start_time = time.perf_counter()
+        path = "unknown"
+        result_label = "success"
+
+        def record_metrics(result: str, path_label: str | None = None) -> None:
+            label = path_label or path
+            duration = time.perf_counter() - start_time
+            MESSAGE_PROCESSING_COUNTER.labels(result).inc()
+            MESSAGE_LATENCY.labels(label).observe(duration)
+
         session_id = event.get("session_id")
         if not session_id:
             LOGGER.warning("Received event without session_id", extra={"event": event})
+            record_metrics("missing_session")
             return
 
         try:
@@ -257,6 +337,7 @@ class ConversationWorker:
                 "Invalid conversation event",
                 extra={"error": exc.message, "event": event},
             )
+            record_metrics("validation_error")
             return
 
         LOGGER.info("Processing message", extra={"session_id": session_id})
@@ -266,6 +347,7 @@ class ConversationWorker:
         enriched_metadata = dict(event.get("metadata", {}))
         enriched_metadata["analysis"] = analysis_dict
         event["metadata"] = enriched_metadata
+        session_metadata = dict(enriched_metadata)
 
         tenant = enriched_metadata.get("tenant", "default")
         persona_id = event.get("persona_id")
@@ -311,6 +393,7 @@ class ConversationWorker:
             }
             validate_event(denial_response, "conversation_event")
             await self.bus.publish(self.settings["outbound"], denial_response)
+            record_metrics("policy_denied", "policy")
             return
 
         await self.store.append_event(session_id, {"type": "user", **event})
@@ -425,6 +508,7 @@ class ConversationWorker:
                 {"type": "assistant", **budget_response},
             )
             await self.bus.publish(self.settings["outbound"], budget_response)
+            record_metrics("budget_limit", "budget")
             return
 
         response_text = ""
@@ -435,6 +519,7 @@ class ConversationWorker:
         escalation_metadata: dict[str, Any] | None = None
 
         if self.escalation_enabled and decision.should_escalate:
+            ESCALATION_ATTEMPTS.labels("attempt").inc()
             try:
                 (
                     response_text,
@@ -462,8 +547,10 @@ class ConversationWorker:
                 )
                 if cost_estimate is not None:
                     escalation_metadata["cost_estimate_usd"] = cost_estimate
+                ESCALATION_ATTEMPTS.labels("success").inc()
             except Exception as exc:
                 path = "slm"
+                result_label = "escalation_error"
                 LOGGER.exception("Escalation LLM invocation failed")
                 error_metadata = {
                     "error": str(exc),
@@ -488,9 +575,10 @@ class ConversationWorker:
                     "fallback_after_error",
                     {**decision.metadata, "error": str(exc)},
                 )
+                ESCALATION_ATTEMPTS.labels("error").inc()
 
         if path == "slm":
-            start_time = time.time()
+            response_start = time.time()
             try:
                 response_text, usage = await self._generate_response(
                     session_id=session_id,
@@ -498,10 +586,12 @@ class ConversationWorker:
                     messages=messages,
                     slm_kwargs=slm_kwargs,
                     analysis_metadata=analysis_dict,
+                    base_metadata=session_metadata,
                 )
             except Exception as exc:
                 LOGGER.exception("SLM request failed")
                 response_text = "I encountered an error while generating a reply."
+                result_label = "generation_error"
                 await self.store.append_event(
                     session_id,
                     {
@@ -511,13 +601,14 @@ class ConversationWorker:
                     },
                 )
                 usage = {"input_tokens": 0, "output_tokens": 0}
-            latency = time.time() - start_time
+            latency = time.time() - response_start
             model_used = slm_kwargs.get("model", self.slm.default_model)
 
         total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
         budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
         if not budget_result.allowed:
             response_text = "Token budget exceeded for this persona/tenant."
+            result_label = "budget_limit"
             await self.skm.publish_progress(
                 ProgressPayload(
                     session_id=session_id,
@@ -580,17 +671,20 @@ class ConversationWorker:
                 "metadata": decision.metadata,
             }
 
+        response_metadata = _compose_outbound_metadata(
+            session_metadata,
+            source=response_source,
+            status="completed",
+            analysis=analysis_dict,
+            extra={"escalation": escalation_payload} if escalation_payload else None,
+        )
         response_event = {
             "event_id": str(uuid.uuid4()),
             "session_id": session_id,
             "persona_id": event.get("persona_id"),
             "role": "assistant",
             "message": response_text,
-            "metadata": {
-                "source": response_source,
-                "analysis": analysis_dict,
-                "escalation": escalation_payload,
-            },
+            "metadata": response_metadata,
         }
 
         validate_event(response_event, "conversation_event")
@@ -599,6 +693,7 @@ class ConversationWorker:
             session_id, {"type": "assistant", **response_event}
         )
         await self.bus.publish(self.settings["outbound"], response_event)
+        record_metrics(result_label, path)
 
 
 async def main() -> None:

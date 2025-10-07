@@ -55,3 +55,12 @@ groups:
         annotations:
           summary: "OPA metrics endpoint unreachable"
           description: "Open Policy Agent has not responded to scrapes for 2 minutes."
+      - alert: SomaAgentHubUnavailable
+        expr: min_over_time(soma_agent_hub_up[1m]) < 1
+        for: 1m
+        labels:
+          severity: critical
+          service: soma-agent-hub
+        annotations:
+          summary: "SomaAgentHub OpenAPI endpoint unreachable"
+          description: "Gateway probes to the SomaAgentHub OpenAPI endpoint have failed for at least 1 minute."
