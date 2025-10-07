@@ -37,29 +37,40 @@ class SchedulerTaskRun(ApiHandler):
         if task.state == TaskState.RUNNING:
             # Return task details along with error for better frontend handling
             serialized_task = scheduler.serialize_task(task_id)
-            self._printer.error(f"SchedulerTaskRun: Task '{task_id}' is in state '{task.state}' and cannot be run")
+            self._printer.error(
+                f"SchedulerTaskRun: Task '{task_id}' is in state '{task.state}' and cannot be run"
+            )
             return {
                 "error": f"Task '{task_id}' is in state '{task.state}' and cannot be run",
-                "task": serialized_task
+                "task": serialized_task,
             }
 
         # Run the task, which now includes atomic state checks and updates
         try:
             await scheduler.run_task_by_uuid(task_id)
-            self._printer.print(f"SchedulerTaskRun: Task '{task_id}' started successfully")
+            self._printer.print(
+                f"SchedulerTaskRun: Task '{task_id}' started successfully"
+            )
             # Get updated task after run starts
             serialized_task = scheduler.serialize_task(task_id)
             if serialized_task:
                 return {
                     "success": True,
                     "message": f"Task '{task_id}' started successfully",
-                    "task": serialized_task
+                    "task": serialized_task,
                 }
             else:
-                return {"success": True, "message": f"Task '{task_id}' started successfully"}
+                return {
+                    "success": True,
+                    "message": f"Task '{task_id}' started successfully",
+                }
         except ValueError as e:
-            self._printer.error(f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}")
+            self._printer.error(
+                f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}"
+            )
             return {"error": str(e)}
         except Exception as e:
-            self._printer.error(f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}")
+            self._printer.error(
+                f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}"
+            )
             return {"error": f"Failed to run task '{task_id}': {str(e)}"}

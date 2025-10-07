@@ -3,11 +3,10 @@ from dataclasses import dataclass
 import shlex
 import time
 from python.helpers.tool import Tool, Response
-from python.helpers import files, rfc_exchange
+from python.helpers import rfc_exchange
 from python.helpers.print_style import PrintStyle
 from python.helpers.shell_local import LocalInteractiveSession
 from python.helpers.shell_ssh import SSHInteractiveSession
-from python.helpers.docker import DockerContainerManager
 from python.helpers.strings import truncate_text as truncate_text_string
 from python.helpers.messages import truncate_text as truncate_text_agent
 import re
@@ -74,12 +73,17 @@ class CodeExecution(Tool):
         return f"icon://terminal {session_text}{text}"
 
     async def after_execution(self, response, **kwargs):
-        self.agent.hist_add_tool_result(self.name, response.message, **(response.additional or {}))
+        self.agent.hist_add_tool_result(
+            self.name, response.message, **(response.additional or {})
+        )
 
     async def prepare_state(self, reset=False, session: int | None = None):
         self.state: State | None = self.agent.get_data("_cet_state")
         # always reset state when ssh_enabled changes
-        if not self.state or self.state.ssh_enabled != self.agent.config.code_exec_ssh_enabled:
+        if (
+            not self.state
+            or self.state.ssh_enabled != self.agent.config.code_exec_ssh_enabled
+        ):
             # initialize shells dictionary if not exists
             shells: dict[int, LocalInteractiveSession | SSHInteractiveSession] = {}
         else:
@@ -116,7 +120,9 @@ class CodeExecution(Tool):
             shells[session] = shell
             await shell.connect()
 
-        self.state = State(shells=shells, ssh_enabled=self.agent.config.code_exec_ssh_enabled)
+        self.state = State(
+            shells=shells, ssh_enabled=self.agent.config.code_exec_ssh_enabled
+        )
         self.agent.set_data("_cet_state", self.state)
         return self.state
 
@@ -372,5 +378,7 @@ class CodeExecution(Tool):
         output = re.sub(r"(?<!\\)\\x[0-9A-Fa-f]{2}", "", output)
         # Strip every line of output before truncation
         output = "\n".join(line.strip() for line in output.splitlines())
-        output = truncate_text_agent(agent=self.agent, output=output, threshold=1000000) # ~1MB, larger outputs should be dumped to file, not read from terminal
+        output = truncate_text_agent(
+            agent=self.agent, output=output, threshold=1000000
+        )  # ~1MB, larger outputs should be dumped to file, not read from terminal
         return output

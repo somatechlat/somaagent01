@@ -1,4 +1,5 @@
 """Audio ingestion and transcription service for SomaAgent 01."""
+
 from __future__ import annotations
 
 import base64
@@ -88,7 +89,9 @@ async def transcribe_audio(
         validate_event(conversation_event, "conversation_event")
     except ValidationError as exc:  # pragma: no cover - validation failure unlikely
         LOGGER.error("Invalid conversation event", extra={"error": exc.message})
-        raise HTTPException(status_code=500, detail="Conversation event validation failed") from exc
+        raise HTTPException(
+            status_code=500, detail="Conversation event validation failed"
+        ) from exc
 
     await bus.publish("conversation.inbound", conversation_event)
     await bus.publish("audio.metrics", audio_metrics)

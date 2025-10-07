@@ -34,5 +34,5 @@ class NotificationsMarkRead(ApiHandler):
         return {
             "success": True,
             "marked_count": marked_count,
-            "message": f"Marked {marked_count} notifications as read"
+            "message": f"Marked {marked_count} notifications as read",
         }

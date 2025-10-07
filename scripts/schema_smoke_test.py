@@ -3,6 +3,7 @@
 Run locally with:
     python scripts/schema_smoke_test.py
 """
+
 from __future__ import annotations
 
 import importlib.util

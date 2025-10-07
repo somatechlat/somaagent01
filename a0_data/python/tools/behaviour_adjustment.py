@@ -52,7 +52,7 @@ async def update_behaviour(agent: Agent, log_item: LogItem, adjustments: str):
 
 
 def get_custom_rules_file(agent: Agent):
-    return memory.get_memory_subdir_abs(agent) + f"/behaviour.md"
+    return memory.get_memory_subdir_abs(agent) + "/behaviour.md"
 
 
 def read_rules(agent: Agent):

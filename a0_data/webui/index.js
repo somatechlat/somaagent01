@@ -327,10 +327,27 @@ function setConnectionStatus(status, components = null) {
   }
 
   const statusIconEl = document.getElementById("status-indicator");
+  const offlineBanner = document.getElementById("offline-banner");
   if (statusIconEl) {
     statusIconEl.dataset.status = indicatorStatus;
     const tooltip = formatHealthTooltip(components, indicatorStatus);
     statusIconEl.setAttribute("title", tooltip);
+  }
+  if (offlineBanner) {
+    if (indicatorStatus !== "ok") {
+      offlineBanner.classList.remove("hidden");
+      if (!window.__offlineNotified) {
+        notificationStore.frontendWarning(
+          "SomaBrain offline – messages will be saved locally.",
+          "Offline",
+          5
+        );
+        window.__offlineNotified = true;
+      }
+    } else {
+      offlineBanner.classList.add("hidden");
+      window.__offlineNotified = false;
+    }
   }
 }
 

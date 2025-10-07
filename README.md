@@ -11,6 +11,7 @@
 [Introduction](#a-personal-organic-agentic-framework-that-grows-and-learns-with-you) •
 [Installation](./docs/installation.md) •
 [Development](./docs/development.md) •
+[SomaAgent01 Docker Stack](./docs/development/somaagent01_docker_compose.md) •
 [Extensibility](./docs/extensibility.md) •
 [Connectivity](./docs/connectivity.md) •
 [How to update](./docs/installation.md#how-to-update-agent-zero) •
@@ -126,6 +127,17 @@ docker run -p 50001:80 agent0ai/agent-zero
 
 # Visit http://localhost:50001 to start
 ```
+
+### 🧰 Local SomaAgent01 stack via Docker Compose
+
+The repository now includes a turnkey Compose definition that boots the complete SomaAgent01 environment—Kafka, Redis, Postgres, OpenFGA, OPA, delegation services, background workers, and the Agent UI—inside Docker. Use the root `docker-compose.somaagent01.yaml` for developer workflows, or the mirrored file in `infra/docker-compose.somaagent01.yaml` when running infrastructure automation from the `infra/` directory.
+
+```bash
+docker compose -f docker-compose.somaagent01.yaml build
+docker compose -f docker-compose.somaagent01.yaml up
+```
+
+Once the stack is healthy you can reach the Agent UI at `http://localhost:7001`, the delegation gateway on port `8010`, and supporting services (settings, router, canvas, requeue, audio) on ports `8011-8016`. The compose files automatically set `host.docker.internal` for intra-host callbacks, so no extra networking tweaks are required on macOS or Windows.
 
 ## 🐳 Fully Dockerized, with Speech-to-Text and TTS
 

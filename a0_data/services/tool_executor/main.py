@@ -1,4 +1,5 @@
 """Tool executor service for SomaAgent 01."""
+
 from __future__ import annotations
 
 import asyncio
@@ -102,7 +103,9 @@ class ToolExecutor:
         try:
             result = await self.execution_engine.execute(tool, args, default_limits())
         except ToolExecutionError as exc:
-            LOGGER.error("Tool execution failed", extra={"tool": tool_name, "error": str(exc)})
+            LOGGER.error(
+                "Tool execution failed", extra={"tool": tool_name, "error": str(exc)}
+            )
             await self._publish_result(
                 event,
                 status="error",
@@ -153,7 +156,9 @@ class ToolExecutor:
             )
             return
 
-        await self.store.append_event(event.get("session_id", "unknown"), {"type": "tool", **result_event})
+        await self.store.append_event(
+            event.get("session_id", "unknown"), {"type": "tool", **result_event}
+        )
         await self.bus.publish(self.settings["results"], result_event)
 
         tenant_meta = result_event.get("metadata", {})
@@ -180,7 +185,10 @@ class ToolExecutor:
             persona_id=persona_id,
             action="tool.execute",
             resource=tool_name,
-            context={"args": event.get("args", {}), "metadata": event.get("metadata", {})},
+            context={
+                "args": event.get("args", {}),
+                "metadata": event.get("metadata", {}),
+            },
         )
         try:
             return await self.policy.evaluate(request)

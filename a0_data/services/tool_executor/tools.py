@@ -1,4 +1,5 @@
 """Minimal tool implementations for SomaAgent 01."""
+
 from __future__ import annotations
 
 import asyncio
@@ -145,7 +146,9 @@ class CanvasAppendTool(BaseTool):
             "metadata": metadata,
             "persona_id": persona_id,
         }
-        async with httpx.AsyncClient(timeout=float(os.getenv("CANVAS_SERVICE_TIMEOUT", "5"))) as client:
+        async with httpx.AsyncClient(
+            timeout=float(os.getenv("CANVAS_SERVICE_TIMEOUT", "5"))
+        ) as client:
             response = await client.post(endpoint, json=payload)
             response.raise_for_status()
         return {"status": "queued", "pane": pane}

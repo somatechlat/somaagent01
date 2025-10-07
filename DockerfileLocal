@@ -55,6 +55,9 @@ RUN python3 -m pip install --break-system-packages "redis>=5.0"
 # Install jsonschema for event validation
 RUN python3 -m pip install --break-system-packages jsonschema
 
+# Install Prometheus client library for metrics exposition
+RUN python3 -m pip install --break-system-packages prometheus-client
+
 # Expose ports
 EXPOSE 22 80 9000-9009
 

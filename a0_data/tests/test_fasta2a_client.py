@@ -3,7 +3,9 @@
 Test script to verify FastA2A agent card routing and authentication.
 """
 
-import sys, os
+import sys
+import os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -27,7 +29,7 @@ def get_test_urls():
             "token_based": f"{base_url}/a2a/t-{token}/.well-known/agent.json",
             "bearer_auth": f"{base_url}/a2a/.well-known/agent.json",
             "api_key_header": f"{base_url}/a2a/.well-known/agent.json",
-            "api_key_query": f"{base_url}/a2a/.well-known/agent.json?api_key={token}"
+            "api_key_query": f"{base_url}/a2a/.well-known/agent.json?api_key={token}",
         }
 
         return {"token": token, "urls": urls}

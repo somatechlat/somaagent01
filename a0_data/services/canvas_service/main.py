@@ -1,11 +1,12 @@
 """Canvas service scaffold for SomaAgent 01."""
+
 from __future__ import annotations
 
 import logging
 import os
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
 from services.common.session_repository import PostgresSessionStore

@@ -1,4 +1,5 @@
 """Conversation worker for SomaAgent 01."""
+
 from __future__ import annotations
 
 import asyncio
@@ -55,9 +56,13 @@ class ConversationPreprocessor:
 
         if not text:
             intent = "empty"
-        elif lower.startswith(("how", "what", "why", "when", "where", "who")) or text.endswith("?"):
+        elif lower.startswith(
+            ("how", "what", "why", "when", "where", "who")
+        ) or text.endswith("?"):
             intent = "question"
-        elif any(keyword in lower for keyword in ["create", "build", "implement", "write"]):
+        elif any(
+            keyword in lower for keyword in ["create", "build", "implement", "write"]
+        ):
             intent = "action_request"
         elif any(keyword in lower for keyword in ["fix", "bug", "issue", "error"]):
             intent = "problem_report"
@@ -104,10 +109,15 @@ class ConversationWorker:
         self.router = RouterClient()
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
         self.preprocessor = ConversationPreprocessor()
-        self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
-        self.escalation_fallback_enabled = (
-            os.getenv("ESCALATION_FALLBACK_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
-        )
+        self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.escalation_fallback_enabled = os.getenv(
+            "ESCALATION_FALLBACK_ENABLED", "false"
+        ).lower() in {"1", "true", "yes", "on"}
 
     async def _stream_response(
         self,
@@ -145,8 +155,12 @@ class ConversationWorker:
             finish_reason = choice.get("finish_reason")
             chunk_usage = chunk.get("usage")
             if isinstance(chunk_usage, dict):
-                usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                usage["input_tokens"] = int(
+                    chunk_usage.get("prompt_tokens", usage["input_tokens"])
+                )
+                usage["output_tokens"] = int(
+                    chunk_usage.get("completion_tokens", usage["output_tokens"])
+                )
             if finish_reason:
                 break
 
@@ -173,7 +187,10 @@ class ConversationWorker:
                 analysis_metadata=analysis_metadata,
             )
         except Exception as exc:
-            LOGGER.warning("Streaming unavailable, falling back to single response", extra={"error": str(exc)})
+            LOGGER.warning(
+                "Streaming unavailable, falling back to single response",
+                extra={"error": str(exc)},
+            )
             return await self.slm.chat(messages, **slm_kwargs)
 
     async def _invoke_escalation_response(
@@ -236,7 +253,10 @@ class ConversationWorker:
         try:
             validate_event(event, "conversation_event")
         except ValidationError as exc:
-            LOGGER.error("Invalid conversation event", extra={"error": exc.message, "event": event})
+            LOGGER.error(
+                "Invalid conversation event",
+                extra={"error": exc.message, "event": event},
+            )
             return
 
         LOGGER.info("Processing message", extra={"session_id": session_id})
@@ -300,14 +320,20 @@ class ConversationWorker:
         messages: list[ChatMessage] = []
         for item in reversed(history):  # stored newest first
             if item.get("type") == "user":
-                messages.append(ChatMessage(role="user", content=item.get("message", "")))
+                messages.append(
+                    ChatMessage(role="user", content=item.get("message", ""))
+                )
             elif item.get("type") == "assistant":
-                messages.append(ChatMessage(role="assistant", content=item.get("message", "")))
+                messages.append(
+                    ChatMessage(role="assistant", content=item.get("message", ""))
+                )
 
         if not messages or messages[-1].role != "user":
             messages.append(ChatMessage(role="user", content=event.get("message", "")))
 
-        summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
+        summary_tags = (
+            ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
+        )
         analysis_prompt = ChatMessage(
             role="system",
             content=(
@@ -320,8 +346,6 @@ class ConversationWorker:
             ),
         )
         messages.insert(0, analysis_prompt)
-
-
 
         model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
         slm_kwargs: dict[str, Any] = {}
@@ -338,11 +362,21 @@ class ConversationWorker:
         routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
 
         if model_profile and os.getenv("ROUTER_URL"):
-            candidates = [slm_kwargs.get("model", model_profile.model)] if slm_kwargs else [model_profile.model]
+            candidates = (
+                [slm_kwargs.get("model", model_profile.model)]
+                if slm_kwargs
+                else [model_profile.model]
+            )
             if routing_allow:
-                candidates = [candidate for candidate in candidates if candidate in routing_allow]
+                candidates = [
+                    candidate for candidate in candidates if candidate in routing_allow
+                ]
             if routing_deny:
-                candidates = [candidate for candidate in candidates if candidate not in routing_deny]
+                candidates = [
+                    candidate
+                    for candidate in candidates
+                    if candidate not in routing_deny
+                ]
             if candidates:
                 routed = await self.router.route(
                     role="dialogue",
@@ -449,7 +483,11 @@ class ConversationWorker:
                     status="error",
                     metadata=error_metadata,
                 )
-                decision = EscalationDecision(False, "fallback_after_error", {**decision.metadata, "error": str(exc)})
+                decision = EscalationDecision(
+                    False,
+                    "fallback_after_error",
+                    {**decision.metadata, "error": str(exc)},
+                )
 
         if path == "slm":
             start_time = time.time()
@@ -557,7 +595,9 @@ class ConversationWorker:
 
         validate_event(response_event, "conversation_event")
 
-        await self.store.append_event(session_id, {"type": "assistant", **response_event})
+        await self.store.append_event(
+            session_id, {"type": "assistant", **response_event}
+        )
         await self.bus.publish(self.settings["outbound"], response_event)
 
 

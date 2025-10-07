@@ -4,6 +4,7 @@ This service scores available SLM providers based on telemetry and returns
 routing decisions. Currently it supports OSS providers only. When additional
 providers come online, extend the PROVIDERS list.
 """
+
 from __future__ import annotations
 
 import logging

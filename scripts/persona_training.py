@@ -53,7 +53,11 @@ async def post_persona_notes(persona: str, notes: str, repository: str) -> None:
 async def main() -> None:
     args = parser.parse_args()
     if args.command == "start":
-        await call_gateway(args.persona, args.gateway, "Entering training mode under human supervision.")
+        await call_gateway(
+            args.persona,
+            args.gateway,
+            "Entering training mode under human supervision.",
+        )
         print(f"Training session started for persona {args.persona}")
     elif args.command == "close":
         notes = args.notes or "Training session closed. Generate persona package."

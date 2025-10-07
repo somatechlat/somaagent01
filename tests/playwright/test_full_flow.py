@@ -16,6 +16,7 @@ def wait_for_ai_response(page, previous_count):
     messages = page.query_selector_all(selector)
     return messages[-1].inner_text()
 
+
 def test_memory_and_tool_flow(page):
     """End‑to‑end test: save memory, recall it, and use a tool via the UI."""
     # Open the UI
@@ -25,7 +26,7 @@ def test_memory_and_tool_flow(page):
     # Helper to send a message and get response
     def send_and_get(message):
         # Count existing AI messages
-        prev = len(page.query_selector_all('.message-ai, .message-agent-response'))
+        prev = len(page.query_selector_all(".message-ai, .message-agent-response"))
         # Send user message
         chat_input = page.wait_for_selector("#chat-input", timeout=3000)
         chat_input.fill(message)
@@ -53,4 +54,6 @@ def test_memory_and_tool_flow(page):
     with page.expect_download() as download_info:
         page.click("#loadChat")
     download = download_info.value
-    assert download.suggested_filename.endswith('.json'), f"Unexpected download filename: {download.suggested_filename}"
+    assert download.suggested_filename.endswith(
+        ".json"
+    ), f"Unexpected download filename: {download.suggested_filename}"

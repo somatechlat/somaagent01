@@ -11,6 +11,7 @@ class NotificationType(Enum):
     ERROR = "error"
     PROGRESS = "progress"
 
+
 class NotificationPriority(Enum):
     NORMAL = 10
     HIGH = 20
@@ -46,8 +47,16 @@ class NotificationItem:
         return {
             "no": self.no,
             "id": self.id,
-            "type": self.type.value if isinstance(self.type, NotificationType) else self.type,
-            "priority": self.priority.value if isinstance(self.priority, NotificationPriority) else self.priority,
+            "type": (
+                self.type.value
+                if isinstance(self.type, NotificationType)
+                else self.type
+            ),
+            "priority": (
+                self.priority.value
+                if isinstance(self.priority, NotificationPriority)
+                else self.priority
+            ),
             "title": self.title,
             "message": self.message,
             "detail": self.detail,
@@ -76,6 +85,7 @@ class NotificationManager:
         group: str = "",
     ) -> NotificationItem:
         from agent import AgentContext
+
         return AgentContext.get_notification_manager().add_notification(
             type, priority, message, title, detail, display_time, group
         )
@@ -160,5 +170,7 @@ class NotificationManager:
         self.updates = []
         self.guid = str(uuid.uuid4())
 
-    def get_notifications_by_type(self, type: NotificationType) -> list[NotificationItem]:
+    def get_notifications_by_type(
+        self, type: NotificationType
+    ) -> list[NotificationItem]:
         return [n for n in self.notifications if n.type == type]

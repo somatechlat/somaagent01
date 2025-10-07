@@ -8,6 +8,18 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['prometheus:9090']
+  - job_name: 'delegation-gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['delegation:8015']
+  - job_name: 'openfga'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['openfga:2112']
+  - job_name: 'opa'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['opa:8181']
   - job_name: 'kafka'
     static_configs:
       - targets: ['kafka:9092']

@@ -9,6 +9,9 @@ Budgets, routing allowlists, and fail-open behaviour can now be managed via `con
 # Development manual for Agent Zero
 This guide will show you how to setup a local development environment for Agent Zero in a VS Code compatible IDE, including proper debugger.
 
+> [!TIP]
+> Looking for the full SomaAgent01 stack in Docker? Follow the dedicated step-by-step guide in [`docs/development/somaagent01_docker_compose.md`](./development/somaagent01_docker_compose.md).
+
 
 [![Tutorial video](./res/devguide_vid.png)](https://www.youtube.com/watch?v=KE39P4qBjDk)
 

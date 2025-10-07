@@ -1,4 +1,5 @@
 """Session repository abstractions for SomaAgent 01."""
+
 from __future__ import annotations
 
 import json
@@ -58,7 +59,9 @@ class SessionStore(ABC):
     async def append_event(self, session_id: str, event: dict[str, Any]) -> None: ...
 
     @abstractmethod
-    async def list_events(self, session_id: str, limit: int = 100) -> list[dict[str, Any]]: ...
+    async def list_events(
+        self, session_id: str, limit: int = 100
+    ) -> list[dict[str, Any]]: ...
 
 
 class PostgresSessionStore(SessionStore):
@@ -90,7 +93,9 @@ class PostgresSessionStore(SessionStore):
                 json.dumps(event, ensure_ascii=False),
             )
 
-    async def list_events(self, session_id: str, limit: int = 100) -> list[dict[str, Any]]:
+    async def list_events(
+        self, session_id: str, limit: int = 100
+    ) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(

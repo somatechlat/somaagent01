@@ -1,4 +1,5 @@
 """Model scoring job for SomaAgent 01."""
+
 from __future__ import annotations
 
 import asyncio
@@ -51,7 +52,8 @@ class ScoringJob:
                 extra={"window_hours": self.window_hours},
             )
             LOGGER.info(
-                "Updated model score", extra={"model": model, "score": score, "latency": avg_latency}
+                "Updated model score",
+                extra={"model": model, "score": score, "latency": avg_latency},
             )
 
     def _score_model(self, latency: float, tokens: float) -> float:

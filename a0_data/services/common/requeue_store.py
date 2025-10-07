@@ -1,4 +1,5 @@
 """Redis-backed requeue store for blocked policy events."""
+
 from __future__ import annotations
 
 import json
@@ -45,4 +46,6 @@ class RequeueStore:
                 results.append(data)
             else:
                 await self.client.srem(self.keyset, identifier)
-        return sorted(results, key=lambda item: item.get("timestamp", 0.0), reverse=True)
+        return sorted(
+            results, key=lambda item: item.get("timestamp", 0.0), reverse=True
+        )

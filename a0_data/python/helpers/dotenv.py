@@ -10,6 +10,7 @@ KEY_AUTH_PASSWORD = "AUTH_PASSWORD"
 KEY_RFC_PASSWORD = "RFC_PASSWORD"
 KEY_ROOT_PASSWORD = "ROOT_PASSWORD"
 
+
 def load_dotenv():
     _load_dotenv(get_dotenv_file_path(), override=True)
 
@@ -17,9 +18,11 @@ def load_dotenv():
 def get_dotenv_file_path():
     return get_abs_path(".env")
 
+
 def get_dotenv_value(key: str, default: Any = None):
-    # load_dotenv()       
+    # load_dotenv()
     return os.getenv(key, default)
+
 
 def save_dotenv_value(key: str, value: str):
     if value is None:

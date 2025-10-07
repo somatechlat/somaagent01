@@ -43,7 +43,7 @@ def run():
             request_handler=NoRequestLoggingWSGIRequestHandler,
             threaded=True,
         )
-        
+
         process.set_server(server)
         # server.log_startup()
         server.serve_forever()

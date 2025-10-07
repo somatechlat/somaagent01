@@ -7,7 +7,15 @@ import socket
 import struct
 from functools import wraps
 import threading
-from flask import Flask, request, Response, session, redirect, url_for, render_template_string
+from flask import (
+    Flask,
+    request,
+    Response,
+    session,
+    redirect,
+    url_for,
+    render_template_string,
+)
 from werkzeug.wrappers.response import Response as BaseResponse
 import initialize
 from python.helpers import files, git, mcp_server, fasta2a_server
@@ -19,6 +27,7 @@ from python.helpers.print_style import PrintStyle
 
 # disable logging
 import logging
+
 logging.getLogger().setLevel(logging.WARNING)
 
 
@@ -26,7 +35,7 @@ logging.getLogger().setLevel(logging.WARNING)
 os.environ["TZ"] = "UTC"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Apply the timezone change
-if hasattr(time, 'tzset'):
+if hasattr(time, "tzset"):
     time.tzset()
 
 # initialize the internal Flask server
@@ -38,7 +47,7 @@ webapp.config.update(
     SESSION_COOKIE_NAME="session",
     SESSION_COOKIE_SAMESITE="Strict",
     SESSION_PERMANENT=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=1)
+    PERMANENT_SESSION_LIFETIME=timedelta(days=1),
 )
 
 lock = threading.Lock()
@@ -80,11 +89,13 @@ def is_loopback_address(address):
                     return False
         return True
 
+
 def requires_api_key(f):
     @wraps(f)
     async def decorated(*args, **kwargs):
         # Use the auth token from settings (same as MCP server)
         from python.helpers.settings import get_settings
+
         valid_api_key = get_settings()["mcp_server_token"]
 
         if api_key := request.headers.get("X-API-KEY"):
@@ -123,6 +134,7 @@ def _get_credentials_hash():
         return None
     return hashlib.sha256(f"{user}:{password}".encode()).hexdigest()
 
+
 # require authentication for handlers
 def requires_auth(f):
     @wraps(f)
@@ -132,12 +144,13 @@ def requires_auth(f):
         if not user_pass_hash:
             return await f(*args, **kwargs)
 
-        if session.get('authentication') != user_pass_hash:
-            return redirect(url_for('login'))
-        
+        if session.get("authentication") != user_pass_hash:
+            return redirect(url_for("login"))
+
         return await f(*args, **kwargs)
 
     return decorated
+
 
 def _csrf_cookie_name():
     return "csrf_token_" + runtime.get_runtime_id()
@@ -156,26 +169,29 @@ def csrf_protect(f):
 
     return decorated
 
+
 @webapp.route("/login", methods=["GET", "POST"])
 async def login():
     error = None
-    if request.method == 'POST':
+    if request.method == "POST":
         user = dotenv.get_dotenv_value("AUTH_LOGIN")
         password = dotenv.get_dotenv_value("AUTH_PASSWORD")
-        
-        if request.form['username'] == user and request.form['password'] == password:
-            session['authentication'] = _get_credentials_hash()
-            return redirect(url_for('serve_index'))
+
+        if request.form["username"] == user and request.form["password"] == password:
+            session["authentication"] = _get_credentials_hash()
+            return redirect(url_for("serve_index"))
         else:
-            error = 'Invalid Credentials. Please try again.'
-            
+            error = "Invalid Credentials. Please try again."
+
     login_page_content = files.read_file("webui/login.html")
     return render_template_string(login_page_content, error=error)
 
+
 @webapp.route("/logout")
 async def logout():
-    session.pop('authentication', None)
-    return redirect(url_for('login'))
+    session.pop("authentication", None)
+    return redirect(url_for("login"))
+
 
 # handle default address, load index
 @webapp.route("/", methods=["GET"])
@@ -193,9 +209,10 @@ async def serve_index():
     index = files.replace_placeholders_text(
         _content=index,
         version_no=gitinfo["version"],
-        version_time=gitinfo["commit_time"]
+        version_time=gitinfo["commit_time"],
     )
     return index
+
 
 def run():
     PrintStyle().print("Initializing framework...")
@@ -289,7 +306,6 @@ def init_a0():
     initialize.initialize_job_loop()
     # preload
     initialize.initialize_preload()
-
 
 
 # run the internal server

@@ -4,6 +4,7 @@ This service exposes the public HTTP/WebSocket surface. It validates
 requests, enqueues events to Kafka, and streams outbound responses back
 to clients. Real deployments should run this behind Kong/Envoy with mTLS.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,12 +17,19 @@ from typing import Annotated, AsyncIterator, Any, Dict
 
 import httpx
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from services.common.event_bus import KafkaEventBus, KafkaSettings, iterate_topic
+from services.common.event_bus import KafkaEventBus, iterate_topic
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 
@@ -50,8 +58,12 @@ def get_session_store() -> PostgresSessionStore:
 
 
 class MessagePayload(BaseModel):
-    session_id: str | None = Field(default=None, description="Conversation context identifier")
-    persona_id: str | None = Field(default=None, description="Persona guiding this session")
+    session_id: str | None = Field(
+        default=None, description="Conversation context identifier"
+    )
+    persona_id: str | None = Field(
+        default=None, description="Persona guiding this session"
+    )
     message: str = Field(..., description="User message")
     attachments: list[str] = Field(default_factory=list)
     metadata: dict[str, str] = Field(default_factory=dict)
@@ -70,16 +82,30 @@ QUICK_ACTIONS: dict[str, str] = {
     "status_report": "Provide a short status report of current progress.",
 }
 
-REQUIRE_AUTH = os.getenv("GATEWAY_REQUIRE_AUTH", "false").lower() in {"true", "1", "yes"}
+REQUIRE_AUTH = os.getenv("GATEWAY_REQUIRE_AUTH", "false").lower() in {
+    "true",
+    "1",
+    "yes",
+}
 JWT_SECRET = os.getenv("GATEWAY_JWT_SECRET")
 JWT_PUBLIC_KEY = os.getenv("GATEWAY_JWT_PUBLIC_KEY")
 JWT_AUDIENCE = os.getenv("GATEWAY_JWT_AUDIENCE")
 JWT_ISSUER = os.getenv("GATEWAY_JWT_ISSUER")
-JWT_ALGORITHMS = [alg.strip() for alg in os.getenv("GATEWAY_JWT_ALGORITHMS", "HS256,RS256").split(",") if alg.strip()]
+JWT_ALGORITHMS = [
+    alg.strip()
+    for alg in os.getenv("GATEWAY_JWT_ALGORITHMS", "HS256,RS256").split(",")
+    if alg.strip()
+]
 JWT_JWKS_URL = os.getenv("GATEWAY_JWKS_URL")
 JWT_JWKS_CACHE_SECONDS = float(os.getenv("GATEWAY_JWKS_CACHE_SECONDS", "300"))
 JWT_LEEWAY = float(os.getenv("GATEWAY_JWT_LEEWAY", "10"))
-JWT_TENANT_CLAIMS = [claim.strip() for claim in os.getenv("GATEWAY_JWT_TENANT_CLAIMS", "tenant,org,customer").split(",") if claim.strip()]
+JWT_TENANT_CLAIMS = [
+    claim.strip()
+    for claim in os.getenv("GATEWAY_JWT_TENANT_CLAIMS", "tenant,org,customer").split(
+        ","
+    )
+    if claim.strip()
+]
 OPA_URL = os.getenv("OPA_URL")
 OPA_DECISION_PATH = os.getenv("OPA_DECISION_PATH", "/v1/data/somastack/allow")
 OPA_TIMEOUT_SECONDS = float(os.getenv("OPA_TIMEOUT_SECONDS", "3"))
@@ -108,7 +134,9 @@ def _extract_scope(claims: Dict[str, Any]) -> str | None:
     return str(scope)
 
 
-def _apply_auth_metadata(metadata: Dict[str, str], auth_ctx: Dict[str, str]) -> Dict[str, str]:
+def _apply_auth_metadata(
+    metadata: Dict[str, str], auth_ctx: Dict[str, str]
+) -> Dict[str, str]:
     merged = dict(metadata)
     for key, value in auth_ctx.items():
         if key not in merged and value is not None:
@@ -171,7 +199,9 @@ async def _resolve_signing_key(header: Dict[str, Any]) -> Any:
     return None
 
 
-async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[str, Any]) -> None:
+async def _evaluate_opa(
+    request: Request, payload: Dict[str, Any], claims: Dict[str, Any]
+) -> None:
     if not OPA_URL:
         return
 
@@ -201,7 +231,9 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
         raise HTTPException(status_code=403, detail="Request blocked by policy")
 
 
-async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
+async def authorize_request(
+    request: Request, payload: Dict[str, Any]
+) -> Dict[str, str]:
     token_required = REQUIRE_AUTH or any([JWT_SECRET, JWT_PUBLIC_KEY, JWT_JWKS_URL])
     auth_header = request.headers.get("authorization")
 
@@ -220,9 +252,13 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
 
         key = await _resolve_signing_key(header)
         if key is None:
-            LOGGER.error("Unable to resolve signing key", extra={"alg": header.get("alg")})
+            LOGGER.error(
+                "Unable to resolve signing key", extra={"alg": header.get("alg")}
+            )
             if token_required:
-                raise HTTPException(status_code=500, detail="Unable to resolve signing key")
+                raise HTTPException(
+                    status_code=500, detail="Unable to resolve signing key"
+                )
             else:
                 raise HTTPException(status_code=401, detail="Signing key unavailable")
 
@@ -257,6 +293,7 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
 
     return auth_metadata
 
+
 @app.post("/v1/session/message")
 async def enqueue_message(
     payload: MessagePayload,
@@ -287,7 +324,9 @@ async def enqueue_message(
         await bus.publish("conversation.inbound", event)
     except Exception as exc:  # pragma: no cover - needs live Kafka
         LOGGER.exception("Failed to publish inbound event")
-        raise HTTPException(status_code=502, detail="Unable to enqueue message") from exc
+        raise HTTPException(
+            status_code=502, detail="Unable to enqueue message"
+        ) from exc
 
     # Cache most recent metadata for quick lookup.
     cache_payload = {"persona_id": payload.persona_id or ""}

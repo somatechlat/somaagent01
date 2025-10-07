@@ -1,13 +1,17 @@
 """Delegation gateway service for SomaAgent 01."""
+
 from __future__ import annotations
 
 import logging
 import os
+import time
 import uuid
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel
+from starlette.responses import Response
 
 from services.common.event_bus import KafkaEventBus
 from services.common.delegation_store import DelegationStore
@@ -16,6 +20,19 @@ LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 app = FastAPI(title="SomaAgent 01 Delegation Gateway")
+
+
+REQUEST_COUNT = Counter(
+    "delegation_gateway_requests_total",
+    "HTTP requests processed by the delegation gateway",
+    ["method", "path", "status"],
+)
+
+REQUEST_LATENCY = Histogram(
+    "delegation_gateway_request_duration_seconds",
+    "Latency of HTTP requests processed by the delegation gateway",
+    ["method", "path"],
+)
 
 
 def get_bus() -> KafkaEventBus:
@@ -42,6 +59,31 @@ class DelegationCallback(BaseModel):
 async def startup_event() -> None:
     store = DelegationStore()
     await store.ensure_schema()
+
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    elapsed = time.perf_counter() - start_time
+
+    route = request.scope.get("route")
+    path = getattr(route, "path", request.url.path)
+
+    REQUEST_LATENCY.labels(request.method, path).observe(elapsed)
+    REQUEST_COUNT.labels(request.method, path, str(response.status_code)).inc()
+
+    return response
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 @app.post("/v1/delegation/task")

@@ -45,7 +45,9 @@ _install_test_stubs()
 
 memory_load_module = importlib.import_module("python.tools.memory_load")
 MemoryLoad = memory_load_module.MemoryLoad
-SomaClientError = importlib.import_module("python.integrations.soma_client").SomaClientError
+SomaClientError = importlib.import_module(
+    "python.integrations.soma_client"
+).SomaClientError
 
 
 class DummyAgent:
