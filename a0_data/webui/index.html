@@ -926,7 +926,6 @@
                                             x-show="editingTask.type === 'adhoc'">
                                             <div class="label-help-wrapper">
                                                 <label class="scheduler-form-label">Token</label>
-                                                <label class="scheduler-form-label">Token</label>
                                                 <div class="scheduler-form-help">Token used to trigger this task
                                                     externally</div>
                                             </div>
@@ -1758,6 +1757,10 @@
             });
         }
     </script>
+
+    <div id="offline-banner" class="offline-banner hidden" style="background-color: orange; color: black; padding: 8px; text-align: center;">
+        ⚠️ SomaBrain offline – messages are being saved locally until connection restores.
+    </div>
 
 </body>
 
