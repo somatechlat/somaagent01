@@ -327,10 +327,19 @@ function setConnectionStatus(status, components = null) {
   }
 
   const statusIconEl = document.getElementById("status-indicator");
+  const offlineBanner = document.getElementById("offline-banner");
   if (statusIconEl) {
     statusIconEl.dataset.status = indicatorStatus;
     const tooltip = formatHealthTooltip(components, indicatorStatus);
     statusIconEl.setAttribute("title", tooltip);
+  }
+  if (offlineBanner) {
+    // Show banner when not ok
+    if (indicatorStatus !== "ok") {
+      offlineBanner.classList.remove("hidden");
+    } else {
+      offlineBanner.classList.add("hidden");
+    }
   }
 }
 
