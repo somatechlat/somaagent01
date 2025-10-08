@@ -360,6 +360,8 @@ services:
     environment:
       <<: *agent-env
       PORT: "8010"
+      CIRCUIT_BREAKER_METRICS_PORT: ${CIRCUIT_BREAKER_METRICS_PORT:-9610}
+      CIRCUIT_BREAKER_METRICS_HOST: "0.0.0.0"
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
     ports:
       - "${GATEWAY_PORT:-8010}:8010"

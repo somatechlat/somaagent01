@@ -103,12 +103,13 @@ agent-zero/
 | OpenFGA | `somaAgent01_openfga` | `${OPENFGA_HTTP_PORT:-8080}` | Relationship-based authorization. |
 | OPA | `somaAgent01_opa` | `${OPA_PORT:-8181}` | Policy evaluation service. |
 | Vault | `somaAgent01_vault` | `${VAULT_PORT:-8200}` | Dev-mode secrets store. |
-| Prometheus | `somaAgent01_prometheus` | `${PROMETHEUS_PORT:-9090}` | Metrics collection. |
-| Grafana | `somaAgent01_grafana` | `${GRAFANA_PORT:-3000}` | Dashboards (default admin password disabled). |
+| Prometheus | `somaAgent01_prometheus` | `${PROMETHEUS_PORT:-9090}` | Metrics collection (browse at `http://localhost:9090`). |
 | Qdrant | `somaAgent01_qdrant` | `${QDRANT_HTTP_PORT:-6333}` | Vector storage (optional profile). |
 | ClickHouse | `somaAgent01_clickhouse` | `${CLICKHOUSE_HTTP_PORT:-8123}` | Analytics (optional profile). |
 
 > Optional services (Qdrant, ClickHouse) are tagged with Compose profiles and only start when the profile is enabled, e.g. `docker compose --profile vectorstore up`.
+
+> Grafana has been removed from the default stack. Use an external dashboarding solution if you need long-term visualisation.
 
 ---
 
@@ -164,13 +165,19 @@ Successful results confirm that the UI, gateway, Kafka, and Postgres are operati
    docker exec -it somaAgent01_gateway /bin/bash
    ```
 
-5. **Clean up volumes:**
+5. **Scale Kafka partitions:** Use the new helper script to increase partition counts without manual CLI calls:
+
+   ```bash
+   python scripts/kafka_partition_scaler.py delegation-events 12
+   ```
+
+6. **Clean up volumes:**
 
    ```bash
    docker compose -f docker-compose.somaagent01.yaml down -v
    ```
 
-6. **Enable optional profiles:**
+7. **Enable optional profiles:**
 
    ```bash
    docker compose --profile analytics --profile vectorstore \
@@ -265,10 +272,12 @@ cd infra
 docker compose -f docker-compose.somaagent01.yaml up -d
 ```
 
-### 10.2 Observability Dashboards
+### 10.2 Observability
 
-- Prometheus listens on `${PROMETHEUS_PORT:-9090}`.
-- Grafana dashboards auto-provision from `infra/observability/grafana`. Sign in with the default admin user (`admin`, blank password). If Grafana prompts for a password, set `GF_SECURITY_ADMIN_PASSWORD` in `.env` before starting the stack.
+- Prometheus listens on `${PROMETHEUS_PORT:-9090}` and ships with alert rules in `infra/observability/alerts.yml`, including latency/error rate thresholds and circuit-breaker monitoring.
+- The gateway now exposes circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}` when the environment variable is set. Compose defaults wire `CIRCUIT_BREAKER_METRICS_HOST="0.0.0.0"`, enabling Prometheus to scrape the `circuit-breakers` job defined in `infra/observability/prometheus.yml`.
+- To reload alert rules after editing, run `docker compose exec prometheus kill -HUP 1`.
+- If you require dashboards, point Grafana (or another UI) at the Prometheus endpoint; dashboards are no longer bundled with the stack.
 
 ### 10.3 Extending with Custom Tools
 

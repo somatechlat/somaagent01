@@ -155,7 +155,10 @@ The status glyph beside the clock polls `/health` every few seconds. Green indic
 Run `k6 run scripts/loadtest_k6.js` (set `GATEWAY_URL` to your deployment) to exercise the delegation gateway under load. The script ramps to 50 RPS and verifies 200 responses. Combine with Prometheus dashboards to observe latency and error-rate SLOs.
 
 
-Prometheus now ships with `infra/observability/alerts.yml`, which raises an alert if the telemetry worker stops exposing metrics for more than a minute. Mount this file alongside `prometheus.yml` in docker-compose or your Kubernetes manifests and extend the rule set with additional SLOs.
+Prometheus now ships with `infra/observability/alerts.yml`, which includes latency/error-rate SLOs for the gateway, circuit-breaker open events, and legacy telemetry worker availability checks. Mount this file alongside `prometheus.yml` in docker-compose or your Kubernetes manifests and extend the rule set with additional SLOs.
+
+> [!TIP]
+> To expose the circuit breaker counters, set `CIRCUIT_BREAKER_METRICS_PORT` (default `9610` in Docker) and optionally `CIRCUIT_BREAKER_METRICS_HOST` on any service that imports `python.helpers.circuit_breaker`. The FastAPI gateway invokes `ensure_metrics_exporter()` during startup, so the Prometheus target appears automatically once the environment variables are present.
 
 ### Chaos testing quick start
 

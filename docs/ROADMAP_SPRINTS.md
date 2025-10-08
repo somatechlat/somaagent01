@@ -4,6 +4,12 @@
 
 ---
 
+> **Status update (2025‑10‑08)** – The roadmap has progressed with two cross-cutting sprints:
+> - **Observability & Resilience**: Versioned gateway routing (`/v1/*`), reusable circuit breaker helper (with Prometheus counters), Kafka partition scaling script, and alert rules for latency/error-rate/circuit-breaker events.
+> - **Enterprise Extensions & Marketplace**: Capsule registry FastAPI service with optional Cosign signing, SDK helpers (`python/somaagent/capsule.py`), GitHub Actions capsule pipeline, and a browser marketplace UI stub.
+>
+> Grafana has been dropped from the default stack in favour of Prometheus-only monitoring. The sections below remain for historical context and should be revisited when planning the next iteration.
+
 ## 📅 High‑Level Timeline
 | Sprint | Duration | Goal | Deliverable |
 |-------|----------|------|------------|
