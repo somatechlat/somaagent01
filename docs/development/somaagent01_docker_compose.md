@@ -276,6 +276,7 @@ docker compose -f docker-compose.somaagent01.yaml up -d
 
 - Prometheus listens on `${PROMETHEUS_PORT:-9090}` and ships with alert rules in `infra/observability/alerts.yml`, including latency/error rate thresholds and circuit-breaker monitoring.
 - The gateway now exposes circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}` when the environment variable is set. Compose defaults wire `CIRCUIT_BREAKER_METRICS_HOST="0.0.0.0"`, enabling Prometheus to scrape the `circuit-breakers` job defined in `infra/observability/prometheus.yml`.
+- Alertmanager runs on `${ALERTMANAGER_PORT:-9093}` with configuration mounted from `infra/observability/alertmanager.yml`; hook receivers (Slack, PagerDuty, webhook) there to fan out alerts.
 - To reload alert rules after editing, run `docker compose exec prometheus kill -HUP 1`.
 - If you require dashboards, point Grafana (or another UI) at the Prometheus endpoint; dashboards are no longer bundled with the stack.
 

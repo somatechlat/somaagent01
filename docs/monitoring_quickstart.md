@@ -7,6 +7,7 @@ This guide summarizes the current Prometheus-only monitoring stack that ships wi
 - **Service**: `prometheus` container in `docker-compose.somaagent01.yaml`
 - **Config path**: `infra/observability/prometheus.yml`
 - **Alert rules**: `infra/observability/alerts.yml`
+- **Alertmanager**: `alertmanager` container with config `infra/observability/alertmanager.yml`
 - **Profiles**: The base Compose stack now boots Prometheus by default; the legacy `metrics` profile is no longer required for Grafana.
 
 Key scrape jobs:
@@ -27,11 +28,11 @@ Alert coverage:
 ## How to run
 
 ```bash
-# From repo root, start Prometheus alongside key services
-docker compose up -d prometheus delegation openfga opa
+# From repo root, start Prometheus, Alertmanager, and key services
+docker compose up -d prometheus alertmanager delegation openfga opa
 ```
 
-Prometheus listens on `http://localhost:9090`. Open the **Alerts** and **Graph** tabs to inspect rules (`infra/observability/alerts.yml`) and live metrics. To reload Prometheus after editing `alerts.yml`, restart the container or trigger a configuration reload:
+Prometheus listens on `http://localhost:9090`. Open the **Alerts** and **Graph** tabs to inspect rules (`infra/observability/alerts.yml`) and live metrics. Alertmanager is available at `http://localhost:${ALERTMANAGER_PORT:-9093}` for silences and notification routing. To reload Prometheus after editing `alerts.yml`, restart the container or trigger a configuration reload:
 
 ```bash
 docker compose exec prometheus kill -HUP 1
@@ -42,12 +43,14 @@ docker compose exec prometheus kill -HUP 1
 - Delegation gateway `/metrics` responds with Prometheus exposition format.
 - Prometheus `Alerts` UI shows `GatewayHighLatencyP95`, `GatewayHighErrorRate`, and `CircuitBreakerOpenEvents` after sending load / triggering failures.
 - The `circuit-breakers` job appears under **Status → Targets** after the gateway boots (requires `CIRCUIT_BREAKER_METRICS_PORT` to be non-zero in the gateway container).
+- Alertmanager UI lists incoming alerts; use **Silences** to acknowledge non-actionable events during testing.
 - Force a failure (e.g., return synthetic 500s) to see `GatewayHighErrorRate` transition to `Pending`.
 - Stop the OpenFGA container; Prometheus should mark `OpenfgaDown` pending within ~2 minutes.
 
 ## Next steps
 
 - Wire alert notifications to Alertmanager once an endpoint is available.
+- Configure `infra/observability/alertmanager.yml` with real receivers (PagerDuty, Slack, webhook) and propagate `ALERTMANAGER_PORT` if exposing externally.
 - Replace the legacy telemetry-worker alert with a live target or remove it if unused.
 - If you need dashboards, integrate with an external Grafana instance or lightweight alternatives such as `promxy`/`promdash`.
 - Tune the exporter via `CIRCUIT_BREAKER_METRICS_PORT` / `CIRCUIT_BREAKER_METRICS_HOST` on any service that imports `python.helpers.circuit_breaker` to expose the counters from other components.

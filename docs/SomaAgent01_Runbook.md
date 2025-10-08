@@ -14,6 +14,7 @@ This runbook summarises day-2 operations for the core SomaAgent services across 
 | Redis | Session cache | Redis `ping` success, low memory usage |
 | Postgres | Session/delegation store | `pg_is_in_recovery()` false, disk utilisation |
 | Kafka | Event backbone | Consumer lag dashboards, broker uptime |
+| Alertmanager | Route Prometheus alerts to downstream systems | `/-/healthy` readiness, Alertmanager UI shows active alerts |
 
 ## Incident Response Cheatsheet
 
@@ -24,6 +25,7 @@ This runbook summarises day-2 operations for the core SomaAgent services across 
 | Budget hard-stop | Users receive “Token budget exceeded” immediately | Inspect `conf/tenants.yaml` for budget overrides | Adjust limits and redeploy, confirm Redis counters reset |
 | Delegation backlog | `delegation_tasks` status stuck in `queued` | Confirm worker running; check downstream processors | Manually replay tasks via `UPDATE` or re-enqueue |
 | Canvas disconnects | UI canvas badge turns amber | Check `/v1/canvas/{session}/stream` connectivity | Restart canvas service, refresh UI |
+| Circuit breaker openings | Prometheus `CircuitBreakerOpenEvents` alert, gateway logs show `CircuitOpenError` | Inspect upstream service health, confirm breaker counters settle | Once mitigated, silence or expire the alert; capture RCA in incident log |
 | SomaClient event-loop binding error | Gateway or worker logs show `RuntimeError: Event loop is closed` or `Event bound to a different loop`; outbound memory calls stall | Rebuild the shared image `docker compose -f infra/docker-compose.somaagent01.yaml build delegation-gateway delegation-worker agent-ui` and redeploy the trio; ensure `.venv` pulls the patched `SomaClient` | Run the multi-loop probe:<br>`source .venv/bin/activate && python scripts/checks/somaclient_event_loop.py` (prints `ok`) and watch container logs for healthy memory calls |
 
 ## Deployment Playbook
@@ -51,6 +53,9 @@ echo '{"allow": true}' | http POST http://localhost:8012/v1/requeue/<id>/resolve
 
 # Run Prometheus in docker-compose and view alerts
 open http://localhost:9090/alerts
+
+# Inspect Alertmanager UI
+open http://localhost:9093/#/alerts
 ```
 
 Keep this runbook close; extend it with tenant-specific procedures as they evolve.

@@ -1,0 +1,19 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "noop"
+  group_by: ["alertname", "service"]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 3h
+
+receivers:
+  - name: "noop"
+
+# Example receiver template (disabled by default)
+# Uncomment and configure to forward alerts to a webhook endpoint.
+#   - name: "webhook"
+#     webhook_configs:
+#       - url: "http://host.docker.internal:18092/alertmanager/webhook"
+#         send_resolved: true
