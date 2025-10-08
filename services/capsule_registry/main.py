@@ -10,6 +10,7 @@ import os
 import uuid
 from pathlib import Path
 from typing import List
+import subprocess
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.responses import FileResponse
@@ -42,6 +43,27 @@ class CapsuleMeta(BaseModel):
 async def get_store() -> PostgresSessionStore:
     return PostgresSessionStore()
 
+def _sign_blob(file_path: str) -> str:
+    """Sign the given file with cosign and return the base64 signature.
+
+    The function expects the environment variable ``COSIGN_KEY_PATH`` to point to a
+    cosign private key. If signing fails, an empty string is returned.
+    """
+    key_path = os.getenv("COSIGN_KEY_PATH")
+    if not key_path:
+        return ""
+    try:
+        result = subprocess.run(
+            ["cosign", "sign-blob", "--key", key_path, file_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        # cosign prints the signature to stdout
+        return result.stdout.strip()
+    except Exception:
+        return ""
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -62,6 +84,9 @@ async def upload_capsule(
         content = await file.read()
         out.write(content)
 
+    # Sign the stored artifact using cosign (optional)
+    signature = _sign_blob(str(dest_path))
+ 
     meta = CapsuleMeta(
         id=capsule_id,
         name=name,
@@ -69,7 +94,7 @@ async def upload_capsule(
         description=description,
         filename=stored_name,
     )
-
+ 
     # Persist minimal metadata (JSON) in Postgres – we store it in a generic key/value table.
     # For simplicity we just insert a row into a table ``capsules`` (create if missing).
     async with store.pool.acquire() as conn:
@@ -81,17 +106,19 @@ async def upload_capsule(
                 version TEXT NOT NULL,
                 description TEXT,
                 filename TEXT NOT NULL,
+                signature TEXT,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
             )
             """
         )
         await conn.execute(
-            "INSERT INTO capsules (id, name, version, description, filename) VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO capsules (id, name, version, description, filename, signature) VALUES ($1, $2, $3, $4, $5, $6)",
             meta.id,
             meta.name,
             meta.version,
             meta.description,
             meta.filename,
+            signature,
         )
     return meta
 

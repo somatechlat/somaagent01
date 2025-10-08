@@ -14,7 +14,22 @@ from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 )
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+# The OTLP exporter is optional – some test environments may not have the
+# ``opentelemetry-exporter-otlp-proto-grpc`` package installed.  Import it
+# lazily and provide a no‑op fallback so the module can be imported without
+# raising ``ModuleNotFoundError``.
+try:
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+        OTLPSpanExporter,
+    )
+except Exception:  # pragma: no cover
+    class OTLPSpanExporter:  # type: ignore
+        def __init__(self, *_, **__):
+            pass
+        def export(self, *_, **__):
+            return None
+        def shutdown(self):
+            return None
 
 _TRACER_INITIALISED = False
 

@@ -7,8 +7,14 @@ After ``reset_timeout`` seconds the circuit attempts a single trial call.
 import time
 import functools
 from typing import Callable, TypeVar, Any
+from prometheus_client import Counter
 
 T = TypeVar("T")
+
+# Prometheus metrics for circuit‑breaker state changes
+CB_OPENED = Counter('circuit_breaker_opened_total', 'Total number of times the circuit breaker opened')
+CB_CLOSED = Counter('circuit_breaker_closed_total', 'Total number of times the circuit breaker closed after a successful trial')
+CB_TRIAL = Counter('circuit_breaker_trial_total', 'Total number of trial calls while the circuit is open')
 
 class CircuitOpenError(RuntimeError):
     """Raised when the circuit is open and a call is blocked."""
@@ -42,6 +48,7 @@ def circuit_breaker(
                 # Check if reset timeout has elapsed
                 if time.time() - state["opened_at"] >= reset_timeout:
                     # Try a single trial call
+                    CB_TRIAL.inc()
                     try:
                         result = func(*args, **kwargs)
                     except Exception:
@@ -52,6 +59,7 @@ def circuit_breaker(
                         # Success – close circuit
                         state["circuit_open"] = False
                         state["failures"] = 0
+                        CB_CLOSED.inc()
                         return result
                 else:
                     raise CircuitOpenError("Circuit is open; call blocked")
@@ -63,6 +71,7 @@ def circuit_breaker(
                 if state["failures"] >= failure_threshold:
                     state["circuit_open"] = True
                     state["opened_at"] = time.time()
+                    CB_OPENED.inc()
                 raise
 
         return wrapper

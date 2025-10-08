@@ -1,5 +1,4 @@
 from typing import Any
-from browser_use.llm import ChatGoogle
 from python.helpers import dirty_json
 
 
@@ -168,3 +167,19 @@ def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
 def apply():
     """Applies the monkey-patch to ChatGoogle."""
     ChatGoogle._fix_gemini_schema = _patched_fix_gemini_schema
+
+
+# ``browser_use`` is an optional external library. Import lazily; if unavailable,
+# provide a minimal stub for ``ChatGoogle`` with the methods used in the code.
+try:
+    from browser_use.llm import ChatGoogle  # type: ignore
+except Exception:  # pragma: no cover
+    class _ChatGoogleStub:
+        def __init__(self, *_, **__):
+            pass
+
+        def _fix_gemini_schema(self, schema):
+            # Return schema unchanged – the real implementation patches it.
+            return schema
+
+    ChatGoogle = _ChatGoogleStub  # type: ignore

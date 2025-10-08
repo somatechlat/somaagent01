@@ -1,6 +1,5 @@
 import base64
 import warnings
-import whisper
 import tempfile
 import asyncio
 from python.helpers import files
@@ -13,6 +12,18 @@ from python.helpers.notification import (
 
 # Suppress FutureWarning from torch.load
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Whisper is an optional heavy dependency. Import it lazily; if unavailable, provide a stub.
+try:
+    import whisper  # type: ignore
+except Exception:  # pragma: no cover
+    class _WhisperStub:
+        def __getattr__(self, name):
+            raise ImportError(
+                "Whisper library is not installed. Install 'openai-whisper' to use audio transcription."
+            )
+
+    whisper = _WhisperStub()
 
 _model = None
 _model_name = ""
