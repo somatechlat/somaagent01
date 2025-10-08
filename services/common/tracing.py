@@ -9,7 +9,11 @@ from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.resources import SERVICE_NAME as OTEL_SERVICE_NAME
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    ConsoleSpanExporter,
+    SimpleSpanProcessor,
+)
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
 _TRACER_INITIALISED = False
@@ -22,21 +26,46 @@ def _build_resource(service_name: str) -> Resource:
             "deployment.environment": os.getenv("SOMA_AGENT_MODE", "LOCAL"),
         }
     )
-    return base.merge(Resource.from_env())
+    if hasattr(Resource, "from_env"):
+        return base.merge(Resource.from_env())
+    return base
 
 
-def setup_tracing(service_name: str, *, endpoint: Optional[str] = None) -> trace.Tracer:
+def _should_disable_exporter() -> bool:
+    """Check environment flag for disabling OTLP exporter."""
+
+    return os.getenv("OTEL_EXPORTER_OTLP_DISABLED", "false").lower() in {"true", "1", "yes"}
+
+
+def setup_tracing(
+    service_name: str,
+    *,
+    endpoint: Optional[str] = None,
+    disable_exporter: bool | None = None,
+) -> trace.Tracer:
     """Initialise OpenTelemetry and return a tracer for *service_name*."""
 
     global _TRACER_INITIALISED
+    if disable_exporter is None:
+        disable_exporter = _should_disable_exporter()
+
     if not _TRACER_INITIALISED:
         resource = _build_resource(service_name)
         provider = TracerProvider(resource=resource)
-        otlp_exporter = OTLPSpanExporter(
-            endpoint=(endpoint or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")),
-            insecure=True,
-        )
-        provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+        if disable_exporter:
+            provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+        else:
+            otlp_exporter = OTLPSpanExporter(
+                endpoint=(
+                    endpoint
+                    or os.getenv(
+                        "OTEL_EXPORTER_OTLP_ENDPOINT",
+                        "http://otel-collector:4317",
+                    )
+                ),
+                insecure=True,
+            )
+            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         trace.set_tracer_provider(provider)
         _instrument_libraries()
         _TRACER_INITIALISED = True
