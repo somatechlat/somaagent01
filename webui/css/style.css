@@ -1,0 +1,229 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Rubik:wght@400;500;600&display=swap");
+
+:root {
+  color-scheme: dark;
+  font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: #0f1117;
+  color: #f1f5f9;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(160deg, #0f1117 0%, #151c2c 55%, #0e1119 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1.5rem 4rem;
+  gap: 2rem;
+}
+
+h1 {
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+  text-align: center;
+}
+
+.capsule-list {
+  width: min(1100px, 100%);
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.capsule-card {
+  background: rgba(17, 24, 39, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 18px;
+  padding: 1.6rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.capsule-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 40px rgba(14, 21, 37, 0.5);
+}
+
+.capsule-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.capsule-card h3 small {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.capsule-card p {
+  margin: 0;
+  line-height: 1.5;
+  color: rgba(226, 232, 240, 0.86);
+}
+
+.capsule-meta {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.capsule-signature {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  background: rgba(30, 41, 59, 0.55);
+  font-size: 0.9rem;
+}
+
+.capsule-signature summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.capsule-signature summary::-webkit-details-marker {
+  display: none;
+}
+
+.capsule-signature__value {
+  display: block;
+  word-break: break-all;
+  font-family: "Roboto Mono", monospace;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 0.5rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  color: #f8fafc;
+}
+
+.capsule-signature--missing {
+  font-style: italic;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.copy-signature {
+  align-self: flex-start;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #e2e8f0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border 0.2s ease;
+}
+
+.copy-signature:hover {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.install-btn {
+  margin-top: 0.4rem;
+  align-self: flex-start;
+  padding: 0.65rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: #0f172a;
+  background: linear-gradient(135deg, #38bdf8 0%, #22d3ee 50%, #38bdf8 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 10px 26px rgba(56, 189, 248, 0.35);
+}
+
+.install-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(34, 211, 238, 0.45);
+}
+
+.install-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.install-btn.is-busy::after {
+  content: "";
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 2px solid rgba(15, 23, 42, 0.35);
+  border-top-color: rgba(15, 23, 42, 0.85);
+  margin-left: 0.6rem;
+  animation: spin 0.7s linear infinite;
+}
+
+.install-status {
+  min-height: 1.2rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: rgba(226, 232, 240, 0.75);
+  transition: color 0.2s ease;
+}
+
+.install-status code {
+  font-family: "Roboto Mono", monospace;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+}
+
+.install-status[data-intent="success"] {
+  color: #4ade80;
+}
+
+.install-status[data-intent="error"] {
+  color: #f87171;
+}
+
+.install-status[data-intent="info"] {
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.install-status__meta {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .capsule-card {
+    padding: 1.4rem 1.2rem;
+  }
+
+  .capsule-list {
+    grid-template-columns: 1fr;
+  }
+}

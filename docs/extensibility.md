@@ -115,10 +115,11 @@ Helpers are located in:
 
 ### Capsule Registry & Marketplace
 
-- The Capsule Registry service (`services/capsule_registry/main.py`) exposes `/capsules` endpoints for upload, listing, and download. Uploaded artifacts are optionally signed with [Cosign](https://github.com/sigstore/cosign) when `COSIGN_KEY_PATH` is set, and signatures are stored alongside metadata in Postgres.
+- The Capsule Registry service (`services/capsule_registry/main.py`) exposes `/capsules` endpoints for upload, listing, **install**, and download. Uploaded artifacts are optionally signed with [Cosign](https://github.com/sigstore/cosign) when `COSIGN_KEY_PATH` is set; signatures and timestamps are stored alongside metadata in Postgres and surfaced back to clients.
 - SDK helpers in `python/somaagent/capsule.py` provide `list_capsules()`, `download_capsule()`, and `install_capsule()` functions plus a small CLI entry point for scripting.
+- The FastAPI gateway now proxies the registry on the same host: `/capsules`, `/capsules/{id}`, and `/capsules/{id}/install` hydrate from whichever backend you point `CAPSULE_REGISTRY_URL` at (override the default `http://localhost:8000`). Adjust request timeouts with `CAPSULE_REGISTRY_TIMEOUT_SECONDS`.
 - A GitHub Actions workflow (`.github/workflows/capsule.yml`) demonstrates the build → sign → publish loop for capsules. Reuse it when wiring CI/CD for custom capsules.
-- The web UI ships with a lightweight marketplace page (`webui/marketplace.html` + `/webui/js/marketplace.js`) that lists available capsules and triggers downloads via the public API. Extend it to surface metadata, trust signals, or installation flows tailored to your deployment.
+- The web UI ships with a lightweight marketplace page (`webui/marketplace.html` + `/webui/js/marketplace.js`) that lists available capsules, shows signature metadata, and performs one-click installs into the registry’s `installed/` directory via the new gateway endpoint. Extend it to surface additional trust signals or post-install actions tailored to your deployment.
 
 ### Prompts
 Prompts define the instructions and context provided to the LLM. They are highly extensible and can be customized for different agents.

@@ -299,6 +299,9 @@ SOMA_AGENT_HUB_MONITOR_ENABLED = os.getenv(
     "SOMA_AGENT_HUB_MONITOR_ENABLED", "true"
 ).lower() in {"1", "true", "yes", "on"}
 
+CAPSULE_REGISTRY_URL = os.getenv("CAPSULE_REGISTRY_URL", "http://localhost:8000")
+CAPSULE_REGISTRY_TIMEOUT = float(os.getenv("CAPSULE_REGISTRY_TIMEOUT_SECONDS", "10"))
+
 
 def _extract_tenant(claims: Dict[str, Any]) -> str | None:
     for key in JWT_TENANT_CLAIMS:
@@ -744,6 +747,62 @@ async def sse_endpoint(session_id: str, request: Request) -> StreamingResponse:
 
     headers = {"Cache-Control": "no-cache", "Content-Type": "text/event-stream"}
     return StreamingResponse(event_generator(), headers=headers)
+
+
+def _capsule_registry_url(path: str) -> str:
+    base = CAPSULE_REGISTRY_URL.rstrip("/")
+    if not path.startswith("/"):
+        path = f"/{path}"
+    return f"{base}{path}"
+
+
+@app.get("/capsules")
+async def proxy_list_capsules() -> JSONResponse:
+    url = _capsule_registry_url("/capsules")
+    try:
+        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
+    return JSONResponse(response.json())
+
+
+@app.post("/capsules/{capsule_id}/install")
+async def proxy_install_capsule(capsule_id: str) -> JSONResponse:
+    url = _capsule_registry_url(f"/capsules/{capsule_id}/install")
+    try:
+        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
+            response = await client.post(url)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
+    return JSONResponse(response.json())
+
+
+@app.get("/capsules/{capsule_id}")
+async def proxy_download_capsule(capsule_id: str) -> Response:
+    url = _capsule_registry_url(f"/capsules/{capsule_id}")
+    try:
+        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
+
+    headers: dict[str, str] = {}
+    disposition = response.headers.get("content-disposition")
+    if disposition:
+        headers["Content-Disposition"] = disposition
+
+    media_type = response.headers.get("content-type", "application/octet-stream")
+    return Response(content=response.content, media_type=media_type, headers=headers)
 
 
 @app.on_event("shutdown")

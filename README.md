@@ -110,7 +110,7 @@ From now on, please use this name for both `git clone` and `docker pull` command
 ## 🆕 What’s New (October 2025)
 
 - Versioned gateway surface at `/v1/*` plus Prometheus alerts for latency, error-rate, and circuit-breaker openings.
-- Capsule Registry service with optional Cosign signing, SDK helpers (`python/somaagent/capsule.py`), and a marketplace UI stub (`webui/marketplace.html`).
+- Capsule Registry service with optional Cosign signing, gateway proxy endpoints for `/capsules/*`, SDK helpers (`python/somaagent/capsule.py`), and a refreshed marketplace UI (`webui/marketplace.html`) that surfaces signatures and triggers one-click installs into `/capsules/installed`.
 - GitHub Actions capsule workflow (`.github/workflows/capsule.yml`) and Kafka partition scaler script (`scripts/kafka_partition_scaler.py`).
 - Optional dependencies (PyJWT, sentence-transformers, openai-whisper, GitPython) now load lazily so tests can run without them; install as needed for full functionality.
 
