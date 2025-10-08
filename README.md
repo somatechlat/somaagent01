@@ -107,7 +107,12 @@ From now on, please use this name for both `git clone` and `docker pull` command
 
 - **Research** - `"Gather and summarize five recent AI papers about CoT prompting"`
 
+## 🆕 What’s New (October 2025)
 
+- Versioned gateway surface at `/v1/*` plus Prometheus alerts for latency, error-rate, and circuit-breaker openings.
+- Capsule Registry service with optional Cosign signing, SDK helpers (`python/somaagent/capsule.py`), and a marketplace UI stub (`webui/marketplace.html`).
+- GitHub Actions capsule workflow (`.github/workflows/capsule.yml`) and Kafka partition scaler script (`scripts/kafka_partition_scaler.py`).
+- Optional dependencies (PyJWT, sentence-transformers, openai-whisper, GitPython) now load lazily so tests can run without them; install as needed for full functionality.
 
 # ⚙️ Installation
 
@@ -138,6 +143,8 @@ docker compose -f docker-compose.somaagent01.yaml up
 ```
 
 Once the stack is healthy you can reach the Agent UI at `http://localhost:7001`, the delegation gateway on port `8010`, and supporting services (settings, router, canvas, requeue, audio) on ports `8011-8016`. The compose files automatically set `host.docker.internal` for intra-host callbacks, so no extra networking tweaks are required on macOS or Windows.
+
+> **Observability tip:** The gateway now exports circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`. Prometheus scrapes this endpoint via the `circuit-breakers` job, enabling the `CircuitBreakerOpenEvents` alert without additional wiring. Override `CIRCUIT_BREAKER_METRICS_HOST`/`PORT` if you relocate the exporter.
 
 ## 🐳 Fully Dockerized, with Speech-to-Text and TTS
 
@@ -351,5 +358,9 @@ Default models set to gpt-4.1
 ## 🤝 Community and Support
 
 - [Join our Discord](https://discord.gg/B8KZKNsPpj) for live discussions or [visit our Skool Community](https://www.skool.com/agent-zero).
-- [Follow our YouTube channel](https://www.youtube.com/@AgentZeroFW) for hands-on explanations and tutorials
-- [Report Issues](https://github.com/agent0ai/agent-zero/issues) for bug fixes and features
+- [Follow our YouTube channel](https://www.youtube.com/@AgentZeroFW) for video tutorials and updates.
+- [Star the project on GitHub](https://github.com/agent0ai/agent-zero) to show your support.
+
+## License
+
+- This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.

@@ -29,6 +29,16 @@ This architecture ensures:
 - Reduced dependency requirements on host systems
 - Flexible deployment options for advanced users
 
+### Observability and Resilience Signals
+
+Each long-lived service exports Prometheus metrics that capture availability and latency. Gateway-facing resilience instrumentation now includes a dedicated **circuit breaker exporter**:
+
+- The core decorator in `python/helpers/circuit_breaker.py` maintains counters for open/close transitions and trial calls.
+- Services that import the helper (currently the FastAPI gateway) call `ensure_metrics_exporter()` during startup when the `CIRCUIT_BREAKER_METRICS_PORT` environment variable is set.
+- A lightweight HTTP server (default `0.0.0.0:9610`) exposes the counters for Prometheus scraping, feeding the `CircuitBreakerOpenEvents` alert and dashboards.
+
+By moving the exporter into a shared helper we ensure that any future component can surface circuit breaker telemetry without duplicating HTTP endpoints or configuration glue.
+
 > [!NOTE]
 > The legacy approach of running Agent Zero directly on the host system (using Python, Conda, etc.) 
 > is still possible but requires Remote Function Calling (RFC) configuration through the Settings 

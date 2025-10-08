@@ -113,6 +113,13 @@ Helper modules provide utility functions and shared logic used across the framew
 Helpers are located in:
 - Default helpers: `/python/helpers/`
 
+### Capsule Registry & Marketplace
+
+- The Capsule Registry service (`services/capsule_registry/main.py`) exposes `/capsules` endpoints for upload, listing, and download. Uploaded artifacts are optionally signed with [Cosign](https://github.com/sigstore/cosign) when `COSIGN_KEY_PATH` is set, and signatures are stored alongside metadata in Postgres.
+- SDK helpers in `python/somaagent/capsule.py` provide `list_capsules()`, `download_capsule()`, and `install_capsule()` functions plus a small CLI entry point for scripting.
+- A GitHub Actions workflow (`.github/workflows/capsule.yml`) demonstrates the build → sign → publish loop for capsules. Reuse it when wiring CI/CD for custom capsules.
+- The web UI ships with a lightweight marketplace page (`webui/marketplace.html` + `/webui/js/marketplace.js`) that lists available capsules and triggers downloads via the public API. Extend it to surface metadata, trust signals, or installation flows tailored to your deployment.
+
 ### Prompts
 Prompts define the instructions and context provided to the LLM. They are highly extensible and can be customized for different agents.
 

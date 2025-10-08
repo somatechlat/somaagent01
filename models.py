@@ -40,7 +40,24 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain.embeddings.base import Embeddings
-from sentence_transformers import SentenceTransformer
+
+# ``sentence-transformers`` is optional; provide a lightweight fallback so tests
+# can import the module even when the dependency is missing.
+try:
+    from sentence_transformers import SentenceTransformer  # type: ignore
+except Exception:  # pragma: no cover
+    class SentenceTransformer:  # type: ignore
+        def __init__(self, *_, **__):
+            raise ImportError(
+                "sentence-transformers is not installed. Install it to enable embedding features."
+            )
+
+        def encode(self, *_, **__):
+            raise ImportError(
+                "sentence-transformers is not installed. Install it to enable embedding features."
+            )
+
+
 from browser_use.llm import (
     ChatOpenRouter,
     ChatGoogle,

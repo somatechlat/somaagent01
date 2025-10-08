@@ -1,13 +1,18 @@
-"""Simple circuit‑breaker decorator used by tools that call external services.
+"""Simple circuit-breaker decorator used by tools that call external services.
 It tracks consecutive failures and opens the circuit after a configurable threshold.
 While the circuit is open, calls raise ``CircuitOpenError`` immediately.
 After ``reset_timeout`` seconds the circuit attempts a single trial call.
 """
 
-import time
+from __future__ import annotations
+
 import functools
-from typing import Callable, TypeVar, Any
-from prometheus_client import Counter
+import logging
+import os
+import time
+from typing import Any, Callable, TypeVar
+
+from prometheus_client import Counter, start_http_server
 
 T = TypeVar("T")
 
@@ -15,6 +20,61 @@ T = TypeVar("T")
 CB_OPENED = Counter('circuit_breaker_opened_total', 'Total number of times the circuit breaker opened')
 CB_CLOSED = Counter('circuit_breaker_closed_total', 'Total number of times the circuit breaker closed after a successful trial')
 CB_TRIAL = Counter('circuit_breaker_trial_total', 'Total number of trial calls while the circuit is open')
+
+LOGGER = logging.getLogger(__name__)
+_EXPORTER_STARTED = False
+
+
+def ensure_metrics_exporter() -> None:
+    """Start the standalone Prometheus exporter if a port is configured.
+
+    The helper is opt-in to avoid binding ports in every consumer process. Set
+    ``CIRCUIT_BREAKER_METRICS_PORT`` (and optionally ``CIRCUIT_BREAKER_METRICS_HOST``)
+    in the environment of a long-lived service and call this function during
+    startup to expose the counters defined in this module.
+    """
+
+    global _EXPORTER_STARTED
+
+    if _EXPORTER_STARTED:
+        return
+
+    raw_port = os.getenv("CIRCUIT_BREAKER_METRICS_PORT", "").strip()
+    if not raw_port:
+        return
+
+    try:
+        port = int(raw_port)
+    except ValueError:
+        LOGGER.warning(
+            "Invalid CIRCUIT_BREAKER_METRICS_PORT (not an integer)",
+            extra={"value": raw_port},
+        )
+        return
+
+    if port <= 0:
+        # Zero or negative disables the exporter; allow consumers to opt-out.
+        LOGGER.debug(
+            "Circuit breaker metrics exporter disabled via non-positive port",
+            extra={"port": port},
+        )
+        return
+
+    host = os.getenv("CIRCUIT_BREAKER_METRICS_HOST", "0.0.0.0")
+    try:
+        start_http_server(port, addr=host)
+    except Exception as exc:  # pragma: no cover - binding failures depend on host env
+        LOGGER.warning(
+            "Failed to start circuit breaker metrics exporter",
+            extra={"host": host, "port": port, "error": str(exc)},
+        )
+        return
+
+    _EXPORTER_STARTED = True
+    LOGGER.info(
+        "Circuit breaker metrics exporter listening",
+        extra={"host": host, "port": port},
+    )
 
 class CircuitOpenError(RuntimeError):
     """Raised when the circuit is open and a call is blocked."""

@@ -20,7 +20,7 @@ Reduce the Docker‑Compose footprint to the **minimum set of services required 
 
 ## Services that can be **removed** for a lean stack
 - **clickhouse** – analytics data store (replace with Postgres if needed).
-- **prometheus** / **grafana** – monitoring stack (can be added later as side‑cars).
+- **prometheus** – metrics collection (keep if alerting is required; pair with an external dashboard tool when needed).
 - **vault** – secret management (use environment variables or external KMS).
 - **opa** – policy engine (if simple allow‑all policy is sufficient).
 - **openfga** – fine‑grained authorization (can be deferred to OPA or custom checks).

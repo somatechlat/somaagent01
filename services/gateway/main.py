@@ -17,7 +17,34 @@ import uuid
 from typing import Annotated, AsyncIterator, Any, Dict
 
 import httpx
-import jwt
+try:
+    import jwt  # type: ignore
+except Exception:  # pragma: no cover
+    class _MissingJWT:
+        class PyJWTError(Exception):
+            pass
+
+        class algorithms:  # type: ignore
+            class RSAAlgorithm:
+                @staticmethod
+                def from_jwk(*_, **__):
+                    raise ImportError("PyJWT required for RSA verification")
+
+            class ECAlgorithm:
+                @staticmethod
+                def from_jwk(*_, **__):
+                    raise ImportError("PyJWT required for EC verification")
+
+        @staticmethod
+        def get_unverified_header(*_, **__):
+            raise ImportError("PyJWT required for JWT header inspection")
+
+        @staticmethod
+        def decode(*_, **__):
+            raise ImportError("PyJWT required for JWT validation")
+
+    jwt = _MissingJWT()  # type: ignore
+
 from fastapi import (
     Depends,
     FastAPI,
@@ -48,10 +75,16 @@ from services.common.trace_context import inject_trace_context
 from services.common.tracing import setup_tracing
 from services.common.vault_secrets import load_kv_secret
 from services.common.openfga_client import OpenFGAClient
+from python.helpers.circuit_breaker import ensure_metrics_exporter
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 tracer = setup_tracing("gateway")
+
+# Start the standalone circuit-breaker metrics exporter if configured. This
+# exposes the counters defined in ``python.helpers.circuit_breaker`` for
+# Prometheus scraping alongside the FastAPI metrics surface.
+ensure_metrics_exporter()
 
 
 def _hydrate_jwt_credentials_from_vault() -> None:
