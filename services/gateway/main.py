@@ -39,7 +39,10 @@ from prometheus_client import (
 
 from services.common.event_bus import KafkaEventBus, iterate_topic
 from services.common.schema_validator import validate_event
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from services.common.session_repository import (
+    PostgresSessionStore,
+    RedisSessionCache,
+)
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -224,13 +227,10 @@ def _apply_auth_metadata(
     return merged
 
 
-SESSION_META_PREFIX = "session:{session_id}:meta"
-
-
 async def _load_session_context(
     session_id: str, cache: RedisSessionCache, store: PostgresSessionStore
 ) -> dict[str, Any]:
-    cache_key = SESSION_META_PREFIX.format(session_id=session_id)
+    cache_key = cache.format_key(session_id)
     cached = await cache.get(cache_key)
     if cached:
         return cached
@@ -243,7 +243,10 @@ async def _load_session_context(
         "persona_id": envelope.persona_id or "",
         "metadata": envelope.metadata,
     }
-    await cache.set(cache_key, context, ttl=900)
+    try:
+        await cache.write_context(session_id, envelope.persona_id, envelope.metadata)
+    except Exception:
+        LOGGER.warning("Failed to persist session cache", exc_info=True)
     return context
 
 
@@ -270,12 +273,11 @@ async def _persist_session_context(
     metadata: Dict[str, Any],
     cache: RedisSessionCache,
 ) -> None:
-    cache_key = SESSION_META_PREFIX.format(session_id=session_id)
-    payload = {
-        "persona_id": persona_id or "",
-        "metadata": metadata,
-    }
-    await cache.set(cache_key, payload, ttl=900)
+    try:
+        await cache.write_context(session_id, persona_id, metadata)
+    except Exception:
+        LOGGER.warning("Failed to persist session cache", exc_info=True)
+        raise
 
 
 async def _get_jwks_keys() -> list[dict[str, Any]]:

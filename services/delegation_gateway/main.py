@@ -9,7 +9,14 @@ import uuid
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    Gauge,
+    generate_latest,
+    start_http_server,
+)
 from pydantic import BaseModel
 from starlette.responses import Response
 
@@ -34,6 +41,31 @@ REQUEST_LATENCY = Histogram(
     ["method", "path"],
 )
 
+QUEUE_DEPTH = Gauge(
+    "delegation_gateway_tasks_inflight",
+    "Number of delegation tasks currently queued",
+)
+
+_METRICS_SERVER_STARTED = False
+
+
+def ensure_metrics_server() -> None:
+    global _METRICS_SERVER_STARTED
+    if _METRICS_SERVER_STARTED:
+        return
+    port = int(os.getenv("DELEGATION_METRICS_PORT", "9501"))
+    if port <= 0:
+        LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
+        _METRICS_SERVER_STARTED = True
+        return
+    host = os.getenv("DELEGATION_METRICS_HOST", "0.0.0.0")
+    start_http_server(port, addr=host)
+    LOGGER.info(
+        "Delegation gateway metrics server started",
+        extra={"host": host, "port": port},
+    )
+    _METRICS_SERVER_STARTED = True
+
 
 def get_bus() -> KafkaEventBus:
     return KafkaEventBus()
@@ -57,6 +89,7 @@ class DelegationCallback(BaseModel):
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    ensure_metrics_server()
     store = DelegationStore()
     await store.ensure_schema()
 
@@ -100,6 +133,7 @@ async def create_delegation_task(
         callback_url=request.callback_url,
         metadata=request.metadata,
     )
+    QUEUE_DEPTH.inc()
     event = {
         "task_id": task_id,
         "payload": request.payload,
@@ -132,6 +166,8 @@ async def delegation_callback(
     if not record:
         raise HTTPException(status_code=404, detail="Task not found")
     await store.update_task(task_id, status=payload.status, result=payload.result)
+    if payload.status in {"completed", "failed", "cancelled"}:
+        QUEUE_DEPTH.dec()
     return {"task_id": task_id, "status": payload.status}
 
 

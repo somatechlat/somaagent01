@@ -64,3 +64,49 @@ groups:
         annotations:
           summary: "SomaAgentHub OpenAPI endpoint unreachable"
           description: "Gateway probes to the SomaAgentHub OpenAPI endpoint have failed for at least 1 minute."
+      - alert: DelegationQueueBacklog
+        expr: avg_over_time(delegation_gateway_tasks_inflight[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: delegation-gateway
+        annotations:
+          summary: "Delegation queue depth growing"
+          description: "Delegation gateway has more than 5 tasks in-flight for 5 minutes. Investigate stuck delegation workers."
+      - alert: SessionEnvelopeRefreshErrors
+        expr: increase(session_envelope_refresh_total{result="error"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: session-state
+        annotations:
+          summary: "Session envelope refresh failures detected"
+          description: "Postgres refreshes for session envelopes are failing. Inspect database connectivity and recent cache misses."
+      - alert: SessionEnvelopeMissingSpike
+        expr: |
+          (increase(session_envelope_refresh_total{result="missing"}[10m]) / clamp_min(increase(session_envelope_refresh_total[10m]), 1)) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: session-state
+        annotations:
+          summary: "High rate of missing session envelopes"
+          description: "More than half of refresh attempts are missing envelopes over the last 10 minutes. Validate backfill coverage and cache hydration."
+      - alert: SessionEnvelopeValidationFailures
+        expr: sum(rate(session_envelope_validation_failures_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: session-state
+        annotations:
+          summary: "Session envelope validation failures detected"
+          description: "Session metadata payloads are failing validation for at least 5 minutes. Check gateway inputs and schema alignment."
+      - alert: SessionEnvelopeCacheErrors
+        expr: increase(session_envelope_cache_events_total{operation="set", result="error"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: session-state
+        annotations:
+          summary: "Session envelope cache writes failing"
+          description: "Redis writes for session envelopes are erroring. Inspect cache connectivity and Redis health."
