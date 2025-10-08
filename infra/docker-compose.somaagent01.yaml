@@ -189,6 +189,25 @@ services:
       - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
 
+  alertmanager:
+    profiles: ["dev", "prod"]
+    image: prom/alertmanager:v0.27.0
+    container_name: somaAgent01_alertmanager
+    command:
+      [
+        "--config.file=/etc/alertmanager/alertmanager.yml",
+        "--storage.path=/alertmanager",
+      ]
+    ports:
+      - "${ALERTMANAGER_PORT:-0}:9093"
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    volumes:
+      - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+
 
   otel-collector:
     profiles: ["dev", "prod"]
@@ -514,4 +533,5 @@ volumes:
   qdrant_data:
   clickhouse_data:
   prometheus_data:
+  alertmanager_data:
   vault_data:

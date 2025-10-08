@@ -36,6 +36,7 @@ Each long-lived service exports Prometheus metrics that capture availability and
 - The core decorator in `python/helpers/circuit_breaker.py` maintains counters for open/close transitions and trial calls.
 - Services that import the helper (currently the FastAPI gateway) call `ensure_metrics_exporter()` during startup when the `CIRCUIT_BREAKER_METRICS_PORT` environment variable is set.
 - A lightweight HTTP server (default `0.0.0.0:9610`) exposes the counters for Prometheus scraping, feeding the `CircuitBreakerOpenEvents` alert and dashboards.
+- Alert routing is handled by Alertmanager (`infra/observability/alertmanager.yml`), which now ships in the compose stack for local testing of silences and webhook receivers.
 
 By moving the exporter into a shared helper we ensure that any future component can surface circuit breaker telemetry without duplicating HTTP endpoints or configuration glue.
 
