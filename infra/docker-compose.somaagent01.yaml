@@ -5,6 +5,7 @@ name: SomaAgent01
 # services by setting `COMPOSE_PROFILES=dev` for local tooling or
 # `COMPOSE_PROFILES=prod` for production-facing APIs before running Compose.
 # Grafana is intentionally excluded until the custom visualization stack is ready.
+# Grafana has been removed from the stack; only Prometheus remains.
 
 x-agent-env: &agent-env
   PYTHONPATH: /a0

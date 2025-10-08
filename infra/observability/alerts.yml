@@ -110,3 +110,27 @@ groups:
         annotations:
           summary: "Session envelope cache writes failing"
           description: "Redis writes for session envelopes are erroring. Inspect cache connectivity and Redis health."
+      # New alerts for gateway latency > 2 seconds (95th percentile) and error‑rate > 1%
+      - alert: GatewayHighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(gateway_request_latency_seconds_bucket[5m]))
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gateway request latency > 2 s (p95)"
+          description: "The 95th percentile latency for gateway requests has been above 2 seconds for the last 5 minutes."
+      - alert: GatewayHighErrorRate
+        expr: |
+          sum(rate(gateway_requests_total{status=~"5.."}[5m]))
+            /
+          clamp_min(sum(rate(gateway_requests_total[5m])), 1) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gateway error rate > 1 %"
+          description: "More than 1 % of gateway requests returned 5xx errors over the last 5 minutes."
