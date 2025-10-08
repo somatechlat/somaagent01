@@ -19,7 +19,11 @@
     "status": {"type": "string"},
     "payload": {"type": "object"},
     "metadata": {"type": "object"},
-    "execution_time": {"type": "number", "minimum": 0}
+    "execution_time": {"type": "number", "minimum": 0},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
   },
   "additionalProperties": false
 }

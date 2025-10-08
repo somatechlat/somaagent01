@@ -38,14 +38,18 @@ from prometheus_client import (
 )
 
 from services.common.event_bus import KafkaEventBus, iterate_topic
+from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
 from services.common.session_repository import (
     PostgresSessionStore,
     RedisSessionCache,
 )
+from services.common.trace_context import inject_trace_context
+from services.common.tracing import setup_tracing
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+tracer = setup_tracing("gateway")
 
 app = FastAPI(title="SomaAgent 01 Gateway")
 app.add_middleware(
@@ -518,9 +522,19 @@ async def enqueue_message(
     }
 
     validate_event(event, "conversation_event")
+    inject_trace_context(event)
 
     try:
-        await bus.publish("conversation.inbound", event)
+        with tracer.start_as_current_span(
+            "gateway.publish_inbound",
+            attributes={
+                "messaging.system": "kafka",
+                "messaging.destination": "conversation.inbound",
+                "soma.session_id": session_id,
+                "soma.persona_id": str(event.get("persona_id") or ""),
+            },
+        ):
+            await bus.publish("conversation.inbound", event)
         KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "success").inc()
     except Exception as exc:  # pragma: no cover - needs live Kafka
         LOGGER.exception("Failed to publish inbound event")
@@ -571,9 +585,19 @@ async def enqueue_quick_action(
     }
 
     validate_event(event, "conversation_event")
+    inject_trace_context(event)
 
     try:
-        await bus.publish("conversation.inbound", event)
+        with tracer.start_as_current_span(
+            "gateway.publish_inbound",
+            attributes={
+                "messaging.system": "kafka",
+                "messaging.destination": "conversation.inbound",
+                "soma.session_id": session_id,
+                "soma.persona_id": str(event.get("persona_id") or ""),
+            },
+        ):
+            await bus.publish("conversation.inbound", event)
         KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "success").inc()
     except Exception as exc:  # pragma: no cover - needs live Kafka
         KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "error").inc()

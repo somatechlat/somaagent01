@@ -13,6 +13,9 @@ from typing import Any, Dict, List
 from jsonschema import ValidationError
 
 from services.common.event_bus import KafkaEventBus
+from services.common.logging_config import setup_logging
+from services.common.tracing import setup_tracing
+from services.common.dlq import DeadLetterQueue
 from services.common.session_repository import (
     PostgresSessionStore,
     RedisSessionCache,
@@ -32,8 +35,9 @@ from services.common.model_costs import estimate_escalation_cost
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from prometheus_client import Counter, Histogram, start_http_server
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+tracer = setup_tracing("conversation-worker")
 
 
 MESSAGE_PROCESSING_COUNTER = Counter(
@@ -164,6 +168,7 @@ class ConversationWorker:
             "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus()
+        self.dlq = DeadLetterQueue(self.settings["inbound"])
         self.cache = RedisSessionCache()
         self.store = PostgresSessionStore()
         self.slm = SLMClient()
@@ -330,388 +335,419 @@ class ConversationWorker:
             MESSAGE_LATENCY.labels(label).observe(duration)
 
         session_id = event.get("session_id")
-        if not session_id:
-            LOGGER.warning("Received event without session_id", extra={"event": event})
-            record_metrics("missing_session")
-            return
 
-        try:
-            validate_event(event, "conversation_event")
-        except ValidationError as exc:
-            LOGGER.error(
-                "Invalid conversation event",
-                extra={"error": exc.message, "event": event},
-            )
-            record_metrics("validation_error")
-            return
+        async def _process() -> None:
+            nonlocal path, result_label
 
-        LOGGER.info("Processing message", extra={"session_id": session_id})
+            if not session_id:
+                LOGGER.warning("Received event without session_id", extra={"event": event})
+                record_metrics("missing_session")
+                return
 
-        analysis = self.preprocessor.analyze(event.get("message", ""))
-        analysis_dict = analysis.to_dict()
-        enriched_metadata = dict(event.get("metadata", {}))
-        enriched_metadata["analysis"] = analysis_dict
-        event["metadata"] = enriched_metadata
-        session_metadata = dict(enriched_metadata)
-
-        tenant = enriched_metadata.get("tenant", "default")
-        persona_id = event.get("persona_id")
-
-        allowed = await self.policy_enforcer.check_message_policy(
-            tenant=tenant,
-            persona_id=persona_id,
-            message=event.get("message", ""),
-            metadata=enriched_metadata,
-        )
-        if not allowed:
-            policy_record = {
-                "type": "policy_denied",
-                "event_id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "persona_id": persona_id,
-                "message": event.get("message", ""),
-                "metadata": {
-                    "source": "policy",
-                    "analysis": analysis_dict,
-                    "policy": {
-                        "action": "conversation.send",
-                        "status": "denied",
-                    },
-                },
-            }
-            await self.store.append_event(session_id, policy_record)
-
-            denial_response = {
-                "event_id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "persona_id": persona_id,
-                "role": "assistant",
-                "message": "Message blocked by policy. Please contact your administrator if you believe this is an error.",
-                "metadata": {
-                    "source": "policy",
-                    "analysis": analysis_dict,
-                    "policy": {
-                        "action": "conversation.send",
-                        "status": "denied",
-                    },
-                },
-            }
-            validate_event(denial_response, "conversation_event")
-            await self.bus.publish(self.settings["outbound"], denial_response)
-            record_metrics("policy_denied", "policy")
-            return
-
-        await self.store.append_event(session_id, {"type": "user", **event})
-
-        cache_metadata = dict(event.get("metadata", {}))
-        try:
-            await self.cache.write_context(session_id, event.get("persona_id"), cache_metadata)
-        except Exception:
-            SESSION_CACHE_SYNC.labels("error").inc()
-            LOGGER.warning(
-                "Failed to synchronise session cache",
-                extra={"session_id": session_id},
-                exc_info=True,
-            )
-        else:
-            SESSION_CACHE_SYNC.labels("success").inc()
-
-        # Build conversation history (last 20 events).
-        history = await self.store.list_events(session_id, limit=20)
-        messages: list[ChatMessage] = []
-        for item in reversed(history):  # stored newest first
-            if item.get("type") == "user":
-                messages.append(
-                    ChatMessage(role="user", content=item.get("message", ""))
+            try:
+                validate_event(event, "conversation_event")
+            except ValidationError as exc:
+                LOGGER.error(
+                    "Invalid conversation event",
+                    extra={"error": exc.message, "event": event},
                 )
-            elif item.get("type") == "assistant":
-                messages.append(
-                    ChatMessage(role="assistant", content=item.get("message", ""))
-                )
+                record_metrics("validation_error")
+                return
 
-        if not messages or messages[-1].role != "user":
-            messages.append(ChatMessage(role="user", content=event.get("message", "")))
+            LOGGER.info("Processing message", extra={"session_id": session_id})
 
-        summary_tags = (
-            ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
-        )
-        analysis_prompt = ChatMessage(
-            role="system",
-            content=(
-                "Conversation analysis: intent={intent}; sentiment={sentiment}; tags={tags}. "
-                "Use this context to tailor the response."
-            ).format(
-                intent=analysis_dict["intent"],
-                sentiment=analysis_dict["sentiment"],
-                tags=summary_tags,
-            ),
-        )
-        messages.insert(0, analysis_prompt)
+            analysis = self.preprocessor.analyze(event.get("message", ""))
+            analysis_dict = analysis.to_dict()
+            enriched_metadata = dict(event.get("metadata", {}))
+            enriched_metadata["analysis"] = analysis_dict
+            event["metadata"] = enriched_metadata
+            session_metadata = dict(enriched_metadata)
 
-        model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
-        slm_kwargs: dict[str, Any] = {}
-        if model_profile:
-            slm_kwargs.update(
-                {
-                    "model": model_profile.model,
-                    "base_url": model_profile.base_url,
-                    "temperature": model_profile.temperature,
-                }
-            )
-            if model_profile.kwargs:
-                slm_kwargs.update(model_profile.kwargs)
-        routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
+            tenant = enriched_metadata.get("tenant", "default")
+            persona_id = event.get("persona_id")
 
-        if model_profile and os.getenv("ROUTER_URL"):
-            candidates = (
-                [slm_kwargs.get("model", model_profile.model)]
-                if slm_kwargs
-                else [model_profile.model]
-            )
-            if routing_allow:
-                candidates = [
-                    candidate for candidate in candidates if candidate in routing_allow
-                ]
-            if routing_deny:
-                candidates = [
-                    candidate
-                    for candidate in candidates
-                    if candidate not in routing_deny
-                ]
-            if candidates:
-                routed = await self.router.route(
-                    role="dialogue",
-                    deployment_mode=self.deployment_mode,
-                    candidates=candidates,
-                )
-                if routed:
-                    slm_kwargs["model"] = routed.model
-                    slm_kwargs.setdefault("metadata", {})
-                    slm_kwargs["metadata"]["router_score"] = routed.score
-
-        metadata_for_decision = dict(enriched_metadata)
-        metadata_for_decision.pop("analysis", None)
-
-        decision = EscalationDecision(False, "disabled", {"enabled": False})
-        if self.escalation_enabled:
-            decision = decide_escalation(
-                message=event.get("message", ""),
-                analysis=analysis_dict,
-                event_metadata=metadata_for_decision,
-                fallback_enabled=self.escalation_fallback_enabled,
-            )
-
-        budget_check = await self.budgets.consume(tenant, persona_id, 0)
-        limit = budget_check.limit_tokens
-        if limit and budget_check.total_tokens >= limit:
-            budget_response = {
-                "event_id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "persona_id": persona_id,
-                "role": "assistant",
-                "message": "Token budget exceeded for this persona/tenant.",
-                "metadata": {"source": "budget"},
-            }
-            await self.telemetry.emit_budget(
+            allowed = await self.policy_enforcer.check_message_policy(
                 tenant=tenant,
                 persona_id=persona_id,
-                delta_tokens=0,
-                total_tokens=budget_check.total_tokens,
-                limit_tokens=limit,
-                status="limit_reached",
+                message=event.get("message", ""),
+                metadata=enriched_metadata,
             )
-            validate_event(budget_response, "conversation_event")
-            await self.store.append_event(
-                session_id,
-                {"type": "assistant", **budget_response},
-            )
-            await self.bus.publish(self.settings["outbound"], budget_response)
-            record_metrics("budget_limit", "budget")
-            return
+            if not allowed:
+                policy_record = {
+                    "type": "policy_denied",
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "message": event.get("message", ""),
+                    "metadata": {
+                        "source": "policy",
+                        "analysis": analysis_dict,
+                        "policy": {
+                            "action": "conversation.send",
+                            "status": "denied",
+                        },
+                    },
+                }
+                await self.store.append_event(session_id, policy_record)
 
-        response_text = ""
-        usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
-        latency = 0.0
-        model_used = slm_kwargs.get("model", self.slm.default_model)
-        path = "slm"
-        escalation_metadata: dict[str, Any] | None = None
+                denial_response = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "role": "assistant",
+                    "message": "Message blocked by policy. Please contact your administrator if you believe this is an error.",
+                    "metadata": {
+                        "source": "policy",
+                        "analysis": analysis_dict,
+                        "policy": {
+                            "action": "conversation.send",
+                            "status": "denied",
+                        },
+                    },
+                }
+                validate_event(denial_response, "conversation_event")
+                await self.bus.publish(self.settings["outbound"], denial_response)
+                record_metrics("policy_denied", "policy")
+                return
 
-        if self.escalation_enabled and decision.should_escalate:
-            ESCALATION_ATTEMPTS.labels("attempt").inc()
+            await self.store.append_event(session_id, {"type": "user", **event})
+
+            cache_metadata = dict(event.get("metadata", {}))
             try:
-                (
-                    response_text,
-                    usage,
-                    latency,
-                    model_used,
-                    escalation_base_url,
-                ) = await self._invoke_escalation_response(
-                    session_id=session_id,
+                await self.cache.write_context(session_id, event.get("persona_id"), cache_metadata)
+            except Exception:
+                SESSION_CACHE_SYNC.labels("error").inc()
+                LOGGER.warning(
+                    "Failed to synchronise session cache",
+                    extra={"session_id": session_id},
+                    exc_info=True,
+                )
+            else:
+                SESSION_CACHE_SYNC.labels("success").inc()
+
+            history = await self.store.list_events(session_id, limit=20)
+            messages: list[ChatMessage] = []
+            for item in reversed(history):
+                if item.get("type") == "user":
+                    messages.append(
+                        ChatMessage(role="user", content=item.get("message", ""))
+                    )
+                elif item.get("type") == "assistant":
+                    messages.append(
+                        ChatMessage(role="assistant", content=item.get("message", ""))
+                    )
+
+            if not messages or messages[-1].role != "user":
+                messages.append(ChatMessage(role="user", content=event.get("message", "")))
+
+            summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
+            analysis_prompt = ChatMessage(
+                role="system",
+                content=(
+                    "Conversation analysis: intent={intent}; sentiment={sentiment}; tags={tags}. "
+                    "Use this context to tailor the response."
+                ).format(
+                    intent=analysis_dict["intent"],
+                    sentiment=analysis_dict["sentiment"],
+                    tags=summary_tags,
+                ),
+            )
+            messages.insert(0, analysis_prompt)
+
+            model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
+            slm_kwargs: dict[str, Any] = {}
+            if model_profile:
+                slm_kwargs.update(
+                    {
+                        "model": model_profile.model,
+                        "base_url": model_profile.base_url,
+                        "temperature": model_profile.temperature,
+                    }
+                )
+                if model_profile.kwargs:
+                    slm_kwargs.update(model_profile.kwargs)
+            routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
+
+            if model_profile and os.getenv("ROUTER_URL"):
+                candidates = (
+                    [slm_kwargs.get("model", model_profile.model)]
+                    if slm_kwargs
+                    else [model_profile.model]
+                )
+                if routing_allow:
+                    candidates = [
+                        candidate for candidate in candidates if candidate in routing_allow
+                    ]
+                if routing_deny:
+                    candidates = [
+                        candidate
+                        for candidate in candidates
+                        if candidate not in routing_deny
+                    ]
+                if candidates:
+                    routed = await self.router.route(
+                        role="dialogue",
+                        deployment_mode=self.deployment_mode,
+                        candidates=candidates,
+                    )
+                    if routed:
+                        slm_kwargs["model"] = routed.model
+                        slm_kwargs.setdefault("metadata", {})
+                        slm_kwargs["metadata"]["router_score"] = routed.score
+
+            metadata_for_decision = dict(enriched_metadata)
+            metadata_for_decision.pop("analysis", None)
+
+            decision = EscalationDecision(False, "disabled", {"enabled": False})
+            if self.escalation_enabled:
+                decision = decide_escalation(
+                    message=event.get("message", ""),
+                    analysis=analysis_dict,
+                    event_metadata=metadata_for_decision,
+                    fallback_enabled=self.escalation_fallback_enabled,
+                )
+
+            budget_check = await self.budgets.consume(tenant, persona_id, 0)
+            limit = budget_check.limit_tokens
+            if limit and budget_check.total_tokens >= limit:
+                budget_response = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "role": "assistant",
+                    "message": "Token budget exceeded for this persona/tenant.",
+                    "metadata": {"source": "budget"},
+                }
+                await self.telemetry.emit_budget(
+                    tenant=tenant,
                     persona_id=persona_id,
-                    messages=messages,
-                    slm_kwargs=slm_kwargs,
+                    delta_tokens=0,
+                    total_tokens=budget_check.total_tokens,
+                    limit_tokens=limit,
+                    status="limit_reached",
                 )
-                path = "escalation"
-                escalation_metadata = {
-                    "deployment_mode": self.deployment_mode,
-                    "analysis": analysis_dict,
-                    "decision": decision.metadata,
-                    "base_url": escalation_base_url,
-                }
-                cost_estimate = estimate_escalation_cost(
-                    model_used,
-                    input_tokens=usage.get("input_tokens", 0),
-                    output_tokens=usage.get("output_tokens", 0),
+                validate_event(budget_response, "conversation_event")
+                await self.store.append_event(
+                    session_id,
+                    {"type": "assistant", **budget_response},
                 )
-                if cost_estimate is not None:
-                    escalation_metadata["cost_estimate_usd"] = cost_estimate
-                ESCALATION_ATTEMPTS.labels("success").inc()
-            except Exception as exc:
-                path = "slm"
-                result_label = "escalation_error"
-                LOGGER.exception("Escalation LLM invocation failed")
-                error_metadata = {
-                    "error": str(exc),
-                    "deployment_mode": self.deployment_mode,
-                    "analysis": analysis_dict,
-                    "decision": decision.metadata,
-                }
+                await self.bus.publish(self.settings["outbound"], budget_response)
+                record_metrics("budget_limit", "budget")
+                return
+
+            response_text = ""
+            usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+            latency = 0.0
+            model_used = slm_kwargs.get("model", self.slm.default_model)
+            path = "slm"
+            escalation_metadata: dict[str, Any] | None = None
+
+            if self.escalation_enabled and decision.should_escalate:
+                ESCALATION_ATTEMPTS.labels("attempt").inc()
+                try:
+                    (
+                        response_text,
+                        usage,
+                        latency,
+                        model_used,
+                        escalation_base_url,
+                    ) = await self._invoke_escalation_response(
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        messages=messages,
+                        slm_kwargs=slm_kwargs,
+                    )
+                    path = "escalation"
+                    escalation_metadata = {
+                        "deployment_mode": self.deployment_mode,
+                        "analysis": analysis_dict,
+                        "decision": decision.metadata,
+                        "base_url": escalation_base_url,
+                    }
+                    cost_estimate = estimate_escalation_cost(
+                        model_used,
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                    )
+                    if cost_estimate is not None:
+                        escalation_metadata["cost_estimate_usd"] = cost_estimate
+                    ESCALATION_ATTEMPTS.labels("success").inc()
+                except Exception as exc:
+                    path = "slm"
+                    result_label = "escalation_error"
+                    LOGGER.exception("Escalation LLM invocation failed")
+                    error_metadata = {
+                        "error": str(exc),
+                        "deployment_mode": self.deployment_mode,
+                        "analysis": analysis_dict,
+                        "decision": decision.metadata,
+                    }
+                    await self.telemetry.emit_escalation_llm(
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        tenant=tenant,
+                        model=model_used,
+                        latency_seconds=0.0,
+                        input_tokens=0,
+                        output_tokens=0,
+                        decision_reason=decision.reason,
+                        status="error",
+                        metadata=error_metadata,
+                    )
+                    decision = EscalationDecision(
+                        False,
+                        "fallback_after_error",
+                        {**decision.metadata, "error": str(exc)},
+                    )
+                    ESCALATION_ATTEMPTS.labels("error").inc()
+
+            if path == "slm":
+                response_start = time.time()
+                try:
+                    response_text, usage = await self._generate_response(
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        messages=messages,
+                        slm_kwargs=slm_kwargs,
+                        analysis_metadata=analysis_dict,
+                        base_metadata=session_metadata,
+                    )
+                except Exception as exc:
+                    LOGGER.exception("SLM request failed")
+                    response_text = "I encountered an error while generating a reply."
+                    result_label = "generation_error"
+                    await self.store.append_event(
+                        session_id,
+                        {
+                            "type": "error",
+                            "event_id": str(uuid.uuid4()),
+                            "details": str(exc),
+                        },
+                    )
+                    usage = {"input_tokens": 0, "output_tokens": 0}
+                latency = time.time() - response_start
+                model_used = slm_kwargs.get("model", self.slm.default_model)
+
+            total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+            budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
+            if not budget_result.allowed:
+                response_text = "Token budget exceeded for this persona/tenant."
+                result_label = "budget_limit"
+                await self.skm.publish_progress(
+                    ProgressPayload(
+                        session_id=session_id,
+                        persona_id=event.get("persona_id"),
+                        status="budget_limit",
+                        detail="Token budget exceeded",
+                        metadata={"tenant": tenant},
+                    )
+                )
+
+            if path == "escalation":
                 await self.telemetry.emit_escalation_llm(
                     session_id=session_id,
                     persona_id=persona_id,
                     tenant=tenant,
                     model=model_used,
-                    latency_seconds=0.0,
-                    input_tokens=0,
-                    output_tokens=0,
+                    latency_seconds=latency,
+                    input_tokens=usage.get("input_tokens", 0),
+                    output_tokens=usage.get("output_tokens", 0),
                     decision_reason=decision.reason,
-                    status="error",
-                    metadata=error_metadata,
+                    status="success",
+                    metadata=escalation_metadata,
                 )
-                decision = EscalationDecision(
-                    False,
-                    "fallback_after_error",
-                    {**decision.metadata, "error": str(exc)},
-                )
-                ESCALATION_ATTEMPTS.labels("error").inc()
-
-        if path == "slm":
-            response_start = time.time()
-            try:
-                response_text, usage = await self._generate_response(
+            else:
+                slm_metadata = {
+                    "deployment_mode": self.deployment_mode,
+                    "intent": analysis_dict["intent"],
+                    "sentiment": analysis_dict["sentiment"],
+                    "tags": analysis_dict["tags"],
+                    "escalation_decision": {
+                        "should_escalate": decision.should_escalate,
+                        "reason": decision.reason,
+                        "metadata": decision.metadata,
+                    },
+                }
+                await self.telemetry.emit_slm(
                     session_id=session_id,
                     persona_id=persona_id,
-                    messages=messages,
-                    slm_kwargs=slm_kwargs,
-                    analysis_metadata=analysis_dict,
-                    base_metadata=session_metadata,
+                    tenant=tenant,
+                    model=model_used,
+                    latency_seconds=latency,
+                    input_tokens=usage.get("input_tokens", 0),
+                    output_tokens=usage.get("output_tokens", 0),
+                    metadata=slm_metadata,
                 )
-            except Exception as exc:
-                LOGGER.exception("SLM request failed")
-                response_text = "I encountered an error while generating a reply."
-                result_label = "generation_error"
-                await self.store.append_event(
-                    session_id,
-                    {
-                        "type": "error",
-                        "event_id": str(uuid.uuid4()),
-                        "details": str(exc),
-                    },
-                )
-                usage = {"input_tokens": 0, "output_tokens": 0}
-            latency = time.time() - response_start
-            model_used = slm_kwargs.get("model", self.slm.default_model)
-
-        total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-        budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
-        if not budget_result.allowed:
-            response_text = "Token budget exceeded for this persona/tenant."
-            result_label = "budget_limit"
-            await self.skm.publish_progress(
-                ProgressPayload(
-                    session_id=session_id,
-                    persona_id=event.get("persona_id"),
-                    status="budget_limit",
-                    detail="Token budget exceeded",
-                    metadata={"tenant": tenant},
-                )
-            )
-
-        if path == "escalation":
-            await self.telemetry.emit_escalation_llm(
-                session_id=session_id,
-                persona_id=persona_id,
+            await self.telemetry.emit_budget(
                 tenant=tenant,
-                model=model_used,
-                latency_seconds=latency,
-                input_tokens=usage.get("input_tokens", 0),
-                output_tokens=usage.get("output_tokens", 0),
-                decision_reason=decision.reason,
-                status="success",
-                metadata=escalation_metadata,
+                persona_id=event.get("persona_id"),
+                delta_tokens=total_tokens,
+                total_tokens=budget_result.total_tokens,
+                limit_tokens=budget_result.limit_tokens,
+                status="allowed" if budget_result.allowed else "limit_reached",
             )
-        else:
-            slm_metadata = {
-                "deployment_mode": self.deployment_mode,
-                "intent": analysis_dict["intent"],
-                "sentiment": analysis_dict["sentiment"],
-                "tags": analysis_dict["tags"],
-                "escalation_decision": {
-                    "should_escalate": decision.should_escalate,
+
+            response_source = "escalation_llm" if path == "escalation" else "slm"
+            escalation_payload = None
+            if path == "escalation":
+                escalation_payload = {
                     "reason": decision.reason,
                     "metadata": decision.metadata,
-                },
-            }
-            await self.telemetry.emit_slm(
-                session_id=session_id,
-                persona_id=persona_id,
-                tenant=tenant,
-                model=model_used,
-                latency_seconds=latency,
-                input_tokens=usage.get("input_tokens", 0),
-                output_tokens=usage.get("output_tokens", 0),
-                metadata=slm_metadata,
+                }
+
+            response_metadata = _compose_outbound_metadata(
+                session_metadata,
+                source=response_source,
+                status="completed",
+                analysis=analysis_dict,
+                extra={"escalation": escalation_payload} if escalation_payload else None,
             )
-        await self.telemetry.emit_budget(
-            tenant=tenant,
-            persona_id=event.get("persona_id"),
-            delta_tokens=total_tokens,
-            total_tokens=budget_result.total_tokens,
-            limit_tokens=budget_result.limit_tokens,
-            status="allowed" if budget_result.allowed else "limit_reached",
-        )
-
-        response_source = "escalation_llm" if path == "escalation" else "slm"
-        escalation_payload = None
-        if path == "escalation":
-            escalation_payload = {
-                "reason": decision.reason,
-                "metadata": decision.metadata,
+            response_event = {
+                "event_id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "persona_id": event.get("persona_id"),
+                "role": "assistant",
+                "message": response_text,
+                "metadata": response_metadata,
             }
 
-        response_metadata = _compose_outbound_metadata(
-            session_metadata,
-            source=response_source,
-            status="completed",
-            analysis=analysis_dict,
-            extra={"escalation": escalation_payload} if escalation_payload else None,
-        )
-        response_event = {
-            "event_id": str(uuid.uuid4()),
-            "session_id": session_id,
-            "persona_id": event.get("persona_id"),
-            "role": "assistant",
-            "message": response_text,
-            "metadata": response_metadata,
-        }
+            validate_event(response_event, "conversation_event")
 
-        validate_event(response_event, "conversation_event")
+            await self.store.append_event(
+                session_id, {"type": "assistant", **response_event}
+            )
+            await self.bus.publish(self.settings["outbound"], response_event)
+            record_metrics(result_label, path)
 
-        await self.store.append_event(
-            session_id, {"type": "assistant", **response_event}
-        )
-        await self.bus.publish(self.settings["outbound"], response_event)
-        record_metrics(result_label, path)
+        try:
+            with tracer.start_as_current_span(
+                "conversation_worker.process_event",
+                attributes={
+                    "soma.session_id": session_id or "",
+                    "messaging.destination": self.settings["outbound"],
+                },
+            ):
+                await _process()
+        except Exception as exc:
+            result_label = "error"
+            LOGGER.exception(
+                "Unhandled error while processing conversation event",
+                extra={
+                    "session_id": session_id,
+                    "event_id": event.get("event_id"),
+                },
+            )
+            try:
+                await self.dlq.send_to_dlq(event, exc)
+            except Exception:
+                LOGGER.exception(
+                    "Failed to forward event to DLQ",
+                    extra={
+                        "session_id": session_id,
+                        "dlq_topic": self.dlq.dlq_topic,
+                    },
+                )
+            record_metrics("error", "exception")
 
 
 async def main() -> None:

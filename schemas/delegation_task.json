@@ -7,7 +7,11 @@
     "task_id": {"type": "string"},
     "payload": {"type": "object"},
     "callback_url": {"type": ["string", "null"]},
-    "metadata": {"type": "object"}
+    "metadata": {"type": "object"},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
   },
   "additionalProperties": false
 }

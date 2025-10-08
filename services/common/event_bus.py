@@ -17,8 +17,13 @@ from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Optional
 
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+from opentelemetry import trace
+from opentelemetry.trace import SpanKind
+
+from services.common.trace_context import inject_trace_context, with_trace_context
 
 LOGGER = logging.getLogger(__name__)
+TRACER = trace.get_tracer(__name__)
 
 
 @dataclass
@@ -71,8 +76,17 @@ class KafkaEventBus:
 
     async def publish(self, topic: str, payload: dict[str, Any]) -> None:
         producer = await self._ensure_producer()
-        message = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        await producer.send_and_wait(topic, message)
+        with TRACER.start_as_current_span(
+            "kafka.publish",
+            kind=SpanKind.PRODUCER,
+            attributes={
+                "messaging.system": "kafka",
+                "messaging.destination": topic,
+            },
+        ):
+            inject_trace_context(payload)
+            message = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            await producer.send_and_wait(topic, message)
         LOGGER.debug("Published event", extra={"topic": topic, "payload": payload})
 
     async def consume(
@@ -104,7 +118,17 @@ class KafkaEventBus:
         try:
             async for message in consumer:
                 data = json.loads(message.value.decode("utf-8"))
-                await handler(data)
+                with with_trace_context(data):
+                    with TRACER.start_as_current_span(
+                        "kafka.consume",
+                        kind=SpanKind.CONSUMER,
+                        attributes={
+                            "messaging.system": "kafka",
+                            "messaging.destination": topic,
+                            "messaging.consumer.group": group_id,
+                        },
+                    ):
+                        await handler(data)
                 await consumer.commit()
                 if stop_event and stop_event.is_set():
                     break
