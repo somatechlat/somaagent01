@@ -52,6 +52,7 @@ sqlalchemy==2.0.32
 pydantic==2.11.6
 pydantic-settings==2.6.1
 httpx==0.28.1
+hvac==2.3.0
 faster-whisper==1.0.3
 numpy==1.26.4
 websockets==14.0

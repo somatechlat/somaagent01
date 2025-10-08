@@ -46,10 +46,52 @@ from services.common.session_repository import (
 )
 from services.common.trace_context import inject_trace_context
 from services.common.tracing import setup_tracing
+from services.common.vault_secrets import load_kv_secret
+from services.common.openfga_client import OpenFGAClient
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 tracer = setup_tracing("gateway")
+
+
+def _hydrate_jwt_credentials_from_vault() -> None:
+    global JWT_SECRET, JWT_PUBLIC_KEY
+
+    path = os.getenv("GATEWAY_JWT_VAULT_PATH")
+    if not path:
+        return
+
+    mount_point = os.getenv("GATEWAY_JWT_VAULT_MOUNT", "secret")
+    secret_key = os.getenv(
+        "GATEWAY_JWT_VAULT_SECRET_KEY",
+        os.getenv("GATEWAY_JWT_VAULT_KEY", "secret"),
+    )
+    if not JWT_SECRET and secret_key:
+        secret = load_kv_secret(path=path, key=secret_key, mount_point=mount_point, logger=LOGGER)
+        if secret:
+            JWT_SECRET = secret
+            LOGGER.info(
+                "JWT secret hydrated from Vault",
+                extra={"vault_path": path, "mount_point": mount_point},
+            )
+
+    public_key_key = os.getenv("GATEWAY_JWT_VAULT_PUBLIC_KEY_KEY")
+    if not JWT_PUBLIC_KEY and public_key_key:
+        public_key = load_kv_secret(
+            path=path,
+            key=public_key_key,
+            mount_point=mount_point,
+            logger=LOGGER,
+        )
+        if public_key:
+            JWT_PUBLIC_KEY = public_key
+            LOGGER.info(
+                "JWT public key hydrated from Vault",
+                extra={"vault_path": path, "mount_point": mount_point},
+            )
+
+
+_hydrate_jwt_credentials_from_vault()
 
 app = FastAPI(title="SomaAgent 01 Gateway")
 app.add_middleware(
@@ -128,6 +170,25 @@ def get_session_cache() -> RedisSessionCache:
 
 def get_session_store() -> PostgresSessionStore:
     return PostgresSessionStore()
+
+
+_OPENFGA_CLIENT: OpenFGAClient | None = None
+
+
+def _get_openfga_client() -> OpenFGAClient | None:
+    global _OPENFGA_CLIENT
+    if _OPENFGA_CLIENT is None:
+        store_id = os.getenv("OPENFGA_STORE_ID")
+        if not store_id:
+            LOGGER.warning("OPENFGA_STORE_ID not configured; skipping OpenFGA enforcement")
+            return None
+        fail_open = os.getenv("OPENFGA_FAIL_OPEN", "true").lower() in {"1", "true", "yes", "on"}
+        try:
+            _OPENFGA_CLIENT = OpenFGAClient(store_id=store_id, fail_open=fail_open)
+        except ValueError as exc:
+            LOGGER.error("Failed to initialise OpenFGA client", extra={"error": str(exc)})
+            _OPENFGA_CLIENT = None
+    return _OPENFGA_CLIENT
 
 
 class MessagePayload(BaseModel):
@@ -219,6 +280,13 @@ def _extract_scope(claims: Dict[str, Any]) -> str | None:
     if isinstance(scope, (list, tuple, set)):
         return " ".join(str(item) for item in scope)
     return str(scope)
+
+
+def _extract_subject(claims: Dict[str, Any]) -> str | None:
+    subject = claims.get("sub")
+    if subject is None:
+        return None
+    return str(subject)
 
 
 def _apply_auth_metadata(
@@ -424,8 +492,9 @@ async def authorize_request(
     auth_metadata: Dict[str, str] = {}
     if tenant:
         auth_metadata["tenant"] = tenant
-    if claims.get("sub"):
-        auth_metadata["subject"] = str(claims["sub"])
+    subject = _extract_subject(claims)
+    if subject:
+        auth_metadata["subject"] = subject
     if claims.get("iss"):
         auth_metadata["issuer"] = str(claims["iss"])
     if scope:
