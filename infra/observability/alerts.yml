@@ -134,3 +134,11 @@ groups:
         annotations:
           summary: "Gateway error rate > 1 %"
           description: "More than 1 % of gateway requests returned 5xx errors over the last 5 minutes."
+      - alert: CircuitBreakerOpenEvents
+        expr: increase(circuit_breaker_opened_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Circuit breaker opened"
+          description: "One or more circuit breakers opened in the last 5 minutes."
