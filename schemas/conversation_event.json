@@ -19,7 +19,11 @@
       "type": "array",
       "items": {"type": "string"}
     },
-    "metadata": {"type": "object"}
+    "metadata": {"type": "object"},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
   },
   "additionalProperties": false
 }

@@ -44,6 +44,7 @@ x-agent-env: &agent-env
   SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS: ${SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS:-60}
   SOMA_AGENT_HUB_TIMEOUT_SECONDS: ${SOMA_AGENT_HUB_TIMEOUT_SECONDS:-3}
   SOMA_AGENT_HUB_MONITOR_ENABLED: ${SOMA_AGENT_HUB_MONITOR_ENABLED:-true}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
 
 x-agent-depends: &agent-depends
   kafka:
@@ -55,6 +56,8 @@ x-agent-depends: &agent-depends
   openfga:
     condition: service_started
   opa:
+    condition: service_started
+  otel-collector:
     condition: service_started
 
 x-agent-service: &agent-service
@@ -184,6 +187,19 @@ services:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
+
+
+  otel-collector:
+    profiles: ["dev", "prod"]
+    image: otel/opentelemetry-collector:0.95.0
+    container_name: somaAgent01_otel_collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
+      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
+    restart: unless-stopped
 
 
   vault:
