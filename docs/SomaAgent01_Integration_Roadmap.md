@@ -52,7 +52,16 @@ Once Sprint 0 closes, three capability tracks kick off together. Shared mileston
   - CLI script to ingest/export FAISS archives via `SomaClient.migrate_import`.
 - **Current Progress**
   - Canonical session envelope schema captured in `docs/SomaAgent01_Session_State.md`, covering Redis/Postgres alignment and migration entry criteria.
-  - Pending: implement `session_backfill.py` script and tighten repository tests before enabling the new table in production.
+  - `scripts/session_backfill.py` backfills the canonical table and warms Redis; integration tests cover the repository behaviour (skipping when Postgres is unavailable locally).
+  - Session repository now emits Prometheus counters/histograms for validation,
+    writes, refresh durations, and cache interactions (centralised in
+    `RedisSessionCache` with TTL policy shared via environment).
+  - Rollback procedure and operational metrics documented in
+    `docs/SomaAgent01_Session_State.md` to support recovery drills.
+  - Memory migration CLI (`scripts/memory_migrate.py`) converts FAISS archives
+    into SomaBrain payloads and can upload them via `SomaClient.migrate_import`.
+  - Conversation worker writes persona/metadata updates back to Redis cache so
+    gateway reads stay warm after enrichment.
 - **Acceptance Criteria**
   - Memory writes in either runtime surface everywhere within 5 seconds.
   - Regression tests covering similarity search, delete-by-query, and WM cache limits.
@@ -67,6 +76,18 @@ Once Sprint 0 closes, three capability tracks kick off together. Shared mileston
   - Prometheus scrape configuration covering Kafka, Redis, Postgres, OpenFGA, OPA, gateway, conversation worker, tool executor, and delegation services.
   - Code instrumentation or exporters added where gaps exist (track TODOs inline with services).
   - Design brief defining the future visualization layer and migration plan from Grafana.
+- **Current Progress**
+  - Gateway, conversation worker, tool executor, and delegation services expose
+    `/metrics`; cache instrumentation now lives in the shared session repository
+    client, so every service benefits without bespoke wiring.
+  - Alert rules in `infra/observability/alerts.yml` monitor delegation backlog,
+    session envelope refresh health, missing spikes, validation failures, and
+    Redis cache write errors.
+  - Conversation worker exposes `conversation_worker_session_cache_sync_total`
+    metric to track cache synchronisation attempts and surface failures.
+  - Prometheus scrape config (`infra/observability/prometheus.yml`) targets the
+    new exporters, keeping the compose stack Grafana-free until the custom
+    visualization layer arrives.
 - **Acceptance Criteria**
   - Prometheus targets show green for all core services under the `dev` profile.
   - Critical SLO/SLA metrics (latency, queue depth, tool durations, policy decisions) are queryable via PromQL.
@@ -109,8 +130,8 @@ Once Sprint 0 closes, three capability tracks kick off together. Shared mileston
 
 ### Current Implementation Snapshot
 - Track A kicked off with Kafka topic contract validation; gateway now emits metrics that will back the transport soak tests.
-- Track C delivered Prometheus endpoints for the FastAPI gateway (`/metrics`) and conversation worker (port `9301`), plus new scrape jobs in `observability/prometheus.yml`.
-- Upcoming during this sprint: extend exporters to tool executor and enrich Prometheus labels before wiring custom visualization in place of Grafana.
+- Track B ships session envelope metrics/alerts and a rollback runbook, bringing state unification into steady-state operations.
+- Track C closes exporter gaps (gateway, worker, tool executor, delegation, session cache) with Prometheus alerts guarding queue depth and refresh health while the visualization stack is designed.
 
 **Next Steps**
 1. Close Sprint 0 and confirm Prometheus-only observability in the compose stack.

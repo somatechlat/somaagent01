@@ -60,6 +60,8 @@ Sessions are serialized as JSON documents with the following top-level fields:
 
 - **Key format:** `session:{session_id}:meta`
 - **TTL:** 15 minutes (configurable via `SESSION_CACHE_TTL_SECONDS`).
+- **Defaults:** The compose stack sets `SESSION_CACHE_TTL_SECONDS=900`, matching the
+  15-minute window above while allowing overrides per environment.
 - **Value:** JSON blob matching the envelope above, stored as UTF-8.
 - **Purpose:** Fast rehydration of session metadata for the gateway and tooling
   without hitting Postgres on every request.
@@ -92,10 +94,15 @@ create table if not exists session_envelopes (
    - Dump the legacy Postgres `session_events` tail required to rebuild metadata.
 
 2. **Canonical backfill**
-   - Run the `scripts/session_backfill.py` (to be implemented) which:
+  - Run the `scripts/session_backfill.py` utility which:
      - reads the most recent `user`/`assistant` events per session,
      - assembles the envelope using the schema above,
      - persists to `session_envelopes` and warms the Redis cache.
+  - To migrate historic FAISS snapshots into SomaBrain, execute
+    `scripts/memory_migrate.py`. The CLI rewrites the FAISS documents into the
+    payload consumed by `SomaClient.migrate_import`, preserving metadata (IDs,
+    coordinates, scores, retriever hints) and supporting dry-run or JSON output
+    ahead of an actual upload.
 
 3. **Schema enforcement**
    - Update `services/common/session_repository.py` so `append_event` and
@@ -111,12 +118,46 @@ create table if not exists session_envelopes (
      - New conversation start → persona switch → quick action replay.
      - Tool executor persona echo during tool requests.
      - Redis eviction behaviour (simulate TTL expiry, ensure Postgres refresh works).
-   - Prometheus metrics report `session_envelope_refresh_total` counter increases
-     only on cache misses.
+  - Prometheus metrics report `session_envelope_refresh_total` counter increases
+    only on cache misses and annotate outcomes via the `result` label
+    (`found`, `missing`, `error`).
+  - Cache hydration emits `session_envelope_cache_events_total` (via
+    `RedisSessionCache`) to track cache hit/miss ratios and Redis writes.
+  - Validation errors surface through
+    `session_envelope_validation_failures_total` to spotlight malformed
+    payloads.
+
+## Rollback Procedure
+
+1. **Quiesce traffic** – pause new conversation intake (toggle the gateway
+  envelope feature flag) so additional envelopes are not written during
+  rollback.
+2. **Clear Redis cache** – delete keys matching `session:*:meta` to prevent
+  stale persona metadata from persisting.
+3. **Reset Postgres state** – remove migrated rows with a time-bounded delete
+  or drop the table entirely:
+
+  ```sql
+  DELETE FROM session_envelopes WHERE updated_at >= NOW() - INTERVAL '1 day';
+  ```
+
+4. **Disable envelope reads** – set `SESSION_ENVELOPE_ENABLED=false` on the
+  gateway and workers so they reconstruct metadata from `session_events`.
+5. **Warm legacy caches** – replay the last known good Redis snapshot (if
+  available) or allow workers to rehydrate on demand.
+6. **Resume traffic** – re-enable intake, monitor
+  `session_envelope_refresh_total{result="error"}` and cache hit ratios to
+  confirm stability.
 
 ## Next Steps
 
-- Implement the backfill script and automated tests described above.
-- Expose envelope validation metrics from the session repository to Prometheus.
-- Document rollback procedure (clear Redis keys + drop new rows) in the sprint
-  runbook once migration tooling lands.
+- Automate alert routing for validation failures and cache error spikes.
+- Expand automated coverage to exercise cache miss paths and alerting counters.
+- Route the new `SessionEnvelopeCacheErrors` Prometheus alert (triggered when
+  Redis writes fail) through operations paging alongside validation and refresh
+  monitors.
+- Conversation worker now mirrors envelope writes back into Redis, keeping
+  gateway reads consistent after persona or metadata updates and exposing
+  `conversation_worker_session_cache_sync_total` metrics for observability.
+- Integrate session envelope metrics into the upcoming visualization stack once
+  Grafana replacement clears design review.

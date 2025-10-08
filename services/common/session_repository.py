@@ -8,13 +8,58 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from time import perf_counter
 from typing import Any, Optional
 from uuid import UUID
 
 import asyncpg
 import redis.asyncio as redis
+from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
+
+
+SESSION_ENVELOPE_VALIDATION_FAILURES = Counter(
+    "session_envelope_validation_failures_total",
+    "Count of validation failures when constructing session envelopes",
+    labelnames=("reason",),
+)
+
+SESSION_ENVELOPE_WRITE_TOTAL = Counter(
+    "session_envelope_write_total",
+    "Count of session envelope write operations",
+    labelnames=("operation", "status"),
+)
+
+SESSION_ENVELOPE_WRITE_SECONDS = Histogram(
+    "session_envelope_write_seconds",
+    "Duration of session envelope write operations",
+    labelnames=("operation",),
+)
+
+SESSION_ENVELOPE_REFRESH_TOTAL = Counter(
+    "session_envelope_refresh_total",
+    "Count of session envelope refreshes sourced from Postgres",
+    labelnames=("result",),
+)
+
+SESSION_ENVELOPE_REFRESH_SECONDS = Histogram(
+    "session_envelope_refresh_seconds",
+    "Duration of session envelope refresh queries",
+    labelnames=("result",),
+)
+
+SESSION_CACHE_EVENTS = Counter(
+    "session_envelope_cache_events_total",
+    "Session envelope cache interactions against Redis",
+    labelnames=("operation", "result"),
+)
+
+SESSION_CACHE_KEY_TEMPLATE = "session:{session_id}:meta"
+
+
+def session_cache_key(session_id: str) -> str:
+    return SESSION_CACHE_KEY_TEMPLATE.format(session_id=session_id)
 
 
 class SessionCache(ABC):
@@ -33,28 +78,71 @@ class SessionCache(ABC):
 
 
 class RedisSessionCache(SessionCache):
-    def __init__(self, url: Optional[str] = None) -> None:
+    def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
         self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
+        ttl = default_ttl
+        if ttl is None:
+            try:
+                ttl = int(os.getenv("SESSION_CACHE_TTL_SECONDS", "900"))
+            except ValueError:
+                ttl = 900
+        self.default_ttl = ttl if ttl and ttl > 0 else 0
 
     async def get(self, key: str) -> Optional[dict[str, Any]]:
-        raw = await self._client.get(key)
+        try:
+            raw = await self._client.get(key)
+        except Exception:
+            SESSION_CACHE_EVENTS.labels("get", "error").inc()
+            raise
         if raw is None:
+            SESSION_CACHE_EVENTS.labels("get", "miss").inc()
             return None
+        SESSION_CACHE_EVENTS.labels("get", "hit").inc()
         return json.loads(raw)
 
     async def set(self, key: str, value: dict[str, Any], ttl: int = 0) -> None:
         data = json.dumps(value, ensure_ascii=False)
-        if ttl > 0:
-            await self._client.setex(key, ttl, data)
+        effective_ttl = ttl if ttl and ttl > 0 else self.default_ttl
+        try:
+            if effective_ttl > 0:
+                await self._client.setex(key, effective_ttl, data)
+            else:
+                await self._client.set(key, data)
+        except Exception:
+            SESSION_CACHE_EVENTS.labels("set", "error").inc()
+            raise
         else:
-            await self._client.set(key, data)
+            SESSION_CACHE_EVENTS.labels("set", "success").inc()
 
     async def delete(self, key: str) -> None:
-        await self._client.delete(key)
+        try:
+            removed = await self._client.delete(key)
+        except Exception:
+            SESSION_CACHE_EVENTS.labels("delete", "error").inc()
+            raise
+        result = "deleted" if removed else "noop"
+        SESSION_CACHE_EVENTS.labels("delete", result).inc()
 
     async def ping(self) -> None:
         await self._client.ping()
+
+    def format_key(self, session_id: str) -> str:
+        return session_cache_key(session_id)
+
+    async def write_context(
+        self,
+        session_id: str,
+        persona_id: Optional[str],
+        metadata: dict[str, Any] | None,
+        *,
+        ttl: int = 0,
+    ) -> None:
+        payload = {
+            "persona_id": persona_id or "",
+            "metadata": dict(metadata or {}),
+        }
+        await self.set(self.format_key(session_id), payload, ttl=ttl)
 
 
 class SessionStore(ABC):
@@ -101,6 +189,7 @@ class PostgresSessionStore(SessionStore):
         try:
             return UUID(session_id)
         except ValueError as exc:  # pragma: no cover - defensive guard
+            SESSION_ENVELOPE_VALIDATION_FAILURES.labels("invalid_session_id").inc()
             LOGGER.warning("Invalid session_id for envelope", extra={"session_id": session_id})
             raise exc
 
@@ -114,12 +203,15 @@ class PostgresSessionStore(SessionStore):
                 "Unexpected metadata payload when composing envelope",
                 extra={"metadata": raw_metadata},
             )
+            SESSION_ENVELOPE_VALIDATION_FAILURES.labels("invalid_metadata_type").inc()
             metadata = {}
 
         analysis = metadata.pop("analysis", None)
         if isinstance(analysis, dict):
             analysis_payload = analysis
         else:
+            if analysis is not None:
+                SESSION_ENVELOPE_VALIDATION_FAILURES.labels("invalid_analysis_type").inc()
             analysis_payload = {}
         return metadata, analysis_payload
 
@@ -128,6 +220,7 @@ class PostgresSessionStore(SessionStore):
     ) -> Optional[dict[str, Any]]:
         session_id = event.get("session_id")
         if not session_id:
+            SESSION_ENVELOPE_VALIDATION_FAILURES.labels("missing_session_id").inc()
             return None
         persona_id = event.get("persona_id")
         metadata, analysis = self._split_metadata(event)
@@ -164,7 +257,11 @@ class PostgresSessionStore(SessionStore):
                     json.dumps(event, ensure_ascii=False),
                 )
                 if envelope_payload:
-                    await self._upsert_envelope(conn, envelope_payload)
+                    await self._upsert_envelope(
+                        conn,
+                        envelope_payload,
+                        operation="append",
+                    )
 
     async def list_events(
         self, session_id: str, limit: int = 100
@@ -194,85 +291,108 @@ class PostgresSessionStore(SessionStore):
         conn: asyncpg.Connection,
         payload: dict[str, Any],
         *,
+        operation: str,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ) -> None:
         metadata_json = json.dumps(payload.get("metadata", {}), ensure_ascii=False)
         analysis_json = json.dumps(payload.get("analysis", {}), ensure_ascii=False)
-        await conn.execute(
-            """
-            INSERT INTO session_envelopes (
-                session_id,
-                persona_id,
-                tenant,
-                subject,
-                issuer,
-                scope,
-                metadata,
-                analysis,
+        start = perf_counter()
+        try:
+            await conn.execute(
+                """
+                INSERT INTO session_envelopes (
+                    session_id,
+                    persona_id,
+                    tenant,
+                    subject,
+                    issuer,
+                    scope,
+                    metadata,
+                    analysis,
+                    created_at,
+                    updated_at
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7::jsonb,
+                    $8::jsonb,
+                    COALESCE($9, NOW()),
+                    COALESCE($10, NOW())
+                )
+                ON CONFLICT (session_id) DO UPDATE SET
+                    persona_id = COALESCE(EXCLUDED.persona_id, session_envelopes.persona_id),
+                    tenant = COALESCE(EXCLUDED.tenant, session_envelopes.tenant),
+                    subject = COALESCE(EXCLUDED.subject, session_envelopes.subject),
+                    issuer = COALESCE(EXCLUDED.issuer, session_envelopes.issuer),
+                    scope = COALESCE(EXCLUDED.scope, session_envelopes.scope),
+                    metadata = session_envelopes.metadata || EXCLUDED.metadata,
+                    analysis = CASE
+                        WHEN EXCLUDED.analysis = '{}'::jsonb THEN session_envelopes.analysis
+                        ELSE EXCLUDED.analysis
+                    END,
+                    updated_at = NOW()
+                """,
+                payload["session_id"],
+                payload.get("persona_id"),
+                payload.get("tenant"),
+                payload.get("subject"),
+                payload.get("issuer"),
+                payload.get("scope"),
+                metadata_json,
+                analysis_json,
                 created_at,
-                updated_at
+                updated_at,
             )
-            VALUES (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7::jsonb,
-                $8::jsonb,
-                COALESCE($9, NOW()),
-                COALESCE($10, NOW())
-            )
-            ON CONFLICT (session_id) DO UPDATE SET
-                persona_id = COALESCE(EXCLUDED.persona_id, session_envelopes.persona_id),
-                tenant = COALESCE(EXCLUDED.tenant, session_envelopes.tenant),
-                subject = COALESCE(EXCLUDED.subject, session_envelopes.subject),
-                issuer = COALESCE(EXCLUDED.issuer, session_envelopes.issuer),
-                scope = COALESCE(EXCLUDED.scope, session_envelopes.scope),
-                metadata = session_envelopes.metadata || EXCLUDED.metadata,
-                analysis = CASE
-                    WHEN EXCLUDED.analysis = '{}'::jsonb THEN session_envelopes.analysis
-                    ELSE EXCLUDED.analysis
-                END,
-                updated_at = NOW()
-            """,
-            payload["session_id"],
-            payload.get("persona_id"),
-            payload.get("tenant"),
-            payload.get("subject"),
-            payload.get("issuer"),
-            payload.get("scope"),
-            metadata_json,
-            analysis_json,
-            created_at,
-            updated_at,
-        )
+        except Exception:
+            SESSION_ENVELOPE_WRITE_TOTAL.labels(operation, "error").inc()
+            raise
+        else:
+            duration = perf_counter() - start
+            SESSION_ENVELOPE_WRITE_TOTAL.labels(operation, "success").inc()
+            SESSION_ENVELOPE_WRITE_SECONDS.labels(operation).observe(duration)
 
     async def get_envelope(self, session_id: str) -> Optional[SessionEnvelope]:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """
-                SELECT session_id,
-                       persona_id,
-                       tenant,
-                       subject,
-                       issuer,
-                       scope,
-                       metadata,
-                       analysis,
-                       created_at,
-                       updated_at
-                FROM session_envelopes
-                WHERE session_id = $1::uuid
-                """,
-                session_id,
-            )
+            start = perf_counter()
+            try:
+                row = await conn.fetchrow(
+                    """
+                    SELECT session_id,
+                           persona_id,
+                           tenant,
+                           subject,
+                           issuer,
+                           scope,
+                           metadata,
+                           analysis,
+                           created_at,
+                           updated_at
+                    FROM session_envelopes
+                    WHERE session_id = $1::uuid
+                    """,
+                    session_id,
+                )
+            except Exception:
+                SESSION_ENVELOPE_REFRESH_TOTAL.labels("error").inc()
+                SESSION_ENVELOPE_REFRESH_SECONDS.labels("error").observe(
+                    perf_counter() - start
+                )
+                raise
+            duration = perf_counter() - start
         if not row:
+            SESSION_ENVELOPE_REFRESH_TOTAL.labels("missing").inc()
+            SESSION_ENVELOPE_REFRESH_SECONDS.labels("missing").observe(duration)
             return None
 
+        SESSION_ENVELOPE_REFRESH_TOTAL.labels("found").inc()
+        SESSION_ENVELOPE_REFRESH_SECONDS.labels("found").observe(duration)
         return SessionEnvelope(
             session_id=row["session_id"],
             persona_id=row["persona_id"],
@@ -314,6 +434,7 @@ class PostgresSessionStore(SessionStore):
                     "metadata": metadata,
                     "analysis": analysis,
                 },
+                operation="backfill",
                 created_at=created_at,
                 updated_at=updated_at,
             )

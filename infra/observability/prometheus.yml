@@ -12,6 +12,10 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ['delegation:8015']
+  - job_name: 'delegation-metrics'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['delegation:9501']
   - job_name: 'gateway'
     metrics_path: /metrics
     static_configs:

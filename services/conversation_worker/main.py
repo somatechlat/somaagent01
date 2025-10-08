@@ -51,6 +51,11 @@ ESCALATION_ATTEMPTS = Counter(
     "Count of escalation attempts",
     labelnames=("status",),
 )
+SESSION_CACHE_SYNC = Counter(
+    "conversation_worker_session_cache_sync_total",
+    "Conversation worker attempts to synchronise session cache entries",
+    labelnames=("result",),
+)
 
 _METRICS_SERVER_STARTED = False
 
@@ -397,6 +402,19 @@ class ConversationWorker:
             return
 
         await self.store.append_event(session_id, {"type": "user", **event})
+
+        cache_metadata = dict(event.get("metadata", {}))
+        try:
+            await self.cache.write_context(session_id, event.get("persona_id"), cache_metadata)
+        except Exception:
+            SESSION_CACHE_SYNC.labels("error").inc()
+            LOGGER.warning(
+                "Failed to synchronise session cache",
+                extra={"session_id": session_id},
+                exc_info=True,
+            )
+        else:
+            SESSION_CACHE_SYNC.labels("success").inc()
 
         # Build conversation history (last 20 events).
         history = await self.store.list_events(session_id, limit=20)
