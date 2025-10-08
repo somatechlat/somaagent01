@@ -1,0 +1,32 @@
+name: OpenAPI contract validation
+on:
+  push:
+    paths:
+      - "services/gateway/**"
+      - "openapi/**"
+  pull_request:
+    paths:
+      - "services/gateway/**"
+      - "openapi/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Compose
+        run: |
+          docker compose -f infra/docker-compose.somaagent01.yaml up -d
+          # Wait for gateway to become healthy (max 30s)
+          timeout 30 bash -c 'until curl -s http://localhost:8010/v1/openapi.json > /dev/null; do sleep 1; done'
+      - name: Fetch generated OpenAPI schema
+        run: |
+          curl -s http://localhost:8010/v1/openapi.json > generated.json
+      - name: Diff against committed contract
+        run: |
+          if ! diff -u openapi/v1/contract.json generated.json; then
+            echo "❌ OpenAPI contract has changed. Update openapi/v1/contract.json and commit the change."
+            exit 1
+          else
+            echo "✅ OpenAPI contract matches the committed version."
+          fi

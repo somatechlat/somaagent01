@@ -93,7 +93,12 @@ def _hydrate_jwt_credentials_from_vault() -> None:
 
 _hydrate_jwt_credentials_from_vault()
 
-app = FastAPI(title="SomaAgent 01 Gateway")
+app = FastAPI(
+    title="SomaAgent 01 Gateway",
+    openapi_url="/v1/openapi.json",
+    docs_url="/v1/docs",
+    redoc_url="/v1/redoc",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -500,43 +505,24 @@ async def authorize_request(
     if scope:
         auth_metadata["scope"] = scope
 
-    return auth_metadata
-
-
-async def _monitor_soma_agent_hub() -> None:
-    endpoint = f"{SOMA_AGENT_HUB_URL.rstrip('/')}{SOMA_AGENT_HUB_OPENAPI_PATH}"
-    interval = max(5.0, SOMA_AGENT_HUB_CHECK_INTERVAL)
-    previous_up: float | None = None
-
-    while True:
-        start = time.perf_counter()
-        up_value = 0.0
+    # ---------- OpenFGA tenant enforcement ----------
+    # If the OpenFGA client is configured, verify that the authenticated subject
+    # is allowed to act within the resolved tenant. The check runs after any OPA
+    # evaluation and will raise a 403 if the tenant access is denied.
+    client = _get_openfga_client()
+    if client and tenant and subject:
         try:
-            async with httpx.AsyncClient(timeout=SOMA_AGENT_HUB_TIMEOUT) as client:
-                response = await client.get(endpoint)
-                response.raise_for_status()
-            latency = time.perf_counter() - start
-            SOMA_AGENT_HUB_LATENCY.labels(endpoint).observe(latency)
-            up_value = 1.0
-            if previous_up == 0.0:
-                LOGGER.info(
-                    "SomaAgentHub probe recovered",
-                    extra={"endpoint": endpoint, "latency_seconds": latency},
-                )
-        except Exception as exc:
-            latency = time.perf_counter() - start
-            if previous_up != 0.0:
-                LOGGER.warning(
-                    "SomaAgentHub probe failed",
-                    extra={
-                        "endpoint": endpoint,
-                        "error": str(exc),
-                        "latency_seconds": latency,
-                    },
-                )
-        SOMA_AGENT_HUB_STATUS.labels(endpoint).set(up_value)
-        previous_up = up_value
-        await asyncio.sleep(interval)
+            allowed = await client.check_tenant_access(tenant=tenant, subject=subject)
+        except Exception as exc:  # pragma: no cover – defensive guard
+            LOGGER.error(
+                "OpenFGA authorization failed",
+                extra={"tenant": tenant, "subject": subject, "error": str(exc)},
+            )
+            allowed = False
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Tenant access denied")
+
+    return auth_metadata
 
 
 @app.on_event("startup")
@@ -793,3 +779,47 @@ async def health_check(
 @app.get("/metrics")
 def metrics_endpoint() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+async def _monitor_soma_agent_hub() -> None:
+    """Periodically probe the SomaAgent Hub OpenAPI endpoint.
+    Updates Prometheus gauges ``SOMA_AGENT_HUB_STATUS`` and ``SOMA_AGENT_HUB_LATENCY``.
+    The probe runs only when ``SOMA_AGENT_HUB_MONITOR_ENABLED`` is true.
+    """
+    if not SOMA_AGENT_HUB_MONITOR_ENABLED:
+        return
+    endpoint = f"{SOMA_AGENT_HUB_URL.rstrip('/')}{SOMA_AGENT_HUB_OPENAPI_PATH}"
+    interval = SOMA_AGENT_HUB_CHECK_INTERVAL
+    timeout = SOMA_AGENT_HUB_TIMEOUT
+    previous_up = 0.0
+    while True:
+        start = time.time()
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(endpoint)
+                response.raise_for_status()
+            up = 1.0
+        except Exception as exc:  # pragma: no cover – network failures are expected in prod
+            up = 0.0
+            LOGGER.warning(
+                "SomaAgent Hub health check failed",
+                extra={"error": str(exc), "endpoint": endpoint},
+            )
+        latency = time.time() - start
+        # Record metrics
+        SOMA_AGENT_HUB_STATUS.labels(endpoint).set(up)
+        SOMA_AGENT_HUB_LATENCY.labels(endpoint).observe(latency)
+        # Log transitions for observability
+        if up != previous_up:
+            if up:
+                LOGGER.info(
+                    "SomaAgent Hub probe recovered",
+                    extra={"endpoint": endpoint, "latency_seconds": latency},
+                )
+            else:
+                LOGGER.warning(
+                    "SomaAgent Hub probe down",
+                    extra={"endpoint": endpoint, "latency_seconds": latency},
+                )
+            previous_up = up
+        await asyncio.sleep(interval)
