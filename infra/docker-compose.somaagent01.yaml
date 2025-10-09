@@ -1,10 +1,6 @@
 version: '3.9'
 
-# Minimal, validated infra compose for SomaAgent01 (core + dev profiles)
-version: '3.9'
-version: '3.9'
-
-# Minimal validated infra compose for local SomaAgent01
+# Minimal, validated infra compose for local SomaAgent01
 
 x-agent-env: &agent-env
   PYTHONPATH: /a0
