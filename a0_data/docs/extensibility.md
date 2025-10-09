@@ -113,6 +113,30 @@ Helper modules provide utility functions and shared logic used across the framew
 Helpers are located in:
 - Default helpers: `/python/helpers/`
 
+### Capsule Registry & Marketplace
+
+- The Capsule Registry service (`services/capsule_registry/main.py`) exposes `/capsules` endpoints for upload, listing, **install**, and download. Uploaded artifacts are optionally signed with [Cosign](https://github.com/sigstore/cosign) when `COSIGN_KEY_PATH` is set; signatures and timestamps are stored alongside metadata in Postgres and surfaced back to clients.
+- SDK helpers in `python/somaagent/capsule.py` provide `list_capsules()`, `download_capsule()`, and `install_capsule()` functions plus a small CLI entry point for scripting.
+- The FastAPI gateway proxies the registry on the same host via `/v1/capsules`, `/v1/capsules/{id}`, and `/v1/capsules/{id}/install`, using `CAPSULE_REGISTRY_URL` and `CAPSULE_REGISTRY_TIMEOUT_SECONDS` for configuration. Legacy `/capsules` routes remain as undocumented aliases for backward compatibility.
+- A GitHub Actions workflow (`.github/workflows/capsule.yml`) demonstrates the build → sign → publish loop for capsules. Reuse it when wiring CI/CD for custom capsules.
+- The web UI ships with a marketplace page (`webui/marketplace.html` + `/webui/js/marketplace.js`) that lists available capsules, shows signature metadata, and performs one-click installs into the registry’s `installed/` directory via the gateway endpoint.
+
+#### Enterprise approval workflow
+
+1. **Verify signatures.** Reviewers confirm Cosign output before approving an install:
+
+    ```bash
+    cosign verify-blob --key $COSIGN_PUBLIC_KEY path/to/capsule.zip --signature path/to/signature.txt
+    ```
+
+    Compare the resulting digest with the signature displayed in the marketplace UI.
+
+2. **Record approvals.** Store the verification result, reviewer identity, and ticket link with your change-management tooling.
+
+3. **Install via the gateway.** After approval, trigger the install from the marketplace. The activity log provides immediate feedback, while registry metadata persists install timestamps.
+
+4. **Audit regularly.** Export registry contents (e.g., `SELECT * FROM capsules`) and reconcile them with approval records to confirm compliance. For stricter control, gate `/v1/capsules/{id}/install` behind an internal service that enforces the checklist above.
+
 ### Prompts
 Prompts define the instructions and context provided to the LLM. They are highly extensible and can be customized for different agents.
 

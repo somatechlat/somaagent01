@@ -75,7 +75,7 @@ services:
     profiles: ["dev"]
     command: ["/exe/initialize.sh", "development"]
     ports:
-      - "7001:80"
+      - "7002:80"
     depends_on:
       - kafka
       - postgres

@@ -29,7 +29,7 @@ is_reserved() {
 }
 
 # Reserve the agent UI port up-front so no other service grabs it.
-AGENT_UI_PORT=7001
+AGENT_UI_PORT=7002
 reserve_port "$AGENT_UI_PORT"
 
 # Function to find a free port starting from a base value.
@@ -94,7 +94,7 @@ for idx in "${!PORT_VARS[@]}"; do
   export "$var"="$(find_free_port "$base")"
 done
 
-# Enforce static agent UI port (7001) and fail fast if unavailable.
+# Enforce static agent UI port (7002) and fail fast if unavailable.
 if lsof -iTCP -sTCP:LISTEN -P | grep -q "\b$AGENT_UI_PORT\b"; then
   echo "Error: Required agent UI port $AGENT_UI_PORT is already in use." >&2
   echo "Please free the port or stop the process using it, then rerun this script." >&2

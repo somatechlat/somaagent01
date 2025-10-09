@@ -7,8 +7,31 @@
 </head>
 <body>
   <h1>Capsule Marketplace</h1>
-  <div id="capsule-list" class="capsule-list">
-    <!-- Capsules will be injected here -->
+  <div class="marketplace-layout">
+    <section class="capsule-catalog">
+      <h2 class="section-title">Catalog</h2>
+      <div id="capsule-list" class="capsule-list">
+        <!-- Capsules will be injected here -->
+      </div>
+    </section>
+    <aside class="capsule-activity" aria-live="polite">
+      <section class="activity-panel">
+        <header class="panel-header">
+          <h2>Install Log</h2>
+          <button id="clear-log" type="button" class="panel-action">Clear</button>
+        </header>
+        <ol id="install-log" class="install-log" aria-live="polite"></ol>
+        <p id="install-log-empty" class="empty-state">No install activity yet.</p>
+      </section>
+      <section class="activity-panel">
+        <header class="panel-header">
+          <h2>Recent Installs</h2>
+          <button id="clear-history" type="button" class="panel-action">Clear</button>
+        </header>
+        <div id="install-history" class="install-history"></div>
+        <p id="install-history-empty" class="empty-state">No capsules installed in this browser.</p>
+      </section>
+    </aside>
   </div>
   <script type="module" src="/js/marketplace.js"></script>
 </body>

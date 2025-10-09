@@ -3,7 +3,7 @@
 # SomaAgent 01 Gateway API (Sprint 0B)
 
 ## Base URL
-The gateway runs on FastAPI (uvicorn) and is intended to sit behind Kong/Envoy. For local development it defaults to `http://localhost:8001`.
+- The gateway runs on FastAPI (uvicorn) and is intended to sit behind Kong/Envoy. For local development it defaults to `http://localhost:8010`.
 
 ## Endpoints
 

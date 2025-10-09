@@ -58,10 +58,32 @@ except Exception:  # pragma: no cover
             )
 
 
-from browser_use.llm import (
-    ChatOpenRouter,
-    ChatGoogle,
-)
+try:
+    from browser_use.llm import (
+        ChatOpenRouter,
+        ChatGoogle,
+    )
+except Exception:  # pragma: no cover
+    class _MissingBrowserLLM:
+        """Fallback shim when optional browser_use dependency is absent."""
+
+        def __init__(self, *_, **__):
+            raise ImportError(
+                "browser-use is not installed. Install it to enable browser tooling support."
+            )
+
+        def __call__(self, *_, **__):
+            raise ImportError(
+                "browser-use is not installed. Install it to enable browser tooling support."
+            )
+
+
+    class ChatOpenRouter(_MissingBrowserLLM):  # type: ignore[misc]
+        pass
+
+
+    class ChatGoogle(_MissingBrowserLLM):  # type: ignore[misc]
+        pass
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -123,6 +145,7 @@ class ChatGenerationResult:
         self.thinking = False
         self.thinking_tag = ""
         self.unprocessed = ""
+        self._pending_reasoning = ""
         self.native_reasoning = False
         self.thinking_pairs = [("<think>", "</think>"), ("<reasoning>", "</reasoning>")]
         if chunk:
@@ -156,16 +179,20 @@ class ChatGenerationResult:
         if self.thinking:
             close_pos = response.find(self.thinking_tag)
             if close_pos != -1:
-                reasoning += response[:close_pos]
+                reasoning += self._pending_reasoning + response[:close_pos]
+                self._pending_reasoning = ""
                 response = response[close_pos + len(self.thinking_tag) :]
                 self.thinking = False
                 self.thinking_tag = ""
             else:
                 if self._is_partial_closing_tag(response):
-                    self.unprocessed = response
+                    stable, partial = self._split_partial_tag(response, self.thinking_tag)
+                    if stable:
+                        self._pending_reasoning += stable
+                    self.unprocessed = partial
                     response = ""
                 else:
-                    reasoning += response
+                    self._pending_reasoning += response
                     response = ""
         else:
             for opening_tag, closing_tag in self.thinking_pairs:
@@ -173,19 +200,24 @@ class ChatGenerationResult:
                     response = response[len(opening_tag) :]
                     self.thinking = True
                     self.thinking_tag = closing_tag
+                    self._pending_reasoning = ""
 
                     close_pos = response.find(closing_tag)
                     if close_pos != -1:
-                        reasoning += response[:close_pos]
+                        reasoning += self._pending_reasoning + response[:close_pos]
+                        self._pending_reasoning = ""
                         response = response[close_pos + len(closing_tag) :]
                         self.thinking = False
                         self.thinking_tag = ""
                     else:
                         if self._is_partial_closing_tag(response):
-                            self.unprocessed = response
+                            stable, partial = self._split_partial_tag(response, closing_tag)
+                            if stable:
+                                self._pending_reasoning += stable
+                            self.unprocessed = partial
                             response = ""
                         else:
-                            reasoning += response
+                            self._pending_reasoning += response
                             response = ""
                     break
                 elif len(response) < len(opening_tag) and self._is_partial_opening_tag(
@@ -196,6 +228,12 @@ class ChatGenerationResult:
                     break
 
         return ChatChunk(response_delta=response, reasoning_delta=reasoning)
+
+    def _split_partial_tag(self, text: str, tag: str) -> tuple[str, str]:
+        for size in range(len(tag) - 1, 0, -1):
+            if text.endswith(tag[:size]):
+                return text[: -size], text[-size:]
+        return text, ""
 
     def _is_partial_opening_tag(self, text: str, opening_tag: str) -> bool:
         for i in range(1, len(opening_tag)):
