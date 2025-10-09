@@ -17,6 +17,7 @@ import uuid
 from typing import Annotated, AsyncIterator, Any, Dict
 
 import httpx
+from contextlib import asynccontextmanager
 try:
     import jwt  # type: ignore
 except Exception:  # pragma: no cover
@@ -126,11 +127,32 @@ def _hydrate_jwt_credentials_from_vault() -> None:
 
 _hydrate_jwt_credentials_from_vault()
 
+@asynccontextmanager
+async def gateway_lifespan(app: FastAPI):
+    hub_monitor_task: asyncio.Task | None = None
+    if SOMA_AGENT_HUB_MONITOR_ENABLED:
+        hub_monitor_task = asyncio.create_task(_monitor_soma_agent_hub())
+        app.state.hub_monitor_task = hub_monitor_task
+
+    try:
+        yield
+    finally:
+        if hub_monitor_task:
+            hub_monitor_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await hub_monitor_task
+            if hasattr(app.state, "hub_monitor_task"):
+                delattr(app.state, "hub_monitor_task")
+
+        bus = KafkaEventBus()
+        await bus.close()
+
 app = FastAPI(
     title="SomaAgent 01 Gateway",
     openapi_url="/v1/openapi.json",
     docs_url="/v1/docs",
     redoc_url="/v1/redoc",
+    lifespan=gateway_lifespan,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -138,6 +160,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+_OPENAPI_CACHE: dict[str, Any] | None = None
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi_document() -> JSONResponse:
+    """Expose the service OpenAPI document at the canonical root path."""
+
+    global _OPENAPI_CACHE
+    if _OPENAPI_CACHE is None:
+        _OPENAPI_CACHE = app.openapi()
+    return JSONResponse(_OPENAPI_CACHE)
 
 
 REQUEST_COUNTER = Counter(

@@ -1,4 +1,8 @@
--- Create dedicated OpenFGA database and user for production deployments.
+-- Create dedicated OpenFGA role (idempotent).
+-- Note: CREATE DATABASE cannot be executed inside a DO block / function
+-- because it's not allowed within a transaction. Database creation is
+-- handled in a separate shell script (11-create-openfga-db.sh) so it
+-- runs outside a transaction and can succeed during container init.
 DO
 $$
 BEGIN
@@ -9,15 +13,5 @@ BEGIN
     ELSE
         EXECUTE 'ALTER ROLE openfga WITH LOGIN PASSWORD ''openfga''';
     END IF;
-
-    IF NOT EXISTS (
-        SELECT FROM pg_database WHERE datname = 'openfga'
-    ) THEN
-        CREATE DATABASE openfga OWNER openfga;
-    ELSE
-        EXECUTE 'ALTER DATABASE openfga OWNER TO openfga';
-    END IF;
 END
 $$;
-
-GRANT ALL PRIVILEGES ON DATABASE openfga TO openfga;
