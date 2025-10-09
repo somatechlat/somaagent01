@@ -175,9 +175,6 @@ class SomaGentToolService:
             return await self.capabilities["file_operations"].execute(
                 operation=request["parameters"]["operation"],
                 path=request["parameters"]["path"],
-                content=request["parameters"].get("content")
-            )
-        
         # ... other OS-level tools
     
     async def _execute_with_network(self, request: Dict[str, Any]) -> Any:
