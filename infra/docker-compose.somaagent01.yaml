@@ -1,5 +1,3 @@
-version: '3.9'
-
 # Minimal, validated infra compose for local SomaAgent01
 
 x-agent-env: &agent-env
