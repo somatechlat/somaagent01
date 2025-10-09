@@ -1,23 +1,20 @@
-import sys
-import os
+import pytest
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models
 
-ex1 = "<think>reasoning goes here</think>response goes here"
-ex2 = "<think>reasoning goes here</thi"
 
+@pytest.mark.parametrize(
+    "payload,expected_response,expected_reasoning",
+    [
+        ("<think>reasoning goes here</think>response", "response", "reasoning goes here"),
+        ("<think>partial", "", ""),
+        ("no tags reply", "no tags reply", ""),
+    ],
+)
+def test_chat_generation_result_extracts_reasoning(payload, expected_response, expected_reasoning):
+    result = models.ChatGenerationResult()
+    for character in payload:
+        result.add_chunk(models.ChatChunk(response_delta=character, reasoning_delta=""))
 
-def test_example(example: str):
-    res = models.ChatGenerationResult()
-    for i in range(len(example)):
-        char = example[i]
-        chunk = res.add_chunk({"response_delta": char, "reasoning_delta": ""})
-        print(i, ":", chunk)
-
-    print("output", res.output())
-
-
-if __name__ == "__main__":
-    # test_example(ex1)
-    test_example(ex2)
+    assert result.response == expected_response
+    assert result.reasoning == expected_reasoning

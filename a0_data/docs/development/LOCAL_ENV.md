@@ -29,17 +29,17 @@ The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseli
 	```
 	A successful health check ensures the delegation services can reach the real memory provider.
 	> **Container note:** When those services run inside Docker they automatically remap the brain URL to `http://host.docker.internal:9696` so containers can reach the host network. Override the alias with `SOMA_CONTAINER_HOST_ALIAS`, disable the heuristic via `SOMA_DISABLE_CONTAINER_CHECK=1`, or force it on (useful for local tests) with `SOMA_FORCE_CONTAINER=1`.
-2. **Free the Agent UI port** – port **7001** is reserved permanently for the local Agent UI. Stop any process bound to that port (`lsof -i :7001`).
+2. **Free the Agent UI port** – port **7002** is reserved permanently for the local Agent UI. Stop any process bound to that port (`lsof -i :7002`).
 3. **Launch the stack** – the helper script preflights every dependency and enforces the static UI port:
 	```bash
 	./scripts/run_dev_cluster.sh
 	```
-	The script prints the effective host bindings for Kafka, Postgres, delegation gateway, etc. If port 7001 is unavailable the script aborts so you can remediate before retrying.
+	The script prints the effective host bindings for Kafka, Postgres, delegation gateway, etc. If port 7002 is unavailable the script aborts so you can remediate before retrying.
 4. **Verify services** – once Compose reports all containers as started, validate the allocations:
 	```bash
 	cd infra
 	docker compose -f docker-compose.somaagent01.yaml ps
-	curl -I http://127.0.0.1:7001/
+	curl -I http://127.0.0.1:7002/
 	```
 	A `200 OK` confirms the Agent UI is reachable on the expected port.
 
@@ -47,7 +47,7 @@ The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseli
 If you invoke Compose yourself, export the same static binding first and then start the stack:
 
 ```bash
-export WEB_UI_PORT=7001
+export WEB_UI_PORT=7002
 cd infra
 docker compose -f docker-compose.somaagent01.yaml up -d
 ```
@@ -84,7 +84,7 @@ GATEWAY_PORT=$(docker compose -f infra/docker-compose.somaagent01.yaml port dele
 - **WebSocket**: `ws://localhost:${GATEWAY_PORT}/v1/session/<SESSION_ID>/stream`
 - **SSE**: `http://localhost:${GATEWAY_PORT}/v1/session/<SESSION_ID>/events`
 
-The Agent UI is always available at `http://localhost:7001/`.
+The Agent UI is always available at `http://localhost:7002/`.
 
 Use tools like `wscat` or `curl`:
 ```bash

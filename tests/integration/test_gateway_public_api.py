@@ -1,3 +1,13 @@
+import jwt
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def read_root()->dict:
+    return {"msg": "Hello World"}
+
+
 import uuid
 
 import pytest
@@ -143,7 +153,7 @@ async def test_health_endpoint_uses_stubbed_dependencies(monkeypatch):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://gateway") as client:
-        response = await client.get("/health")
+        response = await client.get("/v1/health")
 
     assert response.status_code == 200
     payload = response.json()

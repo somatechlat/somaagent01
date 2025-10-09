@@ -3,8 +3,8 @@
 Steps performed:
 1. Build a tiny capsule zip archive on the fly (manifest + README).
 2. Upload the artifact to the capsule registry via ``POST /capsules``.
-3. Query the gateway ``GET /capsules`` endpoint to ensure the capsule is discoverable.
-4. Trigger an install through the gateway ``POST /capsules/{id}/install`` endpoint (optional).
+3. Query the gateway ``GET /v1/capsules`` endpoint to ensure the capsule is discoverable.
+4. Trigger an install through the gateway ``POST /v1/capsules/{id}/install`` endpoint (optional).
 
 The script exits with code ``0`` on success and ``1`` when any HTTP or validation error occurs.
 """
@@ -71,7 +71,7 @@ def _build_args(argv: Iterable[str]) -> SmokeConfig:
     parser.add_argument(
         "--skip-install",
         action="store_true",
-        help="Skip POST /capsules/{id}/install (useful when the install path is not accessible)",
+    help="Skip POST /v1/capsules/{id}/install (useful when the install path is not accessible)",
     )
 
     args = parser.parse_args(list(argv))
@@ -126,7 +126,7 @@ def _upload_capsule(client: httpx.Client, cfg: SmokeConfig, zip_path: Path) -> d
 
 
 def _ensure_capsule_visible(client: httpx.Client, cfg: SmokeConfig, capsule_id: str) -> list[dict[str, Any]]:
-    url = f"{cfg.gateway_url}/capsules"
+    url = f"{cfg.gateway_url}/v1/capsules"
     response = client.get(url)
     response.raise_for_status()
     capsules = response.json()
@@ -136,7 +136,7 @@ def _ensure_capsule_visible(client: httpx.Client, cfg: SmokeConfig, capsule_id: 
 
 
 def _trigger_install(client: httpx.Client, cfg: SmokeConfig, capsule_id: str) -> dict[str, Any]:
-    url = f"{cfg.gateway_url}/capsules/{capsule_id}/install"
+    url = f"{cfg.gateway_url}/v1/capsules/{capsule_id}/install"
     response = client.post(url)
     response.raise_for_status()
     return response.json()

@@ -1,7 +1,7 @@
 import os
 
 
-UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7001")
+UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7002")
 
 
 def wait_for_ai_response(page, previous_count):

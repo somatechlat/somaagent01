@@ -53,7 +53,7 @@ async def test_proxy_list_capsules(monkeypatch):
 
     transport = ASGITransport(app=gateway_main.app)
     async with AsyncClient(transport=transport, base_url="http://gateway") as client:
-        resp = await client.get("/capsules")
+        resp = await client.get("/v1/capsules")
 
     assert resp.status_code == 200
     assert resp.json() == payload
@@ -71,7 +71,7 @@ async def test_proxy_install_capsule(monkeypatch):
 
     transport = ASGITransport(app=gateway_main.app)
     async with AsyncClient(transport=transport, base_url="http://gateway") as client:
-        resp = await client.post(f"/capsules/{capsule_id}/install")
+        resp = await client.post(f"/v1/capsules/{capsule_id}/install")
 
     assert resp.status_code == 200
     assert resp.json() == payload
@@ -89,7 +89,7 @@ async def test_proxy_download_capsule(monkeypatch):
 
     transport = ASGITransport(app=gateway_main.app)
     async with AsyncClient(transport=transport, base_url="http://gateway") as client:
-        resp = await client.get(f"/capsules/{capsule_id}")
+        resp = await client.get(f"/v1/capsules/{capsule_id}")
 
     assert resp.status_code == 200
     assert resp.content == b"ZIPDATA"
@@ -108,7 +108,7 @@ async def test_proxy_install_capsule_http_error(monkeypatch):
 
     transport = ASGITransport(app=gateway_main.app)
     async with AsyncClient(transport=transport, base_url="http://gateway") as client:
-        resp = await client.post(f"/capsules/{capsule_id}/install")
+        resp = await client.post(f"/v1/capsules/{capsule_id}/install")
 
     assert resp.status_code == 404
     assert resp.json()["detail"] == "capsule missing"
@@ -125,7 +125,7 @@ async def test_proxy_install_capsule_request_error(monkeypatch):
 
     transport = ASGITransport(app=gateway_main.app)
     async with AsyncClient(transport=transport, base_url="http://gateway") as client:
-        resp = await client.post(f"/capsules/{capsule_id}/install")
+        resp = await client.post(f"/v1/capsules/{capsule_id}/install")
 
     assert resp.status_code == 502
     assert resp.json()["detail"] == "Capsule registry unavailable"

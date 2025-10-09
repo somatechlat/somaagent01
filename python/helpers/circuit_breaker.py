@@ -10,6 +10,7 @@ import functools
 import logging
 import os
 import time
+import asyncio
 from typing import Any, Callable, TypeVar
 
 from prometheus_client import Counter, start_http_server
@@ -102,27 +103,53 @@ def circuit_breaker(
             "opened_at": 0.0,
         }
 
+        if asyncio.iscoroutinefunction(func):
+
+            @functools.wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> T:
+                if state["circuit_open"]:
+                    if time.time() - state["opened_at"] >= reset_timeout:
+                        CB_TRIAL.inc()
+                        try:
+                            result = await func(*args, **kwargs)
+                        except Exception:
+                            state["opened_at"] = time.time()
+                            raise CircuitOpenError("Circuit still open after trial call")
+                        else:
+                            state["circuit_open"] = False
+                            state["failures"] = 0
+                            CB_CLOSED.inc()
+                            return result
+                    raise CircuitOpenError("Circuit is open; call blocked")
+
+                try:
+                    return await func(*args, **kwargs)
+                except Exception:
+                    state["failures"] += 1
+                    if state["failures"] >= failure_threshold:
+                        state["circuit_open"] = True
+                        state["opened_at"] = time.time()
+                        CB_OPENED.inc()
+                    raise
+
+            return async_wrapper
+
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
             if state["circuit_open"]:
-                # Check if reset timeout has elapsed
                 if time.time() - state["opened_at"] >= reset_timeout:
-                    # Try a single trial call
                     CB_TRIAL.inc()
                     try:
                         result = func(*args, **kwargs)
                     except Exception:
-                        # Still failing – keep circuit open and reset timer
                         state["opened_at"] = time.time()
                         raise CircuitOpenError("Circuit still open after trial call")
                     else:
-                        # Success – close circuit
                         state["circuit_open"] = False
                         state["failures"] = 0
                         CB_CLOSED.inc()
                         return result
-                else:
-                    raise CircuitOpenError("Circuit is open; call blocked")
+                raise CircuitOpenError("Circuit is open; call blocked")
 
             try:
                 return func(*args, **kwargs)

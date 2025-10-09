@@ -110,7 +110,7 @@ From now on, please use this name for both `git clone` and `docker pull` command
 ## 🆕 What’s New (October 2025)
 
 - Versioned gateway surface at `/v1/*` plus Prometheus alerts for latency, error-rate, and circuit-breaker openings.
-- Capsule Registry service with optional Cosign signing, gateway proxy endpoints for `/capsules/*`, SDK helpers (`python/somaagent/capsule.py`), and a refreshed marketplace UI (`webui/marketplace.html`) that surfaces signatures and triggers one-click installs into `/capsules/installed`.
+- Capsule Registry service with optional Cosign signing, gateway proxy endpoints for `/v1/capsules/*` (with legacy `/capsules/*` aliases), SDK helpers (`python/somaagent/capsule.py`), and a refreshed marketplace UI (`webui/marketplace.html`) that surfaces signatures and triggers one-click installs into `/capsules/installed` entirely through the gateway.
 - GitHub Actions capsule workflow (`.github/workflows/capsule.yml`) and Kafka partition scaler script (`scripts/kafka_partition_scaler.py`).
 - Optional dependencies (PyJWT, sentence-transformers, openai-whisper, GitPython) now load lazily so tests can run without them; install as needed for full functionality.
 
@@ -142,7 +142,7 @@ docker compose -f docker-compose.somaagent01.yaml build
 docker compose -f docker-compose.somaagent01.yaml up
 ```
 
-Once the stack is healthy you can reach the Agent UI at `http://localhost:7001`, the delegation gateway on port `8010`, and supporting services (settings, router, canvas, requeue, audio) on ports `8011-8016`. The compose files automatically set `host.docker.internal` for intra-host callbacks, so no extra networking tweaks are required on macOS or Windows.
+Once the stack is healthy you can reach the Agent UI at `http://localhost:7002`, the delegation gateway on port `8010`, and supporting services (settings, router, canvas, requeue, audio) on ports `8011-8016`. The compose files automatically set `host.docker.internal` for intra-host callbacks, so no extra networking tweaks are required on macOS or Windows.
 
 > **Observability tip:** The gateway now exports circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`. Prometheus scrapes this endpoint via the `circuit-breakers` job, enabling the `CircuitBreakerOpenEvents` alert without additional wiring. Alertmanager ships alongside Prometheus—access it on `${ALERTMANAGER_PORT:-9093}` to manage silences or webhook routes. Override `CIRCUIT_BREAKER_METRICS_HOST`/`PORT` if you relocate the exporter.
 

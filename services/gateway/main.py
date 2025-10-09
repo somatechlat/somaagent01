@@ -8,44 +8,15 @@ to clients. Real deployments should run this behind Kong/Envoy with mTLS.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import logging
 import os
 import time
 import uuid
-from typing import Annotated, AsyncIterator, Any, Dict
+from typing import Annotated, AsyncIterator, Any, Dict, Optional
 
 import httpx
-from contextlib import asynccontextmanager
-try:
-    import jwt  # type: ignore
-except Exception:  # pragma: no cover
-    class _MissingJWT:
-        class PyJWTError(Exception):
-            pass
-
-        class algorithms:  # type: ignore
-            class RSAAlgorithm:
-                @staticmethod
-                def from_jwk(*_, **__):
-                    raise ImportError("PyJWT required for RSA verification")
-
-            class ECAlgorithm:
-                @staticmethod
-                def from_jwk(*_, **__):
-                    raise ImportError("PyJWT required for EC verification")
-
-        @staticmethod
-        def get_unverified_header(*_, **__):
-            raise ImportError("PyJWT required for JWT header inspection")
-
-        @staticmethod
-        def decode(*_, **__):
-            raise ImportError("PyJWT required for JWT validation")
-
-    jwt = _MissingJWT()  # type: ignore
-
+import jwt
 from fastapi import (
     Depends,
     FastAPI,
@@ -55,105 +26,21 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
 
+from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.event_bus import KafkaEventBus, iterate_topic
-from services.common.logging_config import setup_logging
-from services.common.schema_validator import validate_event
-from services.common.session_repository import (
-    PostgresSessionStore,
-    RedisSessionCache,
-)
-from services.common.trace_context import inject_trace_context
-from services.common.tracing import setup_tracing
-from services.common.vault_secrets import load_kv_secret
 from services.common.openfga_client import OpenFGAClient
-from python.helpers.circuit_breaker import ensure_metrics_exporter
+from services.common.schema_validator import validate_event
+from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from services.common.vault_secrets import load_kv_secret
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
-tracer = setup_tracing("gateway")
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
-# Start the standalone circuit-breaker metrics exporter if configured. This
-# exposes the counters defined in ``python.helpers.circuit_breaker`` for
-# Prometheus scraping alongside the FastAPI metrics surface.
-ensure_metrics_exporter()
-
-
-def _hydrate_jwt_credentials_from_vault() -> None:
-    global JWT_SECRET, JWT_PUBLIC_KEY
-
-    path = os.getenv("GATEWAY_JWT_VAULT_PATH")
-    if not path:
-        return
-
-    mount_point = os.getenv("GATEWAY_JWT_VAULT_MOUNT", "secret")
-    secret_key = os.getenv(
-        "GATEWAY_JWT_VAULT_SECRET_KEY",
-        os.getenv("GATEWAY_JWT_VAULT_KEY", "secret"),
-    )
-    if not JWT_SECRET and secret_key:
-        secret = load_kv_secret(path=path, key=secret_key, mount_point=mount_point, logger=LOGGER)
-        if secret:
-            JWT_SECRET = secret
-            LOGGER.info(
-                "JWT secret hydrated from Vault",
-                extra={"vault_path": path, "mount_point": mount_point},
-            )
-
-    public_key_key = os.getenv("GATEWAY_JWT_VAULT_PUBLIC_KEY_KEY")
-    if not JWT_PUBLIC_KEY and public_key_key:
-        public_key = load_kv_secret(
-            path=path,
-            key=public_key_key,
-            mount_point=mount_point,
-            logger=LOGGER,
-        )
-        if public_key:
-            JWT_PUBLIC_KEY = public_key
-            LOGGER.info(
-                "JWT public key hydrated from Vault",
-                extra={"vault_path": path, "mount_point": mount_point},
-            )
-
-
-_hydrate_jwt_credentials_from_vault()
-
-@asynccontextmanager
-async def gateway_lifespan(app: FastAPI):
-    hub_monitor_task: asyncio.Task | None = None
-    if SOMA_AGENT_HUB_MONITOR_ENABLED:
-        hub_monitor_task = asyncio.create_task(_monitor_soma_agent_hub())
-        app.state.hub_monitor_task = hub_monitor_task
-
-    try:
-        yield
-    finally:
-        if hub_monitor_task:
-            hub_monitor_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await hub_monitor_task
-            if hasattr(app.state, "hub_monitor_task"):
-                delattr(app.state, "hub_monitor_task")
-
-        bus = KafkaEventBus()
-        await bus.close()
-
-app = FastAPI(
-    title="SomaAgent 01 Gateway",
-    openapi_url="/v1/openapi.json",
-    docs_url="/v1/docs",
-    redoc_url="/v1/redoc",
-    lifespan=gateway_lifespan,
-)
+app = FastAPI(title="SomaAgent 01 Gateway")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -161,76 +48,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+API_VERSION = os.getenv("GATEWAY_API_VERSION", "v1")
 
-_OPENAPI_CACHE: dict[str, Any] | None = None
-
-
-@app.get("/openapi.json", include_in_schema=False)
-async def openapi_document() -> JSONResponse:
-    """Expose the service OpenAPI document at the canonical root path."""
-
-    global _OPENAPI_CACHE
-    if _OPENAPI_CACHE is None:
-        _OPENAPI_CACHE = app.openapi()
-    return JSONResponse(_OPENAPI_CACHE)
-
-
-REQUEST_COUNTER = Counter(
-    "gateway_requests_total",
-    "Total HTTP requests processed by the gateway",
-    labelnames=("method", "route", "status"),
-)
-REQUEST_LATENCY = Histogram(
-    "gateway_request_latency_seconds",
-    "Latency of HTTP requests handled by the gateway",
-    labelnames=("route",),
-)
-KAFKA_PUBLISH_COUNTER = Counter(
-    "gateway_kafka_publish_total",
-    "Count of Kafka publish attempts from the gateway",
-    labelnames=("topic", "status"),
-)
-STREAMED_EVENTS_COUNTER = Counter(
-    "gateway_streamed_events_total",
-    "Outbound events streamed to clients",
-    labelnames=("transport",),
-)
-ACTIVE_WEBSOCKETS = Gauge(
-    "gateway_active_websockets",
-    "Current number of active WebSocket connections",
-)
-SOMA_AGENT_HUB_STATUS = Gauge(
-    "soma_agent_hub_up",
-    "Availability of the SomaAgentHub OpenAPI endpoint as probed by the gateway",
-    labelnames=("endpoint",),
-)
-SOMA_AGENT_HUB_LATENCY = Histogram(
-    "soma_agent_hub_openapi_latency_seconds",
-    "Latency fetching the SomaAgentHub OpenAPI document",
-    labelnames=("endpoint",),
-)
-
-
-def _resolve_route_label(request: Request) -> str:
-    route = request.scope.get("route")  # FastAPI injects the APIRoute here
-    if route and getattr(route, "path", None):
-        return route.path
-    return request.url.path
+_API_KEY_STORE: Optional[ApiKeyStore] = None
 
 
 @app.middleware("http")
-async def record_metrics(request: Request, call_next):
-    route_label = _resolve_route_label(request)
-    start_time = time.perf_counter()
-    status_code = "500"
-    try:
-        response = await call_next(request)
-        status_code = str(response.status_code)
-        return response
-    finally:
-        duration = time.perf_counter() - start_time
-        REQUEST_COUNTER.labels(request.method, route_label, status_code).inc()
-        REQUEST_LATENCY.labels(route_label).observe(duration)
+async def add_version_header(request: Request, call_next):
+    response = await call_next(request)
+    if "X-API-Version" not in response.headers:
+        response.headers["X-API-Version"] = API_VERSION
+    return response
+
+
+def _cached_openapi_schema() -> dict[str, Any]:
+    global _OPENAPI_CACHE
+    if _OPENAPI_CACHE is None:
+        _OPENAPI_CACHE = get_openapi(
+            title=app.title,
+            version=os.getenv("GATEWAY_OPENAPI_VERSION", "1.0.0"),
+            routes=app.routes,
+            description=app.description,
+        )
+    return _OPENAPI_CACHE
+
+
+app.openapi = _cached_openapi_schema  # type: ignore[assignment]
 
 
 def get_event_bus() -> KafkaEventBus:
@@ -245,23 +88,21 @@ def get_session_store() -> PostgresSessionStore:
     return PostgresSessionStore()
 
 
-_OPENFGA_CLIENT: OpenFGAClient | None = None
+def get_api_key_store() -> ApiKeyStore:
+    global _API_KEY_STORE
+    if _API_KEY_STORE is not None:
+        return _API_KEY_STORE
 
-
-def _get_openfga_client() -> OpenFGAClient | None:
-    global _OPENFGA_CLIENT
-    if _OPENFGA_CLIENT is None:
-        store_id = os.getenv("OPENFGA_STORE_ID")
-        if not store_id:
-            LOGGER.warning("OPENFGA_STORE_ID not configured; skipping OpenFGA enforcement")
-            return None
-        fail_open = os.getenv("OPENFGA_FAIL_OPEN", "true").lower() in {"1", "true", "yes", "on"}
-        try:
-            _OPENFGA_CLIENT = OpenFGAClient(store_id=store_id, fail_open=fail_open)
-        except ValueError as exc:
-            LOGGER.error("Failed to initialise OpenFGA client", extra={"error": str(exc)})
-            _OPENFGA_CLIENT = None
-    return _OPENFGA_CLIENT
+    # Require Redis configuration for production use
+    redis_url = os.getenv("REDIS_URL")
+    redis_password = os.getenv("REDIS_PASSWORD")
+    if not redis_url:
+        raise RuntimeError(
+            "API‑key store requires a Redis configuration. Set REDIS_URL (and optionally REDIS_PASSWORD)."
+        )
+    _API_KEY_STORE = RedisApiKeyStore(redis_url=redis_url, redis_password=redis_password)
+    LOGGER.info("Initialized Redis‑based API‑key store.")
+    return _API_KEY_STORE
 
 
 class MessagePayload(BaseModel):
@@ -281,6 +122,24 @@ class QuickActionPayload(BaseModel):
     persona_id: str | None = None
     action: str
     metadata: dict[str, str] = Field(default_factory=dict)
+
+
+class ApiKeyCreatePayload(BaseModel):
+    label: str = Field(..., max_length=100, description="Human readable label for the API key")
+
+
+class ApiKeyResponse(BaseModel):
+    key_id: str
+    label: str
+    created_at: float
+    created_by: str | None
+    prefix: str
+    last_used_at: float | None
+    revoked: bool
+
+
+class ApiKeyCreateResponse(ApiKeyResponse):
+    secret: str
 
 
 QUICK_ACTIONS: dict[str, str] = {
@@ -320,22 +179,63 @@ JWKS_TIMEOUT_SECONDS = float(os.getenv("GATEWAY_JWKS_TIMEOUT_SECONDS", "3"))
 
 JWKS_CACHE: dict[str, tuple[list[dict[str, Any]], float]] = {}
 
-SOMA_AGENT_HUB_URL = os.getenv(
-    "SOMA_AGENT_HUB_URL", "http://host.docker.internal:60000"
-)
-SOMA_AGENT_HUB_OPENAPI_PATH = os.getenv(
-    "SOMA_AGENT_HUB_OPENAPI_PATH", "/openapi.json"
-)
-SOMA_AGENT_HUB_CHECK_INTERVAL = float(
-    os.getenv("SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS", "60")
-)
-SOMA_AGENT_HUB_TIMEOUT = float(os.getenv("SOMA_AGENT_HUB_TIMEOUT_SECONDS", "3"))
-SOMA_AGENT_HUB_MONITOR_ENABLED = os.getenv(
-    "SOMA_AGENT_HUB_MONITOR_ENABLED", "true"
-).lower() in {"1", "true", "yes", "on"}
-
 CAPSULE_REGISTRY_URL = os.getenv("CAPSULE_REGISTRY_URL", "http://localhost:8000")
 CAPSULE_REGISTRY_TIMEOUT = float(os.getenv("CAPSULE_REGISTRY_TIMEOUT_SECONDS", "10"))
+
+_OPENAPI_CACHE: dict[str, Any] | None = None
+_OPENFGA_CLIENT: OpenFGAClient | None = None
+
+
+def _hydrate_jwt_credentials_from_vault() -> None:
+    """Load JWT signing secret from Vault when configured."""
+
+    global JWT_SECRET
+
+    if JWT_SECRET:
+        return
+
+    vault_path = os.getenv("GATEWAY_JWT_VAULT_PATH")
+    secret_key = os.getenv("GATEWAY_JWT_VAULT_SECRET_KEY")
+    mount_point = os.getenv("GATEWAY_JWT_VAULT_MOUNT", "secret")
+
+    if not vault_path or not secret_key:
+        return
+
+    secret = load_kv_secret(
+        path=vault_path,
+        key=secret_key,
+        mount_point=mount_point,
+        logger=LOGGER,
+    )
+    if secret:
+        LOGGER.info("Loaded JWT secret from Vault", extra={"path": vault_path})
+        JWT_SECRET = secret
+
+
+_hydrate_jwt_credentials_from_vault()
+
+
+def _get_openfga_client() -> OpenFGAClient | None:
+    """Lazily construct the OpenFGA authorization client when configured."""
+
+    global _OPENFGA_CLIENT
+
+    if os.getenv("OPENFGA_DISABLED", "false").lower() in {"true", "1", "yes"}:
+        return None
+
+    if _OPENFGA_CLIENT is not None:
+        return _OPENFGA_CLIENT
+
+    try:
+        _OPENFGA_CLIENT = OpenFGAClient()
+    except ValueError:
+        LOGGER.debug("OpenFGA client not configured; skipping enforcement")
+        _OPENFGA_CLIENT = None
+    except Exception:
+        LOGGER.warning("Failed to initialise OpenFGA client", exc_info=True)
+        _OPENFGA_CLIENT = None
+
+    return _OPENFGA_CLIENT
 
 
 def _extract_tenant(claims: Dict[str, Any]) -> str | None:
@@ -358,13 +258,6 @@ def _extract_scope(claims: Dict[str, Any]) -> str | None:
     return str(scope)
 
 
-def _extract_subject(claims: Dict[str, Any]) -> str | None:
-    subject = claims.get("sub")
-    if subject is None:
-        return None
-    return str(subject)
-
-
 def _apply_auth_metadata(
     metadata: Dict[str, str], auth_ctx: Dict[str, str]
 ) -> Dict[str, str]:
@@ -375,57 +268,32 @@ def _apply_auth_metadata(
     return merged
 
 
-async def _load_session_context(
-    session_id: str, cache: RedisSessionCache, store: PostgresSessionStore
-) -> dict[str, Any]:
-    cache_key = cache.format_key(session_id)
-    cached = await cache.get(cache_key)
-    if cached:
-        return cached
-
-    envelope = await store.get_envelope(session_id)
-    if not envelope:
-        return {}
-
-    context = {
-        "persona_id": envelope.persona_id or "",
-        "metadata": envelope.metadata,
-    }
-    try:
-        await cache.write_context(session_id, envelope.persona_id, envelope.metadata)
-    except Exception:
-        LOGGER.warning("Failed to persist session cache", exc_info=True)
-    return context
+def _require_admin_scope(auth_ctx: Dict[str, str]) -> None:
+    if not REQUIRE_AUTH:
+        return
+    scope_raw = auth_ctx.get("scope")
+    scopes = {scope.strip() for scope in (scope_raw or "").split() if scope.strip()}
+    if scopes.intersection({"admin", "keys:manage"}):
+        return
+    raise HTTPException(status_code=403, detail="Admin scope required")
 
 
-async def _hydrate_session_envelope(
-    *,
-    session_id: str,
-    requested_persona: str | None,
-    metadata: Dict[str, Any],
+async def _cache_session_metadata(
     cache: RedisSessionCache,
-    store: PostgresSessionStore,
-) -> tuple[str | None, Dict[str, Any]]:
-    if not session_id:
-        return requested_persona, metadata
-
-    context = await _load_session_context(session_id, cache, store)
-    merged_metadata = {**context.get("metadata", {}), **metadata}
-    persona = requested_persona or context.get("persona_id") or None
-    return persona, merged_metadata
-
-
-async def _persist_session_context(
     session_id: str,
     persona_id: str | None,
     metadata: Dict[str, Any],
-    cache: RedisSessionCache,
 ) -> None:
-    try:
-        await cache.write_context(session_id, persona_id, metadata)
-    except Exception:
-        LOGGER.warning("Failed to persist session cache", exc_info=True)
-        raise
+    write_context = getattr(cache, "write_context", None)
+    if callable(write_context):
+        await write_context(session_id, persona_id, metadata)
+        return
+
+    cache_payload: Dict[str, str] = {"persona_id": persona_id or ""}
+    tenant = metadata.get("tenant")
+    if tenant:
+        cache_payload["tenant"] = str(tenant)
+    await cache.set(f"session:{session_id}:meta", cache_payload)
 
 
 async def _get_jwks_keys() -> list[dict[str, Any]]:
@@ -565,54 +433,35 @@ async def authorize_request(
 
     tenant = _extract_tenant(claims)
     scope = _extract_scope(claims)
+    subject = claims.get("sub")
+
     auth_metadata: Dict[str, str] = {}
     if tenant:
         auth_metadata["tenant"] = tenant
-    subject = _extract_subject(claims)
     if subject:
-        auth_metadata["subject"] = subject
+        auth_metadata["subject"] = str(subject)
     if claims.get("iss"):
         auth_metadata["issuer"] = str(claims["iss"])
     if scope:
         auth_metadata["scope"] = scope
 
-    # ---------- OpenFGA tenant enforcement ----------
-    # If the OpenFGA client is configured, verify that the authenticated subject
-    # is allowed to act within the resolved tenant. The check runs after any OPA
-    # evaluation and will raise a 403 if the tenant access is denied.
     client = _get_openfga_client()
     if client and tenant and subject:
         try:
-            allowed = await client.check_tenant_access(tenant=tenant, subject=subject)
-        except Exception as exc:  # pragma: no cover – defensive guard
+            allowed = await client.check_tenant_access(
+                tenant=tenant,
+                subject=str(subject),
+            )
+        except Exception as exc:  # pragma: no cover - guarded by tests
             LOGGER.error(
-                "OpenFGA authorization failed",
+                "OpenFGA authorization check failed",
                 extra={"tenant": tenant, "subject": subject, "error": str(exc)},
             )
-            allowed = False
+            raise HTTPException(status_code=502, detail="Authorization unavailable") from exc
         if not allowed:
             raise HTTPException(status_code=403, detail="Tenant access denied")
 
     return auth_metadata
-
-
-@app.on_event("startup")
-async def _start_background_tasks() -> None:
-    if not SOMA_AGENT_HUB_MONITOR_ENABLED:
-        return
-    if getattr(app.state, "hub_monitor_task", None):
-        return
-    app.state.hub_monitor_task = asyncio.create_task(_monitor_soma_agent_hub())
-
-
-@app.on_event("shutdown")
-async def _stop_background_tasks() -> None:
-    task = getattr(app.state, "hub_monitor_task", None)
-    if not task:
-        return
-    task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await task
 
 
 @app.post("/v1/session/message")
@@ -628,48 +477,29 @@ async def enqueue_message(
     metadata = _apply_auth_metadata(payload.metadata, auth_metadata)
 
     session_id = payload.session_id or str(uuid.uuid4())
-    persona_id, hydrated_metadata = await _hydrate_session_envelope(
-        session_id=session_id,
-        requested_persona=payload.persona_id,
-        metadata=metadata,
-        cache=cache,
-        store=store,
-    )
-
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
         "session_id": session_id,
-        "persona_id": persona_id,
+        "persona_id": payload.persona_id,
         "message": payload.message,
         "attachments": payload.attachments,
-        "metadata": hydrated_metadata,
+        "metadata": metadata,
         "role": "user",
     }
 
     validate_event(event, "conversation_event")
-    inject_trace_context(event)
 
     try:
-        with tracer.start_as_current_span(
-            "gateway.publish_inbound",
-            attributes={
-                "messaging.system": "kafka",
-                "messaging.destination": "conversation.inbound",
-                "soma.session_id": session_id,
-                "soma.persona_id": str(event.get("persona_id") or ""),
-            },
-        ):
-            await bus.publish("conversation.inbound", event)
-        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "success").inc()
+        await bus.publish("conversation.inbound", event)
     except Exception as exc:  # pragma: no cover - needs live Kafka
         LOGGER.exception("Failed to publish inbound event")
-        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "error").inc()
         raise HTTPException(
             status_code=502, detail="Unable to enqueue message"
         ) from exc
 
-    await _persist_session_context(session_id, event["persona_id"], event["metadata"], cache)
+    # Cache most recent metadata for quick lookup.
+    await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
     await store.append_event(session_id, {"type": "user", **event})
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
@@ -691,47 +521,79 @@ async def enqueue_quick_action(
     metadata = _apply_auth_metadata(payload.metadata, auth_metadata)
 
     session_id = payload.session_id or str(uuid.uuid4())
-    persona_id, hydrated_metadata = await _hydrate_session_envelope(
-        session_id=session_id,
-        requested_persona=payload.persona_id,
-        metadata={**metadata, "source": "quick_action", "action": payload.action},
-        cache=cache,
-        store=store,
-    )
-
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
         "session_id": session_id,
-        "persona_id": persona_id,
+        "persona_id": payload.persona_id,
         "message": template,
         "attachments": [],
-        "metadata": hydrated_metadata,
+        "metadata": {**metadata, "source": "quick_action", "action": payload.action},
         "role": "user",
     }
 
     validate_event(event, "conversation_event")
-    inject_trace_context(event)
 
-    try:
-        with tracer.start_as_current_span(
-            "gateway.publish_inbound",
-            attributes={
-                "messaging.system": "kafka",
-                "messaging.destination": "conversation.inbound",
-                "soma.session_id": session_id,
-                "soma.persona_id": str(event.get("persona_id") or ""),
-            },
-        ):
-            await bus.publish("conversation.inbound", event)
-        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "success").inc()
-    except Exception as exc:  # pragma: no cover - needs live Kafka
-        KAFKA_PUBLISH_COUNTER.labels("conversation.inbound", "error").inc()
-        raise HTTPException(status_code=502, detail="Unable to enqueue message") from exc
-    await _persist_session_context(session_id, event["persona_id"], event["metadata"], cache)
+    await bus.publish("conversation.inbound", event)
+    await _cache_session_metadata(cache, session_id, payload.persona_id, event["metadata"])
     await store.append_event(session_id, {"type": "user", **event})
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
+
+
+@app.post("/v1/keys", response_model=ApiKeyCreateResponse)
+async def create_api_key(
+    payload: ApiKeyCreatePayload,
+    request: Request,
+    store: Annotated[ApiKeyStore, Depends(get_api_key_store)],
+) -> ApiKeyCreateResponse:
+    auth_metadata = await authorize_request(request, payload.model_dump())
+    _require_admin_scope(auth_metadata)
+    created = await store.create_key(payload.label, created_by=auth_metadata.get("subject"))
+    return ApiKeyCreateResponse(
+        key_id=created.key_id,
+        label=created.label,
+        created_at=created.created_at,
+        created_by=created.created_by,
+        prefix=created.prefix,
+        last_used_at=created.last_used_at,
+        revoked=created.revoked,
+        secret=created.secret,
+    )
+
+
+@app.get("/v1/keys", response_model=list[ApiKeyResponse])
+async def list_api_keys(
+    request: Request,
+    store: Annotated[ApiKeyStore, Depends(get_api_key_store)],
+) -> list[ApiKeyResponse]:
+    auth_metadata = await authorize_request(request, {})
+    _require_admin_scope(auth_metadata)
+    items = await store.list_keys()
+    return [
+        ApiKeyResponse(
+            key_id=item.key_id,
+            label=item.label,
+            created_at=item.created_at,
+            created_by=item.created_by,
+            prefix=item.prefix,
+            last_used_at=item.last_used_at,
+            revoked=item.revoked,
+        )
+        for item in items
+    ]
+
+
+@app.delete("/v1/keys/{key_id}", status_code=204)
+async def revoke_api_key(
+    key_id: str,
+    request: Request,
+    store: Annotated[ApiKeyStore, Depends(get_api_key_store)],
+) -> Response:
+    auth_metadata = await authorize_request(request, {"key_id": key_id})
+    _require_admin_scope(auth_metadata)
+    await store.revoke_key(key_id)
+    return Response(status_code=204)
 
 
 async def stream_events(session_id: str) -> AsyncIterator[dict[str, str]]:
@@ -747,17 +609,14 @@ async def websocket_stream(
     session_id: str,
 ) -> None:
     await websocket.accept()
-    ACTIVE_WEBSOCKETS.inc()
     try:
         async for event in stream_events(session_id):
-            STREAMED_EVENTS_COUNTER.labels("websocket").inc()
             await websocket.send_json(event)
     except WebSocketDisconnect:
         LOGGER.info("WebSocket disconnected", extra={"session_id": session_id})
     except Exception:  # pragma: no cover - live streaming only
         LOGGER.exception("WebSocket streaming error")
     finally:
-        ACTIVE_WEBSOCKETS.dec()
         if not websocket.client_state.closed:
             await websocket.close()
 
@@ -765,7 +624,6 @@ async def websocket_stream(
 async def sse_stream(session_id: str) -> AsyncIterator[str]:
     async for event in stream_events(session_id):
         data = json.dumps(event)
-        STREAMED_EVENTS_COUNTER.labels("sse").inc()
         yield f"data: {data}\n\n"
 
 
@@ -791,7 +649,7 @@ def _capsule_registry_url(path: str) -> str:
     return f"{base}{path}"
 
 
-@app.get("/capsules")
+@app.get("/v1/capsules")
 async def proxy_list_capsules() -> JSONResponse:
     url = _capsule_registry_url("/capsules")
     try:
@@ -805,7 +663,7 @@ async def proxy_list_capsules() -> JSONResponse:
     return JSONResponse(response.json())
 
 
-@app.post("/capsules/{capsule_id}/install")
+@app.post("/v1/capsules/{capsule_id}/install")
 async def proxy_install_capsule(capsule_id: str) -> JSONResponse:
     url = _capsule_registry_url(f"/capsules/{capsule_id}/install")
     try:
@@ -819,7 +677,7 @@ async def proxy_install_capsule(capsule_id: str) -> JSONResponse:
     return JSONResponse(response.json())
 
 
-@app.get("/capsules/{capsule_id}")
+@app.get("/v1/capsules/{capsule_id}")
 async def proxy_download_capsule(capsule_id: str) -> Response:
     url = _capsule_registry_url(f"/capsules/{capsule_id}")
     try:
@@ -840,14 +698,35 @@ async def proxy_download_capsule(capsule_id: str) -> Response:
     return Response(content=response.content, media_type=media_type, headers=headers)
 
 
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    # Ensure background producers are closed on shutdown
+app.add_api_route(
+    "/capsules",
+    proxy_list_capsules,
+    methods=["GET"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    "/capsules/{capsule_id}",
+    proxy_download_capsule,
+    methods=["GET"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    "/capsules/{capsule_id}/install",
+    proxy_install_capsule,
+    methods=["POST"],
+    include_in_schema=False,
+)
+async def _shutdown_event() -> None:
+    """Ensure background producers are closed on shutdown."""
+
     bus = KafkaEventBus()
     await bus.close()
 
 
-@app.get("/health")
+app.add_event_handler("shutdown", _shutdown_event)
+
+
+@app.get("/v1/health")
 async def health_check(
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
     cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
@@ -903,50 +782,9 @@ async def health_check(
     return JSONResponse({"status": overall_status, "components": components})
 
 
-@app.get("/metrics")
-def metrics_endpoint() -> Response:
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
-
-async def _monitor_soma_agent_hub() -> None:
-    """Periodically probe the SomaAgent Hub OpenAPI endpoint.
-    Updates Prometheus gauges ``SOMA_AGENT_HUB_STATUS`` and ``SOMA_AGENT_HUB_LATENCY``.
-    The probe runs only when ``SOMA_AGENT_HUB_MONITOR_ENABLED`` is true.
-    """
-    if not SOMA_AGENT_HUB_MONITOR_ENABLED:
-        return
-    endpoint = f"{SOMA_AGENT_HUB_URL.rstrip('/')}{SOMA_AGENT_HUB_OPENAPI_PATH}"
-    interval = SOMA_AGENT_HUB_CHECK_INTERVAL
-    timeout = SOMA_AGENT_HUB_TIMEOUT
-    previous_up = 0.0
-    while True:
-        start = time.time()
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.get(endpoint)
-                response.raise_for_status()
-            up = 1.0
-        except Exception as exc:  # pragma: no cover – network failures are expected in prod
-            up = 0.0
-            LOGGER.warning(
-                "SomaAgent Hub health check failed",
-                extra={"error": str(exc), "endpoint": endpoint},
-            )
-        latency = time.time() - start
-        # Record metrics
-        SOMA_AGENT_HUB_STATUS.labels(endpoint).set(up)
-        SOMA_AGENT_HUB_LATENCY.labels(endpoint).observe(latency)
-        # Log transitions for observability
-        if up != previous_up:
-            if up:
-                LOGGER.info(
-                    "SomaAgent Hub probe recovered",
-                    extra={"endpoint": endpoint, "latency_seconds": latency},
-                )
-            else:
-                LOGGER.warning(
-                    "SomaAgent Hub probe down",
-                    extra={"endpoint": endpoint, "latency_seconds": latency},
-                )
-            previous_up = up
-        await asyncio.sleep(interval)
+app.add_api_route(
+    "/health",
+    health_check,
+    methods=["GET"],
+    include_in_schema=False,
+)

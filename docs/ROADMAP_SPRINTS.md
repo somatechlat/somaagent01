@@ -6,7 +6,8 @@
 
 > **Status update (2025‑10‑08)** – The roadmap has progressed with two cross-cutting sprints:
 > - **Observability & Resilience**: Versioned gateway routing (`/v1/*`), reusable circuit breaker helper (with Prometheus counters), Kafka partition scaling script, and alert rules for latency/error-rate/circuit-breaker events.
-> - **Enterprise Extensions & Marketplace**: Capsule registry FastAPI service with optional Cosign signing, SDK helpers (`python/somaagent/capsule.py`), GitHub Actions capsule pipeline, and a browser marketplace UI stub.
+> - **Enterprise Extensions & Marketplace**: Capsule registry FastAPI service with optional Cosign signing, SDK helpers (`python/somaagent/capsule.py`), GitHub Actions capsule pipeline, and a browser marketplace UI that installs capsules via the gateway (`/v1/capsules/*`).
+> - **SomaAgentHub integration**: integration endpoint recorded as `http://localhost:60010/`.
 >
 > Grafana has been dropped from the default stack in favour of Prometheus-only monitoring. The sections below remain for historical context and should be revisited when planning the next iteration.
 
@@ -18,6 +19,7 @@
 | **Sprint 3** | 1 week | **Test End‑to‑End Flow** – UI → Delegation → Worker → SLM → Memory, with voice API stub. | Automated smoke‑test script, updated runbook.
 | **Sprint 4** | 0.5 week | **Documentation & CI** – lock‑down the new stack, add CI job that builds the reduced compose file and runs the smoke test. | Updated docs (`RUNBOOK.md`, `LOCAL_ENV.md`), GitHub Actions workflow.
 | **Sprint 5** (optional) | 0.5 week | **Future‑Proofing** – add optional profiles for optional services (e.g., OpenFGA, OPA) and a “full‑stack” profile for integration testing. | Profile‑aware compose file, README examples.
+| **Sprint 6** | TBD | **(Reserved)** – Sprint placeholder retained; detailed compatibility content removed per request. | TBD.
 
 ---
 
@@ -48,7 +50,7 @@
 - Verify every service exposes a `/health` endpoint (most already do).
 - Extend Prometheus `prometheus.yml` to scrape:
   - `delegation` (port 8015)
-  - `agent‑ui` (port 7001)
+   - `agent‑ui` (port 7002)
   - `openfga` (port 8080)
   - `opa` (port 8181)
 - Add a Grafana dashboard (optional) that visualises:
@@ -91,7 +93,11 @@
 
 ---
 
-## 📂 Where the Roadmap Lives
+<!-- Detailed compatibility section removed per user request -->
+
+---
+
+## �📂 Where the Roadmap Lives
 The roadmap is stored at **`docs/ROADMAP_SPRINTS.md`** (this file).  It is the canonical reference for the team to plan, track, and review sprint progress.
 
 ---

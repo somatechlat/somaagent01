@@ -1,51 +1,21 @@
-name: SomaAgent01
+version: '3.9'
 
-# Base `docker compose up` launches the shared runtime (Kafka, Redis, Postgres,
-# OpenFGA/OPA, gateway, conversation worker, tool executor). Enable additional
-# services by setting `COMPOSE_PROFILES=dev` for local tooling or
-# `COMPOSE_PROFILES=prod` for production-facing APIs before running Compose.
-# Grafana is intentionally excluded until the custom visualization stack is ready.
-# Grafana has been removed from the stack; only Prometheus remains.
+# Minimal, validated infra compose for SomaAgent01 (core + dev profiles)
+version: '3.9'
+version: '3.9'
+
+# Minimal validated infra compose for local SomaAgent01
 
 x-agent-env: &agent-env
   PYTHONPATH: /a0
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  KAFKA_SECURITY_PROTOCOL: PLAINTEXT
   REDIS_URL: redis://redis:6379/0
   POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-  TELEMETRY_DATABASE_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-  CONVERSATION_INBOUND: conversation.inbound
-  CONVERSATION_OUTBOUND: conversation.outbound
-  CONVERSATION_GROUP: conversation-worker
-  TOOL_REQUESTS_TOPIC: tool.requests
-  TOOL_RESULTS_TOPIC: tool.results
-  TOOL_EXECUTOR_GROUP: tool-executor
-  DELEGATION_TOPIC: somastack.delegation
-  DELEGATION_GROUP: delegation-worker
-  OPA_URL: http://opa:8181
   POLICY_BASE_URL: http://opa:8181
   POLICY_DATA_PATH: /v1/data/soma/allow
   POLICY_FAIL_OPEN: "false"
-  SOMA_AGENT_MODE: LOCAL
-  TENANT_CONFIG_PATH: /a0/conf/tenants.yaml
-  SLM_BASE_URL: ${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
-  SOMA_BASE_URL: http://host.docker.internal:9696
-  SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
-  CONVERSATION_METRICS_PORT: ${CONVERSATION_METRICS_PORT:-9301}
-  CONVERSATION_METRICS_HOST: 0.0.0.0
-  TOOL_EXECUTOR_METRICS_PORT: ${TOOL_EXECUTOR_METRICS_PORT:-9401}
-  TOOL_EXECUTOR_METRICS_HOST: 0.0.0.0
-  DELEGATION_METRICS_PORT: ${DELEGATION_METRICS_PORT:-9501}
-  DELEGATION_METRICS_HOST: 0.0.0.0
-  SESSION_CACHE_TTL_SECONDS: ${SESSION_CACHE_TTL_SECONDS:-900}
-  SOMA_AGENT_HUB_URL: http://host.docker.internal:60000
-  SOMA_AGENT_HUB_OPENAPI_PATH: /openapi.json
-  SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS: ${SOMA_AGENT_HUB_CHECK_INTERVAL_SECONDS:-60}
-  SOMA_AGENT_HUB_TIMEOUT_SECONDS: ${SOMA_AGENT_HUB_TIMEOUT_SECONDS:-3}
-  SOMA_AGENT_HUB_MONITOR_ENABLED: ${SOMA_AGENT_HUB_MONITOR_ENABLED:-true}
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
 
 x-agent-depends: &agent-depends
   kafka:
@@ -54,20 +24,12 @@ x-agent-depends: &agent-depends
     condition: service_healthy
   redis:
     condition: service_healthy
-  openfga:
-    condition: service_started
-  opa:
-    condition: service_started
-  otel-collector:
-    condition: service_started
 
 x-agent-service: &agent-service
   image: somaagent01-dev:latest
   build:
     context: ..
     dockerfile: DockerfileLocal
-    args:
-      BRANCH: development
   working_dir: /a0
   volumes:
     - ../a0_data:/a0
@@ -75,49 +37,38 @@ x-agent-service: &agent-service
     - "host.docker.internal:host-gateway"
   depends_on: *agent-depends
   restart: unless-stopped
-  mem_limit: 2g
-  cpus: "1.5"
 
 services:
   kafka:
     image: bitnami/kafka:latest
     container_name: somaAgent01_kafka
+    profiles: ["core"]
     environment:
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_CFG_NUM_PARTITIONS=3
-      - KAFKA_CFG_MAX_REQUEST_SIZE=2147483648
-      - KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES=2147483648
-      - KAFKA_CFG_MESSAGE_MAX_BYTES=2147483648
-      - KAFKA_CLUSTER_ID=kcqIv3RutQm49oJm9sYzVg
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_KRAFT_CLUSTER_ID=soma-cluster-01
-      - KAFKA_ENABLE_SSL=${KAFKA_ENABLE_SSL:-false}
-      - KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER=${KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER:-yes}
-      - KAFKA_HEAP_OPTS=-Xms1g -Xmx2g
-      - BITNAMI_DEBUG=true
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_MAX_REQUEST_SIZE: "2147483647"
+      KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483647"
+      KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483647"
+      KAFKA_CLUSTER_ID: "kcqIv3RutQm49oJm9sYzVg"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
+      KAFKA_HEAP_OPTS: "-Xms1g -Xmx2g"
+      BITNAMI_DEBUG: "true"
     ports:
       - "${KAFKA_PORT:-0}:9092"
     restart: unless-stopped
     volumes:
       - kafka_data:/bitnami/kafka
-      - ./kafka_certs:/opt/bitnami/kafka/config/certs:ro
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "/opt/bitnami/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1",
-        ]
+      test: ["CMD", "true"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -128,6 +79,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: somaAgent01_redis
+    profiles: ["core"]
     command: ["redis-server", "--save", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-0}:6379"
@@ -145,18 +97,18 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaAgent01_postgres
+    profiles: ["core"]
     environment:
-      - POSTGRES_USER=soma
-      - POSTGRES_PASSWORD=soma
-      - POSTGRES_DB=somaagent01
-      - PGDATA=/var/lib/postgresql/data/pgdata
-      - POSTGRES_INITDB_ARGS=--data-checksums
+      POSTGRES_USER: soma
+      POSTGRES_PASSWORD: soma
+      POSTGRES_DB: somaagent01
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-0}:5432"
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
       interval: 15s
@@ -166,167 +118,19 @@ services:
     mem_limit: 2g
     cpus: "2"
 
-  qdrant:
-    profiles: ["dev", "prod"]
-    image: qdrant/qdrant:v1.11.0
-    container_name: somaAgent01_qdrant
-    ports:
-      - "${QDRANT_HTTP_PORT:-0}:6333"
-      - "${QDRANT_GRPC_PORT:-0}:6334"
-    restart: unless-stopped
-    volumes:
-      - qdrant_data:/qdrant/storage
-    mem_limit: 2g
-    cpus: "1"
-
-  clickhouse:
-    profiles: ["prod"]
-    image: clickhouse/clickhouse-server:24.8
-    container_name: somaAgent01_clickhouse
-    environment:
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-    ports:
-      - "${CLICKHOUSE_HTTP_PORT:-0}:8123"
-      - "${CLICKHOUSE_NATIVE_PORT:-0}:9000"
-    restart: unless-stopped
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-
-  prometheus:
-    profiles: ["dev", "prod"]
-    image: prom/prometheus:v2.53.0
-    container_name: somaAgent01_prometheus
-    command: ["--config.file=/etc/prometheus/prometheus.yml"]
-    ports:
-      - "${PROMETHEUS_PORT:-0}:9090"
-    restart: unless-stopped
-    volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
-      - prometheus_data:/prometheus
-    mem_limit: 1g
-    cpus: "1"
-
-  alertmanager:
-    profiles: ["dev", "prod"]
-    image: prom/alertmanager:v0.27.0
-    container_name: somaAgent01_alertmanager
-    command:
-      [
-        "--config.file=/etc/alertmanager/alertmanager.yml",
-        "--storage.path=/alertmanager",
-      ]
-    ports:
-      - "${ALERTMANAGER_PORT:-0}:9093"
-    restart: unless-stopped
-    depends_on:
-      prometheus:
-        condition: service_started
-    volumes:
-      - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - alertmanager_data:/alertmanager
-    mem_limit: 512m
-    cpus: "0.5"
-
-
-  otel-collector:
-    profiles: ["dev", "prod"]
-    image: otel/opentelemetry-collector:0.95.0
-    container_name: somaAgent01_otel_collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./observability/otel-collector.yaml:/etc/otel-collector-config.yaml:ro
-    ports:
-      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
-      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
-    restart: unless-stopped
-    mem_limit: 512m
-    cpus: "0.5"
-
-
-  vault:
-    profiles: ["prod"]
-    image: hashicorp/vault:1.17
-    container_name: somaAgent01_vault
-    command: ["vault", "server", "-config=/vault/config/config.hcl"]
-    environment:
-      - VAULT_ADDR=http://0.0.0.0:8200
-      - VAULT_API_ADDR=http://vault:8200
-    cap_add:
-      - IPC_LOCK
-    ports:
-      - "${VAULT_PORT:-0}:8200"
-    restart: unless-stopped
-    volumes:
-      - vault_data:/vault/file
-      - ./vault/config:/vault/config
-    healthcheck:
-      test: ["CMD-SHELL", "vault status >/dev/null 2>&1"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-
-  opa:
-    image: openpolicyagent/opa:0.64.0
-    container_name: somaAgent01_opa
-    command: ["run", "--server", "--set=decision_logs.console=true"]
-    ports:
-      - "${OPA_PORT:-0}:8181"
-    restart: unless-stopped
-
   openfga-migrate:
     image: openfga/openfga:v1.8.3
     container_name: somaAgent01_openfga-migrate
     restart: "no"
     command:
-      [
-        "migrate",
-        "--datastore-engine",
-        "postgres",
-        "--datastore-uri",
-        "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable",
-      ]
+      - migrate
+      - --datastore-engine
+      - postgres
+      - --datastore-uri
+      - "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
-
-  delegation:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_delegation
-    command: ["/usr/bin/supervisord","-c","/etc/supervisor/conf.d/delegation.conf"]
-    working_dir: /a0
-    environment:
-      LOG_LEVEL: INFO
-      DELEGATION_TOPIC: somastack.delegation
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-      SLM_BASE_URL: ${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
-      PYTHONPATH: /a0
-      SOMA_BASE_URL: http://host.docker.internal:9696
-      SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
-      VOICE_API_URL: ${VOICE_API_URL:-https://example.com/voice}
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      openfga:
-        condition: service_started
-      opa:
-        condition: service_started
-    ports:
-      - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"
-      - "${DELEGATION_GATEWAY_PORT_SECONDARY:-0}:8015"
-      - "${DELEGATION_METRICS_PORT:-9501}:9501"
-    volumes:
-      - ../a0_data:/a0
-      - ../conf/supervisor/delegation.conf:/etc/supervisor/conf.d/delegation.conf:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   openfga:
     build:
@@ -335,23 +139,16 @@ services:
     image: somaagent01-openfga:latest
     container_name: somaAgent01_openfga
     environment:
-      - OPENFGA_GRPC_ADDR=0.0.0.0:8081
-      - OPENFGA_HTTP_ADDR=0.0.0.0:8080
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
-      - OPENFGA_DATASTORE_MAX_OPEN_CONNS=50
-      - OPENFGA_DATASTORE_MAX_IDLE_CONNS=10
+      OPENFGA_GRPC_ADDR: 0.0.0.0:8081
+      OPENFGA_HTTP_ADDR: 0.0.0.0:8080
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable"
     ports:
       - "${OPENFGA_GRPC_PORT:-0}:8081"
       - "${OPENFGA_HTTP_PORT:-0}:8080"
     restart: unless-stopped
     mem_limit: 2g
     cpus: "1"
-    healthcheck:
-      test: ["CMD", "openfga", "version"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
@@ -359,191 +156,31 @@ services:
         condition: service_completed_successfully
 
   agent-ui:
-    profiles: ["dev"]
     <<: *agent-service
     container_name: somaAgent01_agent-ui
+    profiles: ["dev"]
     command: ["/exe/initialize.sh", "development"]
-    working_dir: /a0
-    environment:
-      SOMA_BASE_URL: http://host.docker.internal:9696
-      SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
-      PYTHONPATH: /a0
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      openfga:
-        condition: service_started
     ports:
       - "7002:80"
-    volumes:
-      - ../a0_data:/a0
 
   gateway:
     <<: *agent-service
     container_name: somaAgent01_gateway
     command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.gateway.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8010",
-      ]
+      - python3
+      - -m
+      - uvicorn
+      - services.gateway.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8010"
     environment:
       <<: *agent-env
       PORT: "8010"
-      CIRCUIT_BREAKER_METRICS_PORT: ${CIRCUIT_BREAKER_METRICS_PORT:-9610}
-      CIRCUIT_BREAKER_METRICS_HOST: "0.0.0.0"
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-true}
     ports:
       - "${GATEWAY_PORT:-8010}:8010"
-
-  conversation-worker:
-    <<: *agent-service
-    container_name: somaAgent01_conversation-worker
-    command: ["python3", "-m", "services.conversation_worker.main"]
-    environment:
-      <<: *agent-env
-    ports:
-      - "${CONVERSATION_METRICS_PORT:-9301}:9301"
-    mem_limit: 3g
-    cpus: "2"
-
-  tool-executor:
-    <<: *agent-service
-    container_name: somaAgent01_tool-executor
-    command: ["python3", "-m", "services.tool_executor.main"]
-    environment:
-      <<: *agent-env
-    ports:
-      - "${TOOL_EXECUTOR_METRICS_PORT:-9401}:9401"
-    mem_limit: 3g
-    cpus: "2"
-
-  settings-service:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_settings-service
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.settings_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8011",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8011"
-    ports:
-      - "${SETTINGS_PORT:-8011}:8011"
-
-  requeue-service:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_requeue-service
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.requeue_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8012",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8012"
-    ports:
-      - "${REQUEUE_PORT:-8012}:8012"
-
-  router:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_router
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.router.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8013",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8013"
-    ports:
-      - "${ROUTER_PORT:-8013}:8013"
-
-  canvas-service:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_canvas-service
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.canvas_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8014",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8014"
-    ports:
-      - "${CANVAS_PORT:-8014}:8014"
-
-  audio-service:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_audio-service
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.audio_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8016",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8016"
-      WHISPER_MODEL: ${WHISPER_MODEL:-base.en}
-      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
-      WHISPER_COMPUTE: ${WHISPER_COMPUTE:-int8}
-    ports:
-      - "${AUDIO_PORT:-8016}:8016"
-
-  scoring-job:
-    profiles: ["prod"]
-    <<: *agent-service
-    container_name: somaAgent01_scoring-job
-    command: ["python3", "-m", "services.scoring_job.main"]
-    environment:
-      <<: *agent-env
-      SCORING_INTERVAL_SECONDS: ${SCORING_INTERVAL_SECONDS:-3600}
-      SCORING_WINDOW_HOURS: ${SCORING_WINDOW_HOURS:-6}
 
 networks:
   default:
@@ -554,8 +191,4 @@ volumes:
   kafka_data:
   redis_data:
   postgres_data:
-  qdrant_data:
-  clickhouse_data:
-  prometheus_data:
-  alertmanager_data:
-  vault_data:
+

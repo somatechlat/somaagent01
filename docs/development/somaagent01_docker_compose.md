@@ -86,7 +86,7 @@ agent-zero/
 
 | Service | Container Name | Host Port | Notes |
 |---------|----------------|-----------|-------|
-| Agent UI | `somaAgent01_agent-ui` | `7001` | Visit `http://localhost:7001` after the stack is ready. |
+| Agent UI | `somaAgent01_agent-ui` | `7002` | Visit `http://localhost:7002` after the stack is ready. |
 | Gateway API | `somaAgent01_gateway` | `${GATEWAY_PORT:-8010}` | Handles REST/WebSocket traffic from clients and UI. |
 | Settings API | `somaAgent01_settings-service` | `${SETTINGS_PORT:-8011}` | Persona, policy, and operator settings. |
 | Requeue API | `somaAgent01_requeue-service` | `${REQUEUE_PORT:-8012}` | Manages conversation retries. |
@@ -119,7 +119,7 @@ Run these commands after `docker compose up` reports healthy services:
 
 ```bash
 # Agent UI responds (expect HTML)
-curl -I http://localhost:7001
+curl -I http://localhost:7002
 
 # Gateway health endpoint
 curl -s http://localhost:8010/health | jq

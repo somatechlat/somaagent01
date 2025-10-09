@@ -2,7 +2,7 @@ import os
 import re
 
 
-UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7001")
+UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7002")
 
 
 def test_basic_chat_flow(page):

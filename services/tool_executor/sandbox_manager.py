@@ -9,6 +9,7 @@ from typing import Any, Awaitable, Callable
 
 from services.tool_executor.resource_manager import ExecutionLimits
 from services.tool_executor.tools import ToolExecutionError
+from python.helpers.circuit_breaker import CircuitOpenError
 
 
 @dataclass
@@ -42,6 +43,8 @@ class SandboxManager:
             payload = await asyncio.wait_for(func(args), timeout=limits.timeout_seconds)
             status = "success"
         except ToolExecutionError:
+            raise
+        except CircuitOpenError:
             raise
         except asyncio.TimeoutError:
             status = "timeout"
