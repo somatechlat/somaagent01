@@ -26,7 +26,7 @@ x-agent-env: &agent-env
   OPA_URL: http://opa:8181
   POLICY_BASE_URL: http://opa:8181
   POLICY_DATA_PATH: /v1/data/soma/allow
-  POLICY_FAIL_OPEN: "true"
+  POLICY_FAIL_OPEN: "false"
   SOMA_AGENT_MODE: LOCAL
   TENANT_CONFIG_PATH: /a0/conf/tenants.yaml
   SLM_BASE_URL: ${SLM_BASE_URL:-https://slm.somaagent01.dev/v1}
@@ -75,33 +75,37 @@ x-agent-service: &agent-service
     - "host.docker.internal:host-gateway"
   depends_on: *agent-depends
   restart: unless-stopped
+  mem_limit: 2g
+  cpus: "1.5"
 
 services:
   kafka:
     image: bitnami/kafka:latest
     container_name: somaAgent01_kafka
     environment:
-      KAFKA_CFG_NODE_ID: 0
-      KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_NUM_PARTITIONS: "3"
-      KAFKA_CFG_MAX_REQUEST_SIZE: "2147483648"
-      KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483648"
-      KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483648"
-      KAFKA_CLUSTER_ID: kcqIv3RutQm49oJm9sYzVg
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
-      KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
-      KAFKA_ENABLE_SSL: ${KAFKA_ENABLE_SSL:-false}
-      KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER: ${KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER:-yes}
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_NUM_PARTITIONS=3
+      - KAFKA_CFG_MAX_REQUEST_SIZE=2147483648
+      - KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES=2147483648
+      - KAFKA_CFG_MESSAGE_MAX_BYTES=2147483648
+      - KAFKA_CLUSTER_ID=kcqIv3RutQm49oJm9sYzVg
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_KRAFT_CLUSTER_ID=soma-cluster-01
+      - KAFKA_ENABLE_SSL=${KAFKA_ENABLE_SSL:-false}
+      - KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER=${KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER:-yes}
+      - KAFKA_HEAP_OPTS=-Xms1g -Xmx2g
+      - BITNAMI_DEBUG=true
     ports:
       - "${KAFKA_PORT:-0}:9092"
     restart: unless-stopped
@@ -109,11 +113,17 @@ services:
       - kafka_data:/bitnami/kafka
       - ./kafka_certs:/opt/bitnami/kafka/config/certs:ro
     healthcheck:
-      test: ["CMD", "true"]
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/bitnami/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 300s
+    mem_limit: 4g
+    cpus: "2"
 
   redis:
     image: redis:7-alpine
@@ -129,6 +139,8 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    mem_limit: 1g
+    cpus: "1"
 
   postgres:
     image: postgres:16-alpine
@@ -151,6 +163,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    mem_limit: 2g
+    cpus: "2"
 
   qdrant:
     profiles: ["dev", "prod"]
@@ -162,6 +176,8 @@ services:
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
+    mem_limit: 2g
+    cpus: "1"
 
   clickhouse:
     profiles: ["prod"]
@@ -188,6 +204,8 @@ services:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
+    mem_limit: 1g
+    cpus: "1"
 
   alertmanager:
     profiles: ["dev", "prod"]
@@ -207,6 +225,8 @@ services:
     volumes:
       - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
+    mem_limit: 512m
+    cpus: "0.5"
 
 
   otel-collector:
@@ -220,6 +240,8 @@ services:
       - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
       - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: "0.5"
 
 
   vault:
@@ -346,8 +368,6 @@ services:
       SOMA_BASE_URL: http://host.docker.internal:9696
       SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
       PYTHONPATH: /a0
-      WEB_UI_PORT: 7001
-      WEB_UI_HOST: 0.0.0.0
     depends_on:
       kafka:
         condition: service_healthy
@@ -358,7 +378,7 @@ services:
       openfga:
         condition: service_started
     ports:
-      - "7001:80"
+      - "7002:80"
     volumes:
       - ../a0_data:/a0
 
@@ -381,7 +401,7 @@ services:
       PORT: "8010"
       CIRCUIT_BREAKER_METRICS_PORT: ${CIRCUIT_BREAKER_METRICS_PORT:-9610}
       CIRCUIT_BREAKER_METRICS_HOST: "0.0.0.0"
-      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
+      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-true}
     ports:
       - "${GATEWAY_PORT:-8010}:8010"
 
@@ -393,6 +413,8 @@ services:
       <<: *agent-env
     ports:
       - "${CONVERSATION_METRICS_PORT:-9301}:9301"
+    mem_limit: 3g
+    cpus: "2"
 
   tool-executor:
     <<: *agent-service
@@ -402,6 +424,8 @@ services:
       <<: *agent-env
     ports:
       - "${TOOL_EXECUTOR_METRICS_PORT:-9401}:9401"
+    mem_limit: 3g
+    cpus: "2"
 
   settings-service:
     profiles: ["prod"]
