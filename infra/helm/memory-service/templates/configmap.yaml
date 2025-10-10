@@ -1,0 +1,8 @@
+{{- if .Values.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "memory-service.fullname" . }}-config
+data:
+{{ toYaml .Values.config.settings | indent 2 }}
+{{- end }}

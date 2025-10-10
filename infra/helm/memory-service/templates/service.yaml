@@ -4,6 +4,23 @@ metadata:
   name: {{ include "memory-service.fullname" . }}
   labels:
     app.kubernetes.io/name: {{ include "memory-service.name" . }}
+    helm.sh/chart: {{ include "memory-service.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: grpc
+  selector:
+    app.kubernetes.io/name: {{ include "memory-service.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "memory-service.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "memory-service.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: Helm
 spec:
