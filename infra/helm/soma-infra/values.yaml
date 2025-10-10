@@ -38,8 +38,7 @@ vault:
 
 etcd:
   enabled: true
-  # Use the defaults from the etcd sub‑chart (repository, tag, pullPolicy)
-  # If you need to override, provide a map with `repository` and `tag` keys.
+  image: "quay.io/coreos/etcd:latest"
   replicaCount: 1
 
 # Additional common settings

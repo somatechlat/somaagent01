@@ -192,25 +192,6 @@ and uses `services/common/logging_config.py` for JSON logs.
    the Helm upgrade.
 10. Document the outcome in this file and in `docs/SomaAgent01_Deployment.md`.
 
-## 10. Deployment Options Overview
-
-The repository supports **two complementary deployment models** that can be used
-side‑by‑side:
-
-| Model | How to run | Typical use‑case | Key files |
-|-------|------------|----------------|----------|
-| **Docker Compose** | `docker compose -f infra/docker-compose.somaagent01.yaml up` | Quick local development, debugging, or when a Kubernetes cluster is not available. | `infra/docker-compose.somaagent01.yaml` |
-| **Kubernetes (Helm)** | `helm upgrade --install soma-stack infra/helm/soma-stack --namespace soma --create-namespace` | Production‑grade, scalable, multi‑region deployments; integrates with shared infra chart `soma-infra`. | `infra/helm/soma-stack/` (chart) and `infra/helm/soma-infra/` (shared infra) |
-
-Both approaches expose the same services (UI, gateway, memory, conversation worker) on the ports documented in the **Current Service Landscape** table above.  The Helm chart we added (`infra/helm/soma-stack`) mirrors the Docker‑Compose services, so the same code paths are used regardless of the deployment method.
-
-### When to choose which?
-
-* **Docker Compose** – ideal for developer workstations, CI pipelines that do not spin up a cluster, or for rapid iteration when you need to inspect container logs directly.
-* **Helm on Kubernetes** – recommended for any environment that requires high availability, scaling, observability integration (Prometheus, Grafana, OPA, Vault, etc.), or when you want to manage releases via GitOps (Argo CD).
-
-You can even run **both** in the same workstation: keep the Docker‑Compose stack for unit‑test runs and use a local Kind cluster for integration tests that exercise the Helm chart.
-
 ## 10. Architecture Diagram (Mermaid)
 
 ```mermaid

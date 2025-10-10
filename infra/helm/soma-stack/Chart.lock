@@ -1,6 +1,0 @@
-dependencies:
-- name: soma-infra
-  repository: file://../soma-infra
-  version: 0.1.0
-digest: sha256:e7c5b5370647e8d98b26cf07b50967ec0a9a547522a5c88096ced01ca5eac7c5
-generated: "2025-10-10T10:09:58.497287-05:00"
