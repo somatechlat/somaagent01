@@ -8,6 +8,9 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 - **[Extensibility](extensibility.md):** Learn how to create custom extensions for Agent Zero.
 - **[Connectivity](connectivity.md):** Learn how to connect to Agent Zero from other applications.
 - **[Architecture Overview](architecture.md):** Understand the internal workings of the framework.
+- **[Engineering Handbook](project_handbook.md):** Project priorities, environment matrix, and developer runbooks in one place.
+- **[Feature Catalog](features_overview.md):** Detailed descriptions of every major capability in Agent Zero.
+- **[Soma Integration Manual](soma_integration_manual.md):** Current state of SomaBrain/SomaAgentHub integrations and migration guidance.
 - **[Contributing](contribution.md):** Learn how to contribute to the Agent Zero project.
 - **[Troubleshooting and FAQ](troubleshooting.md):** Find answers to common issues and questions.
 - **[Deployment Guide](deployment.md)**: Step‑by‑step instructions to reliably start the full Docker‑Compose cluster, configure health checks, and recover from failures.

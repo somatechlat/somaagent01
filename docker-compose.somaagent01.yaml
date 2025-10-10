@@ -56,7 +56,7 @@ x-agent-service: &agent-service
 
 services:
   kafka:
-    image: bitnami/kafka:3.6.1
+    image: bitnami/kafka:latest
     container_name: somaAgent01_kafka
     profiles: ["core"]
     environment:
@@ -78,7 +78,7 @@ services:
       KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
       KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
       KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_KRAFT_CLUSTER_ID: "soma-cluster-01"
+      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
       KAFKA_ENABLE_SSL: ${KAFKA_ENABLE_SSL:-false}
       KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER: ${KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER:-yes}
     ports:

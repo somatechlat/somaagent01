@@ -7,32 +7,51 @@ is persisted in the existing Postgres database (table ``capsules``).
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
+import subprocess
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import List
-import subprocess
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from datetime import datetime
 
-from services.common.session_repository import PostgresSessionStore
 from python.somaagent.capsule import install_capsule
+from services.common.logging_config import setup_logging
+from services.common.session_repository import PostgresSessionStore
+from services.common.settings_sa01 import SA01Settings
+from services.common.tracing import setup_tracing
 
 app = FastAPI(title="Capsule Registry")
+
+setup_logging()
+LOGGER = logging.getLogger(__name__)
+
+APP_SETTINGS = SA01Settings.from_env()
+setup_tracing("capsule-registry", endpoint=APP_SETTINGS.otlp_endpoint)
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-CAPSULE_STORAGE_PATH = Path(os.getenv("CAPSULE_STORAGE_PATH", "/capsules"))
+CAPSULE_STORAGE_PATH = Path(
+    os.getenv(
+        "CAPSULE_STORAGE_PATH",
+        APP_SETTINGS.extra.get("capsule_storage_path", "/capsules"),
+    )
+)
 CAPSULE_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 CAPSULE_INSTALL_BASE = Path(
-    os.getenv("CAPSULE_INSTALL_PATH", str(CAPSULE_STORAGE_PATH / "installed"))
+    os.getenv(
+        "CAPSULE_INSTALL_PATH",
+        APP_SETTINGS.extra.get("capsule_install_path", str(CAPSULE_STORAGE_PATH / "installed")),
+    )
 )
 CAPSULE_INSTALL_BASE.mkdir(parents=True, exist_ok=True)
+
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -46,12 +65,14 @@ class CapsuleMeta(BaseModel):
     signature: str | None = None
     created_at: datetime | None = None
 
+
 # ---------------------------------------------------------------------------
 # Simple DB helper – we reuse the existing PostgresSessionStore for a tiny table.
 # In a real implementation you would create a proper SQLAlchemy model.
 # ---------------------------------------------------------------------------
 async def get_store() -> PostgresSessionStore:
-    return PostgresSessionStore()
+    return PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
+
 
 def _sign_blob(file_path: str) -> str:
     """Sign the given file with cosign and return the base64 signature.
@@ -74,6 +95,7 @@ def _sign_blob(file_path: str) -> str:
     except Exception:
         return ""
 
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -87,6 +109,10 @@ async def upload_capsule(
 ):
     # Save file to storage directory
     capsule_id = str(uuid.uuid4())
+    LOGGER.info(
+        "Uploading capsule",
+        extra={"capsule_id": capsule_id, "name": name, "version": version},
+    )
     suffix = Path(file.filename).suffix
     stored_name = f"{capsule_id}{suffix}"
     dest_path = CAPSULE_STORAGE_PATH / stored_name
@@ -99,7 +125,8 @@ async def upload_capsule(
 
     # Persist minimal metadata (JSON) in Postgres – we store it in a generic key/value table.
     # For simplicity we just insert a row into a table ``capsules`` (create if missing).
-    async with store.pool.acquire() as conn:
+    pool = await store._ensure_pool()
+    async with pool.acquire() as conn:
         await conn.execute(
             """
             CREATE TABLE IF NOT EXISTS capsules (
@@ -135,7 +162,8 @@ async def upload_capsule(
 
 @app.get("/capsules", response_model=List[CapsuleMeta])
 async def list_capsules(store: PostgresSessionStore = Depends(get_store)):
-    async with store.pool.acquire() as conn:
+    pool = await store._ensure_pool()
+    async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT id, name, version, description, filename, signature, created_at FROM capsules ORDER BY created_at DESC"
         )
@@ -147,7 +175,8 @@ async def install_capsule_via_sdk(
     capsule_id: str,
     store: PostgresSessionStore = Depends(get_store),
 ):
-    async with store.pool.acquire() as conn:
+    pool = await store._ensure_pool()
+    async with pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT signature FROM capsules WHERE id = $1",
             capsule_id,
@@ -177,10 +206,9 @@ async def install_capsule_via_sdk(
 
 @app.get("/capsules/{capsule_id}")
 async def download_capsule(capsule_id: str, store: PostgresSessionStore = Depends(get_store)):
-    async with store.pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT filename FROM capsules WHERE id = $1", capsule_id
-        )
+    pool = await store._ensure_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT filename FROM capsules WHERE id = $1", capsule_id)
     if not row:
         raise HTTPException(status_code=404, detail="Capsule not found")
     file_path = CAPSULE_STORAGE_PATH / row["filename"]
