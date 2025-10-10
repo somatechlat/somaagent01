@@ -25,29 +25,15 @@ spec:
             - name: peer
               containerPort: {{ .Values.service.peerPort }}
           env:
-            - name: ETCD_NAME
-              value: "{{ include "etcd.fullname" . }}"
             - name: ETCD_ADVERTISE_CLIENT_URLS
-              value: 'http://{{ include "etcd.fullname" . }}:{{ .Values.service.port }}'
+              value: "http://{{ include \"etcd.fullname\" . }}:{{ .Values.service.port }}"
             - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
-              value: 'http://{{ include "etcd.fullname" . }}:{{ .Values.service.peerPort }}'
-            - name: ETCD_INITIAL_CLUSTER
-              value: '{{ include "etcd.fullname" . }}=http://{{ include "etcd.fullname" . }}:{{ .Values.service.peerPort }}'
+              value: "http://{{ include \"etcd.fullname\" . }}:{{ .Values.service.peerPort }}"
             - name: ETCD_INITIAL_CLUSTER_STATE
               value: "new"
-            - name: ETCD_LISTEN_PEER_URLS
-              value: 'http://0.0.0.0:{{ .Values.service.peerPort }}'
-            - name: ETCD_LISTEN_CLIENT_URLS
-              value: 'http://0.0.0.0:{{ .Values.service.port }}'
           volumeMounts:
             - name: data
               mountPath: /etcd-data
-      {{- if not .Values.persistence.enabled }}
-      # Use an ephemeral emptyDir volume when persistence is disabled (local/Kind)
-      volumes:
-        - name: data
-          emptyDir: {}
-      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -61,7 +47,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
-    {{- if .Values.persistence.enabled }}
     - metadata:
         name: data
       spec:
@@ -70,4 +55,3 @@ spec:
           requests:
             storage: {{ .Values.persistence.size }}
         storageClassName: {{ .Values.persistence.storageClass | quote }}
-    {{- end }}

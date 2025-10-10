@@ -4,50 +4,6 @@ metadata:
   name: {{ include "memory-service.fullname" . }}
   labels:
     app.kubernetes.io/name: {{ include "memory-service.name" . }}
-    helm.sh/chart: {{ include "memory-service.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: {{ include "memory-service.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: {{ include "memory-service.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
-    spec:
-      imagePullSecrets:
-{{ toYaml .Values.imagePullSecrets | indent 8 }}
-      containers:
-        - name: memory
-          image: {{ default .Values.imageFullName (printf "%s/%s:%s" .Values.image.registry .Values.image.repository .Values.image.tag) | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: MEMORY_SERVICE_PORT
-              value: "{{ .Values.env.MEMORY_SERVICE_PORT }}"
-            - name: SOMA_AGENT_ENV
-              value: "{{ .Values.env.SOMA_AGENT_ENV }}"
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "{{ .Values.env.OTEL_EXPORTER_OTLP_ENDPOINT }}"
-            - name: OTEL_SERVICE_NAME
-              value: "{{ .Values.env.OTEL_SERVICE_NAME }}"
-          ports:
-            - containerPort: {{ .Values.service.port }}
-          resources:
-{{ toYaml .Values.resources | indent 12 }}
-      {{- if .Values.config.enabled }}
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "memory-service.fullname" . }}-config
-      {{- end }}apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "memory-service.fullname" . }}
-  labels:
-    app.kubernetes.io/name: {{ include "memory-service.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: Helm

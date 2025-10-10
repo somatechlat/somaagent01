@@ -1,15 +1,9 @@
 replicaCount: 1
 
 image:
-  registry: ""
   repository: somaagent01/memory-service
   tag: latest
   pullPolicy: IfNotPresent
-
-# allow templating of full image name
-imagePullSecrets: []
-
-imageFullName: "{{- if .Values.image.registry }}{{ .Values.image.registry }}/{{ end -}}{{ .Values.image.repository }}:{{ .Values.image.tag }}"
 
 service:
   type: ClusterIP
@@ -20,10 +14,3 @@ resources: {}
 env:
   MEMORY_SERVICE_PORT: "50052"
   SOMA_AGENT_ENV: "PROD"
-  OTEL_EXPORTER_OTLP_ENDPOINT: ""
-  OTEL_SERVICE_NAME: "memory-service"
-
-config:
-  enabled: false
-  # when enabled, mount the config as a ConfigMap from the values
-  settings: {}
