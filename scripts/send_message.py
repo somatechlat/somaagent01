@@ -13,9 +13,7 @@ import websockets
 
 parser = argparse.ArgumentParser(description="Send message to SomaAgent 01")
 parser.add_argument("text", help="Message text")
-parser.add_argument(
-    "--gateway", default="http://localhost:8001", help="Gateway base URL"
-)
+parser.add_argument("--gateway", default="http://localhost:8001", help="Gateway base URL")
 parser.add_argument("--persona", default=None, help="Persona ID")
 parser.add_argument("--session", default=None, help="Existing session ID")
 

@@ -1,7 +1,6 @@
 import os
 import re
 
-
 UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://localhost:7002")
 
 

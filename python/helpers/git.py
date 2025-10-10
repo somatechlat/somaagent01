@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from python.helpers import files
 
 
@@ -38,9 +39,7 @@ def get_git_info():
     commit_hash = repo.head.commit.hexsha
 
     # Get the commit date (ISO 8601 format)
-    commit_time = datetime.fromtimestamp(repo.head.commit.committed_date).strftime(
-        "%y-%m-%d %H:%M"
-    )
+    commit_time = datetime.fromtimestamp(repo.head.commit.committed_date).strftime("%y-%m-%d %H:%M")
 
     # Get the latest tag description (if available)
     short_tag = ""

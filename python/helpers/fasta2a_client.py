@@ -1,17 +1,16 @@
 import uuid
 from typing import Any, Dict, List, Optional
+
 from python.helpers.print_style import PrintStyle
 
 try:
-    from fasta2a.client import A2AClient  # type: ignore
     import httpx  # type: ignore
+    from fasta2a.client import A2AClient  # type: ignore
 
     FASTA2A_CLIENT_AVAILABLE = True
 except ImportError:
     FASTA2A_CLIENT_AVAILABLE = False
-    PrintStyle.warning(
-        "FastA2A client not available. Agent-to-agent communication disabled."
-    )
+    PrintStyle.warning("FastA2A client not available. Agent-to-agent communication disabled.")
 
 _PRINTER = PrintStyle(italic=True, font_color="cyan", padding=False)
 
@@ -54,9 +53,7 @@ class AgentConnection:
         """Retrieve the agent card from the remote agent."""
         if self._agent_card is None:
             try:
-                response = await self._http_client.get(
-                    f"{self.agent_url}/.well-known/agent.json"
-                )
+                response = await self._http_client.get(f"{self.agent_url}/.well-known/agent.json")
                 response.raise_for_status()
                 self._agent_card = response.json()
                 _PRINTER.print(f"Retrieved agent card from {self.agent_url}")
@@ -67,9 +64,7 @@ class AgentConnection:
                 if "/a2a" in self.agent_url:
                     root_url = self.agent_url.split("/a2a", 1)[0]
                     try:
-                        response = await self._http_client.get(
-                            f"{root_url}/.well-known/agent.json"
-                        )
+                        response = await self._http_client.get(f"{root_url}/.well-known/agent.json")
                         response.raise_for_status()
                         self._agent_card = response.json()
                         _PRINTER.print(f"Retrieved agent card from {root_url}")

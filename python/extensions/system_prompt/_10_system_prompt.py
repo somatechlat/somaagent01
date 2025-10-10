@@ -1,17 +1,15 @@
 from typing import Any
+
+from agent import Agent, LoopData
 from python.helpers.extension import Extension
 from python.helpers.mcp_handler import MCPConfig
-from agent import Agent, LoopData
 from python.helpers.settings import get_settings
 
 
 class SystemPrompt(Extension):
 
     async def execute(
-        self,
-        system_prompt: list[str] = [],
-        loop_data: LoopData = LoopData(),
-        **kwargs: Any
+        self, system_prompt: list[str] = [], loop_data: LoopData = LoopData(), **kwargs: Any
     ):
         # append main system prompt and tools
         main = get_main_prompt(self.agent)

@@ -1,12 +1,13 @@
 import base64
-from io import BytesIO
 import mimetypes
 import os
+from io import BytesIO
 
 from flask import Response
-from python.helpers.api import ApiHandler, Input, Output, Request
-from python.helpers import files, runtime
+
 from python.api import file_info
+from python.helpers import files, runtime
+from python.helpers.api import ApiHandler, Input, Output, Request
 
 
 def stream_file_download(file_source, download_name, chunk_size=8192):
@@ -87,36 +88,26 @@ class DownloadFile(ApiHandler):
         if not file_path.startswith("/"):
             file_path = f"/{file_path}"
 
-        file = await runtime.call_development_function(
-            file_info.get_file_info, file_path
-        )
+        file = await runtime.call_development_function(file_info.get_file_info, file_path)
 
         if not file["exists"]:
             raise Exception(f"File {file_path} not found")
 
         if file["is_dir"]:
-            zip_file = await runtime.call_development_function(
-                files.zip_dir, file["abs_path"]
-            )
+            zip_file = await runtime.call_development_function(files.zip_dir, file["abs_path"])
             if runtime.is_development():
                 b64 = await runtime.call_development_function(fetch_file, zip_file)
                 file_data = BytesIO(base64.b64decode(b64))
-                return stream_file_download(
-                    file_data, download_name=os.path.basename(zip_file)
-                )
+                return stream_file_download(file_data, download_name=os.path.basename(zip_file))
             else:
                 return stream_file_download(
                     zip_file, download_name=f"{os.path.basename(file_path)}.zip"
                 )
         elif file["is_file"]:
             if runtime.is_development():
-                b64 = await runtime.call_development_function(
-                    fetch_file, file["abs_path"]
-                )
+                b64 = await runtime.call_development_function(fetch_file, file["abs_path"])
                 file_data = BytesIO(base64.b64decode(b64))
-                return stream_file_download(
-                    file_data, download_name=os.path.basename(file_path)
-                )
+                return stream_file_download(file_data, download_name=os.path.basename(file_path))
             else:
                 return stream_file_download(
                     file["abs_path"], download_name=os.path.basename(file["file_name"])

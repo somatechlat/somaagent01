@@ -80,9 +80,7 @@ class PolicyClient:
         await self._client.aclose()
 
     def _cache_key(self, request: PolicyRequest) -> tuple[Any, ...]:
-        context_items = tuple(
-            sorted((k, self._freeze(v)) for k, v in request.context.items())
-        )
+        context_items = tuple(sorted((k, self._freeze(v)) for k, v in request.context.items()))
         return (
             request.tenant,
             request.persona_id,

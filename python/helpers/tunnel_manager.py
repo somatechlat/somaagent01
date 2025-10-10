@@ -1,5 +1,6 @@
-from flaredantic import FlareTunnel, FlareConfig, ServeoConfig, ServeoTunnel
 import threading
+
+from flaredantic import FlareConfig, FlareTunnel, ServeoConfig, ServeoTunnel
 
 
 # Singleton to manage the tunnel instance

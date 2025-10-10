@@ -12,11 +12,16 @@ from langchain_core.documents import Document
 from scripts import memory_migrate
 
 
-@pytest.mark.parametrize("content,metadata_expected", [
-    ("hello", {"content": "hello"}),
-    ("", {}),
-])
-def test_document_to_payload_includes_content_when_missing(content: str, metadata_expected: dict[str, str]) -> None:
+@pytest.mark.parametrize(
+    "content,metadata_expected",
+    [
+        ("hello", {"content": "hello"}),
+        ("", {}),
+    ],
+)
+def test_document_to_payload_includes_content_when_missing(
+    content: str, metadata_expected: dict[str, str]
+) -> None:
     document = Document(page_content=content, metadata={})
     result = memory_migrate._document_to_payload("doc-1", document, memory_subdir="default")
 

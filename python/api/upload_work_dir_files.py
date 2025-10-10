@@ -1,9 +1,11 @@
 import base64
+
 from werkzeug.datastructures import FileStorage
+
+from python.api import get_work_dir_files
+from python.helpers import runtime
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.file_browser import FileBrowser
-from python.helpers import runtime
-from python.api import get_work_dir_files
 
 
 class UploadWorkDirFiles(ApiHandler):
@@ -23,15 +25,11 @@ class UploadWorkDirFiles(ApiHandler):
             raise Exception("All uploads failed")
 
         # result = browser.get_files(current_path)
-        result = await runtime.call_development_function(
-            get_work_dir_files.get_files, current_path
-        )
+        result = await runtime.call_development_function(get_work_dir_files.get_files, current_path)
 
         return {
             "message": (
-                "Files uploaded successfully"
-                if not failed
-                else "Some files failed to upload"
+                "Files uploaded successfully" if not failed else "Some files failed to upload"
             ),
             "data": result,
             "successful": successful,

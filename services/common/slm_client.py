@@ -21,9 +21,7 @@ class ChatMessage:
 
 class SLMClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
-        self.base_url = base_url or os.getenv(
-            "SLM_BASE_URL", "https://slm.somaagent01.dev/v1"
-        )
+        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
         self.default_model = model or os.getenv(
             "SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct"
         )
@@ -99,9 +97,7 @@ class SLMClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        async with self._client.stream(
-            "POST", url, json=payload, headers=headers
-        ) as response:
+        async with self._client.stream("POST", url, json=payload, headers=headers) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -112,9 +108,7 @@ class SLMClient:
                 try:
                     data = json.loads(data_str)
                 except json.JSONDecodeError:  # pragma: no cover - defensive
-                    LOGGER.warning(
-                        "Skipping malformed stream chunk", extra={"chunk": data_str}
-                    )
+                    LOGGER.warning("Skipping malformed stream chunk", extra={"chunk": data_str})
                     continue
                 yield data
 

@@ -1,9 +1,10 @@
 import base64
-import os
-from python.helpers.api import ApiHandler, Request, Response, send_file
-from python.helpers import files, runtime
 import io
+import os
 from mimetypes import guess_type
+
+from python.helpers import files, runtime
+from python.helpers.api import ApiHandler, Request, Response, send_file
 
 
 class ImageGet(ApiHandler):
@@ -15,10 +16,7 @@ class ImageGet(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         # input data
         path = input.get("path", request.args.get("path", ""))
-        metadata = (
-            input.get("metadata", request.args.get("metadata", "false")).lower()
-            == "true"
-        )
+        metadata = input.get("metadata", request.args.get("metadata", "false")).lower() == "true"
 
         if not path:
             raise ValueError("No path provided")
@@ -128,9 +126,7 @@ def _send_file_type_icon(file_ext, filename=None):
 
     # Add headers for device sync
     if hasattr(response, "headers"):
-        response.headers["Cache-Control"] = (
-            "public, max-age=86400"  # Cache icons for 24 hours
-        )
+        response.headers["Cache-Control"] = "public, max-age=86400"  # Cache icons for 24 hours
         response.headers["X-File-Type"] = "icon"
         response.headers["X-Icon-Type"] = icon_name
         if filename:

@@ -148,6 +148,14 @@ My VS Code instance:
 
 Use this playbook whenever you need the full SomaAgent01 stack (Kafka, gateway, tool executor, observability, and UI) to come up cleanly on your development machine. It condenses everything we practice internally to avoid drift between “testing” and “prod-like” environments.
 
+| Task | Command |
+| --- | --- |
+| Start or restart the entire stack | `make dev-up` |
+| Stop services, keep volumes | `make dev-down` |
+| Tear down and clear named volumes | `make dev-clean` |
+| Tail service logs | `make dev-logs` |
+| Check container status | `make dev-status` |
+
 ### 7.1 Prerequisites
 
 - Docker Desktop (or docker-ce) is running.
@@ -176,13 +184,7 @@ Use this playbook whenever you need the full SomaAgent01 stack (Kafka, gateway, 
 	docker volume rm agent-zero_kafka_data agent-zero_postgres_data agent-zero_redis_data agent-zero_qdrant_data agent-zero_prometheus_data agent-zero_grafana_data agent-zero_vault_data 2>/dev/null || true
 	```
 
-3. **Launch the stack** with the helper script. It reserves free host ports, exports them, and attaches required profiles:
-
-	```bash
-	COMPOSE_PROFILES=dev bash scripts/run_dev_cluster.sh
-	```
-
-	Watch the console log—when the script exits the compose project is up and waiting.
+3. **Launch the stack** via `make dev-up` (or run `scripts/run_dev_cluster.sh` directly). The entrypoint reserves free host ports, exports them, and attaches required profiles. Watch the console output—when it exits the compose project is up and waiting.
 
 4. **Verify health:**
 
@@ -204,6 +206,13 @@ Use this playbook whenever you need the full SomaAgent01 stack (Kafka, gateway, 
 | Exec inside | `docker exec -it somaAgent01_<service> bash`
 
 Need optional services (delegation load test, metrics, etc.)? Supply additional profiles, e.g. `COMPOSE_PROFILES="dev,core,metrics"`.
+
+### 7.3.1 Memory service quick facts
+
+- The new gRPC memory service now ships with the default `core` profile. It listens on `50052` inside the compose network and is exposed on the same port by default.
+- Router and tool executor connect through gRPC using `MEMORY_SERVICE_TARGET`. Override it for remote clusters via `MEMORY_SERVICE_TARGET=host.docker.internal:9060` (or another hostname) before running `make dev-up`.
+- Tail its logs with `make dev-logs memory-service` or `docker logs somaAgent01_memory-service -f` to confirm successful boot and database migrations.
+- When running the Helm chart, update `values.yaml` to point at your production Postgres DSN and OTLP endpoint so tracing matches the rest of the stack.
 
 ### 7.4 Routine health checks
 

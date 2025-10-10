@@ -1,6 +1,6 @@
-from python.helpers.tool import Tool, Response
 from python.helpers.errors import handle_error
 from python.helpers.searxng import search as searxng
+from python.helpers.tool import Response, Tool
 
 SEARCH_ENGINE_RESULTS = 10
 

@@ -71,7 +71,7 @@ def _build_args(argv: Iterable[str]) -> SmokeConfig:
     parser.add_argument(
         "--skip-install",
         action="store_true",
-    help="Skip POST /v1/capsules/{id}/install (useful when the install path is not accessible)",
+        help="Skip POST /v1/capsules/{id}/install (useful when the install path is not accessible)",
     )
 
     args = parser.parse_args(list(argv))
@@ -125,7 +125,9 @@ def _upload_capsule(client: httpx.Client, cfg: SmokeConfig, zip_path: Path) -> d
     return response.json()
 
 
-def _ensure_capsule_visible(client: httpx.Client, cfg: SmokeConfig, capsule_id: str) -> list[dict[str, Any]]:
+def _ensure_capsule_visible(
+    client: httpx.Client, cfg: SmokeConfig, capsule_id: str
+) -> list[dict[str, Any]]:
     url = f"{cfg.gateway_url}/v1/capsules"
     response = client.get(url)
     response.raise_for_status()
@@ -146,13 +148,17 @@ def run_smoke(cfg: SmokeConfig) -> int:
     print("[capsule-smoke] Starting smoke test")
     with tempfile.TemporaryDirectory(prefix="capsule-smoke-") as tmp_dir:
         tmp_path = Path(tmp_dir)
-        archive_path = _create_sample_capsule(tmp_path, cfg.capsule_name, cfg.capsule_version, cfg.description)
+        archive_path = _create_sample_capsule(
+            tmp_path, cfg.capsule_name, cfg.capsule_version, cfg.description
+        )
         print(f"[capsule-smoke] Created archive {archive_path}")
 
         with httpx.Client(timeout=cfg.timeout) as client:
             metadata = _upload_capsule(client, cfg, archive_path)
             capsule_id = metadata["id"]
-            print(f"[capsule-smoke] Uploaded capsule {capsule_id} ({metadata['name']} v{metadata['version']})")
+            print(
+                f"[capsule-smoke] Uploaded capsule {capsule_id} ({metadata['name']} v{metadata['version']})"
+            )
 
             gateway_capsules = _ensure_capsule_visible(client, cfg, capsule_id)
             print(

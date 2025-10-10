@@ -5,7 +5,9 @@ from starlette.requests import Request
 from services.gateway import main as gateway_main
 
 
-def _make_request(headers: dict[str, str] | None = None, method: str = "GET", path: str = "/v1/resource") -> Request:
+def _make_request(
+    headers: dict[str, str] | None = None, method: str = "GET", path: str = "/v1/resource"
+) -> Request:
     header_list = [
         (key.lower().encode("latin-1"), value.encode("latin-1"))
         for key, value in (headers or {}).items()
@@ -40,7 +42,12 @@ def _reset_auth_globals(monkeypatch: pytest.MonkeyPatch):
     gateway_main.JWKS_CACHE.clear()
 
 
-def _stub_jwt_module(monkeypatch: pytest.MonkeyPatch, *, header: dict[str, str] | None = None, claims: dict[str, str] | None = None):
+def _stub_jwt_module(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    header: dict[str, str] | None = None,
+    claims: dict[str, str] | None = None,
+):
     """Patch jwt helpers to provide deterministic behaviour for tests."""
 
     header = header or {"alg": "HS256"}
@@ -63,7 +70,9 @@ def _stub_jwt_module(monkeypatch: pytest.MonkeyPatch, *, header: dict[str, str] 
 
 
 @pytest.mark.asyncio
-async def test_authorize_request_requires_header_when_auth_enforced(monkeypatch: pytest.MonkeyPatch):
+async def test_authorize_request_requires_header_when_auth_enforced(
+    monkeypatch: pytest.MonkeyPatch,
+):
     monkeypatch.setattr(gateway_main, "REQUIRE_AUTH", True, raising=False)
     request = _make_request()
 

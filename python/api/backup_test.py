@@ -53,9 +53,7 @@ class BackupTest(ApiHandler):
             }
 
             backup_service = BackupService()
-            matched_files = await backup_service.test_patterns(
-                metadata, max_files=max_files
-            )
+            matched_files = await backup_service.test_patterns(metadata, max_files=max_files)
 
             return {
                 "success": True,

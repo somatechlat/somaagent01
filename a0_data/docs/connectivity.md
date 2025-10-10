@@ -10,6 +10,30 @@ The API token is automatically generated from your username and password. This s
 
 ---
 
+## SomaAgentHub API Reference
+
+SomaAgentHub exposes its OpenAPI contract locally at `http://localhost:60000/openapi.json`. The
+service is pinned to port **60000** and is expected to remain online; it is hosted outside of the
+Docker Compose stack so no additional container build is required.
+
+- **Base URL:** `http://localhost:60000`
+- **OpenAPI spec:** `http://localhost:60000/openapi.json`
+- **Availability:** Configure alerts in Agent Zero to notify operators if the endpoint becomes
+    unreachable. Loss of access should trigger immediate investigation, as several downstream
+    automations rely on this specification.
+
+You can validate connectivity with a quick `curl` request:
+
+```bash
+curl -fsSL http://localhost:60000/openapi.json | jq '.info'
+```
+
+The gateway now probes this endpoint continuously, exporting the `soma_agent_hub_up`
+gauge and `soma_agent_hub_openapi_latency_seconds` histogram for Prometheus-based
+alerting.
+
+---
+
 ## External API Endpoints
 
 Agent Zero provides external API endpoints for integration with other applications. These endpoints use API key authentication and support text messages and file attachments.

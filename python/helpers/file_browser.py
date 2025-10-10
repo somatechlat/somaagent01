@@ -1,11 +1,12 @@
-import os
-from pathlib import Path
-import shutil
 import base64
+import os
+import shutil
 import subprocess
-from typing import Dict, List, Tuple, Any
-from werkzeug.utils import secure_filename
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+from werkzeug.utils import secure_filename
 
 from python.helpers import files
 from python.helpers.print_style import PrintStyle
@@ -53,9 +54,7 @@ class FileBrowser:
             PrintStyle.error(f"Error saving file {filename}: {e}")
             return False
 
-    def save_files(
-        self, files: List, current_path: str = ""
-    ) -> Tuple[List[str], List[str]]:
+    def save_files(self, files: List, current_path: str = "") -> Tuple[List[str], List[str]]:
         """Save uploaded files and return successful and failed filenames"""
         successful = []
         failed = []
@@ -189,9 +188,7 @@ class FileBrowser:
                         entry_data: Dict[str, Any] = {
                             "name": filename,
                             "path": str(entry_path.relative_to(self.base_dir)),
-                            "modified": datetime.fromtimestamp(
-                                stat_info.st_mtime
-                            ).isoformat(),
+                            "modified": datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
                         }
 
                         # Add symlink information if this is a symlink

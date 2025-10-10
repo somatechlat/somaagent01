@@ -1,8 +1,8 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from services.gateway import main as gateway_main
 from services.common.api_key_store import InMemoryApiKeyStore
+from services.gateway import main as gateway_main
 
 
 @pytest.fixture(autouse=True)

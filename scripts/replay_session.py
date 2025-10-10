@@ -38,9 +38,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--limit", type=int, default=None, help="Maximum number of events to retrieve"
     )
-    parser.add_argument(
-        "--follow", action="store_true", help="Stream new events as they arrive"
-    )
+    parser.add_argument("--follow", action="store_true", help="Stream new events as they arrive")
     return parser.parse_args(argv)
 
 

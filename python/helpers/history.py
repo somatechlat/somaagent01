@@ -1,11 +1,13 @@
-from abc import abstractmethod
 import asyncio
-from collections.abc import Mapping
 import json
 import math
-from typing import TypedDict, cast, Union, Dict, List
-from python.helpers import messages, tokens, settings
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from abc import abstractmethod
+from collections.abc import Mapping
+from typing import cast, Dict, List, TypedDict, Union
+
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+
+from python.helpers import messages, settings, tokens
 
 BULK_MERGE_COUNT = 3
 TOPICS_KEEP_COUNT = 3
@@ -135,9 +137,7 @@ class Topic(Record):
         else:
             return sum(msg.get_tokens() for msg in self.messages)
 
-    def add_message(
-        self, ai: bool, content: MessageContent, tokens: int = 0
-    ) -> Message:
+    def add_message(self, ai: bool, content: MessageContent, tokens: int = 0) -> Message:
         msg = Message(ai=ai, content=content, tokens=tokens)
         self.messages.append(msg)
         return msg
@@ -175,9 +175,7 @@ class Topic(Record):
             trim_to_chars = leng * (msg_max_size / tok)
             # raw messages will be replaced as a whole, they would become invalid when truncated
             if _is_raw_message(out[0]["content"]):
-                msg.set_summary(
-                    "Message content replaced to save space in context window"
-                )
+                msg.set_summary("Message content replaced to save space in context window")
 
             # regular messages will be truncated
             else:
@@ -204,9 +202,7 @@ class Topic(Record):
             cnt_to_sum = math.ceil((len(self.messages) - 2) * TOPIC_COMPRESS_RATIO)
             msg_to_sum = self.messages[1 : cnt_to_sum + 1]
             summary = await self.summarize_messages(msg_to_sum)
-            sum_msg_content = self.history.agent.parse_prompt(
-                "fw.msg_summary.md", summary=summary
-            )
+            sum_msg_content = self.history.agent.parse_prompt("fw.msg_summary.md", summary=summary)
             sum_msg = Message(False, sum_msg_content)
             self.messages[1 : cnt_to_sum + 1] = [sum_msg]
             return True
@@ -217,9 +213,7 @@ class Topic(Record):
         msg_txt = [m.output_text() for m in messages]
         summary = await self.history.agent.call_utility_model(
             system=self.history.agent.read_prompt("fw.topic_summary.sys.md"),
-            message=self.history.agent.read_prompt(
-                "fw.topic_summary.msg.md", content=msg_txt
-            ),
+            message=self.history.agent.read_prompt("fw.topic_summary.msg.md", content=msg_txt),
         )
         return summary
 
@@ -234,9 +228,7 @@ class Topic(Record):
     def from_dict(data: dict, history: "History"):
         topic = Topic(history=history)
         topic.summary = data.get("summary", "")
-        topic.messages = [
-            Message.from_dict(m, history=history) for m in data.get("messages", [])
-        ]
+        topic.messages = [Message.from_dict(m, history=history) for m in data.get("messages", [])]
         return topic
 
 
@@ -252,9 +244,7 @@ class Bulk(Record):
         else:
             return sum([r.get_tokens() for r in self.records])
 
-    def output(
-        self, human_label: str = "user", ai_label: str = "ai"
-    ) -> list[OutputMessage]:
+    def output(self, human_label: str = "user", ai_label: str = "ai") -> list[OutputMessage]:
         if self.summary:
             return [OutputMessage(ai=False, content=self.summary)]
         else:
@@ -300,11 +290,7 @@ class History(Record):
         self.agent: Agent = agent
 
     def get_tokens(self) -> int:
-        return (
-            self.get_bulks_tokens()
-            + self.get_topics_tokens()
-            + self.get_current_topic_tokens()
-        )
+        return self.get_bulks_tokens() + self.get_topics_tokens() + self.get_current_topic_tokens()
 
     def is_over_limit(self):
         limit = _get_ctx_size_for_history()
@@ -320,9 +306,7 @@ class History(Record):
     def get_current_topic_tokens(self) -> int:
         return self.current.get_tokens()
 
-    def add_message(
-        self, ai: bool, content: MessageContent, tokens: int = 0
-    ) -> Message:
+    def add_message(self, ai: bool, content: MessageContent, tokens: int = 0) -> Message:
         self.counter += 1
         return self.current.add_message(ai, content=content, tokens=tokens)
 
@@ -428,10 +412,7 @@ class History(Record):
             return False
         # merge bulks in groups of count, even if there are fewer than count
         bulks = await asyncio.gather(
-            *[
-                self.merge_bulks(self.bulks[i : i + count])
-                for i in range(0, len(self.bulks), count)
-            ]
+            *[self.merge_bulks(self.bulks[i : i + count]) for i in range(0, len(self.bulks), count)]
         )
         self.bulks = bulks
         return True

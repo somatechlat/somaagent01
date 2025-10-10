@@ -1,5 +1,5 @@
-from python.helpers.tool import Tool, Response
 from python.helpers.document_query import DocumentQueryHelper
+from python.helpers.tool import Response, Tool
 
 
 class DocumentQueryTool(Tool):

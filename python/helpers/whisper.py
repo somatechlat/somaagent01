@@ -1,14 +1,15 @@
-import base64
-import warnings
-import tempfile
 import asyncio
+import base64
+import tempfile
+import warnings
+
 from python.helpers import files
-from python.helpers.print_style import PrintStyle
 from python.helpers.notification import (
     NotificationManager,
-    NotificationType,
     NotificationPriority,
+    NotificationType,
 )
+from python.helpers.print_style import PrintStyle
 
 # Suppress FutureWarning from torch.load
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -17,6 +18,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 try:
     import whisper  # type: ignore
 except Exception:  # pragma: no cover
+
     class _WhisperStub:
         def __getattr__(self, name):
             raise ImportError(

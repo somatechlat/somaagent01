@@ -1,32 +1,33 @@
-from datetime import timedelta
-import os
-import secrets
 import hashlib
-import time
-import socket
-import struct
-from functools import wraps
-import threading
-from flask import (
-    Flask,
-    request,
-    Response,
-    session,
-    redirect,
-    url_for,
-    render_template_string,
-)
-from werkzeug.wrappers.response import Response as BaseResponse
-import initialize
-from python.helpers import files, git, mcp_server, fasta2a_server
-from python.helpers.files import get_abs_path
-from python.helpers import runtime, dotenv, process
-from python.helpers.extract_tools import load_classes_from_folder
-from python.helpers.api import ApiHandler
-from python.helpers.print_style import PrintStyle
 
 # disable logging
 import logging
+import os
+import secrets
+import socket
+import struct
+import threading
+import time
+from datetime import timedelta
+from functools import wraps
+
+from flask import (
+    Flask,
+    redirect,
+    render_template_string,
+    request,
+    Response,
+    session,
+    url_for,
+)
+from werkzeug.wrappers.response import Response as BaseResponse
+
+import initialize
+from python.helpers import dotenv, fasta2a_server, files, git, mcp_server, process, runtime
+from python.helpers.api import ApiHandler
+from python.helpers.extract_tools import load_classes_from_folder
+from python.helpers.files import get_abs_path
+from python.helpers.print_style import PrintStyle
 
 logging.getLogger().setLevel(logging.WARNING)
 
@@ -58,9 +59,7 @@ lock = threading.Lock()
 
 def is_loopback_address(address):
     loopback_checker = {
-        socket.AF_INET: lambda x: struct.unpack("!I", socket.inet_aton(x))[0]
-        >> (32 - 8)
-        == 127,
+        socket.AF_INET: lambda x: struct.unpack("!I", socket.inet_aton(x))[0] >> (32 - 8) == 127,
         socket.AF_INET6: lambda x: x == "::1",
     }
     address_type = "hostname"
@@ -218,10 +217,9 @@ def run():
     PrintStyle().print("Initializing framework...")
 
     # Suppress only request logs but keep the startup messages
-    from werkzeug.serving import WSGIRequestHandler
-    from werkzeug.serving import make_server
-    from werkzeug.middleware.dispatcher import DispatcherMiddleware
     from a2wsgi import ASGIMiddleware
+    from werkzeug.middleware.dispatcher import DispatcherMiddleware
+    from werkzeug.serving import make_server, WSGIRequestHandler
 
     PrintStyle().print("Starting server...")
 

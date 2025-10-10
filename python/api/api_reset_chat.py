@@ -1,8 +1,9 @@
+import json
+
 from agent import AgentContext
+from python.helpers import persist_chat
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.print_style import PrintStyle
-from python.helpers import persist_chat
-import json
 
 
 class ApiResetChat(ApiHandler):

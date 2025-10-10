@@ -1,7 +1,8 @@
+from langchain_core.documents import Document
+
+from python.helpers import files
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.memory import Memory
-from python.helpers import files
-from langchain_core.documents import Document
 
 
 class MemoryDashboard(ApiHandler):
@@ -117,11 +118,7 @@ class MemoryDashboard(ApiHandler):
 
             # Get the context and extract memory subdirectory
             context = AgentContext.get(context_id)
-            if (
-                context
-                and hasattr(context, "config")
-                and hasattr(context.config, "memory_subdir")
-            ):
+            if context and hasattr(context, "config") and hasattr(context.config, "memory_subdir"):
                 memory_subdir = context.config.memory_subdir or "default"
                 return {"success": True, "memory_subdir": memory_subdir}
             else:
@@ -194,15 +191,11 @@ class MemoryDashboard(ApiHandler):
                     memories = memories[:limit]
 
             # Format memories for the dashboard
-            formatted_memories = [
-                self._format_memory_for_dashboard(m) for m in memories
-            ]
+            formatted_memories = [self._format_memory_for_dashboard(m) for m in memories]
 
             # Get summary statistics
             total_memories = len(formatted_memories)
-            knowledge_count = sum(
-                1 for m in formatted_memories if m["knowledge_source"]
-            )
+            knowledge_count = sum(1 for m in formatted_memories if m["knowledge_source"])
             conversation_count = total_memories - knowledge_count
 
             # Get total count of all memories in database (unfiltered)

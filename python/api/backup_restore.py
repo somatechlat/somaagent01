@@ -1,8 +1,10 @@
-from python.helpers.api import ApiHandler, Request, Response
+import json
+
 from werkzeug.datastructures import FileStorage
+
+from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.backup import BackupService
 from python.helpers.persist_chat import load_tmp_chats
-import json
 
 
 class BackupRestore(ApiHandler):
@@ -28,9 +30,7 @@ class BackupRestore(ApiHandler):
         overwrite_policy = request.form.get(
             "overwrite_policy", "overwrite"
         )  # overwrite, skip, backup
-        clean_before_restore = (
-            request.form.get("clean_before_restore", "false").lower() == "true"
-        )
+        clean_before_restore = request.form.get("clean_before_restore", "false").lower() == "true"
 
         try:
             metadata = json.loads(metadata_json)

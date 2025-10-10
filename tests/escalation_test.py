@@ -64,7 +64,4 @@ def test_estimate_escalation_cost_known_model():
 
 
 def test_estimate_escalation_cost_unknown_model():
-    assert (
-        estimate_escalation_cost("unknown/model", input_tokens=100, output_tokens=100)
-        is None
-    )
+    assert estimate_escalation_cost("unknown/model", input_tokens=100, output_tokens=100) is None

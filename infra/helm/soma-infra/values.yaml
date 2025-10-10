@@ -1,0 +1,46 @@
+# Default values for soma-infra chart.
+# Override these in a custom values file when deploying.
+
+auth:
+  enabled: true
+  image: "openfga/openfga:latest"
+  replicaCount: 1
+
+opa:
+  enabled: true
+  image: "openpolicyagent/opa:latest"
+  replicaCount: 1
+
+kafka:
+  enabled: true
+  image: "confluentinc/cp-kafka:latest"
+  replicaCount: 1
+
+redis:
+  enabled: true
+  image: "redis:7-alpine"
+  replicaCount: 1
+
+prometheus:
+  enabled: true
+  image: "prom/prometheus:latest"
+  replicaCount: 1
+
+grafana:
+  enabled: true
+  image: "grafana/grafana:latest"
+  replicaCount: 1
+
+vault:
+  enabled: true
+  image: "hashicorp/vault:latest"
+  replicaCount: 1
+
+etcd:
+  enabled: true
+  image: "quay.io/coreos/etcd:latest"
+  replicaCount: 1
+
+# Additional common settings
+imagePullPolicy: IfNotPresent
+namespace: soma-agent

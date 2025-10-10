@@ -119,7 +119,10 @@ class InMemoryApiKeyStore(ApiKeyStore):
 
     async def list_keys(self) -> List[ApiKeyMetadata]:
         async with self._lock:
-            return [ApiKeyMetadata(**{k: record[k] for k in record if k != "hash"}) for record in self._records.values()]
+            return [
+                ApiKeyMetadata(**{k: record[k] for k in record if k != "hash"})
+                for record in self._records.values()
+            ]
 
     async def revoke_key(self, key_id: str) -> None:
         async with self._lock:
@@ -219,6 +222,8 @@ def _metadata_from_record(record: dict[str, Any]) -> ApiKeyMetadata:
         created_at=float(record.get("created_at", 0.0)),
         created_by=record.get("created_by"),
         prefix=str(record.get("prefix", "")),
-        last_used_at=(float(record["last_used_at"]) if record.get("last_used_at") is not None else None),
+        last_used_at=(
+            float(record["last_used_at"]) if record.get("last_used_at") is not None else None
+        ),
         revoked=bool(record.get("revoked")),
     )

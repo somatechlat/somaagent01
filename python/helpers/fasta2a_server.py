@@ -1,26 +1,27 @@
 # noqa: D401 (docstrings) – internal helper
 import asyncio
-import uuid
 import atexit
-from typing import Any, List
 import contextlib
 import threading
+import uuid
+from typing import Any, List
 
-from python.helpers import settings
 from starlette.requests import Request
+
+from agent import AgentContext, AgentContextType, UserMessage
+from initialize import initialize_agent
+from python.helpers import settings
+from python.helpers.persist_chat import remove_chat
 
 # Local imports
 from python.helpers.print_style import PrintStyle
-from agent import AgentContext, UserMessage, AgentContextType
-from initialize import initialize_agent
-from python.helpers.persist_chat import remove_chat
 
 # Import FastA2A
 try:
-    from fasta2a import Worker, FastA2A  # type: ignore
+    from fasta2a import FastA2A, Worker  # type: ignore
     from fasta2a.broker import InMemoryBroker  # type: ignore
+    from fasta2a.schema import AgentProvider, Artifact, Message, Skill  # type: ignore
     from fasta2a.storage import InMemoryStorage  # type: ignore
-    from fasta2a.schema import Message, Artifact, AgentProvider, Skill  # type: ignore
 
     FASTA2A_AVAILABLE = True
 except ImportError:  # pragma: no cover – library not installed
@@ -76,9 +77,7 @@ class AgentZeroWorker(Worker):  # type: ignore[misc]
             task_id = params["id"]
             message = params["message"]
 
-            _PRINTER.print(
-                f"[A2A] Processing task {task_id} with new temporary context"
-            )
+            _PRINTER.print(f"[A2A] Processing task {task_id} with new temporary context")
 
             # Convert A2A message to Agent Zero format
             agent_message = self._convert_message(message)
@@ -120,12 +119,8 @@ class AgentZeroWorker(Worker):  # type: ignore[misc]
             _PRINTER.print(f"[A2A] Completed task {task_id} and cleaned up context")
 
         except Exception as e:
-            _PRINTER.print(
-                f"[A2A] Error processing task {params.get('id', 'unknown')}: {e}"
-            )
-            await self.storage.update_task(
-                task_id=params.get("id", "unknown"), state="failed"
-            )
+            _PRINTER.print(f"[A2A] Error processing task {params.get('id', 'unknown')}: {e}")
+            await self.storage.update_task(task_id=params.get("id", "unknown"), state="failed")
 
             # Clean up context even on failure to prevent resource leaks
             if context:
@@ -494,13 +489,10 @@ class DynamicA2AProxy:
 
             if expected:
                 auth_header = request.headers.get("Authorization", "")
-                api_key = request.headers.get("X-API-KEY") or request.query_params.get(
-                    "api_key"
-                )
+                api_key = request.headers.get("X-API-KEY") or request.query_params.get("api_key")
 
                 is_authorized = (
-                    auth_header.startswith("Bearer ")
-                    and auth_header.split(" ", 1)[1] == expected
+                    auth_header.startswith("Bearer ") and auth_header.split(" ", 1)[1] == expected
                 ) or (api_key == expected)
 
                 if not is_authorized:

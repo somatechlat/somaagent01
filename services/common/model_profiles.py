@@ -10,6 +10,8 @@ from typing import Any, Optional
 
 import asyncpg
 
+from services.common.settings_base import BaseServiceSettings
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -29,6 +31,10 @@ class ModelProfileStore:
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
         self._pool: Optional[asyncpg.Pool] = None
+
+    @classmethod
+    def from_settings(cls, settings: BaseServiceSettings) -> "ModelProfileStore":
+        return cls(dsn=settings.postgres_dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
@@ -129,3 +135,21 @@ class ModelProfileStore:
             )
             for row in rows
         ]
+
+    async def sync_from_settings(self, settings: BaseServiceSettings) -> None:
+        """Upsert profiles defined in the shared ``model_profiles.yaml`` file."""
+
+        payload = settings.environment_profile()
+        records = payload.get("profiles", []) if isinstance(payload, dict) else []
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            profile = ModelProfile(
+                role=str(record.get("role", "default")),
+                deployment_mode=settings.deployment_mode,
+                model=str(record.get("model", "")),
+                base_url=str(record.get("base_url", "")),
+                temperature=float(record.get("temperature", 0.2)),
+                kwargs=record.get("extra") if isinstance(record.get("extra"), dict) else None,
+            )
+            await self.upsert(profile)

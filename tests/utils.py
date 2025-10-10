@@ -6,7 +6,7 @@ import asyncio
 import json
 import os
 import uuid
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Callable, Dict, Optional
 
 from aiokafka import AIOKafkaConsumer
 

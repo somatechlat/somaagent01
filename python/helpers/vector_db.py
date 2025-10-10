@@ -1,18 +1,16 @@
-from typing import Any, List, Sequence
 import uuid
-from langchain_community.vectorstores import FAISS
+from typing import Any, List, Sequence
 
 # faiss needs to be patched for python 3.12 on arm #TODO remove once not needed
 import faiss
-
-
-from langchain_core.documents import Document
+from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import InMemoryByteStore
 from langchain_community.docstore.in_memory import InMemoryDocstore
+from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.utils import (
     DistanceStrategy,
 )
-from langchain.embeddings import CacheBackedEmbeddings
+from langchain_core.documents import Document
 
 from agent import Agent
 
@@ -46,12 +44,10 @@ class VectorDB:
         )
         if namespace not in VectorDB._cached_embeddings:
             store = InMemoryByteStore()
-            VectorDB._cached_embeddings[namespace] = (
-                CacheBackedEmbeddings.from_bytes_store(
-                    model,
-                    store,
-                    namespace=namespace,
-                )
+            VectorDB._cached_embeddings[namespace] = CacheBackedEmbeddings.from_bytes_store(
+                model,
+                store,
+                namespace=namespace,
             )
         return VectorDB._cached_embeddings[namespace]
 
@@ -100,7 +96,7 @@ class VectorDB:
         ids = [str(uuid.uuid4()) for _ in range(len(docs))]
 
         if ids:
-            for doc, id in zip(docs, ids):
+            for doc, id in zip(docs, ids, strict=False):
                 doc.metadata["id"] = id  # add ids to documents metadata
 
             self.db.add_documents(documents=docs, ids=ids)
@@ -108,9 +104,7 @@ class VectorDB:
 
     async def delete_documents_by_ids(self, ids: list[str]):
         # aget_by_ids is not yet implemented in faiss, need to do a workaround
-        rem_docs = await self.db.aget_by_ids(
-            ids
-        )  # existing docs to remove (prevents error)
+        rem_docs = await self.db.aget_by_ids(ids)  # existing docs to remove (prevents error)
         if rem_docs:
             rem_ids = [doc.metadata["id"] for doc in rem_docs]  # ids to remove
             await self.db.adelete(ids=rem_ids)
@@ -130,9 +124,7 @@ def format_docs_plain(docs: list[Document]) -> list[str]:
 
 def cosine_normalizer(val: float) -> float:
     res = (1 + val) / 2
-    res = max(
-        0, min(1, res)
-    )  # float precision can cause values like 1.0000000596046448
+    res = max(0, min(1, res))  # float precision can cause values like 1.0000000596046448
     return res
 
 

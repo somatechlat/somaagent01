@@ -2,17 +2,17 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
 
-from python.helpers.memory import Memory
+from agent import Agent
 from python.helpers.dirty_json import DirtyJson
 from python.helpers.log import LogItem
+from python.helpers.memory import Memory
 from python.helpers.print_style import PrintStyle
 from python.tools.memory_load import DEFAULT_THRESHOLD as DEFAULT_MEMORY_THRESHOLD
-from agent import Agent
 
 
 class ConsolidationAction(Enum):
@@ -96,9 +96,7 @@ class MemoryConsolidator:
         try:
             # Start processing with timeout
             processing_task = asyncio.create_task(
-                self._process_memory_with_consolidation(
-                    new_memory, area, metadata, log_item
-                )
+                self._process_memory_with_consolidation(new_memory, area, metadata, log_item)
             )
 
             result = await asyncio.wait_for(
@@ -165,23 +163,17 @@ class MemoryConsolidator:
         # Step 2: Validate that similar memories still exist (they might have been deleted by previous consolidations)
         if similar_memories:
             memory_ids_to_check = [
-                doc.metadata.get("id")
-                for doc in similar_memories
-                if doc.metadata.get("id")
+                doc.metadata.get("id") for doc in similar_memories if doc.metadata.get("id")
             ]
             # Filter out None values and ensure all IDs are strings
-            memory_ids_to_check = [
-                str(id) for id in memory_ids_to_check if id is not None
-            ]
+            memory_ids_to_check = [str(id) for id in memory_ids_to_check if id is not None]
             db = await Memory.get(self.agent)
             still_existing = await db.get_documents_by_ids(memory_ids_to_check)
             existing_ids = {doc.metadata.get("id") for doc in still_existing}
 
             # Filter out deleted memories
             valid_similar_memories = [
-                doc
-                for doc in similar_memories
-                if doc.metadata.get("id") in existing_ids
+                doc for doc in similar_memories if doc.metadata.get("id") in existing_ids
             ]
 
             if len(valid_similar_memories) != len(similar_memories):
@@ -229,15 +221,11 @@ class MemoryConsolidator:
             existing_metadata=metadata,
         )
 
-        consolidation_result = await self._analyze_memory_consolidation(
-            analysis_context, log_item
-        )
+        consolidation_result = await self._analyze_memory_consolidation(analysis_context, log_item)
 
         if consolidation_result.action == ConsolidationAction.SKIP:
             if log_item:
-                log_item.update(
-                    progress="LLM analysis suggests skipping consolidation", temp=True
-                )
+                log_item.update(progress="LLM analysis suggests skipping consolidation", temp=True)
             try:
                 db = await Memory.get(self.agent)
                 if "timestamp" not in metadata:
@@ -272,16 +260,14 @@ class MemoryConsolidator:
                     result=f"Consolidation completed: {consolidation_result.action.value}",
                     memory_ids=memory_ids,
                     consolidation_action=consolidation_result.action.value,
-                    reasoning=consolidation_result.reasoning
-                    or "No specific reasoning provided",
+                    reasoning=consolidation_result.reasoning or "No specific reasoning provided",
                     memories_processed=len(similar_memories) + 1,  # +1 for new memory
                 )
             else:
                 log_item.update(
                     result=f"Consolidation failed: {consolidation_result.action.value}",
                     consolidation_action=consolidation_result.action.value,
-                    reasoning=consolidation_result.reasoning
-                    or "Consolidation operation failed",
+                    reasoning=consolidation_result.reasoning or "Consolidation operation failed",
                 )
 
         return {"success": bool(memory_ids), "memory_ids": memory_ids or []}
@@ -414,9 +400,7 @@ class MemoryConsolidator:
                     # First document gets 1.0, last gets safety_threshold (0.9 by default)
                     ranking_factor = 1.0 - (i / (total_docs - 1))
                     score_range = 1.0 - safety_threshold  # e.g., 1.0 - 0.9 = 0.1
-                    ranking_similarity = safety_threshold + (
-                        score_range * ranking_factor
-                    )
+                    ranking_similarity = safety_threshold + (score_range * ranking_factor)
 
                     # Ensure minimum score is search_threshold for logical consistency
                     ranking_similarity = max(ranking_similarity, search_threshold)
@@ -473,9 +457,7 @@ class MemoryConsolidator:
             else:
                 first_sentence = new_memory.split(".")[0]
                 fallback_content = (
-                    first_sentence[:200]
-                    if len(first_sentence) <= 200
-                    else new_memory[:200]
+                    first_sentence[:200] if len(first_sentence) <= 200 else new_memory[:200]
                 )
             return [fallback_content.strip()]
 
@@ -490,7 +472,9 @@ class MemoryConsolidator:
             for i, doc in enumerate(context.similar_memories):
                 timestamp = doc.metadata.get("timestamp", "unknown")
                 doc_id = doc.metadata.get("id", f"doc_{i}")
-                similar_memories_text += f"ID: {doc_id}\nTimestamp: {timestamp}\nContent: {doc.page_content}\n\n"
+                similar_memories_text += (
+                    f"ID: {doc_id}\nTimestamp: {timestamp}\nContent: {doc.page_content}\n\n"
+                )
 
             # Build system prompt
             system_prompt = self.agent.read_prompt(
@@ -539,9 +523,7 @@ class MemoryConsolidator:
                 action=action,
                 memories_to_remove=result_json.get("memories_to_remove", []),
                 memories_to_update=result_json.get("memories_to_update", []),
-                new_memory_content=result_json.get(
-                    "new_memory_content", default_content
-                ),
+                new_memory_content=result_json.get("new_memory_content", default_content),
                 metadata=result_json.get("metadata", {}),
                 reasoning=result_json.get("reasoning", ""),
             )
@@ -577,19 +559,13 @@ class MemoryConsolidator:
                 )
 
             elif result.action == ConsolidationAction.MERGE:
-                return await self._handle_merge(
-                    db, result, area, consolidated_metadata, log_item
-                )
+                return await self._handle_merge(db, result, area, consolidated_metadata, log_item)
 
             elif result.action == ConsolidationAction.REPLACE:
-                return await self._handle_replace(
-                    db, result, area, consolidated_metadata, log_item
-                )
+                return await self._handle_replace(db, result, area, consolidated_metadata, log_item)
 
             elif result.action == ConsolidationAction.UPDATE:
-                return await self._handle_update(
-                    db, result, area, consolidated_metadata, log_item
-                )
+                return await self._handle_update(db, result, area, consolidated_metadata, log_item)
 
             else:
                 # Should not reach here, but handle gracefully
@@ -715,9 +691,7 @@ class MemoryConsolidator:
                     # if result.reasoning:
                     #     final_metadata['consolidation_reasoning'] = result.reasoning
 
-                    new_id = await db.insert_text(
-                        result.new_memory_content, final_metadata
-                    )
+                    new_id = await db.insert_text(result.new_memory_content, final_metadata)
                     return [new_id]
                 else:
                     return []
@@ -769,9 +743,7 @@ class MemoryConsolidator:
                 # Validate that the memory exists before attempting to delete it
                 existing_docs = await db.get_documents_by_ids([memory_id])
                 if not existing_docs:
-                    PrintStyle().warning(
-                        f"Memory ID {memory_id} not found during update, skipping"
-                    )
+                    PrintStyle().warning(f"Memory ID {memory_id} not found during update, skipping")
                     continue
 
                 # Delete old version and insert updated version
@@ -784,9 +756,7 @@ class MemoryConsolidator:
                     "consolidation_action": result.action.value,
                     "updated_from": memory_id,
                     **original_metadata,  # Original metadata first
-                    **update_info.get(
-                        "metadata", {}
-                    ),  # LLM metadata second (wins conflicts)
+                    **update_info.get("metadata", {}),  # LLM metadata second (wins conflicts)
                 }
 
                 new_id = await db.insert_text(new_content, updated_metadata)
@@ -809,9 +779,7 @@ class MemoryConsolidator:
             # if result.reasoning:
             #     final_metadata['consolidation_reasoning'] = result.reasoning
 
-            new_memory_id = await db.insert_text(
-                result.new_memory_content, final_metadata
-            )
+            new_memory_id = await db.insert_text(result.new_memory_content, final_metadata)
             updated_ids.append(new_memory_id)
 
         return updated_ids

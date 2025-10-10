@@ -37,13 +37,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
-import time
 from weakref import WeakKeyDictionary
 
 import httpx
-
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +63,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     try:
         url = httpx.URL(normalized)
     except Exception:
-        logger.warning(
-            "Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate
-        )
+        logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
         return "http://localhost:9696"
 
     port = url.port
@@ -122,9 +119,7 @@ def _running_inside_container() -> bool:
         return True
 
     try:
-        with open(
-            "/proc/self/cgroup", "r", encoding="utf-8", errors="ignore"
-        ) as stream:
+        with open("/proc/self/cgroup", "r", encoding="utf-8", errors="ignore") as stream:
             contents = stream.read()
         if any(token in contents for token in ("docker", "kubepods", "containerd")):
             return True
@@ -144,9 +139,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = os.environ.get(
-            "SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal"
-        )
+        override_host = os.environ.get("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -219,12 +212,12 @@ class SomaClient:
             "headers": self._build_default_headers(),
             "verify": verify_ssl if verify_ssl is not None else True,
         }
-        self._clients: WeakKeyDictionary[
-            asyncio.AbstractEventLoop, httpx.AsyncClient
-        ] = WeakKeyDictionary()
-        self._locks: WeakKeyDictionary[
-            asyncio.AbstractEventLoop, asyncio.Lock
-        ] = WeakKeyDictionary()
+        self._clients: WeakKeyDictionary[asyncio.AbstractEventLoop, httpx.AsyncClient] = (
+            WeakKeyDictionary()
+        )
+        self._locks: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
+            WeakKeyDictionary()
+        )
 
         # Simple circuit breaker state
         self._cb_failures: int = 0

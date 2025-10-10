@@ -6,8 +6,8 @@ from agent import AgentContext
 
 from . import helpers
 
-
 pytestmark = pytest.mark.asyncio
+
 
 @pytest.mark.usefixtures("event_loop")
 async def test_goal_switching_context_window_is_sequenced():
@@ -18,7 +18,9 @@ async def test_goal_switching_context_window_is_sequenced():
 
     try:
         topic_a = "Draft a launch checklist for the WISTERIA marketing push."
-        topic_b = "Now ignore marketing and instead review this kubectl rollout status."  # goal switch
+        topic_b = (
+            "Now ignore marketing and instead review this kubectl rollout status."  # goal switch
+        )
 
         # First turn establishes marketing context
         reply_a = await helpers.run_turn(context, topic_a)
@@ -61,15 +63,15 @@ async def test_goal_switching_context_window_is_sequenced():
         combined_text = "\n".join(filter(None, [memories_text, solutions_text]))
 
         if combined_text.strip():
-            assert "kubectl" in combined_text or "rollout" in combined_text, (
-                "memory recall extras should surface the new DevOps topic"
-            )
+            assert (
+                "kubectl" in combined_text or "rollout" in combined_text
+            ), "memory recall extras should surface the new DevOps topic"
 
             marketing_hits = combined_text.count("wisteria")
             kubectl_hits = combined_text.count("kubectl") + combined_text.count("rollout")
-            assert marketing_hits <= kubectl_hits + 1, (
-                "recall extras still biased toward the previous marketing topic"
-            )
+            assert (
+                marketing_hits <= kubectl_hits + 1
+            ), "recall extras still biased toward the previous marketing topic"
 
         # Basic sanity: context token metadata tracks prompt size
         assert window_b.get("tokens", 0) > 0, "token count should be populated"

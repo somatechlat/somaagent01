@@ -3,12 +3,12 @@ Provides high‑level functions to list, download, and install capsule artifacts
 The functions use the public HTTP API exposed by ``services/capsule_registry/main.py``.
 """
 
-import os
 import json
-import tempfile
+import os
 import subprocess
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import httpx
 
@@ -68,13 +68,16 @@ def install_capsule(capsule_id: str, install_dir: str | None = None) -> Path:
         subprocess.run(["unzip", "-o", str(capsule_path), "-d", str(extract_dir)], check=True)
     except Exception:
         import zipfile
+
         with zipfile.ZipFile(capsule_path, "r") as zf:
             zf.extractall(extract_dir)
     return extract_dir
 
+
 # Convenience wrapper for CLI usage
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Simple capsule SDK CLI")
     sub = parser.add_subparsers(dest="cmd")
     sub.add_parser("list", help="List available capsules")

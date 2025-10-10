@@ -1,13 +1,14 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Literal, Optional, TypeVar
 
 T = TypeVar("T")
+import copy
 import uuid
 from collections import OrderedDict  # Import OrderedDict
-from python.helpers.strings import truncate_text_by_ratio
-import copy
 from typing import TypeVar
+
+from python.helpers.strings import truncate_text_by_ratio
 
 T = TypeVar("T")
 

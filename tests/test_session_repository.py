@@ -8,9 +8,9 @@ import pytest
 import pytest_asyncio
 
 from services.common.session_repository import (
+    ensure_schema,
     PostgresSessionStore,
     RedisSessionCache,
-    ensure_schema,
     SESSION_CACHE_EVENTS,
     SESSION_ENVELOPE_REFRESH_TOTAL,
     SESSION_ENVELOPE_VALIDATION_FAILURES,
@@ -45,7 +45,9 @@ async def store(postgres_pool: asyncpg.Pool) -> AsyncIterator[PostgresSessionSto
         await repo.close()
 
 
-async def _insert_event(conn: asyncpg.Connection, session_id: str, payload: dict[str, object]) -> None:
+async def _insert_event(
+    conn: asyncpg.Connection, session_id: str, payload: dict[str, object]
+) -> None:
     await conn.execute(
         """
         INSERT INTO session_events (session_id, payload)
@@ -57,7 +59,9 @@ async def _insert_event(conn: asyncpg.Connection, session_id: str, payload: dict
 
 
 @pytest.mark.asyncio
-async def test_append_event_upserts_envelope(postgres_pool: asyncpg.Pool, store: PostgresSessionStore) -> None:
+async def test_append_event_upserts_envelope(
+    postgres_pool: asyncpg.Pool, store: PostgresSessionStore
+) -> None:
     session_id = "00000000-0000-0000-0000-000000000001"
     event = {
         "session_id": session_id,
@@ -92,7 +96,9 @@ async def test_get_envelope_returns_none_for_missing(store: PostgresSessionStore
 
 
 @pytest.mark.asyncio
-async def test_backfill_envelope_overwrites_metadata(postgres_pool: asyncpg.Pool, store: PostgresSessionStore) -> None:
+async def test_backfill_envelope_overwrites_metadata(
+    postgres_pool: asyncpg.Pool, store: PostgresSessionStore
+) -> None:
     session_id = "00000000-0000-0000-0000-000000000999"
 
     async with postgres_pool.acquire() as conn:
@@ -185,7 +191,9 @@ async def test_validation_metrics_increment(store: PostgresSessionStore) -> None
 
 
 class _StubRedisClient:
-    def __init__(self, *, get_values: list[str | None] | None = None, delete_result: int = 0) -> None:
+    def __init__(
+        self, *, get_values: list[str | None] | None = None, delete_result: int = 0
+    ) -> None:
         self.set_calls: list[tuple[str, str]] = []
         self.setex_calls: list[tuple[str, int, str]] = []
         self.get_values = get_values or []

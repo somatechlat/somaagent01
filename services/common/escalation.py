@@ -90,11 +90,7 @@ def decide_escalation(
             metadata=factors,
         )
 
-    if (
-        intent in {"action_request", "problem_report"}
-        and tag_score >= 0.8
-        and length > 600
-    ):
+    if intent in {"action_request", "problem_report"} and tag_score >= 0.8 and length > 600:
         return EscalationDecision(
             should_escalate=True,
             reason="intent_complex_high_tag",

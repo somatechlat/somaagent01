@@ -4,7 +4,6 @@ import pytest
 
 import models
 
-
 pytestmark = pytest.mark.skipif(
     not os.getenv("OPENAI_API_KEY"),
     reason="requires OpenAI credentials to exercise the live rate limiter",

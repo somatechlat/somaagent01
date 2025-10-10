@@ -1,7 +1,7 @@
 import asyncio
 import io
 import sys
-from typing import Callable, Any, Awaitable, Tuple
+from typing import Any, Awaitable, Callable, Tuple
 
 
 def capture_prints_async(

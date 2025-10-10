@@ -1,6 +1,6 @@
-from python.helpers.tool import Tool, Response
-from python.helpers.print_style import PrintStyle
 from python.helpers.fasta2a_client import connect_to_agent, is_client_available
+from python.helpers.print_style import PrintStyle
+from python.helpers.tool import Response, Tool
 
 
 class A2AChatTool(Tool):
@@ -37,9 +37,7 @@ class A2AChatTool(Tool):
                 )
                 task_id = task_resp.get("result", {}).get("id")  # type: ignore[index]
                 if not task_id:
-                    return Response(
-                        message="Remote agent failed to create task.", break_loop=False
-                    )
+                    return Response(message="Remote agent failed to create task.", break_loop=False)
                 final = await conn.wait_for_completion(task_id)
                 new_context_id = final["result"].get("context_id")  # type: ignore[index]
                 if isinstance(new_context_id, str):
@@ -54,9 +52,7 @@ class A2AChatTool(Tool):
                     assistant_text = "\n".join(
                         p.get("text", "") for p in last_parts if p.get("kind") == "text"
                     )
-                return Response(
-                    message=assistant_text or "(no response)", break_loop=False
-                )
+                return Response(message=assistant_text or "(no response)", break_loop=False)
         except Exception as e:
             PrintStyle.error(f"A2A chat error: {e}")
             return Response(message=f"A2A chat error: {e}", break_loop=False)

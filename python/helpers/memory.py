@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import random
 from datetime import datetime
@@ -16,43 +17,37 @@ from typing import (
 )
 from weakref import WeakKeyDictionary
 
-from langchain.storage import InMemoryByteStore, LocalFileStore
+# faiss needs to be patched for python 3.12 on arm #TODO remove once not needed
+import faiss
+import numpy as np
 from langchain.embeddings import CacheBackedEmbeddings
-from python.helpers import guids
+from langchain.storage import InMemoryByteStore, LocalFileStore
+from langchain_community.docstore.in_memory import InMemoryDocstore
 
 # from langchain_chroma import Chroma
 from langchain_community.vectorstores import FAISS
-
-# faiss needs to be patched for python 3.12 on arm #TODO remove once not needed
-import faiss
-
-
-from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores.utils import (
     DistanceStrategy,
 )
 
 # Note: Embeddings imported for type annotations; keep import to avoid breaking types
 from langchain_core.documents import Document
+from simpleeval import simple_eval
 
-import numpy as np
-
-from python.helpers.print_style import PrintStyle
-from . import files
-from python.helpers import knowledge_import
+import models
+from agent import Agent
+from python.helpers import guids, knowledge_import
 
 # Note: Log imported for type annotations; LogItem used in signatures
 from python.helpers.log import LogItem
-from agent import Agent
-import models
-import logging
-from simpleeval import simple_eval
+from python.helpers.print_style import PrintStyle
 from python.integrations.soma_client import (
     SomaClient,
     SomaClientError,
     SomaMemoryRecord,
 )
 
+from . import files
 
 # Raise the log level so WARNING messages aren't shown
 logging.getLogger("langchain_core.vectorstores.base").setLevel(logging.ERROR)
@@ -193,9 +188,7 @@ class Memory:
         if log_item:
             log_item.stream(progress="\nInitializing VectorDB")
 
-        em_dir = files.get_abs_path(
-            "memory/embeddings"
-        )  # just caching, no need to parameterize
+        em_dir = files.get_abs_path("memory/embeddings")  # just caching, no need to parameterize
         db_dir = Memory._abs_db_dir(memory_subdir)
 
         # make sure embeddings and database directories exist
@@ -212,9 +205,7 @@ class Memory:
             model_config.name,
             **model_config.build_kwargs(),
         )
-        embeddings_model_id = files.safe_file_name(
-            model_config.provider + "_" + model_config.name
-        )
+        embeddings_model_id = files.safe_file_name(model_config.provider + "_" + model_config.name)
 
         # here we setup the embeddings model with the chosen cache storage
         embedder = CacheBackedEmbeddings.from_bytes_store(
@@ -330,9 +321,7 @@ class Memory:
             if index[file]["state"] in ["changed", "removed"] and index[file].get(
                 "ids", []
             ):  # for knowledge files that have been changed or removed and have IDs
-                await self.delete_documents_by_ids(
-                    index[file]["ids"]
-                )  # remove original version
+                await self.delete_documents_by_ids(index[file]["ids"])  # remove original version
             if index[file]["state"] == "changed":
                 index[file]["ids"] = await self.insert_documents(
                     index[file]["documents"]
@@ -393,9 +382,7 @@ class Memory:
             filter=comparator,
         )
 
-    async def delete_documents_by_query(
-        self, query: str, threshold: float, filter: str = ""
-    ):
+    async def delete_documents_by_query(self, query: str, threshold: float, filter: str = ""):
         k = 100
         tot = 0
         removed = []
@@ -429,9 +416,7 @@ class Memory:
 
     async def delete_documents_by_ids(self, ids: list[str]):
         # aget_by_ids is not yet implemented in faiss, need to do a workaround
-        rem_docs = await self.db.aget_by_ids(
-            ids
-        )  # existing docs to remove (prevents error)
+        rem_docs = await self.db.aget_by_ids(ids)  # existing docs to remove (prevents error)
         if rem_docs:
             rem_ids = [doc.metadata["id"] for doc in rem_docs]  # ids to remove
             await self.db.adelete(ids=rem_ids)
@@ -460,7 +445,7 @@ class Memory:
         timestamp = self.get_timestamp()
 
         if ids:
-            for doc, id in zip(docs, ids):
+            for doc, id in zip(docs, ids, strict=False):
                 doc.metadata["id"] = id  # add ids to documents metadata
                 doc.metadata["timestamp"] = timestamp  # add timestamp
                 if not doc.metadata.get("area", ""):
@@ -511,9 +496,7 @@ class Memory:
     @staticmethod
     def _cosine_normalizer(val: float) -> float:
         res = (1 + val) / 2
-        res = max(
-            0, min(1, res)
-        )  # float precision can cause values like 1.0000000596046448
+        res = max(0, min(1, res))  # float precision can cause values like 1.0000000596046448
         return res
 
     @staticmethod
@@ -582,9 +565,7 @@ class SomaMemory:
     async def search_similarity_threshold(
         self, query: str, limit: int, threshold: float, filter: str = ""
     ) -> List[Document]:
-        return await self._docstore.search_similarity_threshold(
-            query, limit, threshold, filter
-        )
+        return await self._docstore.search_similarity_threshold(query, limit, threshold, filter)
 
     async def delete_documents_by_query(
         self, query: str, threshold: float, filter: str = ""
@@ -626,7 +607,7 @@ class _SomaDocStoreAdapter:
         await self._store.delete_documents_by_ids(list(ids))
 
     async def aadd_documents(self, documents: list[Document], ids: list[str]) -> None:
-        for doc, _id in zip(documents, ids):
+        for doc, _id in zip(documents, ids, strict=False):
             doc.metadata["id"] = _id
         await self._store.insert_documents(documents)
 
@@ -710,9 +691,7 @@ class _SomaDocStore:
             doc_id = metadata.get("id") or guids.generate_id(10)
             metadata["id"] = doc_id
             coord = (
-                metadata.get("coord")
-                or metadata.get("soma_coord")
-                or self._generate_coord(doc_id)
+                metadata.get("coord") or metadata.get("soma_coord") or self._generate_coord(doc_id)
             )
             metadata["coord"] = coord
             metadata["soma_coord"] = coord
@@ -805,16 +784,12 @@ class _SomaDocStore:
             await self.delete_documents_by_ids(ids)
         return matches
 
-    def _build_payload(
-        self, metadata: MutableMapping[str, Any], content: str
-    ) -> Dict[str, Any]:
+    def _build_payload(self, metadata: MutableMapping[str, Any], content: str) -> Dict[str, Any]:
         payload: Dict[str, Any] = dict(metadata)
         payload.setdefault("memory_type", metadata.get("memory_type", "episodic"))
         payload.setdefault("importance", metadata.get("importance", 1))
         payload.setdefault("area", metadata.get("area", MemoryArea.MAIN.value))
-        payload.setdefault(
-            "universe", metadata.get("universe", self.memory.memory_subdir)
-        )
+        payload.setdefault("universe", metadata.get("universe", self.memory.memory_subdir))
 
         timestamp_val = metadata.get("timestamp")
         numeric_timestamp: float | None = None
@@ -826,9 +801,7 @@ class _SomaDocStore:
                 numeric_timestamp = float(timestamp_val)
             except ValueError:
                 try:
-                    numeric_timestamp = datetime.fromisoformat(
-                        timestamp_val
-                    ).timestamp()
+                    numeric_timestamp = datetime.fromisoformat(timestamp_val).timestamp()
                 except ValueError:
                     numeric_timestamp = None
 
@@ -923,9 +896,7 @@ class _SomaDocStore:
         ]
         content = next((c for c in content_candidates if isinstance(c, str)), "")
         metadata.setdefault("area", metadata.get("area", MemoryArea.MAIN.value))
-        metadata.setdefault(
-            "universe", metadata.get("universe", self.memory.memory_subdir)
-        )
+        metadata.setdefault("universe", metadata.get("universe", self.memory.memory_subdir))
         return Document(page_content=content, metadata=metadata)
 
 

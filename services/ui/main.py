@@ -13,8 +13,15 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from services.common.logging_config import setup_logging
+from services.common.settings_sa01 import SA01Settings
+from services.common.tracing import setup_tracing
+
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+APP_SETTINGS = SA01Settings.from_env()
+setup_tracing("ui-service", endpoint=APP_SETTINGS.otlp_endpoint)
 
 app = FastAPI(title="SomaAgent 01 UI")
 

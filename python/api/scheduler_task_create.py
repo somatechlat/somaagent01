@@ -1,18 +1,19 @@
+import random
+
 from python.helpers.api import ApiHandler, Input, Output, Request
-from python.helpers.task_scheduler import (
-    TaskScheduler,
-    ScheduledTask,
-    AdHocTask,
-    PlannedTask,
-    TaskSchedule,
-    serialize_task,
-    parse_task_schedule,
-    parse_task_plan,
-    TaskType,
-)
 from python.helpers.localization import Localization
 from python.helpers.print_style import PrintStyle
-import random
+from python.helpers.task_scheduler import (
+    AdHocTask,
+    parse_task_plan,
+    parse_task_schedule,
+    PlannedTask,
+    ScheduledTask,
+    serialize_task,
+    TaskSchedule,
+    TaskScheduler,
+    TaskType,
+)
 
 
 class SchedulerTaskCreate(ApiHandler):
@@ -138,8 +139,6 @@ class SchedulerTaskCreate(ApiHandler):
 
         # Debug log the serialized task
         if task_dict and task_dict.get("type") == "adhoc":
-            printer.print(
-                f"Serialized adhoc task, token in response: '{task_dict.get('token')}'"
-            )
+            printer.print(f"Serialized adhoc task, token in response: '{task_dict.get('token')}'")
 
         return {"task": task_dict}

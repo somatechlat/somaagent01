@@ -1,9 +1,9 @@
 import base64
-from python.helpers.print_style import PrintStyle
-from python.helpers.tool import Tool, Response
-from python.helpers import runtime, files, images
 from mimetypes import guess_type
-from python.helpers import history
+
+from python.helpers import files, history, images, runtime
+from python.helpers.print_style import PrintStyle
+from python.helpers.tool import Response, Tool
 
 # image optimization and token estimation for context window
 MAX_PIXELS = 768_000
@@ -47,9 +47,7 @@ class VisionLoad(Tool):
                     except Exception as e:
                         self.images_dict[path] = None
                         PrintStyle().error(f"Error processing image {path}: {e}")
-                        self.agent.context.log.log(
-                            "warning", f"Error processing image {path}: {e}"
-                        )
+                        self.agent.context.log.log("warning", f"Error processing image {path}: {e}")
 
         return Response(message="dummy", break_loop=False)
 
@@ -74,12 +72,8 @@ class VisionLoad(Tool):
                         }
                     )
             # append as raw message content for LLMs with vision tokens estimate
-            msg = history.RawMessage(
-                raw_content=content, preview="<Base64 encoded image data>"
-            )
-            self.agent.hist_add_message(
-                False, content=msg, tokens=TOKENS_ESTIMATE * len(content)
-            )
+            msg = history.RawMessage(raw_content=content, preview="<Base64 encoded image data>")
+            self.agent.hist_add_message(False, content=msg, tokens=TOKENS_ESTIMATE * len(content))
         else:
             self.agent.hist_add_tool_result(self.name, "No images processed")
 
@@ -89,8 +83,8 @@ class VisionLoad(Tool):
             if not self.images_dict
             else f"{len(self.images_dict)} images processed"
         )
-        PrintStyle(
-            font_color="#1B4F72", background_color="white", padding=True, bold=True
-        ).print(f"{self.agent.agent_name}: Response from tool '{self.name}'")
+        PrintStyle(font_color="#1B4F72", background_color="white", padding=True, bold=True).print(
+            f"{self.agent.agent_name}: Response from tool '{self.name}'"
+        )
         PrintStyle(font_color="#85C1E9").print(message)
         self.log.update(result=message)

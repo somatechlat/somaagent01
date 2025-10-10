@@ -3,7 +3,6 @@ from opentelemetry import trace
 from services.common.trace_context import extract_trace_context, inject_trace_context
 from services.common.tracing import setup_tracing
 
-
 setup_tracing("test-harness", disable_exporter=True)
 
 

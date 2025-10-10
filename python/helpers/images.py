@@ -1,11 +1,10 @@
-from PIL import Image
 import io
 import math
 
+from PIL import Image
 
-def compress_image(
-    image_data: bytes, *, max_pixels: int = 256_000, quality: int = 50
-) -> bytes:
+
+def compress_image(image_data: bytes, *, max_pixels: int = 256_000, quality: int = 50) -> bytes:
     """Compress an image by scaling it down and converting to JPEG with quality settings.
 
     Args:

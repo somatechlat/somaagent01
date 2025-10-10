@@ -1,9 +1,10 @@
+import base64
+import fnmatch
 import os
 import shutil
-import fnmatch
-import base64
 import tempfile
 import zipfile
+
 from python.helpers import runtime
 
 
@@ -39,9 +40,7 @@ def read_file_bin(relative_path: str, backup_dirs=None) -> bytes:
     absolute_path = find_file_in_dirs(relative_path, backup_dirs)
 
     # Use RFC routing for development mode
-    b64_content = runtime.call_development_function_sync(
-        _read_file_binary_impl, absolute_path
-    )
+    b64_content = runtime.call_development_function_sync(_read_file_binary_impl, absolute_path)
     return base64.b64decode(b64_content)
 
 
@@ -63,9 +62,7 @@ def read_file_base64(relative_path: str, backup_dirs=None) -> str:
     absolute_path = find_file_in_dirs(relative_path, backup_dirs)
 
     # Use RFC routing for development mode
-    return runtime.call_development_function_sync(
-        _read_file_as_base64_impl, absolute_path
-    )
+    return runtime.call_development_function_sync(_read_file_as_base64_impl, absolute_path)
 
 
 def write_file_binary(relative_path: str, content: bytes) -> bool:
@@ -83,9 +80,7 @@ def write_file_binary(relative_path: str, content: bytes) -> bool:
 
     # Use RFC routing for development mode
     b64_content = base64.b64encode(content).decode("utf-8")
-    return runtime.call_development_function_sync(
-        _write_file_binary_impl, abs_path, b64_content
-    )
+    return runtime.call_development_function_sync(_write_file_binary_impl, abs_path, b64_content)
 
 
 def write_file_base64(relative_path: str, content: str) -> bool:
@@ -102,9 +97,7 @@ def write_file_base64(relative_path: str, content: str) -> bool:
     abs_path = get_abs_path(relative_path)
 
     # Use RFC routing for development mode
-    return runtime.call_development_function_sync(
-        _write_file_from_base64_impl, abs_path, content
-    )
+    return runtime.call_development_function_sync(_write_file_from_base64_impl, abs_path, content)
 
 
 def delete_file(relative_path: str) -> bool:
@@ -153,9 +146,7 @@ def list_directory(relative_path: str, include_hidden: bool = False) -> list:
     abs_path = get_abs_path(relative_path)
 
     # Use RFC routing for development mode
-    return runtime.call_development_function_sync(
-        _list_folder_impl, abs_path, include_hidden
-    )
+    return runtime.call_development_function_sync(_list_folder_impl, abs_path, include_hidden)
 
 
 def make_directories(relative_path: str) -> bool:
@@ -494,9 +485,7 @@ def _get_subdirectories_impl(
         for subdir in os.listdir(folder_path)
         if os.path.isdir(os.path.join(folder_path, subdir))
         and any(fnmatch.fnmatch(subdir, inc) for inc in include)
-        and (
-            exclude is None or not any(fnmatch.fnmatch(subdir, exc) for exc in exclude)
-        )
+        and (exclude is None or not any(fnmatch.fnmatch(subdir, exc) for exc in exclude))
     ]
 
 
@@ -507,9 +496,7 @@ def _zip_dir_impl(folder_path: str) -> str:
     zip_file_path = tempfile.NamedTemporaryFile(suffix=".zip", delete=False).name
     base_name = os.path.basename(folder_path)
 
-    with zipfile.ZipFile(
-        zip_file_path, "w", compression=zipfile.ZIP_DEFLATED
-    ) as zip_file:
+    with zipfile.ZipFile(zip_file_path, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
         for root, _, files in os.walk(folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
@@ -528,9 +515,7 @@ def _move_file_impl(source_path: str, destination_path: str) -> bool:
         os.rename(source_path, destination_path)
         return True
     except Exception as e:
-        raise Exception(
-            f"Failed to move file {source_path} to {destination_path}: {str(e)}"
-        )
+        raise Exception(f"Failed to move file {source_path} to {destination_path}: {str(e)}")
 
 
 def _read_directory_impl(dir_path: str) -> str:

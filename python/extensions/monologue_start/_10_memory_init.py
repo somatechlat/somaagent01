@@ -1,6 +1,6 @@
-from python.helpers.extension import Extension
 from agent import LoopData
 from python.helpers import memory
+from python.helpers.extension import Extension
 
 
 class MemoryInit(Extension):
