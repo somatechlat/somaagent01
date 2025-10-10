@@ -1,13 +1,14 @@
 import asyncio
-import os
-import sys
-import platform
 import errno
+import os
+import platform
+import sys
 
 _IS_WIN = platform.system() == "Windows"
 if _IS_WIN:
-    import winpty  # pip install pywinpty # type: ignore
     import msvcrt
+
+    import winpty  # pip install pywinpty # type: ignore
 
 
 #  Make stdin / stdout tolerant to broken UTF-8 so input() never aborts
@@ -43,9 +44,7 @@ class TTYSession:
     # ── user-facing coroutines ────────────────────────────────────────
     async def start(self):
         if _IS_WIN:
-            self._proc = await _spawn_winpty(
-                self.cmd, self.cwd, self.env, self.echo
-            )  # ← pass echo
+            self._proc = await _spawn_winpty(self.cmd, self.cwd, self.env, self.echo)  # ← pass echo
         else:
             self._proc = await _spawn_posix_pty(
                 self.cmd, self.cwd, self.env, self.echo
@@ -121,12 +120,7 @@ class TTYSession:
     async def read_full_until_idle(self, idle_timeout, total_timeout):
         # Collect child output using iter_until_idle to avoid duplicate logic
         return "".join(
-            [
-                chunk
-                async for chunk in self.read_chunks_until_idle(
-                    idle_timeout, total_timeout
-                )
-            ]
+            [chunk async for chunk in self.read_chunks_until_idle(idle_timeout, total_timeout)]
         )
 
     async def read_chunks_until_idle(self, idle_timeout, total_timeout):
@@ -160,9 +154,9 @@ class TTYSession:
 
 
 async def _spawn_posix_pty(cmd, cwd, env, echo):
-    import pty
     import asyncio
     import os
+    import pty
     import termios
 
     master, slave = pty.openpty()
@@ -310,15 +304,11 @@ if __name__ == "__main__":
             total_timeout = 10 * idle_timeout
             if user == "":
                 # Just read output, do not send empty line
-                async for chunk in term.read_chunks_until_idle(
-                    idle_timeout, total_timeout
-                ):
+                async for chunk in term.read_chunks_until_idle(idle_timeout, total_timeout):
                     print(chunk, end="", flush=True)
             else:
                 await term.sendline(user)
-                async for chunk in term.read_chunks_until_idle(
-                    idle_timeout, total_timeout
-                ):
+                async for chunk in term.read_chunks_until_idle(idle_timeout, total_timeout):
                     print(chunk, end="", flush=True)
 
         await term.sendline("exit")

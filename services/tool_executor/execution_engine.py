@@ -7,18 +7,17 @@ import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
+from python.helpers.circuit_breaker import (
+    circuit_breaker,
+    CircuitOpenError,
+    ensure_metrics_exporter,
+)
 from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
 from services.tool_executor.sandbox_manager import (
     SandboxExecutionResult,
     SandboxManager,
 )
 from services.tool_executor.tool_registry import ToolDefinition
-from python.helpers.circuit_breaker import (
-    CircuitOpenError,
-    circuit_breaker,
-    ensure_metrics_exporter,
-)
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,9 +43,7 @@ class ExecutionEngine:
         self._circuit_reset_timeout = float(
             os.getenv("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
         )
-        self._tool_breakers: dict[
-            str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
-        ] = {}
+        self._tool_breakers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {}
 
     async def execute(
         self,

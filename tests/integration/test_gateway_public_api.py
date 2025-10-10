@@ -62,7 +62,9 @@ class HealthKafkaBus:
         self.closed = False
         HealthKafkaBus.instances.append(self)
 
-    async def publish(self, topic: str, event: dict[str, object]) -> None:  # pragma: no cover - not used
+    async def publish(
+        self, topic: str, event: dict[str, object]
+    ) -> None:  # pragma: no cover - not used
         return None
 
     async def healthcheck(self) -> None:

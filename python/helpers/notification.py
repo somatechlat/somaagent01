@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import uuid
-from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 
@@ -47,11 +47,7 @@ class NotificationItem:
         return {
             "no": self.no,
             "id": self.id,
-            "type": (
-                self.type.value
-                if isinstance(self.type, NotificationType)
-                else self.type
-            ),
+            "type": (self.type.value if isinstance(self.type, NotificationType) else self.type),
             "priority": (
                 self.priority.value
                 if isinstance(self.priority, NotificationPriority)
@@ -170,7 +166,5 @@ class NotificationManager:
         self.updates = []
         self.guid = str(uuid.uuid4())
 
-    def get_notifications_by_type(
-        self, type: NotificationType
-    ) -> list[NotificationItem]:
+    def get_notifications_by_type(self, type: NotificationType) -> list[NotificationItem]:
         return [n for n in self.notifications if n.type == type]

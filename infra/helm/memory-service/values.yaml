@@ -1,0 +1,16 @@
+replicaCount: 1
+
+image:
+  repository: somaagent01/memory-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 50052
+
+resources: {}
+
+env:
+  MEMORY_SERVICE_PORT: "50052"
+  SOMA_AGENT_ENV: "PROD"

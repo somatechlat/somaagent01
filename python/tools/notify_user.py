@@ -1,6 +1,6 @@
-from python.helpers.tool import Tool, Response
 from agent import AgentContext
 from python.helpers.notification import NotificationPriority, NotificationType
+from python.helpers.tool import Response, Tool
 
 
 class NotifyUserTool(Tool):
@@ -29,9 +29,7 @@ class NotifyUserTool(Tool):
         try:
             priority = NotificationPriority(priority)
         except ValueError:
-            return Response(
-                message=f"Invalid notification priority: {priority}", break_loop=False
-            )
+            return Response(message=f"Invalid notification priority: {priority}", break_loop=False)
 
         if not message:
             return Response(message="Message is required", break_loop=False)

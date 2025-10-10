@@ -1,14 +1,16 @@
-import re
-import os
 import importlib
 import importlib.util
 import inspect
+import os
+import re
+from fnmatch import fnmatch
 from types import ModuleType
 from typing import Any, Type, TypeVar
+
+import regex
+
 from .dirty_json import DirtyJson
 from .files import get_abs_path
-import regex
-from fnmatch import fnmatch
 
 
 def json_parse_dirty(json: str) -> dict[str, Any] | None:

@@ -1,10 +1,9 @@
 import asyncio
 import time
-from python.helpers.task_scheduler import TaskScheduler
-from python.helpers.print_style import PrintStyle
-from python.helpers import errors
-from python.helpers import runtime
 
+from python.helpers import errors, runtime
+from python.helpers.print_style import PrintStyle
+from python.helpers.task_scheduler import TaskScheduler
 
 SLEEP_TIME = 60
 
@@ -23,8 +22,7 @@ async def run_loop():
                 await runtime.call_development_function(pause_loop)
             except Exception as e:
                 PrintStyle().error(
-                    "Failed to pause job loop by development instance: "
-                    + errors.error_text(e)
+                    "Failed to pause job loop by development instance: " + errors.error_text(e)
                 )
         if not keep_running and (time.time() - pause_time) > (SLEEP_TIME * 2):
             resume_loop()

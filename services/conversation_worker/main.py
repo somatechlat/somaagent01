@@ -11,33 +11,32 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from jsonschema import ValidationError
-
-from services.common.event_bus import KafkaEventBus
-from services.common.logging_config import setup_logging
-from services.common.tracing import setup_tracing
-from services.common.dlq import DeadLetterQueue
-from services.common.session_repository import (
-    PostgresSessionStore,
-    RedisSessionCache,
-    ensure_schema,
-)
-from services.common.slm_client import ChatMessage, SLMClient
-from services.common.model_profiles import ModelProfileStore
-from services.common.budget_manager import BudgetManager
-from services.common.telemetry import TelemetryPublisher
-from services.common.schema_validator import validate_event
-from services.common.policy_client import PolicyClient
-from services.common.skm_client import SKMClient, ProgressPayload
-from services.common.router_client import RouterClient
-from services.common.tenant_config import TenantConfig
-from services.common.escalation import EscalationDecision, decide_escalation
-from services.common.model_costs import estimate_escalation_cost
-from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from prometheus_client import Counter, Histogram, start_http_server
+
+from services.common.budget_manager import BudgetManager
+from services.common.dlq import DeadLetterQueue
+from services.common.escalation import decide_escalation, EscalationDecision
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.logging_config import setup_logging
+from services.common.model_costs import estimate_escalation_cost
+from services.common.model_profiles import ModelProfileStore
+from services.common.policy_client import PolicyClient
+from services.common.router_client import RouterClient
+from services.common.schema_validator import validate_event
+from services.common.session_repository import ensure_schema, PostgresSessionStore, RedisSessionCache
+from services.common.skm_client import ProgressPayload, SKMClient
+from services.common.slm_client import ChatMessage, SLMClient
+from services.common.settings_sa01 import SA01Settings
+from services.common.telemetry import TelemetryPublisher
+from services.common.telemetry_store import TelemetryStore
+from services.common.tenant_config import TenantConfig
+from services.common.tracing import setup_tracing
+from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
-tracer = setup_tracing("conversation-worker")
+APP_SETTINGS = SA01Settings.from_env()
+tracer = setup_tracing("conversation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
 
 
 MESSAGE_PROCESSING_COUNTER = Counter(
@@ -92,12 +91,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    metrics_port = int(os.getenv("CONVERSATION_METRICS_PORT", "9301"))
+    metrics_port = int(os.getenv("CONVERSATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
     if metrics_port <= 0:
         LOGGER.warning("Metrics server disabled", extra={"port": metrics_port})
         _METRICS_SERVER_STARTED = True
         return
-    metrics_host = os.getenv("CONVERSATION_METRICS_HOST", "0.0.0.0")
+    metrics_host = os.getenv("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
     start_http_server(metrics_port, addr=metrics_host)
     LOGGER.info(
         "Conversation worker metrics server started",
@@ -127,13 +126,9 @@ class ConversationPreprocessor:
 
         if not text:
             intent = "empty"
-        elif lower.startswith(
-            ("how", "what", "why", "when", "where", "who")
-        ) or text.endswith("?"):
+        elif lower.startswith(("how", "what", "why", "when", "where", "who")) or text.endswith("?"):
             intent = "question"
-        elif any(
-            keyword in lower for keyword in ["create", "build", "implement", "write"]
-        ):
+        elif any(keyword in lower for keyword in ["create", "build", "implement", "write"]):
             intent = "action_request"
         elif any(keyword in lower for keyword in ["fix", "bug", "issue", "error"]):
             intent = "problem_report"
@@ -162,25 +157,41 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
+        bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers)
+        self.kafka_settings = KafkaSettings(
+            bootstrap_servers=bootstrap_servers,
+            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
+            sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
+            sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        )
         self.settings = {
             "inbound": os.getenv("CONVERSATION_INBOUND", "conversation.inbound"),
             "outbound": os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
             "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
         }
-        self.bus = KafkaEventBus()
-        self.dlq = DeadLetterQueue(self.settings["inbound"])
-        self.cache = RedisSessionCache()
-        self.store = PostgresSessionStore()
+        self.bus = KafkaEventBus(self.kafka_settings)
+        redis_url = os.getenv("REDIS_URL", APP_SETTINGS.redis_url)
+        self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
+        self.cache = RedisSessionCache(url=redis_url)
+        self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         self.slm = SLMClient()
-        self.profile_store = ModelProfileStore()
-        self.tenant_config = TenantConfig()
-        self.budgets = BudgetManager(tenant_config=self.tenant_config)
-        self.policy_client = PolicyClient(tenant_config=self.tenant_config)
+        self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
+        tenant_config_path = os.getenv(
+            "TENANT_CONFIG_PATH",
+            APP_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
+        )
+        self.tenant_config = TenantConfig(path=tenant_config_path)
+        self.budgets = BudgetManager(url=redis_url, tenant_config=self.tenant_config)
+        policy_base = os.getenv("POLICY_BASE_URL", APP_SETTINGS.opa_url)
+        self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
-        self.telemetry = TelemetryPublisher(self.bus)
+        telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
+        self.telemetry = TelemetryPublisher(bus=self.bus, store=telemetry_store)
         self.skm = SKMClient()
-        self.router = RouterClient()
-        self.deployment_mode = os.getenv("SOMA_AGENT_MODE", "LOCAL").upper()
+        router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
+        self.router = RouterClient(base_url=router_url)
+        self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
         self.preprocessor = ConversationPreprocessor()
         self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {
             "1",
@@ -232,9 +243,7 @@ class ConversationWorker:
             finish_reason = choice.get("finish_reason")
             chunk_usage = chunk.get("usage")
             if isinstance(chunk_usage, dict):
-                usage["input_tokens"] = int(
-                    chunk_usage.get("prompt_tokens", usage["input_tokens"])
-                )
+                usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
                 usage["output_tokens"] = int(
                     chunk_usage.get("completion_tokens", usage["output_tokens"])
                 )
@@ -429,13 +438,9 @@ class ConversationWorker:
             messages: list[ChatMessage] = []
             for item in reversed(history):
                 if item.get("type") == "user":
-                    messages.append(
-                        ChatMessage(role="user", content=item.get("message", ""))
-                    )
+                    messages.append(ChatMessage(role="user", content=item.get("message", "")))
                 elif item.get("type") == "assistant":
-                    messages.append(
-                        ChatMessage(role="assistant", content=item.get("message", ""))
-                    )
+                    messages.append(ChatMessage(role="assistant", content=item.get("message", "")))
 
             if not messages or messages[-1].role != "user":
                 messages.append(ChatMessage(role="user", content=event.get("message", "")))
@@ -480,9 +485,7 @@ class ConversationWorker:
                     ]
                 if routing_deny:
                     candidates = [
-                        candidate
-                        for candidate in candidates
-                        if candidate not in routing_deny
+                        candidate for candidate in candidates if candidate not in routing_deny
                     ]
                 if candidates:
                     routed = await self.router.route(
@@ -713,9 +716,7 @@ class ConversationWorker:
 
             validate_event(response_event, "conversation_event")
 
-            await self.store.append_event(
-                session_id, {"type": "assistant", **response_event}
-            )
+            await self.store.append_event(session_id, {"type": "assistant", **response_event})
             await self.bus.publish(self.settings["outbound"], response_event)
             record_metrics(result_label, path)
 

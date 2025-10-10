@@ -8,6 +8,8 @@ from typing import Any, Optional
 
 import asyncpg
 
+from services.common.settings_base import BaseServiceSettings
+
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
@@ -15,6 +17,10 @@ class TelemetryStore:
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
         self._pool: Optional[asyncpg.Pool] = None
+
+    @classmethod
+    def from_settings(cls, settings: BaseServiceSettings) -> "TelemetryStore":
+        return cls(dsn=settings.postgres_dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

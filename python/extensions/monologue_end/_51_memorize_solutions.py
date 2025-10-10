@@ -1,10 +1,11 @@
 import asyncio
-from python.helpers import settings
-from python.helpers.extension import Extension
-from python.helpers.memory import Memory
-from python.helpers.dirty_json import DirtyJson
+
 from agent import LoopData
+from python.helpers import settings
+from python.helpers.dirty_json import DirtyJson
+from python.helpers.extension import Extension
 from python.helpers.log import LogItem
+from python.helpers.memory import Memory
 from python.tools.memory_load import DEFAULT_THRESHOLD as DEFAULT_MEMORY_THRESHOLD
 
 
@@ -85,9 +86,7 @@ class MemorizeSolutions(Extension):
             log_item.update(heading="No successful solutions to memorize.")
             return
         else:
-            solutions_txt = "\n\n".join(
-                [str(solution) for solution in solutions]
-            ).strip()
+            solutions_txt = "\n\n".join([str(solution) for solution in solutions]).strip()
             log_item.update(
                 heading=f"{len(solutions)} successful solutions to memorize.",
                 solutions=solutions_txt,
@@ -186,9 +185,7 @@ class MemorizeSolutions(Extension):
                         log_item.update(replaced=rem_txt)
 
                 # insert new solution
-                await db.insert_text(
-                    text=txt, metadata={"area": Memory.Area.SOLUTIONS.value}
-                )
+                await db.insert_text(text=txt, metadata={"area": Memory.Area.SOLUTIONS.value})
 
                 log_item.update(
                     result=f"{len(solutions)} solutions memorized.",

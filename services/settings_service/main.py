@@ -4,37 +4,43 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from services.common.logging_config import setup_logging
 from services.common.model_profiles import ModelProfile, ModelProfileStore
+from services.common.settings_sa01 import SA01Settings
+from services.common.tracing import setup_tracing
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 app = FastAPI(title="SomaAgent 01 Settings Service")
+SVC_SETTINGS = SA01Settings.from_env()
+setup_tracing("settings-service", endpoint=SVC_SETTINGS.otlp_endpoint)
+PROFILE_STORE = ModelProfileStore.from_settings(SVC_SETTINGS)
 
 
 def get_store() -> ModelProfileStore:
-    return ModelProfileStore()
+    return PROFILE_STORE
 
 
 class ModelProfilePayload(BaseModel):
     role: str
-    deployment_mode: str = Field(default="LOCAL")
+    deployment_mode: str = Field(default=SVC_SETTINGS.deployment_mode)
     model: str
     base_url: str
     temperature: float = Field(default=0.2)
-    extra: dict[str, str] = Field(default_factory=dict)
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    store = ModelProfileStore()
-    await store.ensure_schema()
-    await store._ensure_pool()
+    await PROFILE_STORE.ensure_schema()
+    await PROFILE_STORE._ensure_pool()
+    await PROFILE_STORE.sync_from_settings(SVC_SETTINGS)
 
 
 @app.get("/v1/model-profiles")

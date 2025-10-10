@@ -89,11 +89,7 @@ class DelegationStore:
                 """,
                 task_id,
                 status,
-                (
-                    json.dumps(result or {}, ensure_ascii=False)
-                    if result is not None
-                    else None
-                ),
+                (json.dumps(result or {}, ensure_ascii=False) if result is not None else None),
             )
 
     async def get_task(self, task_id: str) -> Optional[dict[str, Any]]:
@@ -116,8 +112,6 @@ class DelegationStore:
             "result": row["result"],
             "callback_url": row["callback_url"],
             "metadata": row["metadata"],
-            "occurred_at": (
-                row["occurred_at"].isoformat() if row["occurred_at"] else None
-            ),
+            "occurred_at": (row["occurred_at"].isoformat() if row["occurred_at"] else None),
             "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
         }

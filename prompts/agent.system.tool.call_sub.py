@@ -1,13 +1,12 @@
 from typing import Any
-from python.helpers.files import VariablesPlugin
+
 from python.helpers import files
+from python.helpers.files import VariablesPlugin
 from python.helpers.print_style import PrintStyle
 
 
 class CallSubordinate(VariablesPlugin):
-    def get_variables(
-        self, file: str, backup_dirs: list[str] | None = None
-    ) -> dict[str, Any]:
+    def get_variables(self, file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
 
         # collect all prompt profiles from subdirectories (_context.md file)
         profiles = []
@@ -24,8 +23,6 @@ class CallSubordinate(VariablesPlugin):
         # in case of no profiles
         if not profiles:
             # PrintStyle().error("No agent profiles found")
-            profiles = [
-                {"name": "default", "context": "Default Agent-Zero AI Assistant"}
-            ]
+            profiles = [{"name": "default", "context": "Default Agent-Zero AI Assistant"}]
 
         return {"agent_profiles": profiles}

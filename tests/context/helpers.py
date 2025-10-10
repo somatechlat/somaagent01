@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from agent import AgentContext, Agent, UserMessage
+from agent import Agent, AgentContext, UserMessage
 from initialize import initialize_agent
 from python.helpers.memory import Memory
 
@@ -30,7 +30,11 @@ async def run_turn(context: AgentContext, text: str, *, timeout: Optional[float]
 
 def snapshot(agent: Agent) -> Dict[str, Any]:
     window = agent.get_data(agent.DATA_NAME_CTX_WINDOW) or {"text": "", "tokens": 0}
-    extras = getattr(agent.loop_data, "extras_persistent", {}) if getattr(agent, "loop_data", None) else {}
+    extras = (
+        getattr(agent.loop_data, "extras_persistent", {})
+        if getattr(agent, "loop_data", None)
+        else {}
+    )
     memories = extras.get("memories") if isinstance(extras, dict) else None
     solutions = extras.get("solutions") if isinstance(extras, dict) else None
     return {
@@ -53,7 +57,13 @@ def record_artifact(slug: str, payload: Dict[str, Any]) -> None:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
-async def seed_memory(agent: Agent, text: str, *, area: str = Memory.Area.MAIN.value, metadata: Optional[Dict[str, Any]] = None) -> str:
+async def seed_memory(
+    agent: Agent,
+    text: str,
+    *,
+    area: str = Memory.Area.MAIN.value,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> str:
     """Insert a memory directly into the agent's backing store for deterministic tests."""
     db = await Memory.get(agent)
     meta = {"area": area, **(metadata or {})}

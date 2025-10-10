@@ -61,8 +61,11 @@ RUN python3 -m pip install --break-system-packages prometheus-client
 # Install PyJWT (required by gateway)
 RUN python3 -m pip install --break-system-packages "PyJWT>=2.9.0"
 
+# Install gRPC runtime for memory service
+RUN python3 -m pip install --break-system-packages grpcio grpcio-tools
+
 # Expose ports
-EXPOSE 22 80 9000-9009
+EXPOSE 22 80 9000-9009 50052
 
 RUN chmod +x /exe/initialize.sh /exe/run_A0.sh /exe/run_searxng.sh /exe/run_tunnel_api.sh
 

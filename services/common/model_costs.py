@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-
 ESCALATION_MODEL_RATES = {
     "mistralai/Mixtral-8x7B-Instruct-v0.1": {"prompt": 0.6, "completion": 0.6},
     "Qwen/Qwen2-72B-Instruct": {"prompt": 2.0, "completion": 2.0},

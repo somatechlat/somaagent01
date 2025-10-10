@@ -1,5 +1,6 @@
-import pkg_resources
 import re
+
+import pkg_resources
 
 
 def get_installed_version(package_name):

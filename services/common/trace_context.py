@@ -9,7 +9,6 @@ from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import extract, inject
 
-
 TRACE_CONTEXT_KEY = "trace_context"
 
 

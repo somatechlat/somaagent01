@@ -15,9 +15,7 @@ class MaskHistoryContent(Extension):
             secrets_mgr = SecretsManager.get_instance()
 
             # Mask the content before adding to history
-            content_data["content"] = self._mask_content(
-                content_data["content"], secrets_mgr
-            )
+            content_data["content"] = self._mask_content(content_data["content"], secrets_mgr)
         except Exception:
             # If masking fails, proceed without masking
             pass

@@ -7,9 +7,9 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
+from python.helpers.circuit_breaker import CircuitOpenError
 from services.tool_executor.resource_manager import ExecutionLimits
 from services.tool_executor.tools import ToolExecutionError
-from python.helpers.circuit_breaker import CircuitOpenError
 
 
 @dataclass

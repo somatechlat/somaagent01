@@ -1,6 +1,6 @@
+import asyncio
 import re
 import traceback
-import asyncio
 
 
 def handle_error(e: Exception):
@@ -24,9 +24,7 @@ def format_error(e: Exception, start_entries=6, end_entries=4):
     else:
 
         # Find all "File" lines
-        file_indices = [
-            i for i, line in enumerate(lines) if line.strip().startswith("File ")
-        ]
+        file_indices = [i for i, line in enumerate(lines) if line.strip().startswith("File ")]
 
         # If we found at least one "File" line, trim the middle if there are more than start_entries+end_entries lines
         if len(file_indices) > start_entries + end_entries:

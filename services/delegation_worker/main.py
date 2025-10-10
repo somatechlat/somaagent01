@@ -10,19 +10,35 @@ from typing import Any
 from jsonschema import ValidationError
 
 from services.common.delegation_store import DelegationStore
-from services.common.event_bus import KafkaEventBus
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
+from services.common.settings_sa01 import SA01Settings
+from services.common.tracing import setup_tracing
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+APP_SETTINGS = SA01Settings.from_env()
+setup_tracing("delegation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
 
 
 class DelegationWorker:
     def __init__(self) -> None:
         self.topic = os.getenv("DELEGATION_TOPIC", "somastack.delegation")
         self.group = os.getenv("DELEGATION_GROUP", "delegation-worker")
-        self.bus = KafkaEventBus()
-        self.store = DelegationStore()
+        self.bus = KafkaEventBus(
+            KafkaSettings(
+                bootstrap_servers=os.getenv(
+                    "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
+                ),
+                security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+                sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
+                sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
+                sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+            )
+        )
+        self.store = DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
 
     async def start(self) -> None:
         await self.store.ensure_schema()
@@ -32,9 +48,7 @@ class DelegationWorker:
         try:
             validate_event(event, "delegation_task")
         except ValidationError as exc:
-            LOGGER.error(
-                "Invalid delegation event", extra={"error": exc.message, "event": event}
-            )
+            LOGGER.error("Invalid delegation event", extra={"error": exc.message, "event": event})
             return
 
         task_id = event["task_id"]

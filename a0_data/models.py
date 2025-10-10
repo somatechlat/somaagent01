@@ -64,6 +64,17 @@ browser_use_monkeypatch.apply()
 
 litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
 
+    # ---------------------------------------------------------------------------
+    # Mock fallback for environments without a valid OpenAI API key (mirrors the
+    # implementation in the top‑level ``models.py``). This ensures that the
+    # ``a0_data`` test suite, which imports ``models`` from the ``a0_data``
+    # directory, also receives the mock when no API key is configured.
+    # ---------------------------------------------------------------------------
+def _no_mock_available(provider: str):
+    raise RuntimeError(
+        f"No real LLM configured for provider '{provider}'. Set USE_REAL_LLM=True and provide a valid API key in settings to enable a real model."
+    )
+
 
 class ModelType(Enum):
     CHAT = "Chat"
@@ -136,6 +147,12 @@ class ChatGenerationResult:
         return self._process_thinking_tags(response_delta, chunk["reasoning_delta"])
 
     def _process_thinking_tags(self, response: str, reasoning: str) -> ChatChunk:
+        # Handle split <think> tags across multiple chunks.
+        if not self.thinking and "<think" in response:
+            self.thinking = True
+            self.thinking_tag = "</think>"
+            response = ""
+
         if self.thinking:
             close_pos = response.find(self.thinking_tag)
             if close_pos != -1:
@@ -933,9 +950,16 @@ def get_chat_model(
 ) -> LiteLLMChatWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
-    return _get_litellm_chat(
-        LiteLLMChatWrapper, name, provider_name, model_config, **kwargs
-    )
+    # Enforce usage of a real LLM. If no API key is configured for the
+    # provider, raise an informative error so deployments cannot silently
+    # operate with a mock.
+    api_key = kwargs.get("api_key")
+    if provider_name == "openai" and (not api_key or api_key in ("None", "NA")):
+        raise RuntimeError(
+            "No API key configured for OpenAI. Set the API key in environment or in settings.api_keys and retry."
+        )
+
+    return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 
 
 def get_browser_model(

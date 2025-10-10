@@ -1,7 +1,8 @@
 import os
-from python.helpers.api import ApiHandler, Input, Output, Request
-from python.helpers import files, runtime
 from typing import TypedDict
+
+from python.helpers import files, runtime
+from python.helpers.api import ApiHandler, Input, Output, Request
 
 
 class FileInfoApi(ApiHandler):

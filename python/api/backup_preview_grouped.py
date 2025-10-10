@@ -1,6 +1,7 @@
+from typing import Any, Dict
+
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.backup import BackupService
-from typing import Dict, Any
 
 
 class BackupPreviewGrouped(ApiHandler):
@@ -75,9 +76,7 @@ class BackupPreviewGrouped(ApiHandler):
                     group_path = "/" + "/".join(path_parts[:max_depth])
                     is_truncated = True
                 else:
-                    group_path = (
-                        "/" + "/".join(path_parts[:-1]) if len(path_parts) > 1 else "/"
-                    )
+                    group_path = "/" + "/".join(path_parts[:-1]) if len(path_parts) > 1 else "/"
                     is_truncated = False
 
                 if group_path not in groups:
@@ -105,9 +104,7 @@ class BackupPreviewGrouped(ApiHandler):
             # Convert groups to sorted list and add display info
             sorted_groups = []
             for group_path, group_info in sorted(groups.items()):
-                group_info["subdirectories"] = sorted(
-                    list(group_info["subdirectories"])
-                )
+                group_info["subdirectories"] = sorted(list(group_info["subdirectories"]))
 
                 # Limit displayed files for UI performance
                 if len(group_info["files"]) > 50:

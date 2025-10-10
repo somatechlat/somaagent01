@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from python.helpers.circuit_breaker import CircuitOpenError, circuit_breaker
+from python.helpers.circuit_breaker import circuit_breaker, CircuitOpenError
 
 
 @pytest.mark.asyncio

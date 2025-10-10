@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
 from python.helpers import extract_tools, files
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent import Agent
@@ -18,9 +18,7 @@ class Extension:
         pass
 
 
-async def call_extensions(
-    extension_point: str, agent: "Agent|None" = None, **kwargs
-) -> Any:
+async def call_extensions(extension_point: str, agent: "Agent|None" = None, **kwargs) -> Any:
 
     # get default extensions
     defaults = await _get_extensions("python/extensions/" + extension_point)
@@ -38,9 +36,7 @@ async def call_extensions(
                 unique[_get_file_from_module(cls.__module__)] = cls
 
             # sort by name
-            classes = sorted(
-                unique.values(), key=lambda cls: _get_file_from_module(cls.__module__)
-            )
+            classes = sorted(unique.values(), key=lambda cls: _get_file_from_module(cls.__module__))
 
     # call extensions
     for cls in classes:

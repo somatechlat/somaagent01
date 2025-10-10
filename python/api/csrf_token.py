@@ -1,13 +1,14 @@
 import secrets
+
 from flask import jsonify, session
 
+from python.helpers import runtime
 from python.helpers.api import (
     ApiHandler,
     Input,
     Output,
     Request,
 )
-from python.helpers import runtime
 
 
 class GetCsrfToken(ApiHandler):

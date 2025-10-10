@@ -74,7 +74,9 @@ async def _load_documents(memory_subdir: str, limit: int | None) -> List[Tuple[s
     return [(doc_id, doc) for doc_id, doc in items]
 
 
-def _document_to_payload(doc_id: str, document: Document, *, memory_subdir: str) -> Mapping[str, object]:
+def _document_to_payload(
+    doc_id: str, document: Document, *, memory_subdir: str
+) -> Mapping[str, object]:
     metadata: MutableMapping[str, object] = dict(document.metadata or {})
     payload: MutableMapping[str, object] = dict(metadata)
     payload.setdefault("id", metadata.get("id", doc_id))
@@ -227,8 +229,7 @@ async def _run(args: argparse.Namespace) -> int:
         return 0
 
     batches = [
-        build_batch(args.memory_subdir, chunk)
-        for chunk in iter_chunks(documents, args.batch_size)
+        build_batch(args.memory_subdir, chunk) for chunk in iter_chunks(documents, args.batch_size)
     ]
 
     if args.output:

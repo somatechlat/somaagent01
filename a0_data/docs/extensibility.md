@@ -117,25 +117,29 @@ Helpers are located in:
 
 - The Capsule Registry service (`services/capsule_registry/main.py`) exposes `/capsules` endpoints for upload, listing, **install**, and download. Uploaded artifacts are optionally signed with [Cosign](https://github.com/sigstore/cosign) when `COSIGN_KEY_PATH` is set; signatures and timestamps are stored alongside metadata in Postgres and surfaced back to clients.
 - SDK helpers in `python/somaagent/capsule.py` provide `list_capsules()`, `download_capsule()`, and `install_capsule()` functions plus a small CLI entry point for scripting.
-- The FastAPI gateway proxies the registry on the same host via `/v1/capsules`, `/v1/capsules/{id}`, and `/v1/capsules/{id}/install`, using `CAPSULE_REGISTRY_URL` and `CAPSULE_REGISTRY_TIMEOUT_SECONDS` for configuration. Legacy `/capsules` routes remain as undocumented aliases for backward compatibility.
+- The FastAPI gateway now proxies the registry on the same host via the versioned surface: `/v1/capsules`, `/v1/capsules/{id}`, and `/v1/capsules/{id}/install` hydrate from whichever backend you point `CAPSULE_REGISTRY_URL` at (override the default `http://localhost:8000`). Adjust request timeouts with `CAPSULE_REGISTRY_TIMEOUT_SECONDS`. Legacy `/capsules` routes remain as undocumented aliases for backward compatibility.
 - A GitHub Actions workflow (`.github/workflows/capsule.yml`) demonstrates the build → sign → publish loop for capsules. Reuse it when wiring CI/CD for custom capsules.
-- The web UI ships with a marketplace page (`webui/marketplace.html` + `/webui/js/marketplace.js`) that lists available capsules, shows signature metadata, and performs one-click installs into the registry’s `installed/` directory via the gateway endpoint.
+- The web UI ships with a lightweight marketplace page (`webui/marketplace.html` + `/webui/js/marketplace.js`) that lists available capsules, shows signature metadata, and performs one-click installs into the registry’s `installed/` directory via the new gateway endpoint. Extend it to surface additional trust signals or post-install actions tailored to your deployment.
 
 #### Enterprise approval workflow
 
-1. **Verify signatures.** Reviewers confirm Cosign output before approving an install:
+Organisations that require multi-step governance can wrap the marketplace with the following checks:
+
+1. **Signature verification:** Operators confirm Cosign output before approving an install.
 
     ```bash
     cosign verify-blob --key $COSIGN_PUBLIC_KEY path/to/capsule.zip --signature path/to/signature.txt
     ```
 
-    Compare the resulting digest with the signature displayed in the marketplace UI.
+    Compare the resulting digest with the value surfaced in the marketplace (signatures live in the registry metadata).
 
-2. **Record approvals.** Store the verification result, reviewer identity, and ticket link with your change-management tooling.
+2. **Policy hand-off:** Capture the verification result, reviewer name, and ticket link in your change-management system. Many teams model this as a lightweight checklist stored beside the capsule metadata.
 
-3. **Install via the gateway.** After approval, trigger the install from the marketplace. The activity log provides immediate feedback, while registry metadata persists install timestamps.
+3. **Marketplace approval:** Once the record is complete, the reviewer re-triggers the install from the UI. The enhanced marketplace log keeps a real-time audit trail in the browser, while the registry persists install timestamps for central reporting.
 
-4. **Audit regularly.** Export registry contents (e.g., `SELECT * FROM capsules`) and reconcile them with approval records to confirm compliance. For stricter control, gate `/v1/capsules/{id}/install` behind an internal service that enforces the checklist above.
+4. **Post-install audit:** Periodically export `SELECT * FROM capsules` to confirm the expected versions are active. Optionally, enrich the data with your approval record to reconcile who authorised which capsule.
+
+Tip: if you need hard guarantees, disable direct installs in production and gate them behind an internal service that enforces the checklist above before calling `/v1/capsules/{id}/install` on behalf of users.
 
 ### Prompts
 Prompts define the instructions and context provided to the LLM. They are highly extensible and can be customized for different agents.

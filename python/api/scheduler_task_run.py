@@ -1,7 +1,7 @@
 from python.helpers.api import ApiHandler, Input, Output, Request
-from python.helpers.task_scheduler import TaskScheduler, TaskState
-from python.helpers.print_style import PrintStyle
 from python.helpers.localization import Localization
+from python.helpers.print_style import PrintStyle
+from python.helpers.task_scheduler import TaskScheduler, TaskState
 
 
 class SchedulerTaskRun(ApiHandler):
@@ -48,9 +48,7 @@ class SchedulerTaskRun(ApiHandler):
         # Run the task, which now includes atomic state checks and updates
         try:
             await scheduler.run_task_by_uuid(task_id)
-            self._printer.print(
-                f"SchedulerTaskRun: Task '{task_id}' started successfully"
-            )
+            self._printer.print(f"SchedulerTaskRun: Task '{task_id}' started successfully")
             # Get updated task after run starts
             serialized_task = scheduler.serialize_task(task_id)
             if serialized_task:
@@ -65,12 +63,8 @@ class SchedulerTaskRun(ApiHandler):
                     "message": f"Task '{task_id}' started successfully",
                 }
         except ValueError as e:
-            self._printer.error(
-                f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}"
-            )
+            self._printer.error(f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}")
             return {"error": str(e)}
         except Exception as e:
-            self._printer.error(
-                f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}"
-            )
+            self._printer.error(f"SchedulerTaskRun: Task '{task_id}' failed to start: {str(e)}")
             return {"error": f"Failed to run task '{task_id}': {str(e)}"}

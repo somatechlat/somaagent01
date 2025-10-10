@@ -1,0 +1,5 @@
+apiVersion: v2
+name: memory-service
+version: 0.1.0
+appVersion: "1.0.0"
+description: Helm chart for the SomaAgent 01 memory gRPC service

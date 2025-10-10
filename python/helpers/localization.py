@@ -1,8 +1,9 @@
-from datetime import datetime, timezone as dt_timezone, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
+
 import pytz  # type: ignore
 
-from python.helpers.print_style import PrintStyle
 from python.helpers.dotenv import get_dotenv_value, save_dotenv_value
+from python.helpers.print_style import PrintStyle
 
 
 class Localization:
@@ -39,15 +40,11 @@ class Localization:
                     self._offset_minutes = int(str(persisted_offset))
                 except Exception:
                     self._offset_minutes = self._compute_offset_minutes(self.timezone)
-                    save_dotenv_value(
-                        "DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes)
-                    )
+                    save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
             else:
                 # Compute from timezone and persist
                 self._offset_minutes = self._compute_offset_minutes(self.timezone)
-                save_dotenv_value(
-                    "DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes)
-                )
+                save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
 
     def get_timezone(self) -> str:
         return self.timezone
@@ -90,9 +87,7 @@ class Localization:
                 self.timezone = timezone
                 # Persist both the human-readable tz and the numeric offset
                 save_dotenv_value("DEFAULT_USER_TIMEZONE", timezone)
-                save_dotenv_value(
-                    "DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes)
-                )
+                save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
 
                 # Update rate limit timestamp only when actual change occurs
                 self._last_timezone_change = datetime.now()

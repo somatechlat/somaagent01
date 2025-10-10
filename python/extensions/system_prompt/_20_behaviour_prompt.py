@@ -1,6 +1,6 @@
-from python.helpers.extension import Extension
 from agent import Agent, LoopData
 from python.helpers import files, memory
+from python.helpers.extension import Extension
 
 
 class BehaviourPrompt(Extension):
@@ -19,9 +19,7 @@ def get_custom_rules_file(agent: Agent):
 def read_rules(agent: Agent):
     rules_file = get_custom_rules_file(agent)
     if files.exists(rules_file):
-        rules = files.read_file(
-            rules_file
-        )  # no includes and vars here, that could crash
+        rules = files.read_file(rules_file)  # no includes and vars here, that could crash
         return agent.read_prompt("agent.system.behaviour.md", rules=rules)
     else:
         rules = agent.read_prompt("agent.system.behaviour_default.md")

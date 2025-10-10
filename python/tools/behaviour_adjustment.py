@@ -1,7 +1,7 @@
-from python.helpers import files, memory
-from python.helpers.tool import Tool, Response
 from agent import Agent
+from python.helpers import files, memory
 from python.helpers.log import LogItem
+from python.helpers.tool import Response, Tool
 
 
 class UpdateBehaviour(Tool):
@@ -13,9 +13,7 @@ class UpdateBehaviour(Tool):
             adjustments = str(adjustments)
 
         await update_behaviour(self.agent, self.log, adjustments)
-        return Response(
-            message=self.agent.read_prompt("behaviour.updated.md"), break_loop=False
-        )
+        return Response(message=self.agent.read_prompt("behaviour.updated.md"), break_loop=False)
 
     # async def before_execution(self, **kwargs):
     #     pass

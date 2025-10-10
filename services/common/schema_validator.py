@@ -16,7 +16,6 @@ from typing import Any, Dict
 import jsonschema
 from jsonschema import Draft7Validator
 
-
 _SCHEMA_FILES: Dict[str, str] = {
     "tool_result": "tool_result.json",
     "tool_event": "tool_event.json",
@@ -44,9 +43,7 @@ def _get_validator(schema_name: str) -> Draft7Validator:
     with schema_file.open("r", encoding="utf-8") as handle:
         schema = json.load(handle)
     if "$id" not in schema:
-        resolver = jsonschema.RefResolver(
-            base_uri=schema_file.as_uri(), referrer=schema
-        )
+        resolver = jsonschema.RefResolver(base_uri=schema_file.as_uri(), referrer=schema)
         return Draft7Validator(schema, resolver=resolver)
     return Draft7Validator(schema)
 

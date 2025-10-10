@@ -1,9 +1,10 @@
-from agent import AgentContext, UserMessage
-from python.helpers.api import ApiHandler, Request, Response
-
-from python.helpers import files
 import os
+
 from werkzeug.utils import secure_filename
+
+from agent import AgentContext, UserMessage
+from python.helpers import files
+from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.defer import DeferredTask
 from python.helpers.print_style import PrintStyle
 
@@ -30,9 +31,7 @@ class Message(ApiHandler):
             attachment_paths = []
 
             upload_folder_int = "/a0/tmp/uploads"
-            upload_folder_ext = files.get_abs_path(
-                "tmp/uploads"
-            )  # for development environment
+            upload_folder_ext = files.get_abs_path("tmp/uploads")  # for development environment
 
             if attachments:
                 os.makedirs(upload_folder_ext, exist_ok=True)
@@ -62,15 +61,13 @@ class Message(ApiHandler):
 
         # Prepare attachment filenames for logging
         attachment_filenames = (
-            [os.path.basename(path) for path in attachment_paths]
-            if attachment_paths
-            else []
+            [os.path.basename(path) for path in attachment_paths] if attachment_paths else []
         )
 
         # Print to console and log
-        PrintStyle(
-            background_color="#6C3483", font_color="white", bold=True, padding=True
-        ).print("User message:")
+        PrintStyle(background_color="#6C3483", font_color="white", bold=True, padding=True).print(
+            "User message:"
+        )
         PrintStyle(font_color="white", padding=False).print(f"> {message}")
         if attachment_filenames:
             PrintStyle(font_color="white", padding=False).print("Attachments:")

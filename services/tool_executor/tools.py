@@ -78,9 +78,7 @@ class CodeExecutionTool(BaseTool):
             return {
                 "stdout": buffer.getvalue(),
                 "locals": {
-                    key: value
-                    for key, value in local_vars.items()
-                    if not key.startswith("_")
+                    key: value for key, value in local_vars.items() if not key.startswith("_")
                 },
             }
 

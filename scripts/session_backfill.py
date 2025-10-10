@@ -18,9 +18,9 @@ from typing import Any, Iterable, Optional
 import asyncpg
 
 from services.common.session_repository import (
+    ensure_schema,
     PostgresSessionStore,
     RedisSessionCache,
-    ensure_schema,
 )
 
 LOGGER = logging.getLogger("session_backfill")
@@ -103,19 +103,13 @@ def _merge_metadata(target: dict[str, Any], incoming: dict[str, Any]) -> None:
     for key, value in incoming.items():
         if key == "analysis":
             continue
-        if (
-            key in target
-            and isinstance(target[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in target and isinstance(target[key], dict) and isinstance(value, dict):
             _merge_metadata(target[key], value)
         else:
             target[key] = value
 
 
-def _compose_envelope_from_events(
-    events: Iterable[tuple[dict[str, Any], datetime]]
-) -> tuple[
+def _compose_envelope_from_events(events: Iterable[tuple[dict[str, Any], datetime]]) -> tuple[
     Optional[str],
     Optional[str],
     Optional[str],

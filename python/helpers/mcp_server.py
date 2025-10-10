@@ -1,22 +1,23 @@
 import os
+import threading
 from typing import Annotated, Literal, Union
 from urllib.parse import urlparse
+
+from fastmcp import FastMCP
+from fastmcp.server.http import create_sse_app
 from openai import BaseModel
 from pydantic import Field
-from fastmcp import FastMCP
-
-from agent import AgentContext, AgentContextType, UserMessage
-from python.helpers.persist_chat import remove_chat
-from initialize import initialize_agent
-from python.helpers.print_style import PrintStyle
-from python.helpers import settings
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.types import ASGIApp, Receive, Scope, Send
-from fastmcp.server.http import create_sse_app
 from starlette.requests import Request
-import threading
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+from agent import AgentContext, AgentContextType, UserMessage
+from initialize import initialize_agent
+from python.helpers import settings
+from python.helpers.persist_chat import remove_chat
+from python.helpers.print_style import PrintStyle
 
 _PRINTER = PrintStyle(italic=True, font_color="green", padding=False)
 
@@ -33,22 +34,14 @@ mcp_server: FastMCP = FastMCP(
 
 
 class ToolResponse(BaseModel):
-    status: Literal["success"] = Field(
-        description="The status of the response", default="success"
-    )
-    response: str = Field(
-        description="The response from the remote Agent Zero Instance"
-    )
+    status: Literal["success"] = Field(description="The status of the response", default="success")
+    response: str = Field(description="The response from the remote Agent Zero Instance")
     chat_id: str = Field(description="The id of the chat this message belongs to.")
 
 
 class ToolError(BaseModel):
-    status: Literal["error"] = Field(
-        description="The status of the response", default="error"
-    )
-    error: str = Field(
-        description="The error message from the remote Agent Zero Instance"
-    )
+    status: Literal["error"] = Field(description="The status of the response", default="error")
+    error: str = Field(description="The error message from the remote Agent Zero Instance")
     chat_id: str = Field(description="The id of the chat this message belongs to.")
 
 
@@ -123,9 +116,7 @@ async def send_message(
     ) = None,
 ) -> Annotated[
     Union[ToolResponse, ToolError],
-    Field(
-        description="The response from the remote Agent Zero Instance", title="response"
-    ),
+    Field(description="The response from the remote Agent Zero Instance", title="response"),
 ]:
     context: AgentContext | None = None
     if chat_id:
@@ -142,9 +133,7 @@ async def send_message(
         context = AgentContext(config=config, type=AgentContextType.BACKGROUND)
 
     if not message:
-        return ToolError(
-            error="Message is required", chat_id=context.id if persistent_chat else ""
-        )
+        return ToolError(error="Message is required", chat_id=context.id if persistent_chat else "")
 
     try:
         response = await _run_chat(context, message, attachments)
@@ -152,9 +141,7 @@ async def send_message(
             context.reset()
             AgentContext.remove(context.id)
             remove_chat(context.id)
-        return ToolResponse(
-            response=response, chat_id=context.id if persistent_chat else ""
-        )
+        return ToolResponse(response=response, chat_id=context.id if persistent_chat else "")
     except Exception as e:
         return ToolError(error=str(e), chat_id=context.id if persistent_chat else "")
 
@@ -201,9 +188,7 @@ async def finish_chat(
     ],
 ) -> Annotated[
     Union[ToolResponse, ToolError],
-    Field(
-        description="The response from the remote Agent Zero Instance", title="response"
-    ),
+    Field(description="The response from the remote Agent Zero Instance", title="response"),
 ]:
     if not chat_id:
         return ToolError(error="Chat ID is required", chat_id="")
@@ -218,9 +203,7 @@ async def finish_chat(
         return ToolResponse(response="Chat finished", chat_id=chat_id)
 
 
-async def _run_chat(
-    context: AgentContext, message: str, attachments: list[str] | None = None
-):
+async def _run_chat(context: AgentContext, message: str, attachments: list[str] | None = None):
     try:
         _PRINTER.print("MCP Chat message received")
 
@@ -248,9 +231,7 @@ async def _run_chat(
                 _PRINTER.print(f"- {filename}")
 
         task = context.communicate(
-            UserMessage(
-                message=message, system_message=[], attachments=attachment_filenames
-            )
+            UserMessage(message=message, system_message=[], attachments=attachment_filenames)
         )
         result = await task.result()
 
@@ -327,14 +308,14 @@ class DynamicMcpProxy:
         self, streamable_http_path, auth_server_provider, auth_settings, debug, routes
     ):
         """Create a custom HTTP app that manages the session manager manually."""
+        import anyio
         from fastmcp.server.http import (
-            setup_auth_middleware_and_routes,
             create_base_app,
+            setup_auth_middleware_and_routes,
         )
+        from mcp.server.auth.middleware.bearer_auth import RequireAuthMiddleware
         from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
         from starlette.routing import Mount
-        from mcp.server.auth.middleware.bearer_auth import RequireAuthMiddleware
-        import anyio
 
         server_routes = []
         server_middleware = []
@@ -362,8 +343,8 @@ class DynamicMcpProxy:
                 await self.http_session_manager.handle_request(scope, receive, send)
 
         # Get auth middleware and routes
-        auth_middleware, auth_routes, required_scopes = (
-            setup_auth_middleware_and_routes(auth_server_provider, auth_settings)
+        auth_middleware, auth_routes, required_scopes = setup_auth_middleware_and_routes(
+            auth_server_provider, auth_settings
         )
 
         server_routes.extend(auth_routes)
@@ -390,9 +371,7 @@ class DynamicMcpProxy:
             server_routes.extend(routes)
 
         # Add middleware
-        server_middleware.append(
-            Middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)
-        )
+        server_middleware.append(Middleware(BaseHTTPMiddleware, dispatch=mcp_middleware))
 
         # Create and return the app
         return create_base_app(
@@ -429,8 +408,6 @@ async def mcp_middleware(request: Request, call_next):
     cfg = settings.get_settings()
     if not cfg["mcp_server_enabled"]:
         PrintStyle.error("[MCP] Access denied: MCP server is disabled in settings.")
-        raise StarletteHTTPException(
-            status_code=403, detail="MCP server is disabled in settings."
-        )
+        raise StarletteHTTPException(status_code=403, detail="MCP server is disabled in settings.")
 
     return await call_next(request)

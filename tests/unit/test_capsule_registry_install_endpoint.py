@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-
 TEST_STORAGE_ROOT = Path(tempfile.gettempdir()) / "capsule-registry-test-storage"
 TEST_INSTALL_ROOT = Path(tempfile.gettempdir()) / "capsule-registry-test-install"
 os.environ.setdefault("CAPSULE_STORAGE_PATH", str(TEST_STORAGE_ROOT))
@@ -19,7 +18,9 @@ class _FakeConn:
     def __init__(self, record):
         self._record = record
 
-    async def fetchrow(self, query: str, capsule_id: str):  # pragma: no cover - FastAPI enforces signature
+    async def fetchrow(
+        self, query: str, capsule_id: str
+    ):  # pragma: no cover - FastAPI enforces signature
         if capsule_id == "capsule-123":
             return self._record
         return None

@@ -1,12 +1,13 @@
 import argparse
+import asyncio
 import inspect
+import queue
 import secrets
 import socket
-from typing import TypeVar, Callable, Awaitable, Union, overload, cast
-from python.helpers import dotenv, rfc, settings, files
-import asyncio
 import threading
-import queue
+from typing import Awaitable, Callable, cast, overload, TypeVar, Union
+
+from python.helpers import dotenv, files, rfc, settings
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -29,9 +30,7 @@ def initialize():
         default=False,
         help="Use cloudflare tunnel for public URL",
     )
-    parser.add_argument(
-        "--development", type=bool, default=False, help="Development mode"
-    )
+    parser.add_argument("--development", type=bool, default=False, help="Development mode")
 
     known, unknown = parser.parse_known_args()
     args = vars(known)
@@ -82,9 +81,7 @@ def get_persistent_id() -> str:
 
 
 @overload
-async def call_development_function(
-    func: Callable[..., Awaitable[T]], *args, **kwargs
-) -> T: ...
+async def call_development_function(func: Callable[..., Awaitable[T]], *args, **kwargs) -> T: ...
 
 
 @overload
@@ -98,9 +95,7 @@ async def call_development_function(
         url = _get_rfc_url()
         password = _get_rfc_password()
         module = (
-            files.deabsolute_path(func.__code__.co_filename)
-            .replace("/", ".")
-            .removesuffix(".py")
+            files.deabsolute_path(func.__code__.co_filename).replace("/", ".").removesuffix(".py")
         )  # __module__ is not reliable
         result = await rfc.call_rfc(
             url=url,
@@ -177,9 +172,7 @@ def _find_available_port(preferred: int) -> int:
 
 
 def get_web_ui_port():
-    requested_port = (
-        get_arg("port") or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0)) or 5000
-    )
+    requested_port = get_arg("port") or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0)) or 5000
     if is_dockerized():
         return requested_port
     return _find_available_port(requested_port)
@@ -187,9 +180,7 @@ def get_web_ui_port():
 
 def get_tunnel_api_port():
     requested_port = (
-        get_arg("tunnel_api_port")
-        or int(dotenv.get_dotenv_value("TUNNEL_API_PORT", 0))
-        or 55520
+        get_arg("tunnel_api_port") or int(dotenv.get_dotenv_value("TUNNEL_API_PORT", 0)) or 55520
     )
     if is_dockerized():
         return requested_port

@@ -1,8 +1,8 @@
 #!/usr/bin/python
-import sys
-import os
 import logging
+import os
 import subprocess
+import sys
 import time
 
 from supervisor.childutils import listener  # type: ignore
@@ -37,9 +37,7 @@ def main(args):
                     _ = subprocess.call(["/bin/kill", "-15", "1"], stdout=sys.stderr)
                     logger.info("Sent TERM signal to init process")
                     time.sleep(5)
-                    logger.critical(
-                        "Why am I still alive? Send KILL to all processes..."
-                    )
+                    logger.critical("Why am I still alive? Send KILL to all processes...")
                     _ = subprocess.call(["/bin/kill", "-9", "-1"], stdout=sys.stderr)
         except Exception as e:
             logger.critical("Unexpected Exception: %s", str(e))

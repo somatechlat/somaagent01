@@ -1,5 +1,70 @@
 #!/usr/bin/env bash
-# Auto-detect free ports for the SomaAgent01 development stack and start Docker Compose.
+# Deterministically start the SomaAgent01 development stack.
+
+set -euo pipefail
+
+PROJECT_NAME="somaagent01"
+COMPOSE_FILE="docker-compose.somaagent01.yaml"
+COMPOSE_PROFILES=(core dev)
+COMPOSE_CMD=(docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE")
+REQUIRED_BINARIES=(docker "docker compose" lsof)
+CONTAINER_FILTER_PREFIX="somaAgent01"
+
+require_tools() {
+  for tool in "${REQUIRED_BINARIES[@]}"; do
+    if [[ "$tool" == *" "* ]]; then
+      if ! ${tool} version >/dev/null 2>&1; then
+        echo "Missing required tool: ${tool}" >&2
+        exit 1
+      fi
+    else
+      if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "Missing required tool: $tool" >&2
+        exit 1
+      fi
+    fi
+  done
+}
+
+cleanup_stack() {
+  pushd infra >/dev/null
+  "${COMPOSE_CMD[@]}" down --remove-orphans >/dev/null 2>&1 || true
+  local dangling
+  dangling=$(docker ps -aq --filter "name=${CONTAINER_FILTER_PREFIX}") || true
+  if [[ -n "$dangling" ]]; then
+    docker rm -f $dangling >/dev/null
+  fi
+  popd >/dev/null
+}
+
+start_compose() {
+  pushd infra >/dev/null
+  local cmd=("${COMPOSE_CMD[@]}")
+  for profile in "${COMPOSE_PROFILES[@]}"; do
+    cmd+=(--profile "$profile")
+  done
+  cmd+=(up -d)
+  "${cmd[@]}"
+  popd >/dev/null
+}
+
+wait_for_services() {
+  local retries=30
+  local sleep_seconds=4
+  local ready=""
+  while (( retries > 0 )); do
+    ready=$(docker ps --filter "name=${CONTAINER_FILTER_PREFIX}" --format '{{.Names}} {{.Status}}' | grep -E '(healthy| \(healthy\))' || true)
+    if grep -q "postgres" <<<"$ready"; then
+      return 0
+    fi
+    ((retries--))
+    sleep "$sleep_seconds"
+  done
+  docker ps --filter "name=${CONTAINER_FILTER_PREFIX}"
+  echo "Timed out waiting for core services to become healthy." >&2
+  exit 1
+}
+
 # Ports used by the default compose file (infra/docker-compose.somaagent01.yaml):
 #   Kafka   9095
 #   Redis   6380
@@ -13,7 +78,6 @@
 #   Delegation Gateway 8015
 #   UI (gateway) 8001
 #   Web UI 50002 (exposed by run_ui container)
-
 # Track reserved ports to avoid duplicates during assignment (portable implementation).
 RESERVED_PORTS=""
 
@@ -124,9 +188,10 @@ Port assignments:
 EOF
 
 # Export variables for Docker Compose substitution.
-# The compose file uses the environment variables directly.
-# Ensure the compose file references these variables (e.g., ${KAFKA_PORT}).
 
-# Start the stack.
-cd infra
-docker compose -f docker-compose.somaagent01.yaml up -d
+require_tools
+cleanup_stack
+start_compose
+wait_for_services
+
+echo "Stack started under project '${PROJECT_NAME}'."

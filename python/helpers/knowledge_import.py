@@ -1,13 +1,15 @@
 import glob
-import os
 import hashlib
+import os
 from typing import Any, Dict, Literal, TypedDict
+
 from langchain_community.document_loaders import (
     CSVLoader,
     PyPDFLoader,
     TextLoader,
     UnstructuredHTMLLoader,
 )
+
 from python.helpers.log import LogItem
 from python.helpers.print_style import PrintStyle
 
@@ -69,9 +71,7 @@ def load_knowledge(
         try:
             os.makedirs(knowledge_dir, exist_ok=True)
             # Verify the directory was actually created and is accessible
-            if not os.path.exists(knowledge_dir) or not os.access(
-                knowledge_dir, os.R_OK
-            ):
+            if not os.path.exists(knowledge_dir) or not os.access(knowledge_dir, os.R_OK):
                 error_msg = f"Knowledge directory {knowledge_dir} was created but is not accessible"
                 if log_item:
                     log_item.stream(progress=f"\n{error_msg}")
@@ -79,12 +79,8 @@ def load_knowledge(
                 return index
 
             if log_item:
-                log_item.stream(
-                    progress=f"\nCreated knowledge directory: {knowledge_dir}"
-                )
-            PrintStyle(font_color="green").print(
-                f"Created knowledge directory: {knowledge_dir}"
-            )
+                log_item.stream(progress=f"\nCreated knowledge directory: {knowledge_dir}")
+            PrintStyle(font_color="green").print(f"Created knowledge directory: {knowledge_dir}")
         except (OSError, PermissionError) as e:
             error_msg = f"Failed to create knowledge directory {knowledge_dir}: {e}"
             if log_item:
@@ -102,13 +98,9 @@ def load_knowledge(
 
     # Fetch all files in the directory with specified extensions
     try:
-        kn_files = glob.glob(
-            os.path.join(knowledge_dir, filename_pattern), recursive=True
-        )
+        kn_files = glob.glob(os.path.join(knowledge_dir, filename_pattern), recursive=True)
         kn_files = [
-            f
-            for f in kn_files
-            if os.path.isfile(f) and not os.path.basename(f).startswith(".")
+            f for f in kn_files if os.path.isfile(f) and not os.path.basename(f).startswith(".")
         ]
     except Exception as e:
         PrintStyle(font_color="red").print(
@@ -170,11 +162,7 @@ def load_knowledge(
                 try:
                     loader = loader_cls(
                         file_path,
-                        **(
-                            text_loader_kwargs
-                            if ext in ["txt", "csv", "html", "md"]
-                            else {}
-                        ),
+                        **(text_loader_kwargs if ext in ["txt", "csv", "html", "md"] else {}),
                     )
                     documents = loader.load_and_split()
 
@@ -197,9 +185,7 @@ def load_knowledge(
                     cnt_docs += len(documents)
 
                 except Exception as e:
-                    PrintStyle(font_color="red").print(
-                        f"Error loading {file_path}: {e}"
-                    )
+                    PrintStyle(font_color="red").print(f"Error loading {file_path}: {e}")
                     if log_item:
                         log_item.stream(
                             progress=f"\nError loading {os.path.basename(file_path)}: {e}"
@@ -223,8 +209,6 @@ def load_knowledge(
     if cnt_files > 0 or cnt_docs > 0:
         PrintStyle.standard(f"Processed {cnt_docs} documents from {cnt_files} files.")
         if log_item:
-            log_item.stream(
-                progress=f"\nProcessed {cnt_docs} documents from {cnt_files} files."
-            )
+            log_item.stream(progress=f"\nProcessed {cnt_docs} documents from {cnt_files} files.")
 
     return index

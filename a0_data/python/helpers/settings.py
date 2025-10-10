@@ -93,6 +93,11 @@ class Settings(TypedDict):
     stt_silence_duration: int
     stt_waiting_timeout: int
 
+    speech_provider: str
+    speech_realtime_model: str
+    speech_realtime_voice: str
+    speech_realtime_endpoint: str
+
     tts_kokoro: bool
 
     mcp_servers: str
@@ -962,7 +967,28 @@ def convert_out(settings: Settings) -> SettingsOutput:
     #     "tab": "developer",
     # }
 
-    # Speech to text section
+    # Speech to text + TTS section
+    speech_fields: list[SettingsField] = []
+
+    selected_speech_provider = settings.get(
+        "speech_provider", default_settings["speech_provider"]
+    )
+
+    speech_fields.append(
+        {
+            "id": "speech_provider",
+            "title": "Speech provider",
+            "description": "Select which speech stack Agent Zero should use for voice playback.",
+            "type": "select",
+            "value": selected_speech_provider,
+            "options": [
+                {"value": "browser", "label": "Browser (built-in)"},
+                {"value": "kokoro", "label": "Kokoro (server)"},
+                {"value": "openai_realtime", "label": "OpenAI Realtime"},
+            ],
+        }
+    )
+
     stt_fields: list[SettingsField] = []
 
     stt_fields.append(
@@ -1037,6 +1063,41 @@ def convert_out(settings: Settings) -> SettingsOutput:
     )
 
     # TTS fields
+    realtime_fields: list[SettingsField] = []
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_model",
+            "title": "Realtime model",
+            "description": "OpenAI realtime model to request (for example gpt-4o-realtime-preview).",
+            "type": "text",
+            "value": settings["speech_realtime_model"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_voice",
+            "title": "Realtime voice",
+            "description": "Voice profile passed to OpenAI realtime sessions.",
+            "type": "text",
+            "value": settings["speech_realtime_voice"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_endpoint",
+            "title": "Realtime session endpoint",
+            "description": "Override the default OpenAI realtime session endpoint if required.",
+            "type": "text",
+            "value": settings["speech_realtime_endpoint"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
+
     tts_fields: list[SettingsField] = []
 
     tts_fields.append(
@@ -1046,6 +1107,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Enable higher quality server-side AI (Kokoro) instead of browser-based text-to-speech.",
             "type": "switch",
             "value": settings["tts_kokoro"],
+            "hidden": selected_speech_provider != "kokoro",
         }
     )
 
@@ -1053,7 +1115,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "id": "speech",
         "title": "Speech",
         "description": "Voice transcription and speech synthesis settings.",
-        "fields": stt_fields + tts_fields,
+        "fields": speech_fields + stt_fields + realtime_fields + tts_fields,
         "tab": "agent",
     }
 
@@ -1500,6 +1562,10 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=0.3,
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
+        speech_provider="openai_realtime",
+        speech_realtime_model="gpt-4o-realtime-preview",
+        speech_realtime_voice="verse",
+        speech_realtime_endpoint="https://api.openai.com/v1/realtime/sessions",
         tts_kokoro=True,
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
@@ -1530,7 +1596,7 @@ def _apply_settings(previous: Settings | None):
 
         # reload whisper model if necessary
         if not previous or _settings["stt_model_size"] != previous["stt_model_size"]:
-            task = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 whisper.preload, _settings["stt_model_size"]
             )  # TODO overkill, replace with background task
 
@@ -1588,7 +1654,7 @@ def _apply_settings(previous: Settings | None):
                     type="info", content="Finished updating MCP settings.", temp=True
                 )
 
-            task2 = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 update_mcp_settings, config.mcp_servers
             )  # TODO overkill, replace with background task
 
@@ -1603,7 +1669,7 @@ def _apply_settings(previous: Settings | None):
 
                 DynamicMcpProxy.get_instance().reconfigure(token=token)
 
-            task3 = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 update_mcp_token, current_token
             )  # TODO overkill, replace with background task
 
@@ -1615,9 +1681,26 @@ def _apply_settings(previous: Settings | None):
 
                 DynamicA2AProxy.get_instance().reconfigure(token=token)
 
-            task4 = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 update_a2a_token, current_token
             )  # TODO overkill, replace with background task
+
+        # Notify admin/UI when LLM is not enabled or chat model provider is not configured.
+        try:
+            llm_enabled = bool(_settings.get("USE_LLM", False))
+            chat_provider = _settings.get("chat_model_provider", "").strip()
+            chat_model = _settings.get("chat_model_name", "").strip()
+            if not llm_enabled or not chat_provider or not chat_model:
+                AgentContext.log_to_all(
+                    type="warning",
+                    content=(
+                        "Model provider not configured. Open Admin → Settings → Model and set a provider and API key to enable chat functionality."
+                    ),
+                    temp=True,
+                )
+        except Exception:
+            # best-effort notification; do not raise during settings application
+            pass
 
 
 def _env_to_dict(data: str):

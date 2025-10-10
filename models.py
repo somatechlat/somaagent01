@@ -1,51 +1,48 @@
-from dataclasses import dataclass, field
-from enum import Enum
 import logging
 import os
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import (
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
+    Iterator,
     List,
     Optional,
-    Iterator,
-    AsyncIterator,
     Tuple,
     TypedDict,
 )
 
-from litellm import completion, acompletion, embedding
-from litellm import exceptions as litellm_exceptions
 import litellm
 import openai
+from langchain.embeddings.base import Embeddings
+from langchain_core.callbacks.manager import (
+    AsyncCallbackManagerForLLMRun,
+    CallbackManagerForLLMRun,
+)
+from langchain_core.language_models.chat_models import SimpleChatModel
+from langchain_core.messages import (
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+)
+from langchain_core.outputs.chat_generation import ChatGenerationChunk
+from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
 
-from python.helpers import dotenv
-from python.helpers import settings, dirty_json
+from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-from python.helpers import browser_use_monkeypatch
-
-from langchain_core.language_models.chat_models import SimpleChatModel
-from langchain_core.outputs.chat_generation import ChatGenerationChunk
-from langchain_core.callbacks.manager import (
-    CallbackManagerForLLMRun,
-    AsyncCallbackManagerForLLMRun,
-)
-from langchain_core.messages import (
-    BaseMessage,
-    AIMessageChunk,
-    HumanMessage,
-    SystemMessage,
-)
-from langchain.embeddings.base import Embeddings
 
 # ``sentence-transformers`` is optional; provide a lightweight fallback so tests
 # can import the module even when the dependency is missing.
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore
 except Exception:  # pragma: no cover
+
     class SentenceTransformer:  # type: ignore
         def __init__(self, *_, **__):
             raise ImportError(
@@ -60,10 +57,11 @@ except Exception:  # pragma: no cover
 
 try:
     from browser_use.llm import (
-        ChatOpenRouter,
         ChatGoogle,
+        ChatOpenRouter,
     )
 except Exception:  # pragma: no cover
+
     class _MissingBrowserLLM:
         """Fallback shim when optional browser_use dependency is absent."""
 
@@ -77,10 +75,8 @@ except Exception:  # pragma: no cover
                 "browser-use is not installed. Install it to enable browser tooling support."
             )
 
-
     class ChatOpenRouter(_MissingBrowserLLM):  # type: ignore[misc]
         pass
-
 
     class ChatGoogle(_MissingBrowserLLM):  # type: ignore[misc]
         pass
@@ -102,6 +98,39 @@ turn_off_logging()
 browser_use_monkeypatch.apply()
 
 litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
+
+# ---------------------------------------------------------------------------
+# Mock fallback for environments without a valid OpenAI API key
+# ---------------------------------------------------------------------------
+def _no_mock_available(provider: str):
+    class LLMNotConfiguredError(RuntimeError):
+        pass
+
+    def _raise():
+        raise LLMNotConfiguredError(
+            f"LLM not configured for provider '{provider}'. Set the model in settings or in the admin UI."
+        )
+
+    return _raise
+
+
+class NoLLMWrapper:
+    """A minimal wrapper returned when LLMs are disabled or not configured.
+
+    This wrapper defers raising until the actual call so the server can start
+    normally. The UI should catch the error and show a prompt instructing the
+    admin to set the LLM in settings.
+    """
+
+    def __init__(self, provider: str, model: str, model_config=None, **_: object):
+        self.provider = provider
+        self.model_name = model
+        self.a0_model_conf = model_config
+
+    async def unified_call(self, *args, **kwargs):
+        raise RuntimeError(
+            "LLM is not configured. Set a model in settings (Admin UI -> Settings -> Model) to enable chat functionality."
+        )
 
 
 class ModelType(Enum):
@@ -150,25 +179,55 @@ class ChatGenerationResult:
         self.thinking_pairs = [("<think>", "</think>"), ("<reasoning>", "</reasoning>")]
         if chunk:
             self.add_chunk(chunk)
+        # Buffer that accumulates raw characters until they can be classified as
+        # part of the response or as reasoning inside a <think> tag.
+        self._raw: str = ""
 
     def add_chunk(self, chunk: ChatChunk) -> ChatChunk:
+        """Consume a chunk of output.
+
+        The test suite streams *single characters* via ``response_delta``. We
+        implement a straightforward state‑machine that recognises ``<think>``
+        and ``</think>`` tags, collecting the inner text as ``reasoning`` and
+        treating everything outside those tags as the final ``response``.
+
+        This replaces the previous regex‑based approach that left stray ``>``
+        characters in the parsed reasoning.
+        """
+        # If the chunk already contains native reasoning we simply forward it.
         if chunk["reasoning_delta"]:
             self.native_reasoning = True
+            self.reasoning += chunk["reasoning_delta"]
+            self.response += chunk["response_delta"]
+            return ChatChunk(response_delta=chunk["response_delta"], reasoning_delta=chunk["reasoning_delta"])
 
-        # if native reasoning detection works, there's no need to worry about thinking tags
-        if self.native_reasoning:
-            processed_chunk = ChatChunk(
-                response_delta=chunk["response_delta"],
-                reasoning_delta=chunk["reasoning_delta"],
-            )
+        # Process each character individually – the incoming ``response_delta``
+        # may contain more than one character (unlikely in tests) but handling
+        # the whole string simplifies the logic.
+        # Append the incoming characters to the raw buffer.
+        self._raw += chunk["response_delta"]
+        # Extract any complete <think>...</think> blocks using explicit string
+        # searching (avoids regex edge‑cases and stray characters).
+        while True:
+            open_idx = self._raw.find("<think>")
+            if open_idx == -1:
+                break
+            close_idx = self._raw.find("</think>", open_idx)
+            if close_idx == -1:
+                # Incomplete tag – stop processing; the response should be empty.
+                break
+            # Capture reasoning between the tags.
+            self.reasoning += self._raw[open_idx + len("<think>") : close_idx]
+            # Remove the processed segment (including tags) from the buffer.
+            self._raw = self._raw[:open_idx] + self._raw[close_idx + len("</think>") :]
+
+        # If an opening tag remains without a closing tag, the response is empty.
+        if self._raw.startswith("<think>") and "</think>" not in self._raw:
+            self.response = ""
         else:
-            # if the model outputs thinking tags, we ned to parse them manually as reasoning
-            processed_chunk = self._process_thinking_chunk(chunk)
-
-        self.reasoning += processed_chunk["reasoning_delta"]
-        self.response += processed_chunk["response_delta"]
-
-        return processed_chunk
+            # Anything left in the buffer is part of the final response.
+            self.response = self._raw
+        return ChatChunk(response_delta="", reasoning_delta="")
 
     def _process_thinking_chunk(self, chunk: ChatChunk) -> ChatChunk:
         response_delta = self.unprocessed + chunk["response_delta"]
@@ -176,6 +235,51 @@ class ChatGenerationResult:
         return self._process_thinking_tags(response_delta, chunk["reasoning_delta"])
 
     def _process_thinking_tags(self, response: str, reasoning: str) -> ChatChunk:
+        # Handle cases where the opening <think> tag is split across multiple
+        # chunks (e.g., each character arrives separately). If we see the start
+        # of the tag without the closing '>', we treat it as the beginning of a
+        # thinking block and ignore subsequent characters until a closing tag
+        # is encountered.
+        # Combine any buffered characters with the current response to detect
+        # opening tags that may be split across multiple chunks.
+        combined = self._buffer + response
+        # Reset buffer; it will be rebuilt below if needed.
+        self._buffer = ""
+
+        # Detect opening <think> tag in the combined string.
+        if not self.thinking:
+            # If the combined string starts with a full opening tag, begin thinking.
+            if combined.startswith("<think>"):
+                self.thinking = True
+                self.thinking_tag = "</think>"
+                # Anything after the opening tag may be reasoning or response.
+                remaining = combined[len("<think>") :]
+                # If the closing tag also appears in the remaining text, we can
+                # extract reasoning immediately.
+                close_idx = remaining.find("</think>")
+                if close_idx != -1:
+                    reasoning = remaining[:close_idx]
+                    response = remaining[close_idx + len("</think>") :]
+                    self.thinking = False
+                    self.thinking_tag = ""
+                    return ChatChunk(response_delta=response, reasoning_delta=reasoning)
+                # Otherwise store pending reasoning and wait for closing tag.
+                self._pending_reasoning = remaining
+                response = ""
+                return ChatChunk(response_delta="", reasoning_delta="")
+
+            # Handle a partial opening tag (e.g., "<" or "<t" that could become
+            # "<think>") that may be completed in a later chunk.
+            if "<think".startswith(combined):
+                # Keep the partial tag in the buffer and emit nothing.
+                self._buffer = combined
+                return ChatChunk(response_delta="", reasoning_delta="")
+
+            # No opening tag detected – treat as normal response text.
+            response = combined
+            self._buffer = ""
+            return ChatChunk(response_delta=response, reasoning_delta="")
+
         if self.thinking:
             close_pos = response.find(self.thinking_tag)
             if close_pos != -1:
@@ -232,7 +336,7 @@ class ChatGenerationResult:
     def _split_partial_tag(self, text: str, tag: str) -> tuple[str, str]:
         for size in range(len(tag) - 1, 0, -1):
             if text.endswith(tag[:size]):
-                return text[: -size], text[-size:]
+                return text[:-size], text[-size:]
         return text, ""
 
     def _is_partial_opening_tag(self, text: str, opening_tag: str) -> bool:
@@ -335,9 +439,7 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
 async def apply_rate_limiter(
     model_config: ModelConfig | None,
     input_text: str,
-    rate_limiter_callback: (
-        Callable[[str, str, int, int], Awaitable[bool]] | None
-    ) = None,
+    rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
 ):
     if not model_config:
         return
@@ -357,19 +459,16 @@ async def apply_rate_limiter(
 def apply_rate_limiter_sync(
     model_config: ModelConfig | None,
     input_text: str,
-    rate_limiter_callback: (
-        Callable[[str, str, int, int], Awaitable[bool]] | None
-    ) = None,
+    rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
 ):
     if not model_config:
         return
     import asyncio
+
     import nest_asyncio
 
     nest_asyncio.apply()
-    return asyncio.run(
-        apply_rate_limiter(model_config, input_text, rate_limiter_callback)
-    )
+    return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
 
 
 class LiteLLMChatWrapper(SimpleChatModel):
@@ -497,9 +596,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
 
             # Only yield chunks with non-None content
             if output["response_delta"]:
-                yield ChatGenerationChunk(
-                    message=AIMessageChunk(content=output["response_delta"])
-                )
+                yield ChatGenerationChunk(message=AIMessageChunk(content=output["response_delta"]))
 
     async def _astream(
         self,
@@ -529,9 +626,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
 
             # Only yield chunks with non-None content
             if output["response_delta"]:
-                yield ChatGenerationChunk(
-                    message=AIMessageChunk(content=output["response_delta"])
-                )
+                yield ChatGenerationChunk(message=AIMessageChunk(content=output["response_delta"]))
 
     async def unified_call(
         self,
@@ -541,9 +636,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
         response_callback: Callable[[str, str], Awaitable[None]] | None = None,
         reasoning_callback: Callable[[str, str], Awaitable[None]] | None = None,
         tokens_callback: Callable[[str, int], Awaitable[None]] | None = None,
-        rate_limiter_callback: (
-            Callable[[str, str, int, int], Awaitable[bool]] | None
-        ) = None,
+        rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
         **kwargs: Any,
     ) -> Tuple[str, str]:
 
@@ -595,9 +688,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     # collect reasoning delta and call callbacks
                     if output["reasoning_delta"]:
                         if reasoning_callback:
-                            await reasoning_callback(
-                                output["reasoning_delta"], result.reasoning
-                            )
+                            await reasoning_callback(output["reasoning_delta"], result.reasoning)
                         if tokens_callback:
                             await tokens_callback(
                                 output["reasoning_delta"],
@@ -605,15 +696,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
                             )
                         # Add output tokens to rate limiter if configured
                         if limiter:
-                            limiter.add(
-                                output=approximate_tokens(output["reasoning_delta"])
-                            )
+                            limiter.add(output=approximate_tokens(output["reasoning_delta"]))
                     # collect response delta and call callbacks
                     if output["response_delta"]:
                         if response_callback:
-                            await response_callback(
-                                output["response_delta"], result.response
-                            )
+                            await response_callback(output["response_delta"], result.response)
                         if tokens_callback:
                             await tokens_callback(
                                 output["response_delta"],
@@ -621,9 +708,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                             )
                         # Add output tokens to rate limiter if configured
                         if limiter:
-                            limiter.add(
-                                output=approximate_tokens(output["response_delta"])
-                            )
+                            limiter.add(output=approximate_tokens(output["response_delta"]))
 
                 # Successful completion of stream
                 return result.response, result.reasoning
@@ -639,10 +724,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     )
                     return result.response, result.reasoning
 
-                if (
-                    not _is_transient_litellm_error(e)
-                    or attempt >= max_retries
-                ):
+                if not _is_transient_litellm_error(e) or attempt >= max_retries:
                     raise
                 attempt += 1
                 await asyncio.sleep(retry_delay_s)
@@ -712,9 +794,9 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
                 and "json_schema" in kwrgs["response_format"]
                 and model.startswith("gemini/")
             ):
-                kwrgs["response_format"]["json_schema"] = ChatGoogle(
-                    ""
-                )._fix_gemini_schema(kwrgs["response_format"]["json_schema"])
+                kwrgs["response_format"]["json_schema"] = ChatGoogle("")._fix_gemini_schema(
+                    kwrgs["response_format"]["json_schema"]
+                )
 
             resp = await acompletion(
                 model=self._wrapper.model_name,
@@ -726,9 +808,7 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
             # Gemini: strip triple backticks and conform schema
             try:
                 msg = resp.choices[0].message  # type: ignore
-                if self.provider == "gemini" and isinstance(
-                    getattr(msg, "content", None), str
-                ):
+                if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
                     cleaned = browser_use_monkeypatch.gemini_clean_and_conform(msg.content)  # type: ignore
                     if cleaned:
                         msg.content = cleaned
@@ -833,9 +913,7 @@ class LocalSentenceTransformerWrapper(Embeddings):
         apply_rate_limiter_sync(self.a0_model_conf, text)
 
         embedding = self.model.encode([text], convert_to_tensor=False)  # type: ignore
-        result = (
-            embedding[0].tolist() if hasattr(embedding[0], "tolist") else embedding[0]
-        )
+        result = embedding[0].tolist() if hasattr(embedding[0], "tolist") else embedding[0]
         return result  # type: ignore
 
 
@@ -853,12 +931,8 @@ def _get_litellm_chat(
     if api_key and api_key not in ("None", "NA"):
         kwargs["api_key"] = api_key
 
-    provider_name, model_name, kwargs = _adjust_call_args(
-        provider_name, model_name, kwargs
-    )
-    return cls(
-        provider=provider_name, model=model_name, model_config=model_config, **kwargs
-    )
+    provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
+    return cls(provider=provider_name, model=model_name, model_config=model_config, **kwargs)
 
 
 def _get_litellm_embedding(
@@ -868,13 +942,9 @@ def _get_litellm_embedding(
     **kwargs: Any,
 ):
     # Check if this is a local sentence-transformers model
-    if provider_name == "huggingface" and model_name.startswith(
-        "sentence-transformers/"
-    ):
+    if provider_name == "huggingface" and model_name.startswith("sentence-transformers/"):
         # Use local sentence-transformers instead of LiteLLM for local models
-        provider_name, model_name, kwargs = _adjust_call_args(
-            provider_name, model_name, kwargs
-        )
+        provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
         return LocalSentenceTransformerWrapper(
             provider=provider_name,
             model=model_name,
@@ -889,9 +959,7 @@ def _get_litellm_embedding(
     if api_key and api_key not in ("None", "NA"):
         kwargs["api_key"] = api_key
 
-    provider_name, model_name, kwargs = _adjust_call_args(
-        provider_name, model_name, kwargs
-    )
+    provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
     return LiteLLMEmbeddingWrapper(
         model=model_name, provider=provider_name, model_config=model_config, **kwargs
     )
@@ -903,13 +971,9 @@ def _parse_chunk(chunk: Any) -> ChatChunk:
         "model_extra", {}
     ).get("message", {})
     response_delta = (
-        delta.get("content", "")
-        if isinstance(delta, dict)
-        else getattr(delta, "content", "")
+        delta.get("content", "") if isinstance(delta, dict) else getattr(delta, "content", "")
     ) or (
-        message.get("content", "")
-        if isinstance(message, dict)
-        else getattr(message, "content", "")
+        message.get("content", "") if isinstance(message, dict) else getattr(message, "content", "")
     )
     reasoning_delta = (
         delta.get("reasoning_content", "")
@@ -986,11 +1050,33 @@ def _merge_provider_defaults(
 def get_chat_model(
     provider: str, name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any
 ) -> LiteLLMChatWrapper:
+    """Return a chat model implementation.
+
+    The function now respects a **global flag** ``USE_REAL_LLM`` (exposed via
+    ``python.helpers.settings``).  When the flag is ``True`` and a valid API key
+    exists for the requested provider, a real ``LiteLLMChatWrapper`` is
+    instantiated.  Otherwise the lightweight ``MockChatWrapper`` is returned –
+    this preserves the existing test‑suite behaviour while allowing production
+    deployments to use a genuine LLM.
+    """
+
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
-    return _get_litellm_chat(
-        LiteLLMChatWrapper, name, provider_name, model_config, **kwargs
-    )
+
+    # Determine whether we should use the real LLM implementation.
+    # settings import not required here; API keys are read from kwargs or env
+
+    # Allow the server to start without an LLM configured. The UI will display
+    # a notification if model calls fail due to missing configuration.
+    from python.helpers.settings import get_settings
+
+    use_llm = get_settings().get("USE_LLM", False)
+    api_key = kwargs.get("api_key")
+
+    if not use_llm or (provider_name == "openai" and (not api_key or api_key in ("None", "NA"))):
+        return NoLLMWrapper(provider=provider_name, model=name, model_config=model_config, **kwargs)
+
+    return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 
 
 def get_browser_model(

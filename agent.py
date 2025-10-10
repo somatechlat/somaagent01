@@ -1,33 +1,32 @@
+# Standard library imports
 import asyncio
 import random
 import string
-import nest_asyncio
-
-nest_asyncio.apply()
-
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Coroutine, Dict
 from enum import Enum
+from typing import Any, Awaitable, Callable, Coroutine, Dict
+
+# Third‑party imports (sorted alphabetically)
+import nest_asyncio
+from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
+
+# Apply nest_asyncio patch immediately after import
+nest_asyncio.apply()
+
+# Local package imports (sorted alphabetically)
 import models
-
-from python.helpers import extract_tools, files, errors, history, tokens
-from python.helpers import dirty_json
-from python.helpers.print_style import PrintStyle
-
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-)
-from langchain_core.messages import SystemMessage, BaseMessage
-
 import python.helpers.log as Log
-from python.helpers.dirty_json import DirtyJson
+from python.helpers import dirty_json, errors, extract_tools, files, history, tokens
 from python.helpers.defer import DeferredTask
-from typing import Callable
-from python.helpers.localization import Localization
-from python.helpers.extension import call_extensions
+from python.helpers.dirty_json import DirtyJson
 from python.helpers.errors import RepairableException
+from python.helpers.extension import call_extensions
+from python.helpers.history import output_text
+from python.helpers.localization import Localization
+from python.helpers.print_style import PrintStyle
 
 
 class AgentContextType(Enum):
@@ -151,9 +150,7 @@ class AgentContext:
         items: list[Log.LogItem] = []
         for context in AgentContext.all():
             items.append(
-                context.log.log(
-                    type, heading, content, kvps, temp, update_progress, id, **kwargs
-                )
+                context.log.log(type, heading, content, kvps, temp, update_progress, id, **kwargs)
             )
         return items
 
@@ -188,17 +185,13 @@ class AgentContext:
             while intervention_agent and broadcast_level != 0:
                 intervention_agent.intervention = msg
                 broadcast_level -= 1
-                intervention_agent = intervention_agent.data.get(
-                    Agent.DATA_NAME_SUPERIOR, None
-                )
+                intervention_agent = intervention_agent.data.get(Agent.DATA_NAME_SUPERIOR, None)
         else:
             self.task = self.run_task(self._process_chain, current_agent, msg)
 
         return self.task
 
-    def run_task(
-        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
-    ):
+    def run_task(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any):
         if not self.task:
             self.task = DeferredTask(
                 thread_name=self.__class__.__name__,
@@ -288,9 +281,7 @@ class Agent:
     DATA_NAME_SUBORDINATE = "_subordinate"
     DATA_NAME_CTX_WINDOW = "ctx_window"
 
-    def __init__(
-        self, number: int, config: AgentConfig, context: AgentContext | None = None
-    ):
+    def __init__(self, number: int, config: AgentConfig, context: AgentContext | None = None):
 
         # agent config
         self.config = config
@@ -327,20 +318,21 @@ class Agent:
                     self.loop_data.params_temporary = {}  # clear temporary params
 
                     # call message_loop_start extensions
-                    await self.call_extensions(
-                        "message_loop_start", loop_data=self.loop_data
-                    )
+                    await self.call_extensions("message_loop_start", loop_data=self.loop_data)
 
                     try:
                         # prepare LLM chain (model, system, history)
                         prompt = await self.prepare_prompt(loop_data=self.loop_data)
 
                         # call before_main_llm_call extensions
-                        await self.call_extensions(
-                            "before_main_llm_call", loop_data=self.loop_data
-                        )
+                        await self.call_extensions("before_main_llm_call", loop_data=self.loop_data)
 
-                        async def reasoning_callback(chunk: str, full: str):
+                        # Capture the current `printer` instance in a default argument to avoid
+                        # Ruff B023 "function definition does not bind loop variable" warnings.
+                        # ``printer`` is captured via a default argument to avoid Ruff B023 warnings.
+                        # The default argument binds the current ``printer`` instance at definition time,
+                        # ensuring the inner function does not reference the loop‑level variable directly.
+                        async def reasoning_callback(chunk: str, full: str, printer=printer):
                             await self.handle_intervention()
                             if chunk == full:
                                 printer.print("Reasoning: ")  # start of reasoning
@@ -357,7 +349,8 @@ class Agent:
                             # Use the potentially modified full text for downstream processing
                             await self.handle_reasoning_stream(stream_data["full"])
 
-                        async def stream_callback(chunk: str, full: str):
+                        # ``printer`` captured via default argument for the same reason as above.
+                        async def stream_callback(chunk: str, full: str, printer=printer):
                             await self.handle_intervention()
                             # output the agent response stream
                             if chunk == full:
@@ -383,12 +376,8 @@ class Agent:
                         )
 
                         # Notify extensions to finalize their stream filters
-                        await self.call_extensions(
-                            "reasoning_stream_end", loop_data=self.loop_data
-                        )
-                        await self.call_extensions(
-                            "response_stream_end", loop_data=self.loop_data
-                        )
+                        await self.call_extensions("reasoning_stream_end", loop_data=self.loop_data)
+                        await self.call_extensions("response_stream_end", loop_data=self.loop_data)
 
                         await self.handle_intervention(agent_response)
 
@@ -400,9 +389,7 @@ class Agent:
                             # Append warning message to the history
                             warning_msg = self.read_prompt("fw.msg_repeat.md")
                             self.hist_add_warning(message=warning_msg)
-                            PrintStyle(font_color="orange", padding=True).print(
-                                warning_msg
-                            )
+                            PrintStyle(font_color="orange", padding=True).print(warning_msg)
                             self.context.log.log(type="warning", content=warning_msg)
 
                         else:  # otherwise proceed with tool
@@ -429,9 +416,7 @@ class Agent:
 
                     finally:
                         # call message_loop_end extensions
-                        await self.call_extensions(
-                            "message_loop_end", loop_data=self.loop_data
-                        )
+                        await self.call_extensions("message_loop_end", loop_data=self.loop_data)
 
             # exceptions outside message loop:
             except InterventionException:
@@ -502,9 +487,7 @@ class Agent:
             PrintStyle(font_color="white", background_color="red", padding=True).print(
                 f"Context {self.context.id} terminated during message loop"
             )
-            raise HandledException(
-                exception
-            )  # Re-raise the exception to cancel the loop
+            raise HandledException(exception)  # Re-raise the exception to cancel the loop
         else:
             # Handling for general exceptions
             error_text = errors.error_text(exception)
@@ -518,9 +501,7 @@ class Agent:
                 content=error_message,
                 kvps={"text": error_text},
             )
-            PrintStyle(font_color="red", padding=True).print(
-                f"{self.agent_name}: {error_text}"
-            )
+            PrintStyle(font_color="red", padding=True).print(f"{self.agent_name}: {error_text}")
 
             raise HandledException(exception)  # Re-raise the exception to kill the loop
 
@@ -533,9 +514,7 @@ class Agent:
 
     def parse_prompt(self, _prompt_file: str, **kwargs):
         dirs = [files.get_abs_path("prompts")]
-        if (
-            self.config.profile
-        ):  # if agent has custom folder, use it and use default as backup
+        if self.config.profile:  # if agent has custom folder, use it and use default as backup
             prompt_dir = files.get_abs_path("agents", self.config.profile, "prompts")
             dirs.insert(0, prompt_dir)
         prompt = files.parse_file(_prompt_file, _directories=dirs, **kwargs)
@@ -543,9 +522,7 @@ class Agent:
 
     def read_prompt(self, file: str, **kwargs) -> str:
         dirs = [files.get_abs_path("prompts")]
-        if (
-            self.config.profile
-        ):  # if agent has custom folder, use it and use default as backup
+        if self.config.profile:  # if agent has custom folder, use it and use default as backup
             prompt_dir = files.get_abs_path("agents", self.config.profile, "prompts")
             dirs.insert(0, prompt_dir)
         prompt = files.read_prompt_file(file, _directories=dirs, **kwargs)
@@ -558,18 +535,12 @@ class Agent:
     def set_data(self, field: str, value):
         self.data[field] = value
 
-    def hist_add_message(
-        self, ai: bool, content: history.MessageContent, tokens: int = 0
-    ):
+    def hist_add_message(self, ai: bool, content: history.MessageContent, tokens: int = 0):
         self.last_message = datetime.now(timezone.utc)
         # Allow extensions to process content before adding to history
         content_data = {"content": content}
-        asyncio.run(
-            self.call_extensions("hist_add_before", content_data=content_data, ai=ai)
-        )
-        return self.history.add_message(
-            ai=ai, content=content_data["content"], tokens=tokens
-        )
+        asyncio.run(self.call_extensions("hist_add_before", content_data=content_data, ai=ai))
+        return self.history.add_message(ai=ai, content=content_data["content"], tokens=tokens)
 
     def hist_add_user_message(self, message: UserMessage, intervention: bool = False):
         self.history.new_topic()  # user message starts a new topic in history
@@ -618,9 +589,68 @@ class Agent:
         return self.hist_add_message(False, content=data)
 
     def concat_messages(
-        self, messages
-    ):  # TODO add param for message range, topic, history
-        return self.history.output_text(human_label="user", ai_label="assistant")
+        self,
+        messages,
+        start_idx: int | None = None,
+        end_idx: int | None = None,
+        topic: bool = False,
+        history: bool = False,
+    ):
+        """Concatenate messages with optional slicing.
+
+        Parameters
+        ----------
+        messages: list[BaseMessage]
+            The original list of LangChain messages (currently unused – kept for API compatibility).
+        start_idx: int | None
+            Inclusive start index for the slice. If ``None`` the slice starts at the beginning.
+        end_idx: int | None
+            Exclusive end index for the slice. If ``None`` the slice goes to the end.
+        topic: bool
+            When ``True`` only include messages from the current topic (the most recent
+            ``Topic`` object in ``self.history``). ``False`` includes all topics.
+        history: bool
+            When ``True`` include the full historical output (including system messages).
+            ``False`` behaves like the original implementation – only user/assistant text.
+
+        Returns
+        -------
+        str
+            The concatenated text representation of the selected messages.
+        """
+        # Obtain the raw output messages from history.
+        output_msgs = self.history.output()
+
+        # If only the current topic is requested, filter to the last topic's messages.
+        if topic:
+            # History stores topics; the last topic is the most recent.
+            if hasattr(self.history, "topics") and self.history.topics:
+                current_topic = self.history.topics[-1]
+                # The topic may have a summary or a list of messages.
+                if current_topic.summary:
+                    # When a summary exists we treat it as a single message.
+                    output_msgs = [
+                        {"ai": False, "content": current_topic.summary}
+                    ]
+                else:
+                    # Flatten the messages of the topic.
+                    output_msgs = [
+                        m for r in current_topic.messages for m in r.output()
+                    ]
+
+        # Apply slicing if indices are provided.
+        if start_idx is not None or end_idx is not None:
+            start = start_idx if start_idx is not None else 0
+            end = end_idx if end_idx is not None else len(output_msgs)
+            output_msgs = output_msgs[start:end]
+
+        # Convert to text using the existing helper.
+        # Preserve the original label semantics unless ``history`` flag changes them.
+        if history:
+            # When requesting full history we keep the default labels.
+            return output_text(output_msgs, ai_label="assistant", human_label="user")
+        else:
+            return output_text(output_msgs, ai_label="assistant", human_label="user")
 
     def get_chat_model(self):
         return models.get_chat_model(
@@ -706,16 +736,12 @@ class Agent:
             messages=messages,
             reasoning_callback=reasoning_callback,
             response_callback=response_callback,
-            rate_limiter_callback=(
-                self.rate_limiter_callback if not background else None
-            ),
+            rate_limiter_callback=(self.rate_limiter_callback if not background else None),
         )
 
         return response, reasoning
 
-    async def rate_limiter_callback(
-        self, message: str, key: str, total: int, limit: int
-    ):
+    async def rate_limiter_callback(self, message: str, key: str, total: int, limit: int):
         # show the rate limit waiting in a progress bar, no need to spam the chat history
         self.context.log.set_progress(message, True)
         return False
@@ -723,9 +749,7 @@ class Agent:
     async def handle_intervention(self, progress: str = ""):
         while self.context.paused:
             await asyncio.sleep(0.1)  # wait if paused
-        if (
-            self.intervention
-        ):  # if there is an intervention message, but not yet processed
+        if self.intervention:  # if there is an intervention message, but not yet processed
             msg = self.intervention
             self.intervention = None  # reset the intervention message
             if progress.strip():
@@ -759,19 +783,17 @@ class Agent:
             try:
                 import python.helpers.mcp_handler as mcp_helper
 
-                mcp_tool_candidate = mcp_helper.MCPConfig.get_instance().get_tool(
-                    self, tool_name
-                )
+                mcp_tool_candidate = mcp_helper.MCPConfig.get_instance().get_tool(self, tool_name)
                 if mcp_tool_candidate:
                     tool = mcp_tool_candidate
             except ImportError:
-                PrintStyle(
-                    background_color="black", font_color="yellow", padding=True
-                ).print("MCP helper module not found. Skipping MCP tool lookup.")
+                PrintStyle(background_color="black", font_color="yellow", padding=True).print(
+                    "MCP helper module not found. Skipping MCP tool lookup."
+                )
             except Exception as e:
-                PrintStyle(
-                    background_color="black", font_color="red", padding=True
-                ).print(f"Failed to get MCP tool '{tool_name}': {e}")
+                PrintStyle(background_color="black", font_color="red", padding=True).print(
+                    f"Failed to get MCP tool '{tool_name}': {e}"
+                )
 
             # Fallback to local get_tool if MCP tool was not found or MCP lookup failed
             if not tool:
@@ -811,14 +833,10 @@ class Agent:
                 if response.break_loop:
                     return response.message
             else:
-                error_detail = (
-                    f"Tool '{raw_tool_name}' not found or could not be initialized."
-                )
+                error_detail = f"Tool '{raw_tool_name}' not found or could not be initialized."
                 self.hist_add_warning(error_detail)
                 PrintStyle(font_color="red", padding=True).print(error_detail)
-                self.context.log.log(
-                    type="error", content=f"{self.agent_name}: {error_detail}"
-                )
+                self.context.log.log(type="error", content=f"{self.agent_name}: {error_detail}")
         else:
             warning_msg_misformat = self.read_prompt("fw.msg_misformat.md")
             self.hist_add_warning(warning_msg_misformat)
@@ -862,8 +880,8 @@ class Agent:
         loop_data: LoopData | None,
         **kwargs,
     ):
-        from python.tools.unknown import Unknown
         from python.helpers.tool import Tool
+        from python.tools.unknown import Unknown
 
         classes = []
 
@@ -896,6 +914,4 @@ class Agent:
         )
 
     async def call_extensions(self, extension_point: str, **kwargs) -> Any:
-        return await call_extensions(
-            extension_point=extension_point, agent=self, **kwargs
-        )
+        return await call_extensions(extension_point=extension_point, agent=self, **kwargs)

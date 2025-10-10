@@ -1,7 +1,8 @@
-from typing import Any
-from python.helpers.extension import Extension
-from python.helpers import files, persist_chat
 import os
+from typing import Any
+
+from python.helpers import files, persist_chat
+from python.helpers.extension import Extension
 
 LEN_MIN = 500
 

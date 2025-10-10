@@ -19,9 +19,7 @@ class ResourceManager:
     """Tracks concurrent executions to avoid exhausting the host."""
 
     def __init__(self, max_concurrent: int | None = None) -> None:
-        self._limit = max_concurrent or int(
-            os.getenv("TOOL_EXECUTOR_MAX_CONCURRENT", "4")
-        )
+        self._limit = max_concurrent or int(os.getenv("TOOL_EXECUTOR_MAX_CONCURRENT", "4"))
         self._semaphore = asyncio.Semaphore(max(1, self._limit))
 
     async def initialize(self) -> None:

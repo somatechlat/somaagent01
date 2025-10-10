@@ -150,9 +150,7 @@ class SessionStore(ABC):
     async def append_event(self, session_id: str, event: dict[str, Any]) -> None: ...
 
     @abstractmethod
-    async def list_events(
-        self, session_id: str, limit: int = 100
-    ) -> list[dict[str, Any]]: ...
+    async def list_events(self, session_id: str, limit: int = 100) -> list[dict[str, Any]]: ...
 
     @abstractmethod
     async def get_envelope(self, session_id: str) -> Optional["SessionEnvelope"]: ...
@@ -215,9 +213,7 @@ class PostgresSessionStore(SessionStore):
             analysis_payload = {}
         return metadata, analysis_payload
 
-    def _compose_envelope_payload(
-        self, event: dict[str, Any]
-    ) -> Optional[dict[str, Any]]:
+    def _compose_envelope_payload(self, event: dict[str, Any]) -> Optional[dict[str, Any]]:
         session_id = event.get("session_id")
         if not session_id:
             SESSION_ENVELOPE_VALIDATION_FAILURES.labels("missing_session_id").inc()
@@ -263,9 +259,7 @@ class PostgresSessionStore(SessionStore):
                         operation="append",
                     )
 
-    async def list_events(
-        self, session_id: str, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    async def list_events(self, session_id: str, limit: int = 100) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
@@ -381,9 +375,7 @@ class PostgresSessionStore(SessionStore):
                 )
             except Exception:
                 SESSION_ENVELOPE_REFRESH_TOTAL.labels("error").inc()
-                SESSION_ENVELOPE_REFRESH_SECONDS.labels("error").observe(
-                    perf_counter() - start
-                )
+                SESSION_ENVELOPE_REFRESH_SECONDS.labels("error").observe(perf_counter() - start)
                 raise
             duration = perf_counter() - start
         if not row:

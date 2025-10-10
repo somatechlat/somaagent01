@@ -1,6 +1,7 @@
+from werkzeug.datastructures import FileStorage
+
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.backup import BackupService
-from werkzeug.datastructures import FileStorage
 
 
 class BackupInspect(ApiHandler):
@@ -31,15 +32,11 @@ class BackupInspect(ApiHandler):
                 "files": metadata.get("files", []),
                 "include_patterns": metadata.get("include_patterns", []),
                 "exclude_patterns": metadata.get("exclude_patterns", []),
-                "default_patterns": metadata.get("backup_config", {}).get(
-                    "default_patterns", ""
-                ),
+                "default_patterns": metadata.get("backup_config", {}).get("default_patterns", ""),
                 "agent_zero_version": metadata.get("agent_zero_version", "unknown"),
                 "timestamp": metadata.get("timestamp", ""),
                 "backup_name": metadata.get("backup_name", ""),
-                "total_files": metadata.get(
-                    "total_files", len(metadata.get("files", []))
-                ),
+                "total_files": metadata.get("total_files", len(metadata.get("files", []))),
                 "backup_size": metadata.get("backup_size", 0),
                 "include_hidden": metadata.get("include_hidden", False),
                 "files_in_archive": metadata.get("files_in_archive", []),

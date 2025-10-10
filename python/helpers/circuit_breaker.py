@@ -6,11 +6,11 @@ After ``reset_timeout`` seconds the circuit attempts a single trial call.
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import logging
 import os
 import time
-import asyncio
 from typing import Any, Callable, TypeVar
 
 from prometheus_client import Counter, start_http_server
@@ -18,9 +18,16 @@ from prometheus_client import Counter, start_http_server
 T = TypeVar("T")
 
 # Prometheus metrics for circuit‑breaker state changes
-CB_OPENED = Counter('circuit_breaker_opened_total', 'Total number of times the circuit breaker opened')
-CB_CLOSED = Counter('circuit_breaker_closed_total', 'Total number of times the circuit breaker closed after a successful trial')
-CB_TRIAL = Counter('circuit_breaker_trial_total', 'Total number of trial calls while the circuit is open')
+CB_OPENED = Counter(
+    "circuit_breaker_opened_total", "Total number of times the circuit breaker opened"
+)
+CB_CLOSED = Counter(
+    "circuit_breaker_closed_total",
+    "Total number of times the circuit breaker closed after a successful trial",
+)
+CB_TRIAL = Counter(
+    "circuit_breaker_trial_total", "Total number of trial calls while the circuit is open"
+)
 
 LOGGER = logging.getLogger(__name__)
 _EXPORTER_STARTED = False
@@ -76,6 +83,7 @@ def ensure_metrics_exporter() -> None:
         "Circuit breaker metrics exporter listening",
         extra={"host": host, "port": port},
     )
+
 
 class CircuitOpenError(RuntimeError):
     """Raised when the circuit is open and a call is blocked."""
@@ -164,6 +172,7 @@ def circuit_breaker(
         return wrapper
 
     return decorator
+
 
 # Example usage in a tool (pseudo‑code):
 # from python.helpers.circuit_breaker import circuit_breaker, CircuitOpenError

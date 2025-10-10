@@ -1,8 +1,8 @@
 import asyncio
-from python.helpers import runtime, whisper, settings
-from python.helpers.print_style import PrintStyle
-from python.helpers import kokoro_tts
+
 import models
+from python.helpers import kokoro_tts, runtime, settings, whisper
+from python.helpers.print_style import PrintStyle
 
 
 async def preload():
@@ -21,9 +21,7 @@ async def preload():
             if set["embed_model_provider"].lower() == "huggingface":
                 try:
                     # Use the new LiteLLM-based model system
-                    emb_mod = models.get_embedding_model(
-                        "huggingface", set["embed_model_name"]
-                    )
+                    emb_mod = models.get_embedding_model("huggingface", set["embed_model_name"])
                     emb_txt = await emb_mod.aembed_query("test")
                     return emb_txt
                 except Exception as e:

@@ -28,7 +28,7 @@ The compose file in `infra/docker-compose.somaagent01.yaml` boots the OSS baseli
 	curl -sf http://localhost:9696/healthz
 	```
 	A successful health check ensures the delegation services can reach the real memory provider.
-	> **Container note:** When those services run inside Docker they automatically remap the brain URL to `http://host.docker.internal:9696` so containers can reach the host network. Override the alias with `SOMA_CONTAINER_HOST_ALIAS`, disable the heuristic via `SOMA_DISABLE_CONTAINER_CHECK=1`, or force it on (useful for local tests) with `SOMA_FORCE_CONTAINER=1`.
+  	> **Container note:** When those services run inside Docker they automatically remap the brain URL to `http://host.docker.internal:9696` so containers can reach the host network. Override the alias with `SOMA_CONTAINER_HOST_ALIAS`, disable the heuristic via `SOMA_DISABLE_CONTAINER_CHECK=1`, or force it on (useful for local tests) with `SOMA_FORCE_CONTAINER=1`.
 2. **Free the Agent UI port** – port **7002** is reserved permanently for the local Agent UI. Stop any process bound to that port (`lsof -i :7002`).
 3. **Launch the stack** – the helper script preflights every dependency and enforces the static UI port:
 	```bash
@@ -103,6 +103,30 @@ Verify:
 - Conversation worker logs emit an assistant response.
 - Tool executor remains idle (no tool requests yet).
 - Inspect `logs/` or Postgres `session_events` to confirm persistence.
+
+### SomaClient Event‑Loop Compatibility
+
+The recent fix to `integrations/soma_client.py` makes the client **per‑event‑loop** – each `asyncio` loop gets its own HTTP client and lock stored in a `WeakKeyDictionary`. This prevents the classic `RuntimeError: Event loop is closed` / `Event bound to a different loop` errors when the same client instance is used across multiple loops (e.g., in tests, the gateway and workers, or when re‑using the client in a REPL).
+
+**Local validation**
+After rebuilding the Docker images (see the runbook entry) you can run a quick inline probe to ensure the patched client works:
+
+```bash
+source .venv/bin/activate && python - <<'PY'
+from integrations.soma_client import SomaClient
+from asyncio import new_event_loop
+
+client = SomaClient()
+for _ in range(2):
+    loop = new_event_loop()
+    # The client lazily creates a lock per‑loop; this call exercises that path.
+    loop.run_until_complete(client._get_lock())
+    loop.close()
+print('ok')
+PY
+```
+
+You should see `ok` printed with no traceback. If you still encounter loop‑binding errors, ensure you have rebuilt the shared image (`docker compose -f infra/docker-compose.somaagent01.yaml build delegation-gateway delegation-worker agent-ui`) and that the running containers are using the latest code.
 
 ## Stopping the Stack
 ```bash

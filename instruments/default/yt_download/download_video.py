@@ -1,4 +1,5 @@
 import sys
+
 import yt_dlp  # type: ignore
 
 if len(sys.argv) != 2:

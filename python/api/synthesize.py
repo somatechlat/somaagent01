@@ -1,8 +1,7 @@
 # api/synthesize.py
 
-from python.helpers.api import ApiHandler, Request, Response
-
 from python.helpers import kokoro_tts
+from python.helpers.api import ApiHandler, Request, Response
 
 
 class Synthesize(ApiHandler):

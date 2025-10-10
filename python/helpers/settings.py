@@ -1,116 +1,25 @@
+# Standard library imports (alphabetical)
 import base64
 import hashlib
 import json
 import os
 import subprocess
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, cast, Literal, TypedDict
 
+# Third‑party imports (alphabetical)
 import models
-from python.helpers import runtime, whisper, defer, git
-from . import files, dotenv
+from python.helpers import defer, git, runtime, whisper
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
 from python.helpers.secrets import SecretsManager
 
+# Local imports (alphabetical)
+from . import dotenv, files
+from .settings_model import SettingsModel as Settings
 
-class Settings(TypedDict):
-    version: str
-
-    chat_model_provider: str
-    chat_model_name: str
-    chat_model_api_base: str
-    chat_model_kwargs: dict[str, Any]
-    chat_model_ctx_length: int
-    chat_model_ctx_history: float
-    chat_model_vision: bool
-    chat_model_rl_requests: int
-    chat_model_rl_input: int
-    chat_model_rl_output: int
-
-    util_model_provider: str
-    util_model_name: str
-    util_model_api_base: str
-    util_model_kwargs: dict[str, Any]
-    util_model_ctx_length: int
-    util_model_ctx_input: float
-    util_model_rl_requests: int
-    util_model_rl_input: int
-    util_model_rl_output: int
-
-    embed_model_provider: str
-    embed_model_name: str
-    embed_model_api_base: str
-    embed_model_kwargs: dict[str, Any]
-    embed_model_rl_requests: int
-    embed_model_rl_input: int
-
-    browser_model_provider: str
-    browser_model_name: str
-    browser_model_api_base: str
-    browser_model_vision: bool
-    browser_model_rl_requests: int
-    browser_model_rl_input: int
-    browser_model_rl_output: int
-    browser_model_kwargs: dict[str, Any]
-    browser_http_headers: dict[str, Any]
-
-    agent_profile: str
-    agent_memory_subdir: str
-    agent_knowledge_subdir: str
-
-    memory_recall_enabled: bool
-    memory_recall_delayed: bool
-    memory_recall_interval: int
-    memory_recall_history_len: int
-    memory_recall_memories_max_search: int
-    memory_recall_solutions_max_search: int
-    memory_recall_memories_max_result: int
-    memory_recall_solutions_max_result: int
-    memory_recall_similarity_threshold: float
-    memory_recall_query_prep: bool
-    memory_recall_post_filter: bool
-    memory_memorize_enabled: bool
-    memory_memorize_consolidation: bool
-    memory_memorize_replace_threshold: float
-
-    api_keys: dict[str, str]
-
-    auth_login: str
-    auth_password: str
-    root_password: str
-
-    rfc_auto_docker: bool
-    rfc_url: str
-    rfc_password: str
-    rfc_port_http: int
-    rfc_port_ssh: int
-
-    shell_interface: Literal["local", "ssh"]
-
-    stt_model_size: str
-    stt_language: str
-    stt_silence_threshold: float
-    stt_silence_duration: int
-    stt_waiting_timeout: int
-
-    tts_kokoro: bool
-
-    mcp_servers: str
-    mcp_client_init_timeout: int
-    mcp_client_tool_timeout: int
-    mcp_server_enabled: bool
-    mcp_server_token: str
-
-    a2a_server_enabled: bool
-
-    variables: str
-    secrets: str
-
-    # LiteLLM global kwargs applied to all model calls
-    litellm_global_kwargs: dict[str, Any]
-
-
-class PartialSettings(Settings, total=False):
+# ``PartialSettings`` kept for compatibility – it behaves like ``Settings``
+# but allows any subset of fields to be provided when constructing the model.
+class PartialSettings(Settings):
     pass
 
 
@@ -548,9 +457,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Set user password for web UI",
             "type": "password",
             "value": (
-                PASSWORD_PLACEHOLDER
-                if dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD)
-                else ""
+                PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) else ""
             ),
         }
     )
@@ -585,9 +492,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             if pid_lower in providers_seen:
                 continue
             providers_seen.add(pid_lower)
-            api_keys_fields.append(
-                _get_api_key_field(settings, pid_lower, provider["label"])
-            )
+            api_keys_fields.append(_get_api_key_field(settings, pid_lower, provider["label"]))
 
     api_keys_section: SettingsSection = {
         "id": "api_keys",
@@ -886,9 +791,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Password for remote function calls. Passwords must match on both instances. RFCs can not be used with empty password.",
             "type": "password",
             "value": (
-                PASSWORD_PLACEHOLDER
-                if dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD)
-                else ""
+                PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD) else ""
             ),
         }
     )
@@ -962,7 +865,26 @@ def convert_out(settings: Settings) -> SettingsOutput:
     #     "tab": "developer",
     # }
 
-    # Speech to text section
+    # Speech to text + TTS section
+    speech_fields: list[SettingsField] = []
+
+    selected_speech_provider = settings.get("speech_provider", default_settings["speech_provider"])
+
+    speech_fields.append(
+        {
+            "id": "speech_provider",
+            "title": "Speech provider",
+            "description": "Select which speech stack Agent Zero should use for voice playback.",
+            "type": "select",
+            "value": selected_speech_provider,
+            "options": [
+                {"value": "browser", "label": "Browser (built-in)"},
+                {"value": "kokoro", "label": "Kokoro (server)"},
+                {"value": "openai_realtime", "label": "OpenAI Realtime"},
+            ],
+        }
+    )
+
     stt_fields: list[SettingsField] = []
 
     stt_fields.append(
@@ -1037,6 +959,41 @@ def convert_out(settings: Settings) -> SettingsOutput:
     )
 
     # TTS fields
+    realtime_fields: list[SettingsField] = []
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_model",
+            "title": "Realtime model",
+            "description": "OpenAI realtime model to request (for example gpt-4o-realtime-preview).",
+            "type": "text",
+            "value": settings["speech_realtime_model"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_voice",
+            "title": "Realtime voice",
+            "description": "Voice profile passed to OpenAI realtime sessions.",
+            "type": "text",
+            "value": settings["speech_realtime_voice"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_endpoint",
+            "title": "Realtime session endpoint",
+            "description": "Override the default OpenAI realtime session endpoint if required.",
+            "type": "text",
+            "value": settings["speech_realtime_endpoint"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
+
     tts_fields: list[SettingsField] = []
 
     tts_fields.append(
@@ -1046,6 +1003,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Enable higher quality server-side AI (Kokoro) instead of browser-based text-to-speech.",
             "type": "switch",
             "value": settings["tts_kokoro"],
+            "hidden": selected_speech_provider != "kokoro",
         }
     )
 
@@ -1053,7 +1011,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "id": "speech",
         "title": "Speech",
         "description": "Voice transcription and speech synthesis settings.",
-        "fields": stt_fields + tts_fields,
+        "fields": speech_fields + stt_fields + realtime_fields + tts_fields,
         "tab": "agent",
     }
 
@@ -1300,15 +1258,12 @@ def convert_in(settings: dict) -> Settings:
             for field in section["fields"]:
                 # Skip saving if value is a placeholder
                 should_skip = (
-                    field["value"] == PASSWORD_PLACEHOLDER
-                    or field["value"] == API_KEY_PLACEHOLDER
+                    field["value"] == PASSWORD_PLACEHOLDER or field["value"] == API_KEY_PLACEHOLDER
                 )
 
                 if not should_skip:
                     # Special handling for browser_http_headers
-                    if field["id"] == "browser_http_headers" or field["id"].endswith(
-                        "_kwargs"
-                    ):
+                    if field["id"] == "browser_http_headers" or field["id"].endswith("_kwargs"):
                         current[field["id"]] = _env_to_dict(field["value"])
                     elif field["id"].startswith("api_key_"):
                         current["api_keys"][field["id"]] = field["value"]
@@ -1500,6 +1455,10 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=0.3,
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
+        speech_provider="openai_realtime",
+        speech_realtime_model="gpt-4o-realtime-preview",
+        speech_realtime_voice="verse",
+        speech_realtime_endpoint="https://api.openai.com/v1/realtime/sessions",
         tts_kokoro=True,
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
@@ -1510,6 +1469,7 @@ def get_default_settings() -> Settings:
         variables="",
         secrets="",
         litellm_global_kwargs={},
+        USE_LLM=False,
     )
 
 
@@ -1530,7 +1490,7 @@ def _apply_settings(previous: Settings | None):
 
         # reload whisper model if necessary
         if not previous or _settings["stt_model_size"] != previous["stt_model_size"]:
-            task = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 whisper.preload, _settings["stt_model_size"]
             )  # TODO overkill, replace with background task
 
@@ -1549,12 +1509,10 @@ def _apply_settings(previous: Settings | None):
             from python.helpers.mcp_handler import MCPConfig
 
             async def update_mcp_settings(mcp_servers: str):
-                PrintStyle(
-                    background_color="black", font_color="white", padding=True
-                ).print("Updating MCP config...")
-                AgentContext.log_to_all(
-                    type="info", content="Updating MCP settings...", temp=True
+                PrintStyle(background_color="black", font_color="white", padding=True).print(
+                    "Updating MCP config..."
                 )
+                AgentContext.log_to_all(type="info", content="Updating MCP settings...", temp=True)
 
                 mcp_config = MCPConfig.get_instance()
                 try:
@@ -1566,29 +1524,29 @@ def _apply_settings(previous: Settings | None):
                         temp=False,
                     )
                     (
-                        PrintStyle(
-                            background_color="red", font_color="black", padding=True
-                        ).print("Failed to update MCP settings")
+                        PrintStyle(background_color="red", font_color="black", padding=True).print(
+                            "Failed to update MCP settings"
+                        )
                     )
                     (
-                        PrintStyle(
-                            background_color="black", font_color="red", padding=True
-                        ).print(f"{e}")
+                        PrintStyle(background_color="black", font_color="red", padding=True).print(
+                            f"{e}"
+                        )
                     )
 
-                PrintStyle(
-                    background_color="#6734C3", font_color="white", padding=True
-                ).print("Parsed MCP config:")
+                PrintStyle(background_color="#6734C3", font_color="white", padding=True).print(
+                    "Parsed MCP config:"
+                )
                 (
-                    PrintStyle(
-                        background_color="#334455", font_color="white", padding=False
-                    ).print(mcp_config.model_dump_json())
+                    PrintStyle(background_color="#334455", font_color="white", padding=False).print(
+                        mcp_config.model_dump_json()
+                    )
                 )
                 AgentContext.log_to_all(
                     type="info", content="Finished updating MCP settings.", temp=True
                 )
 
-            task2 = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 update_mcp_settings, config.mcp_servers
             )  # TODO overkill, replace with background task
 
@@ -1603,7 +1561,7 @@ def _apply_settings(previous: Settings | None):
 
                 DynamicMcpProxy.get_instance().reconfigure(token=token)
 
-            task3 = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 update_mcp_token, current_token
             )  # TODO overkill, replace with background task
 
@@ -1615,9 +1573,27 @@ def _apply_settings(previous: Settings | None):
 
                 DynamicA2AProxy.get_instance().reconfigure(token=token)
 
-            task4 = defer.DeferredTask().start_task(
+            defer.DeferredTask().start_task(
                 update_a2a_token, current_token
             )  # TODO overkill, replace with background task
+
+        # Notify admin/UI when LLM is not enabled or chat model provider is not configured.
+        try:
+            llm_enabled = bool(_settings.get("USE_LLM", False))
+            chat_provider = _settings.get("chat_model_provider", "").strip()
+            chat_model = _settings.get("chat_model_name", "").strip()
+            if not llm_enabled or not chat_provider or not chat_model:
+                # Use neutral wording and rely on the existing notification transport
+                AgentContext.log_to_all(
+                    type="warning",
+                    content=(
+                        "Model provider not configured. Open Admin → Settings → Model and set a provider and API key to enable chat functionality."
+                    ),
+                    temp=True,
+                )
+        except Exception:
+            # best-effort notification; do not raise during settings application
+            pass
 
 
 def _env_to_dict(data: str):

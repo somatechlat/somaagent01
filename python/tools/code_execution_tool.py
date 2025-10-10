@@ -1,15 +1,16 @@
 import asyncio
-from dataclasses import dataclass
+import re
 import shlex
 import time
-from python.helpers.tool import Tool, Response
+from dataclasses import dataclass
+
 from python.helpers import rfc_exchange
+from python.helpers.messages import truncate_text as truncate_text_agent
 from python.helpers.print_style import PrintStyle
 from python.helpers.shell_local import LocalInteractiveSession
 from python.helpers.shell_ssh import SSHInteractiveSession
 from python.helpers.strings import truncate_text as truncate_text_string
-from python.helpers.messages import truncate_text as truncate_text_agent
-import re
+from python.helpers.tool import Response, Tool
 
 
 @dataclass
@@ -28,13 +29,9 @@ class CodeExecution(Tool):
         session = int(self.args.get("session", 0))
 
         if runtime == "python":
-            response = await self.execute_python_code(
-                code=self.args["code"], session=session
-            )
+            response = await self.execute_python_code(code=self.args["code"], session=session)
         elif runtime == "nodejs":
-            response = await self.execute_nodejs_code(
-                code=self.args["code"], session=session
-            )
+            response = await self.execute_nodejs_code(code=self.args["code"], session=session)
         elif runtime == "terminal":
             response = await self.execute_terminal_command(
                 command=self.args["code"], session=session
@@ -46,9 +43,7 @@ class CodeExecution(Tool):
         elif runtime == "reset":
             response = await self.reset_terminal(session=session)
         else:
-            response = self.agent.read_prompt(
-                "fw.code.runtime_wrong.md", runtime=runtime
-            )
+            response = self.agent.read_prompt("fw.code.runtime_wrong.md", runtime=runtime)
 
         if not response:
             response = self.agent.read_prompt(
@@ -73,17 +68,12 @@ class CodeExecution(Tool):
         return f"icon://terminal {session_text}{text}"
 
     async def after_execution(self, response, **kwargs):
-        self.agent.hist_add_tool_result(
-            self.name, response.message, **(response.additional or {})
-        )
+        self.agent.hist_add_tool_result(self.name, response.message, **(response.additional or {}))
 
     async def prepare_state(self, reset=False, session: int | None = None):
         self.state: State | None = self.agent.get_data("_cet_state")
         # always reset state when ssh_enabled changes
-        if (
-            not self.state
-            or self.state.ssh_enabled != self.agent.config.code_exec_ssh_enabled
-        ):
+        if not self.state or self.state.ssh_enabled != self.agent.config.code_exec_ssh_enabled:
             # initialize shells dictionary if not exists
             shells: dict[int, LocalInteractiveSession | SSHInteractiveSession] = {}
         else:
@@ -120,9 +110,7 @@ class CodeExecution(Tool):
             shells[session] = shell
             await shell.connect()
 
-        self.state = State(
-            shells=shells, ssh_enabled=self.agent.config.code_exec_ssh_enabled
-        )
+        self.state = State(shells=shells, ssh_enabled=self.agent.config.code_exec_ssh_enabled)
         self.agent.set_data("_cet_state", self.state)
         return self.state
 
@@ -138,9 +126,7 @@ class CodeExecution(Tool):
         prefix = "node> " + self.format_command_for_output(code) + "\n\n"
         return await self.terminal_session(session, command, reset, prefix)
 
-    async def execute_terminal_command(
-        self, session: int, command: str, reset: bool = False
-    ):
+    async def execute_terminal_command(self, session: int, command: str, reset: bool = False):
         prefix = "bash> " + self.format_command_for_output(command) + "\n\n"
         return await self.terminal_session(session, command, reset, prefix)
 
@@ -167,9 +153,9 @@ class CodeExecution(Tool):
                     )
                 )
 
-                PrintStyle(
-                    background_color="white", font_color="#1B4F72", bold=True
-                ).print(f"{self.agent.agent_name} code execution output{locl}")
+                PrintStyle(background_color="white", font_color="#1B4F72", bold=True).print(
+                    f"{self.agent.agent_name} code execution output{locl}"
+                )
                 return await self.get_terminal_output(session=session, prefix=prefix)
 
             except Exception as e:
@@ -253,16 +239,12 @@ class CodeExecution(Tool):
                 got_output = True
 
                 # Check for shell prompt at the end of output
-                last_lines = (
-                    truncated_output.splitlines()[-3:] if truncated_output else []
-                )
+                last_lines = truncated_output.splitlines()[-3:] if truncated_output else []
                 last_lines.reverse()
                 for idx, line in enumerate(last_lines):
                     for pat in prompt_patterns:
                         if pat.search(line.strip()):
-                            PrintStyle.info(
-                                "Detected shell prompt, returning output early."
-                            )
+                            PrintStyle.info("Detected shell prompt, returning output early.")
                             last_lines.reverse()
                             heading = self.get_heading_from_output(
                                 "\n".join(last_lines), idx + 1, True
@@ -272,9 +254,7 @@ class CodeExecution(Tool):
 
             # Check for max execution time
             if now - start_time > max_exec_timeout:
-                sysinfo = self.agent.read_prompt(
-                    "fw.code.max_time.md", timeout=max_exec_timeout
-                )
+                sysinfo = self.agent.read_prompt("fw.code.max_time.md", timeout=max_exec_timeout)
                 response = self.agent.read_prompt("fw.code.info.md", info=sysinfo)
                 if truncated_output:
                     response = truncated_output + "\n\n" + response
@@ -310,31 +290,21 @@ class CodeExecution(Tool):
                 # potential dialog detection
                 if now - last_output_time > dialog_timeout:
                     # Check for dialog prompt at the end of output
-                    last_lines = (
-                        truncated_output.splitlines()[-2:] if truncated_output else []
-                    )
+                    last_lines = truncated_output.splitlines()[-2:] if truncated_output else []
                     for line in last_lines:
                         for pat in dialog_patterns:
                             if pat.search(line.strip()):
-                                PrintStyle.info(
-                                    "Detected dialog prompt, returning output early."
-                                )
+                                PrintStyle.info("Detected dialog prompt, returning output early.")
 
                                 sysinfo = self.agent.read_prompt(
                                     "fw.code.pause_dialog.md", timeout=dialog_timeout
                                 )
-                                response = self.agent.read_prompt(
-                                    "fw.code.info.md", info=sysinfo
-                                )
+                                response = self.agent.read_prompt("fw.code.info.md", info=sysinfo)
                                 if truncated_output:
                                     response = truncated_output + "\n\n" + response
                                 PrintStyle.warning(sysinfo)
-                                heading = self.get_heading_from_output(
-                                    truncated_output, 0
-                                )
-                                self.log.update(
-                                    content=prefix + response, heading=heading
-                                )
+                                heading = self.get_heading_from_output(truncated_output, 0)
+                                self.log.update(content=prefix + response, heading=heading)
                                 return response
 
     async def reset_terminal(self, session=0, reason: str | None = None):

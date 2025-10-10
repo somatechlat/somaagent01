@@ -1,0 +1,7 @@
+apiVersion: v2
+name: vault
+description: Lightweight Vault deployment for Soma shared infrastructure
+kubeVersion: ">=1.26.0"
+type: application
+version: 0.1.0
+appVersion: "1.17.0"

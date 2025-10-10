@@ -134,9 +134,7 @@ class KafkaEventBus:
                     break
         finally:
             await consumer.stop()
-            LOGGER.info(
-                "Stopped consumer", extra={"topic": topic, "group_id": group_id}
-            )
+            LOGGER.info("Stopped consumer", extra={"topic": topic, "group_id": group_id})
 
     async def close(self) -> None:
         if self._producer is not None:
@@ -157,9 +155,7 @@ async def iterate_topic(
     async def _handler(payload: dict[str, Any]) -> None:
         await queue.put(payload)
 
-    consumer_task = asyncio.create_task(
-        bus.consume(topic, group_id, _handler, stop_event)
-    )
+    consumer_task = asyncio.create_task(bus.consume(topic, group_id, _handler, stop_event))
     try:
         while True:
             payload = await queue.get()

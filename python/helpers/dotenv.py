@@ -2,8 +2,9 @@ import os
 import re
 from typing import Any
 
-from .files import get_abs_path
 from dotenv import load_dotenv as _load_dotenv
+
+from .files import get_abs_path
 
 KEY_AUTH_LOGIN = "AUTH_LOGIN"
 KEY_AUTH_PASSWORD = "AUTH_PASSWORD"

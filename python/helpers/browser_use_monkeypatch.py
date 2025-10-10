@@ -1,6 +1,6 @@
 from typing import Any
-from python.helpers import dirty_json
 
+from python.helpers import dirty_json
 
 # ------------------------------------------------------------------------------
 # Gemini Helper for Output Conformance
@@ -174,6 +174,7 @@ def apply():
 try:
     from browser_use.llm import ChatGoogle  # type: ignore
 except Exception:  # pragma: no cover
+
     class _ChatGoogleStub:
         def __init__(self, *_, **__):
             pass

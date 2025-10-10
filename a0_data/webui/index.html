@@ -663,7 +663,8 @@
                                                 <!-- Select field -->
                                                 <template x-if="field.type === 'select'">
                                                     <select :class="field.classes" x-model="field.value"
-                                                        :disabled="field.readonly === true">
+                                                        :disabled="field.readonly === true"
+                                                        @change="handleFieldChange(field, $event.target.value)">
                                                         <template x-for="option in field.options" :key="option.value">
                                                             <option :value="option.value" x-text="option.label"
                                                                 :selected="option.value === field.value"></option>
@@ -1762,6 +1763,8 @@
         ⚠️ SomaBrain offline – messages are being saved locally until connection restores.
     </div>
 
+    <script src="js/typo.js"></script>
+    <script src="js/spellcheck.js"></script>
 </body>
 
 </html>

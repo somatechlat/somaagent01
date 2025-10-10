@@ -1,74 +1,65 @@
 ![Agent Zero Logo](res/header.png)
-# Agent Zero Documentation
-To begin with Agent Zero, follow the links below for detailed guides on various topics:
 
-- **[Installation](installation.md):** Set up (or [update](installation.md#how-to-update-agent-zero)) Agent Zero on your system.
-- **[Usage Guide](usage.md):** Explore GUI features and usage scenarios.
-- **[Development](development.md):** Set up a development environment for Agent Zero.
-- **[Extensibility](extensibility.md):** Learn how to create custom extensions for Agent Zero.
-- **[Connectivity](connectivity.md):** Learn how to connect to Agent Zero from other applications.
-- **[Architecture Overview](architecture.md):** Understand the internal workings of the framework.
-- **[Engineering Handbook](project_handbook.md):** Project priorities, environment matrix, and developer runbooks in one place.
-- **[Feature Catalog](features_overview.md):** Detailed descriptions of every major capability in Agent Zero.
-- **[Soma Integration Manual](soma_integration_manual.md):** Current state of SomaBrain/SomaAgentHub integrations and migration guidance.
-- **[Contributing](contribution.md):** Learn how to contribute to the Agent Zero project.
-- **[Troubleshooting and FAQ](troubleshooting.md):** Find answers to common issues and questions.
-- **[Deployment Guide](deployment.md)**: Step‑by‑step instructions to reliably start the full Docker‑Compose cluster, configure health checks, and recover from failures.
+# Agent Zero Documentation Hub
 
-### Your experience with Agent Zero starts now!
+Welcome! This page curates the actively maintained documentation set. Everything listed here is backed by real services, real data, and production-ready procedures.
 
-- **Runbook**: See [operations runbook](SomaAgent01_Runbook.md) for incident handling and day-2 procedures.
+## Quick Start
 
-- **Download Agent Zero:** Follow the [installation guide](installation.md) to download and run Agent Zero.
-- **Join the Community:** Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community to discuss ideas, ask questions, and collaborate with other contributors.
-- **Share your Work:** Share your Agent Zero creations, workflows and discoverings on our [Show and Tell](https://github.com/agent0ai/agent-zero/discussions/categories/show-and-tell) area on GitHub.
-- **Report Issues:** Use the [GitHub issue tracker](https://github.com/agent0ai/agent-zero/issues) to report framework-relative bugs or suggest new features.
+- **[Installation](installation.md):** Fresh installs, upgrades, and platform-specific tips.
+- **[Quickstart](quickstart.md):** Launch Agent Zero in minutes.
+- **[Usage Guide](usage.md):** Day-to-day workflows in the Web UI.
+- **[Troubleshooting](troubleshooting.md):** FAQ and incident triage.
 
-## Table of Contents
+## Architecture & Design
 
-- [Welcome to the Agent Zero Documentation](#agent-zero-documentation)
-  - [Your Experience with Agent Zero](#your-experience-with-agent-zero-starts-now)
-  - [Table of Contents](#table-of-contents)
-- [Installation Guide](installation.md)
-  - [Windows, macOS and Linux Setup](installation.md#windows-macos-and-linux-setup-guide)
-  - [Settings Configuration](installation.md#settings-configuration)
-  - [Choosing Your LLMs](installation.md#choosing-your-llms)
-  - [Installing and Using Ollama](installation.md#installing-and-using-ollama-local-models)
-  - [Using Agent Zero on Mobile](installation.md#using-agent-zero-on-your-mobile-device)
-  - [How to Update Agent Zero](installation.md#how-to-update-agent-zero)
-  - [Full Binaries Installation](installation.md#in-depth-guide-for-full-binaries-installation)
-- [Usage Guide](usage.md)
-  - [Basic Operations](usage.md#basic-operations)
-    - [Restart Framework](usage.md#restart-framework)
-    - [Action Buttons](usage.md#action-buttons)
-    - [File Attachments](usage.md#file-attachments)
-  - [Tool Usage](usage.md#tool-usage)
-  - [Example of Tools Usage](usage.md#example-of-tools-usage-web-search-and-code-execution)
-  - [Multi-Agent Cooperation](usage.md#multi-agent-cooperation)
-  - [Prompt Engineering](usage.md#prompt-engineering)
-  - [Voice Interface](usage.md#voice-interface)
-  - [Mathematical Expressions](usage.md#mathematical-expressions)
-  - [File Browser](usage.md#file-browser)
-  - [Backup & Restore](usage.md#backup--restore)
-- [Architecture Overview](architecture.md)
-  - [System Architecture](architecture.md#system-architecture)
-  - [Runtime Architecture](architecture.md#runtime-architecture)
-  - [Implementation Details](architecture.md#implementation-details)
-  - [Core Components](architecture.md#core-components)
-    - [Agents](architecture.md#1-agents)
-    - [Tools](architecture.md#2-tools)
-    - [SearXNG Integration](architecture.md#searxng-integration)
-    - [Memory System](architecture.md#3-memory-system)
-    - [Messages History and Summarization](archicture.md#messages-history-and-summarization)
-    - [Prompts](architecture.md#4-prompts)
-    - [Knowledge](architecture.md#5-knowledge)
-    - [Instruments](architecture.md#6-instruments)
-    - [Extensions](architecture.md#7-extensions)
-  - [Contributing](contribution.md)
-  - [Getting Started](contribution.md#getting-started)
-  - [Making Changes](contribution.md#making-changes)
-  - [Submitting a Pull Request](contribution.md#submitting-a-pull-request)
-  - [Documentation Stack](contribution.md#documentation-stack)
-- [Troubleshooting and FAQ](troubleshooting.md)
-  - [Frequently Asked Questions](troubleshooting.md#frequently-asked-questions)
-  - [Troubleshooting](troubleshooting.md#troubleshooting)
+- **[System Overview](architecture/overview.md):** Context diagrams, component map, request flow.
+- **[Runtime Lifecycle](architecture/runtime.md):** Startup sequencing, deployment profiles.
+- **Component Deep Dives:**
+  - [Gateway](architecture/components/gateway.md)
+  - [Tool Executor](architecture/components/tool_executor.md)
+  - [Memory (SomaBrain)](architecture/components/memory.md)
+  - [Agent UI](architecture/components/ui.md)
+  - [Realtime Speech](architecture/components/realtime_speech.md)
+
+## APIs & Data Contracts
+
+- **[Gateway API](apis/gateway.md)**
+- **[Realtime Session API](apis/realtime_session.md)**
+- **[Settings API](apis/settings.md)**
+- **[Tool Executor Callbacks](apis/tool_executor_callbacks.md)**
+- **[Kafka Topics & Schemas](data/streams.md)**
+
+## Operations
+
+- **[Runbooks](operations/runbooks.md):** Start/stop, smoke tests, recovery drills.
+- **[Deployments](operations/deployments.md):** Environment matrix, rollout/rollback.
+- **[Observability](operations/observability.md):** Metrics, logs, alerts.
+
+## Development
+
+- **[Environment Setup](development/setup.md)**
+- **[Coding Standards](development/coding-standards.md)**
+- **[Testing Strategy](development/testing.md)**
+- **[Debugging Guide](development/debugging.md)**
+- Legacy deep-dive: [Development manual](development.md)
+
+## Features
+
+- **[Realtime Speech](features/realtime_speech.md)**
+- **[Memory Management](features/memory_management.md)**
+- **[Tooling Integration](features/tooling.md)**
+
+## Extensibility & Connectivity
+
+- **[Extensibility](extensibility.md)**
+- **[Connectivity](connectivity.md)**
+- **[MCP Setup](mcp_setup.md)**
+
+## Contributing
+
+- **[Contribution Guide](contribution.md)**
+
+---
+
+Need something else? Check the [Reference Index](reference/index.md) or open an issue if a guide is missing.

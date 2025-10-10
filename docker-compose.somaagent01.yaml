@@ -14,6 +14,7 @@ x-agent-env: &agent-env
   TOOL_REQUESTS_TOPIC: tool.requests
   TOOL_RESULTS_TOPIC: tool.results
   TOOL_EXECUTOR_GROUP: tool-executor
+  MEMORY_SERVICE_TARGET: memory-service:50052
   DELEGATION_TOPIC: somastack.delegation
   DELEGATION_GROUP: delegation-worker
   OPA_URL: http://opa:8181
@@ -254,6 +255,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      memory-service:
+        condition: service_started
       openfga:
         condition: service_started
       opa:
@@ -317,10 +320,41 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      memory-service:
+        condition: service_started
       openfga:
         condition: service_started
     ports:
       - "7002:80"
+    volumes:
+      - ./a0_data:/a0
+
+  # Duplicate UI service exposing on port 7003 without affecting the existing 7002 mapping.
+  agent-ui-7003:
+    <<: *agent-service
+    container_name: somaAgent01_agent-ui-7003
+    command: ["/exe/initialize.sh", "development"]
+    working_dir: /a0
+    profiles: ["dev"]
+    env_file:
+      - ./conf/env/testing-prod.env
+    environment:
+      SOMA_BASE_URL: http://host.docker.internal:9696
+      SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
+      PYTHONPATH: /a0
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      memory-service:
+        condition: service_started
+      openfga:
+        condition: service_started
+    ports:
+      - "7003:80"
     volumes:
       - ./a0_data:/a0
 
@@ -382,6 +416,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  memory-service:
+    <<: *agent-service
+    container_name: somaAgent01_memory-service
+    profiles: ["core"]
+    command: ["python3", "-m", "services.memory_service.main"]
+    environment:
+      <<: *agent-env
+      MEMORY_SERVICE_PORT: "50052"
+    ports:
+      - "${MEMORY_SERVICE_PORT:-50052}:50052"
 
   settings-service:
     <<: *agent-service
@@ -535,6 +580,15 @@ services:
       PORT: "8012"
     ports:
       - "${REQUEUE_PORT:-8012}:8012"
+
+  # UI service exposing the Flask UI on host port 7003 (container runs on 5000).
+  ui_7003:
+    <<: *agent-service
+    container_name: somaAgent01_ui_7003
+    profiles: ["ui"]
+    # Map host port 7003 to the Flask default port 5000 inside the container.
+    ports:
+      - "7003:5000"
 
 networks:
   default:

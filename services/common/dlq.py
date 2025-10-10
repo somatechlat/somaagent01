@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from services.common.event_bus import KafkaEventBus
 
@@ -14,10 +14,10 @@ LOGGER = logging.getLogger(__name__)
 class DeadLetterQueue:
     """Publish failed events to a ``*.dlq`` Kafka topic."""
 
-    def __init__(self, source_topic: str) -> None:
+    def __init__(self, source_topic: str, bus: Optional[KafkaEventBus] = None) -> None:
         self.source_topic = source_topic
         self.dlq_topic = f"{source_topic}.dlq"
-        self.bus = KafkaEventBus()
+        self.bus = bus or KafkaEventBus()
 
     async def send_to_dlq(
         self,

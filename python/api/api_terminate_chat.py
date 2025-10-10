@@ -1,8 +1,9 @@
+import json
+
 from agent import AgentContext
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.persist_chat import remove_chat
 from python.helpers.print_style import PrintStyle
-import json
 
 
 class ApiTerminateChat(ApiHandler):

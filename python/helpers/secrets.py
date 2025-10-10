@@ -1,12 +1,13 @@
 import re
 import threading
-from io import StringIO
 from dataclasses import dataclass
-from typing import Dict, Optional, List, Literal, Set, Callable
-from dotenv.parser import parse_stream
-from python.helpers.errors import RepairableException
-from python.helpers import files
+from io import StringIO
+from typing import Callable, Dict, List, Literal, Optional, Set
 
+from dotenv.parser import parse_stream
+
+from python.helpers import files
+from python.helpers.errors import RepairableException
 
 # New alias-based placeholder format §§secret(KEY)
 ALIAS_PATTERN = r"§§secret\(([A-Za-z_][A-Za-z0-9_]*)\)"
@@ -251,7 +252,9 @@ class SecretsManager:
                 return secrets[key]
             else:
                 available_keys = ", ".join(secrets.keys())
-                error_msg = f"Secret placeholder '{alias_for_key(key)}' not found in secrets store.\n"
+                error_msg = (
+                    f"Secret placeholder '{alias_for_key(key)}' not found in secrets store.\n"
+                )
                 error_msg += f"Available secrets: {available_keys}"
 
                 raise RepairableException(error_msg)
@@ -267,9 +270,7 @@ class SecretsManager:
         result = text
 
         # Sort by length (longest first) to avoid partial replacements
-        for key, _value in sorted(
-            secrets.items(), key=lambda x: len(x[1]), reverse=True
-        ):
+        for key, _value in sorted(secrets.items(), key=lambda x: len(x[1]), reverse=True):
             result = result.replace(alias_for_key(key), new_format.format(key=key))
 
         return result
@@ -285,9 +286,7 @@ class SecretsManager:
         result = text
 
         # Sort by length (longest first) to avoid partial replacements
-        for key, value in sorted(
-            secrets.items(), key=lambda x: len(x[1]), reverse=True
-        ):
+        for key, value in sorted(secrets.items(), key=lambda x: len(x[1]), reverse=True):
             if value and len(value.strip()) >= min_length:
                 result = result.replace(value, alias_for_key(key, placeholder))
 
@@ -439,9 +438,7 @@ class SecretsManager:
         submitted_lines = self.parse_env_lines(submitted_text)
 
         existing_pairs: Dict[str, EnvLine] = {
-            ln.key: ln
-            for ln in existing_lines
-            if ln.type == "pair" and ln.key is not None
+            ln.key: ln for ln in existing_lines if ln.type == "pair" and ln.key is not None
         }
 
         merged: List[EnvLine] = []

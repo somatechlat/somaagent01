@@ -1,4 +1,5 @@
 import sys
+
 from inputimeout import inputimeout, TimeoutOccurred
 
 

@@ -3,13 +3,14 @@
 Test script to verify FastA2A agent card routing and authentication.
 """
 
-import sys
 import os
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 import asyncio
+
 from python.helpers import settings
 
 

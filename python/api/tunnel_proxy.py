@@ -1,6 +1,7 @@
-from python.helpers.api import ApiHandler, Request, Response
-from python.helpers import dotenv, runtime
 import requests
+
+from python.helpers import dotenv, runtime
+from python.helpers.api import ApiHandler, Request, Response
 
 
 class TunnelProxy(ApiHandler):
@@ -26,9 +27,7 @@ class TunnelProxy(ApiHandler):
         # forward this request to the tunnel service if OK
         if service_ok:
             try:
-                response = requests.post(
-                    f"http://localhost:{tunnel_api_port}/", json=input
-                )
+                response = requests.post(f"http://localhost:{tunnel_api_port}/", json=input)
                 return response.json()
             except Exception as e:
                 return {"error": str(e)}

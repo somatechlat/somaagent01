@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from python.helpers.tool import Tool, Response
+from python.helpers.tool import Response, Tool
 from python.integrations.soma_client import SomaClient, SomaClientError
 
 DEFAULT_THRESHOLD = 0.7
@@ -9,12 +9,7 @@ DEFAULT_LIMIT = 10
 
 class MemoryLoad(Tool):
     async def execute(
-        self,
-        query="",
-        threshold=DEFAULT_THRESHOLD,
-        limit=DEFAULT_LIMIT,
-        filter="",
-        **kwargs
+        self, query="", threshold=DEFAULT_THRESHOLD, limit=DEFAULT_LIMIT, filter="", **kwargs
     ):
         client = SomaClient.get()
         universe = None
@@ -59,11 +54,7 @@ class MemoryLoad(Tool):
         for entry in entries:
             if not isinstance(entry, Mapping):
                 continue
-            payload = (
-                entry.get("payload")
-                if isinstance(entry.get("payload"), Mapping)
-                else None
-            )
+            payload = entry.get("payload") if isinstance(entry.get("payload"), Mapping) else None
 
             score_value: float | None = None
             raw_score = entry.get("score")
