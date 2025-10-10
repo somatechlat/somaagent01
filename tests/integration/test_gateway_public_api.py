@@ -1,13 +1,3 @@
-import jwt
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def read_root()->dict:
-    return {"msg": "Hello World"}
-
-
 import uuid
 
 import pytest

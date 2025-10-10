@@ -14,17 +14,48 @@ import numpy as np
 import soundfile as sf
 from fastapi import Depends, FastAPI, HTTPException
 from faster_whisper import WhisperModel
+from jsonschema import ValidationError
 from pydantic import BaseModel, Field
 
-from jsonschema import ValidationError
-
-from services.common.event_bus import KafkaEventBus
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
+from services.common.settings_sa01 import SA01Settings
+from services.common.tracing import setup_tracing
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+APP_SETTINGS = SA01Settings.from_env()
+setup_tracing("audio-service", endpoint=APP_SETTINGS.otlp_endpoint)
 
 app = FastAPI(title="SomaAgent 01 Audio Service")
+
+
+def _kafka_settings() -> KafkaSettings:
+    return KafkaSettings(
+        bootstrap_servers=os.getenv(
+            "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
+        ),
+        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
+        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
+        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+    )
+
+
+def _topics() -> dict[str, str]:
+    defaults = APP_SETTINGS.extra.get(
+        "audio_topics",
+        {
+            "conversation": "conversation.inbound",
+            "metrics": "audio.metrics",
+        },
+    )
+    return {
+        "conversation": os.getenv("AUDIO_CONVERSATION_TOPIC", defaults.get("conversation", "conversation.inbound")),
+        "metrics": os.getenv("AUDIO_METRICS_TOPIC", defaults.get("metrics", "audio.metrics")),
+    }
 
 
 def get_whisper_model() -> WhisperModel:
@@ -36,7 +67,7 @@ def get_whisper_model() -> WhisperModel:
 
 
 def get_event_bus() -> KafkaEventBus:
-    return KafkaEventBus()
+    return KafkaEventBus(_kafka_settings())
 
 
 class AudioPayload(BaseModel):
@@ -89,12 +120,11 @@ async def transcribe_audio(
         validate_event(conversation_event, "conversation_event")
     except ValidationError as exc:  # pragma: no cover - validation failure unlikely
         LOGGER.error("Invalid conversation event", extra={"error": exc.message})
-        raise HTTPException(
-            status_code=500, detail="Conversation event validation failed"
-        ) from exc
+        raise HTTPException(status_code=500, detail="Conversation event validation failed") from exc
 
-    await bus.publish("conversation.inbound", conversation_event)
-    await bus.publish("audio.metrics", audio_metrics)
+    topics = _topics()
+    await bus.publish(topics["conversation"], conversation_event)
+    await bus.publish(topics["metrics"], audio_metrics)
 
     return {"transcript": transcript, "language": info.language}
 

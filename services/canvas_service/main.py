@@ -9,16 +9,22 @@ from typing import Annotated
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
+from services.common.logging_config import setup_logging
 from services.common.session_repository import PostgresSessionStore
+from services.common.settings_sa01 import SA01Settings
+from services.common.tracing import setup_tracing
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+APP_SETTINGS = SA01Settings.from_env()
+setup_tracing("canvas-service", endpoint=APP_SETTINGS.otlp_endpoint)
 
 app = FastAPI(title="SomaAgent 01 Canvas Service")
 
 
 def get_store() -> PostgresSessionStore:
-    return PostgresSessionStore()
+    return PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
 
 
 class CanvasEvent(BaseModel):
@@ -34,6 +40,10 @@ async def append_canvas_event(
     payload: CanvasEvent,
     store: Annotated[PostgresSessionStore, Depends(get_store)],
 ) -> dict[str, str]:
+    LOGGER.debug(
+        "Persisting canvas event",
+        extra={"session_id": payload.session_id, "pane": payload.pane},
+    )
     await store.append_event(
         payload.session_id,
         {

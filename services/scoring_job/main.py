@@ -7,18 +7,25 @@ import logging
 import os
 from datetime import datetime, timedelta
 
+from services.common.logging_config import setup_logging
 from services.common.model_profiles import ModelProfileStore
+from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry_store import TelemetryStore
+from services.common.tracing import setup_tracing
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+JOB_SETTINGS = SA01Settings.from_env()
+setup_tracing("scoring-job", endpoint=JOB_SETTINGS.otlp_endpoint)
 
 
 class ScoringJob:
     def __init__(self) -> None:
-        self.telemetry = TelemetryStore()
-        self.profiles = ModelProfileStore()
-        self.window_hours = int(os.getenv("SCORING_WINDOW_HOURS", "6"))
+        self.telemetry = TelemetryStore.from_settings(JOB_SETTINGS)
+        self.profiles = ModelProfileStore.from_settings(JOB_SETTINGS)
+        default_window = JOB_SETTINGS.extra.get("scoring_window_hours", 6)
+        self.window_hours = int(os.getenv("SCORING_WINDOW_HOURS", str(default_window)))
 
     async def run_once(self) -> None:
         pool = await self.telemetry._ensure_pool()
@@ -43,7 +50,9 @@ class ScoringJob:
             score = self._score_model(avg_latency, avg_tokens)
             await self.telemetry.save_model_score(
                 model=model,
-                deployment_mode=os.getenv("SOMA_AGENT_MODE", "LOCAL"),
+                deployment_mode=os.getenv(
+                    "SOMA_AGENT_MODE", JOB_SETTINGS.deployment_mode
+                ).upper(),
                 window_start=window_start,
                 window_end=window_end,
                 avg_latency=avg_latency,
@@ -67,7 +76,10 @@ async def main() -> None:
             await job.run_once()
         except Exception as exc:  # pragma: no cover - background job
             LOGGER.exception("Scoring job failed", extra={"error": str(exc)})
-        await asyncio.sleep(int(os.getenv("SCORING_INTERVAL_SECONDS", "3600")))
+        default_interval = JOB_SETTINGS.extra.get("scoring_interval_seconds", 3600)
+        await asyncio.sleep(
+            int(os.getenv("SCORING_INTERVAL_SECONDS", str(default_interval)))
+        )
 
 
 if __name__ == "__main__":

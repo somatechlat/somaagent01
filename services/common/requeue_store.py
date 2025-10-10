@@ -10,9 +10,14 @@ import redis.asyncio as redis
 
 
 class RequeueStore:
-    def __init__(self, url: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        url: Optional[str] = None,
+        *,
+        prefix: Optional[str] = None,
+    ) -> None:
         self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self.prefix = os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
+        self.prefix = prefix or os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
 
@@ -46,6 +51,4 @@ class RequeueStore:
                 results.append(data)
             else:
                 await self.client.srem(self.keyset, identifier)
-        return sorted(
-            results, key=lambda item: item.get("timestamp", 0.0), reverse=True
-        )
+        return sorted(results, key=lambda item: item.get("timestamp", 0.0), reverse=True)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import time
@@ -10,23 +11,31 @@ import uuid
 from typing import Any
 
 from jsonschema import ValidationError
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from services.common.event_bus import KafkaEventBus
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.logging_config import setup_logging
+from services.common.memory_client import MemoryClient
 from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.session_repository import PostgresSessionStore
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
+from services.common.session_repository import PostgresSessionStore
+from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry import TelemetryPublisher
+from services.common.telemetry_store import TelemetryStore
+from services.common.tenant_config import TenantConfig
+from services.common.tracing import setup_tracing
 from services.tool_executor.execution_engine import ExecutionEngine
-from services.tool_executor.resource_manager import ResourceManager, default_limits
+from services.tool_executor.resource_manager import default_limits, ResourceManager
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
-from services.common.tenant_config import TenantConfig
-from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
+setup_logging()
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+SERVICE_SETTINGS = SA01Settings.from_env()
+setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.otlp_endpoint)
 
 
 TOOL_REQUEST_COUNTER = Counter(
@@ -58,43 +67,88 @@ REQUEUE_EVENTS = Counter(
 _METRICS_SERVER_STARTED = False
 
 
-def ensure_metrics_server() -> None:
+def ensure_metrics_server(settings: SA01Settings) -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
 
-    port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", "9401"))
+    default_port = int(getattr(settings, "metrics_port", 9401))
+    default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
+
+    port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
     if port <= 0:
         LOGGER.warning("Tool executor metrics disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
 
-    host = os.getenv("TOOL_EXECUTOR_METRICS_HOST", "0.0.0.0")
+    host = os.getenv("TOOL_EXECUTOR_METRICS_HOST", default_host)
     start_http_server(port, addr=host)
-    LOGGER.info(
-        "Tool executor metrics server started", extra={"host": host, "port": port}
-    )
+    LOGGER.info("Tool executor metrics server started", extra={"host": host, "port": port})
     _METRICS_SERVER_STARTED = True
+
+
+def _kafka_settings() -> KafkaSettings:
+    return KafkaSettings(
+        bootstrap_servers=os.getenv(
+            "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
+        ),
+        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
+        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
+        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+    )
+
+
+def _redis_url() -> str:
+    return os.getenv("REDIS_URL", SERVICE_SETTINGS.redis_url)
+
+
+def _tenant_config_path() -> str:
+    return os.getenv(
+        "TENANT_CONFIG_PATH",
+        SERVICE_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
+    )
+
+
+def _policy_requeue_prefix() -> str:
+    return os.getenv(
+        "POLICY_REQUEUE_PREFIX",
+        SERVICE_SETTINGS.extra.get("policy_requeue_prefix", "policy:requeue"),
+    )
 
 
 class ToolExecutor:
     def __init__(self) -> None:
-        ensure_metrics_server()
-        self.bus = KafkaEventBus()
-        self.tenant_config = TenantConfig()
-        self.policy = PolicyClient(tenant_config=self.tenant_config)
-        self.store = PostgresSessionStore()
-        self.requeue = RequeueStore()
+        ensure_metrics_server(SERVICE_SETTINGS)
+        self.kafka_settings = _kafka_settings()
+        self.bus = KafkaEventBus(self.kafka_settings)
+        self.tenant_config = TenantConfig(path=_tenant_config_path())
+        self.policy = PolicyClient(
+            base_url=os.getenv("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
+            tenant_config=self.tenant_config,
+        )
+        self.store = PostgresSessionStore(dsn=SERVICE_SETTINGS.postgres_dsn)
+        self.requeue = RequeueStore(url=_redis_url(), prefix=_policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
         self.tool_registry = ToolRegistry()
         self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
-        self.telemetry = TelemetryPublisher(self.bus)
-        self.requeue_prefix = os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
-        self.settings = {
-            "requests": os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
-            "results": os.getenv("TOOL_RESULTS_TOPIC", "tool.results"),
-            "group": os.getenv("TOOL_EXECUTOR_GROUP", "tool-executor"),
+        telemetry_store = TelemetryStore.from_settings(SERVICE_SETTINGS)
+        self.telemetry = TelemetryPublisher(self.bus, telemetry_store)
+        self.requeue_prefix = _policy_requeue_prefix()
+        self.memory_client = MemoryClient(settings=SERVICE_SETTINGS)
+        stream_defaults = SERVICE_SETTINGS.extra.get(
+            "tool_executor_topics",
+            {
+                "requests": "tool.requests",
+                "results": "tool.results",
+                "group": "tool-executor",
+            },
+        )
+        self.streams = {
+            "requests": os.getenv("TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")),
+            "results": os.getenv("TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")),
+            "group": os.getenv("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
         }
 
     async def start(self) -> None:
@@ -102,8 +156,8 @@ class ToolExecutor:
         await self.sandbox.initialize()
         await self.tool_registry.load_all_tools()
         await self.bus.consume(
-            self.settings["requests"],
-            self.settings["group"],
+            self.streams["requests"],
+            self.streams["group"],
             self._handle_request,
         )
 
@@ -172,9 +226,7 @@ class ToolExecutor:
             TOOL_INFLIGHT.labels(tool_label).inc()
             result = await self.execution_engine.execute(tool, args, default_limits())
         except ToolExecutionError as exc:
-            LOGGER.error(
-                "Tool execution failed", extra={"tool": tool_name, "error": str(exc)}
-            )
+            LOGGER.error("Tool execution failed", extra={"tool": tool_name, "error": str(exc)})
             await self._publish_result(
                 event,
                 status="error",
@@ -246,7 +298,7 @@ class ToolExecutor:
         await self.store.append_event(
             event.get("session_id", "unknown"), {"type": "tool", **result_event}
         )
-        await self.bus.publish(self.settings["results"], result_event)
+        await self.bus.publish(self.streams["results"], result_event)
 
         tenant_meta = result_event.get("metadata", {})
         tenant = tenant_meta.get("tenant", "default")
@@ -259,6 +311,9 @@ class ToolExecutor:
             latency_seconds=execution_time,
             metadata=tenant_meta,
         )
+
+        if status == "success":
+            await self._capture_memory(result_event, payload, tenant)
 
     async def _check_policy(
         self,
@@ -289,6 +344,41 @@ class ToolExecutor:
         payload["timestamp"] = time.time()
         await self.requeue.add(identifier, payload)
 
+    async def _capture_memory(
+        self,
+        result_event: dict[str, Any],
+        payload: dict[str, Any],
+        tenant: str,
+    ) -> None:
+        persona_id = result_event.get("persona_id")
+        content: str
+        if isinstance(payload, str):
+            content = payload
+        else:
+            try:
+                content = json.dumps(payload, ensure_ascii=False)
+            except Exception:
+                content = str(payload)
+
+        metadata = result_event.get("metadata") or {}
+        str_metadata = {str(key): str(value) for key, value in metadata.items()}
+        if result_event.get("tool_name"):
+            str_metadata.setdefault("tool_name", str(result_event.get("tool_name")))
+        if result_event.get("session_id"):
+            str_metadata.setdefault("session_id", str(result_event.get("session_id")))
+        if isinstance(payload, dict) and payload.get("model"):
+            str_metadata.setdefault("tool_model", str(payload.get("model")))
+
+        try:
+            await self.memory_client.create_memory(
+                tenant=tenant,
+                persona_id=persona_id,
+                content=content,
+                metadata=str_metadata,
+            )
+        except Exception:  # pragma: no cover - defensive logging
+            LOGGER.exception("Failed to persist tool execution memory")
+
 
 async def main() -> None:
     executor = ToolExecutor()
@@ -296,6 +386,7 @@ async def main() -> None:
         await executor.start()
     finally:
         await executor.policy.close()
+        await executor.memory_client.close()
 
 
 if __name__ == "__main__":
