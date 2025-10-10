@@ -20,7 +20,8 @@ resources:
     memory: 256Mi
 
 persistence:
-  enabled: true
+  # Persistence disabled for local Kind testing (no default storage class)
+  enabled: false
   size: 1Gi
   storageClass: ""
 
