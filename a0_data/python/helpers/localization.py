@@ -5,6 +5,7 @@ from python.helpers.print_style import PrintStyle
 from python.helpers.dotenv import get_dotenv_value, save_dotenv_value
 
 
+
 class Localization:
     """
     Localization class for handling timezone conversions between UTC and local time.
@@ -39,15 +40,11 @@ class Localization:
                     self._offset_minutes = int(str(persisted_offset))
                 except Exception:
                     self._offset_minutes = self._compute_offset_minutes(self.timezone)
-                    save_dotenv_value(
-                        "DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes)
-                    )
+                    save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
             else:
                 # Compute from timezone and persist
                 self._offset_minutes = self._compute_offset_minutes(self.timezone)
-                save_dotenv_value(
-                    "DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes)
-                )
+                save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
 
     def get_timezone(self) -> str:
         return self.timezone
@@ -90,9 +87,7 @@ class Localization:
                 self.timezone = timezone
                 # Persist both the human-readable tz and the numeric offset
                 save_dotenv_value("DEFAULT_USER_TIMEZONE", timezone)
-                save_dotenv_value(
-                    "DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes)
-                )
+                save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
 
                 # Update rate limit timestamp only when actual change occurs
                 self._last_timezone_change = datetime.now()
@@ -128,7 +123,7 @@ class Localization:
                     )
             except ValueError:
                 # If timezone parsing fails, try without timezone
-                base = localtime_str.split("Z")[0].split("+")[0]
+                base = localtime_str.split('Z')[0].split('+')[0]
                 local_datetime_obj = datetime.fromisoformat(base)
                 local_datetime_obj = local_datetime_obj.replace(
                     tzinfo=dt_timezone(timedelta(minutes=self._offset_minutes))
@@ -140,9 +135,7 @@ class Localization:
             PrintStyle.error(f"Error converting localtime string to UTC: {e}")
             return None
 
-    def utc_dt_to_localtime_str(
-        self, utc_dt: datetime | None, sep: str = "T", timespec: str = "auto"
-    ) -> str | None:
+    def utc_dt_to_localtime_str(self, utc_dt: datetime | None, sep: str = "T", timespec: str = "auto") -> str | None:
         """
         Convert a UTC datetime object to a local time ISO string using the fixed UTC offset.
         Returns None if input is None.

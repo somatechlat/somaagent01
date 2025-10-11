@@ -1,5 +1,5 @@
-# Use the latest Debian base image to provide a clean, stable environment
-FROM debian:latest
+# Use the latest slim version of Kali Linux
+FROM kalilinux/kali-rolling
 
 
 # Set locale to en_US.UTF-8 and timezone to UTC

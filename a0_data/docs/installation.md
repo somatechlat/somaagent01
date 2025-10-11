@@ -228,59 +228,66 @@ The Settings page is the control center for selecting the Large Language Models 
 ## Installing and Using Ollama (Local Models)
 If you're interested in Ollama, which is a powerful tool that allows you to run various large language models locally, here's how to install and use it:
 
-#### Default: managed Soma SLM (recommended)
-The SomaAgent01 stack is pre-wired to the managed Soma SLM API, so you **do not need to install or host any local LLMs** for the default experience.
+#### First step: installation
+**On Windows:**
 
-1. Ensure your `.env` (or secrets manager) contains the latest `SLM_BASE_URL` and `SLM_API_KEY` values. The defaults point to `https://slm.somaagent01.dev/v1`.
-2. Start the stack (for example with `docker-compose -f infra/docker-compose.somaagent01.yaml up`). The conversation worker and UI will automatically route requests through the managed SLM connector.
-3. In the Web UI, the default Chat/Utility/Embedding providers already use the Soma SLM profile derived from `SLM_MODEL`. You only need to change these settings if you're experimenting with alternative endpoints.
+Download Ollama from the official website and install it on your machine.
 
-> [!TIP]
-> Rotate the `SLM_API_KEY` when onboarding new environments. After updating the value in `.env`, restart the stack so that services reload credentials.
+<button>[Download Ollama Setup](https://ollama.com/download/OllamaSetup.exe)</button>
 
-#### Optional fallback: run a local model with Ollama
-If you are working offline or cannot reach the managed Soma SLM API, you can connect Agent Zero to a local Ollama instance. This is entirely optional and not required for normal development.
-
-**1. Install Ollama (only if needed):**
-
-- **Windows:** Download the installer from the [Ollama website](https://ollama.com/download/OllamaSetup.exe).
-- **macOS:**
-  ```
-  brew install ollama
-  ```
-- **Linux:**
-  ```bash
-  curl -fsSL https://ollama.com/install.sh | sh
-  ```
-
-**2. Pull a lightweight model:**
-
+**On macOS:**
 ```
-ollama pull phi3:3.8b
+brew install ollama
+```
+Otherwise choose macOS installer from the [official website](https://ollama.com/).
+
+**On Linux:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-**3. Point Agent Zero at your local endpoint:**
+**Finding Model Names:**
+Visit the [Ollama model library](https://ollama.com/library) for a list of available models and their corresponding names.  The format is usually `provider/model-name` (or just `model-name` in some cases).
 
-1. Open the Settings page in the Web UI.
-2. For the Chat, Utility, or Embedding model sections, change the provider to Ollama.
-3. Set the model identifier (for example `phi3:3.8b` or any other model you installed).
-4. Update the base URL to your Ollama server, typically `http://host.docker.internal:11434`.
-5. Click **Save**.
+#### Second step: pulling the model
+**On Windows, macOS, and Linux:**
+```
+ollama pull <model-name>
+```
+
+1. Replace `<model-name>` with the name of the model you want to use.  For example, to pull the Mistral Large model, you would use the command `ollama pull mistral-large`.
+
+2. A CLI message should confirm the model download on your system
+
+#### Selecting your model within Agent Zero
+1. Once you've downloaded your model(s), you must select it in the Settings page of the GUI. 
+
+2. Within the Chat model, Utility model, or Embedding model section, choose Ollama as provider.
+
+3. Write your model code as expected by Ollama, in the format `llama3.2` or `qwen2.5:7b`
+
+4. Provide your API base URL to your ollama API endpoint, usually `http://host.docker.internal:11434`
+
+5. Click `Save` to confirm your settings.
 
 ![ollama](res/setup/settings/4-local-models.png)
 
-**4. (Optional) Manage cached models:**
+#### Managing your downloaded models
+Once you've downloaded some models, you might want to check which ones you have available or remove any you no longer need.
 
-- List models you have pulled:
+- **Listing downloaded models:** 
+  To see a list of all the models you've downloaded, use the command:
   ```
   ollama list
   ```
-- Remove a model you no longer need:
+- **Removing a model:**
+  If you need to remove a downloaded model, you can use the `ollama rm` command followed by the model name:
   ```
   ollama rm <model-name>
   ```
 
-When you switch back to the managed Soma SLM connector, simply restore the default provider in Settings and restart any workers consuming the API.
+
+- Experiment with different model combinations to find the balance of performance and cost that best suits your needs. E.g., faster and lower latency LLMs will help, and you can also use `faiss_gpu` instead of `faiss_cpu` for the memory.
 
 ## Using Agent Zero on your mobile device
 Agent Zero's Web UI is accessible from any device on your network through the Docker container:

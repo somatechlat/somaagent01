@@ -30,9 +30,7 @@ class Message(ApiHandler):
             attachment_paths = []
 
             upload_folder_int = "/a0/tmp/uploads"
-            upload_folder_ext = files.get_abs_path(
-                "tmp/uploads"
-            )  # for development environment
+            upload_folder_ext = files.get_abs_path("tmp/uploads") # for development environment
 
             if attachments:
                 os.makedirs(upload_folder_ext, exist_ok=True)
@@ -70,7 +68,7 @@ class Message(ApiHandler):
         # Print to console and log
         PrintStyle(
             background_color="#6C3483", font_color="white", bold=True, padding=True
-        ).print("User message:")
+        ).print(f"User message:")
         PrintStyle(font_color="white", padding=False).print(f"> {message}")
         if attachment_filenames:
             PrintStyle(font_color="white", padding=False).print("Attachments:")

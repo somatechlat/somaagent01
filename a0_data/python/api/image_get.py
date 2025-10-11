@@ -41,7 +41,7 @@ class ImageGet(ApiHandler):
         # # If metadata is requested, return file information
         # if metadata:
         #     return _get_file_metadata(path, filename, file_ext, image_extensions)
-
+       
         if file_ext in image_extensions:
 
             # in development environment, try to serve the image from local file system if exists, otherwise from docker

@@ -58,13 +58,7 @@ def _determine_server_type(config_dict: dict) -> str:
     # First check if type is explicitly specified
     if "type" in config_dict:
         server_type = config_dict["type"].lower()
-        if server_type in [
-            "sse",
-            "http-stream",
-            "streaming-http",
-            "streamable-http",
-            "http-streaming",
-        ]:
+        if server_type in ["sse", "http-stream", "streaming-http", "streamable-http", "http-streaming"]:
             return "MCPServerRemote"
         elif server_type == "stdio":
             return "MCPServerLocal"
@@ -83,12 +77,7 @@ def _determine_server_type(config_dict: dict) -> str:
 
 def _is_streaming_http_type(server_type: str) -> bool:
     """Check if the server type is a streaming HTTP variant."""
-    return server_type.lower() in [
-        "http-stream",
-        "streaming-http",
-        "streamable-http",
-        "http-streaming",
-    ]
+    return server_type.lower() in ["http-stream", "streaming-http", "streamable-http", "http-streaming"]
 
 
 def initialize_mcp(mcp_servers_config: str):
@@ -104,9 +93,9 @@ def initialize_mcp(mcp_servers_config: str):
                 temp=False,
             )
 
-            PrintStyle(background_color="black", font_color="red", padding=True).print(
-                f"Failed to update MCP settings: {e}"
-            )
+            PrintStyle(
+                background_color="black", font_color="red", padding=True
+            ).print(f"Failed to update MCP settings: {e}")
 
 
 class MCPTool(Tool):
@@ -774,14 +763,7 @@ class MCPConfig(BaseModel):
     def get_tool(self, agent: Any, tool_name: str) -> MCPTool | None:
         if not self.has_tool(tool_name):
             return None
-        return MCPTool(
-            agent=agent,
-            name=tool_name,
-            method=None,
-            args={},
-            message="",
-            loop_data=None,
-        )
+        return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None)
 
     async def call_tool(
         self, tool_name: str, input_data: Dict[str, Any]
@@ -867,7 +849,7 @@ class MCPClientBase(ABC):
                         original_exception = e
                     # Create a dummy exception to break out of the async block
                     raise RuntimeError("Dummy exception to break out of async block")
-        except Exception:
+        except Exception as e:
             # Check if this is our dummy exception
             if original_exception is not None:
                 e = original_exception
@@ -1041,7 +1023,6 @@ class MCPClientLocal(MCPClientBase):
         # do not read or close the file here, as stdio is async
         return stdio_transport
 
-
 class CustomHTTPClientFactory(ABC):
     def __init__(self, verify: bool = True):
         self.verify = verify
@@ -1073,14 +1054,11 @@ class CustomHTTPClientFactory(ABC):
 
         return httpx.AsyncClient(**kwargs, verify=self.verify)
 
-
 class MCPClientRemote(MCPClientBase):
 
     def __init__(self, server: Union[MCPServerLocal, MCPServerRemote]):
         super().__init__(server)
-        self.session_id: Optional[str] = (
-            None  # Track session ID for streaming HTTP clients
-        )
+        self.session_id: Optional[str] = None  # Track session ID for streaming HTTP clients
         self.session_id_callback: Optional[Callable[[], Optional[str]]] = None
 
     async def _create_stdio_transport(

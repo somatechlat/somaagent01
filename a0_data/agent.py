@@ -1,6 +1,4 @@
-import asyncio
-import random
-import string
+import asyncio, random, string
 import nest_asyncio
 
 nest_asyncio.apply()
@@ -8,8 +6,9 @@ nest_asyncio.apply()
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Coroutine, Dict
+from typing import Any, Awaitable, Coroutine, Dict, Literal
 from enum import Enum
+import uuid
 import models
 
 from python.helpers import extract_tools, files, errors, history, tokens
@@ -93,8 +92,7 @@ class AgentContext:
     @staticmethod
     def generate_id():
         def generate_short_id():
-            return "".join(random.choices(string.ascii_letters + string.digits, k=8))
-
+            return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
         while True:
             short_id = generate_short_id()
             if short_id not in AgentContext._contexts:
@@ -104,7 +102,6 @@ class AgentContext:
     def get_notification_manager(cls):
         if cls._notification_manager is None:
             from python.helpers.notification import NotificationManager  # type: ignore
-
             cls._notification_manager = NotificationManager()
         return cls._notification_manager
 
@@ -225,6 +222,7 @@ class AgentContext:
             agent.handle_critical_exception(e)
 
 
+
 @dataclass
 class AgentConfig:
     chat_model: models.ModelConfig
@@ -235,9 +233,7 @@ class AgentConfig:
     profile: str = ""
     memory_subdir: str = ""
     knowledge_subdirs: list[str] = field(default_factory=lambda: ["default", "custom"])
-    browser_http_headers: dict[str, str] = field(
-        default_factory=dict
-    )  # Custom HTTP headers for browser requests
+    browser_http_headers: dict[str, str] = field(default_factory=dict)  # Custom HTTP headers for browser requests
     code_exec_ssh_enabled: bool = True
     code_exec_ssh_addr: str = "localhost"
     code_exec_ssh_port: int = 55022
@@ -336,9 +332,7 @@ class Agent:
                         prompt = await self.prepare_prompt(loop_data=self.loop_data)
 
                         # call before_main_llm_call extensions
-                        await self.call_extensions(
-                            "before_main_llm_call", loop_data=self.loop_data
-                        )
+                        await self.call_extensions("before_main_llm_call", loop_data=self.loop_data)
 
                         async def reasoning_callback(chunk: str, full: str):
                             await self.handle_intervention()
@@ -347,9 +341,7 @@ class Agent:
                             # Pass chunk and full data to extensions for processing
                             stream_data = {"chunk": chunk, "full": full}
                             await self.call_extensions(
-                                "reasoning_stream_chunk",
-                                loop_data=self.loop_data,
-                                stream_data=stream_data,
+                                "reasoning_stream_chunk", loop_data=self.loop_data, stream_data=stream_data
                             )
                             # Stream masked chunk after extensions processed it
                             if stream_data.get("chunk"):
@@ -365,9 +357,7 @@ class Agent:
                             # Pass chunk and full data to extensions for processing
                             stream_data = {"chunk": chunk, "full": full}
                             await self.call_extensions(
-                                "response_stream_chunk",
-                                loop_data=self.loop_data,
-                                stream_data=stream_data,
+                                "response_stream_chunk", loop_data=self.loop_data, stream_data=stream_data
                             )
                             # Stream masked chunk after extensions processed it
                             if stream_data.get("chunk"):
@@ -414,7 +404,7 @@ class Agent:
                                 return tools_result  # break the execution if the task is done
 
                     # exceptions inside message loop:
-                    except InterventionException:
+                    except InterventionException as e:
                         pass  # intervention message has been handled in handle_intervention(), proceed with conversation loop
                     except RepairableException as e:
                         # Forward repairable errors to the LLM, maybe it can fix them
@@ -434,7 +424,7 @@ class Agent:
                         )
 
             # exceptions outside message loop:
-            except InterventionException:
+            except InterventionException as e:
                 pass  # just start over
             except Exception as e:
                 self.handle_critical_exception(e)
@@ -538,7 +528,9 @@ class Agent:
         ):  # if agent has custom folder, use it and use default as backup
             prompt_dir = files.get_abs_path("agents", self.config.profile, "prompts")
             dirs.insert(0, prompt_dir)
-        prompt = files.parse_file(_prompt_file, _directories=dirs, **kwargs)
+        prompt = files.parse_file(
+            _prompt_file, _directories=dirs, **kwargs
+        )
         return prompt
 
     def read_prompt(self, file: str, **kwargs) -> str:
@@ -548,7 +540,9 @@ class Agent:
         ):  # if agent has custom folder, use it and use default as backup
             prompt_dir = files.get_abs_path("agents", self.config.profile, "prompts")
             dirs.insert(0, prompt_dir)
-        prompt = files.read_prompt_file(file, _directories=dirs, **kwargs)
+        prompt = files.read_prompt_file(
+            file, _directories=dirs, **kwargs
+        )
         prompt = files.remove_code_fences(prompt)
         return prompt
 
@@ -564,12 +558,8 @@ class Agent:
         self.last_message = datetime.now(timezone.utc)
         # Allow extensions to process content before adding to history
         content_data = {"content": content}
-        asyncio.run(
-            self.call_extensions("hist_add_before", content_data=content_data, ai=ai)
-        )
-        return self.history.add_message(
-            ai=ai, content=content_data["content"], tokens=tokens
-        )
+        asyncio.run(self.call_extensions("hist_add_before", content_data=content_data, ai=ai))
+        return self.history.add_message(ai=ai, content=content_data["content"], tokens=tokens)
 
     def hist_add_user_message(self, message: UserMessage, intervention: bool = False):
         self.history.new_topic()  # user message starts a new topic in history
@@ -682,9 +672,7 @@ class Agent:
             system_message=call_data["system"],
             user_message=call_data["message"],
             response_callback=stream_callback,
-            rate_limiter_callback=(
-                self.rate_limiter_callback if not call_data["background"] else None
-            ),
+            rate_limiter_callback=self.rate_limiter_callback if not call_data["background"] else None,
         )
 
         return response
@@ -706,9 +694,7 @@ class Agent:
             messages=messages,
             reasoning_callback=reasoning_callback,
             response_callback=response_callback,
-            rate_limiter_callback=(
-                self.rate_limiter_callback if not background else None
-            ),
+            rate_limiter_callback=self.rate_limiter_callback if not background else None,
         )
 
         return response, reasoning
@@ -776,35 +762,26 @@ class Agent:
             # Fallback to local get_tool if MCP tool was not found or MCP lookup failed
             if not tool:
                 tool = self.get_tool(
-                    name=tool_name,
-                    method=tool_method,
-                    args=tool_args,
-                    message=msg,
-                    loop_data=self.loop_data,
+                    name=tool_name, method=tool_method, args=tool_args, message=msg, loop_data=self.loop_data
                 )
 
             if tool:
                 await self.handle_intervention()
+
 
                 # Call tool hooks for compatibility
                 await tool.before_execution(**tool_args)
                 await self.handle_intervention()
 
                 # Allow extensions to preprocess tool arguments
-                await self.call_extensions(
-                    "tool_execute_before",
-                    tool_args=tool_args or {},
-                    tool_name=tool_name,
-                )
+                await self.call_extensions("tool_execute_before", tool_args=tool_args or {}, tool_name=tool_name)
 
                 response = await tool.execute(**tool_args)
                 await self.handle_intervention()
 
                 # Allow extensions to postprocess tool response
-                await self.call_extensions(
-                    "tool_execute_after", response=response, tool_name=tool_name
-                )
-
+                await self.call_extensions("tool_execute_after", response=response, tool_name=tool_name)
+                
                 await tool.after_execution(response)
                 await self.handle_intervention()
 
@@ -850,17 +827,11 @@ class Agent:
                     parsed=response,
                 )
 
-        except Exception:
+        except Exception as e:
             pass
 
     def get_tool(
-        self,
-        name: str,
-        method: str | None,
-        args: dict,
-        message: str,
-        loop_data: LoopData | None,
-        **kwargs,
+        self, name: str, method: str | None, args: dict, message: str, loop_data: LoopData | None, **kwargs
     ):
         from python.tools.unknown import Unknown
         from python.helpers.tool import Tool
@@ -882,20 +853,12 @@ class Agent:
                 classes = extract_tools.load_classes_from_file(
                     "python/tools/" + name + ".py", Tool  # type: ignore[arg-type]
                 )
-            except Exception:
+            except Exception as e:
                 pass
         tool_class = classes[0] if classes else Unknown
         return tool_class(
-            agent=self,
-            name=name,
-            method=method,
-            args=args,
-            message=message,
-            loop_data=loop_data,
-            **kwargs,
+            agent=self, name=name, method=method, args=args, message=message, loop_data=loop_data, **kwargs
         )
 
     async def call_extensions(self, extension_point: str, **kwargs) -> Any:
-        return await call_extensions(
-            extension_point=extension_point, agent=self, **kwargs
-        )
+        return await call_extensions(extension_point=extension_point, agent=self, **kwargs)

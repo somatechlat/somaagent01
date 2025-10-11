@@ -6,7 +6,6 @@ from typing import Any, Callable, Optional, Coroutine, TypeVar, Awaitable
 
 T = TypeVar("T")
 
-
 class EventLoopThread:
     _instances = {}
     _lock = threading.Lock()

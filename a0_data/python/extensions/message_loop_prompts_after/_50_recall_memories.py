@@ -2,7 +2,8 @@ import asyncio
 from python.helpers.extension import Extension
 from python.helpers.memory import Memory
 from agent import LoopData
-from python.helpers import dirty_json, errors, settings, log
+from python.tools.memory_load import DEFAULT_THRESHOLD as DEFAULT_MEMORY_THRESHOLD
+from python.helpers import dirty_json, errors, settings, log 
 
 
 DATA_NAME_TASK = "_recall_memories_task"
@@ -46,9 +47,7 @@ class RecallMemories(Extension):
         self.agent.set_data(DATA_NAME_TASK, task)
         self.agent.set_data(DATA_NAME_ITER, loop_data.iteration)
 
-    async def search_memories(
-        self, log_item: log.LogItem, loop_data: LoopData, **kwargs
-    ):
+    async def search_memories(self, log_item: log.LogItem, loop_data: LoopData, **kwargs):
 
         # cleanup
         extras = loop_data.extras_persistent
@@ -56,6 +55,7 @@ class RecallMemories(Extension):
             del extras["memories"]
         if "solutions" in extras:
             del extras["solutions"]
+
 
         set = settings.get_settings()
         # try:
@@ -71,7 +71,7 @@ class RecallMemories(Extension):
         user_instruction = (
             loop_data.user_message.output_text() if loop_data.user_message else "None"
         )
-        history = self.agent.history.output_text()[-set["memory_recall_history_len"] :]
+        history = self.agent.history.output_text()[-set["memory_recall_history_len"]:]
         message = self.agent.read_prompt(
             "memory.memories_query.msg.md", history=history, message=user_instruction
         )
@@ -89,9 +89,7 @@ class RecallMemories(Extension):
             except Exception as e:
                 err = errors.format_error(e)
                 self.agent.context.log.log(
-                    type="error",
-                    heading="Recall memories extension error:",
-                    content=err,
+                    type="error", heading="Recall memories extension error:", content=err
                 )
                 query = ""
 
@@ -101,7 +99,7 @@ class RecallMemories(Extension):
                     heading="Failed to generate memory query",
                 )
                 return
-
+        
         # otherwise use the message and history as query
         else:
             query = user_instruction + "\n\n" + history
@@ -141,9 +139,7 @@ class RecallMemories(Extension):
         # if post filtering is enabled
         if set["memory_recall_post_filter"]:
             # assemble an enumerated dict of memories and solutions for AI validation
-            mems_list = {
-                i: memory.page_content for i, memory in enumerate(memories + solutions)
-            }
+            mems_list = {i: memory.page_content for i, memory in enumerate(memories + solutions)}
 
             # call AI to validate the memories
             try:
@@ -184,11 +180,10 @@ class RecallMemories(Extension):
             except Exception as e:
                 err = errors.format_error(e)
                 self.agent.context.log.log(
-                    type="error",
-                    heading="Failed to filter relevant memories",
-                    content=err,
+                    type="error", heading="Failed to filter relevant memories", content=err
                 )
                 filter_inds = []
+
 
         # limit the number of memories and solutions
         memories = memories[: set["memory_recall_memories_max_result"]]
@@ -199,12 +194,8 @@ class RecallMemories(Extension):
             heading=f"{len(memories)} memories and {len(solutions)} relevant solutions found",
         )
 
-        memories_txt = (
-            "\n\n".join([mem.page_content for mem in memories]) if memories else ""
-        )
-        solutions_txt = (
-            "\n\n".join([sol.page_content for sol in solutions]) if solutions else ""
-        )
+        memories_txt = "\n\n".join([mem.page_content for mem in memories]) if memories else ""
+        solutions_txt = "\n\n".join([sol.page_content for sol in solutions]) if solutions else ""
 
         # log the full results
         if memories_txt:

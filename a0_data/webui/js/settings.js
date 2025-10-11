@@ -108,8 +108,6 @@ const settingsModalProxy = {
             // Update modal data
             modalAD.isOpen = true;
             modalAD.settings = settings;
-            this.settings = settings;
-            this.updateSpeechFieldVisibility();
 
             // Now set the active tab after the modal is open
             // This ensures Alpine reactivity works as expected
@@ -286,42 +284,6 @@ const settingsModalProxy = {
         } else if (field.id === "memory_dashboard") {
             openModal("settings/memory/memory-dashboard.html");
         }
-    },
-
-    handleFieldChange(field, value) {
-        field.value = value;
-        this.onFieldValueChange(field);
-    },
-
-    onFieldValueChange(field) {
-        if (!field || !field.id) return;
-
-        if (field.id === "speech_provider") {
-            this.updateSpeechFieldVisibility();
-        }
-    },
-
-    updateSpeechFieldVisibility() {
-        if (!this.settings || !this.settings.sections) return;
-
-        const section = this.getSpeechSection();
-        if (!section) return;
-
-        const providerField = section.fields.find((f) => f.id === "speech_provider");
-    const provider = providerField?.value || "openai_realtime";
-
-        section.fields.forEach((field) => {
-            if (field.id === "tts_kokoro") {
-                field.hidden = provider !== "kokoro";
-            } else if (field.id && field.id.startsWith("speech_realtime_")) {
-                field.hidden = provider !== "openai_realtime";
-            }
-        });
-    },
-
-    getSpeechSection() {
-        if (!this.settings || !Array.isArray(this.settings.sections)) return null;
-        return this.settings.sections.find((section) => section.id === "speech") || null;
     }
 };
 

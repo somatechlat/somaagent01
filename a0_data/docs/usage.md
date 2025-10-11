@@ -54,17 +54,6 @@ Located beneath the chat input box, Agent Zero provides a set of action buttons 
 
 ![Context](res/ui-context.png)
 
-### Capsule Marketplace
-Agent Zero ships with a lightweight marketplace UI backed by the capsule registry service.
-
-- Open `http://localhost:7002/marketplace.html` after starting the Docker Compose stack (or the port you mapped for `services/ui`).
-- The page loads available capsules by calling the gateway at `/v1/capsules`; installations invoke `/v1/capsules/{capsule_id}/install` and stream signature metadata in the response banner.
-- The gateway proxies those calls to the registry URL defined by `CAPSULE_REGISTRY_URL` (defaults to `http://localhost:8000`). Adjust the environment variable if your registry runs elsewhere.
-- Successful installs are extracted into the registry’s `installed/` directory inside the container. Use the File Browser or bind-mounts to inspect the payloads.
-
-> [!NOTE]
-> The marketplace JavaScript no longer imports the Python SDK directly. All browser calls go through the gateway, so CORS and auth policies are enforced consistently.
-
 ### History:
 Access the chat history in JSON format
   - View the conversation as processed by the LLM

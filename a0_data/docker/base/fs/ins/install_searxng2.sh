@@ -10,15 +10,8 @@ git clone "https://github.com/searxng/searxng" \
 
 echo "====================SEARXNG2 VENV===================="
 
-PYTHON_BIN="${PYTHON_BIN:-/usr/local/bin/python3.13}"
-if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
-    echo "Python interpreter '$PYTHON_BIN' not found" >&2
-    exit 1
-fi
-PYTHON_BIN="$(command -v "$PYTHON_BIN")"
-
-# create virtualenv without relying on ensurepip
-"$PYTHON_BIN" -m venv --without-pip "/usr/local/searxng/searx-pyenv"
+# create virtualenv:
+python3.13 -m venv "/usr/local/searxng/searx-pyenv"
 
 # make it default
 echo ". /usr/local/searxng/searx-pyenv/bin/activate" \
@@ -26,9 +19,6 @@ echo ". /usr/local/searxng/searx-pyenv/bin/activate" \
 
 # activate venv
 source "/usr/local/searxng/searx-pyenv/bin/activate"
-
-# bootstrap pip explicitly
-curl -sS https://bootstrap.pypa.io/get-pip.py | python
 
 echo "====================SEARXNG2 INST===================="
 

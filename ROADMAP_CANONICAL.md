@@ -1,75 +1,79 @@
-# Agent Zero — Canonical Roadmap
+# Agent Zero — Canonical Roadmap (Shared Infra + K8s parity)
 
-Last updated: 2025-10-09
-Branch: v0.1.2
+Last updated: 2025-10-10
+Branch: soma_integration
 
-This file is the canonical, on-repo roadmap for the Agent Zero project. It consolidates the integrated roadmap, sprint breakdown and current task statuses so developers, QA and DevOps can align on priorities and execution. Update this file by PR when major milestone statuses change.
+This is the canonical roadmap for delivering strict runtime parity between Docker and Kubernetes (Kind/Helm) for the Soma Agent 01 (SA01) scope, consolidating a Shared Infra layer and enforcing a single Dockerfile and a single Compose file for the app.
 
-## High-level objective
+## Objectives
 
-Bring the codebase from prototype/dev state to a production-ready stack by:
-- Removing silent fallbacks and placeholders for LLM/model calls.
-- Ensuring the server starts even when no model/provider is configured.
-- Exposing a clear UI notification when a model provider is not configured.
-- Migrating to the gRPC memory & message services and wiring the router and tool-executor to them.
-- Adding CI matrices for offline vs gated live-provider testing.
+- Parity: “Run the whole cluster exactly as the one in Docker that works perfectly, but on Kubernetes.”
+- Canonical build: One Dockerfile for all services using build args; one app Compose file.
+- Port policy: App gateway on host 7001 (Docker) and on host 7002 (K8s via Kind NodePort/Ingress).
+- Shared Infra first: Treat Shared Infra as its own project, production-ready for developers, consumed by app-only stacks.
+- No mocks: Real services (Postgres, Kafka, Redis, OPA, Vault, Etcd, Prometheus, Grafana, optional OpenFGA/Jaeger/Loki).
 
-## Current sprint breakdown (parallel)
+## Constraints
 
-- Sprint P0 — Safety & gate (COMPLETE)
-  - Add `USE_LLM` flag, implement `NoLLMWrapper` so server can start without model provider. (Done)
+- Single Dockerfile (DockerfileLocal) with SERVICE and K8S build args.
+- Single app Compose file for SA01; a separate Docker Compose file exists only for Shared Infra.
+- Stable endpoints contract via .env for Docker and cluster DNS for K8s.
+- Keep SA01 scope; do not widen beyond documented services.
 
-- Sprint A — Provider adapters (in-progress)
-  - Implement adapters that map the project `unified_call` API to provider clients (Litellm/OpenRouter/OpenAI). Prefer provider-agnostic wiring via existing LiteLLM wrappers. Add unit tests which mock network calls (request mocking). (In progress)
+## Deliverables
 
-- Sprint B — Settings API + UI notification (in-progress)
-  - Add backend endpoint `GET /api/v1/settings/model` with JSON contract: {use_llm, provider, configured, hint}. UI shows a non-blocking banner when configured==false. Server must not stop because of missing provider. (In progress)
+1) Shared Infra (Docker) — docker/compose with durable volumes, health checks, and ports
+2) Shared Infra (K8s via Kind) — Helm umbrella `infra/helm/soma-infra` with values overlays (dev/staging/prod)
+3) SA01 App (Docker) — app-only compose pointing to Shared Infra
+4) SA01 App (K8s) — Helm umbrella `soma-stack`, gateway on 7002
+5) Observability & Policy — Prometheus/Grafana, OPA policies, optional OpenFGA/Jaeger/Loki
+6) CI & GitOps — CI builds single Dockerfile images, spins Kind, installs charts, runs smoke tests; GitOps path outlined
 
-- Sprint C — Wording & docs clean-up (in-progress)
-  - Remove words `mock`/`real` from runtime code/messages and replace with neutral terms (`model provider`, `provider not configured`). Update docs and README. (In progress)
+## Milestones and acceptance criteria
 
-- Sprint D — CI & test matrices (in-progress)
-  - Add CI workflows: PRs run offline matrix (`USE_LLM=false`), protected/main branches run live-provider gated matrix with secrets. (In progress)
+M1 — Shared Infra up on Docker (COMPLETE)
+- Services: Postgres (host 5436), Kafka (9094), Redis (6380), OPA (8182->8181), Vault (8201), Etcd (2380), Prometheus (9091), Grafana (3001)
+- Acceptance: All containers Up/healthy; env contract `.env.shared` published; runbook in `docs/infra/runbook_shared_infra.md`.
 
-- Sprint E — SKM client / resource manager / scheduler / dedupe (planned)
-  - Implement or remove `skm_client` stub, implement resource manager (psutil) and sandbox warm-up, replace job-loop TODOs with APScheduler/asyncio scheduler, deduplicate `a0_data` tree. (Planned)
+M2 — Shared Infra up on Kind (IN PROGRESS)
+- Helm chart `infra/helm/soma-infra` with `values-dev.yaml`; namespace `soma`.
+- Acceptance: All pods Ready; services and endpoints present; Prometheus targets healthy.
 
-## Todo list (short)
+M3 — Auth service + OPA policy bootstrap (PLANNED)
+- Real JWT auth service (local mode), OPA policy decision path wired, minimal policies shipped; optional OpenFGA migration job.
+- Acceptance: Policy decisions reachable; sample allow/deny evaluated via HTTP; audit logs visible.
 
-1. Replace MockChatWrapper with LLM wrapper — in-progress
-2. Implement SKM client or remove stub — not-started
-3. Add background task runner (defer standardization) — not-started
-4. Complete `concat_messages` implementation — not-started
-5. Ensure tool implementations are concrete — not-started
-6. Resource manager & sandbox warm-up — not-started
-7. Job loop scheduler — not-started
-8. Deduplicate `a0_data` directory — not-started
-9. Update CI pipeline for UI and test matrices — in-progress
-10. Documentation refresh — not-started
-11. UI: show LLM-not-configured notification — in-progress
-12. Remove 'mock'/'real' wording from code/messages — in-progress
-13. Create test matrices and CI gating — in-progress
+M4 — SA01 app-only on Docker (PLANNED)
+- App services built from single Dockerfile; gateway on 7001; memory-service gRPC 50052; use Shared Infra endpoints; no bind mounts that mask deps.
+- Acceptance: App HTTP /health OK, gRPC memory happy path OK, Kafka in/out OK.
 
-## Acceptance criteria per milestone
+M5 — SA01 app on Kind (PLANNED)
+- Helm umbrella `soma-stack`; gateway exposed on host 7002 (Kind NodePort); wired to Shared Infra DNS.
+- Acceptance: Same smoke tests as Docker; gateway reachable on 7002.
 
-- Server startup
-  - Server process must start with `USE_LLM=false` and provide endpoints; model calls raise consistent `RuntimeError` messages that the UI surfaces; no process exit due to missing provider.
+M6 — Observability extras (OPTIONAL)
+- Jaeger and/or Loki opt-in; baseline Grafana dashboards and scrape annotations present.
+- Acceptance: Traces/logs visible; key dashboards render without errors.
 
-- UI behavior
-  - On load, UI calls `/api/v1/settings/model`. If provider not configured, show a non-blocking admin banner linking to Settings. Normal operations continue (server not blocked).
+M7 — CI pipeline + GitOps outline (PLANNED)
+- CI builds single Dockerfile images, launches Kind, installs `soma-infra` then `soma-stack`, runs smoke tests; document ArgoCD path for clusters.
+- Acceptance: CI green with infra+app smoke tests; docs include GitOps flow.
 
-- Tests & CI
-  - PRs run fast offline tests (no provider secrets). Protected branches run live-provider tests guarded by secrets.
+## Environment contract
 
-## How to update
+- Docker (developer): Apps consume Shared Infra via `.env.shared` (ports listed in M1). App gateway must bind host 7001.
+- K8s (Kind): Apps use cluster DNS names configured in Helm values. App gateway exposed on host 7002.
 
-- Edit this file by PR. For task-level tracking use the project's todo list (or update the `manage_todo_list` tool state). For small changes (status flips) prefer a PR with a short description and link to the issue.
+## References
 
-## Contacts / owners
+- Helm: `infra/helm/soma-infra` (overlays: dev, staging, prod)
+- Docker Compose (Shared Infra): `infra/docker/shared-infra.compose.yaml`
+- Runbook: `docs/infra/runbook_shared_infra.md`
+- Environment example: `infra/env/.env.shared.example`
 
-- Backend (LLM adapters, settings endpoint, scheduler): Backend team
-- UI (banner + admin UX): Frontend team
-- DevOps (CI matrix, Docker Compose): DevOps team
+## How to maintain
+
+- Update this roadmap by PR when milestones change. Keep acceptance criteria concrete and verifiable. Avoid widening the SA01 scope.
 
 ---
-Generated/maintained by the development assistant to reflect the integrated roadmap and current progress as of 2025-10-09.
+Generated/maintained to reflect the integrated shared-infra-first plan and Kubernetes parity as of 2025-10-10.

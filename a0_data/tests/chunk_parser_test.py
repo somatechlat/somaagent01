@@ -1,11 +1,10 @@
-import sys
-import os
+import sys, os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models
 
-ex1 = "ground truth"
-ex2 = "truth"
+ex1 = "<think>reasoning goes here</think>response goes here"
+ex2 = "<think>reasoning goes here</thi"
 
 
 def test_example(example: str):
@@ -21,3 +20,4 @@ def test_example(example: str):
 if __name__ == "__main__":
     # test_example(ex1)
     test_example(ex2)
+    

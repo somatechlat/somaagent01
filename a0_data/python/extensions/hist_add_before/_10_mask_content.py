@@ -11,14 +11,11 @@ class MaskHistoryContent(Extension):
 
         try:
             from python.helpers.secrets import SecretsManager
-
             secrets_mgr = SecretsManager.get_instance()
 
             # Mask the content before adding to history
-            content_data["content"] = self._mask_content(
-                content_data["content"], secrets_mgr
-            )
-        except Exception:
+            content_data["content"] = self._mask_content(content_data["content"], secrets_mgr)
+        except Exception as e:
             # If masking fails, proceed without masking
             pass
 

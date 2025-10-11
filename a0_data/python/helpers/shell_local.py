@@ -1,12 +1,15 @@
+import select
+import subprocess
+import time
+import sys
 from typing import Optional, Tuple
 from python.helpers import tty_session
 from python.helpers.shell_ssh import clean_string
 
-
 class LocalInteractiveSession:
     def __init__(self):
-        self.session: tty_session.TTYSession | None = None
-        self.full_output = ""
+        self.session: tty_session.TTYSession|None = None
+        self.full_output = ''
 
     async def connect(self):
         self.session = tty_session.TTYSession("/bin/bash")
@@ -23,10 +26,8 @@ class LocalInteractiveSession:
             raise Exception("Shell not connected")
         self.full_output = ""
         await self.session.sendline(command)
-
-    async def read_output(
-        self, timeout: float = 0, reset_full_output: bool = False
-    ) -> Tuple[str, Optional[str]]:
+ 
+    async def read_output(self, timeout: float = 0, reset_full_output: bool = False) -> Tuple[str, Optional[str]]:
         if not self.session:
             raise Exception("Shell not connected")
 
@@ -34,9 +35,7 @@ class LocalInteractiveSession:
             self.full_output = ""
 
         # get output from terminal
-        partial_output = await self.session.read_full_until_idle(
-            idle_timeout=0.01, total_timeout=timeout
-        )
+        partial_output = await self.session.read_full_until_idle(idle_timeout=0.01, total_timeout=timeout)
         self.full_output += partial_output
 
         # clean output

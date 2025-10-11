@@ -1,6 +1,7 @@
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.memory import Memory
 from python.helpers import files
+from models import ModelConfig, ModelType
 from langchain_core.documents import Document
 
 
@@ -94,7 +95,7 @@ class MemoryDashboard(ApiHandler):
             else:
                 return {
                     "success": False,
-                    "error": "Failed to delete any memories.",
+                    "error": f"Failed to delete any memories.",
                 }
 
         except Exception as e:
@@ -137,7 +138,7 @@ class MemoryDashboard(ApiHandler):
         """Get available memory subdirectories."""
         try:
             # Get subdirectories from memory folder
-            subdirs = files.get_subdirectories("memory", exclude="embeddings")
+            subdirs = files.get_subdirectories("memory")
 
             # Ensure 'default' is always available
             if "default" not in subdirs:
@@ -163,7 +164,6 @@ class MemoryDashboard(ApiHandler):
 
             memory = await Memory.get_by_subdir(memory_subdir, preload_knowledge=False)
 
-            all_docs_map = await memory.get_all_docs()
             memories = []
 
             if search_query:
@@ -176,7 +176,8 @@ class MemoryDashboard(ApiHandler):
                 memories = docs
             else:
                 # If no search query, get all memories from specified area(s)
-                for doc_id, doc in all_docs_map.items():
+                all_docs = memory.db.get_all_docs()
+                for doc_id, doc in all_docs.items():
                     # Apply area filter if specified
                     if area_filter and doc.metadata.get("area", "") != area_filter:
                         continue
@@ -194,9 +195,7 @@ class MemoryDashboard(ApiHandler):
                     memories = memories[:limit]
 
             # Format memories for the dashboard
-            formatted_memories = [
-                self._format_memory_for_dashboard(m) for m in memories
-            ]
+            formatted_memories = [self._format_memory_for_dashboard(m) for m in memories]
 
             # Get summary statistics
             total_memories = len(formatted_memories)
@@ -206,7 +205,7 @@ class MemoryDashboard(ApiHandler):
             conversation_count = total_memories - knowledge_count
 
             # Get total count of all memories in database (unfiltered)
-            total_db_count = len(all_docs_map)
+            total_db_count = len(memory.db.get_all_docs())
 
             return {
                 "success": True,
@@ -230,8 +229,8 @@ class MemoryDashboard(ApiHandler):
             "id": metadata.get("id", "unknown"),
             "area": metadata.get("area", "unknown"),
             "timestamp": metadata.get("timestamp", "unknown"),
-            # "content_preview": m.page_content[:200]
-            # + ("..." if len(m.page_content) > 200 else ""),
+            "content_preview": m.page_content[:200]
+            + ("..." if len(m.page_content) > 200 else ""),
             "content_full": m.page_content,
             "knowledge_source": metadata.get("knowledge_source", False),
             "source_file": metadata.get("source_file", ""),
