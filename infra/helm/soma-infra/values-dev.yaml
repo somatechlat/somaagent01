@@ -1,0 +1,39 @@
+# Developer environment overrides for soma-infra
+
+namespace: soma-infra
+imagePullPolicy: IfNotPresent
+
+auth:
+  enabled: true
+  replicaCount: 1
+
+opa:
+  enabled: true
+  replicaCount: 1
+
+kafka:
+  enabled: true
+  replicaCount: 1  # single-node KRaft for dev
+
+redis:
+  enabled: true
+  replicaCount: 1
+
+prometheus:
+  enabled: true
+  replicaCount: 1
+
+grafana:
+  enabled: true
+  replicaCount: 1
+
+vault:
+  enabled: true
+  replicaCount: 1
+
+etcd:
+  enabled: true
+  replicaCount: 1
+
+postgres:
+  enabled: true

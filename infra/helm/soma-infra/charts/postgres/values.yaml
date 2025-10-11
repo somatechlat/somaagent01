@@ -1,0 +1,19 @@
+image: postgres:15-alpine
+replicaCount: 1
+persistence:
+  enabled: true
+  size: 5Gi
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+service:
+  type: ClusterIP
+  port: 5432
+  targetPort: 5432
+postgresUser: soma
+postgresPassword: soma
+postgresDb: soma

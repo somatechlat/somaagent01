@@ -1,3 +1,4 @@
+{{- if .Values.component }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,10 +22,11 @@ spec:
     spec:
       containers:
         - name: {{ .Values.component.name }}
-          image: "{{ .Values.{{ .Values.component.name }}.image }}"
+          image: "{{ index .Values .Values.component.name "image" }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           ports:
-            - containerPort: {{ .Values.{{ .Values.component.name }}.port | default 80 }}
+            - containerPort: {{ default 80 (index .Values .Values.component.name "port") }}
           env:
             - name: SEMA_ENV
               value: "{{ .Release.Namespace }}"
+{{- end }}

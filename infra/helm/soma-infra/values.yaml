@@ -38,9 +38,29 @@ vault:
 
 etcd:
   enabled: true
-  image: "quay.io/coreos/etcd:latest"
   replicaCount: 1
+  image:
+    repository: quay.io/coreos/etcd
+    tag: "v3.5.12"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 2379
+    clientPort: 2379
+    peerPort: 2380
 
 # Additional common settings
 imagePullPolicy: IfNotPresent
 namespace: soma-agent
+
+postgres:
+  enabled: true
+  image: "postgres:15-alpine"
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  postgresUser: soma
+  postgresPassword: soma
+  postgresDb: soma
