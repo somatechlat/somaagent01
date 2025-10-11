@@ -198,7 +198,7 @@ async def finish_chat(
             description="ID of the chat to be finished. This value is returned in response to sending previous message.",
             title="chat_id",
         ),
-    ],
+    ]
 ) -> Annotated[
     Union[ToolResponse, ToolError],
     Field(
@@ -323,14 +323,9 @@ class DynamicMcpProxy:
                 mcp_server._additional_http_routes,
             )
 
-    def _create_custom_http_app(
-        self, streamable_http_path, auth_server_provider, auth_settings, debug, routes
-    ):
+    def _create_custom_http_app(self, streamable_http_path, auth_server_provider, auth_settings, debug, routes):
         """Create a custom HTTP app that manages the session manager manually."""
-        from fastmcp.server.http import (
-            setup_auth_middleware_and_routes,
-            create_base_app,
-        )
+        from fastmcp.server.http import setup_auth_middleware_and_routes, create_base_app
         from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
         from starlette.routing import Mount
         from mcp.server.auth.middleware.bearer_auth import RequireAuthMiddleware
@@ -341,6 +336,7 @@ class DynamicMcpProxy:
 
         self.http_session_task_group = None
 
+
         # Create session manager
         self.http_session_manager = StreamableHTTPSessionManager(
             app=mcp_server._mcp_server,
@@ -348,6 +344,7 @@ class DynamicMcpProxy:
             json_response=True,
             stateless=False,
         )
+
 
         # Custom ASGI handler that ensures task group is initialized
         async def handle_streamable_http(scope, receive, send):
@@ -362,8 +359,8 @@ class DynamicMcpProxy:
                 await self.http_session_manager.handle_request(scope, receive, send)
 
         # Get auth middleware and routes
-        auth_middleware, auth_routes, required_scopes = (
-            setup_auth_middleware_and_routes(auth_server_provider, auth_settings)
+        auth_middleware, auth_routes, required_scopes = setup_auth_middleware_and_routes(
+            auth_server_provider, auth_settings
         )
 
         server_routes.extend(auth_routes)
@@ -390,9 +387,7 @@ class DynamicMcpProxy:
             server_routes.extend(routes)
 
         # Add middleware
-        server_middleware.append(
-            Middleware(BaseHTTPMiddleware, dispatch=mcp_middleware)
-        )
+        server_middleware.append(Middleware(BaseHTTPMiddleware, dispatch=mcp_middleware))
 
         # Create and return the app
         return create_base_app(
@@ -420,7 +415,9 @@ class DynamicMcpProxy:
             # Route to HTTP app
             await http_app(scope, receive, send)
         else:
-            raise StarletteHTTPException(status_code=403, detail="MCP forbidden")
+            raise StarletteHTTPException(
+                status_code=403, detail="MCP forbidden"
+            )
 
 
 async def mcp_middleware(request: Request, call_next):

@@ -1,4 +1,5 @@
 from python.helpers.extension import Extension
+from python.helpers.secrets import SecretsManager
 
 
 class MaskResponseStreamEnd(Extension):
@@ -18,11 +19,10 @@ class MaskResponseStreamEnd(Extension):
                 # Print any remaining masked content
                 if tail:
                     from python.helpers.print_style import PrintStyle
-
                     PrintStyle().stream(tail)
 
                 # Clean up the filter
                 agent.set_data(filter_key, None)
-        except Exception:
+        except Exception as e:
             # If masking fails, proceed without masking
             pass

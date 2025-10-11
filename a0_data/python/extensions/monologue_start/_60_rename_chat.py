@@ -35,5 +35,5 @@ class RenameChat(Extension):
                 # apply to context and save
                 self.agent.context.name = new_name
                 persist_chat.save_tmp_chat(self.agent.context)
-        except Exception:
+        except Exception as e:
             pass  # non-critical

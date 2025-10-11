@@ -1,13 +1,18 @@
 from abc import ABC, abstractmethod
 from fnmatch import fnmatch
 import json
+from ntpath import isabs
 import os
+import sys
 import re
 import base64
 import shutil
 import tempfile
 from typing import Any
 import zipfile
+import importlib
+import importlib.util
+import inspect
 import glob
 
 
@@ -17,9 +22,7 @@ class VariablesPlugin(ABC):
         pass
 
 
-def load_plugin_variables(
-    file: str, backup_dirs: list[str] | None = None
-) -> dict[str, Any]:
+def load_plugin_variables(file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
     if not file.endswith(".md"):
         return {}
 
@@ -35,14 +38,11 @@ def load_plugin_variables(
         plugin_file = None
 
     if plugin_file and exists(plugin_file):
-
+        
         from python.helpers import extract_tools
-
-        classes = extract_tools.load_classes_from_file(
-            plugin_file, VariablesPlugin, one_per_file=False
-        )
+        classes = extract_tools.load_classes_from_file(plugin_file, VariablesPlugin, one_per_file=False)
         for cls in classes:
-            return cls().get_variables(file, backup_dirs)  # type: ignore < abstract class here is ok, it is always a subclass
+            return cls().get_variables(file, backup_dirs) # type: ignore < abstract class here is ok, it is always a subclass
 
         # load python code and extract variables variables from it
         # module = None
@@ -70,13 +70,10 @@ def load_plugin_variables(
         #         return cls[1]().get_variables()  # type: ignore
     return {}
 
-
 from python.helpers.strings import sanitize_string
 
 
-def parse_file(
-    _filename: str, _directories: list[str] | None = None, _encoding="utf-8", **kwargs
-):
+def parse_file(_filename: str, _directories: list[str] | None = None, _encoding="utf-8", **kwargs):
     if _directories is None:
         _directories = []
 
@@ -87,7 +84,7 @@ def parse_file(
     with open(absolute_path, "r", encoding=_encoding) as f:
         # content = remove_code_fences(f.read())
         content = f.read()
-
+    
     is_json = is_full_json_template(content)
     content = remove_code_fences(content)
     variables = load_plugin_variables(absolute_path, _directories) or {}  # type: ignore
@@ -102,16 +99,12 @@ def parse_file(
         # Process include statements
         content = process_includes(
             # here we use kwargs, the plugin variables are not inherited
-            content,
-            _directories,
-            **kwargs,
+            content, _directories, **kwargs
         )
         return content
 
 
-def read_prompt_file(
-    _file: str, _directories: list[str] | None = None, _encoding="utf-8", **kwargs
-):
+def read_prompt_file(_file: str, _directories: list[str] | None = None, _encoding="utf-8", **kwargs):
     if _directories is None:
         _directories = []
 
@@ -138,15 +131,13 @@ def read_prompt_file(
     # Process include statements
     content = process_includes(
         # here we use kwargs, the plugin variables are not inherited
-        content,
-        _directories,
-        **kwargs,
+        content, _directories, **kwargs
     )
 
     return content
 
 
-def read_file(relative_path: str, encoding="utf-8"):
+def read_file(relative_path:str, encoding="utf-8"):
     # Try to get the absolute path for the file from the original directory or backup directories
     absolute_path = get_abs_path(relative_path)
 
@@ -155,7 +146,7 @@ def read_file(relative_path: str, encoding="utf-8"):
         return f.read()
 
 
-def read_file_bin(relative_path: str):
+def read_file_bin(relative_path:str):
     # Try to get the absolute path for the file from the original directory or backup directories
     absolute_path = get_abs_path(relative_path)
 
@@ -257,7 +248,6 @@ def find_file_in_dirs(_filename: str, _directories: list[str]):
         f"File '{_filename}' not found in any of the provided directories."
     )
 
-
 def get_unique_filenames_in_dirs(dir_paths: list[str], pattern: str = "*"):
     # returns absolute paths for unique filenames, priority by order in dir_paths
     seen = set()
@@ -272,7 +262,6 @@ def get_unique_filenames_in_dirs(dir_paths: list[str], pattern: str = "*"):
     # sort by filename (basename), not the full path
     result.sort(key=lambda path: os.path.basename(path))
     return result
-
 
 def remove_code_fences(text):
     # Pattern to match code fences with optional language specifier
@@ -362,21 +351,17 @@ def get_abs_path(*relative_paths):
     "Convert relative paths to absolute paths based on the base directory."
     return os.path.join(get_base_dir(), *relative_paths)
 
-
-def deabsolute_path(path: str):
+def deabsolute_path(path:str):
     "Convert absolute paths to relative paths based on the base directory."
     return os.path.relpath(path, get_base_dir())
 
-
-def fix_dev_path(path: str):
+def fix_dev_path(path:str):
     "On dev environment, convert /a0/... paths to local absolute paths"
     from python.helpers.runtime import is_development
-
     if is_development():
         if path.startswith("/a0/"):
             path = path.replace("/a0/", "")
     return get_abs_path(path)
-
 
 def exists(*relative_paths):
     path = get_abs_path(*relative_paths)
@@ -451,4 +436,4 @@ def move_file(relative_path: str, new_path: str):
 
 def safe_file_name(filename: str) -> str:
     # Replace any character that's not alphanumeric, dash, underscore, or dot with underscore
-    return re.sub(r"[^a-zA-Z0-9-._]", "_", filename)
+    return re.sub(r'[^a-zA-Z0-9-._]', '_', filename)

@@ -8,61 +8,113 @@ ENV UV_HTTP_TIMEOUT=180
 # Set BRANCH to "local" if not provided
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
+ 
+# Build-time toggles (kept minimal and backwards-compatible)
+# SERVICE: optional service name to include specific runtime deps (e.g. memory_service)
+# K8S: optional flag for k8s-tuned builds (not changing entrypoint or compose behavior)
+ARG SERVICE=""
+ARG K8S=false
 
 # Copy filesystem files to root
 COPY ./docker/run/fs/ /
 # Copy current development files to git, they will only be used in "local" branch
-# COPY ./ /git/agent-zero
-# COPY ./ /git/agent-zero  # Disabled to prevent clone conflict during image build
+# Provide local sources for BRANCH=local builds (required by /ins/install_A0.sh)
+COPY ./ /git/agent-zero
 
 # pre installation steps
 RUN bash /ins/pre_install.sh $BRANCH
 
-# install A0
-RUN bash /ins/install_A0.sh $BRANCH
+# install A0 (full/dev image only)
+RUN if [ -z "$SERVICE" ]; then bash /ins/install_A0.sh $BRANCH; else echo "Skipping install_A0.sh for SERVICE=$SERVICE"; fi
 
-# install additional software
-RUN bash /ins/install_additional.sh $BRANCH
+# install additional software (full/dev image only)
+RUN if [ -z "$SERVICE" ]; then bash /ins/install_additional.sh $BRANCH; else echo "Skipping install_additional.sh for SERVICE=$SERVICE"; fi
 
-# cleanup repo and install A0 without caching, this speeds up builds
+# cleanup repo and install A0 without caching, this speeds up builds (full/dev image only)
 ARG CACHE_DATE=none
-RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
+RUN if [ -z "$SERVICE" ]; then echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH; else echo "Skipping install_A02.sh for SERVICE=$SERVICE"; fi
 
-# post installation steps
-RUN bash /ins/post_install.sh $BRANCH
+# post installation steps (full/dev image only)
+RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Skipping post_install.sh for SERVICE=$SERVICE"; fi
 
-# Install pip and uvicorn using system python, with break-system-packages to bypass external environment restrictions
+# Install pip and, conditionally, web stack for gateway (FastAPI/uvicorn).
+# For per-service builds (e.g., SERVICE=memory_service), skip FastAPI stack to avoid conflicts with Debian-packaged libs.
 RUN apt-get update && apt-get install -y python3-pip && \
-    python3 -m pip install --break-system-packages "uvicorn[standard]" && \
-    python3 -m pip install --break-system-packages "fastapi[all]" && \
+    if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ]; then \
+        python3 -m pip install --break-system-packages "uvicorn[standard]" && \
+        python3 -m pip install --break-system-packages "fastapi[all]"; \
+    else \
+        echo "Skipping FastAPI/uvicorn install for SERVICE=$SERVICE"; \
+    fi && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright and its browsers for UI testing
-RUN python3 -m pip install --break-system-packages playwright && \
-    python3 -m playwright install chromium && \
-    python3 -m playwright install firefox && \
-    python3 -m playwright install webkit
+# Install Playwright and its browsers for UI testing (only for full/dev image)
+RUN if [ -z "$SERVICE" ]; then \
+        python3 -m pip install --break-system-packages playwright && \
+        python3 -m playwright install chromium && \
+        python3 -m playwright install firefox && \
+        python3 -m playwright install webkit; \
+    else \
+        echo "Skipping Playwright install for SERVICE=$SERVICE"; \
+    fi
 
-# Install aiokafka for Kafka event bus
-RUN python3 -m pip install --break-system-packages aiokafka
+# Install aiokafka for Kafka event bus (only if needed by service or full/dev)
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "conversation_worker" ] || [ "$SERVICE" = "router" ]; then \
+        python3 -m pip install --break-system-packages aiokafka; \
+    else \
+        echo "Skipping aiokafka for SERVICE=$SERVICE"; \
+    fi
 
-# Install asyncpg for async PostgreSQL access
-RUN python3 -m pip install --break-system-packages asyncpg
+# Install asyncpg for async PostgreSQL access (memory_service and full/dev)
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "settings_service" ]; then \
+        python3 -m pip install --break-system-packages "asyncpg==0.29.0"; \
+    elif [ "$SERVICE" = "memory_service" ]; then \
+        apt-get update && apt-get install -y python3-asyncpg && \
+        apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    else \
+        echo "Skipping asyncpg for SERVICE=$SERVICE"; \
+    fi
 
-# Install latest redis (asyncio support)
-RUN python3 -m pip install --break-system-packages "redis>=5.0"
+# Install latest redis (asyncio support) where applicable (gateway, router, full/dev)
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "router" ]; then \
+        python3 -m pip install --break-system-packages "redis>=5.0"; \
+    else \
+        echo "Skipping redis for SERVICE=$SERVICE"; \
+    fi
 
-# Install jsonschema for event validation
-RUN python3 -m pip install --break-system-packages jsonschema
+# Install jsonschema for event validation (full/dev only)
+RUN if [ -z "$SERVICE" ]; then \
+        python3 -m pip install --break-system-packages jsonschema; \
+    else \
+        echo "Skipping jsonschema for SERVICE=$SERVICE"; \
+    fi
 
-# Install Prometheus client library for metrics exposition
+# Install Prometheus client library for metrics exposition (common)
 RUN python3 -m pip install --break-system-packages prometheus-client
 
-# Install PyJWT (required by gateway)
-RUN python3 -m pip install --break-system-packages "PyJWT>=2.9.0"
+# Install PyJWT (required by gateway; skip for unrelated per-service builds)
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ]; then \
+        python3 -m pip install --break-system-packages "PyJWT>=2.9.0"; \
+    else \
+        echo "Skipping PyJWT for SERVICE=$SERVICE"; \
+    fi
 
-# Install gRPC runtime for memory service
-RUN python3 -m pip install --break-system-packages grpcio grpcio-tools
+# Install gRPC runtime for memory service (and full/dev)
+RUN if [ -z "$SERVICE" ]; then \
+        python3 -m pip install --break-system-packages "grpcio==1.66.1" "grpcio-tools==1.66.1"; \
+    elif [ "$SERVICE" = "memory_service" ]; then \
+        apt-get update && apt-get install -y python3-grpcio && \
+        apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    else \
+        echo "Skipping grpcio for SERVICE=$SERVICE"; \
+    fi
+
+# Install per-service runtime requirements (kept minimal, optional)
+# This enables single-source per-service builds without altering compose behavior.
+COPY services/memory_service/requirements.txt /tmp/memory_service.requirements.txt
+RUN if [ -f /tmp/memory_service.requirements.txt ] && [ "$SERVICE" = "memory_service" ]; then \
+            python3 -m pip install --break-system-packages -r /tmp/memory_service.requirements.txt; \
+        fi
 
 # Expose ports
 EXPOSE 22 80 9000-9009 50052

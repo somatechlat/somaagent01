@@ -2,9 +2,6 @@
 # FROM agent-zero-base:local
 FROM agent0ai/agent-zero-base:latest
 
-# Increase HTTP timeout for uv to reduce transient download failures
-ENV UV_HTTP_TIMEOUT=180
-
 # Set BRANCH to "local" if not provided
 ARG BRANCH=local
 ENV BRANCH=$BRANCH

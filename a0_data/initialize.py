@@ -1,6 +1,7 @@
 from agent import AgentConfig
 import models
 from python.helpers import runtime, settings, defer
+from python.helpers.print_style import PrintStyle
 
 
 def initialize_agent():
@@ -116,36 +117,25 @@ def initialize_agent():
     # return config object
     return config
 
-
 def initialize_chats():
     from python.helpers import persist_chat
-
     async def initialize_chats_async():
         persist_chat.load_tmp_chats()
-
     return defer.DeferredTask().start_task(initialize_chats_async)
-
 
 def initialize_mcp():
     set = settings.get_settings()
-
     async def initialize_mcp_async():
         from python.helpers.mcp_handler import initialize_mcp as _initialize_mcp
-
         return _initialize_mcp(set["mcp_servers"])
-
     return defer.DeferredTask().start_task(initialize_mcp_async)
-
 
 def initialize_job_loop():
     from python.helpers.job_loop import run_loop
-
     return defer.DeferredTask("JobLoop").start_task(run_loop)
-
 
 def initialize_preload():
     import preload
-
     return defer.DeferredTask().start_task(preload.preload)
 
 

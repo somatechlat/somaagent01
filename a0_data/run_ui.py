@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 import os
 import secrets
@@ -7,15 +8,7 @@ import socket
 import struct
 from functools import wraps
 import threading
-from flask import (
-    Flask,
-    request,
-    Response,
-    session,
-    redirect,
-    url_for,
-    render_template_string,
-)
+from flask import Flask, request, Response, session, redirect, url_for, render_template_string
 from werkzeug.wrappers.response import Response as BaseResponse
 import initialize
 from python.helpers import files, git, mcp_server, fasta2a_server
@@ -24,10 +17,10 @@ from python.helpers import runtime, dotenv, process
 from python.helpers.extract_tools import load_classes_from_folder
 from python.helpers.api import ApiHandler
 from python.helpers.print_style import PrintStyle
+from python.helpers import login
 
 # disable logging
 import logging
-
 logging.getLogger().setLevel(logging.WARNING)
 
 
@@ -35,7 +28,7 @@ logging.getLogger().setLevel(logging.WARNING)
 os.environ["TZ"] = "UTC"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Apply the timezone change
-if hasattr(time, "tzset"):
+if hasattr(time, 'tzset'):
     time.tzset()
 
 # initialize the internal Flask server
@@ -43,11 +36,10 @@ webapp = Flask("app", static_folder=get_abs_path("./webui"), static_url_path="/"
 webapp.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 webapp.config.update(
     JSON_SORT_KEYS=False,
-    SESSION_COOKIE_NAME="session_"
-    + runtime.get_runtime_id(),  # bind the session cookie name to runtime id to prevent session collision on same host
+    SESSION_COOKIE_NAME="session_" + runtime.get_runtime_id(),  # bind the session cookie name to runtime id to prevent session collision on same host
     SESSION_COOKIE_SAMESITE="Strict",
     SESSION_PERMANENT=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=1),
+    PERMANENT_SESSION_LIFETIME=timedelta(days=1)
 )
 
 lock = threading.Lock()
@@ -89,13 +81,11 @@ def is_loopback_address(address):
                     return False
         return True
 
-
 def requires_api_key(f):
     @wraps(f)
     async def decorated(*args, **kwargs):
         # Use the auth token from settings (same as MCP server)
         from python.helpers.settings import get_settings
-
         valid_api_key = get_settings()["mcp_server_token"]
 
         if api_key := request.headers.get("X-API-KEY"):
@@ -127,41 +117,28 @@ def requires_loopback(f):
     return decorated
 
 
-def _get_credentials_hash():
-    user = dotenv.get_dotenv_value("AUTH_LOGIN")
-    password = dotenv.get_dotenv_value("AUTH_PASSWORD")
-    if not user:
-        return None
-    return hashlib.sha256(f"{user}:{password}".encode()).hexdigest()
-
-
 # require authentication for handlers
 def requires_auth(f):
     @wraps(f)
     async def decorated(*args, **kwargs):
-        user_pass_hash = _get_credentials_hash()
+        user_pass_hash = login.get_credentials_hash()
         # If no auth is configured, just proceed
         if not user_pass_hash:
             return await f(*args, **kwargs)
 
-        if session.get("authentication") != user_pass_hash:
-            return redirect(url_for("login"))
-
+        if session.get('authentication') != user_pass_hash:
+            return redirect(url_for('login_handler'))
+        
         return await f(*args, **kwargs)
 
     return decorated
-
-
-def _csrf_cookie_name():
-    return "csrf_token_" + runtime.get_runtime_id()
-
 
 def csrf_protect(f):
     @wraps(f)
     async def decorated(*args, **kwargs):
         token = session.get("csrf_token")
         header = request.headers.get("X-CSRF-Token")
-        cookie = request.cookies.get(_csrf_cookie_name())
+        cookie = request.cookies.get("csrf_token_" + runtime.get_runtime_id())
         sent = header or cookie
         if not token or not sent or token != sent:
             return Response("CSRF token missing or invalid", 403)
@@ -169,29 +146,26 @@ def csrf_protect(f):
 
     return decorated
 
-
 @webapp.route("/login", methods=["GET", "POST"])
-async def login():
+async def login_handler():
     error = None
-    if request.method == "POST":
+    if request.method == 'POST':
         user = dotenv.get_dotenv_value("AUTH_LOGIN")
         password = dotenv.get_dotenv_value("AUTH_PASSWORD")
-
-        if request.form["username"] == user and request.form["password"] == password:
-            session["authentication"] = _get_credentials_hash()
-            return redirect(url_for("serve_index"))
+        
+        if request.form['username'] == user and request.form['password'] == password:
+            session['authentication'] = login.get_credentials_hash()
+            return redirect(url_for('serve_index'))
         else:
-            error = "Invalid Credentials. Please try again."
-
+            error = 'Invalid Credentials. Please try again.'
+            
     login_page_content = files.read_file("webui/login.html")
     return render_template_string(login_page_content, error=error)
 
-
 @webapp.route("/logout")
-async def logout():
-    session.pop("authentication", None)
-    return redirect(url_for("login"))
-
+async def logout_handler():
+    session.pop('authentication', None)
+    return redirect(url_for('login_handler'))
 
 # handle default address, load index
 @webapp.route("/", methods=["GET"])
@@ -209,10 +183,9 @@ async def serve_index():
     index = files.replace_placeholders_text(
         _content=index,
         version_no=gitinfo["version"],
-        version_time=gitinfo["commit_time"],
+        version_time=gitinfo["commit_time"]
     )
     return index
-
 
 def run():
     PrintStyle().print("Initializing framework...")
@@ -303,6 +276,7 @@ def init_a0():
     initialize.initialize_job_loop()
     # preload
     initialize.initialize_preload()
+
 
 
 # run the internal server

@@ -50,9 +50,9 @@ export async function fetchApi(url, request) {
     // check if there was an CSRF error
     if (response.status === 403 && retry) {
       // retry the request with new token
-      invalidateCsrfToken();
+      csrfToken = null;
       return await _wrap(false);
-    }else if(response.redirected && response.url.endsWith("/login")){
+    } else if (response.redirected && response.url.endsWith("/login")) {
       // redirect to login
       window.location.href = response.url;
       return;
@@ -69,35 +69,31 @@ export async function fetchApi(url, request) {
   return response;
 }
 
+// csrf token stored locally
 let csrfToken = null;
-let csrfTokenPromise = null;
 
-function invalidateCsrfToken() {
-  csrfToken = null;
-}
-
+/**
+ * Get the CSRF token for API requests
+ * Caches the token after first request
+ * @returns {Promise<string>} The CSRF token
+ */
 async function getCsrfToken() {
   if (csrfToken) return csrfToken;
-  if (!csrfTokenPromise) {
-    csrfTokenPromise = (async () => {
-      const response = await fetch("/csrf_token", {
-        credentials: "same-origin",
-      });
-      if (response.redirected && response.url.endsWith("/login")) {
-        window.location.href = response.url;
-        return "";
-      }
-      const json = await response.json();
-      csrfToken = json.token;
-      return csrfToken;
-    })()
-      .catch((error) => {
-        csrfTokenPromise = null;
-        throw error;
-      })
-      .finally(() => {
-        csrfTokenPromise = null;
-      });
+  const response = await fetch("/csrf_token", {
+    credentials: "same-origin",
+  });
+  if (response.redirected && response.url.endsWith("/login")) {
+    // redirect to login
+    window.location.href = response.url;
+    return;
   }
-  return csrfTokenPromise;
+  const json = await response.json();
+  if (json.ok) {
+    csrfToken = json.token;
+    document.cookie = `csrf_token_${json.runtime_id}=${csrfToken}; SameSite=Strict; Path=/`;
+    return csrfToken;
+  } else {
+    if (json.error) alert(json.error);
+    throw new Error(json.error || "Failed to get CSRF token");
+  }
 }

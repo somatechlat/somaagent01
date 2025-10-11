@@ -14,6 +14,7 @@ from typing import Callable, Sequence, List, Optional, Tuple
 from datetime import datetime
 
 from langchain_community.document_loaders import AsyncHtmlLoader
+from langchain_community.document_loaders.text import TextLoader
 from langchain_community.document_loaders.pdf import PyMuPDFLoader
 from langchain_community.document_transformers import MarkdownifyTransformer
 from langchain_community.document_loaders.parsers.images import TesseractBlobParser
@@ -362,7 +363,7 @@ class DocumentQueryHelper:
     async def document_qa(
         self, document_uri: str, questions: Sequence[str]
     ) -> Tuple[bool, str]:
-        self.progress_callback("Starting Q&A process")
+        self.progress_callback(f"Starting Q&A process")
 
         # index document
         _ = await self.document_get_content(document_uri, True)
@@ -396,7 +397,7 @@ class DocumentQueryHelper:
                 selected_chunks[chunk.metadata["id"]] = chunk
 
         if not selected_chunks:
-            self.progress_callback("No relevant content found in the document")
+            self.progress_callback(f"No relevant content found in the document")
             content = f"!!! No content found for document: {document_uri} matching queries: {json.dumps(questions)}"
             return False, content
 
@@ -421,14 +422,14 @@ class DocumentQueryHelper:
             ]
         )
 
-        self.progress_callback("Q&A process completed")
+        self.progress_callback(f"Q&A process completed")
 
         return True, str(ai_response)
 
     async def document_get_content(
         self, document_uri: str, add_to_db: bool = False
     ) -> str:
-        self.progress_callback("Fetching document content")
+        self.progress_callback(f"Fetching document content")
         url = urlparse(document_uri)
         scheme = url.scheme or "file"
         mimetype, encoding = mimetypes.guess_type(document_uri)
@@ -507,12 +508,12 @@ class DocumentQueryHelper:
                     document_uri, scheme
                 )
             if add_to_db:
-                self.progress_callback("Indexing document")
+                self.progress_callback(f"Indexing document")
                 success, ids = await self.store.add_document(
                     document_content, document_uri_norm
                 )
                 if not success:
-                    self.progress_callback("Failed to index document")
+                    self.progress_callback(f"Failed to index document")
                     raise ValueError(
                         f"DocumentQueryHelper::document_get_content: Failed to index document: {document_uri_norm}"
                     )

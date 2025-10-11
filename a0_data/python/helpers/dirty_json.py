@@ -1,6 +1,5 @@
 import json
 
-
 def try_parse(json_string: str):
     try:
         return json.loads(json_string)

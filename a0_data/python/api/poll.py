@@ -15,9 +15,7 @@ class Poll(ApiHandler):
         notifications_from = input.get("notifications_from", 0)
 
         # Get timezone from input (default to dotenv default or UTC if not provided)
-        timezone = input.get(
-            "timezone", get_dotenv_value("DEFAULT_USER_TIMEZONE", "UTC")
-        )
+        timezone = input.get("timezone", get_dotenv_value("DEFAULT_USER_TIMEZONE", "UTC"))
         Localization.get().set_timezone(timezone)
 
         # context instance - get or create
@@ -72,22 +70,18 @@ class Poll(ApiHandler):
                 if task_details:
                     # Add task details to context_data with the same field names
                     # as used in scheduler endpoints to maintain UI compatibility
-                    context_data.update(
-                        {
-                            "task_name": task_details.get(
-                                "name"
-                            ),  # name is for context, task_name for the task name
-                            "uuid": task_details.get("uuid"),
-                            "state": task_details.get("state"),
-                            "type": task_details.get("type"),
-                            "system_prompt": task_details.get("system_prompt"),
-                            "prompt": task_details.get("prompt"),
-                            "last_run": task_details.get("last_run"),
-                            "last_result": task_details.get("last_result"),
-                            "attachments": task_details.get("attachments", []),
-                            "context_id": task_details.get("context_id"),
-                        }
-                    )
+                    context_data.update({
+                        "task_name": task_details.get("name"),  # name is for context, task_name for the task name
+                        "uuid": task_details.get("uuid"),
+                        "state": task_details.get("state"),
+                        "type": task_details.get("type"),
+                        "system_prompt": task_details.get("system_prompt"),
+                        "prompt": task_details.get("prompt"),
+                        "last_run": task_details.get("last_run"),
+                        "last_result": task_details.get("last_result"),
+                        "attachments": task_details.get("attachments", []),
+                        "context_id": task_details.get("context_id"),
+                    })
 
                     # Add type-specific fields
                     if task_details.get("type") == "scheduled":

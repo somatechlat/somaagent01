@@ -17,7 +17,7 @@ Provides a standard naming convention for resources.
 {{- end }}
 
 {{- define "soma-infra.labels" -}}
-helm.sh/chart: {{ (printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_")) | quote }}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name (.Chart.Version | replace "+" "_") | quote }}
 app.kubernetes.io/name: {{ include "soma-infra.name" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name | quote }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

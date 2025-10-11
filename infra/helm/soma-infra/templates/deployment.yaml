@@ -22,10 +22,10 @@ spec:
     spec:
       containers:
         - name: {{ .Values.component.name | quote }}
-          image: "{{ (index .Values (printf "%s" .Values.component.name)).image }}"
-          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+          image: "{{- if .Values.component.image -}}{{ .Values.component.image -}}{{ else -}}{{ .Values.image | default "" }}{{- end }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy | default "IfNotPresent" }}"
           ports:
-            - containerPort: {{ default 80 ((index .Values (printf "%s" .Values.component.name)).port) }}
+            - containerPort: {{ default 80 .Values.component.port }}
           env:
             - name: SEMA_ENV
               value: "{{ .Release.Namespace }}"

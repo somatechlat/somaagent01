@@ -2,13 +2,13 @@ from abc import abstractmethod
 import json
 import threading
 from typing import Union, TypedDict, Dict, Any
-from flask import Request, Response, Flask, send_file
+from attr import dataclass
+from flask import Request, Response, jsonify, Flask, session, request, send_file
 from agent import AgentContext
 from initialize import initialize_agent
 from python.helpers.print_style import PrintStyle
 from python.helpers.errors import format_error
-
-__all__ = ["ApiHandler", "Request", "Response", "Flask", "send_file"]
+from werkzeug.serving import make_server
 
 Input = dict
 Output = Union[Dict[str, Any], Response, TypedDict]  # type: ignore
@@ -57,7 +57,9 @@ class ApiHandler:
                     PrintStyle().print(f"Error parsing JSON: {str(e)}")
                     input_data = {}
             else:
-                input_data = {"data": request.get_data(as_text=True)}
+                # input_data = {"data": request.get_data(as_text=True)}
+                input_data = {}
+
 
             # process via handler
             output = await self.process(input_data, request)

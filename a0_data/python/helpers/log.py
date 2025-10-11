@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
-from typing import Literal, Optional, TypeVar
+from typing import Any, Literal, Optional, Dict, TypeVar
 
 T = TypeVar("T")
 import uuid
@@ -67,7 +67,7 @@ def _truncate_value(val: T) -> T:
             val[i] = _truncate_value(val[i])
         return val
     if isinstance(val, tuple):
-        return tuple(_truncate_value(x) for x in val)  # type: ignore
+        return tuple(_truncate_value(x) for x in val) # type: ignore
 
     # Convert non-str values to json for consistent length measurement
     if isinstance(val, str):

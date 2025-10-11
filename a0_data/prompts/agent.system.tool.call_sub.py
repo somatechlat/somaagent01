@@ -1,3 +1,4 @@
+import json
 from typing import Any
 from python.helpers.files import VariablesPlugin
 from python.helpers import files
@@ -5,9 +6,7 @@ from python.helpers.print_style import PrintStyle
 
 
 class CallSubordinate(VariablesPlugin):
-    def get_variables(
-        self, file: str, backup_dirs: list[str] | None = None
-    ) -> dict[str, Any]:
+    def get_variables(self, file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
 
         # collect all prompt profiles from subdirectories (_context.md file)
         profiles = []
@@ -15,7 +14,8 @@ class CallSubordinate(VariablesPlugin):
         for agent_subdir in agent_subdirs:
             try:
                 context = files.read_prompt_file(
-                    "_context.md", [files.get_abs_path("agents", agent_subdir)]
+                    "_context.md",
+                    [files.get_abs_path("agents", agent_subdir)]
                 )
                 profiles.append({"name": agent_subdir, "context": context})
             except Exception as e:
