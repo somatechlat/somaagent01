@@ -8,3 +8,10 @@ config:
   global:
     scrape_interval: 15s
   scrape_configs: []
+resources:
+  requests:
+    cpu: 300m
+    memory: 512Mi
+  limits:
+    cpu: 600m
+    memory: 1Gi

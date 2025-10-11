@@ -12,6 +12,10 @@ spec:
       targetPort: {{ .Values.service.targetPort }}
       name: tcp
       protocol: TCP
+    - port: {{ .Values.controllerPort }}
+      targetPort: {{ .Values.controllerPort }}
+      name: controller
+      protocol: TCP
   selector:
     app.kubernetes.io/name: {{ include "kafka.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}

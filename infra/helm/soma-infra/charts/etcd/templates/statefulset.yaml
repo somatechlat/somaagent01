@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "etcd.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
       containers:
         - name: etcd
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -29,11 +33,21 @@ spec:
               value: {{ printf "http://%s:%d" (include "etcd.fullname" .) (int .Values.service.port) | quote }}
             - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
               value: {{ printf "http://%s:%d" (include "etcd.fullname" .) (int .Values.service.peerPort) | quote }}
+            - name: ETCD_INITIAL_CLUSTER
+              value: {{ printf "default=http://%s:%d" (include "etcd.fullname" .) (int .Values.service.peerPort) | quote }}
             - name: ETCD_INITIAL_CLUSTER_STATE
               value: "new"
           volumeMounts:
             - name: data
               mountPath: /etcd-data
+          {{- if .Values.securityContext }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

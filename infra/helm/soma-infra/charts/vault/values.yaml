@@ -9,6 +9,12 @@ server:
   dev: true
   extraArgs: []
   extraEnv: []
+  rootToken: root
+  secret:
+    create: true
+    name: ""
+    tokenKey: dev-root-token
+    envVar: VAULT_DEV_ROOT_TOKEN_ID
 
 service:
   type: ClusterIP

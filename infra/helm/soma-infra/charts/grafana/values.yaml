@@ -4,5 +4,21 @@ service:
   type: ClusterIP
   port: 3000
   targetPort: 3000
-adminUser: admin
-adminPassword: admin
+credentials:
+  user: admin
+  password: admin
+secret:
+  create: true
+  name: ""
+  userKey: admin-user
+  passwordKey: admin-password
+  env:
+    user: GF_SECURITY_ADMIN_USER
+    password: GF_SECURITY_ADMIN_PASSWORD
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi

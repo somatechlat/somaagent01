@@ -19,6 +19,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         component: vault
     spec:
+      {{- if .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
       containers:
         - name: vault
           image: {{ .Values.image | default "hashicorp/vault:latest" }}
@@ -28,7 +32,19 @@ spec:
             - "-dev"
             - "-dev-listen-address=0.0.0.0:8200"
           env:
-            - name: VAULT_DEV_ROOT_TOKEN_ID
-              value: "root"
+            {{- $secretName := .Values.server.secret.name | default (printf "%s-dev-root" (include "vault.fullname" .)) }}
+            - name: {{ .Values.server.secret.envVar | default "VAULT_DEV_ROOT_TOKEN_ID" }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.server.secret.tokenKey }}
           ports:
             - containerPort: 8200
+          {{- if .Values.securityContext }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
