@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vault.fullname" . }}
+  labels:
+    {{- include "vault.labels" . | nindent 4 }}
+    component: vault
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "vault.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      component: vault
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "vault.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        component: vault
+    spec:
+      containers:
+        - name: vault
+          image: {{ .Values.image | default "hashicorp/vault:latest" }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "server"
+            - "-dev"
+            - "-dev-listen-address=0.0.0.0:8200"
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: "root"
+          ports:
+            - containerPort: 8200

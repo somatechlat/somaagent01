@@ -1,0 +1,8 @@
+image: grafana/grafana:latest
+replicaCount: 1
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+adminUser: admin
+adminPassword: admin

@@ -26,9 +26,9 @@ spec:
               containerPort: {{ .Values.service.peerPort }}
           env:
             - name: ETCD_ADVERTISE_CLIENT_URLS
-              value: "http://{{ include \"etcd.fullname\" . }}:{{ .Values.service.port }}"
+              value: {{ printf "http://%s:%d" (include "etcd.fullname" .) (int .Values.service.port) | quote }}
             - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
-              value: "http://{{ include \"etcd.fullname\" . }}:{{ .Values.service.peerPort }}"
+              value: {{ printf "http://%s:%d" (include "etcd.fullname" .) (int .Values.service.peerPort) | quote }}
             - name: ETCD_INITIAL_CLUSTER_STATE
               value: "new"
           volumeMounts:
