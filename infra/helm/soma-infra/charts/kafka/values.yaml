@@ -1,9 +1,14 @@
-image: bitnami/kafka:3.6.1
+image: confluentinc/cp-kafka:7.5.3
 replicaCount: 1
 service:
   type: ClusterIP
   port: 9092
   targetPort: 9092
+controllerPort: 9093
+clusterId: TelVMif65nMWlbOjBdhrJw
+nodeId: "1"
+env:
+  extra: []
 resources:
   requests:
     cpu: 500m
