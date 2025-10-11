@@ -184,6 +184,8 @@ Once the stack is healthy you can reach the Agent UI at `http://localhost:7002`,
 | [Extensibility](./docs/extensibility.md) | Extending Agent Zero |
 | [Connectivity](./docs/connectivity.md) | External API endpoints, MCP server connections, A2A protocol |
 | [Architecture](./docs/architecture.md) | System design and components |
+| [Agent Quickstart](./docs/AGENT_QUICKSTART.md) | Run the agent without shared infra, ports, and pointers |
+| [Shared Infra dependency](./docs/SHARED_INFRA_DEPENDENCY.md) | How to bring up somastack and wire endpoints |
 | [Contributing](./docs/contribution.md) | How to contribute |
 | [Troubleshooting](./docs/troubleshooting.md) | Common issues and their solutions |
 
