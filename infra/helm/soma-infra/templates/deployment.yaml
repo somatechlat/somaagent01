@@ -5,7 +5,7 @@ metadata:
   name: {{ include "soma-infra.fullname" . }}-{{ .Values.component.name }}
   labels:
     {{- include "soma-infra.labels" . | nindent 4 }}
-    component: {{ .Values.component.name }}
+    component: {{ .Values.component.name | quote }}
 spec:
   replicas: {{ .Values.component.replicaCount | default 1 }}
   selector:
@@ -16,16 +16,16 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "soma-infra.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        component: {{ .Values.component.name }}
+        app.kubernetes.io/name: {{ include "soma-infra.name" . | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        component: {{ .Values.component.name | quote }}
     spec:
       containers:
-        - name: {{ .Values.component.name }}
-          image: "{{ index .Values .Values.component.name "image" }}"
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+        - name: {{ .Values.component.name | quote }}
+          image: "{{ (index .Values (printf "%s" .Values.component.name)).image }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           ports:
-            - containerPort: {{ default 80 (index .Values .Values.component.name "port") }}
+            - containerPort: {{ default 80 ((index .Values (printf "%s" .Values.component.name)).port) }}
           env:
             - name: SEMA_ENV
               value: "{{ .Release.Namespace }}"
