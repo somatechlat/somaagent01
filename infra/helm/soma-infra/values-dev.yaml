@@ -12,8 +12,12 @@ opa:
   replicaCount: 1
 
 kafka:
-  enabled: true
   replicaCount: 1  # single-node KRaft for dev
+  # For dev single-node KRaft the upstream Confluent image requires
+  # additional env (KAFKA_PROCESS_ROLES). To avoid that complexity in
+  # the initial bring-up, keep kafka disabled by default in values-dev
+  # and enable it explicitly when KRaft config is provided.
+  enabled: false
 
 redis:
   enabled: true
@@ -34,6 +38,8 @@ vault:
 etcd:
   enabled: true
   replicaCount: 1
+  persistence:
+    storageClass: local-path
 
 postgres:
   enabled: true
