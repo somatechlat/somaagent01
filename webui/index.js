@@ -579,7 +579,7 @@ async function monitorHealth() {
       };
       setConnectionStatus(healthState.status, healthState.components);
     }
-    await sleep(5000);
+    await sleep(15000);
   }
 }
 
