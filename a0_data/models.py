@@ -14,10 +14,59 @@ from typing import (
     TypedDict,
 )
 
-from litellm import completion, acompletion, embedding
-import litellm
-import openai
-from litellm.types.utils import ModelResponse
+try:
+    from litellm import completion, acompletion, embedding
+    import litellm
+    from litellm.types.utils import ModelResponse
+except Exception:
+    # LiteLLM not available in this runtime. Provide a minimal shim so the
+    # module imports succeed and the gateway can start. Actual model calls
+    # will raise a clear RuntimeError directing the developer to install
+    # the full requirements or build the full dev image.
+    class _LitellmMissing:
+        suppress_debug_info = False
+        modify_params = False
+
+    litellm = _LitellmMissing()
+
+    def completion(*args, **kwargs):
+        raise RuntimeError(
+            "litellm is not installed in this environment. Install 'litellm' "
+            "or build the full dev image to enable model calls."
+        )
+
+    async def acompletion(*args, **kwargs):
+        raise RuntimeError(
+            "litellm is not installed in this environment. Install 'litellm' "
+            "or build the full dev image to enable async model calls."
+        )
+
+    def embedding(*args, **kwargs):
+        raise RuntimeError(
+            "litellm is not installed in this environment. Install 'litellm' "
+            "or build the full dev image to enable embedding calls."
+        )
+
+    class ModelResponse:  # type: ignore
+        pass
+
+try:
+    import openai
+except Exception:
+    # openai isn't installed in this runtime. Provide a minimal shim so the
+    # module can be imported and the gateway can start. Any attempt to use
+    # OpenAI-specific exception classes will fall back to generic Exception.
+    class _OpenAIMissing:
+        class APIError(Exception):
+            pass
+
+        APITimeoutError = Exception
+        APIConnectionError = Exception
+        RateLimitError = Exception
+        InternalServerError = Exception
+        APIStatusError = Exception
+
+    openai = _OpenAIMissing()
 
 from python.helpers import dotenv
 from python.helpers import settings, dirty_json

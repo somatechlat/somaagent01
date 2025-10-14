@@ -1,7 +1,7 @@
 # Minimal, validated infra compose for local SomaAgent01
 
 x-agent-env: &agent-env
-  PYTHONPATH: /a0
+  PYTHONPATH: /git/agent-zero:/a0
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   REDIS_URL: redis://redis:6379/0
@@ -9,6 +9,18 @@ x-agent-env: &agent-env
   POLICY_BASE_URL: http://opa:8181
   POLICY_DATA_PATH: /v1/data/soma/allow
   POLICY_FAIL_OPEN: "false"
+  OPA_URL: http://opa:8181
+  CONVERSATION_INBOUND: conversation.inbound
+  CONVERSATION_OUTBOUND: conversation.outbound
+  CONVERSATION_GROUP: conversation-worker
+  TOOL_REQUESTS_TOPIC: tool.requests
+  TOOL_RESULTS_TOPIC: tool.results
+  TOOL_EXECUTOR_GROUP: tool-executor
+  MEMORY_SERVICE_TARGET: memory-service:50052
+  SOMA_AGENT_MODE: LOCAL
+  SOMA_BASE_URL: http://host.docker.internal:9696
+  SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
+  SOMA_ENABLED: "true"
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
 
 x-agent-depends: &agent-depends
@@ -18,6 +30,8 @@ x-agent-depends: &agent-depends
     condition: service_healthy
   redis:
     condition: service_healthy
+  opa:
+    condition: service_started
 
 x-agent-service: &agent-service
   image: somaagent01-dev:latest
@@ -112,6 +126,15 @@ services:
     mem_limit: 2g
     cpus: "2"
 
+  opa:
+    image: openpolicyagent/opa:0.64.0
+    container_name: somaAgent01_opa
+    profiles: ["core"]
+    command: ["run", "--server", "--set=decision_logs.console=true"]
+    ports:
+      - "${OPA_PORT:-0}:8181"
+    restart: unless-stopped
+
   openfga-migrate:
     image: openfga/openfga:v1.8.3
     container_name: somaAgent01_openfga-migrate
@@ -122,6 +145,10 @@ services:
       - postgres
       - --datastore-uri
       - "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable"
+      - --datastore-username
+      - openfga
+      - --datastore-password
+      - openfga
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,13 +176,86 @@ services:
       openfga-migrate:
         condition: service_completed_successfully
 
+  conversation-worker:
+    <<: *agent-service
+    container_name: somaAgent01_conversation-worker
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - services.conversation_worker.main
+
+  tool-executor:
+    <<: *agent-service
+    container_name: somaAgent01_tool-executor
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - services.tool_executor.main
+
+  memory-service:
+    <<: *agent-service
+    container_name: somaAgent01_memory-service
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - services.memory_service.main
+    environment:
+      <<: *agent-env
+      MEMORY_SERVICE_PORT: "50052"
+    ports:
+      - "${MEMORY_SERVICE_PORT:-0}:50052"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  settings-service:
+    <<: *agent-service
+    container_name: somaAgent01_settings-service
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - services.settings_service.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8011"
+    environment:
+      <<: *agent-env
+      PORT: "8011"
+    ports:
+      - "${SETTINGS_PORT:-0}:8011"
+
+  router:
+    <<: *agent-service
+    container_name: somaAgent01_router
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - services.router.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8013"
+    environment:
+      <<: *agent-env
+      PORT: "8013"
+    ports:
+      - "${ROUTER_PORT:-0}:8013"
+
   agent-ui:
     <<: *agent-service
     container_name: somaAgent01_agent-ui
     profiles: ["dev"]
     command: ["/exe/initialize.sh", "development"]
     ports:
-      - "7002:80"
+      - "${AGENT_UI_PORT:-0}:80"
 
   gateway:
     <<: *agent-service

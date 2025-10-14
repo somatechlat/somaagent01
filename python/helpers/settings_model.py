@@ -20,7 +20,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from pydantic import BaseSettings, Field
+try:
+    # pydantic v2+: BaseSettings was moved to pydantic-settings
+    from pydantic import Field
+    from pydantic_settings import BaseSettings
+except Exception:  # pragma: no cover - fallback for older environments
+    from pydantic import BaseSettings, Field
 
 
 class SettingsModel(BaseSettings):

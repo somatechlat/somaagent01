@@ -1,6 +1,15 @@
 from typing import Literal
 
-import tiktoken
+# tiktoken is an optional dependency that's heavy to install in minimal
+# dev images. Import it if available, otherwise provide a lightweight
+# fallback tokenizer based on whitespace which is good enough for
+# rate-limiting and approximate counts during development.
+try:
+    import tiktoken
+    _HAS_TIKTOKEN = True
+except Exception:
+    tiktoken = None  # type: ignore
+    _HAS_TIKTOKEN = False
 
 APPROX_BUFFER = 1.1
 TRIM_BUFFER = 0.8
@@ -10,14 +19,15 @@ def count_tokens(text: str, encoding_name="cl100k_base") -> int:
     if not text:
         return 0
 
-    # Get the encoding
-    encoding = tiktoken.get_encoding(encoding_name)
+    if _HAS_TIKTOKEN and tiktoken is not None:
+        # Use tiktoken when available for accurate counts
+        encoding = tiktoken.get_encoding(encoding_name)
+        tokens = encoding.encode(text)
+        return len(tokens)
 
-    # Encode the text and count the tokens
-    tokens = encoding.encode(text)
-    token_count = len(tokens)
-
-    return token_count
+    # Fallback: use a very simple whitespace-based tokenizer for
+    # approximate counts in minimal development images.
+    return max(1, len(text.split()))
 
 
 def approximate_tokens(

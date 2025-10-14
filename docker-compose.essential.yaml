@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # Kafka (single-node Kraft broker). The image mirrors the main compose but
+  # kept minimal for local development.
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_NUM_PARTITIONS: "1"
+    ports:
+      - "${KAFKA_PORT:-0}:9092"
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-0}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: soma
+      POSTGRES_PASSWORD: soma
+      POSTGRES_DB: somaagent01
+    ports:
+      - "${POSTGRES_PORT:-0}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      interval: 10s
+
+  memory-service:
+    image: somaagent01-dev:latest
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+      args:
+        SERVICE: memory_service
+    command: ["python3", "-m", "services.memory_service.main"]
+    environment:
+      POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+      MEMORY_SERVICE_PORT: "50052"
+    depends_on:
+      - postgres
+    ports:
+      - "${MEMORY_SERVICE_PORT:-0}:50052"
+
+  gateway:
+    image: somaagent01-dev:latest
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+      args:
+        SERVICE: gateway
+    command: ["python3", "-m", "uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8010"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+      MEMORY_SERVICE_TARGET: memory-service:50052
+      GATEWAY_REQUIRE_AUTH: "false"
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+      - memory-service
+    ports:
+      - "${GATEWAY_PORT:-0}:8010"
+
+  conversation-worker:
+    image: somaagent01-dev:latest
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+      args:
+        SERVICE: conversation_worker
+    command: ["python3", "-m", "services.conversation_worker.main"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+
+  tool-executor:
+    image: somaagent01-dev:latest
+    build:
+      context: .
+      dockerfile: DockerfileLocal
+      args:
+        SERVICE: tool_executor
+    command: ["python3", "-m", "services.tool_executor.main"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  postgres_data: {}
+  kafka_data: {}
+  redis_data: {}
