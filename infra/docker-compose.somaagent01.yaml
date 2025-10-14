@@ -18,7 +18,7 @@ x-agent-env: &agent-env
   TOOL_EXECUTOR_GROUP: tool-executor
   MEMORY_SERVICE_TARGET: memory-service:50052
   SOMA_AGENT_MODE: LOCAL
-  SOMA_BASE_URL: http://host.docker.internal:9696
+  SOMA_BASE_URL: http://host.docker.internal:9669
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
@@ -184,6 +184,7 @@ services:
       - python3
       - -m
       - services.conversation_worker.main
+    environment: *agent-env
 
   tool-executor:
     <<: *agent-service
@@ -193,6 +194,7 @@ services:
       - python3
       - -m
       - services.tool_executor.main
+    environment: *agent-env
 
   memory-service:
     <<: *agent-service

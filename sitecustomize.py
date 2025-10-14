@@ -32,3 +32,11 @@ if REPO_ROOT not in sys.path:
 PYTHON_PKG = os.path.join(REPO_ROOT, "python")
 if PYTHON_PKG not in sys.path:
     sys.path.append(PYTHON_PKG)
+
+# Ensure Debian-packaged Python libraries remain visible inside the venv (e.g. python3-asyncpg).
+for dist_path in (
+    "/usr/lib/python3/dist-packages",
+    "/usr/lib/python3.12/dist-packages",
+):
+    if os.path.isdir(dist_path) and dist_path not in sys.path:
+        sys.path.append(dist_path)
