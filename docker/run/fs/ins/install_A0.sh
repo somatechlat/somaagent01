@@ -28,14 +28,71 @@ fi
 
 . "/ins/setup_venv.sh" "$@"
 
-# moved to base image
-# # Ensure the virtual environment and pip setup
-# pip install --upgrade pip ipython requests
-# # Install some packages in specific variants
-# pip install torch --index-url https://download.pytorch.org/whl/cpu
+# Filter out packages provided by the base OS (uv would otherwise try to compile them).
+REQ_SRC="/git/agent-zero/requirements.txt"
+REQ_DST="/tmp/requirements.filtered.txt"
+export REQ_SRC REQ_DST
+python <<'PY'
+from pathlib import Path
+import os
 
-# Install remaining A0 python packages
-uv pip install -r /git/agent-zero/requirements.txt
+src = Path(os.environ["REQ_SRC"])
+dst = Path(os.environ["REQ_DST"])
+blocklist = {"asyncpg", "openai-whisper", "kokoro"}
+
+def canonical(name: str) -> str:
+    base = name.split("[")[0]
+    for sep in ("==", ">=", "<=", "~=", "!=", ">", "<"):
+        if sep in base:
+            base = base.split(sep)[0]
+            break
+    return base.strip().lower()
+
+lines = [line for line in src.read_text().splitlines() if line.strip() and not line.strip().startswith("#")]
+filtered: list[str] = []
+skipped_kokoro = False
+for line in lines:
+    name = canonical(line)
+    if name in blocklist:
+        if name == "kokoro":
+            skipped_kokoro = True
+        continue
+    filtered.append(line)
+
+dst.write_text("\n".join(filtered) + "\n")
+if skipped_kokoro:
+    print("Skipping kokoro dependency (unsupported on Python 3.13)")
+PY
+
+# Install remaining A0 python packages (best-effort to avoid hard failures on optional deps)
+set +e
+mapfile -t REQUIREMENTS < "${REQ_DST}"
+set -e
+
+FAILED_PACKAGES=()
+for requirement in "${REQUIREMENTS[@]}"; do
+    req_trimmed="${requirement## }"
+    if [ -n "${req_trimmed}" ]; then
+        if [[ "${req_trimmed}" == sentence-transformers* ]]; then
+            if [ "${TORCH_VARIANT:-none}" = "none" ]; then
+                echo "Skipping sentence-transformers (TORCH_VARIANT=none)"
+                continue
+            fi
+            if ! pip install --no-cache-dir --no-deps "${req_trimmed}"; then
+                FAILED_PACKAGES+=("${req_trimmed}")
+            fi
+            continue
+        fi
+
+        if ! pip install --no-cache-dir "${req_trimmed}"; then
+            FAILED_PACKAGES+=("${req_trimmed}")
+        fi
+    fi
+done
+
+if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
+    printf 'WARNING: skipped packages due to install errors: %s\n' "${FAILED_PACKAGES[*]}"
+fi
 
 # install playwright
 bash /ins/install_playwright.sh "$@"

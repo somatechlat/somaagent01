@@ -9,6 +9,11 @@ memory/**
 logs/*
 tmp/*
 
+# Trim development-only assets from Docker context
+docs/
+archived/
+tests/
+
 # Knowledge directory – keep only default/
 knowledge/**
 !knowledge/default/

@@ -6,10 +6,12 @@ set -e
 # remove repo (if not local branch)
 if [ "$1" != "local" ]; then
     rm -rf /git/agent-zero
-fi
 
-# run the original install script again
-bash /ins/install_A0.sh "$@"
+    # run the original install script again only for remote branches so cached layers stay warm
+    bash /ins/install_A0.sh "$@"
+else
+    echo "Skipping reinstall for local sources; dependencies already provisioned"
+fi
 
 # remove python packages cache
 . "/ins/setup_venv.sh" "$@"

@@ -29,16 +29,22 @@ COPY ./ /git/agent-zero
 # pre installation steps
 RUN bash /ins/pre_install.sh $BRANCH
 
+# Prepare a dedicated venv that exposes system site packages so apt-provided wheels stay visible.
+RUN apt-get update && apt-get install -y python3-venv python3-pip && \
+    python3 -m venv --system-site-packages /venv && \
+    /venv/bin/pip install --upgrade pip setuptools wheel && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    echo "export PATH=/venv/bin:\$PATH" > /etc/profile.d/venv_path.sh
+
+# Make sure the container runtime uses the venv by default
+ENV PATH="/venv/bin:${PATH}"
+
 # install A0 (full/dev image only)
 # Compatibility fix: install `pydantic-settings` into the venv so code importing BaseSettings
 # (moved to pydantic-settings) can run during the install step.
 RUN if [ -z "$SERVICE" ]; then \
-        if [ -x /opt/venv-a0/bin/pip ]; then \
-            /opt/venv-a0/bin/pip install --no-cache-dir pydantic-settings; \
-        else \
-            python3 -m pip install --no-cache-dir pydantic-settings; \
-        fi && \
-        bash /ins/install_A0.sh $BRANCH; \
+        /venv/bin/pip install --no-cache-dir "pydantic==2.11.6" "pydantic-settings==2.6.1" && \
+        TORCH_VARIANT=${TORCH_VARIANT} bash /ins/install_A0.sh $BRANCH; \
     else \
         echo "Skipping install_A0.sh for SERVICE=$SERVICE"; \
     fi
@@ -48,68 +54,42 @@ RUN if [ -z "$SERVICE" ]; then bash /ins/install_additional.sh $BRANCH; else ech
 
 # cleanup repo and install A0 without caching, this speeds up builds (full/dev image only)
 ARG CACHE_DATE=none
-RUN if [ -z "$SERVICE" ]; then echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH; else echo "Skipping install_A02.sh for SERVICE=$SERVICE"; fi
+RUN if [ -z "$SERVICE" ]; then \
+        echo "cache buster $CACHE_DATE" && \
+        if [ "$BRANCH" != "local" ]; then \
+            TORCH_VARIANT=${TORCH_VARIANT} bash /ins/install_A02.sh $BRANCH; \
+        else \
+            echo "Skipping install_A02.sh for BRANCH=local"; \
+        fi; \
+    else \
+        echo "Skipping install_A02.sh for SERVICE=$SERVICE"; \
+    fi
 
 # post installation steps (full/dev image only)
 RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Skipping post_install.sh for SERVICE=$SERVICE"; fi
 
-# Install pip and, conditionally, web stack for gateway (FastAPI/uvicorn).
-# Create and use a virtualenv so pip installs do not try to modify Debian-managed packages
-# (prevents errors like uninstall-no-record-file for typing_extensions).
-RUN apt-get update && apt-get install -y python3-venv python3-pip && \
-    # Create a venv and ensure it's used for installs and runtime
-    python3 -m venv /venv && \
-    /venv/bin/pip install --upgrade pip setuptools wheel && \
-    if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ]; then \
-        /venv/bin/pip install "uvicorn[standard]" && \
-        # Install FastAPI with a minimal set of runtime extras and OpenTelemetry runtime packages
-        /venv/bin/pip install "fastapi" "httpx" "jinja2" "python-multipart" \
-            opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-fastapi \
-            opentelemetry-instrumentation-httpx opentelemetry-exporter-otlp; \
-    else \
-        echo "Skipping FastAPI/uvicorn install for SERVICE=$SERVICE"; \
-    fi && \
-    # Copy project requirements and install into venv for full/dev image so the image
-    # matches the developer venv environment (heavy). This is conditional to avoid
-    # installing large ML/runtime packages for per-service slim builds.
-    if [ -z "$SERVICE" ]; then \
-        cp /git/agent-zero/requirements.txt /tmp/requirements.txt && \
-        /venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt || true; \
-    else \
-        echo "Skipping global requirements install for SERVICE=$SERVICE"; \
-    fi && \
-    # Supervisord event listeners expect the Python supervisor package; install explicitly. \
-    /venv/bin/pip install --no-cache-dir supervisor || true && \
-    # Ensure tiktoken is available for token counting in gateway (required by runtime)
-    /venv/bin/pip install --no-cache-dir tiktoken || true && \
-    # Ensure browser-use is available (some helper modules import browser_use.llm)
-    /venv/bin/pip install --no-cache-dir browser-use || true && \
-    # Ensure langchain_core is available (models import langchain_core)
-    /venv/bin/pip install --no-cache-dir langchain-core==0.3.49 || true && \
-    # Ensure the top-level langchain package is available for imports that use 'import langchain'
-    /venv/bin/pip install --no-cache-dir langchain || true && \
-    # Whisper-based speech-to-text helpers rely on the openai-whisper package.
-    /venv/bin/pip install --no-cache-dir openai-whisper || true && \
-    # Ensure sentence-transformers is available (models import sentence_transformers)
-    # Install without dependencies to avoid pulling torch automatically;
-    # then install runtime deps except torch (torch is controlled by TORCH_VARIANT)
-    /venv/bin/pip install --no-cache-dir --no-deps sentence-transformers || true && \
-    /venv/bin/pip install --no-cache-dir transformers huggingface-hub tokenizers safetensors fsspec numpy scikit-learn scipy joblib threadpoolctl || true && \
-    # Conditionally install torch according to TORCH_VARIANT build-arg
-    if [ "${TORCH_VARIANT}" = "cpu" ]; then \
-        /venv/bin/pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch || true; \
-    elif [ "${TORCH_VARIANT}" = "cuda" ]; then \
-        # Install default PyTorch (CUDA-enabled) from PyPI - large downloads
-        /venv/bin/pip install --no-cache-dir torch || true; \
-    else \
-        echo "Skipping torch install (TORCH_VARIANT=${TORCH_VARIANT})"; \
-    fi && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    # Ensure the venv is first in PATH for all subsequent build steps and for the final image runtime
-    echo "export PATH=/venv/bin:\$PATH" > /etc/profile.d/venv_path.sh
+# Minimal extras required at runtime but not carried in upstream requirements.
+RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema
 
-# Make sure the container runtime uses the venv by default
-ENV PATH="/venv/bin:${PATH}"
+# Whisper-based speech-to-text rides on torch, so only install when the torch stack is requested.
+RUN if [ "${TORCH_VARIANT}" != "none" ]; then \
+        /venv/bin/pip install --no-cache-dir openai-whisper || true; \
+    else \
+        echo "Skipping openai-whisper install (TORCH_VARIANT=${TORCH_VARIANT})"; \
+    fi
+
+# Install optional torch variant after core dependencies are in place.
+RUN if [ -z "$SERVICE" ]; then \
+        if [ "${TORCH_VARIANT}" = "cpu" ]; then \
+            /venv/bin/pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch; \
+        elif [ "${TORCH_VARIANT}" = "cuda" ]; then \
+            /venv/bin/pip install --no-cache-dir torch; \
+        else \
+            echo "Skipping torch install (TORCH_VARIANT=${TORCH_VARIANT})"; \
+        fi; \
+    else \
+        echo "Skipping torch install for SERVICE=$SERVICE"; \
+    fi
 
 # Install Playwright and its browsers for UI testing (only for full/dev image)
 RUN if [ -z "$SERVICE" ]; then \
@@ -119,13 +99,6 @@ RUN if [ -z "$SERVICE" ]; then \
         python3 -m playwright install webkit; \
     else \
         echo "Skipping Playwright install for SERVICE=$SERVICE"; \
-    fi
-
-# Install aiokafka for Kafka event bus (only if needed by service or full/dev)
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "conversation_worker" ] || [ "$SERVICE" = "router" ]; then \
-        python3 -m pip install --break-system-packages aiokafka; \
-    else \
-        echo "Skipping aiokafka for SERVICE=$SERVICE"; \
     fi
 
 # Install asyncpg for async PostgreSQL access (memory_service and full/dev)
@@ -138,30 +111,6 @@ RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "settings_service" ]; then \
         apt-get clean && rm -rf /var/lib/apt/lists/*; \
     else \
         echo "Skipping asyncpg for SERVICE=$SERVICE"; \
-    fi
-
-# Install latest redis (asyncio support) where applicable (gateway, router, full/dev)
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "router" ]; then \
-        python3 -m pip install --break-system-packages "redis>=5.0"; \
-    else \
-        echo "Skipping redis for SERVICE=$SERVICE"; \
-    fi
-
-# Install jsonschema for event validation (full/dev only)
-RUN if [ -z "$SERVICE" ]; then \
-        python3 -m pip install --break-system-packages jsonschema; \
-    else \
-        echo "Skipping jsonschema for SERVICE=$SERVICE"; \
-    fi
-
-# Install Prometheus client library for metrics exposition (common)
-RUN python3 -m pip install --break-system-packages prometheus-client
-
-# Install PyJWT (required by gateway; skip for unrelated per-service builds)
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ]; then \
-        python3 -m pip install --break-system-packages "PyJWT>=2.9.0"; \
-    else \
-        echo "Skipping PyJWT for SERVICE=$SERVICE"; \
     fi
 
 # Install gRPC runtime for memory service (and full/dev)
