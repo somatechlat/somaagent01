@@ -14,8 +14,34 @@ from typing import (
     TypedDict,
 )
 
-import litellm
-import openai
+try:
+    import litellm
+    import openai
+    from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
+except Exception:
+    # Provide lightweight shims so tests and the gateway can import the module
+    # even if litellm isn't present in the runtime (e.g., during fast per-service builds).
+    class _LitellmMissing:
+        suppress_debug_info = False
+        modify_params = False
+
+    litellm = _LitellmMissing()  # type: ignore
+
+    def completion(*args, **kwargs):
+        raise RuntimeError("litellm is not installed in this environment")
+
+    async def acompletion(*args, **kwargs):
+        raise RuntimeError("litellm is not installed in this environment")
+
+    def embedding(*args, **kwargs):
+        raise RuntimeError("litellm is not installed in this environment")
+
+    class _LitellmExceptions:
+        pass
+
+    litellm_exceptions = _LitellmExceptions()
+    import openai
+
 from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
@@ -29,7 +55,6 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
-from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
 
 from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv

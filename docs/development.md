@@ -316,3 +316,49 @@ You're now ready to contribute to Agent Zero, create custom extensions, or modif
 - Navigate to your project root in the terminal and run `docker build -f DockerfileLocal -t agent-zero-local --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .`
 - The `CACHE_DATE` argument is optional, it is used to cache most of the build process and only rebuild the last steps when the files or dependencies change.
 - See `docker/run/build.txt` for more build command examples.
+
+## Docker build flags and compose project name (quick reference)
+
+This project supports conditional installation of heavy ML libraries during image builds to keep the gateway image small by default.
+
+- `DockerfileLocal` exposes a build argument `TORCH_VARIANT` with values: `none` | `cpu` | `cuda`.
+	- `none` (recommended default): do not install `torch`. This avoids downloading large CUDA or CPU wheels and keeps image size small.
+	- `cpu`: install CPU-only `torch` from the PyTorch CPU index (useful for local CPU inference).
+	- `cuda`: install CUDA-enabled `torch` (large; requires matching host NVIDIA drivers and nvidia-container-toolkit to use GPUs).
+
+- `sentence-transformers` is installed without automatic dependencies (using `--no-deps`) so it does not force `torch` to be installed. Non-torch runtime dependencies are explicitly installed instead (transformers, tokenizers, safetensors, fsspec, numpy, scikit-learn, scipy, joblib, threadpoolctl).
+
+- Compose project naming: there is an `.env` in `agent-zero/infra` that sets `COMPOSE_PROJECT_NAME=somaagent01`. Running `docker compose` from that folder will use the `somaagent01` project name.
+
+Commands to build/run the gateway (from `agent-zero/infra`)
+
+Build & run gateway without torch (recommended):
+```bash
+cd agent-zero/infra
+# Default (TORCH_VARIANT=none) — no torch or CUDA wheels downloaded
+GATEWAY_PORT=7001 docker compose --profile core --profile dev -f docker-compose.somaagent01.yaml build --progress=plain --build-arg TORCH_VARIANT=none gateway
+GATEWAY_PORT=7001 docker compose --profile core --profile dev -f docker-compose.somaagent01.yaml up -d gateway
+docker logs --follow somaAgent01_gateway
+```
+
+Build & run gateway with CPU-only torch:
+```bash
+cd agent-zero/infra
+GATEWAY_PORT=7001 docker compose --profile core --profile dev -f docker-compose.somaagent01.yaml build --progress=plain --build-arg TORCH_VARIANT=cpu gateway
+GATEWAY_PORT=7001 docker compose --profile core --profile dev -f docker-compose.somaagent01.yaml up -d gateway
+docker logs --follow somaAgent01_gateway
+```
+
+Build & run gateway with CUDA-enabled torch (GPU hosts only):
+```bash
+cd agent-zero/infra
+# WARNING: large downloads and requires host NVIDIA drivers + nvidia-container-toolkit to use GPU
+GATEWAY_PORT=7001 docker compose --profile core --profile dev -f docker-compose.somaagent01.yaml build --progress=plain --build-arg TORCH_VARIANT=cuda gateway
+GATEWAY_PORT=7001 docker compose --profile core --profile dev -f docker-compose.somaagent01.yaml up -d gateway
+docker logs --follow somaAgent01_gateway
+```
+
+Validation notes
+
+- If your `/a0` code imports `torch` at module import time, the gateway will fail to start with `TORCH_VARIANT=none`. In that case either use `cpu` or refactor to lazy-import `torch` when needed.
+- Playwright browser downloads may still occur during build and require host libraries to run at runtime.
