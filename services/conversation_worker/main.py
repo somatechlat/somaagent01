@@ -15,7 +15,7 @@ from prometheus_client import Counter, Histogram, start_http_server
 
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
-from services.common.escalation import decide_escalation, EscalationDecision
+from services.common.escalation import should_escalate, EscalationDecision
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.model_costs import estimate_escalation_cost
@@ -503,7 +503,7 @@ class ConversationWorker:
 
             decision = EscalationDecision(False, "disabled", {"enabled": False})
             if self.escalation_enabled:
-                decision = decide_escalation(
+                decision = should_escalate(
                     message=event.get("message", ""),
                     analysis=analysis_dict,
                     event_metadata=metadata_for_decision,

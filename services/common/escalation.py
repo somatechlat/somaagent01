@@ -25,12 +25,10 @@ def _score_from_tags(tags: list[str]) -> float:
     return score
 
 
-def decide_escalation(
-    *,
+def should_escalate(
     message: str,
     analysis: Mapping[str, Any],
     event_metadata: Mapping[str, Any],
-    fallback_enabled: bool = False,
 ) -> EscalationDecision:
     """Return whether the message should be escalated to the LLM tier.
 
@@ -97,12 +95,7 @@ def decide_escalation(
             metadata=factors,
         )
 
-    if fallback_enabled and intent == "statement" and length > 1200:
-        return EscalationDecision(
-            should_escalate=True,
-            reason="fallback_length_trigger",
-            metadata=factors,
-        )
+    # Removed fallback_enabled logic - production uses proper escalation criteria only
 
     return EscalationDecision(
         should_escalate=False,

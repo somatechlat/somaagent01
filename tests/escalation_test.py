@@ -1,6 +1,6 @@
 import pytest
 
-from services.common.escalation import decide_escalation
+from services.common.escalation import should_escalate
 from services.common.model_costs import estimate_escalation_cost
 
 
@@ -13,7 +13,7 @@ from services.common.model_costs import estimate_escalation_cost
     ],
 )
 def test_decide_escalation_basic(metadata, expected):
-    decision = decide_escalation(
+    decision = should_escalate(
         message="Please fix the production outage in kubernetes cluster.",
         analysis={
             "intent": "problem_report",
@@ -21,13 +21,12 @@ def test_decide_escalation_basic(metadata, expected):
             "tags": ["infrastructure"],
         },
         event_metadata=metadata,
-        fallback_enabled=False,
     )
     assert decision.should_escalate is expected
 
 
 def test_decide_escalation_complexity_tags():
-    decision = decide_escalation(
+    decision = should_escalate(
         message="""We need a step-by-step migration plan for this legacy service.
         The task touches infrastructure, networking, and compliance requirements.
         Provide thorough reasoning.""",
@@ -37,21 +36,21 @@ def test_decide_escalation_complexity_tags():
             "tags": ["infrastructure", "code", "testing"],
         },
         event_metadata={"complexity": "advanced"},
-        fallback_enabled=False,
     )
     assert decision.should_escalate is True
     assert decision.reason == "complexity_high_tag_signal"
 
 
-def test_decide_escalation_fallback():
-    decision = decide_escalation(
+def test_decide_escalation_no_fallbacks():
+    """Verify we removed fallback logic - production uses proper escalation criteria only."""
+    decision = should_escalate(
         message="Lorem ipsum " * 200,
         analysis={"intent": "statement", "sentiment": "neutral", "tags": []},
         event_metadata={},
-        fallback_enabled=True,
     )
-    assert decision.should_escalate is True
-    assert decision.reason == "fallback_length_trigger"
+    # Should NOT escalate based on length alone - no fallback logic
+    assert decision.should_escalate is False
+    assert decision.reason == "slm_handled"
 
 
 def test_estimate_escalation_cost_known_model():

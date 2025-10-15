@@ -14,33 +14,10 @@ from typing import (
     TypedDict,
 )
 
-try:
-    import litellm
-    import openai
-    from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
-except Exception:
-    # Provide lightweight shims so tests and the gateway can import the module
-    # even if litellm isn't present in the runtime (e.g., during fast per-service builds).
-    class _LitellmMissing:
-        suppress_debug_info = False
-        modify_params = False
-
-    litellm = _LitellmMissing()  # type: ignore
-
-    def completion(*args, **kwargs):
-        raise RuntimeError("litellm is not installed in this environment")
-
-    async def acompletion(*args, **kwargs):
-        raise RuntimeError("litellm is not installed in this environment")
-
-    def embedding(*args, **kwargs):
-        raise RuntimeError("litellm is not installed in this environment")
-
-    class _LitellmExceptions:
-        pass
-
-    litellm_exceptions = _LitellmExceptions()
-    import openai
+# LiteLLM and OpenAI are required for production deployment
+import litellm
+import openai
+from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
 
 from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks.manager import (
@@ -62,49 +39,16 @@ from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
 
-# ``sentence-transformers`` is optional; provide a lightweight fallback so tests
-# can import the module even when the dependency is missing.
-try:
-    from sentence_transformers import SentenceTransformer  # type: ignore
-except Exception:  # pragma: no cover
-
-    class SentenceTransformer:  # type: ignore
-        def __init__(self, *_, **__):
-            raise ImportError(
-                "sentence-transformers is not installed. Install it to enable embedding features."
-            )
-
-        def encode(self, *_, **__):
-            raise ImportError(
-                "sentence-transformers is not installed. Install it to enable embedding features."
-            )
+# sentence-transformers is required for production embedding functionality
+from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
 
-try:
-    from browser_use.llm import (
-        ChatGoogle,
-        ChatOpenRouter,
-    )
-except Exception:  # pragma: no cover
-
-    class _MissingBrowserLLM:
-        """Fallback shim when optional browser_use dependency is absent."""
-
-        def __init__(self, *_, **__):
-            raise ImportError(
-                "browser-use is not installed. Install it to enable browser tooling support."
-            )
-
-        def __call__(self, *_, **__):
-            raise ImportError(
-                "browser-use is not installed. Install it to enable browser tooling support."
-            )
-
-    class ChatOpenRouter(_MissingBrowserLLM):  # type: ignore[misc]
-        pass
-
-    class ChatGoogle(_MissingBrowserLLM):  # type: ignore[misc]
-        pass
+# browser-use is required for production deployment
+from browser_use import (
+    ChatAnthropic,
+    ChatGoogle,
+    ChatOpenRouter,
+)
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -125,37 +69,16 @@ browser_use_monkeypatch.apply()
 litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
 
 # ---------------------------------------------------------------------------
-# Mock fallback for environments without a valid OpenAI API key
+# Production LLM Configuration - No Mocks or Fallbacks
 # ---------------------------------------------------------------------------
-def _no_mock_available(provider: str):
-    class LLMNotConfiguredError(RuntimeError):
-        pass
 
-    def _raise():
-        raise LLMNotConfiguredError(
-            f"LLM not configured for provider '{provider}'. Set the model in settings or in the admin UI."
-        )
-
-    return _raise
+class LLMNotConfiguredError(RuntimeError):
+    """Raised when LLM is not properly configured for production use."""
+    pass
 
 
-class NoLLMWrapper:
-    """A minimal wrapper returned when LLMs are disabled or not configured.
-
-    This wrapper defers raising until the actual call so the server can start
-    normally. The UI should catch the error and show a prompt instructing the
-    admin to set the LLM in settings.
-    """
-
-    def __init__(self, provider: str, model: str, model_config=None, **_: object):
-        self.provider = provider
-        self.model_name = model
-        self.a0_model_conf = model_config
-
-    async def unified_call(self, *args, **kwargs):
-        raise RuntimeError(
-            "LLM is not configured. Set a model in settings (Admin UI -> Settings -> Model) to enable chat functionality."
-        )
+# NoLLMWrapper removed - production systems must have proper LLM configuration
+# No deferred errors, no mocks, no fallbacks - fail fast and clear
 
 
 class ModelType(Enum):
@@ -433,7 +356,7 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
             return True
         return False
 
-    # Fallback to exception classes mapped by LiteLLM/OpenAI
+    # Check exception classes mapped by LiteLLM/OpenAI for transient errors
     transient_types = (
         getattr(openai, "APITimeoutError", Exception),
         getattr(openai, "APIConnectionError", Exception),
@@ -943,17 +866,21 @@ class LocalSentenceTransformerWrapper(Embeddings):
 
 
 def _get_litellm_chat(
-    cls: type = LiteLLMChatWrapper,
-    model_name: str = "",
-    provider_name: str = "",
+    cls,
+    model_name: str,
+    provider_name: str,
     model_config: Optional[ModelConfig] = None,
     **kwargs: Any,
 ):
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
-    # Only pass API key if key is not a placeholder
-    if api_key and api_key not in ("None", "NA"):
+    # Production validation - no placeholder API keys allowed
+    if api_key in ("None", "NA", None, ""):
+        raise LLMNotConfiguredError(
+            f"Invalid API key '{api_key}' for provider '{provider_name}'. Configure proper API key."
+        )
+    if api_key:
         kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
@@ -980,8 +907,12 @@ def _get_litellm_embedding(
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
-    # Only pass API key if key is not a placeholder
-    if api_key and api_key not in ("None", "NA"):
+    # Production validation - no placeholder API keys allowed
+    if api_key in ("None", "NA", None, ""):
+        raise LLMNotConfiguredError(
+            f"Invalid API key '{api_key}' for embedding provider '{provider_name}'. Configure proper API key."
+        )
+    if api_key:
         kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
@@ -1075,31 +1006,30 @@ def _merge_provider_defaults(
 def get_chat_model(
     provider: str, name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any
 ) -> LiteLLMChatWrapper:
-    """Return a chat model implementation.
+    """Get a chat model for the specified provider and model name.
 
-    The function now respects a **global flag** ``USE_REAL_LLM`` (exposed via
-    ``python.helpers.settings``).  When the flag is ``True`` and a valid API key
-    exists for the requested provider, a real ``LiteLLMChatWrapper`` is
-    instantiated.  Otherwise the lightweight ``MockChatWrapper`` is returned –
-    this preserves the existing test‑suite behaviour while allowing production
-    deployments to use a genuine LLM.
+    Production-only implementation - requires proper LLM configuration.
+    No mocks, no fallbacks, no deferred errors. Fails fast if misconfigured.
     """
 
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
 
-    # Determine whether we should use the real LLM implementation.
-    # settings import not required here; API keys are read from kwargs or env
-
-    # Allow the server to start without an LLM configured. The UI will display
-    # a notification if model calls fail due to missing configuration.
+    # Production systems must have proper LLM configuration
     from python.helpers.settings import get_settings
 
-    use_llm = get_settings().get("USE_LLM", False)
+    use_llm = get_settings().get("USE_LLM", True)  # Default to True for production
     api_key = kwargs.get("api_key")
 
-    if not use_llm or (provider_name == "openai" and (not api_key or api_key in ("None", "NA"))):
-        return NoLLMWrapper(provider=provider_name, model=name, model_config=model_config, **kwargs)
+    if not use_llm:
+        raise LLMNotConfiguredError(
+            f"LLM disabled in settings. Set USE_LLM=true for provider '{provider_name}'."
+        )
+    
+    if provider_name == "openai" and (not api_key or api_key in ("None", "NA")):
+        raise LLMNotConfiguredError(
+            f"Invalid OpenAI API key for provider '{provider_name}'. Configure proper API key."
+        )
 
     return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 
