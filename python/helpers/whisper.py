@@ -14,18 +14,14 @@ from python.helpers.print_style import PrintStyle
 # Suppress FutureWarning from torch.load
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# Whisper is an optional heavy dependency. Import it lazily; if unavailable, provide a stub.
+# Whisper is required for audio transcription in production
 try:
     import whisper  # type: ignore
-except Exception:  # pragma: no cover
-
-    class _WhisperStub:
-        def __getattr__(self, name):
-            raise ImportError(
-                "Whisper library is not installed. Install 'openai-whisper' to use audio transcription."
-            )
-
-    whisper = _WhisperStub()
+except ImportError as exc:
+    raise ImportError(
+        "Whisper library is required for production audio transcription. "
+        "Install with: pip install openai-whisper"
+    ) from exc
 
 _model = None
 _model_name = ""

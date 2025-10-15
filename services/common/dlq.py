@@ -45,12 +45,12 @@ class DeadLetterQueue:
                     "error": str(error),
                 },
             )
-        except Exception as dlq_error:  # pragma: no cover - defensive
-            LOGGER.exception(
-                "Failed to publish to DLQ",
+        except Exception as dlq_error:
+            LOGGER.error(
+                "DLQ publish failed",
                 extra={
                     "error": str(dlq_error),
-                    "source_topic": self.source_topic,
-                    "original_error": str(error),
-                },
+                    "error_type": type(dlq_error).__name__,
+                    "original_topic": original_topic
+                }
             )

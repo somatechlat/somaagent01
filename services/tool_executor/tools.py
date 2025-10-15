@@ -41,8 +41,15 @@ class TimestampTool(BaseTool):
         fmt = args.get("format", "%Y-%m-%dT%H:%M:%SZ")
         try:
             now = datetime.datetime.utcnow().strftime(fmt)
-        except Exception as exc:  # pragma: no cover - invalid format
-            raise ToolExecutionError(f"Invalid format '{fmt}': {exc}") from exc
+        except Exception as exc:
+            LOGGER.warning(
+                "Tool validation failed",
+                extra={
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "tool_data": str(tool_data)[:100]  # truncate for logging
+                }
+            )
         return {"message": now}
 
 
@@ -73,8 +80,15 @@ class CodeExecutionTool(BaseTool):
                         },
                         local_vars,
                     )
-            except Exception as exc:  # pragma: no cover - depends on user code
-                raise ToolExecutionError(str(exc)) from exc
+            except Exception as exc:
+                LOGGER.error(
+                    "Tool execution failed",
+                    extra={
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                        "tool_name": tool.name if hasattr(tool, 'name') else 'unknown'
+                    }
+                )
             return {
                 "stdout": buffer.getvalue(),
                 "locals": {

@@ -237,8 +237,15 @@ class ToolExecutor:
             TOOL_REQUEST_COUNTER.labels(tool_label, "execution_error").inc()
             TOOL_INFLIGHT.labels(tool_label).dec()
             return
-        except Exception as exc:  # pragma: no cover - defensive catch
-            LOGGER.exception("Unexpected tool execution failure")
+        except Exception as exc:
+            LOGGER.error(
+                "Error processing tool request",
+                extra={
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "tool_name": getattr(payload, 'tool_name', 'unknown')
+                }
+            )
             await self._publish_result(
                 event,
                 status="error",

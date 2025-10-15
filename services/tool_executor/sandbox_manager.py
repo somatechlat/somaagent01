@@ -50,10 +50,18 @@ class SandboxManager:
             status = "timeout"
             payload = {"message": "Tool execution timed out"}
             logs.append("Execution exceeded timeout")
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:
+            LOGGER.error(
+                "Sandbox execution failed",
+                extra={
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "sandbox_id": sandbox_id
+                }
+            )
             status = "error"
-            payload = {"message": str(exc)}
-            logs.append(f"Unhandled exception: {exc}")
+            payload = {"message": f"{type(exc).__name__}: {exc}"}
+            logs.append(f"Unhandled exception: {type(exc).__name__}: {exc}")
         duration = time.time() - start
         return SandboxExecutionResult(
             status=status, payload=payload, execution_time=duration, logs=logs

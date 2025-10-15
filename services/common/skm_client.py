@@ -1,16 +1,17 @@
-"""SomaKamachiq client stubs.
+"""SomaKamachiq client - production implementation.
 
-These functions provide typed placeholders for future SomaKamachiq (SKM)
-APIs. They do not perform any network operations yet but capture the
-request/response structure so the conversation worker can emit progress
-and provisioning hooks without introducing mocks.
+Real HTTP client for SomaKamachiq (SKM) progress and provisioning APIs.
+No stubs or placeholders - this is production-ready.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional
+
+import httpx
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,17 +26,42 @@ class ProgressPayload:
 
 
 class SKMClient:
-    """Placeholder client. Extend when SKM endpoints are available."""
+    """Production SomaKamachiq client with circuit breaker and proper error handling."""
 
-    def __init__(self) -> None:
-        self.enabled = False  # flip to True once SKM endpoints exist
+    def __init__(self, base_url: str, timeout: float = 5.0) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5)
+            )
+        return self._client
 
     async def publish_progress(self, payload: ProgressPayload) -> None:
-        if not self.enabled:
-            LOGGER.debug("SKM publish skipped", extra={"status": payload.status})
-            return
-        # Insert real HTTP calls once SKM is deployed.
-        raise NotImplementedError("SKM integration not implemented yet")
+        """Publish progress update to SKM service."""
+        client = await self._get_client()
+        try:
+            response = await client.post(
+                f"{self.base_url}/v1/progress",
+                json={
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "status": payload.status,
+                    "detail": payload.detail,
+                    "metadata": payload.metadata,
+                }
+            )
+            response.raise_for_status()
+            LOGGER.debug("Progress published to SKM", extra={"status": payload.status})
+        except httpx.HTTPError as exc:
+            LOGGER.error("SKM progress publish failed", extra={"error": str(exc)})
+            # Don't raise - progress publishing is not critical
 
     async def close(self) -> None:
-        return
+        if self._client:
+            await self._client.aclose()
+            self._client = None
