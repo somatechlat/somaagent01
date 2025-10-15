@@ -29,7 +29,7 @@ def _resolve_vault_token(*, token: Optional[str], token_file: Optional[str]) -> 
     if token_file:
         try:
             return Path(token_file).read_text(encoding="utf-8").strip()
-        except OSError as exc:  # pragma: no cover - filesystem specific
+        except OSError as exc:
             LOGGER.error(
                 "Failed to read Vault token file",
                 extra={"token_file": token_file, "error": str(exc)},
