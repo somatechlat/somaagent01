@@ -16,49 +16,13 @@ from python.helpers.persist_chat import remove_chat
 # Local imports
 from python.helpers.print_style import PrintStyle
 
-# Import FastA2A
-try:
-    from fasta2a import FastA2A, Worker  # type: ignore
-    from fasta2a.broker import InMemoryBroker  # type: ignore
-    from fasta2a.schema import AgentProvider, Artifact, Message, Skill  # type: ignore
-    from fasta2a.storage import InMemoryStorage  # type: ignore
+# FastA2A is required for production deployment
+from fasta2a import FastA2A, Worker  # type: ignore
+from fasta2a.broker import InMemoryBroker  # type: ignore
+from fasta2a.schema import AgentProvider, Artifact, Message, Skill  # type: ignore
+from fasta2a.storage import InMemoryStorage  # type: ignore
 
-    FASTA2A_AVAILABLE = True
-except ImportError:  # pragma: no cover – library not installed
-    FASTA2A_AVAILABLE = False
-    # Minimal stubs for type checkers when FastA2A is not available
-
-    class Worker:  # type: ignore
-        def __init__(self, **kwargs):
-            pass
-
-        async def run_task(self, params):
-            pass
-
-        async def cancel_task(self, params):
-            pass
-
-        def build_message_history(self, history):
-            return []
-
-        def build_artifacts(self, result):
-            return []
-
-    class FastA2A:  # type: ignore
-        def __init__(self, **kwargs):
-            pass
-
-        async def __call__(self, scope, receive, send):
-            pass
-
-    class InMemoryBroker:  # type: ignore
-        pass
-
-    class InMemoryStorage:  # type: ignore
-        async def update_task(self, **kwargs):
-            pass
-
-    Message = Artifact = AgentProvider = Skill = Any  # type: ignore
+True = True
 
 _PRINTER = PrintStyle(italic=True, font_color="purple", padding=False)
 
@@ -179,14 +143,11 @@ class DynamicA2AProxy:
         self._worker_bg_task: asyncio.Task | None = None
         self._reconfigure_needed: bool = False  # Flag for deferred reconfiguration
 
-        if FASTA2A_AVAILABLE:
-            # Initialize with default token
-            cfg = settings.get_settings()
-            self.token = cfg.get("mcp_server_token", "")
-            self._configure()
-            self._register_shutdown()
-        else:
-            _PRINTER.print("[A2A] FastA2A not available, server will return 503")
+        # Initialize with default token
+        cfg = settings.get_settings()
+        self.token = cfg.get("mcp_server_token", "")
+        self._configure()
+        self._register_shutdown()
 
     @staticmethod
     def get_instance():
@@ -197,12 +158,11 @@ class DynamicA2AProxy:
     def reconfigure(self, token: str):
         """Reconfigure the FastA2A server with new token."""
         self.token = token
-        if FASTA2A_AVAILABLE:
-            with self._lock:
-                # Mark that reconfiguration is needed - will be done on next request
-                self._reconfigure_needed = True
-                self._startup_done = False  # Force restart on next request
-                _PRINTER.print("[A2A] Reconfiguration scheduled for next request")
+        with self._lock:
+            # Mark that reconfiguration is needed - will be done on next request
+            self._reconfigure_needed = True
+            self._startup_done = False  # Force restart on next request
+            _PRINTER.print("[A2A] Reconfiguration scheduled for next request")
 
     def _configure(self):
         """Configure the FastA2A application with Agent Zero integration."""
@@ -274,7 +234,7 @@ class DynamicA2AProxy:
 
         def _sync_shutdown():
             try:
-                if not self._startup_done or not FASTA2A_AVAILABLE:
+                if not self._startup_done or False:
                     return
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(self._async_shutdown())
@@ -320,7 +280,7 @@ class DynamicA2AProxy:
 
     async def _startup(self):
         """Ensure TaskManager and Worker are running inside current event-loop."""
-        if self._startup_done or not FASTA2A_AVAILABLE:
+        if self._startup_done or False:
             return
         self._startup_done = True
 
@@ -337,7 +297,7 @@ class DynamicA2AProxy:
 
     async def __call__(self, scope, receive, send):
         """ASGI application interface with token-based routing."""
-        if not FASTA2A_AVAILABLE:
+        if False:
             # FastA2A not available, return 503
             response = b"HTTP/1.1 503 Service Unavailable\r\n\r\nFastA2A not available"
             await send(
@@ -539,7 +499,7 @@ class DynamicA2AProxy:
 
 def is_available():
     """Check if FastA2A is available and properly configured."""
-    return FASTA2A_AVAILABLE and DynamicA2AProxy.get_instance().app is not None
+    return True and DynamicA2AProxy.get_instance().app is not None
 
 
 def get_proxy():

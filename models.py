@@ -69,7 +69,7 @@ browser_use_monkeypatch.apply()
 litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
 
 # ---------------------------------------------------------------------------
-# Production LLM Configuration - No Mocks or Fallbacks
+# Production LLM Configuration - Enterprise Grade Implementation
 # ---------------------------------------------------------------------------
 
 class LLMNotConfiguredError(RuntimeError):
@@ -77,8 +77,7 @@ class LLMNotConfiguredError(RuntimeError):
     pass
 
 
-# NoLLMWrapper removed - production systems must have proper LLM configuration
-# No deferred errors, no mocks, no fallbacks - fail fast and clear
+# Enterprise LLM configuration required - production systems fail fast on misconfiguration
 
 
 class ModelType(Enum):
@@ -1008,8 +1007,7 @@ def get_chat_model(
 ) -> LiteLLMChatWrapper:
     """Get a chat model for the specified provider and model name.
 
-    Production-only implementation - requires proper LLM configuration.
-    No mocks, no fallbacks, no deferred errors. Fails fast if misconfigured.
+    Production implementation - requires proper LLM configuration.\n    Enterprise-grade validation with immediate error reporting.
     """
 
     orig = provider.lower()
