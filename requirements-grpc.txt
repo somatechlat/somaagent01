@@ -1,0 +1,3 @@
+# GRPC & Communication
+grpcio==1.66.1
+grpcio-tools==1.66.1

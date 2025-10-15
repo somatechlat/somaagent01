@@ -9,16 +9,22 @@ ENV UV_HTTP_TIMEOUT=180
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
  
-# Build-time toggles (kept minimal and backwards-compatible)
+# Build-time toggles for feature-based installation
 # SERVICE: optional service name to include specific runtime deps (e.g. memory_service)
 # K8S: optional flag for k8s-tuned builds (not changing entrypoint or compose behavior)
 ARG SERVICE=""
 ARG K8S=false
-# Torch variant controls whether torch is installed and which wheel to use:
-#   none -> do not install torch
-#   cpu  -> install CPU-only torch from PyTorch cpu index
-#   cuda -> install CUDA-enabled torch (default if you explicitly choose cuda)
-ARG TORCH_VARIANT=none
+
+# Feature flags for modular installation
+ARG FEATURE_AI=basic
+ARG FEATURE_AUDIO=none
+ARG FEATURE_BROWSER=true
+ARG FEATURE_DOCUMENTS=true
+ARG FEATURE_DATABASE=true
+ARG FEATURE_MONITORING=false
+ARG FEATURE_DEV=true
+ARG FEATURE_GRPC=false
+ARG FEATURE_INTEGRATIONS=true
 
 # Copy filesystem files to root
 COPY ./docker/run/fs/ /
@@ -39,14 +45,21 @@ RUN apt-get update && apt-get install -y python3-venv python3-pip && \
 # Make sure the container runtime uses the venv by default
 ENV PATH="/venv/bin:${PATH}"
 
-# install A0 (full/dev image only)
-# Compatibility fix: install `pydantic-settings` into the venv so code importing BaseSettings
-# (moved to pydantic-settings) can run during the install step.
+# install A0 (full/dev image only) using modular installation
 RUN if [ -z "$SERVICE" ]; then \
         /venv/bin/pip install --no-cache-dir "pydantic==2.11.6" "pydantic-settings==2.6.1" && \
-        TORCH_VARIANT=${TORCH_VARIANT} bash /ins/install_A0.sh $BRANCH; \
+        FEATURE_AI=${FEATURE_AI} \
+        FEATURE_AUDIO=${FEATURE_AUDIO} \
+        FEATURE_BROWSER=${FEATURE_BROWSER} \
+        FEATURE_DOCUMENTS=${FEATURE_DOCUMENTS} \
+        FEATURE_DATABASE=${FEATURE_DATABASE} \
+        FEATURE_MONITORING=${FEATURE_MONITORING} \
+        FEATURE_DEV=${FEATURE_DEV} \
+        FEATURE_GRPC=${FEATURE_GRPC} \
+        FEATURE_INTEGRATIONS=${FEATURE_INTEGRATIONS} \
+        bash /ins/install_modular.sh $BRANCH; \
     else \
-        echo "Skipping install_A0.sh for SERVICE=$SERVICE"; \
+        echo "Skipping modular installation for SERVICE=$SERVICE"; \
     fi
 
 # install additional software (full/dev image only)
@@ -57,7 +70,7 @@ ARG CACHE_DATE=none
 RUN if [ -z "$SERVICE" ]; then \
         echo "cache buster $CACHE_DATE" && \
         if [ "$BRANCH" != "local" ]; then \
-            TORCH_VARIANT=${TORCH_VARIANT} bash /ins/install_A02.sh $BRANCH; \
+            bash /ins/install_A02.sh $BRANCH; \
         else \
             echo "Skipping install_A02.sh for BRANCH=local"; \
         fi; \
@@ -71,39 +84,15 @@ RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Ski
 # Minimal extras required at runtime but not carried in upstream requirements.
 RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema
 
-# Whisper-based speech-to-text rides on torch, so only install when the torch stack is requested.
-RUN if [ "${TORCH_VARIANT}" != "none" ]; then \
-        /venv/bin/pip install --no-cache-dir openai-whisper || true; \
-    else \
-        echo "Skipping openai-whisper install (TORCH_VARIANT=${TORCH_VARIANT})"; \
-    fi
+# Whisper installation is now handled by modular installer based on FEATURE_AUDIO
 
-# Install optional torch variant after core dependencies are in place.
-RUN if [ -z "$SERVICE" ]; then \
-        if [ "${TORCH_VARIANT}" = "cpu" ]; then \
-            /venv/bin/pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch; \
-        elif [ "${TORCH_VARIANT}" = "cuda" ]; then \
-            /venv/bin/pip install --no-cache-dir torch; \
-        else \
-            echo "Skipping torch install (TORCH_VARIANT=${TORCH_VARIANT})"; \
-        fi; \
-    else \
-        echo "Skipping torch install for SERVICE=$SERVICE"; \
-    fi
+# Torch installation handled by modular installer based on FEATURE_AI 
 
-# Install Playwright and its browsers for UI testing (only for full/dev image)
-RUN if [ -z "$SERVICE" ]; then \
-        python3 -m pip install --break-system-packages playwright && \
-        python3 -m playwright install chromium && \
-        python3 -m playwright install firefox && \
-        python3 -m playwright install webkit; \
-    else \
-        echo "Skipping Playwright install for SERVICE=$SERVICE"; \
-    fi
+# Playwright installation handled by modular installer based on FEATURE_BROWSER
 
-# Install asyncpg for async PostgreSQL access (memory_service and full/dev)
+# Install asyncpg for async PostgreSQL access (memory_service, gateway and full/dev)
 # Use the distribution package for the full/dev image to avoid compiling wheels on Python 3.13.
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "settings_service" ]; then \
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ]; then \
         apt-get update && apt-get install -y python3-asyncpg && \
         apt-get clean && rm -rf /var/lib/apt/lists/*; \
     elif [ "$SERVICE" = "memory_service" ]; then \
@@ -116,8 +105,8 @@ RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "settings_service" ]; then \
 # Install gRPC runtime for memory service (and full/dev)
 # Use the distribution package for grpc runtime to avoid building grpc C extensions in the image.
 RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "memory_service" ]; then \
-        apt-get update && apt-get install -y python3-grpcio && \
-        apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    apt-get update && apt-get install -y python3-grpcio && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*; \
     else \
         echo "Skipping grpcio for SERVICE=$SERVICE"; \
     fi

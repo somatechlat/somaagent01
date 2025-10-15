@@ -1,0 +1,55 @@
+# Core Libraries - Always Required
+# Web Framework & API
+fastapi==0.115.2
+uvicorn[standard]==0.32.0
+httpx==0.28.1
+flask[async]==3.0.3
+flask-basicauth==0.2.0
+
+# Data Processing
+pydantic==2.11.6
+pydantic-settings==2.6.1
+python-dotenv==1.1.0
+PyYAML==6.0.2
+PyJWT==2.9.0
+
+# Basic Utilities
+simpleeval==1.0.3
+inputimeout==1.0.4
+nest-asyncio==1.6.0
+crontab==1.0.1
+pathspec>=0.12.1
+psutil>=7.0.0
+pytz==2024.2
+websockets==14.0
+webcolors==24.6.0
+numpy==1.26.4
+a2wsgi==1.10.8
+ansio==0.0.1
+fastmcp==2.3.4
+fasta2a==0.5.0
+flaredantic==0.1.4
+mcp==1.13.1
+
+# Essential for services
+jsonschema==4.22.0
+prometheus-client==0.20.0
+aiofiles==24.1.0
+aiokafka==0.11.0
+redis==5.2.0
+psycopg[binary]==3.2.3
+grpcio==1.67.1
+protobuf==5.28.3
+
+# OpenTelemetry instrumentation packages
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-instrumentation-httpx==0.48b0
+opentelemetry-instrumentation-asyncpg==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-exporter-otlp-proto-grpc==1.27.0
+
+# Circuit Breaker
+pybreaker==1.0.2

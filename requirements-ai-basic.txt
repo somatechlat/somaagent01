@@ -1,0 +1,4 @@
+# AI/ML Basic - No Torch Dependencies
+tiktoken==0.8.0
+litellm==1.75.0
+faiss-cpu==1.11.0
