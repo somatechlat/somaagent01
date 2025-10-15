@@ -1,6 +1,6 @@
 x-agent-env: &agent-env
-  PYTHONPATH: /a0
-  PATH: /opt/venv-a0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  PYTHONPATH: /a0:/a0/common:/venv/lib/python3.11/site-packages
+  PATH: /venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   VIRTUAL_ENV: /opt/venv-a0
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -50,12 +50,22 @@ x-agent-service: &agent-service
     dockerfile: DockerfileLocal
     args:
       BRANCH: development
+      FEATURE_AI: basic
+      FEATURE_AUDIO: none
+      FEATURE_BROWSER: true
+      FEATURE_DOCUMENTS: true
+      FEATURE_DATABASE: true
+      FEATURE_MONITORING: false
+      FEATURE_DEV: true
+      FEATURE_GRPC: false
+      FEATURE_INTEGRATIONS: true
   working_dir: /a0
   volumes:
     - ./a0_data:/a0
     - ./services:/a0/services:ro
     - ./python:/a0/python:ro
     - ./lib:/a0/lib:ro
+    - ./common:/a0/common:ro
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on: *agent-depends
@@ -90,7 +100,7 @@ services:
       KAFKA_ENABLE_SSL: ${KAFKA_ENABLE_SSL:-false}
       KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER: ${KAFKA_CFG_ALLOW_PLAINTEXT_LISTENER:-yes}
     ports:
-      - "${KAFKA_PORT:-0}:9092"
+      - "${KAFKA_PORT:-40001}:9092"
     restart: unless-stopped
     volumes:
       - kafka_data:/bitnami/kafka
@@ -109,7 +119,7 @@ services:
     <<: *svc-limits
     command: ["redis-server", "--save", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-0}:6379"
+      - "${REDIS_PORT:-40002}:6379"
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -131,7 +141,7 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
       - POSTGRES_INITDB_ARGS=--data-checksums
     ports:
-      - "${POSTGRES_PORT:-0}:5432"
+      - "${POSTGRES_PORT:-40003}:5432"
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -149,8 +159,8 @@ services:
     profiles: ["vectorstore"]
     <<: *svc-limits
     ports:
-      - "${QDRANT_HTTP_PORT:-0}:6333"
-      - "${QDRANT_GRPC_PORT:-0}:6334"
+      - "${QDRANT_HTTP_PORT:-40004}:6333"
+      - "${QDRANT_GRPC_PORT:-40005}:6334"
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
@@ -163,8 +173,8 @@ services:
     environment:
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     ports:
-      - "${CLICKHOUSE_HTTP_PORT:-0}:8123"
-      - "${CLICKHOUSE_NATIVE_PORT:-0}:9000"
+      - "${CLICKHOUSE_HTTP_PORT:-40006}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-40007}:9000"
     restart: unless-stopped
     volumes:
       - clickhouse_data:/var/lib/clickhouse
@@ -175,7 +185,7 @@ services:
     profiles: ["metrics"]
     command: ["--config.file=/etc/prometheus/prometheus.yml"]
     ports:
-      - "${PROMETHEUS_PORT:-0}:9090"
+      - "${PROMETHEUS_PORT:-40026}:9090"
     restart: unless-stopped
     volumes:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -191,7 +201,7 @@ services:
       - GF_SECURITY_DISABLE_INITIAL_ADMIN_PASSWORD=true
       - GF_USERS_DEFAULT_THEME=system
     ports:
-      - "${GRAFANA_PORT:-0}:3000"
+      - "${GRAFANA_PORT:-40027}:3000"
     restart: unless-stopped
     depends_on:
       prometheus:
@@ -213,7 +223,7 @@ services:
     cap_add:
       - IPC_LOCK
     ports:
-      - "${VAULT_PORT:-0}:8200"
+      - "${VAULT_PORT:-40010}:8200"
     restart: unless-stopped
     volumes:
       - vault_data:/vault/file
@@ -230,23 +240,10 @@ services:
     profiles: ["core"]
     command: ["run", "--server", "--set=decision_logs.console=true"]
     ports:
-      - "${OPA_PORT:-0}:8181"
+      - "${OPA_PORT:-40011}:8181"
     restart: unless-stopped
 
-  openfga-migrate:
-    image: openfga/openfga:v1.8.3
-    container_name: somaAgent01_openfga-migrate
-    restart: "no"
-    profiles: ["core"]
-    <<: *svc-limits
-    command:
-      [
-        "migrate",
-        "--datastore-engine",
-        "postgres",
-        "--datastore-uri",
-        "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable",
-      ]
+  # openfga-migrate: REMOVED - No longer needed without OpenFGA service
 
   delegation:
     <<: *agent-service
@@ -273,48 +270,17 @@ services:
         condition: service_healthy
       memory-service:
         condition: service_started
-      openfga:
-        condition: service_started
       opa:
         condition: service_started
     ports:
-      - "${DELEGATION_GATEWAY_PORT_PRIMARY:-0}:8015"
-      - "${DELEGATION_GATEWAY_PORT_SECONDARY:-0}:8015"
+      - "${DELEGATION_GATEWAY_PORT_PRIMARY:-40024}:8015"
+      - "${DELEGATION_GATEWAY_PORT_SECONDARY:-40025}:8015"
     volumes:
       - ./a0_data:/a0
       - ./conf/supervisor/delegation.conf:/etc/supervisor/conf.d/delegation.conf:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  openfga:
-    build:
-      context: .
-      dockerfile: docker/openfga/Dockerfile
-    image: somaagent01-openfga:latest
-    container_name: somaAgent01_openfga
-    profiles: ["core"]
-    <<: *svc-limits
-    environment:
-      - OPENFGA_GRPC_ADDR=0.0.0.0:8081
-      - OPENFGA_HTTP_ADDR=0.0.0.0:8080
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
-      - OPENFGA_DATASTORE_MAX_OPEN_CONNS=50
-      - OPENFGA_DATASTORE_MAX_IDLE_CONNS=10
-    ports:
-      - "${OPENFGA_GRPC_PORT:-0}:8081"
-      - "${OPENFGA_HTTP_PORT:-0}:8080"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "openfga", "version"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    depends_on:
-      postgres:
-        condition: service_healthy
-      openfga-migrate:
-        condition: service_completed_successfully
 
   agent-ui:
     <<: [*agent-service, *svc-limits]
@@ -337,41 +303,13 @@ services:
         condition: service_healthy
       memory-service:
         condition: service_started
-      openfga:
-        condition: service_started
     ports:
-      - "7002:80"
+      - "40014:80"
     volumes:
       - ./a0_data:/a0
 
   # Duplicate UI service exposing on port 7003 without affecting the existing 7002 mapping.
-  agent-ui-7003:
-    <<: [*agent-service, *svc-limits]
-    container_name: somaAgent01_agent-ui-7003
-    command: ["/exe/initialize.sh", "development"]
-    working_dir: /a0
-    profiles: ["dev"]
-    env_file:
-      - ./conf/env/testing-prod.env
-    environment:
-      SOMA_BASE_URL: http://host.docker.internal:9696
-      SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
-      PYTHONPATH: /a0
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      memory-service:
-        condition: service_started
-      openfga:
-        condition: service_started
-    ports:
-      - "7003:80"
-    volumes:
-      - ./a0_data:/a0
+  # agent-ui-7003: REMOVED - Redundant duplicate of main agent-ui
 
   gateway:
     <<: [*agent-service, *svc-limits]
@@ -393,7 +331,7 @@ services:
       PORT: "8010"
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
     ports:
-      - "${GATEWAY_PORT:-7001}:8010"
+      - "${GATEWAY_PORT:-40016}:8010"
     depends_on:
       kafka:
         condition: service_healthy
@@ -444,63 +382,11 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${MEMORY_SERVICE_PORT:-50052}:50052"
+      - "${MEMORY_SERVICE_PORT:-40017}:50052"
 
-  settings-service:
-    <<: [*agent-service, *svc-limits]
-    container_name: somaAgent01_settings-service
-    profiles: ["core"]
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.settings_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8011",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8011"
-    ports:
-      - "${SETTINGS_PORT:-8011}:8011"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  router:
-    <<: [*agent-service, *svc-limits]
-    container_name: somaAgent01_router
-    profiles: ["core"]
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.router.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8013",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8013"
-    ports:
-      - "${ROUTER_PORT:-8013}:8013"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+
+
 
   audio-service:
     <<: [*agent-service, *svc-limits]
@@ -524,7 +410,7 @@ services:
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
       WHISPER_COMPUTE: ${WHISPER_COMPUTE:-int8}
     ports:
-      - "${AUDIO_PORT:-8016}:8016"
+      - "${AUDIO_PORT:-40020}:8016"
     depends_on:
       kafka:
         condition: service_healthy
@@ -552,7 +438,7 @@ services:
       <<: *agent-env
       PORT: "8014"
     ports:
-      - "${CANVAS_PORT:-8014}:8014"
+      - "${CANVAS_PORT:-40021}:8014"
     depends_on:
       kafka:
         condition: service_healthy
@@ -578,35 +464,16 @@ services:
       redis:
         condition: service_healthy
 
-  requeue-service:
-    <<: [*agent-service, *svc-limits]
-    container_name: somaAgent01_requeue-service
-    profiles: ["optional"]
-    command:
-      [
-        "python3",
-        "-m",
-        "uvicorn",
-        "services.requeue_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8012",
-      ]
-    environment:
-      <<: *agent-env
-      PORT: "8012"
-    ports:
-      - "${REQUEUE_PORT:-8012}:8012"
+
 
   # UI service exposing the Flask UI on host port 7003 (container runs on 5000).
   ui_7003:
     <<: [*agent-service, *svc-limits]
     container_name: somaAgent01_ui_7003
     profiles: ["ui"]
-    # Map host port 7003 to the Flask default port 5000 inside the container.
+    # Map host port 40023 to the Flask default port 5000 inside the container.
     ports:
-      - "7003:5000"
+      - "40023:5000"
 
 networks:
   default:

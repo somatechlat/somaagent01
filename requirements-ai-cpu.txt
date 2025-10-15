@@ -1,0 +1,2 @@
+# AI/ML CPU - Requires Torch CPU
+sentence-transformers==3.0.1

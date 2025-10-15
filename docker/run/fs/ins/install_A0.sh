@@ -40,6 +40,17 @@ src = Path(os.environ["REQ_SRC"])
 dst = Path(os.environ["REQ_DST"])
 blocklist = {"asyncpg", "openai-whisper", "kokoro"}
 
+torch_variant = os.environ.get("TORCH_VARIANT", "none").strip().lower()
+if torch_variant == "none":
+    blocklist.update({
+        "torch",
+        "torchvision",
+        "torchaudio",
+        "faster-whisper",
+        "accelerate",
+        "sentence-transformers",
+    })
+
 def canonical(name: str) -> str:
     base = name.split("[")[0]
     for sep in ("==", ">=", "<=", "~=", "!=", ">", "<"):
@@ -73,17 +84,6 @@ FAILED_PACKAGES=()
 for requirement in "${REQUIREMENTS[@]}"; do
     req_trimmed="${requirement## }"
     if [ -n "${req_trimmed}" ]; then
-        if [[ "${req_trimmed}" == sentence-transformers* ]]; then
-            if [ "${TORCH_VARIANT:-none}" = "none" ]; then
-                echo "Skipping sentence-transformers (TORCH_VARIANT=none)"
-                continue
-            fi
-            if ! pip install --no-cache-dir --no-deps "${req_trimmed}"; then
-                FAILED_PACKAGES+=("${req_trimmed}")
-            fi
-            continue
-        fi
-
         if ! pip install --no-cache-dir "${req_trimmed}"; then
             FAILED_PACKAGES+=("${req_trimmed}")
         fi

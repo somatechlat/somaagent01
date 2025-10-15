@@ -1,0 +1,229 @@
+x-agent-env: &agent-env
+  PYTHONPATH: /a0:/a0/common:/venv/lib/python3.11/site-packages
+  PATH: /venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  LOG_LEVEL: INFO
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  REDIS_URL: redis://redis:6379/0
+  POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+  OPA_URL: http://opa:8181
+  POLICY_BASE_URL: http://opa:8181
+  POLICY_FAIL_OPEN: "true"
+  SOMA_BASE_URL: http://host.docker.internal:9696
+  GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
+
+# Optimized resource limits
+x-svc-limits: &svc-limits
+  mem_limit: ${SVC_MEM_LIMIT:-512m}
+  cpus: "${SVC_CPUS:-0.50}"
+
+x-agent-depends: &agent-depends
+  kafka:
+    condition: service_healthy
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  opa:
+    condition: service_started
+
+x-agent-service: &agent-service
+  image: somaagent01-dev:latest
+  build:
+    context: .
+    dockerfile: DockerfileLocal
+    args:
+      BRANCH: development
+      FEATURE_AI: basic
+      FEATURE_AUDIO: none
+      FEATURE_BROWSER: true
+      FEATURE_DOCUMENTS: true
+      FEATURE_DATABASE: true
+      FEATURE_MONITORING: false
+      FEATURE_DEV: true
+      FEATURE_GRPC: false
+      FEATURE_INTEGRATIONS: true
+  working_dir: /a0
+  volumes:
+    - ./a0_data:/a0
+    - ./services:/a0/services:ro
+    - ./python:/a0/python:ro
+    - ./lib:/a0/lib:ro
+    - ./common:/a0/common:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on: *agent-depends
+  restart: unless-stopped
+
+services:
+  # === CORE INFRASTRUCTURE (4 services) ===
+  
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: somaAgent01_kafka
+    profiles: ["core"]
+    <<: *svc-limits
+    environment:
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
+    ports:
+      - "${KAFKA_PORT:-40001}:9092"
+    restart: unless-stopped
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  redis:
+    image: redis:7-alpine
+    container_name: somaAgent01_redis
+    profiles: ["core"]
+    <<: *svc-limits
+    command: ["redis-server", "--save", "", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-40002}:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: somaAgent01_postgres
+    profiles: ["core"]
+    <<: *svc-limits
+    environment:
+      - POSTGRES_USER=soma
+      - POSTGRES_PASSWORD=soma
+      - POSTGRES_DB=somaagent01
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-40003}:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  opa:
+    image: openpolicyagent/opa:0.64.0
+    container_name: somaAgent01_opa
+    profiles: ["core"]
+    command: ["run", "--server", "--set=decision_logs.console=true"]
+    ports:
+      - "${OPA_PORT:-40011}:8181"
+    restart: unless-stopped
+
+  # === AGENT SERVICES (3 services) ===
+
+  gateway:
+    <<: [*agent-service, *svc-limits]
+    container_name: somaAgent01_gateway
+    profiles: ["core"]
+    command:
+      [
+        "python3",
+        "-m",
+        "uvicorn",
+        "services.gateway.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8010",
+      ]
+    environment:
+      <<: *agent-env
+      PORT: "8010"
+      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
+    ports:
+      - "${GATEWAY_PORT:-40016}:8010"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  conversation-worker:
+    <<: [*agent-service, *svc-limits]
+    container_name: somaAgent01_conversation-worker
+    profiles: ["core"]
+    command: ["python3", "-m", "services.conversation_worker.main"]
+    environment:
+      <<: *agent-env
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  tool-executor:
+    <<: [*agent-service, *svc-limits]
+    container_name: somaAgent01_tool-executor
+    profiles: ["core"]
+    command: ["python3", "-m", "services.tool_executor.main"]
+    environment:
+      <<: *agent-env
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # === USER INTERFACE (1 service) ===
+
+  agent-ui:
+    <<: [*agent-service, *svc-limits]
+    container_name: somaAgent01_agent-ui
+    command: ["/exe/initialize.sh", "development"]
+    working_dir: /a0
+    profiles: ["dev"]
+    environment:
+      <<: *agent-env
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "40014:80"
+
+networks:
+  default:
+    external: true
+    name: somaagent01
+
+volumes:
+  kafka_data:
+  redis_data:
+  postgres_data:

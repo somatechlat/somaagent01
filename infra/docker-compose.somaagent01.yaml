@@ -38,6 +38,8 @@ x-agent-service: &agent-service
   build:
     context: ..
     dockerfile: DockerfileLocal
+    args:
+      TORCH_VARIANT: ${TORCH_VARIANT:-none}
   working_dir: /a0
   volumes:
     - ../a0_data:/a0
@@ -184,7 +186,6 @@ services:
       - python3
       - -m
       - services.conversation_worker.main
-    environment: *agent-env
 
   tool-executor:
     <<: *agent-service
@@ -194,7 +195,6 @@ services:
       - python3
       - -m
       - services.tool_executor.main
-    environment: *agent-env
 
   memory-service:
     <<: *agent-service
@@ -213,43 +213,9 @@ services:
       postgres:
         condition: service_healthy
 
-  settings-service:
-    <<: *agent-service
-    container_name: somaAgent01_settings-service
-    profiles: ["dev"]
-    command:
-      - python3
-      - -m
-      - uvicorn
-      - services.settings_service.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8011"
-    environment:
-      <<: *agent-env
-      PORT: "8011"
-    ports:
-      - "${SETTINGS_PORT:-0}:8011"
 
-  router:
-    <<: *agent-service
-    container_name: somaAgent01_router
-    profiles: ["dev"]
-    command:
-      - python3
-      - -m
-      - uvicorn
-      - services.router.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8013"
-    environment:
-      <<: *agent-env
-      PORT: "8013"
-    ports:
-      - "${ROUTER_PORT:-0}:8013"
+
+
 
   agent-ui:
     <<: *agent-service
