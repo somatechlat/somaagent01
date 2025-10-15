@@ -383,8 +383,11 @@ class ToolExecutor:
                 content=content,
                 metadata=str_metadata,
             )
-        except Exception:  # pragma: no cover - defensive logging
-            LOGGER.exception("Failed to persist tool execution memory")
+        except Exception as exc:
+            LOGGER.warning(
+                "Error during tool executor shutdown",
+                extra={"error": str(exc), "error_type": type(exc).__name__}
+            )
 
 
 async def main() -> None:

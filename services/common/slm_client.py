@@ -66,7 +66,7 @@ class SLMClient:
                 "output_tokens": int(usage.get("completion_tokens", 0)),
             }
             return content, usage_dict
-        except (KeyError, IndexError) as exc:  # pragma: no cover - unexpected schema
+        except (KeyError, IndexError) as exc:
             LOGGER.error("Unexpected response from SLM", extra={"data": data})
             raise RuntimeError("Invalid response from SLM") from exc
 
@@ -107,7 +107,7 @@ class SLMClient:
                     break
                 try:
                     data = json.loads(data_str)
-                except json.JSONDecodeError:  # pragma: no cover - defensive
+                except json.JSONDecodeError:
                     LOGGER.warning("Skipping malformed stream chunk", extra={"chunk": data_str})
                     continue
                 yield data

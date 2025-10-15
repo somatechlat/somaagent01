@@ -89,7 +89,7 @@ class OpenFGAClient:
         try:
             response = await self._client.post(url, json=payload)
             response.raise_for_status()
-        except Exception as exc:  # pragma: no cover - exercised in integration tests
+        except Exception as exc:
             LOGGER.error(
                 "OpenFGA check failed",
                 extra={

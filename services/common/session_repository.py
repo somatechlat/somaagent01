@@ -186,7 +186,7 @@ class PostgresSessionStore(SessionStore):
     def _parse_session_id(session_id: str) -> UUID:
         try:
             return UUID(session_id)
-        except ValueError as exc:  # pragma: no cover - defensive guard
+        except ValueError as exc:
             SESSION_ENVELOPE_VALIDATION_FAILURES.labels("invalid_session_id").inc()
             LOGGER.warning("Invalid session_id for envelope", extra={"session_id": session_id})
             raise exc
@@ -196,7 +196,7 @@ class PostgresSessionStore(SessionStore):
         raw_metadata = event.get("metadata") or {}
         if isinstance(raw_metadata, dict):
             metadata = dict(raw_metadata)
-        else:  # pragma: no cover - defensive guard
+        else:
             LOGGER.warning(
                 "Unexpected metadata payload when composing envelope",
                 extra={"metadata": raw_metadata},
