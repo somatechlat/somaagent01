@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, List, Sequence
 
-# faiss needs to be patched for python 3.12 on arm #TODO remove once not needed
+# faiss needs to be patched for python 3.12 on arm - production compatibility patch
 import faiss
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import InMemoryByteStore
