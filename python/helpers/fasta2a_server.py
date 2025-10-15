@@ -22,7 +22,7 @@ from fasta2a.broker import InMemoryBroker  # type: ignore
 from fasta2a.schema import AgentProvider, Artifact, Message, Skill  # type: ignore
 from fasta2a.storage import InMemoryStorage  # type: ignore
 
-True = True
+FASTA2A_AVAILABLE = True
 
 _PRINTER = PrintStyle(italic=True, font_color="purple", padding=False)
 

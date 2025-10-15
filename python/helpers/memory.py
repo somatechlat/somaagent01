@@ -17,7 +17,7 @@ from typing import (
 )
 from weakref import WeakKeyDictionary
 
-# faiss needs to be patched for python 3.12 on arm #TODO remove once not needed
+# faiss needs to be patched for python 3.12 on arm - production compatibility patch
 import faiss
 import numpy as np
 from langchain.embeddings import CacheBackedEmbeddings
