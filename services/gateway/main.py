@@ -55,6 +55,10 @@ from services.common.session_repository import PostgresSessionStore, RedisSessio
 from services.common.settings_sa01 import SA01Settings
 from services.common.tracing import setup_tracing
 from services.common.vault_secrets import load_kv_secret
+from services.common.model_profiles import ModelProfile, ModelProfileStore
+from services.common.telemetry_store import TelemetryStore
+from services.common.memory_client import MemoryClient
+from services.common.requeue_store import RequeueStore
 
 # The PyJWT library provides ``jwt.get_unverified_header``. In this
 # environment the installed ``jwt`` package does not include that helper,
@@ -114,6 +118,12 @@ LOGGER = logging.getLogger(__name__)
 
 APP_SETTINGS = SA01Settings.from_env()
 tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
+
+# --- Consolidated service stores (moved in-process to the gateway) ---
+PROFILE_STORE = ModelProfileStore.from_settings(APP_SETTINGS)
+TELEMETRY_STORE = TelemetryStore.from_settings(APP_SETTINGS)
+MEMORY_CLIENT = MemoryClient(settings=APP_SETTINGS)
+REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
 
 
 def _kafka_settings() -> KafkaSettings:
@@ -239,6 +249,24 @@ def _start_metrics_server() -> None:
         "Gateway metrics server started",
         extra={"host": host, "port": port},
     )
+    # Ensure consolidated services are ready when the gateway starts
+    # (model profiles, telemetry/memory pools)
+    import asyncio
+
+    async def _ensure_aux_services() -> None:
+        try:
+            await PROFILE_STORE.ensure_schema()
+            await PROFILE_STORE._ensure_pool()
+            await PROFILE_STORE.sync_from_settings(APP_SETTINGS)
+        except Exception:
+            LOGGER.debug("Model profile store initialisation failed", exc_info=True)
+
+        try:
+            await TELEMETRY_STORE._ensure_pool()
+        except Exception:
+            LOGGER.debug("Telemetry store initialisation failed", exc_info=True)
+
+    asyncio.create_task(_ensure_aux_services())
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1027,3 +1055,115 @@ app.add_api_route(
     methods=["GET"],
     include_in_schema=False,
 )
+
+
+# -----------------------------
+# Model profiles endpoints (from settings_service)
+# -----------------------------
+
+
+@app.get("/v1/model-profiles")
+async def list_profiles() -> list[ModelProfile]:
+    """List all model profiles."""
+    return await PROFILE_STORE.list_profiles()
+
+
+@app.post("/v1/model-profiles", status_code=201)
+async def create_profile(profile: ModelProfile) -> None:
+    """Create a new model profile."""
+    await PROFILE_STORE.create_profile(profile)
+
+
+@app.put("/v1/model-profiles/{role}/{deployment_mode}")
+async def update_profile(role: str, deployment_mode: str, profile: ModelProfile) -> None:
+    """Update an existing model profile."""
+    await PROFILE_STORE.update_profile(role, deployment_mode, profile)
+
+
+@app.delete("/v1/model-profiles/{role}/{deployment_mode}")
+async def delete_profile(role: str, deployment_mode: str) -> None:
+    """Delete a model profile."""
+    await PROFILE_STORE.delete_profile(role, deployment_mode)
+
+
+# -----------------------------
+# Routing endpoint (from router)
+# -----------------------------
+
+
+class RouteRequest(BaseModel):
+    candidates: list[str]
+    tenant: Optional[str] = None
+    persona: Optional[str] = None
+
+
+class RouteResponse(BaseModel):
+    chosen: str
+    score: Optional[float] = None
+
+
+@app.post("/v1/route", response_model=RouteResponse)
+async def route_decision(payload: RouteRequest) -> RouteResponse:
+    """Route model selection among candidates using telemetry and memory fallback."""
+    # Try telemetry scoring first
+    try:
+        scores = await TELEMETRY_STORE.get_model_scores(
+            tenant=payload.tenant, persona=payload.persona, candidates=payload.candidates
+        )
+        if scores:
+            best = max(scores, key=lambda x: x["score"])  # dicts with 'model' and 'score'
+            return RouteResponse(chosen=best["model"], score=best["score"])
+    except Exception:
+        LOGGER.debug("Telemetry routing failed, falling back to memory", exc_info=True)
+
+    # Memory fallback: query recent sessions for preferred models
+    try:
+        preferred = await MEMORY_CLIENT.find_preferred_model(payload.tenant, payload.persona, payload.candidates)
+        if preferred:
+            return RouteResponse(chosen=preferred, score=None)
+    except Exception:
+        LOGGER.debug("Memory routing failed, falling back to first candidate", exc_info=True)
+
+    # Final fallback
+    chosen = payload.candidates[0] if payload.candidates else ""
+    return RouteResponse(chosen=chosen, score=None)
+
+
+# -----------------------------
+# Requeue management endpoints (from requeue_service)
+# -----------------------------
+
+
+@app.get("/v1/requeue")
+async def list_requeue() -> list[dict]:
+    """List items pending requeue."""
+    return await REQUEUE_STORE.list_requeue()
+
+
+@app.post("/v1/requeue/{requeue_id}/resolve")
+async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
+    """Resolve a requeue item and optionally publish it to the tool requests topic."""
+    item = await REQUEUE_STORE.get_requeue(requeue_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="requeue item not found")
+
+    if publish and APP_SETTINGS.tool_requests_topic:
+        try:
+            # reuse gateway's event bus if available
+            bus: Optional[KafkaEventBus] = getattr(app.state, "event_bus", None)
+            if not bus:
+                bus = KafkaEventBus(KafkaSettings.from_settings(APP_SETTINGS))
+                await bus.start()
+            await bus.publish(APP_SETTINGS.tool_requests_topic, item["payload"])
+        except Exception:
+            LOGGER.exception("Failed to publish requeue item")
+
+    await REQUEUE_STORE.delete_requeue(requeue_id)
+    return {"status": "resolved"}
+
+
+@app.delete("/v1/requeue/{requeue_id}")
+async def delete_requeue(requeue_id: str) -> dict:
+    """Delete a requeue item."""
+    await REQUEUE_STORE.delete_requeue(requeue_id)
+    return {"status": "deleted"}
