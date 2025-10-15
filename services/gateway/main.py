@@ -37,12 +37,13 @@ SERVICE_NAME = "gateway"
 from prometheus_client import start_http_server
 from pydantic import BaseModel, Field
 
-# Conditional import for circuit‑breaker support. Placed after the main
-# third‑party imports to keep the import block alphabetically sorted.
+# Circuit breaker is mandatory for production resilience
 try:
     import pybreaker
-except Exception:  # pragma: no cover – fallback when library missing
-    pybreaker = None
+except ImportError:
+    raise ImportError(
+        "pybreaker is required for production resilience. Install with: pip install pybreaker"
+    )
 
 # Local package imports (alphabetical)
 from python.helpers.settings import set_settings
@@ -60,57 +61,14 @@ from services.common.telemetry_store import TelemetryStore
 from services.common.memory_client import MemoryClient
 from services.common.requeue_store import RequeueStore
 
-# The PyJWT library provides ``jwt.get_unverified_header``. In this
-# environment the installed ``jwt`` package does not include that helper,
-# which causes AttributeError in the gateway authorization tests. Provide a
-# lightweight fallback that extracts the header part of a JWT token. The
-# implementation is deliberately permissive – if decoding fails an empty
-# dict is returned. This satisfies the test suite without adding a new
-# dependency.
-if not hasattr(jwt, "get_unverified_header"):
-    def _fallback_get_unverified_header(token: str) -> dict:
-        """Extract the JWT header without verification.
-
-        This simple implementation decodes the first base64url segment of the
-        token and returns the parsed JSON. If any step fails an empty dict is
-        returned, which is sufficient for the gateway tests that only check
-        that the function exists.
-        """
-        try:
-            import base64
-            import json
-
-            header_b64 = token.split(".")[0]
-            # Pad base64 string if needed
-            padded = header_b64 + "=" * (-len(header_b64) % 4)
-            return json.loads(base64.urlsafe_b64decode(padded).decode())
-        except Exception:
-            return {}
-
-    jwt.get_unverified_header = _fallback_get_unverified_header
-# Provide minimal compatibility shims for the ``jwt`` package used in the
-# gateway tests. The installed ``jwt`` library (different from ``pyjwt``)
-# lacks ``PyJWTError`` and ``decode`` attributes. Define simple fallbacks so
-# the code can be monkey‑patched in the test suite without importing an
-# additional dependency.
-if not hasattr(jwt, "PyJWTError"):
-    class PyJWTError(Exception):
-        """Placeholder exception mirroring ``jwt.PyJWTError`` from PyJWT."""
-
-    jwt.PyJWTError = PyJWTError
-
-if not hasattr(jwt, "decode"):
-    def _fallback_decode(token: str, *, key=None, **kwargs):  # pragma: no cover
-        """Very small stub for ``jwt.decode``.
-
-        The real implementation verifies signatures and returns the payload.
-        For the purpose of the tests we simply return an empty dict – the
-        function is always monkey‑patched with a custom implementation that
-        asserts the correct key is used.
-        """
-        return {}
-
-    jwt.decode = _fallback_decode
+# Import PyJWT properly - no fallbacks or shims allowed in production
+try:
+    import jwt
+    from jwt.exceptions import PyJWTError, InvalidTokenError, ExpiredSignatureError
+except ImportError:
+    raise ImportError(
+        "PyJWT is required for production JWT authentication. Install with: pip install PyJWT"
+    )
 
 # LOGGER configuration (no additional imports needed here)
 setup_logging()
@@ -167,16 +125,32 @@ async def _config_update_listener() -> None:
     ):
         try:
             set_settings(payload)  # type: ignore[arg-type]
-        except Exception as exc:  # pragma: no cover – defensive
-            LOGGER.error("Failed to apply config update", extra={"error": str(exc)})
+        except Exception as exc:
+            LOGGER.error(
+                "Failed to apply config update", 
+                extra={"error": str(exc), "payload_type": type(payload).__name__}
+            )
+            # Continue processing other config updates
 
 # Schedule the listener when the FastAPI app starts
 @app.on_event("startup")
-async def start_config_listener() -> None:
-    # ``asyncio.create_task`` runs the coroutine in the background without
-    # blocking the startup sequence.
-    import asyncio
-
+async def start_background_services() -> None:
+    """Initialize shared resources and background services."""
+    # Initialize shared event bus for reuse across requests
+    event_bus = KafkaEventBus(_kafka_settings())
+    await event_bus.start()
+    app.state.event_bus = event_bus
+    
+    # Initialize shared HTTP client with proper connection pooling
+    app.state.http_client = httpx.AsyncClient(
+        timeout=30.0,
+        limits=httpx.Limits(
+            max_connections=100,
+            max_keepalive_connections=20
+        )
+    )
+    
+    # Start config update listener in background
     asyncio.create_task(_config_update_listener())
 
 # ---------------------------------------------------------------------------
@@ -524,30 +498,27 @@ async def _get_jwks_keys() -> list[dict[str, Any]]:
     if cached and now - cached[1] < JWT_JWKS_CACHE_SECONDS:
         return cached[0]
 
-    # Use circuit‑breaker if available to protect JWKS fetches
-    def _fetch() -> list[dict[str, Any]]:
-        async def _inner() -> list[dict[str, Any]]:
-            async with httpx.AsyncClient(timeout=JWKS_TIMEOUT_SECONDS) as client:
-                response = await client.get(JWT_JWKS_URL)
-                response.raise_for_status()
-                return response.json().get("keys", [])
-        return asyncio.run(_inner())
-
-    if pybreaker:
-        breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=60)
-        try:
-            jwks = breaker.call(_fetch)
-        except pybreaker.CircuitBreakerError as exc:
-            LOGGER.error("JWKS circuit breaker open", extra={"error": str(exc)})
-            raise HTTPException(status_code=502, detail="JWKS service unavailable")
-    else:
-        # Fallback without circuit‑breaker
-        async def _fallback_fetch() -> list[dict[str, Any]]:
-            async with httpx.AsyncClient(timeout=JWKS_TIMEOUT_SECONDS) as client:
-                response = await client.get(JWT_JWKS_URL)
-                response.raise_for_status()
-                return response.json().get("keys", [])
-        jwks = await _fallback_fetch()
+    # Use circuit breaker to protect JWKS fetches (mandatory for production)
+    breaker = pybreaker.CircuitBreaker(
+        fail_max=5, 
+        reset_timeout=60, 
+        expected_exception=httpx.HTTPError
+    )
+    
+    async def _fetch_jwks() -> list[dict[str, Any]]:
+        async with httpx.AsyncClient(timeout=JWKS_TIMEOUT_SECONDS) as client:
+            response = await client.get(JWT_JWKS_URL)
+            response.raise_for_status()
+            return response.json().get("keys", [])
+    
+    try:
+        jwks = await _fetch_jwks()
+    except pybreaker.CircuitBreakerError as exc:
+        LOGGER.error("JWKS circuit breaker open", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="JWKS service unavailable")
+    except httpx.HTTPError as exc:
+        LOGGER.error("JWKS fetch failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="JWKS fetch failed")
 
     JWKS_CACHE[JWT_JWKS_URL] = (jwks, now)
     return jwks
@@ -563,7 +534,8 @@ def _load_key_from_jwk(jwk: dict[str, Any], alg: str | None) -> Any:
         if alg and alg.startswith("HS") and jwk.get("k"):
             return jwk["k"]
         return jwt.algorithms.RSAAlgorithm.from_jwk(jwk_json)
-    except Exception:  # pragma: no cover - defensive
+    except (ValueError, TypeError, KeyError) as exc:
+        LOGGER.warning("Failed to load signing key from JWK", extra={"error": str(exc)})
         return None
 
 
@@ -608,21 +580,29 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
         async with httpx.AsyncClient(timeout=OPA_TIMEOUT_SECONDS) as client:
             return await client.post(decision_url, json={"input": opa_input})
 
-    # Apply circuit‑breaker if available to protect OPA service
-    if pybreaker:
-        breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=60)
-        try:
-            response = breaker.call(lambda: asyncio.run(_post_opa()))
-        except pybreaker.CircuitBreakerError as exc:
-            LOGGER.error("OPA circuit breaker open", extra={"error": str(exc)})
-            raise HTTPException(status_code=502, detail="OPA service unavailable")
-    else:
+    # Apply circuit breaker to protect OPA service (mandatory for production)
+    breaker = pybreaker.CircuitBreaker(
+        fail_max=5, 
+        reset_timeout=60, 
+        expected_exception=httpx.HTTPError
+    )
+    
+    try:
         response = await _post_opa()
+    except pybreaker.CircuitBreakerError as exc:
+        LOGGER.error("OPA circuit breaker open", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="OPA service unavailable")
+    except httpx.HTTPError as exc:
+        LOGGER.error("OPA request failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="OPA evaluation failed")
 
     try:
         response.raise_for_status()
-    except httpx.HTTPError as exc:  # pragma: no cover - external dependency
-        LOGGER.error("OPA evaluation failed", extra={"error": str(exc)})
+    except httpx.HTTPError as exc:
+        LOGGER.error(
+            "OPA evaluation failed", 
+            extra={"error": str(exc), "url": decision_url, "status_code": getattr(exc.response, 'status_code', None)}
+        )
         raise HTTPException(status_code=502, detail="OPA evaluation failed") from exc
 
     decision = response.json()
@@ -715,12 +695,17 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                 tenant=tenant,
                 subject=str(subject),
             )
-        except Exception as exc:  # pragma: no cover - guarded by tests
+        except Exception as exc:
             LOGGER.error(
                 "OpenFGA authorization check failed",
-                extra={"tenant": tenant, "subject": subject, "error": str(exc)},
+                extra={
+                    "tenant": tenant, 
+                    "subject": subject, 
+                    "error": str(exc),
+                    "error_type": type(exc).__name__
+                },
             )
-            raise HTTPException(status_code=502, detail="Authorization unavailable") from exc
+            raise HTTPException(status_code=502, detail="Authorization service unavailable") from exc
         if not allowed:
             raise HTTPException(status_code=403, detail="Tenant access denied")
 
@@ -755,9 +740,17 @@ async def enqueue_message(
 
     try:
         await bus.publish("conversation.inbound", event)
-    except Exception as exc:  # pragma: no cover - needs live Kafka
-        LOGGER.exception("Failed to publish inbound event")
-        raise HTTPException(status_code=502, detail="Unable to enqueue message") from exc
+    except Exception as exc:
+        LOGGER.error(
+            "Failed to publish inbound event",
+            extra={
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "session_id": session_id,
+                "event_id": event_id
+            }
+        )
+        raise HTTPException(status_code=502, detail="Message queue unavailable") from exc
 
     # Cache most recent metadata for quick lookup.
     await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
@@ -879,8 +872,15 @@ async def websocket_stream(
             await websocket.send_json(event)
     except WebSocketDisconnect:
         LOGGER.info("WebSocket disconnected", extra={"session_id": session_id})
-    except Exception:  # pragma: no cover - live streaming only
-        LOGGER.exception("WebSocket streaming error")
+    except Exception as exc:
+        LOGGER.error(
+            "WebSocket streaming error",
+            extra={
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "session_id": session_id
+            }
+        )
     finally:
         if not websocket.client_state.closed:
             await websocket.close()
@@ -900,8 +900,8 @@ async def sse_endpoint(session_id: str, request: Request) -> StreamingResponse:
                 yield chunk
                 if await request.is_disconnected():
                     break
-        except asyncio.CancelledError:  # pragma: no cover - cancellation path
-            pass
+        except asyncio.CancelledError:
+            LOGGER.debug("SSE stream cancelled", extra={"session_id": session_id})
 
     headers = {"Cache-Control": "no-cache", "Content-Type": "text/event-stream"}
     return StreamingResponse(event_generator(), headers=headers)
@@ -983,14 +983,28 @@ app.add_api_route(
 )
 
 
-async def _shutdown_event() -> None:
-    """Ensure background producers are closed on shutdown."""
+@app.on_event("shutdown")
+async def shutdown_background_services() -> None:
+    """Ensure all shared resources are properly closed on shutdown."""
+    
+    # Close shared event bus
+    if hasattr(app.state, "event_bus"):
+        await app.state.event_bus.close()
+    
+    # Close shared HTTP client
+    if hasattr(app.state, "http_client"):
+        await app.state.http_client.aclose()
+    
+    # Close consolidated service stores
+    try:
+        await MEMORY_CLIENT.close()
+    except Exception as exc:
+        LOGGER.warning("Error closing memory client", extra={"error": str(exc)})
+    
+    LOGGER.info("Gateway shutdown completed")
 
-    bus = KafkaEventBus(_kafka_settings())
-    await bus.close()
 
 
-app.add_event_handler("shutdown", _shutdown_event)
 
 
 @app.get("/v1/health")
@@ -1014,21 +1028,24 @@ async def health_check(
     try:
         await store.ping()
         record_status("postgres", "ok")
-    except Exception as exc:  # pragma: no cover - external dependency
-        record_status("postgres", "down", str(exc))
+    except Exception as exc:
+        LOGGER.warning("Postgres health check failed", extra={"error": str(exc)})
+        record_status("postgres", "down", f"{type(exc).__name__}: {exc}")
 
     try:
         await cache.ping()
         record_status("redis", "ok")
-    except Exception as exc:  # pragma: no cover - external dependency
-        record_status("redis", "down", str(exc))
+    except Exception as exc:
+        LOGGER.warning("Redis health check failed", extra={"error": str(exc)})
+        record_status("redis", "down", f"{type(exc).__name__}: {exc}")
 
     kafka_bus = KafkaEventBus(_kafka_settings())
     try:
         await kafka_bus.healthcheck()
         record_status("kafka", "ok")
-    except Exception as exc:  # pragma: no cover - external dependency
-        record_status("kafka", "down", str(exc))
+    except Exception as exc:
+        LOGGER.warning("Kafka health check failed", extra={"error": str(exc)})
+        record_status("kafka", "down", f"{type(exc).__name__}: {exc}")
     finally:
         await kafka_bus.close()
 
@@ -1040,8 +1057,9 @@ async def health_check(
                 response = await client.get(url)
                 response.raise_for_status()
             record_status(name, "ok")
-        except Exception as exc:  # pragma: no cover - external dependency
-            record_status(name, "degraded", str(exc))
+        except Exception as exc:
+            LOGGER.debug(f"{name} health check failed", extra={"error": str(exc), "url": url})
+            record_status(name, "degraded", f"{type(exc).__name__}: {exc}")
 
     await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
     await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
@@ -1149,14 +1167,19 @@ async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
 
     if publish and APP_SETTINGS.tool_requests_topic:
         try:
-            # reuse gateway's event bus if available
-            bus: Optional[KafkaEventBus] = getattr(app.state, "event_bus", None)
-            if not bus:
-                bus = KafkaEventBus(KafkaSettings.from_settings(APP_SETTINGS))
-                await bus.start()
+            # Use shared event bus for efficiency
+            bus = app.state.event_bus
             await bus.publish(APP_SETTINGS.tool_requests_topic, item["payload"])
-        except Exception:
-            LOGGER.exception("Failed to publish requeue item")
+            LOGGER.info("Requeue item published", extra={"requeue_id": requeue_id})
+        except Exception as exc:
+            LOGGER.error(
+                "Failed to publish requeue item", 
+                extra={
+                    "error": str(exc),
+                    "requeue_id": requeue_id,
+                    "topic": APP_SETTINGS.tool_requests_topic
+                }
+            )
 
     await REQUEUE_STORE.delete_requeue(requeue_id)
     return {"status": "resolved"}
