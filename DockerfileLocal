@@ -89,7 +89,10 @@ RUN if [ -z "$SERVICE" ]; then \
 RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Skipping post_install.sh for SERVICE=$SERVICE"; fi
 
 # Minimal extras required at runtime but not carried in upstream requirements.
-RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema
+RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema \
+    && /venv/bin/pip install --no-cache-dir \
+        "asyncpg>=0.29" \
+        "langchain<0.2"
 
 # Whisper installation is now handled by modular installer based on FEATURE_AUDIO
 

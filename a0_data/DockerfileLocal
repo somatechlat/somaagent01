@@ -72,18 +72,25 @@ RUN set -eux; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-# Harmonise torch installation based on the requested variant
+# Harmonise torch installation based on the requested variant, only when explicitly enabled
+ARG ENABLE_TORCH=false
+ENV ENABLE_TORCH=$ENABLE_TORCH
 RUN if [ -z "$SERVICE" ]; then \
-        TORCH_VARIANT="${TORCH_VARIANT}" BRANCH="$BRANCH" bash -lc 'source /ins/setup_venv.sh "$BRANCH" && \
-            case "$TORCH_VARIANT" in \
-                cpu) pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision torchaudio ;; \
-                cuda) pip install --no-cache-dir torch torchvision torchaudio ;; \
-                none) pip uninstall -y torch torchvision torchaudio || true ;; \
-                *) echo "Unknown TORCH_VARIANT=$TORCH_VARIANT; leaving torch packages as-is" ;; \
-            esac'; \
-    else \
-        echo "Skipping torch harmonisation for SERVICE=$SERVICE"; \
-    fi
+                TORCH_VARIANT="${TORCH_VARIANT}" ENABLE_TORCH="${ENABLE_TORCH}" BRANCH="$BRANCH" bash -lc 'source /ins/setup_venv.sh "$BRANCH" && \
+                        if [ "$ENABLE_TORCH" = "true" ]; then \
+                            case "$TORCH_VARIANT" in \
+                                cpu) pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision torchaudio ;; \
+                                cuda) pip install --no-cache-dir torch torchvision torchaudio ;; \
+                                none) pip uninstall -y torch torchvision torchaudio || true ;; \
+                                *) echo "Unknown TORCH_VARIANT=$TORCH_VARIANT; leaving torch packages as-is" ;; \
+                            esac; \
+                        else \
+                            echo "ENABLE_TORCH is not true; ensuring no torch packages are present"; \
+                            pip uninstall -y torch torchvision torchaudio || true; \
+                        fi'; \
+        else \
+                echo "Skipping torch harmonisation for SERVICE=$SERVICE"; \
+        fi
 
 # Install per-service runtime requirements (kept minimal, optional)
 # This enables single-source per-service builds without altering compose behavior.
