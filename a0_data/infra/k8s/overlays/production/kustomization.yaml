@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: somaagent
+resources:
+  - ../../base
+
+images:
+  - name: agent0ai/agent-zero
+    newTag: stable
+
+patches:
+  - path: patches/gateway-service.yaml
+    target:
+      kind: Service
+      name: gateway
+  - path: patches/pod-anti-affinity.yaml
+    target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=somaagent01
+
+configMapGenerator:
+  - name: somaagent-config
+    behavior: merge
+    literals:
+      - SOMA_AGENT_MODE=PRODUCTION
+      - LOG_LEVEL=INFO
+
+generatorOptions:
+  disableNameSuffixHash: true

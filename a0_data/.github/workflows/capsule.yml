@@ -1,0 +1,67 @@
+name: Capsule CI/CD Pipeline
+
+on:
+  push:
+    paths:
+      - 'services/capsule_registry/**'
+      - 'python/somaagent/capsule.py'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      COSIGN_EXPERIMENTAL: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install httpx
+
+      - name: Build capsule artifact (example zip)
+        run: |
+          mkdir -p capsule_build
+          echo "Sample capsule content" > capsule_build/readme.txt
+          zip -r capsule_build/sample_capsule.zip capsule_build/
+
+      - name: Sign capsule with cosign
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          # Install cosign
+          curl -L -o cosign https://github.com/sigstore/cosign/releases/download/v2.2.3/cosign-linux-amd64
+          chmod +x cosign
+          ./cosign sign-blob --key ${{ secrets.COSIGN_PRIVATE_KEY }} capsule_build/sample_capsule.zip > signature.txt
+
+      - name: Upload capsule to registry
+        env:
+          CAPSULE_REGISTRY_URL: ${{ secrets.CAPSULE_REGISTRY_URL }}
+        run: |
+          python - <<'PY'
+          import os, httpx
+          url = os.getenv('CAPSULE_REGISTRY_URL', 'http://localhost:8000') + '/capsules'
+          files = {
+              'file': open('capsule_build/sample_capsule.zip', 'rb')
+          }
+          data = {
+              'name': 'sample_capsule',
+              'version': '0.1.0',
+              'description': 'Demo capsule'
+          }
+          resp = httpx.post(url, data=data, files=files)
+          resp.raise_for_status()
+          print('Capsule uploaded:', resp.json())
+          PY
+
+      - name: Verify signature (optional)
+        run: |
+          echo "Signature verification step could be added here"
