@@ -33,10 +33,7 @@ x-agent-depends: &agent-depends
   opa:
     condition: service_started
 
-x-agent-
-
-
-service: &agent-service
+x-agent-service: &agent-service
   image: somaagent01-dev:latest
   build:
     context: ..
