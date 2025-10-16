@@ -40,6 +40,9 @@ x-agent-service: &agent-service
     dockerfile: DockerfileLocal
     args:
       TORCH_VARIANT: ${TORCH_VARIANT:-none}
+      ENABLE_TORCH: "false"
+      FEATURE_AI: "basic"
+      FEATURE_AUDIO: "none"
   working_dir: /a0
   volumes:
     - ../a0_data:/a0
