@@ -29,26 +29,17 @@ COPY ./ /git/agent-zero
 # pre installation steps
 RUN bash /ins/pre_install.sh $BRANCH
 
-# install A0 (full/dev image only)
-# Compatibility fix: install `pydantic-settings` into the venv so code importing BaseSettings
-# (moved to pydantic-settings) can run during the install step.
+# install A0 (full/dev image only) using the new canonical installer
 RUN if [ -z "$SERVICE" ]; then \
-        if [ -x /opt/venv-a0/bin/pip ]; then \
-            /opt/venv-a0/bin/pip install --no-cache-dir "pydantic==2.11.6" "pydantic-settings==2.6.1"; \
-        else \
-            python3 -m pip install --no-cache-dir "pydantic==2.11.6" "pydantic-settings==2.6.1"; \
-        fi && \
-        bash /ins/install_A0.sh $BRANCH; \
+        bash /ins/install.sh $BRANCH; \
     else \
-        echo "Skipping install_A0.sh for SERVICE=$SERVICE"; \
+        echo "Skipping canonical installation for SERVICE=$SERVICE"; \
     fi
 
 # install additional software (full/dev image only)
 RUN if [ -z "$SERVICE" ]; then bash /ins/install_additional.sh $BRANCH; else echo "Skipping install_additional.sh for SERVICE=$SERVICE"; fi
 
-# cleanup repo and install A0 without caching, this speeds up builds (full/dev image only)
-ARG CACHE_DATE=none
-RUN if [ -z "$SERVICE" ]; then echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH; else echo "Skipping install_A02.sh for SERVICE=$SERVICE"; fi
+
 
 # post installation steps (full/dev image only)
 RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Skipping post_install.sh for SERVICE=$SERVICE"; fi
