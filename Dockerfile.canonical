@@ -1,0 +1,63 @@
+# Base Python image
+FROM python:3.11-slim AS python-base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.7.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    PYSETUP_PATH="/opt/pysetup" \
+    VENV_PATH="/opt/pysetup/.venv"
+
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+
+# Builder stage
+FROM python-base AS builder
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
+WORKDIR $PYSETUP_PATH
+COPY requirements-canonical.txt ./
+RUN python -m venv $VENV_PATH && \
+    . $VENV_PATH/bin/activate && \
+    pip install --no-cache-dir -r requirements-canonical.txt
+
+# Runtime stage
+FROM python-base AS runtime
+
+WORKDIR /app
+COPY --from=builder $VENV_PATH $VENV_PATH
+
+# Copy application code
+COPY services/ /app/services/
+COPY common/ /app/common/
+COPY conf/ /app/conf/
+COPY python/ /app/python/
+COPY models.py /app/models.py
+COPY webui/ /app/webui/
+
+# Create non-root user
+RUN useradd -m -u 1000 agent && \
+    chown -R agent:agent /app
+
+USER agent
+
+ENV PATH="$VENV_PATH/bin:$PATH"
+ENV PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+# Default command (can be overridden)
+CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]

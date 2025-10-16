@@ -1,0 +1,79 @@
+site_name: SomaAgent01 Docs
+site_description: "Unified documentation portal for SomaAgent01"
+site_url: https://docs.somaagent01.dev
+repo_url: https://github.com/somatechlat/somaagent01
+repo_name: somaagent01
+
+nav:
+  - Home: README.md
+  - User Manual:
+      - Overview: user-manual/index.md
+      - Getting Started: user-manual/getting-started.md
+      - Installation: user-manual/installation.md
+      - Using the Agent: user-manual/using-the-agent.md
+      - Troubleshooting: user-manual/troubleshooting.md
+      - Accessibility: user-manual/accessibility.md
+  - Technical Manual:
+      - Overview: technical-manual/index.md
+      - Architecture: technical-manual/architecture.md
+      - Infrastructure: technical-manual/infrastructure.md
+      - Integrations: technical-manual/integrations.md
+      - Security: technical-manual/security.md
+      - Data Flow: technical-manual/data-flow.md
+      - Components:
+          - Gateway: technical-manual/components/gateway.md
+          - Conversation Worker: technical-manual/components/conversation-worker.md
+          - Tool Executor: technical-manual/components/tool-executor.md
+          - Memory Subsystem: technical-manual/components/memory.md
+          - MCP & A2A Proxy: technical-manual/components/mcp-proxy.md
+          - Realtime Speech: technical-manual/components/realtime-speech.md
+          - Agent UI: technical-manual/components/ui.md
+  - Development Manual:
+      - Overview: development-manual/index.md
+      - Environment Setup: development-manual/environment.md
+      - Contribution Workflow: development-manual/contribution-workflow.md
+      - Coding Standards: development-manual/coding-standards.md
+      - Testing Strategy: development-manual/testing.md
+      - Debugging Guide: development-manual/debugging.md
+      - Release Process: development-manual/release-process.md
+      - Developer Tooling: development-manual/tooling.md
+      - Runbooks: development-manual/runbooks.md
+  - Onboarding Manual:
+      - Overview: onboarding-manual/index.md
+      - Orientation Checklist: onboarding-manual/orientation.md
+      - First 90 Days: onboarding-manual/first-90-days.md
+      - Toolchain Primer: onboarding-manual/toolchain.md
+      - Team Directory: onboarding-manual/team-contacts.md
+      - FAQ: onboarding-manual/faq.md
+  - Shared Resources:
+      - Style Guide: style-guide.md
+      - Glossary: glossary.md
+      - Documentation Audit Checklist: documentation-audit-checklist.md
+      - Change Log: changelog.md
+
+theme:
+  name: material
+  features:
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - content.tabs.link
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji
+  - footnotes
+
+plugins:
+  - search
+  - mkdocs_git_revision_date_localized:
+      fallback_to_build_date: true
+  - mkdocs_git_committers:
+      repository: somatechlat/somaagent01
+      branch: soma_integration

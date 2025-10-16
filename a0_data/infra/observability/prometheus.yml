@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+  - job_name: 'delegation-gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['delegation:8015']
+  - job_name: 'delegation-metrics'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['delegation:9501']
+  - job_name: 'gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['gateway:8010']
+  - job_name: 'circuit-breakers'
+    metrics_path: /
+    static_configs:
+      - targets: ['gateway:9610']
+  - job_name: 'conversation-worker'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['conversation-worker:9301']
+  - job_name: 'tool-executor'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['tool-executor:9401']
+  - job_name: 'openfga'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['openfga:2112']
+  - job_name: 'opa'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['opa:8181']

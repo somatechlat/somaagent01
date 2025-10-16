@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: somaagent-dev
+resources:
+  - ../../base
+
+namePrefix: dev-
+
+images:
+  - name: agent0ai/agent-zero
+    newTag: latest
+
+patchesStrategicMerge:
+  - patches/replicas.yaml
+  - patches/gateway-service.yaml
+
+configMapGenerator:
+  - name: somaagent-config
+    behavior: merge
+    literals:
+      - SOMA_AGENT_MODE=DEVELOPMENT
+      - LOG_LEVEL=DEBUG
+
+secretGenerator:
+  - name: somaagent-secrets
+    behavior: merge
+    literals:
+      - GATEWAY_JWT_SECRET=dev-secret
+
+generatorOptions:
+  disableNameSuffixHash: true

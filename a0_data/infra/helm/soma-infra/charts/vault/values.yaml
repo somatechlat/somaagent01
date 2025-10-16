@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: hashicorp/vault
+  tag: "1.17.0"
+  pullPolicy: IfNotPresent
+
+server:
+  dev: true
+  extraArgs: []
+  extraEnv: []
+  rootToken: root
+  secret:
+    create: true
+    name: ""
+    tokenKey: dev-root-token
+    envVar: VAULT_DEV_ROOT_TOKEN_ID
+
+service:
+  type: ClusterIP
+  port: 8200
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

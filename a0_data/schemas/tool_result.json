@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ToolResultEvent",
+  "type": "object",
+  "required": [
+    "event_id",
+    "session_id",
+    "tool_name",
+    "status",
+    "payload",
+    "metadata",
+    "execution_time"
+  ],
+  "properties": {
+    "event_id": {"type": "string"},
+    "session_id": {"type": "string"},
+    "persona_id": {"type": ["string", "null"]},
+    "tool_name": {"type": "string"},
+    "status": {"type": "string"},
+    "payload": {"type": "object"},
+    "metadata": {"type": "object"},
+    "execution_time": {"type": "number", "minimum": 0},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

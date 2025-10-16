@@ -1,0 +1,7 @@
+# Default values for auth sub‑chart
+image: openfga/openfga:latest
+replicaCount: 1
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
