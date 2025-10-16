@@ -28,13 +28,13 @@ class MemoryRepository:
         self.dsn = dsn
         self._pool: asyncpg.Pool | None = None
 
-    async def _pool(self) -> asyncpg.Pool:
+    async def _get_pool(self) -> asyncpg.Pool:
         if self._pool is None:
             self._pool = await asyncpg.create_pool(self.dsn, min_size=1, max_size=5)
         return self._pool
 
     async def ensure_schema(self) -> None:
-        pool = await self._pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """
@@ -59,7 +59,7 @@ class MemoryRepository:
     ) -> dict[str, Any]:
         record_id = uuid.uuid4().hex
         payload = metadata or {}
-        pool = await self._pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -79,7 +79,7 @@ class MemoryRepository:
         return dict(row)
 
     async def get_memory(self, *, memory_id: str) -> Optional[dict[str, Any]]:
-        pool = await self._pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -100,7 +100,7 @@ class MemoryRepository:
         persona_id: Optional[str],
         limit: int,
     ) -> list[dict[str, Any]]:
-        pool = await self._pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             if persona_id:
                 rows = await conn.fetch(
