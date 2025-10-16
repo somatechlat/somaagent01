@@ -1,0 +1,24 @@
+name: quick-ci
+
+on:
+  push:
+    branches:
+      - soma_integration
+      - pr/**
+  pull_request:
+    branches:
+      - soma_integration
+
+jobs:
+  compile-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile gateway
+        run: |
+          python -m compileall -q services/gateway
