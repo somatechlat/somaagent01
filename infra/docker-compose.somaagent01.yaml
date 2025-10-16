@@ -165,6 +165,7 @@ services:
       dockerfile: docker/openfga/Dockerfile
     image: somaagent01-openfga:latest
     container_name: somaAgent01_openfga
+    profiles: ["core"]
     environment:
       OPENFGA_GRPC_ADDR: 0.0.0.0:8081
       OPENFGA_HTTP_ADDR: 0.0.0.0:8080
