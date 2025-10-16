@@ -24,16 +24,6 @@ x-agent-env: &agent-env
   SOMA_ENABLED: "true"
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
 
-x-agent-depends: &agent-depends
-  kafka:
-    condition: service_healthy
-  postgres:
-    condition: service_healthy
-  redis:
-    condition: service_healthy
-  opa:
-    condition: service_started
-
 x-agent-service: &agent-service
   image: somaagent01-dev:latest
   build:
@@ -49,7 +39,15 @@ x-agent-service: &agent-service
     - ./a0_data:/a0
   extra_hosts:
     - "host.docker.internal:host-gateway"
-  depends_on: *agent-depends
+  depends_on:
+    kafka:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    opa:
+      condition: service_started
   restart: unless-stopped
 
 services:

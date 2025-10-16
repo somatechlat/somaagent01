@@ -7,6 +7,7 @@
 # Docker Compose project name
 COMPOSE_PROJECT_NAME ?= somaagent01
 # Docker Compose file path
+# Docker Compose file path
 COMPOSE_FILE ?= docker-compose.yaml
 # Profiles to activate
 PROFILES ?= core,dev
