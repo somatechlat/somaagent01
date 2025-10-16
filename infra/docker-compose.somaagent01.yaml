@@ -143,6 +143,7 @@ services:
   openfga-migrate:
     image: openfga/openfga:v1.8.3
     container_name: somaAgent01_openfga-migrate
+    profiles: ["core"]
     restart: "no"
     command:
       - migrate
@@ -215,10 +216,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-
-
-
 
   agent-ui:
     <<: *agent-service
