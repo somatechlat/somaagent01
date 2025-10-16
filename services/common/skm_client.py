@@ -6,7 +6,6 @@ No stubs or placeholders - this is production-ready.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -37,7 +36,7 @@ class SKMClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 timeout=self.timeout,
-                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5)
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             )
         return self._client
 
@@ -53,7 +52,7 @@ class SKMClient:
                     "status": payload.status,
                     "detail": payload.detail,
                     "metadata": payload.metadata,
-                }
+                },
             )
             response.raise_for_status()
             LOGGER.debug("Progress published to SKM", extra={"status": payload.status})

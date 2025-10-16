@@ -20,6 +20,26 @@ FEATURE_DEV="${FEATURE_DEV:-true}"          # true|false
 FEATURE_GRPC="${FEATURE_GRPC:-false}"       # true|false
 FEATURE_INTEGRATIONS="${FEATURE_INTEGRATIONS:-true}" # true|false
 
+ENABLE_TORCH="${ENABLE_TORCH:-false}"
+
+if [ "$ENABLE_TORCH" != "true" ]; then
+    TORCH_VARIANT="none"
+    if [ "$FEATURE_AI" = "cpu" ] || [ "$FEATURE_AI" = "cuda" ]; then
+        echo "Torch disabled by default; downgrading FEATURE_AI='$FEATURE_AI' to 'basic'."
+        FEATURE_AI="basic"
+    fi
+fi
+
+if [ -n "$TORCH_VARIANT" ] && [ "$TORCH_VARIANT" != "none" ]; then
+    if [ "$ENABLE_TORCH" = "true" ]; then
+        echo "TORCH_VARIANT='$TORCH_VARIANT' with ENABLE_TORCH=true."
+        FEATURE_AI="$TORCH_VARIANT"
+    else
+        echo "Ignoring TORCH_VARIANT='$TORCH_VARIANT' because ENABLE_TORCH is not true."
+        TORCH_VARIANT="none"
+    fi
+fi
+
 echo "Feature Configuration:"
 echo "  AI: $FEATURE_AI"
 echo "  Audio: $FEATURE_AUDIO"
@@ -71,21 +91,23 @@ if [ "$FEATURE_DATABASE" = "true" ]; then
 fi
 
 # Install AI dependencies
-if [ "$FEATURE_AI" != "none" ]; then
-    echo "=== Installing AI Dependencies ==="
+if [ "$FEATURE_AI" = "basic" ]; then
+    echo "=== Installing AI Dependencies (basic profile) ==="
     install_requirements "requirements-ai-basic.txt" "AI Basic"
-    
-    if [ "$FEATURE_AI" = "cpu" ] || [ "$FEATURE_AI" = "cuda" ]; then
+elif [ "$FEATURE_AI" = "cpu" ] || [ "$FEATURE_AI" = "cuda" ]; then
+    if [ "$ENABLE_TORCH" = "true" ]; then
         echo "Installing torch for AI variant: $FEATURE_AI"
         if [ "$FEATURE_AI" = "cpu" ]; then
             pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch || FAILED_PACKAGES+=("torch-cpu")
         else
             pip install --no-cache-dir torch || FAILED_PACKAGES+=("torch-cuda")
         fi
-        
-        # Install sentence transformers after torch is available
         install_requirements "requirements-ai-cpu.txt" "AI CPU/CUDA"
+    else
+        echo "Skipping torch installation: ENABLE_TORCH is not true."
     fi
+else
+    echo "=== Skipping AI dependencies (FEATURE_AI='$FEATURE_AI') ==="
 fi
 
 # Install audio dependencies

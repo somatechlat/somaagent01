@@ -10,6 +10,10 @@ COMPOSE_CMD=(docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE")
 REQUIRED_BINARIES=(docker "docker compose" lsof)
 CONTAINER_FILTER_PREFIX="somaAgent01"
 
+# Host port allocation range. Override via PORT_POOL_START / PORT_POOL_MAX environment variables.
+PORT_POOL_START=${PORT_POOL_START:-20000}
+PORT_POOL_MAX=${PORT_POOL_MAX:-$((PORT_POOL_START + 199))}
+
 require_tools() {
   for tool in "${REQUIRED_BINARIES[@]}"; do
     if [[ "$tool" == *" "* ]]; then
@@ -65,24 +69,22 @@ wait_for_services() {
   exit 1
 }
 
-# Ports used by the default compose file (infra/docker-compose.somaagent01.yaml):
-#   Kafka   9095
-#   Redis   6380
-#   Postgres5434
-#   ClickHouse8123
-#   Qdrant 6333
-#   Prometheus9090
-#   Vault   8200
-#   OPA     8181
-#   Whisper 9001
-#   Delegation Gateway 8015
-#   UI (gateway) 8001
-#   Web UI 50002 (exposed by run_ui container)
+# Ports bind strictly within ${PORT_POOL_START}-${PORT_POOL_MAX} (default 20000-20199).
+# Allocation order (host ports) consumes the next available number for each entry unless
+# overridden via environment variables:
+#   Kafka broker, Redis, Postgres, Qdrant (HTTP), Qdrant (gRPC), ClickHouse (HTTP),
+#   ClickHouse (native), Prometheus, Vault, OPA, OpenFGA (gRPC), OpenFGA (HTTP), Whisper,
+#   Delegation Gateway primary, Delegation Gateway secondary, Gateway API, Memory Service.
 # Track reserved ports to avoid duplicates during assignment (portable implementation).
 RESERVED_PORTS=""
 
 reserve_port() {
-  RESERVED_PORTS="$RESERVED_PORTS $1"
+  local port=$1
+  if (( port < PORT_POOL_START || port > PORT_POOL_MAX )); then
+    echo "Error: port $port is outside the allowed range ${PORT_POOL_START}-${PORT_POOL_MAX}." >&2
+    exit 1
+  fi
+  RESERVED_PORTS="$RESERVED_PORTS $port"
 }
 
 is_reserved() {
@@ -93,13 +95,20 @@ is_reserved() {
 }
 
 # Reserve the agent UI port up-front so no other service grabs it.
-AGENT_UI_PORT=7002
+AGENT_UI_PORT=20015
 reserve_port "$AGENT_UI_PORT"
 
 # Function to find a free port starting from a base value.
 find_free_port() {
   local port=$1
+  if (( port < PORT_POOL_START )); then
+    port=$PORT_POOL_START
+  fi
   while true; do
+    if (( port > PORT_POOL_MAX )); then
+      echo "Error: exhausted port range ${PORT_POOL_START}-${PORT_POOL_MAX}." >&2
+      exit 1
+    fi
     if lsof -iTCP -sTCP:LISTEN -P | grep -q "\b$port\b"; then
       ((port++))
       continue
@@ -131,24 +140,28 @@ PORT_VARS=(
   WHISPER_PORT
   DELEGATION_GATEWAY_PORT_PRIMARY
   DELEGATION_GATEWAY_PORT_SECONDARY
+  GATEWAY_PORT
+  MEMORY_SERVICE_PORT
 )
 
 PORT_BASES=(
-  29092
-  26379
-  25432
-  26666
-  26667
-  28181
-  28190
-  29090
-  29200
-  29181
-  28281
-  28280
-  29901
-  28015
-  9697
+  20000
+  20001
+  20002
+  20003
+  20004
+  20005
+  20006
+  20007
+  20008
+  20009
+  20010
+  20011
+  20012
+  20013
+  20014
+  20016
+  20017
 )
 
 # Detect and assign ports (override defaults if occupied).
@@ -158,7 +171,7 @@ for idx in "${!PORT_VARS[@]}"; do
   export "$var"="$(find_free_port "$base")"
 done
 
-# Enforce static agent UI port (7002) and fail fast if unavailable.
+# Enforce static agent UI port (20015) and fail fast if unavailable.
 if lsof -iTCP -sTCP:LISTEN -P | grep -q "\b$AGENT_UI_PORT\b"; then
   echo "Error: Required agent UI port $AGENT_UI_PORT is already in use." >&2
   echo "Please free the port or stop the process using it, then rerun this script." >&2
@@ -184,6 +197,8 @@ Port assignments:
   Whisper:        $WHISPER_PORT
   Delegation GW A:$DELEGATION_GATEWAY_PORT_PRIMARY
   Delegation GW B:$DELEGATION_GATEWAY_PORT_SECONDARY
+  Gateway API:    $GATEWAY_PORT
+  Memory Service: $MEMORY_SERVICE_PORT
   Web UI:         $WEB_UI_PORT (static)
 EOF
 

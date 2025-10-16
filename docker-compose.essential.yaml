@@ -49,11 +49,11 @@ services:
     command: ["python3", "-m", "services.memory_service.main"]
     environment:
       POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-      MEMORY_SERVICE_PORT: "50052"
+      MEMORY_SERVICE_PORT: "${MEMORY_SERVICE_PORT:-20017}"
     depends_on:
       - postgres
     ports:
-      - "${MEMORY_SERVICE_PORT:-0}:50052"
+      - "${MEMORY_SERVICE_PORT:-0}:${MEMORY_SERVICE_PORT:-20017}"
 
   gateway:
     image: somaagent01-dev:latest
@@ -67,7 +67,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       REDIS_URL: redis://redis:6379/0
       POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-      MEMORY_SERVICE_TARGET: memory-service:50052
+      MEMORY_SERVICE_TARGET: memory-service:20017
       GATEWAY_REQUIRE_AUTH: "false"
     depends_on:
       - kafka

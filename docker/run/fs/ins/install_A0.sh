@@ -40,8 +40,9 @@ src = Path(os.environ["REQ_SRC"])
 dst = Path(os.environ["REQ_DST"])
 blocklist = {"asyncpg", "openai-whisper", "kokoro"}
 
+enable_torch = os.environ.get("ENABLE_TORCH", "false").strip().lower() == "true"
 torch_variant = os.environ.get("TORCH_VARIANT", "none").strip().lower()
-if torch_variant == "none":
+if not enable_torch or torch_variant == "none":
     blocklist.update({
         "torch",
         "torchvision",

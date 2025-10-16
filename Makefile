@@ -10,7 +10,8 @@
 #   make docs         # markdown lint / doc validation
 #   make clean        # remove temporary artefacts
 
-.PHONY: all sprints sprint_a sprint_b sprint_c sprint_d ci docs clean
+.PHONY: all sprints sprint_a sprint_b sprint_c sprint_d ci docs clean \
+	docs-verify docs-lint docs-links docs-build docs-diagrams
 
 all: sprints
 
@@ -26,25 +27,41 @@ sprints: sprint_a sprint_b sprint_c sprint_d ci docs
 sprint_a:
 	@echo "Running Sprint A: creating common package and checking imports..."
 	# Simple static import validation: try to import each service module
-	python - <<'PY'
-import pathlib, sys, subprocess
-failed = []
-for service_path in pathlib.Path('services').iterdir():
-    if not service_path.is_dir():
-        continue
-    # Attempt to import the service's main module (if it exists)
-    main_file = service_path / 'main.py'
-    if main_file.exists():
-        try:
-            subprocess.run([sys.executable, '-c', f"import importlib.util, sys; spec = importlib.util.spec_from_file_location('mod', '{main_file}'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)"], check=True, capture_output=True)
-        except Exception as e:
-            failed.append(str(service_path))
-if failed:
-    print('Import validation failed for services:', failed)
-    sys.exit(1)
-else:
-    print('Import validation passed')
-PY
+	python - <<-'PY'
+	import pathlib
+	import subprocess
+	import sys
+
+	failed: list[str] = []
+	for service_path in pathlib.Path('services').iterdir():
+	    if not service_path.is_dir():
+	        continue
+	    main_file = service_path / 'main.py'
+	    if not main_file.exists():
+	        continue
+	    try:
+	        subprocess.run(
+	            [
+	                sys.executable,
+	                '-c',
+	                (
+	                    "import importlib.util, sys; "
+	                    "spec = importlib.util.spec_from_file_location('mod', '{main}') ; "
+	                    "mod = importlib.util.module_from_spec(spec); "
+	                    "spec.loader.exec_module(mod)"
+	                ).format(main=main_file.as_posix()),
+	            ],
+	            check=True,
+	            capture_output=True,
+	        )
+	    except Exception:  # noqa: BLE001 - bubble to failure summary
+	        failed.append(str(service_path))
+
+	if failed:
+	    print('Import validation failed for services:', failed)
+	    sys.exit(1)
+	print('Import validation passed')
+	PY
 
 # ---------------------------------------------------------------------------
 # Sprint B – Helm chart consolidation dry‑run
@@ -88,7 +105,7 @@ sprint_d:
 # ---------------------------------------------------------------------------
 # CI – lint, unit tests, integration tests, helm lint
 # ---------------------------------------------------------------------------
- ci:
+ci:
 	@echo "Running CI pipeline: lint, unit tests, integration tests, helm lint..."
 	# Lint (ruff is used in this repo; fall back to flake8 if missing)
 	if command -v ruff > /dev/null; then ruff .; else echo "ruff not installed – skipping lint"; fi
@@ -112,20 +129,49 @@ sprint_d:
 	done
 
 # ---------------------------------------------------------------------------
-# Docs – markdown lint (optional)
+# Docs – lint, link check, diagram rendering, MkDocs build
 # ---------------------------------------------------------------------------
- docs:
-	@echo "Running docs validation..."
-	if command -v markdownlint > /dev/null; then \
-	    markdownlint "$(git ls-files '*.md')"; \
+docs: docs-verify
+
+docs-verify: docs-lint docs-links docs-diagrams docs-build
+	@echo "Docs verification complete."
+
+docs-lint:
+	@echo "Running markdown lint..."
+	if command -v markdownlint-cli2 > /dev/null; then \
+		markdownlint-cli2 "docs/**/*.md"; \
 	else \
-	    echo "markdownlint not installed – skipping docs lint"; \
+		echo "markdownlint-cli2 not installed – skipping markdown lint"; \
+	fi
+
+docs-links:
+	@echo "Checking links..."
+	if command -v lychee > /dev/null; then \
+		lychee --no-progress docs --accept "200..299,301,302"; \
+	else \
+		echo "lychee not installed – skipping link check"; \
+	fi
+
+docs-diagrams:
+	@echo "Rendering diagrams..."
+	if command -v mmdc > /dev/null; then \
+		find docs -name '*.mmd' -print -exec mmdc -i {} -o {}.png \;; \
+	else \
+		echo "mermaid-cli (mmdc) not installed – skipping diagram render"; \
+	fi
+
+docs-build:
+	@echo "Building MkDocs site..."
+	if command -v mkdocs > /dev/null; then \
+		mkdocs build --strict; \
+	else \
+		echo "mkdocs not installed – skipping site build"; \
 	fi
 
 # ---------------------------------------------------------------------------
 # Clean – remove temporary artefacts
 # ---------------------------------------------------------------------------
- clean:
+clean:
 	@echo "Cleaning temporary files..."
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type d -name .pytest_cache -exec rm -rf {} +
@@ -140,6 +186,7 @@ START_SCRIPT := scripts/run_dev_cluster.sh
 .PHONY: dev-up dev-down dev-restart dev-status dev-logs dev-clean fmt fmt-check lint lint-fix
 
 dev-up:
+	@echo "Starting SomaAgent01 dev stack (host ports >=$${PORT_POOL_START:-20000})..."
 	$(START_SCRIPT)
 
 dev-down:

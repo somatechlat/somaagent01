@@ -17,8 +17,12 @@ from typing import (
 # LiteLLM and OpenAI are required for production deployment
 import litellm
 import openai
-from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
 
+# browser-use is required for production deployment
+from browser_use import (
+    ChatGoogle,
+    ChatOpenRouter,
+)
 from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
@@ -32,23 +36,16 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
+from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
+
+# sentence-transformers is required for production embedding functionality
+from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
 from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-
-# sentence-transformers is required for production embedding functionality
-from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
-
-
-# browser-use is required for production deployment
-from browser_use import (
-    ChatAnthropic,
-    ChatGoogle,
-    ChatOpenRouter,
-)
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -72,8 +69,10 @@ litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
 # Production LLM Configuration - Enterprise Grade Implementation
 # ---------------------------------------------------------------------------
 
+
 class LLMNotConfiguredError(RuntimeError):
     """Raised when LLM is not properly configured for production use."""
+
     pass
 
 
@@ -146,7 +145,9 @@ class ChatGenerationResult:
             self.native_reasoning = True
             self.reasoning += chunk["reasoning_delta"]
             self.response += chunk["response_delta"]
-            return ChatChunk(response_delta=chunk["response_delta"], reasoning_delta=chunk["reasoning_delta"])
+            return ChatChunk(
+                response_delta=chunk["response_delta"], reasoning_delta=chunk["reasoning_delta"]
+            )
 
         # Process each character individually – the incoming ``response_delta``
         # may contain more than one character (unlikely in tests) but handling
@@ -1023,7 +1024,7 @@ def get_chat_model(
         raise LLMNotConfiguredError(
             f"LLM disabled in settings. Set USE_LLM=true for provider '{provider_name}'."
         )
-    
+
     if provider_name == "openai" and (not api_key or api_key in ("None", "NA")):
         raise LLMNotConfiguredError(
             f"Invalid OpenAI API key for provider '{provider_name}'. Configure proper API key."

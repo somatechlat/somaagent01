@@ -53,7 +53,9 @@ def _topics() -> dict[str, str]:
         },
     )
     return {
-        "conversation": os.getenv("AUDIO_CONVERSATION_TOPIC", defaults.get("conversation", "conversation.inbound")),
+        "conversation": os.getenv(
+            "AUDIO_CONVERSATION_TOPIC", defaults.get("conversation", "conversation.inbound")
+        ),
         "metrics": os.getenv("AUDIO_METRICS_TOPIC", defaults.get("metrics", "audio.metrics")),
     }
 

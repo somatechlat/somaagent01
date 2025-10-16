@@ -16,6 +16,8 @@ import time
 import uuid
 from typing import Annotated, Any, AsyncIterator, Dict, Optional
 
+import httpx
+
 # Third‑party imports (alphabetical by top‑level package name)
 from fastapi import (
     Depends,
@@ -28,8 +30,6 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
-import httpx
-import jwt
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
@@ -50,21 +50,20 @@ from python.helpers.settings import set_settings
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
+from services.common.memory_client import MemoryClient
+from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.openfga_client import OpenFGAClient
+from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 from services.common.settings_sa01 import SA01Settings
+from services.common.telemetry_store import TelemetryStore
 from services.common.tracing import setup_tracing
 from services.common.vault_secrets import load_kv_secret
-from services.common.model_profiles import ModelProfile, ModelProfileStore
-from services.common.telemetry_store import TelemetryStore
-from services.common.memory_client import MemoryClient
-from services.common.requeue_store import RequeueStore
 
 # Import PyJWT properly - no fallbacks or shims allowed in production
 try:
     import jwt
-    from jwt.exceptions import PyJWTError, InvalidTokenError, ExpiredSignatureError
 except ImportError:
     raise ImportError(
         "PyJWT is required for production JWT authentication. Install with: pip install PyJWT"
@@ -99,6 +98,7 @@ def _kafka_settings() -> KafkaSettings:
 def _redis_url() -> str:
     return os.getenv("REDIS_URL", APP_SETTINGS.redis_url)
 
+
 app = FastAPI(title="SomaAgent 01 Gateway")
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
@@ -108,6 +108,7 @@ HTTPXClientInstrumentor().instrument()
 # ---------------------------------------------------------------------------
 # Feature‑flag hot‑reload background task
 # ---------------------------------------------------------------------------
+
 
 async def _config_update_listener() -> None:
     """Listen on the ``config_updates`` Kafka topic and apply new settings.
@@ -127,10 +128,11 @@ async def _config_update_listener() -> None:
             set_settings(payload)  # type: ignore[arg-type]
         except Exception as exc:
             LOGGER.error(
-                "Failed to apply config update", 
-                extra={"error": str(exc), "payload_type": type(payload).__name__}
+                "Failed to apply config update",
+                extra={"error": str(exc), "payload_type": type(payload).__name__},
             )
             # Continue processing other config updates
+
 
 # Schedule the listener when the FastAPI app starts
 @app.on_event("startup")
@@ -140,22 +142,20 @@ async def start_background_services() -> None:
     event_bus = KafkaEventBus(_kafka_settings())
     await event_bus.start()
     app.state.event_bus = event_bus
-    
+
     # Initialize shared HTTP client with proper connection pooling
     app.state.http_client = httpx.AsyncClient(
-        timeout=30.0,
-        limits=httpx.Limits(
-            max_connections=100,
-            max_keepalive_connections=20
-        )
+        timeout=30.0, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
     )
-    
+
     # Start config update listener in background
     asyncio.create_task(_config_update_listener())
+
 
 # ---------------------------------------------------------------------------
 # Sprint 2 – Self‑service UI for API‑key management & policy overview
 # ---------------------------------------------------------------------------
+
 
 @app.get("/ui/keys", response_class=HTMLResponse)
 async def ui_list_keys(request: Request) -> HTMLResponse:
@@ -183,6 +183,7 @@ async def ui_list_keys(request: Request) -> HTMLResponse:
     """
     return HTMLResponse(content=html)
 
+
 @app.get("/ui/policy", response_class=HTMLResponse)
 async def ui_policy_overview(request: Request) -> HTMLResponse:
     """Show a very basic OPA policy health view.
@@ -208,6 +209,7 @@ async def ui_policy_overview(request: Request) -> HTMLResponse:
     </body></html>
     """
     return HTMLResponse(content=html)
+
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics server (Sprint 3 observability)
@@ -241,6 +243,8 @@ def _start_metrics_server() -> None:
             LOGGER.debug("Telemetry store initialisation failed", exc_info=True)
 
     asyncio.create_task(_ensure_aux_services())
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -405,7 +409,6 @@ def _hydrate_jwt_credentials_from_vault() -> None:
         LOGGER.info("Loaded JWT secret from Vault", extra={"path": vault_path})
         JWT_SECRET = secret
 
-
     # The JWT credentials will be loaded at application startup via a FastAPI
     # event handler. This call is removed to avoid executing before the FastAPI
     # app instance exists.
@@ -500,17 +503,15 @@ async def _get_jwks_keys() -> list[dict[str, Any]]:
 
     # Use circuit breaker to protect JWKS fetches (mandatory for production)
     breaker = pybreaker.CircuitBreaker(
-        fail_max=5, 
-        reset_timeout=60, 
-        expected_exception=httpx.HTTPError
+        fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError
     )
-    
+
     async def _fetch_jwks() -> list[dict[str, Any]]:
         async with httpx.AsyncClient(timeout=JWKS_TIMEOUT_SECONDS) as client:
             response = await client.get(JWT_JWKS_URL)
             response.raise_for_status()
             return response.json().get("keys", [])
-    
+
     try:
         jwks = await _fetch_jwks()
     except pybreaker.CircuitBreakerError as exc:
@@ -582,11 +583,9 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
 
     # Apply circuit breaker to protect OPA service (mandatory for production)
     breaker = pybreaker.CircuitBreaker(
-        fail_max=5, 
-        reset_timeout=60, 
-        expected_exception=httpx.HTTPError
+        fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError
     )
-    
+
     try:
         response = await _post_opa()
     except pybreaker.CircuitBreakerError as exc:
@@ -600,8 +599,12 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
         response.raise_for_status()
     except httpx.HTTPError as exc:
         LOGGER.error(
-            "OPA evaluation failed", 
-            extra={"error": str(exc), "url": decision_url, "status_code": getattr(exc.response, 'status_code', None)}
+            "OPA evaluation failed",
+            extra={
+                "error": str(exc),
+                "url": decision_url,
+                "status_code": getattr(exc.response, "status_code", None),
+            },
         )
         raise HTTPException(status_code=502, detail="OPA evaluation failed") from exc
 
@@ -699,13 +702,15 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
             LOGGER.error(
                 "OpenFGA authorization check failed",
                 extra={
-                    "tenant": tenant, 
-                    "subject": subject, 
+                    "tenant": tenant,
+                    "subject": subject,
                     "error": str(exc),
-                    "error_type": type(exc).__name__
+                    "error_type": type(exc).__name__,
                 },
             )
-            raise HTTPException(status_code=502, detail="Authorization service unavailable") from exc
+            raise HTTPException(
+                status_code=502, detail="Authorization service unavailable"
+            ) from exc
         if not allowed:
             raise HTTPException(status_code=403, detail="Tenant access denied")
 
@@ -747,8 +752,8 @@ async def enqueue_message(
                 "error": str(exc),
                 "error_type": type(exc).__name__,
                 "session_id": session_id,
-                "event_id": event_id
-            }
+                "event_id": event_id,
+            },
         )
         raise HTTPException(status_code=502, detail="Message queue unavailable") from exc
 
@@ -875,11 +880,7 @@ async def websocket_stream(
     except Exception as exc:
         LOGGER.error(
             "WebSocket streaming error",
-            extra={
-                "error": str(exc),
-                "error_type": type(exc).__name__,
-                "session_id": session_id
-            }
+            extra={"error": str(exc), "error_type": type(exc).__name__, "session_id": session_id},
         )
     finally:
         if not websocket.client_state.closed:
@@ -986,25 +987,22 @@ app.add_api_route(
 @app.on_event("shutdown")
 async def shutdown_background_services() -> None:
     """Ensure all shared resources are properly closed on shutdown."""
-    
+
     # Close shared event bus
     if hasattr(app.state, "event_bus"):
         await app.state.event_bus.close()
-    
+
     # Close shared HTTP client
     if hasattr(app.state, "http_client"):
         await app.state.http_client.aclose()
-    
+
     # Close consolidated service stores
     try:
         await MEMORY_CLIENT.close()
     except Exception as exc:
         LOGGER.warning("Error closing memory client", extra={"error": str(exc)})
-    
+
     LOGGER.info("Gateway shutdown completed")
-
-
-
 
 
 @app.get("/v1/health")
@@ -1136,7 +1134,9 @@ async def route_decision(payload: RouteRequest) -> RouteResponse:
 
     # Memory fallback: query recent sessions for preferred models
     try:
-        preferred = await MEMORY_CLIENT.find_preferred_model(payload.tenant, payload.persona, payload.candidates)
+        preferred = await MEMORY_CLIENT.find_preferred_model(
+            payload.tenant, payload.persona, payload.candidates
+        )
         if preferred:
             return RouteResponse(chosen=preferred, score=None)
     except Exception:
@@ -1173,12 +1173,12 @@ async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
             LOGGER.info("Requeue item published", extra={"requeue_id": requeue_id})
         except Exception as exc:
             LOGGER.error(
-                "Failed to publish requeue item", 
+                "Failed to publish requeue item",
                 extra={
                     "error": str(exc),
                     "requeue_id": requeue_id,
-                    "topic": APP_SETTINGS.tool_requests_topic
-                }
+                    "topic": APP_SETTINGS.tool_requests_topic,
+                },
             )
 
     await REQUEUE_STORE.delete_requeue(requeue_id)

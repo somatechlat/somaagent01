@@ -40,9 +40,15 @@ class SettingsModel(BaseSettings):
     version: str = Field(default="0.0.0", description="Application version")
 
     # Chat model configuration
-    chat_model_provider: str = Field(default="openai", description="Provider for the main chat model")
-    chat_model_name: str = Field(default="gpt-4o-mini", description="Model name for the main chat model")
-    chat_model_api_base: str | None = Field(default=None, description="Optional custom API base URL")
+    chat_model_provider: str = Field(
+        default="openai", description="Provider for the main chat model"
+    )
+    chat_model_name: str = Field(
+        default="gpt-4o-mini", description="Model name for the main chat model"
+    )
+    chat_model_api_base: str | None = Field(
+        default=None, description="Optional custom API base URL"
+    )
     chat_model_kwargs: Dict[str, Any] = Field(default_factory=dict)
     chat_model_ctx_length: int = Field(default=8192)
     chat_model_ctx_history: float = Field(default=0.5)

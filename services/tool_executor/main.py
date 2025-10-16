@@ -146,9 +146,15 @@ class ToolExecutor:
             },
         )
         self.streams = {
-            "requests": os.getenv("TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")),
-            "results": os.getenv("TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")),
-            "group": os.getenv("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
+            "requests": os.getenv(
+                "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
+            ),
+            "results": os.getenv(
+                "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
+            ),
+            "group": os.getenv(
+                "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
+            ),
         }
 
     async def start(self) -> None:
@@ -243,8 +249,8 @@ class ToolExecutor:
                 extra={
                     "error": str(exc),
                     "error_type": type(exc).__name__,
-                    "tool_name": getattr(payload, 'tool_name', 'unknown')
-                }
+                    "tool_name": event.get("tool_name", "unknown"),
+                },
             )
             await self._publish_result(
                 event,
@@ -386,7 +392,7 @@ class ToolExecutor:
         except Exception as exc:
             LOGGER.warning(
                 "Error during tool executor shutdown",
-                extra={"error": str(exc), "error_type": type(exc).__name__}
+                extra={"error": str(exc), "error_type": type(exc).__name__},
             )
 
 

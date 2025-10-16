@@ -16,9 +16,9 @@ x-agent-env: &agent-env
   TOOL_REQUESTS_TOPIC: tool.requests
   TOOL_RESULTS_TOPIC: tool.results
   TOOL_EXECUTOR_GROUP: tool-executor
-  MEMORY_SERVICE_TARGET: memory-service:50052
+  MEMORY_SERVICE_TARGET: memory-service:20017
   SOMA_AGENT_MODE: LOCAL
-  SOMA_BASE_URL: http://host.docker.internal:9669
+  SOMA_BASE_URL: http://host.docker.internal:9696
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
@@ -73,7 +73,7 @@ services:
       KAFKA_HEAP_OPTS: "-Xms1g -Xmx2g"
       BITNAMI_DEBUG: "true"
     ports:
-      - "${KAFKA_PORT:-0}:9092"
+      - "${KAFKA_PORT:-20000}:9092"
     restart: unless-stopped
     volumes:
       - kafka_data:/bitnami/kafka
@@ -92,7 +92,7 @@ services:
     profiles: ["core"]
     command: ["redis-server", "--save", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-0}:6379"
+      - "${REDIS_PORT:-20001}:6379"
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -114,11 +114,11 @@ services:
       POSTGRES_DB: somaagent01
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${POSTGRES_PORT:-0}:5432"
+      - "${POSTGRES_PORT:-20002}:5432"
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
       interval: 15s
@@ -134,7 +134,7 @@ services:
     profiles: ["core"]
     command: ["run", "--server", "--set=decision_logs.console=true"]
     ports:
-      - "${OPA_PORT:-0}:8181"
+      - "${OPA_PORT:-20009}:8181"
     restart: unless-stopped
 
   openfga-migrate:
@@ -167,8 +167,8 @@ services:
       OPENFGA_DATASTORE_ENGINE: postgres
       OPENFGA_DATASTORE_URI: "postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable"
     ports:
-      - "${OPENFGA_GRPC_PORT:-0}:8081"
-      - "${OPENFGA_HTTP_PORT:-0}:8080"
+      - "${OPENFGA_GRPC_PORT:-20010}:8081"
+      - "${OPENFGA_HTTP_PORT:-20011}:8080"
     restart: unless-stopped
     mem_limit: 2g
     cpus: "1"
@@ -206,9 +206,9 @@ services:
       - services.memory_service.main
     environment:
       <<: *agent-env
-      MEMORY_SERVICE_PORT: "50052"
+      MEMORY_SERVICE_PORT: "${MEMORY_SERVICE_PORT:-20017}"
     ports:
-      - "${MEMORY_SERVICE_PORT:-0}:50052"
+      - "${MEMORY_SERVICE_PORT:-20017}:${MEMORY_SERVICE_PORT:-20017}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -223,7 +223,7 @@ services:
     profiles: ["dev"]
     command: ["/exe/initialize.sh", "development"]
     ports:
-      - "${AGENT_UI_PORT:-0}:80"
+      - "${AGENT_UI_PORT:-20015}:80"
 
   gateway:
     <<: *agent-service
@@ -242,7 +242,7 @@ services:
       PORT: "8010"
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-true}
     ports:
-      - "${GATEWAY_PORT:-8010}:8010"
+      - "${GATEWAY_PORT:-20016}:8010"
 
 networks:
   default:

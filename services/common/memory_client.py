@@ -43,7 +43,9 @@ class MemoryRecord:
 
 
 class MemoryClient:
-    def __init__(self, target: Optional[str] = None, *, settings: SA01Settings | None = None) -> None:
+    def __init__(
+        self, target: Optional[str] = None, *, settings: SA01Settings | None = None
+    ) -> None:
         self.settings = settings or SA01Settings.from_env()
         default_target = _default_target(self.settings)
         self.target = target or os.getenv("MEMORY_SERVICE_TARGET", default_target)

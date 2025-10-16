@@ -144,7 +144,7 @@ docker compose -f docker-compose.somaagent01.yaml build
 docker compose -f docker-compose.somaagent01.yaml up
 ```
 
-Once the stack is healthy you can reach the Agent UI at `http://localhost:7002`, the delegation gateway on port `8010`, and supporting services (settings, router, canvas, requeue, audio) on ports `8011-8016`. The compose files automatically set `host.docker.internal` for intra-host callbacks, so no extra networking tweaks are required on macOS or Windows.
+Once the stack is healthy you can reach the Agent UI at `http://localhost:20015`, the delegation gateway on port `20016`, and supporting services (Kafka, Redis, Postgres, OpenFGA, etc.) across the reserved host range `20000-20199`. Exact bindings are printed by `make dev-up`. The compose files automatically set `host.docker.internal` for intra-host callbacks, so no extra networking tweaks are required on macOS or Windows.
 
 > **Observability tip:** The gateway now exports circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`. Prometheus scrapes this endpoint via the `circuit-breakers` job, enabling the `CircuitBreakerOpenEvents` alert without additional wiring. Alertmanager ships alongside Prometheus—access it on `${ALERTMANAGER_PORT:-9093}` to manage silences or webhook routes. Override `CIRCUIT_BREAKER_METRICS_HOST`/`PORT` if you relocate the exporter.
 

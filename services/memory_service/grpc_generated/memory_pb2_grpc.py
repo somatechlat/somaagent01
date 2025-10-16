@@ -4,23 +4,24 @@ import grpc
 
 from . import memory_pb2 as memory__pb2
 
-GRPC_GENERATED_VERSION = '1.66.1'
+GRPC_GENERATED_VERSION = "1.66.1"
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
 try:
     from grpc._utilities import first_version_is_lower
+
     _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
 except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
     raise RuntimeError(
-        f'The grpc package installed is at version {GRPC_VERSION},'
-    + ' but the generated code in memory_pb2_grpc.py depends on'
-        + f' grpcio>={GRPC_GENERATED_VERSION}.'
-        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
-        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
+        f"The grpc package installed is at version {GRPC_VERSION},"
+        + " but the generated code in memory_pb2_grpc.py depends on"
+        + f" grpcio>={GRPC_GENERATED_VERSION}."
+        + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
+        + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
     )
 
 
@@ -34,20 +35,23 @@ class MemoryServiceStub(object):
             channel: A grpc.Channel.
         """
         self.CreateMemory = channel.unary_unary(
-                '/sa01.memory.v1.MemoryService/CreateMemory',
-                request_serializer=memory__pb2.CreateMemoryRequest.SerializeToString,
-                response_deserializer=memory__pb2.CreateMemoryResponse.FromString,
-                _registered_method=True)
+            "/sa01.memory.v1.MemoryService/CreateMemory",
+            request_serializer=memory__pb2.CreateMemoryRequest.SerializeToString,
+            response_deserializer=memory__pb2.CreateMemoryResponse.FromString,
+            _registered_method=True,
+        )
         self.GetMemory = channel.unary_unary(
-                '/sa01.memory.v1.MemoryService/GetMemory',
-                request_serializer=memory__pb2.GetMemoryRequest.SerializeToString,
-                response_deserializer=memory__pb2.GetMemoryResponse.FromString,
-                _registered_method=True)
+            "/sa01.memory.v1.MemoryService/GetMemory",
+            request_serializer=memory__pb2.GetMemoryRequest.SerializeToString,
+            response_deserializer=memory__pb2.GetMemoryResponse.FromString,
+            _registered_method=True,
+        )
         self.ListMemories = channel.unary_unary(
-                '/sa01.memory.v1.MemoryService/ListMemories',
-                request_serializer=memory__pb2.ListMemoriesRequest.SerializeToString,
-                response_deserializer=memory__pb2.ListMemoriesResponse.FromString,
-                _registered_method=True)
+            "/sa01.memory.v1.MemoryService/ListMemories",
+            request_serializer=memory__pb2.ListMemoriesRequest.SerializeToString,
+            response_deserializer=memory__pb2.ListMemoriesResponse.FromString,
+            _registered_method=True,
+        )
 
 
 class MemoryServiceServicer(object):
@@ -56,65 +60,68 @@ class MemoryServiceServicer(object):
     def CreateMemory(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def GetMemory(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def ListMemories(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
 
 def add_MemoryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'CreateMemory': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreateMemory,
-                    request_deserializer=memory__pb2.CreateMemoryRequest.FromString,
-                    response_serializer=memory__pb2.CreateMemoryResponse.SerializeToString,
-            ),
-            'GetMemory': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetMemory,
-                    request_deserializer=memory__pb2.GetMemoryRequest.FromString,
-                    response_serializer=memory__pb2.GetMemoryResponse.SerializeToString,
-            ),
-            'ListMemories': grpc.unary_unary_rpc_method_handler(
-                    servicer.ListMemories,
-                    request_deserializer=memory__pb2.ListMemoriesRequest.FromString,
-                    response_serializer=memory__pb2.ListMemoriesResponse.SerializeToString,
-            ),
+        "CreateMemory": grpc.unary_unary_rpc_method_handler(
+            servicer.CreateMemory,
+            request_deserializer=memory__pb2.CreateMemoryRequest.FromString,
+            response_serializer=memory__pb2.CreateMemoryResponse.SerializeToString,
+        ),
+        "GetMemory": grpc.unary_unary_rpc_method_handler(
+            servicer.GetMemory,
+            request_deserializer=memory__pb2.GetMemoryRequest.FromString,
+            response_serializer=memory__pb2.GetMemoryResponse.SerializeToString,
+        ),
+        "ListMemories": grpc.unary_unary_rpc_method_handler(
+            servicer.ListMemories,
+            request_deserializer=memory__pb2.ListMemoriesRequest.FromString,
+            response_serializer=memory__pb2.ListMemoriesResponse.SerializeToString,
+        ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'sa01.memory.v1.MemoryService', rpc_method_handlers)
+        "sa01.memory.v1.MemoryService", rpc_method_handlers
+    )
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('sa01.memory.v1.MemoryService', rpc_method_handlers)
+    server.add_registered_method_handlers("sa01.memory.v1.MemoryService", rpc_method_handlers)
 
 
- # This class is part of an EXPERIMENTAL API.
+# This class is part of an EXPERIMENTAL API.
 class MemoryService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def CreateMemory(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
+    def CreateMemory(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sa01.memory.v1.MemoryService/CreateMemory',
+            "/sa01.memory.v1.MemoryService/CreateMemory",
             memory__pb2.CreateMemoryRequest.SerializeToString,
             memory__pb2.CreateMemoryResponse.FromString,
             options,
@@ -125,23 +132,26 @@ class MemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True)
+            _registered_method=True,
+        )
 
     @staticmethod
-    def GetMemory(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
+    def GetMemory(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sa01.memory.v1.MemoryService/GetMemory',
+            "/sa01.memory.v1.MemoryService/GetMemory",
             memory__pb2.GetMemoryRequest.SerializeToString,
             memory__pb2.GetMemoryResponse.FromString,
             options,
@@ -152,23 +162,26 @@ class MemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True)
+            _registered_method=True,
+        )
 
     @staticmethod
-    def ListMemories(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
+    def ListMemories(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sa01.memory.v1.MemoryService/ListMemories',
+            "/sa01.memory.v1.MemoryService/ListMemories",
             memory__pb2.ListMemoriesRequest.SerializeToString,
             memory__pb2.ListMemoriesResponse.FromString,
             options,
@@ -179,4 +192,5 @@ class MemoryService(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True)
+            _registered_method=True,
+        )

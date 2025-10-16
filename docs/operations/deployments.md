@@ -33,6 +33,8 @@ docker compose -p somaagent01-staging --profile core --profile dev -f infra/dock
 
 - Use `.env.staging` for environment-specific overrides.
 - Confirm health: `docker compose ps`.
+- Host ports default to the reserved range `20000-20199` (Kafka 20000, Redis 20001, Postgres 20002, Gateway 20016, UI 20015). Override via `PORT_POOL_START` / `PORT_POOL_MAX` if the range is occupied.
+- SomaBrain integration expects `http://host.docker.internal:9696`; ensure your local SomaBrain service is listening on that port.
 
 ## Kubernetes Deployment (Planned)
 
