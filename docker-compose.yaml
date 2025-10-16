@@ -1,8 +1,5 @@
-# infra/docker-compose.base.yaml
-#
-# This file defines the canonical base infrastructure and service templates
-# for all Agent Zero environments. It should not be run directly but extended
-# by environment-specific files (e.g., docker-compose.somaagent01.yaml).
+# Canonical Docker Compose file for Agent Zero
+# This file defines all services for the development environment.
 
 x-agent-env: &agent-env
   PYTHONPATH: /git/agent-zero:/a0
@@ -40,7 +37,7 @@ x-agent-depends: &agent-depends
 x-agent-service: &agent-service
   image: somaagent01-dev:latest
   build:
-    context: ..
+    context: .
     dockerfile: DockerfileLocal
     args:
       TORCH_VARIANT: ${TORCH_VARIANT:-none}
@@ -49,7 +46,7 @@ x-agent-service: &agent-service
       FEATURE_AUDIO: "none"
   working_dir: /a0
   volumes:
-    - ../a0_data:/a0
+    - ./a0_data:/a0
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on: *agent-depends
@@ -125,7 +122,7 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
       interval: 15s
@@ -165,7 +162,7 @@ services:
 
   openfga:
     build:
-      context: ..
+      context: .
       dockerfile: docker/openfga/Dockerfile
     image: somaagent01-openfga:latest
     container_name: somaAgent01_openfga
@@ -186,6 +183,65 @@ services:
         condition: service_healthy
       openfga-migrate:
         condition: service_completed_successfully
+
+  conversation-worker:
+    <<: *agent-service
+    container_name: somaAgent01_conversation-worker
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - services.conversation_worker.main
+
+  tool-executor:
+    <<: *agent-service
+    container_name: somaAgent01_tool-executor
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - services.tool_executor.main
+
+  memory-service:
+    <<: *agent-service
+    container_name: somaAgent01_memory-service
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - services.memory_service.main
+    environment:
+      <<: *agent-env
+      MEMORY_SERVICE_PORT: "${MEMORY_SERVICE_PORT:-20017}"
+    ports:
+      - "${MEMORY_SERVICE_PORT:-20017}:${MEMORY_SERVICE_PORT:-20017}"
+
+  agent-ui:
+    <<: *agent-service
+    container_name: somaAgent01_agent-ui
+    profiles: ["dev"]
+    command: ["/exe/initialize.sh", "development"]
+    ports:
+      - "${AGENT_UI_PORT:-20015}:80"
+
+  gateway:
+    <<: *agent-service
+    container_name: somaAgent01_gateway
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - services.gateway.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8010"
+    environment:
+      <<: *agent-env
+      PORT: "8010"
+      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-true}
+    ports:
+      - "${GATEWAY_PORT:-20016}:8010"
 
 networks:
   default:

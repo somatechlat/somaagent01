@@ -7,7 +7,7 @@
 # Docker Compose project name
 COMPOSE_PROJECT_NAME ?= somaagent01
 # Docker Compose file path
-COMPOSE_FILES ?= -f infra/docker-compose.base.yaml -f infra/docker-compose.somaagent01.yaml
+COMPOSE_FILE ?= docker-compose.yaml
 # Profiles to activate
 PROFILES ?= core,dev
 
@@ -34,21 +34,21 @@ help:
 
 build:
 	@echo "Building Docker images..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES) --profile $(PROFILES) build
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) --profile $(PROFILES) build
 
 up:
 	@echo "Starting the stack in detached mode..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES) --profile $(PROFILES) up -d
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) --profile $(PROFILES) up -d
 
 down:
 	@echo "Stopping and removing the stack..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES) down
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) down
 
 restart: down up
 
 logs:
 	@echo "Following logs for all services..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES) logs -f
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) logs -f
 
 rebuild: down build up
 
