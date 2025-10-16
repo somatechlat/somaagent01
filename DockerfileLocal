@@ -50,40 +50,17 @@ RUN apt-get update && apt-get install -y python3-venv python3-pip && \
 # Make sure the container runtime uses the venv by default
 ENV PATH="/venv/bin:${PATH}"
 
-# install A0 (full/dev image only) using modular installation
+# install A0 (full/dev image only) using the new canonical installer
 RUN if [ -z "$SERVICE" ]; then \
-        /venv/bin/pip install --no-cache-dir "pydantic==2.11.6" "pydantic-settings==2.6.1" && \
-        FEATURE_AI=${FEATURE_AI} \
-        FEATURE_AUDIO=${FEATURE_AUDIO} \
-        FEATURE_BROWSER=${FEATURE_BROWSER} \
-        FEATURE_DOCUMENTS=${FEATURE_DOCUMENTS} \
-        FEATURE_DATABASE=${FEATURE_DATABASE} \
-        FEATURE_MONITORING=${FEATURE_MONITORING} \
-        FEATURE_DEV=${FEATURE_DEV} \
-        FEATURE_GRPC=${FEATURE_GRPC} \
-        FEATURE_INTEGRATIONS=${FEATURE_INTEGRATIONS} \
-    ENABLE_TORCH=${ENABLE_TORCH} \
-        TORCH_VARIANT=${TORCH_VARIANT} \
-        bash /ins/install_modular.sh $BRANCH; \
+        bash /ins/install.sh $BRANCH; \
     else \
-        echo "Skipping modular installation for SERVICE=$SERVICE"; \
+        echo "Skipping canonical installation for SERVICE=$SERVICE"; \
     fi
 
 # install additional software (full/dev image only)
 RUN if [ -z "$SERVICE" ]; then bash /ins/install_additional.sh $BRANCH; else echo "Skipping install_additional.sh for SERVICE=$SERVICE"; fi
 
-# cleanup repo and install A0 without caching, this speeds up builds (full/dev image only)
-ARG CACHE_DATE=none
-RUN if [ -z "$SERVICE" ]; then \
-        echo "cache buster $CACHE_DATE" && \
-        if [ "$BRANCH" != "local" ]; then \
-            bash /ins/install_A02.sh $BRANCH; \
-        else \
-            echo "Skipping install_A02.sh for BRANCH=local"; \
-        fi; \
-    else \
-        echo "Skipping install_A02.sh for SERVICE=$SERVICE"; \
-    fi
+
 
 # post installation steps (full/dev image only)
 RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Skipping post_install.sh for SERVICE=$SERVICE"; fi
