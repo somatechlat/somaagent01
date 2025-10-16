@@ -17,6 +17,7 @@ from python.helpers.secrets import SecretsManager
 from . import dotenv, files
 from .settings_model import SettingsModel as Settings
 
+
 # ``PartialSettings`` kept for compatibility – it behaves like ``Settings``
 # but allows any subset of fields to be provided when constructing the model.
 class PartialSettings(Settings):

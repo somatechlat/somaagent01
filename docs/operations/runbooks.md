@@ -17,6 +17,7 @@ make dev-up
 ```
 - Reserves host ports, prunes old containers, brings up `core` + `dev` profiles.
 - Waits for Postgres to report `healthy` before returning.
+- Default host bindings live in the `20000-20199` window (UI `20015`, Gateway `20016`, Kafka `20000`, etc.); adjust via `PORT_POOL_START`/`PORT_POOL_MAX` if needed.
 
 ### Stop
 ```bash

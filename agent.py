@@ -629,14 +629,10 @@ class Agent:
                 # The topic may have a summary or a list of messages.
                 if current_topic.summary:
                     # When a summary exists we treat it as a single message.
-                    output_msgs = [
-                        {"ai": False, "content": current_topic.summary}
-                    ]
+                    output_msgs = [{"ai": False, "content": current_topic.summary}]
                 else:
                     # Flatten the messages of the topic.
-                    output_msgs = [
-                        m for r in current_topic.messages for m in r.output()
-                    ]
+                    output_msgs = [m for r in current_topic.messages for m in r.output()]
 
         # Apply slicing if indices are provided.
         if start_idx is not None or end_idx is not None:

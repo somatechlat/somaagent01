@@ -167,9 +167,7 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
             persona_id=request.persona_id or None,
             limit=limit,
         )
-        return memory_pb2.ListMemoriesResponse(
-            records=[self._to_proto(row) for row in rows]
-        )
+        return memory_pb2.ListMemoriesResponse(records=[self._to_proto(row) for row in rows])
 
 
 async def _serve(settings: SA01Settings) -> None:
@@ -182,7 +180,7 @@ async def _serve(settings: SA01Settings) -> None:
     server = aio.server()
     memory_pb2_grpc.add_MemoryServiceServicer_to_server(MemoryService(repository), server)
 
-    port = int(os.getenv("MEMORY_SERVICE_PORT", "50052"))
+    port = int(os.getenv("MEMORY_SERVICE_PORT", "20017"))
     listen_addr = f"0.0.0.0:{port}"
     server.add_insecure_port(listen_addr)
     LOGGER.info("MemoryService starting", extra={"listen": listen_addr})

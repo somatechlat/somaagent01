@@ -50,9 +50,7 @@ class ScoringJob:
             score = self._score_model(avg_latency, avg_tokens)
             await self.telemetry.save_model_score(
                 model=model,
-                deployment_mode=os.getenv(
-                    "SOMA_AGENT_MODE", JOB_SETTINGS.deployment_mode
-                ).upper(),
+                deployment_mode=os.getenv("SOMA_AGENT_MODE", JOB_SETTINGS.deployment_mode).upper(),
                 window_start=window_start,
                 window_end=window_end,
                 avg_latency=avg_latency,
@@ -77,9 +75,7 @@ async def main() -> None:
         except Exception as exc:  # pragma: no cover - background job
             LOGGER.exception("Scoring job failed", extra={"error": str(exc)})
         default_interval = JOB_SETTINGS.extra.get("scoring_interval_seconds", 3600)
-        await asyncio.sleep(
-            int(os.getenv("SCORING_INTERVAL_SECONDS", str(default_interval)))
-        )
+        await asyncio.sleep(int(os.getenv("SCORING_INTERVAL_SECONDS", str(default_interval))))
 
 
 if __name__ == "__main__":

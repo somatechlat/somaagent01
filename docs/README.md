@@ -1,65 +1,28 @@
 ![Agent Zero Logo](res/header.png)
 
-# Agent Zero Documentation Hub
+# SomaAgent01 Documentation Hub
 
-Welcome! This page curates the actively maintained documentation set. Everything listed here is backed by real services, real data, and production-ready procedures.
+Welcome to the reorganized documentation hub. Content now lives in four curated manuals with shared resources for terminology, style, and change tracking.
 
-## Quick Start
+## Manuals
 
-- **[Installation](installation.md):** Fresh installs, upgrades, and platform-specific tips.
-- **[Quickstart](quickstart.md):** Launch Agent Zero in minutes.
-- **[Usage Guide](usage.md):** Day-to-day workflows in the Web UI.
-- **[Troubleshooting](troubleshooting.md):** FAQ and incident triage.
+- **[User Manual](user-manual/index.md):** Install SomaAgent01, run daily workflows, and troubleshoot issues.
+- **[Technical Manual](technical-manual/index.md):** Dive into architecture, infrastructure, integrations, and data flow.
+- **[Development Manual](development-manual/index.md):** Follow engineering workflows, coding standards, testing, and release processes.
+- **[Onboarding Manual](onboarding-manual/index.md):** Enable new team members with orientation checklists, tool primers, and 30/60/90 planning.
 
-## Architecture & Design
+## Shared Resources
 
-- **[System Overview](architecture/overview.md):** Context diagrams, component map, request flow.
-- **[Runtime Lifecycle](architecture/runtime.md):** Startup sequencing, deployment profiles.
-- **Component Deep Dives:**
-  - [Gateway](architecture/components/gateway.md)
-  - [Tool Executor](architecture/components/tool_executor.md)
-  - [Memory (SomaBrain)](architecture/components/memory.md)
-  - [Agent UI](architecture/components/ui.md)
-  - [Realtime Speech](architecture/components/realtime_speech.md)
+- **[Documentation Style Guide](style-guide.md)** to keep writing consistent.
+- **[Documentation Audit Checklist](documentation-audit-checklist.md)** enforced on every docs PR.
+- **[Glossary](glossary.md)** with canonical terminology.
+- **[Documentation Change Log](changelog.md)** recording updates across manuals.
 
-## APIs & Data Contracts
+## Automation & Governance
 
-- **[Gateway API](apis/gateway.md)**
-- **[Realtime Session API](apis/realtime_session.md)**
-- **[Settings API](apis/settings.md)**
-- **[Tool Executor Callbacks](apis/tool_executor_callbacks.md)**
-- **[Kafka Topics & Schemas](data/streams.md)**
+- Run `make docs-verify` locally to execute markdown lint, link checks, diagram rendering, and MkDocs build.
+- Docs GitHub Action (`.github/workflows/docs-quality.yml`) enforces the same checks in CI.
+- Quarterly audits follow the checklist to ensure accuracy, accessibility, and ownership.
 
-## Operations
-
-- **[Runbooks](operations/runbooks.md):** Start/stop, smoke tests, recovery drills.
-- **[Deployments](operations/deployments.md):** Environment matrix, rollout/rollback.
-- **[Observability](operations/observability.md):** Metrics, logs, alerts.
-
-## Development
-
-- **[Environment Setup](development/setup.md)**
-- **[Coding Standards](development/coding-standards.md)**
-- **[Testing Strategy](development/testing.md)**
-- **[Debugging Guide](development/debugging.md)**
-- Legacy deep-dive: [Development manual](development.md)
-
-## Features
-
-- **[Realtime Speech](features/realtime_speech.md)**
-- **[Memory Management](features/memory_management.md)**
-- **[Tooling Integration](features/tooling.md)**
-
-## Extensibility & Connectivity
-
-- **[Extensibility](extensibility.md)**
-- **[Connectivity](connectivity.md)**
-- **[MCP Setup](mcp_setup.md)**
-
-## Contributing
-
-- **[Contribution Guide](contribution.md)**
-
----
-
-Need something else? Check the [Reference Index](reference/index.md) or open an issue if a guide is missing.
+> [!TIP]
+> Legacy documents are being migrated into the new manuals. Check `_legacy/` or the change log for interim locations while the transition completes.

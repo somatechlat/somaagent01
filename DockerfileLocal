@@ -25,6 +25,11 @@ ARG FEATURE_MONITORING=false
 ARG FEATURE_DEV=true
 ARG FEATURE_GRPC=false
 ARG FEATURE_INTEGRATIONS=true
+ARG TORCH_VARIANT=none
+ARG ENABLE_TORCH=false
+
+ENV TORCH_VARIANT=$TORCH_VARIANT
+ENV ENABLE_TORCH=$ENABLE_TORCH
 
 # Copy filesystem files to root
 COPY ./docker/run/fs/ /
@@ -57,6 +62,8 @@ RUN if [ -z "$SERVICE" ]; then \
         FEATURE_DEV=${FEATURE_DEV} \
         FEATURE_GRPC=${FEATURE_GRPC} \
         FEATURE_INTEGRATIONS=${FEATURE_INTEGRATIONS} \
+    ENABLE_TORCH=${ENABLE_TORCH} \
+        TORCH_VARIANT=${TORCH_VARIANT} \
         bash /ins/install_modular.sh $BRANCH; \
     else \
         echo "Skipping modular installation for SERVICE=$SERVICE"; \
@@ -92,10 +99,7 @@ RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema
 
 # Install asyncpg for async PostgreSQL access (memory_service, gateway and full/dev)
 # Use the distribution package for the full/dev image to avoid compiling wheels on Python 3.13.
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ]; then \
-        apt-get update && apt-get install -y python3-asyncpg && \
-        apt-get clean && rm -rf /var/lib/apt/lists/*; \
-    elif [ "$SERVICE" = "memory_service" ]; then \
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "memory_service" ]; then \
         apt-get update && apt-get install -y python3-asyncpg && \
         apt-get clean && rm -rf /var/lib/apt/lists/*; \
     else \
@@ -119,7 +123,7 @@ RUN if [ -f /tmp/memory_service.requirements.txt ] && [ "$SERVICE" = "memory_ser
         fi
 
 # Expose ports
-EXPOSE 22 80 9000-9009 50052
+EXPOSE 22 80 9000-9009 20017
 
 RUN chmod +x /exe/initialize.sh /exe/run_A0.sh /exe/run_searxng.sh /exe/run_tunnel_api.sh
 

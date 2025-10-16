@@ -19,16 +19,18 @@ if PYTHON_PKG not in sys.path:
     sys.path.append(PYTHON_PKG)
 
 # Debug: print sys.path when pytest loads conftest to verify ordering
-print('DEBUG conftest sys.path start:', sys.path[:5])
+print("DEBUG conftest sys.path start:", sys.path[:5])
 # Additional debug: attempt to import the local "python" package and report the result.
 try:
     import importlib
-    spec = importlib.util.find_spec('python')
-    print('DEBUG find_spec python:', spec)
+
+    spec = importlib.util.find_spec("python")
+    print("DEBUG find_spec python:", spec)
     import python
-    print('DEBUG imported python package from:', getattr(python, '__file__', None))
+
+    print("DEBUG imported python package from:", getattr(python, "__file__", None))
 except Exception as e:
-    print('DEBUG import error for python package:', e)
+    print("DEBUG import error for python package:", e)
 # Top-level pytest configuration
 # Existing plugin registration
 from pathlib import Path

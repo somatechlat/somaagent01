@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
@@ -10,6 +11,8 @@ from typing import Any, Awaitable, Callable
 from python.helpers.circuit_breaker import CircuitOpenError
 from services.tool_executor.resource_manager import ExecutionLimits
 from services.tool_executor.tools import ToolExecutionError
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -39,6 +42,8 @@ class SandboxManager:
     ) -> SandboxExecutionResult:
         start = time.time()
         logs: list[str] = []
+        sandbox_id = args.get("sandbox_id") or args.get("task_id") or args.get("tool_name")
+        sandbox_id = str(sandbox_id or "unknown")
         try:
             payload = await asyncio.wait_for(func(args), timeout=limits.timeout_seconds)
             status = "success"
@@ -56,8 +61,8 @@ class SandboxManager:
                 extra={
                     "error": str(exc),
                     "error_type": type(exc).__name__,
-                    "sandbox_id": sandbox_id
-                }
+                    "sandbox_id": sandbox_id,
+                },
             )
             status = "error"
             payload = {"message": f"{type(exc).__name__}: {exc}"}

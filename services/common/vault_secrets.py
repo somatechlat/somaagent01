@@ -8,13 +8,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
+LOGGER = logging.getLogger(__name__)
+
 try:
     import hvac  # type: ignore
 except ImportError:
     hvac = None
     LOGGER.warning("hvac library not available - Vault integration disabled")  # type: ignore
-
-LOGGER = logging.getLogger(__name__)
 
 
 def _ensure_hvac() -> Any:
@@ -108,14 +108,14 @@ def load_kv_secret(
             mount_point=mount_point,
         )
     except Exception as exc:
-        logger.error(
+        log.error(
             "Failed to load secret from Vault",
             extra={
                 "error": str(exc),
                 "error_type": type(exc).__name__,
                 "path": path,
-                "mount_point": mount_point
-            }
+                "mount_point": mount_point,
+            },
         )
         return None
 

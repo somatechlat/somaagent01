@@ -14,7 +14,7 @@ x-agent-env: &agent-env
   TOOL_REQUESTS_TOPIC: tool.requests
   TOOL_RESULTS_TOPIC: tool.results
   TOOL_EXECUTOR_GROUP: tool-executor
-  MEMORY_SERVICE_TARGET: memory-service:50052
+  MEMORY_SERVICE_TARGET: memory-service:20017
   DELEGATION_TOPIC: somastack.delegation
   DELEGATION_GROUP: delegation-worker
   OPA_URL: http://opa:8181
@@ -377,12 +377,12 @@ services:
     command: ["python3", "-m", "services.memory_service.main"]
     environment:
       <<: *agent-env
-      MEMORY_SERVICE_PORT: "50052"
+      MEMORY_SERVICE_PORT: "${MEMORY_SERVICE_PORT:-20017}"
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "${MEMORY_SERVICE_PORT:-40017}:50052"
+      - "${MEMORY_SERVICE_PORT:-20017}:${MEMORY_SERVICE_PORT:-20017}"
 
 
 

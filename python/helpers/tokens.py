@@ -6,6 +6,7 @@ from typing import Literal
 # rate-limiting and approximate counts during development.
 try:
     import tiktoken
+
     _HAS_TIKTOKEN = True
 except Exception:
     tiktoken = None  # type: ignore

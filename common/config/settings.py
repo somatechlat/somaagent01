@@ -16,7 +16,9 @@ class EnvironmentAwareSettings(BaseSettings):
     """Base settings object that injects environment-specific defaults."""
 
     environment: str = Field(default="DEV", description="Logical deployment environment")
-    deployment_mode: str = Field(default="LOCAL", description="Runtime mode switch for feature flags")
+    deployment_mode: str = Field(
+        default="LOCAL", description="Runtime mode switch for feature flags"
+    )
     model_profiles_path: str = Field(default="conf/model_profiles.yaml")
     extra: dict[str, Any] = Field(default_factory=dict)
 

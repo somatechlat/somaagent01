@@ -15,7 +15,7 @@ from prometheus_client import Counter, Histogram, start_http_server
 
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
-from services.common.escalation import should_escalate, EscalationDecision
+from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.model_costs import estimate_escalation_cost
@@ -23,10 +23,14 @@ from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.router_client import RouterClient
 from services.common.schema_validator import validate_event
-from services.common.session_repository import ensure_schema, PostgresSessionStore, RedisSessionCache
+from services.common.session_repository import (
+    ensure_schema,
+    PostgresSessionStore,
+    RedisSessionCache,
+)
+from services.common.settings_sa01 import SA01Settings
 from services.common.skm_client import ProgressPayload, SKMClient
 from services.common.slm_client import ChatMessage, SLMClient
-from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
@@ -157,7 +161,9 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
-        bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers)
+        bootstrap_servers = os.getenv(
+            "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
+        )
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
             security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),

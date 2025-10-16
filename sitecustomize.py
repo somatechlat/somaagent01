@@ -16,7 +16,7 @@ import os
 import sys
 
 # Debug: indicate that sitecustomize has been imported (useful for pytest import path issues)
-print('sitecustomize loaded: repository root added to sys.path')
+print("sitecustomize loaded: repository root added to sys.path")
 
 # Resolve the absolute path of the repository root (the directory containing this file).
 REPO_ROOT = os.path.abspath(os.path.dirname(__file__))

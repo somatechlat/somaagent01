@@ -51,6 +51,6 @@ class DeadLetterQueue:
                 extra={
                     "error": str(dlq_error),
                     "error_type": type(dlq_error).__name__,
-                    "original_topic": original_topic
-                }
+                    "original_topic": self.source_topic,
+                },
             )

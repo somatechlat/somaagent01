@@ -5,12 +5,15 @@ from __future__ import annotations
 import asyncio
 import datetime
 import io
+import logging
 import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict
 
 import httpx
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ToolExecutionError(Exception):
@@ -47,9 +50,10 @@ class TimestampTool(BaseTool):
                 extra={
                     "error": str(exc),
                     "error_type": type(exc).__name__,
-                    "tool_data": str(tool_data)[:100]  # truncate for logging
-                }
+                    "tool_data": str(args)[:100],  # truncate for logging
+                },
             )
+            now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         return {"message": now}
 
 
@@ -86,8 +90,8 @@ class CodeExecutionTool(BaseTool):
                     extra={
                         "error": str(exc),
                         "error_type": type(exc).__name__,
-                        "tool_name": tool.name if hasattr(tool, 'name') else 'unknown'
-                    }
+                        "tool_name": self.name,
+                    },
                 )
             return {
                 "stdout": buffer.getvalue(),
