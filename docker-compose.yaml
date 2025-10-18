@@ -32,11 +32,23 @@ x-agent-service: &agent-service
     args:
       TORCH_VARIANT: ${TORCH_VARIANT:-none}
       ENABLE_TORCH: "false"
-      FEATURE_AI: "basic"
+      # Developer-focused defaults: disable heavy libraries for fast local builds
+      FEATURE_AI: "none"
+      FEATURE_DATABASE: "false"
       FEATURE_AUDIO: "none"
+      FEATURE_BROWSER: "false"
+      FEATURE_DOCUMENTS: "false"
+      FEATURE_MONITORING: "false"
+      FEATURE_GRPC: "false"
+      FEATURE_INTEGRATIONS: "false"
+      FEATURE_DEV: "true"
   working_dir: /a0
   volumes:
     - ./a0_data:/a0
+    # Mount source code directories so services can import shared modules (no mocking)
+    - ./common:/a0/common:ro
+    - ./python:/a0/python:ro
+    - ./lib:/a0/lib:ro
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -114,6 +126,8 @@ services:
       POSTGRES_USER: soma
       POSTGRES_PASSWORD: soma
       POSTGRES_DB: somaagent01
+      OPENFGA_POSTGRES_USER: openfga
+      OPENFGA_POSTGRES_PASSWORD: openfga
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-20002}:5432"
@@ -122,7 +136,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01 && pg_isready -U openfga -d openfga"]
       interval: 15s
       timeout: 5s
       retries: 5

@@ -1,6 +1,15 @@
+import logging
+import os
 from typing import Any
 
 from python.helpers import dirty_json
+
+LOGGER = logging.getLogger(__name__)
+_FEATURE_BROWSER = os.getenv("FEATURE_BROWSER", "false").strip().lower()
+
+
+def _feature_enabled() -> bool:
+    return _FEATURE_BROWSER in {"1", "true", "yes", "on"}
 
 # ------------------------------------------------------------------------------
 # Gemini Helper for Output Conformance
@@ -169,11 +178,18 @@ def apply():
     ChatGoogle._fix_gemini_schema = _patched_fix_gemini_schema
 
 
-# browser_use is required for web automation in production
-try:
-    from browser_use.llm import ChatGoogle  # type: ignore
-except ImportError as exc:
-    raise ImportError(
-        "browser_use library is required for production web automation. "
-        "Install with: pip install browser-use"
-    ) from exc
+if _feature_enabled():
+    try:
+        from browser_use.llm import ChatGoogle  # type: ignore
+    except ImportError as exc:  # pragma: no cover - requires external dependency
+        raise ImportError(
+            "browser_use library is required for production web automation. "
+            "Install with: pip install browser-use"
+        ) from exc
+else:  # lightweight developer fallback
+
+    class ChatGoogle:  # type: ignore
+        def _fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
+            return schema
+
+    LOGGER.info("browser_use not loaded – FEATURE_BROWSER disabled")
