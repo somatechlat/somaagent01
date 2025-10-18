@@ -165,7 +165,13 @@ if [ "$FEATURE_BROWSER" = "true" ]; then
 fi
 
 echo "Running application preload..."
-python /git/agent-zero/preload.py --dockerized=true
+# Only run preload when explicitly requested or when AI features are enabled.
+# This prevents module-import-time failures in trimmed local copies.
+if [ "$INSTALL_PRELOAD" = "true" ] || [ "$FEATURE_AI" != "none" ]; then
+    python /git/agent-zero/preload.py --dockerized=true
+else
+    echo "Skipping preload: INSTALL_PRELOAD=$INSTALL_PRELOAD FEATURE_AI=$FEATURE_AI"
+fi
 
 # --- 6. Finalization and Cleanup ---
 echo "Cleaning up package caches..."

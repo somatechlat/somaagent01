@@ -91,7 +91,8 @@ pytest tests/playwright/test_realtime_speech.py --headed
 
 ## 8. Local Docker Compose Reference
 
-- Compose file: `docker-compose.somaagent01.yaml` (root). Profiles such as `vectorstore`, `observability`, and `kafka` enable optional services (`docker compose --profile vectorstore up`).
+- **Lightweight developer stack** (`docker-compose.dev.yaml`): trimmed to Postgres, Redis, Kafka, OPA, Gateway, Conversation Worker, Tool Executor, optional UI. Default host ports live in the `608xx` range (e.g., gateway on `http://localhost:60816`). Handy shortcuts: `make dev-up`, `make dev-logs`, `make dev-down`.
+- **Full stack** (`docker-compose.somaagent01.yaml`): enables all profiles (`vectorstore`, `observability`, `kafka`) for parity with staging/production (`docker compose --profile vectorstore up`).
 - Recommended Docker Desktop allocation: ≥8 CPUs, ≥12 GB RAM to keep Kafka/Postgres healthy.
 - Frequently used containers:
   - `somaAgent01_gateway` → `http://localhost:8010`

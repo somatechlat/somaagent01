@@ -1,1 +1,0 @@
-Info: auto memory recall set to delayed mode. auto memories will be available after next message. if manual memory check is required use memory tools.

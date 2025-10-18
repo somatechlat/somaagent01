@@ -2,27 +2,27 @@
 # Project‑specific exclusions / re‑includes
 ###############################################################################
 
-# Large / generated data
-memory/**
-
-# Logs & tmp
-logs/*
-tmp/*
-
-# Trim development-only assets from Docker context
-docs/
-archived/
-tests/
-
-# Knowledge directory – keep only default/
-knowledge/**
-!knowledge/default/
-!knowledge/default/**
-
-# Instruments directory – keep only default/
-instruments/**
-!instruments/default/
-!instruments/default/**
+# Essential files only - explicitly include what we need
+**/*
+!docker/run/fs/
+!requirements-core.txt
+!services/gateway/**
+!services/conversation_worker/**
+!services/tool_executor/**
+!services/memory_service/**
+!services/common/**
+!services/ui/**
+!services/__init__.py
+!python/**
+!common/**
+!lib/**
+!prompts/**
+!conf/**
+!models.py
+!preload.py
+!prepare.py
+!run_ui.py
+!run_tunnel.py
 
 # Keep .gitkeep markers anywhere
 !**/.gitkeep
@@ -59,3 +59,25 @@ instruments/**
 
 # Environment files anywhere
 *.env
+
+# Project local exclusions
+.git
+.gitignore
+.venv
+venv
+env
+node_modules
+a0_data
+archived
+logs
+tmp
+build
+dist
+docs.zip
+*.pyc
+.pytest_cache
+.mypy_cache
+.cache
+.vscode
+*.bak
+*~

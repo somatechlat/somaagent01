@@ -14,15 +14,57 @@ from typing import (
     TypedDict,
 )
 
-# LiteLLM and OpenAI are required for production deployment
-import litellm
-import openai
+# Heavy optional imports: try to import them only when AI features are enabled.
+feature_ai_env = os.environ.get("FEATURE_AI", "").lower()
+_enable_ai = feature_ai_env not in ("none", "false", "0")
 
-# browser-use is required for production deployment
-from browser_use import (
-    ChatGoogle,
-    ChatOpenRouter,
-)
+# Attempt to import LiteLLM/OpenAI only when AI is enabled; otherwise provide
+# safe fallbacks so the module can be imported in developer-mode without
+# installing heavy dependencies.
+litellm = None
+openai = None
+acompletion = None
+completion = None
+embedding = None
+litellm_exceptions = None
+if _enable_ai:
+    try:
+        import litellm
+        import openai
+        from litellm import acompletion, completion, embedding
+        litellm_exceptions = getattr(litellm, "exceptions", None)
+    except Exception:
+        # Import failed; keep None values so code can detect absence.
+        litellm = None
+        openai = None
+        acompletion = None
+        completion = None
+        embedding = None
+        litellm_exceptions = None
+
+# browser-use is required for production deployment; provide safe fallbacks
+# so classes can be referenced even when browser-use isn't installed.
+try:
+    from browser_use import ChatGoogle, ChatOpenRouter, browser_use_monkeypatch
+except Exception:
+    class ChatGoogle:  # lightweight fallback
+        def _fix_gemini_schema(self, s):
+            return s
+
+    class ChatOpenRouter:  # lightweight fallback base class
+        pass
+
+    class _BrowserUseMonkeypatchFallback:
+        @staticmethod
+        def apply():
+            return None
+
+        @staticmethod
+        def gemini_clean_and_conform(s):
+            return s
+
+    browser_use_monkeypatch = _BrowserUseMonkeypatchFallback()
+
 from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
@@ -36,10 +78,12 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
-from litellm import acompletion, completion, embedding, exceptions as litellm_exceptions
-
-# sentence-transformers is required for production embedding functionality
-from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
+# sentence-transformers is optional for developer-mode; attempt import and
+# fall back to None if not present.
+try:
+    from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
+except Exception:
+    SentenceTransformer = None
 
 from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv
@@ -51,7 +95,11 @@ from python.helpers.tokens import approximate_tokens
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
 def turn_off_logging():
     os.environ["LITELLM_LOG"] = "ERROR"  # only errors
-    litellm.suppress_debug_info = True
+    if litellm is not None:
+        try:
+            litellm.suppress_debug_info = True
+        except Exception:
+            pass
     # Silence **all** LiteLLM sub-loggers (utils, cost_calculator…)
     for name in logging.Logger.manager.loggerDict:
         if name.lower().startswith("litellm"):
@@ -61,9 +109,16 @@ def turn_off_logging():
 # init
 load_dotenv()
 turn_off_logging()
-browser_use_monkeypatch.apply()
+try:
+    browser_use_monkeypatch.apply()
+except Exception:
+    pass
 
-litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
+if litellm is not None:
+    try:
+        litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
+    except Exception:
+        pass
 
 # ---------------------------------------------------------------------------
 # Production LLM Configuration - Enterprise Grade Implementation
@@ -358,13 +413,13 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
 
     # Check exception classes mapped by LiteLLM/OpenAI for transient errors
     transient_types = (
-        getattr(openai, "APITimeoutError", Exception),
-        getattr(openai, "APIConnectionError", Exception),
-        getattr(openai, "RateLimitError", Exception),
-        getattr(openai, "APIError", Exception),
-        getattr(openai, "InternalServerError", Exception),
+        getattr(openai, "APITimeoutError", Exception) if openai is not None else Exception,
+        getattr(openai, "APIConnectionError", Exception) if openai is not None else Exception,
+        getattr(openai, "RateLimitError", Exception) if openai is not None else Exception,
+        getattr(openai, "APIError", Exception) if openai is not None else Exception,
+        getattr(openai, "InternalServerError", Exception) if openai is not None else Exception,
         # Some providers map overloads to ServiceUnavailable-like errors
-        getattr(openai, "APIStatusError", Exception),
+        getattr(openai, "APIStatusError", Exception) if openai is not None else Exception,
     )
     litellm_transient = tuple(
         getattr(litellm_exceptions, name)
@@ -507,6 +562,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
 
         # Call the model
+        if completion is None:
+            raise LLMNotConfiguredError(
+                "LiteLLM completion function is not available in this environment."
+            )
+
         resp = completion(
             model=self.model_name, messages=msgs, stop=stop, **{**self.kwargs, **kwargs}
         )
@@ -530,6 +590,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
 
         result = ChatGenerationResult()
+
+        if completion is None:
+            raise LLMNotConfiguredError(
+                "LiteLLM completion function is not available in this environment."
+            )
 
         for chunk in completion(
             model=self.model_name,
@@ -559,6 +624,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
         await apply_rate_limiter(self.a0_model_conf, str(msgs))
 
         result = ChatGenerationResult()
+
+        if acompletion is None:
+            raise LLMNotConfiguredError(
+                "LiteLLM acompletion function is not available in this environment."
+            )
 
         response = await acompletion(
             model=self.model_name,

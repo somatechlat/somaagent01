@@ -12,6 +12,10 @@ COMPOSE_FILE ?= docker-compose.yaml
 # Profiles to activate
 PROFILES ?= core,dev
 
+# Expand comma-separated PROFILES into multiple --profile flags for docker compose
+# Use shell `tr` to convert commas to spaces robustly, then prefix each with --profile
+DOCKER_PROFILES := $(foreach p,$(shell echo $(PROFILES) | tr ',' ' '),--profile $(p))
+
 # Use this to export environment variables from a .env file if it exists
 ifneq (,$(wildcard ./.env))
     include .env
@@ -35,11 +39,13 @@ help:
 
 build:
 	@echo "Building Docker images..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) --profile $(PROFILES) build
+	# Expand comma-separated PROFILES into multiple --profile flags for docker compose
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) $(foreach p,$(subst ,, ,$(PROFILES)),--profile $(p)) build
 
 up:
 	@echo "Starting the stack in detached mode..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) --profile $(PROFILES) up -d
+	# Expand comma-separated PROFILES into multiple --profile flags for docker compose
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) $(foreach p,$(subst ,, ,$(PROFILES)),--profile $(p)) up -d
 
 down:
 	@echo "Stopping and removing the stack..."
@@ -59,3 +65,34 @@ clean: down
 	docker volume rm $(COMPOSE_PROJECT_NAME)_redis_data || true
 	docker volume rm $(COMPOSE_PROJECT_NAME)_postgres_data || true
 	@echo "Cleanup complete."
+
+# ------------------------------------------------------------------------------
+# Lightweight developer stack helpers (docker-compose.dev.yaml)
+# ------------------------------------------------------------------------------
+
+DEV_COMPOSE_FILE := docker-compose.dev.yaml
+DEV_PROFILES := core
+
+.PHONY: dev-up dev-down dev-logs dev-rebuild
+
+dev-up:
+	@echo "Starting lightweight developer stack..."
+	$(MAKE) up COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=$(DEV_PROFILES) COMPOSE_PROJECT_NAME=somaagent01_dev
+
+dev-down:
+	@echo "Stopping lightweight developer stack..."
+	$(MAKE) down COMPOSE_FILE=$(DEV_COMPOSE_FILE) COMPOSE_PROJECT_NAME=somaagent01_dev
+
+dev-logs:
+	@echo "Tailing logs for lightweight developer stack..."
+	$(MAKE) logs COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=$(DEV_PROFILES) COMPOSE_PROJECT_NAME=somaagent01_dev
+
+dev-rebuild:
+	@echo "Rebuilding lightweight developer stack..."
+	$(MAKE) rebuild COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=$(DEV_PROFILES) COMPOSE_PROJECT_NAME=somaagent01_dev
+
+.PHONY: debug-profiles
+debug-profiles:
+	@echo "PROFILES='$(PROFILES)'"
+	@echo "DOCKER_PROFILES='$(DOCKER_PROFILES)'"
+	@echo "Direct expansion: '$(foreach p,$(shell echo $(PROFILES) | tr ',' ' '),--profile $(p))'"

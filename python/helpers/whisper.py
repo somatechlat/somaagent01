@@ -1,5 +1,7 @@
 import asyncio
 import base64
+import logging
+import os
 import tempfile
 import warnings
 
@@ -14,14 +16,23 @@ from python.helpers.print_style import PrintStyle
 # Suppress FutureWarning from torch.load
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# Whisper is required for audio transcription in production
+# Whisper is optional in lightweight developer builds – only require the
+# package when audio support is explicitly enabled.
+LOGGER = logging.getLogger(__name__)
+_feature_audio = os.getenv("FEATURE_AUDIO", "none").lower()
+
 try:
+    if _feature_audio in {"none", "0", "false", "off"}:
+        raise ImportError("audio features disabled")
     import whisper  # type: ignore
-except ImportError as exc:
-    raise ImportError(
-        "Whisper library is required for production audio transcription. "
-        "Install with: pip install openai-whisper"
-    ) from exc
+except ImportError as exc:  # pragma: no cover - exercised in developer builds
+    if _feature_audio not in {"none", "0", "false", "off"}:
+        raise ImportError(
+            "Whisper library is required for production audio transcription. "
+            "Install with: pip install openai-whisper"
+        ) from exc
+    whisper = None  # type: ignore
+    LOGGER.info("Skipping Whisper preload – FEATURE_AUDIO disabled or package missing")
 
 _model = None
 _model_name = ""
@@ -29,6 +40,9 @@ is_updating_model = False  # Tracks whether the model is currently updating
 
 
 async def preload(model_name: str):
+    if whisper is None:
+        LOGGER.debug("Whisper preload skipped – audio support disabled")
+        return None
     try:
         # return await runtime.call_development_function(_preload, model_name)
         return await _preload(model_name)
@@ -38,6 +52,9 @@ async def preload(model_name: str):
 
 
 async def _preload(model_name: str):
+    if whisper is None:
+        return None
+
     global _model, _model_name, is_updating_model
 
     while is_updating_model:
@@ -77,6 +94,8 @@ def _is_downloading():
 
 
 async def is_downloaded():
+    if whisper is None:
+        return False
     try:
         # return await runtime.call_development_function(_is_downloaded)
         return _is_downloaded()
@@ -92,11 +111,19 @@ def _is_downloaded():
 
 
 async def transcribe(model_name: str, audio_bytes_b64: str):
+    if whisper is None:
+        raise RuntimeError(
+            "Audio transcription is disabled in this build. Set FEATURE_AUDIO to enable Whisper support."
+        )
     # return await runtime.call_development_function(_transcribe, model_name, audio_bytes_b64)
     return await _transcribe(model_name, audio_bytes_b64)
 
 
 async def _transcribe(model_name: str, audio_bytes_b64: str):
+    if whisper is None:
+        raise RuntimeError(
+            "Audio transcription is disabled in this build. Set FEATURE_AUDIO to enable Whisper support."
+        )
     await _preload(model_name)
 
     # Decode audio bytes if encoded as a base64 string
