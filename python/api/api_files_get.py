@@ -48,14 +48,14 @@ class ApiFilesGet(ApiHandler):
             for path in paths:
                 try:
                     # Convert internal paths to external paths
-                    if path.startswith("/a0/tmp/uploads/"):
-                        # Internal path - convert to external
-                        filename = path.replace("/a0/tmp/uploads/", "")
+                    if path.startswith("/git/agent-zero/tmp/uploads/") or path.startswith("/a0/tmp/uploads/"):
+                        # Internal path - convert to external (support both legacy and modern)
+                        filename = path.replace("/git/agent-zero/tmp/uploads/", "").replace("/a0/tmp/uploads/", "")
                         external_path = files.get_abs_path("tmp/uploads", filename)
                         filename = os.path.basename(external_path)
-                    elif path.startswith("/a0/"):
-                        # Other internal Agent Zero paths
-                        relative_path = path.replace("/a0/", "")
+                    elif path.startswith("/git/agent-zero/") or path.startswith("/a0/"):
+                        # Other internal Agent Zero paths (support both legacy and modern)
+                        relative_path = path.replace("/git/agent-zero/", "").replace("/a0/", "")
                         external_path = files.get_abs_path(relative_path)
                         filename = os.path.basename(external_path)
                     else:

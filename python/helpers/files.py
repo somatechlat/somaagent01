@@ -360,12 +360,14 @@ def deabsolute_path(path: str):
 
 
 def fix_dev_path(path: str):
-    "On dev environment, convert /a0/... paths to local absolute paths"
+    "Convert legacy /a0/ paths to modern /git/agent-zero/ paths"
     from python.helpers.runtime import is_development
 
     if is_development():
         if path.startswith("/a0/"):
             path = path.replace("/a0/", "")
+        elif path.startswith("/git/agent-zero/"):
+            path = path.replace("/git/agent-zero/", "")
     return get_abs_path(path)
 
 

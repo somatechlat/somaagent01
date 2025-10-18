@@ -46,7 +46,7 @@ class ApiMessage(ApiHandler):
         # Handle attachments (base64 encoded)
         attachment_paths = []
         if attachments:
-            upload_folder_int = "/a0/tmp/uploads"
+            upload_folder_int = "/git/agent-zero/tmp/uploads"
             upload_folder_ext = files.get_abs_path("tmp/uploads")
             os.makedirs(upload_folder_ext, exist_ok=True)
 

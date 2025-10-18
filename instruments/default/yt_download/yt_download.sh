@@ -7,4 +7,4 @@ sudo apt-get update && sudo apt-get install -y yt-dlp ffmpeg
 pip install --upgrade yt-dlp
 
 # Call the Python script to download the video
-python3 /a0/instruments/default/yt_download/download_video.py "$1"
+python3 /git/agent-zero/instruments/default/yt_download/download_video.py "$1"

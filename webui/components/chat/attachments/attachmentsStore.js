@@ -265,11 +265,11 @@ const model = {
 
   // Generate server-side API URL for file (for device sync)
   getServerImgUrl(filename) {
-    return `/image_get?path=/a0/tmp/uploads/${encodeURIComponent(filename)}`;
+    return `/image_get?path=/git/agent-zero/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
   getServerFileUrl(filename) {
-    return `/a0/tmp/uploads/${encodeURIComponent(filename)}`;
+    return `/git/agent-zero/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
   // Check if file is an image based on extension
