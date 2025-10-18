@@ -1,6 +1,5 @@
 x-agent-env: &agent-env
-  # Prefer the venv's native site-packages for the running Python version
-  PYTHONPATH: /a0:/a0/common:/a0/python:/venv/lib/python3.13/site-packages
+  PYTHONPATH: /a0:/a0/common:/a0/python:/a0/services
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   KAFKA_SECURITY_PROTOCOL: PLAINTEXT
@@ -22,16 +21,19 @@ x-agent-env: &agent-env
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   GATEWAY_JWT_SECRET: dev-secret
   SKM_BASE_URL: http://host.docker.internal:9696
+  # Fix for missing environment variables
+  SLM_BASE_URL: http://host.docker.internal:9696
+  ROUTER_URL: http://host.docker.internal:9696
 
 x-svc-limits: &svc-limits
-  mem_limit: ${DEV_SVC_MEM_LIMIT:-384m}
-  cpus: "${DEV_SVC_CPUS:-0.40}"
+  mem_limit: 512m
+  cpus: "0.50"
 
 x-agent-service: &agent-service
-  image: somaagent01-dev:local
+  image: somaagent01-fixed:local
   build:
     context: .
-    dockerfile: DockerfileLocal
+    dockerfile: DockerfileFixed
     args:
       BRANCH: local
       SERVICE: developer
@@ -46,26 +48,12 @@ x-agent-service: &agent-service
       FEATURE_INTEGRATIONS: false
   working_dir: /a0
   volumes:
-    - ./services:/a0/services:ro
-    - ./python:/a0/python:ro
-    - ./common:/a0/common:ro
-    - ./lib:/a0/lib:ro
-    - ./conf:/a0/conf:ro
-    - ./prompts:/a0/prompts:ro
-    - ./schemas:/a0/schemas:ro
-    - ./models.py:/a0/models.py:ro
-    - ./agent.py:/a0/agent.py:ro
-    - ./preload.py:/a0/preload.py:ro
-    - ./prepare.py:/a0/prepare.py:ro
-    - ./initialize.py:/a0/initialize.py:ro
-    # Ensure UI entrypoints and static assets are available inside the container
-    - ./run_ui.py:/a0/run_ui.py:ro
-    - ./run_tunnel.py:/a0/run_tunnel.py:ro
-    - ./webui:/a0/webui:ro
-    # Add memory and knowledge directories
+    # Mount all source code as read-only
+    - ./:/a0:ro
+    # Mount writable directories
     - ./memory:/a0/memory
-    - ./knowledge:/a0/knowledge:ro
-    - ./instruments:/a0/instruments:ro
+    - ./logs:/a0/logs
+    - agent_tmp:/a0/tmp
   extra_hosts:
     - "host.docker.internal:host-gateway"
   restart: unless-stopped
@@ -73,7 +61,7 @@ x-agent-service: &agent-service
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: somaagent01_dev_postgres
+    container_name: somaagent01_fixed_postgres
     <<: *svc-limits
     environment:
       - POSTGRES_USER=soma
@@ -81,7 +69,7 @@ services:
       - POSTGRES_DB=somaagent01
       - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
-      - "${DEV_POSTGRES_PORT:-60803}:5432"
+      - "60803:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -93,11 +81,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: somaagent01_dev_redis
+    container_name: somaagent01_fixed_redis
     <<: *svc-limits
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
-      - "${DEV_REDIS_PORT:-60802}:6379"
+      - "60802:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 15s
@@ -106,7 +94,7 @@ services:
 
   kafka:
     image: bitnami/kafka:latest
-    container_name: somaagent01_dev_kafka
+    container_name: somaagent01_fixed_kafka
     <<: *svc-limits
     environment:
       KAFKA_CFG_NODE_ID: 0
@@ -124,7 +112,7 @@ services:
       KAFKA_ENABLE_KRAFT: "yes"
       KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
     ports:
-      - "${DEV_KAFKA_PORT:-60801}:9092"
+      - "60801:9092"
     volumes:
       - kafka_data:/bitnami/kafka
     healthcheck:
@@ -136,15 +124,15 @@ services:
 
   opa:
     image: openpolicyagent/opa:0.64.0
-    container_name: somaagent01_dev_opa
+    container_name: somaagent01_fixed_opa
     <<: *svc-limits
     command: ["run", "--server", "--set=decision_logs.console=true"]
     ports:
-      - "${DEV_OPA_PORT:-60811}:8181"
+      - "60811:8181"
 
   gateway:
     <<: [*agent-service, *svc-limits]
-    container_name: somaagent01_dev_gateway
+    container_name: somaagent01_fixed_gateway
     command:
       [
         "python3",
@@ -170,11 +158,11 @@ services:
       opa:
         condition: service_started
     ports:
-      - "${DEV_GATEWAY_PORT:-60816}:8010"
+      - "60816:8010"
 
   conversation-worker:
     <<: [*agent-service, *svc-limits]
-    container_name: somaagent01_dev_conversation-worker
+    container_name: somaagent01_fixed_conversation-worker
     command: ["python3", "-m", "services.conversation_worker.main"]
     environment:
       <<: *agent-env
@@ -190,7 +178,7 @@ services:
 
   tool-executor:
     <<: [*agent-service, *svc-limits]
-    container_name: somaagent01_dev_tool-executor
+    container_name: somaagent01_fixed_tool-executor
     command: ["python3", "-m", "services.tool_executor.main"]
     environment:
       <<: *agent-env
@@ -204,9 +192,7 @@ services:
 
   agent-ui:
     <<: [*agent-service, *svc-limits]
-    container_name: somaagent01_dev_agent-ui
-    profiles: ["ui"]
-    # Run a single-process UI server directly (no supervisord): simple and reliable
+    container_name: somaagent01_fixed_agent-ui
     command:
       [
         "python3",
@@ -219,13 +205,12 @@ services:
       ]
     environment:
       <<: *agent-env
-      # Default to internal gateway for dev; override with DEV_SOMA_BASE_URL if needed (e.g., host:9696)
-      SOMA_BASE_URL: ${DEV_SOMA_BASE_URL:-http://gateway:8010}
+      SOMA_BASE_URL: http://gateway:8010
     depends_on:
       gateway:
         condition: service_started
     ports:
-      - "${DEV_UI_PORT:-60814}:80"
+      - "60814:80"
     healthcheck:
       test: ["CMD", "sh", "-c", "curl -sI http://localhost:80 || exit 1"]
       interval: 15s
@@ -235,9 +220,9 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   kafka_data:
+  agent_tmp:
 
 networks:
   default:
-    name: somaagent01_dev
+    name: somaagent01_fixed

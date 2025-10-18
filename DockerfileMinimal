@@ -1,0 +1,27 @@
+# MINIMAL DOCKERFILE - Only essential dependencies
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Copy and install minimal requirements
+COPY requirements-minimal.txt /tmp/
+RUN /venv/bin/pip install --no-cache-dir -r /tmp/requirements-minimal.txt
+
+# Set working directory
+WORKDIR /a0
+
+# Set environment variables
+ENV PYTHONPATH=/a0:/a0/services:/a0/common:/a0/python
+
+# Expose ports
+EXPOSE 80 8010
+
+# Default command
+CMD ["python3", "-c", "print('Container ready')"]

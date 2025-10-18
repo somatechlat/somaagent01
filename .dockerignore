@@ -6,6 +6,7 @@
 **/*
 !docker/run/fs/
 !requirements-core.txt
+!requirements-minimal.txt
 !services/gateway/**
 !services/conversation_worker/**
 !services/tool_executor/**
