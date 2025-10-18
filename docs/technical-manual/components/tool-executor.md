@@ -24,11 +24,11 @@ Execute tool calls emitted by the Gateway, ensuring sandboxed, observable, and a
 
 ```mermaid
 graph TD
-    Gateway -->|Kafka: somastack.tools| ToolWorker
+  Gateway -->|Kafka: tool.requests| ToolWorker
     ToolWorker --> Sandbox
     Sandbox -->|stdout/stderr| LogAggregator
     Sandbox -->|result payload| ToolWorker
-    ToolWorker -->|Kafka: somastack.tool_results| Gateway
+  ToolWorker -->|Kafka: tool.results| Gateway
     ToolWorker -->|Persist| Postgres
     ToolWorker -->|Artifacts| ObjectStore[(S3-compatible)]
 ```
@@ -37,7 +37,7 @@ graph TD
 
 | Layer | Description |
 | --- | --- |
-| Transport | Kafka consumer group (`tool-executor`), optional HTTP callbacks |
+| Transport | Kafka consumer group (`tool-executor`) |
 | Execution | Worker pool (`python/services/tool_executor/worker.py`) with asyncio concurrency |
 | Sandbox | Ephemeral directories under `/tmp/tool-exec`, optional container isolation |
 | Persistence | Result metadata in Postgres, large payloads in object storage, cache in Redis |
@@ -55,9 +55,18 @@ graph TD
 
 ## Configuration
 
-- Topics: `somastack.tools` (input), `somastack.tool_results` (output).
+- Topics: `tool.requests` (input), `tool.results` (output). Overridable via `TOOL_REQUESTS_TOPIC`, `TOOL_RESULTS_TOPIC`.
 - Environment: `TOOL_EXECUTOR_MAX_WORKERS`, `SANDBOX_ROOT`, `TIMEOUT_SECONDS`.
 - Secrets resolved through `python/helpers/secrets.py` to redact logs.
+
+## Callback channels
+
+The executor communicates results exclusively via Kafka topics:
+
+- `tool.requests`: Gateway/Orchestrator ➜ Executor
+- `tool.results`: Executor ➜ Gateway/Orchestrator
+
+Messages use a shared envelope with `task_id`, `tool_name`, `payload`, and `metadata` fields. See Shared Resources → Event Streams for schemas.
 
 ## Error Handling
 

@@ -1,0 +1,2200 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Unified documentation portal for SomaAgent01">
+      
+      
+      
+        <link rel="canonical" href="https://docs.somaagent01.dev/extensibility/">
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>Extensibility framework in Agent Zero - SomaAgent01 Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#extensibility-framework-in-agent-zero" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SomaAgent01 Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Extensibility framework in Agent Zero
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SomaAgent01 Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            User Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/using-the-agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using the Agent
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/features/memory-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Memory Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-manual/accessibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Accessibility
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Technical Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Technical Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Monitoring & Health
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Infrastructure
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Integrations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/data-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Data Flow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/runbooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Components
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
+            <span class="md-nav__icon md-icon"></span>
+            Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Gateway
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/conversation-worker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Conversation Worker
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/tool-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tool Executor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Memory Subsystem
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/mcp-proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MCP & A2A Proxy
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/realtime-speech/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Realtime Speech
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-manual/components/ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Agent UI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Development Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Development Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Environment Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/contribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contribution Workflow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/coding-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coding Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Strategy
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debugging Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/release-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Release Process
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/tooling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Tooling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/legacy-apis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Legacy External APIs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-manual/runbooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Onboarding Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Onboarding Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding-manual/orientation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orientation Checklist
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding-manual/first-90-days/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    First 90 Days
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding-manual/toolchain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Toolchain Primer
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding-manual/team-contacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Team Directory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding-manual/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Shared Resources
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Shared Resources
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Style Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Glossary
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../documentation-audit-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Audit Checklist
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Change Log
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data/streams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Event Streams
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#extensible-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extensible components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extensible components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extensions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extension-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extension Points
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extension-mechanism" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extension Mechanism
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating Extensions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extension-override-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extension Override Logic
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tools
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool Structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-override-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool Override Logic
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-execution-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool Execution Flow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      API Endpoints
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helpers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capsule-registry-marketplace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Capsule Registry &amp; Marketplace
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capsule Registry &amp; Marketplace">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enterprise-approval-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enterprise approval workflow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prompts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prompt-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompt Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prompt Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#variable-placeholders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variable Placeholders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-variable-loaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Variable Loaders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-includes" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Includes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prompt-override-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prompt Override Logic
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#subagent-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Subagent Customization
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Subagent Customization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-subagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a Subagent
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-subagent-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Subagent Structure
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="extensibility-framework-in-agent-zero">Extensibility framework in Agent Zero<a class="headerlink" href="#extensibility-framework-in-agent-zero" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>[!NOTE]
+Agent Zero is built with extensibility in mind. It provides a framework for creating custom extensions, agents, instruments, and tools that can be used to enhance the functionality of the framework.</p>
+</blockquote>
+<h2 id="extensible-components">Extensible components<a class="headerlink" href="#extensible-components" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The Python framework controlling Agent Zero is built as simple as possible, relying on independent smaller and modular scripts for individual tools, API endpoints, system extensions and helper scripts.</li>
+<li>This way individual components can be easily replaced, upgraded or extended.</li>
+</ul>
+<p>Here's a summary of the extensible components:</p>
+<h3 id="extensions">Extensions<a class="headerlink" href="#extensions" title="Permanent link">&para;</a></h3>
+<p>Extensions are components that hook into specific points in the agent's lifecycle. They allow you to modify or enhance the behavior of Agent Zero at predefined extension points. The framework uses a plugin-like architecture where extensions are automatically discovered and loaded.</p>
+<h4 id="extension-points">Extension Points<a class="headerlink" href="#extension-points" title="Permanent link">&para;</a></h4>
+<p>Agent Zero provides several extension points where custom code can be injected:</p>
+<ul>
+<li><strong>agent_init</strong>: Executed when an agent is initialized</li>
+<li><strong>before_main_llm_call</strong>: Executed before the main LLM call is made</li>
+<li><strong>message_loop_start</strong>: Executed at the start of the message processing loop</li>
+<li><strong>message_loop_prompts_before</strong>: Executed before prompts are processed in the message loop</li>
+<li><strong>message_loop_prompts_after</strong>: Executed after prompts are processed in the message loop</li>
+<li><strong>message_loop_end</strong>: Executed at the end of the message processing loop</li>
+<li><strong>monologue_start</strong>: Executed at the start of agent monologue</li>
+<li><strong>monologue_end</strong>: Executed at the end of agent monologue</li>
+<li><strong>reasoning_stream</strong>: Executed when reasoning stream data is received</li>
+<li><strong>response_stream</strong>: Executed when response stream data is received</li>
+<li><strong>system_prompt</strong>: Executed when system prompts are processed</li>
+</ul>
+<h4 id="extension-mechanism">Extension Mechanism<a class="headerlink" href="#extension-mechanism" title="Permanent link">&para;</a></h4>
+<p>The extension mechanism in Agent Zero works through the <code>call_extensions</code> function in <code>agent.py</code>, which:</p>
+<ol>
+<li>Loads default extensions from <code>/python/extensions/{extension_point}/</code></li>
+<li>Loads agent-specific extensions from <code>/agents/{agent_profile}/extensions/{extension_point}/</code></li>
+<li>Merges them, with agent-specific extensions overriding default ones based on filename</li>
+<li>Executes each extension in order</li>
+</ol>
+<h4 id="creating-extensions">Creating Extensions<a class="headerlink" href="#creating-extensions" title="Permanent link">&para;</a></h4>
+<p>To create a custom extension:</p>
+<ol>
+<li>Create a Python class that inherits from the <code>Extension</code> base class</li>
+<li>Implement the <code>execute</code> method</li>
+<li>Place the file in the appropriate extension point directory:</li>
+<li>Default extensions: <code>/python/extensions/{extension_point}/</code></li>
+<li>Agent-specific extensions: <code>/agents/{agent_profile}/extensions/{extension_point}/</code></li>
+</ol>
+<p><strong>Example extension:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># File: /agents/_example/extensions/agent_init/_10_example_extension.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">python.helpers.extension</span><span class="w"> </span><span class="kn">import</span> <span class="n">Extension</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ExampleExtension</span><span class="p">(</span><span class="n">Extension</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># rename the agent to SuperAgent0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">agent_name</span> <span class="o">=</span> <span class="s2">&quot;SuperAgent&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="extension-override-logic">Extension Override Logic<a class="headerlink" href="#extension-override-logic" title="Permanent link">&para;</a></h4>
+<p>When an extension with the same filename exists in both the default location and an agent-specific location, the agent-specific version takes precedence. This allows for selective overriding of extensions while inheriting the rest of the default behavior.</p>
+<p>For example, if both these files exist:
+- <code>/python/extensions/agent_init/example.py</code>
+- <code>/agents/my_agent/extensions/agent_init/example.py</code></p>
+<p>The version in <code>/agents/my_agent/extensions/agent_init/example.py</code> will be used, completely replacing the default version.</p>
+<h3 id="tools">Tools<a class="headerlink" href="#tools" title="Permanent link">&para;</a></h3>
+<p>Tools are modular components that provide specific functionality to agents. They are invoked by the agent through tool calls in the LLM response. Tools are discovered dynamically and can be extended or overridden.</p>
+<h4 id="tool-structure">Tool Structure<a class="headerlink" href="#tool-structure" title="Permanent link">&para;</a></h4>
+<p>Each tool is implemented as a Python class that inherits from the base <code>Tool</code> class. Tools are located in:
+- Default tools: <code>/python/tools/</code>
+- Agent-specific tools: <code>/agents/{agent_profile}/tools/</code></p>
+<h4 id="tool-override-logic">Tool Override Logic<a class="headerlink" href="#tool-override-logic" title="Permanent link">&para;</a></h4>
+<p>When a tool with the same name is requested, Agent Zero first checks for its existence in the agent-specific tools directory. If found, that version is used. If not found, it falls back to the default tools directory.</p>
+<p><strong>Example tool override:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># File: /agents/_example/tools/response.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">python.helpers.tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tool</span><span class="p">,</span> <span class="n">Response</span>
+
+<span class="c1"># example of a tool redefinition</span>
+<span class="c1"># the original response tool is in python/tools/response.py</span>
+<span class="c1"># for the example agent this version will be used instead</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResponseTool</span><span class="p">(</span><span class="n">Tool</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Redefined response tool executed&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;text&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">],</span> <span class="n">break_loop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="tool-execution-flow">Tool Execution Flow<a class="headerlink" href="#tool-execution-flow" title="Permanent link">&para;</a></h4>
+<p>When a tool is called, it goes through the following lifecycle:
+1. Tool initialization
+2. <code>before_execution</code> method
+3. <code>execute</code> method (main functionality)
+4. <code>after_execution</code> method</p>
+<h3 id="api-endpoints">API Endpoints<a class="headerlink" href="#api-endpoints" title="Permanent link">&para;</a></h3>
+<p>API endpoints expose Agent Zero functionality to external systems or the user interface. They are modular and can be extended or replaced.</p>
+<p>API endpoints are located in:
+- Default endpoints: <code>/python/api/</code></p>
+<p>Each endpoint is a separate Python file that handles a specific API request.</p>
+<h3 id="helpers">Helpers<a class="headerlink" href="#helpers" title="Permanent link">&para;</a></h3>
+<p>Helper modules provide utility functions and shared logic used across the framework. They support the extensibility of other components by providing common functionality.</p>
+<p>Helpers are located in:
+- Default helpers: <code>/python/helpers/</code></p>
+<h3 id="capsule-registry-marketplace">Capsule Registry &amp; Marketplace<a class="headerlink" href="#capsule-registry-marketplace" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The Capsule Registry service (<code>services/capsule_registry/main.py</code>) exposes <code>/capsules</code> endpoints for upload, listing, <strong>install</strong>, and download. Uploaded artifacts are optionally signed with <a href="https://github.com/sigstore/cosign">Cosign</a> when <code>COSIGN_KEY_PATH</code> is set; signatures and timestamps are stored alongside metadata in Postgres and surfaced back to clients.</li>
+<li>SDK helpers in <code>python/somaagent/capsule.py</code> provide <code>list_capsules()</code>, <code>download_capsule()</code>, and <code>install_capsule()</code> functions plus a small CLI entry point for scripting.</li>
+<li>The FastAPI gateway now proxies the registry on the same host via the versioned surface: <code>/v1/capsules</code>, <code>/v1/capsules/{id}</code>, and <code>/v1/capsules/{id}/install</code> hydrate from whichever backend you point <code>CAPSULE_REGISTRY_URL</code> at (override the default <code>http://localhost:8000</code>). Adjust request timeouts with <code>CAPSULE_REGISTRY_TIMEOUT_SECONDS</code>. Legacy <code>/capsules</code> routes remain as undocumented aliases for backward compatibility.</li>
+<li>A GitHub Actions workflow (<code>.github/workflows/capsule.yml</code>) demonstrates the build → sign → publish loop for capsules. Reuse it when wiring CI/CD for custom capsules.</li>
+<li>The web UI ships with a lightweight marketplace page (<code>webui/marketplace.html</code> + <code>/webui/js/marketplace.js</code>) that lists available capsules, shows signature metadata, and performs one-click installs into the registry’s <code>installed/</code> directory via the new gateway endpoint. Extend it to surface additional trust signals or post-install actions tailored to your deployment.</li>
+</ul>
+<h4 id="enterprise-approval-workflow">Enterprise approval workflow<a class="headerlink" href="#enterprise-approval-workflow" title="Permanent link">&para;</a></h4>
+<p>Organisations that require multi-step governance can wrap the marketplace with the following checks:</p>
+<ol>
+<li>
+<p><strong>Signature verification:</strong> Operators confirm Cosign output before approving an install.</p>
+<div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify-blob<span class="w"> </span>--key<span class="w"> </span><span class="nv">$COSIGN_PUBLIC_KEY</span><span class="w"> </span>path/to/capsule.zip<span class="w"> </span>--signature<span class="w"> </span>path/to/signature.txt
+</code></pre></div>
+<p>Compare the resulting digest with the value surfaced in the marketplace (signatures live in the registry metadata).</p>
+</li>
+<li>
+<p><strong>Policy hand-off:</strong> Capture the verification result, reviewer name, and ticket link in your change-management system. Many teams model this as a lightweight checklist stored beside the capsule metadata.</p>
+</li>
+<li>
+<p><strong>Marketplace approval:</strong> Once the record is complete, the reviewer re-triggers the install from the UI. The enhanced marketplace log keeps a real-time audit trail in the browser, while the registry persists install timestamps for central reporting.</p>
+</li>
+<li>
+<p><strong>Post-install audit:</strong> Periodically export <code>SELECT * FROM capsules</code> to confirm the expected versions are active. Optionally, enrich the data with your approval record to reconcile who authorised which capsule.</p>
+</li>
+</ol>
+<p>Tip: if you need hard guarantees, disable direct installs in production and gate them behind an internal service that enforces the checklist above before calling <code>/v1/capsules/{id}/install</code> on behalf of users.</p>
+<h3 id="prompts">Prompts<a class="headerlink" href="#prompts" title="Permanent link">&para;</a></h3>
+<p>Prompts define the instructions and context provided to the LLM. They are highly extensible and can be customized for different agents.</p>
+<p>Prompts are located in:
+- Default prompts: <code>/prompts/</code>
+- Agent-specific prompts: <code>/agents/{agent_profile}/prompts/</code></p>
+<h4 id="prompt-features">Prompt Features<a class="headerlink" href="#prompt-features" title="Permanent link">&para;</a></h4>
+<p>Agent Zero's prompt system supports several powerful features:</p>
+<h5 id="variable-placeholders">Variable Placeholders<a class="headerlink" href="#variable-placeholders" title="Permanent link">&para;</a></h5>
+<p>Prompts can include variables using the <code>{{var}}</code> syntax. These variables are replaced with actual values when the prompt is processed.</p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="gh"># Current system date and time of user</span>
+<span class="k">-</span><span class="w"> </span>current datetime: {{date_time}}
+<span class="k">-</span><span class="w"> </span>rely on this info always up to date
+</code></pre></div></p>
+<h5 id="dynamic-variable-loaders">Dynamic Variable Loaders<a class="headerlink" href="#dynamic-variable-loaders" title="Permanent link">&para;</a></h5>
+<p>For more advanced prompt customization, you can create Python files with the same name as your prompt files. These Python files act as dynamic variable loaders that generate variables at runtime.</p>
+<p>When a prompt file is processed, Agent Zero automatically looks for a corresponding <code>.py</code> file in the same directory. If found, it uses this Python file to generate dynamic variables for the prompt.</p>
+<p><strong>Example:</strong>
+If you have a prompt file <code>agent.system.tools.md</code>, you can create <code>agent.system.tools.py</code> alongside it:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">python.helpers.files</span><span class="w"> </span><span class="kn">import</span> <span class="n">VariablesPlugin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">python.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">files</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Tools</span><span class="p">(</span><span class="n">VariablesPlugin</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">backup_dirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="c1"># Dynamically collect all tool instruction files</span>
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">files</span><span class="o">.</span><span class="n">get_abs_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
+        <span class="n">folders</span> <span class="o">=</span> <span class="p">[</span><span class="n">folder</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">backup_dirs</span><span class="p">:</span>
+            <span class="n">folders</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">files</span><span class="o">.</span><span class="n">get_abs_path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">backup_dirs</span><span class="p">])</span>
+
+        <span class="n">prompt_files</span> <span class="o">=</span> <span class="n">files</span><span class="o">.</span><span class="n">get_unique_filenames_in_dirs</span><span class="p">(</span><span class="n">folders</span><span class="p">,</span> <span class="s2">&quot;agent.system.tool.*.md&quot;</span><span class="p">)</span>
+
+        <span class="n">tools</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">prompt_file</span> <span class="ow">in</span> <span class="n">prompt_files</span><span class="p">:</span>
+            <span class="n">tool</span> <span class="o">=</span> <span class="n">files</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">prompt_file</span><span class="p">)</span>
+            <span class="n">tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tool</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;tools&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tools</span><span class="p">)}</span>
+</code></pre></div>
+<p>Then in your <code>agent.system.tools.md</code> prompt file, you can use:
+<div class="highlight"><pre><span></span><code><span class="gh"># Available Tools</span>
+{{tools}}
+</code></pre></div></p>
+<p>This approach allows for highly dynamic prompts that can adapt based on available extensions, configurations, or runtime conditions. See existing examples in the <code>/prompts/</code> directory for reference implementations.</p>
+<h5 id="file-includes">File Includes<a class="headerlink" href="#file-includes" title="Permanent link">&para;</a></h5>
+<p>Prompts can include content from other prompt files using the <code>{{ include "path/to/file.md" }}</code> syntax. This allows for modular prompt design and reuse.</p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="gh"># Agent Zero System Manual</span>
+
+{{ include &quot;agent.system.main.role.md&quot; }}
+
+{{ include &quot;agent.system.main.environment.md&quot; }}
+
+{{ include &quot;agent.system.main.communication.md&quot; }}
+</code></pre></div></p>
+<h4 id="prompt-override-logic">Prompt Override Logic<a class="headerlink" href="#prompt-override-logic" title="Permanent link">&para;</a></h4>
+<p>Similar to extensions and tools, prompts follow an override pattern. When the agent reads a prompt, it first checks for its existence in the agent-specific prompts directory. If found, that version is used. If not found, it falls back to the default prompts directory.</p>
+<p><strong>Example of a prompt override:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">!!!</span>
+<span class="k">&gt; </span><span class="ge">This is an example prompt file redefinition.</span>
+<span class="k">&gt; </span><span class="ge">The original file is located at /prompts.</span>
+<span class="k">&gt; </span><span class="ge">Only copy and modify files you need to change, others will stay default.</span>
+<span class="k">&gt; </span><span class="ge">!!!</span>
+
+<span class="gu">## Your role</span>
+You are Agent Zero, a sci-fi character from the movie &quot;Agent Zero&quot;.
+</code></pre></div>
+<p>This example overrides the default role definition in <code>/prompts/agent.system.main.role.md</code> with a custom one for a specific agent profile.</p>
+<h2 id="subagent-customization">Subagent Customization<a class="headerlink" href="#subagent-customization" title="Permanent link">&para;</a></h2>
+<p>Agent Zero supports creating specialized subagents with customized behavior. The <code>_example</code> agent in the <code>/agents/_example/</code> directory demonstrates this pattern.</p>
+<h3 id="creating-a-subagent">Creating a Subagent<a class="headerlink" href="#creating-a-subagent" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create a directory in <code>/agents/{agent_profile}/</code></li>
+<li>Override or extend default components by mirroring the structure in the root directories:</li>
+<li><code>/agents/{agent_profile}/extensions/</code> - for custom extensions</li>
+<li><code>/agents/{agent_profile}/tools/</code> - for custom tools</li>
+<li><code>/agents/{agent_profile}/prompts/</code> - for custom prompts</li>
+</ol>
+<h3 id="example-subagent-structure">Example Subagent Structure<a class="headerlink" href="#example-subagent-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/agents/_example/
+├── extensions/
+│   └── agent_init/
+│       └── _10_example_extension.py
+├── prompts/
+│   └── ...
+└── tools/
+    ├── example_tool.py
+    └── response.py
+</code></pre></div>
+<p>In this example:
+- <code>_10_example_extension.py</code> is an extension that renames the agent when initialized
+- <code>response.py</code> overrides the default response tool with custom behavior
+- <code>example_tool.py</code> is a new tool specific to this agent</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Keep extensions focused on a single responsibility</li>
+<li>Use the appropriate extension point for your functionality</li>
+<li>Leverage existing helpers rather than duplicating functionality</li>
+<li>Test extensions thoroughly to ensure they don't interfere with core functionality</li>
+<li>Document your extensions to make them easier to maintain and share</li>
+</ul>
+
+
+
+
+
+
+
+  
+    
+  
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 18, 2025</span>
+  </span>
+
+    
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

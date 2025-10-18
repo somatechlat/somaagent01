@@ -1,5 +1,3 @@
-![Agent Zero Logo](res/header.png)
-
 # SomaAgent01 Documentation Hub
 
 Welcome to the reorganized documentation hub. Content now lives in four curated manuals with shared resources for terminology, style, and change tracking.

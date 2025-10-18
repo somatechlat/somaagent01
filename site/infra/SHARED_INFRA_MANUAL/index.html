@@ -1,0 +1,2179 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Unified documentation portal for SomaAgent01">
+      
+      
+      
+        <link rel="canonical" href="https://docs.somaagent01.dev/infra/SHARED_INFRA_MANUAL/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>Soma Shared Infra — Detailed Deployment Manual - SomaAgent01 Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#soma-shared-infra-detailed-deployment-manual" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SomaAgent01 Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Soma Shared Infra — Detailed Deployment Manual
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SomaAgent01 Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            User Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/using-the-agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using the Agent
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/features/memory-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Memory Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/accessibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Accessibility
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Technical Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Technical Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Monitoring & Health
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Infrastructure
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Integrations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/data-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Data Flow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Components
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
+            <span class="md-nav__icon md-icon"></span>
+            Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Gateway
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/conversation-worker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Conversation Worker
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/tool-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tool Executor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Memory Subsystem
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/mcp-proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MCP & A2A Proxy
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/realtime-speech/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Realtime Speech
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/components/ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Agent UI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Development Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Development Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Environment Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/contribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contribution Workflow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/coding-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coding Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Strategy
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debugging Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/release-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Release Process
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/tooling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer Tooling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/legacy-apis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Legacy External APIs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/runbooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Onboarding Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Onboarding Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/orientation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Orientation Checklist
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/first-90-days/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    First 90 Days
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/toolchain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Toolchain Primer
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/team-contacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Team Directory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Shared Resources
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Shared Resources
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Style Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Glossary
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../documentation-audit-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Audit Checklist
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Change Log
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/streams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Event Streams
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Architecture Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Architecture Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#helm-chart-composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helm Chart Composition
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-cluster-bring-up-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cluster Bring-up (Kind)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-helm-deployment-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Helm Deployment — Step by Step
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-post-install-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Post-Install Verification
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-configuration-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Configuration Reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-operational-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Operational Tips
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-packaging-for-somatechlatsomastack" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Packaging for somatechlat/somastack
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-change-log-pointers" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Change Log Pointers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Change Log Pointers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#appendix-a-command-recap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Appendix A — Command Recap
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="soma-shared-infra-detailed-deployment-manual">Soma Shared Infra — Detailed Deployment Manual<a class="headerlink" href="#soma-shared-infra-detailed-deployment-manual" title="Permanent link">&para;</a></h1>
+<p>This manual captures everything required to stand up the <strong>soma-infra</strong> shared services stack in a production-like development environment and to prepare it for distribution as a standalone project (e.g., GitHub <code>somatechlat/somastack</code>). Each section is designed to be copy/paste friendly so that another operator can reproduce the environment without tribal knowledge.</p>
+<hr />
+<h2 id="1-architecture-overview">1. Architecture Overview<a class="headerlink" href="#1-architecture-overview" title="Permanent link">&para;</a></h2>
+<p>The shared infra chart installs the core platform dependencies in the <code>soma-infra</code> namespace. The current component set is illustrated below.</p>
+<div class="highlight"><pre><span></span><code>graph TD
+    subgraph Shared Infra Namespace (soma-infra)
+        postgres[(Postgres)]
+        redis[(Redis)]
+        kafka[(Kafka KRaft)]
+        etcd[(Etcd)]
+        vault[(Vault Dev)]
+        opa[(OPA PDP)]
+        prometheus[(Prometheus)]
+        grafana[(Grafana)]
+    end
+
+    subgraph Application Namespace(s)
+        apps[Workload Pods]
+    end
+
+    apps -- SQL, Secrets --&gt; postgres
+    apps -- Cache --&gt; redis
+    apps -- Events --&gt; kafka
+    apps -- Coordination --&gt; etcd
+    apps -- JWT Policy --&gt; opa
+    apps -- Metrics --&gt; prometheus
+    apps -- Dashboards --&gt; grafana
+    opa -- Policies --&gt; vault
+    prometheus -- Dashboards --&gt; grafana
+</code></pre></div>
+<h3 id="helm-chart-composition">Helm Chart Composition<a class="headerlink" href="#helm-chart-composition" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>flowchart LR
+    A[infra/helm/soma-infra/Chart.yaml]
+    A --&gt; B(values.yaml)
+    A --&gt; C(values-dev.yaml)
+    A --&gt; D(templates/*.yaml)
+    A --&gt; E(charts/* subcharts)
+    E --&gt; E1(Postgres)
+    E --&gt; E2(Redis)
+    E --&gt; E3(Kafka)
+    E --&gt; E4(Etcd)
+    E --&gt; E5(Vault)
+    E --&gt; E6(OPA)
+    E --&gt; E7(Prometheus)
+    E --&gt; E8(Grafana)
+</code></pre></div>
+<hr />
+<h2 id="2-prerequisites">2. Prerequisites<a class="headerlink" href="#2-prerequisites" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Tooling</strong></li>
+<li>Mac/Linux with Docker Desktop or containerd runtime.</li>
+<li><code>kubectl</code> ≥ 1.27.</li>
+<li><code>helm</code> ≥ 3.12.</li>
+<li><code>kind</code> (recommended for local cluster) or access to another Kubernetes cluster.</li>
+<li>
+<p>Optional: <code>make</code>, <code>yq</code>.</p>
+</li>
+<li>
+<p><strong>Local Resources</strong></p>
+</li>
+<li>4 CPUs and 8 GiB RAM minimum for the cluster (Kafka is the heaviest component).</li>
+<li>
+<p>10 GiB of disk for PVCs (Postgres 5 GiB, Etcd 1 GiB, Docker image cache).</p>
+</li>
+<li>
+<p><strong>Repositories</strong></p>
+</li>
+<li>This manual assumes the shared infra lives under <code>infra/helm/soma-infra</code> with supporting docs under <code>docs/infra/</code>.</li>
+</ol>
+<hr />
+<h2 id="3-cluster-bring-up-kind">3. Cluster Bring-up (Kind)<a class="headerlink" href="#3-cluster-bring-up-kind" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Create Kind Cluster</strong>
+   <div class="highlight"><pre><span></span><code>kind<span class="w"> </span>create<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>soma<span class="w"> </span>--config<span class="w"> </span>infra/kind/soma-kind.yaml
+</code></pre></div>
+   The provided Kind config reserves NodePorts and storage class <code>standard</code>.</p>
+</li>
+<li>
+<p><strong>Verify Storage Class</strong>
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>storageclass
+</code></pre></div>
+   Ensure a default storage class exists (<code>standard</code>). Update <code>values-dev.yaml</code> if your cluster uses a different class.</p>
+</li>
+<li>
+<p><strong>Namespace</strong>
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>namespace<span class="w"> </span>soma-infra
+</code></pre></div></p>
+</li>
+</ol>
+<hr />
+<h2 id="4-helm-deployment-step-by-step">4. Helm Deployment — Step by Step<a class="headerlink" href="#4-helm-deployment-step-by-step" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Dry-run</strong>
+   <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>soma-infra<span class="w"> </span>infra/helm/soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>infra/helm/soma-infra/values-dev.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Install</strong>
+   <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>soma-infra<span class="w"> </span>infra/helm/soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>infra/helm/soma-infra/values-dev.yaml
+</code></pre></div></p>
+<blockquote>
+<p><code>--wait</code> is intentionally omitted to avoid long timeouts while Kafka downloads images. Monitor pods manually in the next step.</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Watch Pod Start-up</strong>
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+   All pods should progress to <code>1/1 Running</code>. Kafka may take ~2 minutes on the first run while generating the KRaft metadata.</p>
+</li>
+<li>
+<p><strong>Secrets</strong></p>
+</li>
+<li>Postgres, Grafana, and Vault pull credentials from Secrets rendered by the chart:<ul>
+<li><code>soma-infra-postgres-credentials</code></li>
+<li><code>soma-infra-grafana-admin</code></li>
+<li><code>soma-infra-vault-dev-root</code></li>
+</ul>
+</li>
+<li>Adjust defaults in <code>values.yaml</code> or create overrides before installation for stronger credentials.</li>
+</ol>
+<hr />
+<h2 id="5-post-install-verification">5. Post-Install Verification<a class="headerlink" href="#5-post-install-verification" title="Permanent link">&para;</a></h2>
+<p>Run each command; all must succeed before onboarding application workloads.</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>soma-infra-postgres-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>env<span class="w"> </span><span class="nv">PGPASSWORD</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>soma-infra-postgres-credentials<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.password}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>--decode<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>psql<span class="w"> </span>-U<span class="w"> </span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>soma-infra-postgres-credentials<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.username}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>--decode<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>soma-infra-postgres-credentials<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.database}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>--decode<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s1">&#39;SELECT 1&#39;</span>
+
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/soma-infra-redis<span class="w"> </span>--<span class="w"> </span>redis-cli<span class="w"> </span>ping
+
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>soma-infra-etcd-0<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span>--endpoints<span class="o">=</span>http://127.0.0.1:2379<span class="w"> </span>endpoint<span class="w"> </span>health
+
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/soma-infra-vault<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>env<span class="w"> </span><span class="nv">VAULT_ADDR</span><span class="o">=</span>http://127.0.0.1:8200<span class="w"> </span>vault<span class="w"> </span>status
+
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>logs<span class="w"> </span>deploy/soma-infra-kafka<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
+</code></pre></div>
+<blockquote>
+<p>Kafka logs will include <code>DuplicateBrokerRegistrationException</code> messages in single-node mode. These are expected; the broker still shows <code>Running</code>.</p>
+</blockquote>
+<hr />
+<h2 id="6-configuration-reference">6. Configuration Reference<a class="headerlink" href="#6-configuration-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Location</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Postgres</td>
+<td><code>charts/postgres/values.yaml</code></td>
+<td>Credentials sourced from Secret; PVC default 5 Gi.</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td><code>charts/redis/values.yaml</code></td>
+<td>Stateless; no password in dev profile.</td>
+</tr>
+<tr>
+<td>Kafka</td>
+<td><code>charts/kafka/values.yaml</code></td>
+<td>KRaft single node; controller port 9093 exposed internally; new base64 cluster ID.</td>
+</tr>
+<tr>
+<td>Etcd</td>
+<td><code>charts/etcd/templates/statefulset.yaml</code></td>
+<td><code>ETCD_INITIAL_CLUSTER</code> fix for single-member cluster.</td>
+</tr>
+<tr>
+<td>Vault</td>
+<td><code>charts/vault/values.yaml</code></td>
+<td>Dev mode with root token stored in Secret.</td>
+</tr>
+<tr>
+<td>NetworkPolicies</td>
+<td><code>templates/networkpolicies.yaml</code></td>
+<td>Default-deny + per-component ingress from namespaces labeled <code>soma.sh/allow-shared-infra=true</code>.</td>
+</tr>
+<tr>
+<td>Environment docs</td>
+<td><code>docs/infra/ENV_VARS_AND_SECRETS.md</code></td>
+<td>Inventory of sensitive values, recommended handling (Secrets/Vault).</td>
+</tr>
+<tr>
+<td>Runbook</td>
+<td><code>docs/infra/runbook_shared_infra.md</code></td>
+<td>High-level bring-up; pair with this manual for full detail.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-operational-tips">7. Operational Tips<a class="headerlink" href="#7-operational-tips" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Rolling Upgrades</strong>
+   <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>soma-infra<span class="w"> </span>infra/helm/soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>infra/helm/soma-infra/values-dev.yaml
+</code></pre></div>
+   Recreate pods selectively with <code>kubectl delete pod</code> to pick up template changes.</p>
+</li>
+<li>
+<p><strong>Logs &amp; Metrics</strong></p>
+</li>
+<li>Access Grafana via port-forward:
+     <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>port-forward<span class="w"> </span>deploy/soma-infra-grafana<span class="w"> </span><span class="m">3000</span>:3000
+</code></pre></div></li>
+<li>
+<p>Prometheus:
+     <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>port-forward<span class="w"> </span>deploy/soma-infra-prometheus<span class="w"> </span><span class="m">9090</span>:9090
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Cleaning Up</strong>
+   <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>uninstall<span class="w"> </span>soma-infra<span class="w"> </span>-n<span class="w"> </span>soma-infra
+kubectl<span class="w"> </span>delete<span class="w"> </span>namespace<span class="w"> </span>soma-infra
+kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>soma<span class="w">  </span><span class="c1"># if using Kind</span>
+</code></pre></div></p>
+</li>
+</ol>
+<hr />
+<h2 id="8-packaging-for-somatechlatsomastack">8. Packaging for <code>somatechlat/somastack</code><a class="headerlink" href="#8-packaging-for-somatechlatsomastack" title="Permanent link">&para;</a></h2>
+<p>To publish this shared infra as its own repository:</p>
+<ol>
+<li>
+<p><strong>Copy Assets</strong>
+   <div class="highlight"><pre><span></span><code>infra/helm/soma-infra/
+docs/infra/SHARED_INFRA_MANUAL.md
+docs/infra/SHARED_INFRA_ARCHITECTURE.md
+docs/infra/runbook_shared_infra.md
+docs/infra/ENV_VARS_AND_SECRETS.md
+docs/infra/DEVELOPMENT_CANONICAL.md
+docs/infra/SPRINTS_SHARED_INFRA.md
+infra/env/.env.shared.example
+infra/docker/shared-infra.compose.yaml
+infra/kind/soma-kind.yaml
+README (new root readme referencing this manual)
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Initialize New Repo</strong>
+   <div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>somastack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>somastack
+git<span class="w"> </span>init
+cp<span class="w"> </span>-R<span class="w"> </span>&lt;above<span class="w"> </span>files&gt;<span class="w"> </span>.
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;docs/node_modules&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>.gitignore<span class="w">  </span><span class="c1"># extend as needed</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Commit &amp; Push</strong>
+   <div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>.
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: add soma shared infra chart and docs&quot;</span>
+git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>origin<span class="w"> </span>git@github.com:somatechlat/somastack.git
+git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>main
+</code></pre></div></p>
+<blockquote>
+<p>Ensure you have write access to <code>somatechlat/somastack</code>. Set up SSH or HTTPS credentials before pushing.</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Release Preparation</strong></p>
+</li>
+<li>Run <code>helm lint infra/helm/soma-infra</code>.</li>
+<li>Package chart: <code>helm package infra/helm/soma-infra --destination dist</code>.</li>
+<li>Optionally publish to GitHub Releases or an OCI registry.</li>
+</ol>
+<hr />
+<h2 id="9-troubleshooting">9. Troubleshooting<a class="headerlink" href="#9-troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kafka in <code>ImagePullBackOff</code></td>
+<td>Verify image tag reachable (<code>confluentinc/cp-kafka:7.5.3</code>). Use <code>docker pull</code> or substitute with a mirrored registry.</td>
+</tr>
+<tr>
+<td>Kafka complains <code>CLUSTER_ID</code> invalid</td>
+<td>Ensure <code>clusterId</code> in values is a base64 string (<code>uuidgen | base64</code>).</td>
+</tr>
+<tr>
+<td>Postgres <code>permission denied</code> on PVC</td>
+<td>Leave default security context (root) or add init container that chowns to custom UID before dropping privileges.</td>
+</tr>
+<tr>
+<td>Vault dev pod fails TLS</td>
+<td>Ensure <code>VAULT_ADDR</code> uses HTTP for dev mode (<code>http://127.0.0.1:8200</code>).</td>
+</tr>
+<tr>
+<td>Namespace stuck terminating</td>
+<td>Remove finalizers: <code>kubectl get namespace soma-infra -o json | jq '.spec.finalizers=[]' | kubectl replace --raw "/api/v1/namespaces/soma-infra/finalize" -f -</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-change-log-pointers">10. Change Log Pointers<a class="headerlink" href="#10-change-log-pointers" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Helm chart state from commit <code>b8866fd</code> (<code>chore: snapshot development branch state</code>).</li>
+<li>Prior incremental fix: <code>b8d7fdd</code> (<code>fix: stabilize shared infra helm chart</code>).</li>
+</ul>
+<p>Use these commits as baselines when lifting the shared infra into <code>somastack</code>.</p>
+<hr />
+<h3 id="appendix-a-command-recap">Appendix A — Command Recap<a class="headerlink" href="#appendix-a-command-recap" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create Kind cluster</span>
+kind<span class="w"> </span>create<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>soma<span class="w"> </span>--config<span class="w"> </span>infra/kind/soma-kind.yaml
+
+<span class="c1"># Install shared infra</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>soma-infra<span class="w"> </span>infra/helm/soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>infra/helm/soma-infra/values-dev.yaml
+
+<span class="c1"># Verify pods</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span>get<span class="w"> </span>pods
+
+<span class="c1"># Health checks</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>soma-infra-postgres-0<span class="w"> </span>--<span class="w"> </span>psql<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;SELECT 1&#39;</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/soma-infra-redis<span class="w"> </span>--<span class="w"> </span>redis-cli<span class="w"> </span>ping
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>soma-infra-etcd-0<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span>endpoint<span class="w"> </span>health
+kubectl<span class="w"> </span>-n<span class="w"> </span>soma-infra<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/soma-infra-vault<span class="w"> </span>--<span class="w"> </span>env<span class="w"> </span><span class="nv">VAULT_ADDR</span><span class="o">=</span>http://127.0.0.1:8200<span class="w"> </span>vault<span class="w"> </span>status
+
+<span class="c1"># Tear down</span>
+helm<span class="w"> </span>uninstall<span class="w"> </span>soma-infra<span class="w"> </span>-n<span class="w"> </span>soma-infra
+kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>soma
+</code></pre></div>
+<hr />
+<p>By following this manual, engineers can reliably reproduce the shared infrastructure locally and package it for distribution as the dedicated <code>somastack</code> repository.</p>
+
+
+
+
+
+
+
+  
+    
+  
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 18, 2025</span>
+  </span>
+
+    
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

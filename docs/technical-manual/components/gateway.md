@@ -40,9 +40,7 @@ graph LR
 
 | Module | Key Responsibilities |
 | --- | --- |
-| `services/gateway/main.py` | FastAPI application factory, router registration |
-| `services/gateway/routes/chat.py` | Chat send/stream endpoints, WebSocket handlers |
-| `services/gateway/routes/settings.py` | `/settings_get`, `/settings_set`, realtime session negotiation |
+| `services/gateway/main.py` | FastAPI app, endpoints, metrics, SSE/WS, capsule proxy |
 | `services/gateway/auth/openfga.py` | Relationship tuples, access checks |
 | `services/gateway/policies/opa_client.py` | Rego policy evaluation |
 | `services/gateway/memory/service.py` | SomaBrain reads/writes |
@@ -84,6 +82,21 @@ graph LR
 - Add routers under `services/gateway/routes/` and include via FastAPI.
 - Define new tool schemas in `python/tools/schema/` and map to executor tasks.
 - Update `conf/tenants.yaml` for tenant-specific budgets or prompts.
+
+## Public Endpoints
+
+- POST `/v1/session/message`
+- POST `/v1/session/action`
+- GET `/v1/session/{session_id}/events` (SSE)
+- WS `/v1/session/{session_id}/stream`
+- GET `/v1/health` (also `/health` alias, hidden from schema)
+- API keys: POST `/v1/keys`, GET `/v1/keys`, DELETE `/v1/keys/{key_id}`
+- Model profiles: GET/POST/PUT/DELETE under `/v1/model-profiles`
+- Routing: POST `/v1/route`
+- Requeue: GET `/v1/requeue`, POST `/v1/requeue/{id}/resolve`, DELETE `/v1/requeue/{id}`
+- Capsules proxy: GET `/v1/capsules`, GET `/v1/capsules/{id}`, POST `/v1/capsules/{id}/install`
+
+Nonexistent (do not document under gateway): `/chat`, `/settings_get`, `/settings_set`, `/realtime_session`.
 
 ## Verification Checklist
 
