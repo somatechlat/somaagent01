@@ -6,12 +6,31 @@ last-reviewed: 2025-10-17
 
 # API Reference
 
-Base URL: http://localhost:8010
+Base URL
+
+- Container network: http://localhost:8010 (service listens on 8010)
+- Host (dev compose): http://localhost:${DEV_GATEWAY_PORT:-60816}
+
+Tip: Use Makefile helpers to manage the dev stack without editing docker files:
+
+- make dev-up — start minimal stack (docker-compose.dev.yaml)
+- make dev-rebuild — rebuild and restart
+- make dev-logs — tail logs
+- make dev-up-services SERVICES="conversation-worker tool-executor" — start specific services
+- You can temporarily override the host port without file edits: make dev-up DEV_GATEWAY_PORT=60817
+
+Tip: If you changed DEV_GATEWAY_PORT, substitute your host port in the examples below.
 
 Authentication
 
 - JWT Bearer tokens when GATEWAY_REQUIRE_AUTH=true or JWT config is set. Otherwise optional in local dev.
 - Header: Authorization: Bearer <token>
+
+SSO/JWT Setup (quick)
+
+- HS256: set `GATEWAY_REQUIRE_AUTH=true`, `GATEWAY_JWT_SECRET=dev-secret`, `GATEWAY_JWT_ALGORITHMS=HS256`.
+- JWKS: set `GATEWAY_JWKS_URL=https://YOUR_DOMAIN/.well-known/jwks.json`, `GATEWAY_JWT_ALGORITHMS=RS256`, optionally `GATEWAY_JWT_AUDIENCE` and `GATEWAY_JWT_ISSUER`.
+- Admin API requires `scope` to include `admin` or `keys:manage`.
 
 Gateway Endpoints (FastAPI)
 

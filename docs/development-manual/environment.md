@@ -121,3 +121,31 @@ pytest tests/playwright/test_realtime_speech.py --headed
 - **Realtime speech issues:** Verify API keys and inspect `python/api/realtime_session.py` logs.
 
 Once the environment is verified, continue with the [Contribution Workflow](./contribution-workflow.md).
+
+## 11. Optional: Enable SSO/JWT in Dev
+
+The gateway supports JWT auth for local development. Choose one of the following and export as environment variables before `make dev-up` (or set in your shell):
+
+HS256 (shared secret)
+
+```bash
+export GATEWAY_REQUIRE_AUTH=true
+export GATEWAY_JWT_SECRET=dev-secret
+export GATEWAY_JWT_ALGORITHMS=HS256
+```
+
+JWKS (OIDC provider like Auth0/Okta/Entra)
+
+```bash
+export GATEWAY_REQUIRE_AUTH=true
+export GATEWAY_JWKS_URL="https://YOUR_DOMAIN/.well-known/jwks.json"
+export GATEWAY_JWT_ALGORITHMS=RS256
+export GATEWAY_JWT_AUDIENCE="api://somaagent01"
+export GATEWAY_JWT_ISSUER="https://YOUR_DOMAIN/"
+```
+
+Notes
+
+- Admin-only endpoints require a scope claim containing `admin` or `keys:manage`.
+- Tenant is derived from the first matching claim in `GATEWAY_JWT_TENANT_CLAIMS` (default: `tenant,org,customer`).
+- Health endpoints remain open for readiness checks.

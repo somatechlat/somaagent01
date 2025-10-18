@@ -1,7 +1,8 @@
 version: "3.9"
 
 x-agent-env: &agent-env
-  PYTHONPATH: /a0:/a0/common:/venv/lib/python3.11/site-packages
+  # Prefer the venv's native site-packages for the running Python version
+  PYTHONPATH: /a0:/a0/common:/venv/lib/python3.13/site-packages
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   KAFKA_SECURITY_PROTOCOL: PLAINTEXT
@@ -53,8 +54,14 @@ x-agent-service: &agent-service
     - ./conf:/a0/conf:ro
     - ./prompts:/a0/prompts:ro
     - ./models.py:/a0/models.py:ro
+    - ./agent.py:/a0/agent.py:ro
     - ./preload.py:/a0/preload.py:ro
     - ./prepare.py:/a0/prepare.py:ro
+    - ./initialize.py:/a0/initialize.py:ro
+    # Ensure UI entrypoints and static assets are available inside the container
+    - ./run_ui.py:/a0/run_ui.py:ro
+    - ./run_tunnel.py:/a0/run_tunnel.py:ro
+    - ./webui:/a0/webui:ro
   extra_hosts:
     - "host.docker.internal:host-gateway"
   restart: unless-stopped
@@ -195,15 +202,32 @@ services:
     <<: [*agent-service, *svc-limits]
     container_name: somaagent01_dev_agent-ui
     profiles: ["ui"]
-    command: ["/exe/initialize.sh", "development"]
+    # Run a single-process UI server directly (no supervisord): simple and reliable
+    command:
+      [
+        "python3",
+        "/a0/run_ui.py",
+        "--dockerized=true",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "80"
+      ]
     environment:
       <<: *agent-env
-      SOMA_BASE_URL: http://host.docker.internal:9696
+      # Default to internal gateway for dev; override with DEV_SOMA_BASE_URL if needed (e.g., host:9696)
+      SOMA_BASE_URL: ${DEV_SOMA_BASE_URL:-http://gateway:8010}
     depends_on:
       gateway:
         condition: service_started
     ports:
       - "${DEV_UI_PORT:-60814}:80"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sI http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   postgres_data:

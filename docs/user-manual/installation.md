@@ -91,6 +91,30 @@ docker run -p 50080:80 \
   agent0ai/agent-zero:latest
 ```
 
+### Quickstart: Local Dev Stack via Docker Compose
+
+If you're working from source and prefer the lightweight dev stack, use the included compose file and Make targets.
+
+```bash
+# From the repository root
+make dev-up          # start minimal stack (Postgres, Redis, Kafka, OPA, Gateway, Workers)
+make dev-logs        # tail logs
+make dev-down        # stop stack
+```
+
+Default host ports (can vary if occupied):
+
+- Gateway API: http://localhost:60816 (mapped to container :8010)
+- Postgres: localhost:60803
+- Redis: localhost:60802
+- Kafka: localhost:60801
+
+Verify the gateway health:
+
+```bash
+curl -sSf http://localhost:60816/v1/health | jq
+```
+
 ## 6. Verify the Deployment
 
 - Open the mapped port in your browser: `http://localhost:<PORT>`.
