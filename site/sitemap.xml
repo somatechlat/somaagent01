@@ -5,23 +5,7 @@
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
-         <loc>https://docs.somaagent01.dev/ROADMAP_SPRINTS/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/ROADMAP_UNIFIED/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/SHARED_INFRA_DEPENDENCY/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
          <loc>https://docs.somaagent01.dev/changelog/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/connectivity/</loc>
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
@@ -29,31 +13,7 @@
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
-         <loc>https://docs.somaagent01.dev/extensibility/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
          <loc>https://docs.somaagent01.dev/glossary/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/kafka_and_openfga_migrate/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/kafka_plain_mode/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/mcp_setup/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/openfga_migrate/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/roadmap_sa01/</loc>
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
@@ -61,31 +21,7 @@
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
-         <loc>https://docs.somaagent01.dev/apis/gateway/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/apis/realtime_session/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/apis/settings/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/apis/tool_executor_callbacks/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
          <loc>https://docs.somaagent01.dev/data/streams/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/designs/backup-specification-backend/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/designs/backup-specification-frontend/</loc>
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
@@ -133,42 +69,6 @@
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>
-         <loc>https://docs.somaagent01.dev/features/memory_management/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/features/realtime_speech/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/features/tooling/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/infra/DEVELOPMENT_CANONICAL/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/infra/ENV_VARS_AND_SECRETS/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/infra/SHARED_INFRA_ARCHITECTURE/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/infra/SHARED_INFRA_MANUAL/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/infra/SPRINTS_SHARED_INFRA/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/infra/runbook_shared_infra/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/</loc>
          <lastmod>2025-10-18</lastmod>
     </url>
@@ -190,22 +90,6 @@
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/toolchain/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/operations/deployments/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/operations/observability/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/operations/runbooks/</loc>
-         <lastmod>2025-10-18</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.somaagent01.dev/reference/</loc>
          <lastmod>2025-10-18</lastmod>
     </url>
     <url>

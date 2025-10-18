@@ -170,4 +170,4 @@ flowchart TB
 - [ ] Diagram renders via MkDocs and linted with `markdownlint`.
 - [ ] Service matrix matches `infra/docker-compose.somaagent01.yaml`.
 - [ ] Helm values align with `infra/helm/soma-infra`.
-- [ ] Roadmap items tracked in [`docs/ROADMAP_SPRINTS.md`](../ROADMAP_SPRINTS.md).
+<!-- Roadmap items are tracked in release notes and changelog. -->

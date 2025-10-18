@@ -82,7 +82,6 @@ plugins:
   - search
   - git-revision-date-localized:
       fallback_to_build_date: true
-# Temporarily disabled due to local UnboundLocalError without GitHub token
-#  - git-committers:
-#      repository: somatechlat/somaagent01
-#      branch: soma_integration
+  - git-committers:
+      repository: somatechlat/somaagent01
+      branch: soma_integration

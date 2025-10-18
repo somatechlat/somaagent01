@@ -123,4 +123,4 @@ Changes take effect immediately after a page reload and preserve the lightweight
 - **Rich text editor:** lightweight WYSIWYG for formatted prompts.
 - **Metrics side panel:** optional SSE-powered live telemetry for latency and cost.
 
-Track UI backlog items in `ROADMAP_SPRINTS.md` and update this page when features graduate from experimental status.
+Track UI backlog items in the Documentation Change Log and update this page when features graduate from experimental status.
