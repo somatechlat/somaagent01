@@ -30,7 +30,7 @@ class Message(ApiHandler):
             attachments = request.files.getlist("attachments")
             attachment_paths = []
 
-            upload_folder_int = "/a0/tmp/uploads"
+            upload_folder_int = "/git/agent-zero/tmp/uploads"
             upload_folder_ext = files.get_abs_path("tmp/uploads")  # for development environment
 
             if attachments:

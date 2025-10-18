@@ -6,14 +6,13 @@ build-backend = "setuptools.build_meta"
 line-length = 100
 target-version = ["py311"]
 # Exclude common generated directories and the virtual environment from formatting.
-extend-exclude = "a0_data|logs|tmp|\\.venv"
+extend-exclude = "logs|tmp|\\.venv"
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 respect-gitignore = true
 extend-exclude = [
-    "a0_data",
     "logs",
     "tmp",
     ".venv",

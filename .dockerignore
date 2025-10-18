@@ -6,6 +6,7 @@
 **/*
 !docker/run/fs/
 !requirements-core.txt
+!requirements.txt
 !requirements-minimal.txt
 !services/gateway/**
 !services/conversation_worker/**
@@ -24,6 +25,8 @@
 !prepare.py
 !run_ui.py
 !run_tunnel.py
+!agent.py
+!initialize.py
 
 # Keep .gitkeep markers anywhere
 !**/.gitkeep

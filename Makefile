@@ -190,6 +190,34 @@ minimal-rebuild:
 minimal-ps:
 	$(MINIMAL_DOCKER) ps
 
+# ------------------------------------------------------------------------------
+# Working architecture helpers (docker-compose.working.yaml)
+# ------------------------------------------------------------------------------
+
+WORKING_COMPOSE_FILE := docker-compose.working.yaml
+WORKING_DOCKER := docker compose -p soma_working -f $(WORKING_COMPOSE_FILE)
+
+.PHONY: working-up working-down working-logs working-rebuild working-ps
+
+working-up:
+	@echo "Starting working architecture..."
+	$(WORKING_DOCKER) up -d --build
+
+working-down:
+	@echo "Stopping working architecture..."
+	$(WORKING_DOCKER) down
+
+working-logs:
+	@echo "Tailing logs for working architecture..."
+	$(WORKING_DOCKER) logs -f
+
+working-rebuild:
+	@echo "Rebuilding working architecture..."
+	$(WORKING_DOCKER) down && $(WORKING_DOCKER) up -d --build
+
+working-ps:
+	$(WORKING_DOCKER) ps
+
 .PHONY: debug-profiles
 debug-profiles:
 	@echo "PROFILES='$(PROFILES)'"
