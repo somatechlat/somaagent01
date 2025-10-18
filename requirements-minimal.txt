@@ -1,0 +1,52 @@
+# MINIMAL REQUIREMENTS - Only what's actually used in services
+# Core web framework
+fastapi==0.115.2
+uvicorn[standard]==0.32.0
+
+# HTTP client
+httpx==0.28.1
+
+# Data validation
+pydantic==2.11.6
+pydantic-settings==2.6.1
+jsonschema==4.22.0
+
+# Environment and config
+python-dotenv==1.1.0
+PyYAML==6.0.2
+
+# JWT authentication
+PyJWT==2.9.0
+
+# Database drivers
+psycopg[binary]==3.2.3
+redis==5.2.0
+
+# Message queue
+aiokafka==0.11.0
+
+# gRPC (only for memory service)
+grpcio==1.67.1
+protobuf==5.27.3
+
+# Metrics and monitoring
+prometheus-client==0.21.0
+
+# Circuit breaker for resilience
+pybreaker==1.1.0
+
+# OpenTelemetry tracing
+opentelemetry-api==1.29.0
+opentelemetry-sdk==1.29.0
+opentelemetry-instrumentation-fastapi==0.50b0
+opentelemetry-instrumentation-httpx==0.50b0
+opentelemetry-exporter-otlp-proto-grpc==1.29.0
+
+# Async utilities
+nest-asyncio==1.6.0
+
+# Timezone handling (for localization)
+pytz==2024.2
+
+# Crypto for security
+cryptography==43.0.1

@@ -1,0 +1,49 @@
+# Fixed Makefile for Agent Zero Development Environment
+
+COMPOSE_PROJECT_NAME ?= somaagent01_fixed
+COMPOSE_FILE ?= docker-compose.fixed.yaml
+
+.PHONY: help build up down restart logs rebuild clean status
+
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@echo "  help      Show this help message"
+	@echo "  build     Build Docker images"
+	@echo "  up        Start all services"
+	@echo "  down      Stop and remove all services"
+	@echo "  restart   Restart all services"
+	@echo "  logs      Follow logs of all services"
+	@echo "  rebuild   Stop, rebuild, and restart"
+	@echo "  clean     Remove all containers and volumes"
+	@echo "  status    Show status of all services"
+
+build:
+	@echo "Building Docker images..."
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) build
+
+up:
+	@echo "Starting services..."
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) up -d
+
+down:
+	@echo "Stopping services..."
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) down
+
+restart: down up
+
+logs:
+	@echo "Following logs..."
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) logs -f
+
+rebuild: down build up
+
+clean: down
+	@echo "Cleaning up..."
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) down -v
+	docker system prune -f
+
+status:
+	@echo "Service status:"
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) ps

@@ -32,6 +32,8 @@ nest-asyncio==1.6.0
 webcolors==24.11.1
 # regex module used by helpers.extract_tools
 regex==2024.9.11
+# timezone handling for localization
+pytz==2024.2
 
 # Crypto primitives (required by helpers.crypto)
 cryptography==43.0.1

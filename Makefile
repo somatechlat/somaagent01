@@ -162,6 +162,34 @@ dev-logs-svc:
 dev-ps:
 	$(DEV_DOCKER) ps
 
+# ------------------------------------------------------------------------------
+# Minimal architecture helpers (docker-compose.minimal.yaml)
+# ------------------------------------------------------------------------------
+
+MINIMAL_COMPOSE_FILE := docker-compose.minimal.yaml
+MINIMAL_DOCKER := docker compose -p soma_minimal -f $(MINIMAL_COMPOSE_FILE)
+
+.PHONY: minimal-up minimal-down minimal-logs minimal-rebuild minimal-ps
+
+minimal-up:
+	@echo "Starting minimal architecture..."
+	$(MINIMAL_DOCKER) up -d --build
+
+minimal-down:
+	@echo "Stopping minimal architecture..."
+	$(MINIMAL_DOCKER) down
+
+minimal-logs:
+	@echo "Tailing logs for minimal architecture..."
+	$(MINIMAL_DOCKER) logs -f
+
+minimal-rebuild:
+	@echo "Rebuilding minimal architecture..."
+	$(MINIMAL_DOCKER) down && $(MINIMAL_DOCKER) up -d --build
+
+minimal-ps:
+	$(MINIMAL_DOCKER) ps
+
 .PHONY: debug-profiles
 debug-profiles:
 	@echo "PROFILES='$(PROFILES)'"
