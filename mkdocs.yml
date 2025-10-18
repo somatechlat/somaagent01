@@ -10,6 +10,8 @@ nav:
       - Overview: user-manual/index.md
       - Getting Started: user-manual/getting-started.md
       - Installation: user-manual/installation.md
+      - UI Overview: user-manual/ui-overview.md
+      - Tunnels: user-manual/tunnels.md
       - Using the Agent: user-manual/using-the-agent.md
       - Features:
           - Memory Management: user-manual/features/memory-management.md
@@ -44,7 +46,6 @@ nav:
       - Developer Tooling: development-manual/tooling.md
       - API Reference: development-manual/api-reference.md
       - Legacy External APIs: development-manual/legacy-apis.md
-      - Runbooks: development-manual/runbooks.md
   - Onboarding Manual:
       - Overview: onboarding-manual/index.md
       - Orientation Checklist: onboarding-manual/orientation.md
@@ -58,6 +59,8 @@ nav:
       - Documentation Audit Checklist: documentation-audit-checklist.md
       - Change Log: changelog.md
       - Event Streams: data/streams.md
+  - Reference:
+      - Index: reference/index.md
 
 theme:
   name: material

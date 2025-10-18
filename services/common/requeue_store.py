@@ -24,6 +24,21 @@ class RequeueStore:
     def _key(self, identifier: str) -> str:
         return f"{self.prefix}:{identifier}"
 
+    @classmethod
+    def from_settings(cls, settings: Any) -> "RequeueStore":
+        """Construct from settings object.
+
+        Expects attributes or env fallbacks:
+        - redis_url (str)
+        - policy_requeue_prefix (str)
+        """
+        url = getattr(settings, "redis_url", None) or os.getenv("REDIS_URL")
+        prefix = (
+            getattr(settings, "policy_requeue_prefix", None)
+            or os.getenv("POLICY_REQUEUE_PREFIX")
+        )
+        return cls(url=url, prefix=prefix)
+
     async def add(self, identifier: str, event: dict[str, Any]) -> None:
         key = self._key(identifier)
         await self.client.set(key, json.dumps(event, ensure_ascii=False))
@@ -52,3 +67,13 @@ class RequeueStore:
             else:
                 await self.client.srem(self.keyset, identifier)
         return sorted(results, key=lambda item: item.get("timestamp", 0.0), reverse=True)
+
+    # --- Backwards-compatibility aliases used by gateway ---
+    async def list_requeue(self) -> list[dict[str, Any]]:
+        return await self.list()
+
+    async def get_requeue(self, requeue_id: str) -> Optional[dict[str, Any]]:
+        return await self.get(requeue_id)
+
+    async def delete_requeue(self, requeue_id: str) -> None:
+        await self.remove(requeue_id)

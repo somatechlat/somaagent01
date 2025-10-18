@@ -140,7 +140,12 @@ async def start_background_services() -> None:
     """Initialize shared resources and background services."""
     # Initialize shared event bus for reuse across requests
     event_bus = KafkaEventBus(_kafka_settings())
-    await event_bus.start()
+    # No explicit start() on our KafkaEventBus; producer is initialized lazily.
+    # Try a lightweight healthcheck, but don't block startup if Kafka isn't ready yet.
+    try:
+        await event_bus.healthcheck()
+    except Exception:
+        LOGGER.debug("Kafka event bus healthcheck failed at startup (will retry on demand)", exc_info=True)
     app.state.event_bus = event_bus
 
     # Initialize shared HTTP client with proper connection pooling
@@ -289,7 +294,8 @@ def get_session_cache() -> RedisSessionCache:
 
 
 def get_session_store() -> PostgresSessionStore:
-    return PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
+    dsn = os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+    return PostgresSessionStore(dsn=dsn)
 
 
 def get_api_key_store() -> ApiKeyStore:

@@ -101,9 +101,9 @@ RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema && \
 
 # Playwright installation handled by modular installer based on FEATURE_BROWSER
 
-# Install asyncpg for async PostgreSQL access (memory_service, gateway and full/dev)
-# Use the distribution package for the full/dev image to avoid compiling wheels on Python 3.13.
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "memory_service" ]; then \
+# Install asyncpg for async PostgreSQL access
+# Use the distribution package to avoid compiling wheels on Python 3.13.
+RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "memory_service" ] || [ "$SERVICE" = "developer" ]; then \
         apt-get update && apt-get install -y python3-asyncpg && \
         apt-get clean && rm -rf /var/lib/apt/lists/*; \
     else \

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -136,9 +136,19 @@ class SA01Settings(EnvironmentAwareSettings):
     """Settings object for the SomaAgent01 service."""
 
     service_name: str = Field(default="sa01")
-    postgres_dsn: str = Field(default=_SHARED_DEFAULTS["postgres_dsn"])
-    kafka_bootstrap_servers: str = Field(default=_SHARED_DEFAULTS["kafka_bootstrap_servers"])
-    redis_url: str = Field(default=_SHARED_DEFAULTS["redis_url"])
+    # Read from SA01_* first, then fall back to unprefixed env vars used by docker-compose.dev.yaml
+    postgres_dsn: str = Field(
+        default=_SHARED_DEFAULTS["postgres_dsn"],
+        validation_alias=AliasChoices("SA01_POSTGRES_DSN", "POSTGRES_DSN"),
+    )
+    kafka_bootstrap_servers: str = Field(
+        default=_SHARED_DEFAULTS["kafka_bootstrap_servers"],
+        validation_alias=AliasChoices("SA01_KAFKA_BOOTSTRAP_SERVERS", "KAFKA_BOOTSTRAP_SERVERS"),
+    )
+    redis_url: str = Field(
+        default=_SHARED_DEFAULTS["redis_url"],
+        validation_alias=AliasChoices("SA01_REDIS_URL", "REDIS_URL"),
+    )
     otlp_endpoint: str = Field(default=_SHARED_DEFAULTS["otlp_endpoint"])
     auth_url: str = Field(default=_SHARED_DEFAULTS["auth_url"])
     opa_url: str = Field(default=_SHARED_DEFAULTS["opa_url"])
