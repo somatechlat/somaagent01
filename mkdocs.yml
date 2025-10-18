@@ -11,15 +11,20 @@ nav:
       - Getting Started: user-manual/getting-started.md
       - Installation: user-manual/installation.md
       - Using the Agent: user-manual/using-the-agent.md
+      - Features:
+          - Memory Management: user-manual/features/memory-management.md
       - Troubleshooting: user-manual/troubleshooting.md
       - Accessibility: user-manual/accessibility.md
   - Technical Manual:
       - Overview: technical-manual/index.md
       - Architecture: technical-manual/architecture.md
+      - Deployment: technical-manual/deployment.md
+      - Monitoring & Health: technical-manual/monitoring.md
       - Infrastructure: technical-manual/infrastructure.md
       - Integrations: technical-manual/integrations.md
       - Security: technical-manual/security.md
       - Data Flow: technical-manual/data-flow.md
+      - Runbooks: technical-manual/runbooks/index.md
       - Components:
           - Gateway: technical-manual/components/gateway.md
           - Conversation Worker: technical-manual/components/conversation-worker.md
@@ -37,6 +42,8 @@ nav:
       - Debugging Guide: development-manual/debugging.md
       - Release Process: development-manual/release-process.md
       - Developer Tooling: development-manual/tooling.md
+      - API Reference: development-manual/api-reference.md
+      - Legacy External APIs: development-manual/legacy-apis.md
       - Runbooks: development-manual/runbooks.md
   - Onboarding Manual:
       - Overview: onboarding-manual/index.md
@@ -50,6 +57,7 @@ nav:
       - Glossary: glossary.md
       - Documentation Audit Checklist: documentation-audit-checklist.md
       - Change Log: changelog.md
+      - Event Streams: data/streams.md
 
 theme:
   name: material
@@ -72,8 +80,9 @@ markdown_extensions:
 
 plugins:
   - search
-  - mkdocs_git_revision_date_localized:
+  - git-revision-date-localized:
       fallback_to_build_date: true
-  - mkdocs_git_committers:
-      repository: somatechlat/somaagent01
-      branch: soma_integration
+# Temporarily disabled due to local UnboundLocalError without GitHub token
+#  - git-committers:
+#      repository: somatechlat/somaagent01
+#      branch: soma_integration

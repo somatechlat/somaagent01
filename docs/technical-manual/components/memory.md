@@ -70,12 +70,17 @@ Adapters under `python/helpers/memory/` keep the codebase provider-agnostic.
 
 ## API Surface
 
-| Function | Location | Description |
-| --- | --- | --- |
-| `memory_save` | Gateway tool call | Persist structured payload with TTL/relevance |
-| `memory_load` | Gateway tool call | Retrieve by key (exact match) |
-| `memory_search` | Gateway tool call | Retrieve by vector/text query |
-| `AgentContext.memory` | Runtime helper | Wraps the above with persona scoping |
+Two modes exist, selected by `SOMA_ENABLED` (default: true):
+
+- Remote: SomaMemory via `python.integrations.soma_client` (production default)
+- Local: FAISS-backed `Memory` adapter for development when SomaBrain is disabled
+
+Key methods (async):
+
+- `Memory.get(agent)` or `Memory.get_by_subdir("default")`
+- `insert_text(text, metadata)` / `insert_documents([Document(...)])`
+- `search_similarity_threshold(query, limit, threshold, filter?)`
+- `delete_documents_by_ids(ids)` / `delete_documents_by_query(query, threshold, filter)`
 
 ## Retrieval Workflow
 
@@ -95,15 +100,19 @@ Adapters under `python/helpers/memory/` keep the codebase provider-agnostic.
 ## Machine Integration
 
 ```python
-from python.helpers.memory import save_memory, search_memory
+from python.helpers.memory import Memory
 
-save_memory(
-    key="project.decisions.backend",
-    payload={"stack": "FastAPI", "decision_date": "2025-10-01"},
-    type="ProjectDecision",
+mem = await Memory.get_by_subdir("default")
+doc_id = await mem.insert_text(
+  "Backend decision: FastAPI",
+  metadata={"type": "ProjectDecision", "key": "project.decisions.backend"},
 )
 
-recent = search_memory(key_prefix="project.decisions", limit=5)
+recent = await mem.search_similarity_threshold(
+  query="project decisions",
+  limit=5,
+  threshold=0.3,
+)
 ```
 
 ## Failure Considerations

@@ -1,16 +1,25 @@
 # Event Streams & Data Contracts
 
+Note: This page is referenced from the Technical Manual. Default topic names reflect the current code; environment variables can override them.
+
 SomaAgent01 relies on Kafka to decouple orchestration from long-running work. This document enumerates topics, payloads, and retention policy.
 
 ## Topic Catalog
 
+Default topics in code (configurable via env):
+
 | Topic | Producer | Consumer | Retention | Payload Schema |
 | --- | --- | --- | --- | --- |
-| `somastack.tools` | Gateway | Tool Executor | 7 days | `ToolInvocation` |
-| `somastack.tool_results` | Tool Executor | Gateway | 7 days | `ToolResult` |
-| `somastack.delegation` | Gateway / Scheduler | Delegation workers | 3 days | `DelegatedTask` |
-| `somastack.events.audit` | Gateway | Analytics pipeline | 30 days | `AuditEvent` |
-| `somastack.memories` | Gateway | Memory ingestion service | 1 day | `MemoryWrite` |
+| `tool.requests` | Gateway/Orchestrator | Tool Executor | 7 days | `ToolInvocation` |
+| `tool.results` | Tool Executor | Gateway/Orchestrator | 7 days | `ToolResult` |
+| `conversation.inbound` | Gateway | Conversation workers | 3 days | `ConversationEvent` |
+| `conversation.outbound` | Conversation workers | Gateway/UI | 3 days | `ConversationEvent` |
+| `config_updates` | Config publisher | Gateway | 1 day | `SettingsPayload` |
+
+Environment overrides:
+
+- TOOL_REQUESTS_TOPIC, TOOL_RESULTS_TOPIC, TOOL_EXECUTOR_GROUP
+- KAFKA_BOOTSTRAP_SERVERS and security-related vars
 
 ## Payload Schemas
 
@@ -60,12 +69,14 @@ SomaAgent01 relies on Kafka to decouple orchestration from long-running work. Th
 
 ```mermaid
 graph LR
-    Gateway -->|somastack.tools| Kafka
-    Kafka -->|somastack.tools| ToolExecutor
-    ToolExecutor -->|somastack.tool_results| Kafka
-    Kafka -->|somastack.tool_results| Gateway
-    Gateway -->|somastack.delegation| Kafka
-    Kafka -->|somastack.delegation| DelegationWorker
+  Gateway -->|conversation.inbound| Kafka
+  Kafka -->|conversation.inbound| ConversationWorker
+  ConversationWorker -->|conversation.outbound| Kafka
+  Kafka -->|conversation.outbound| Gateway
+  Gateway -->|tool.requests| Kafka
+  Kafka -->|tool.requests| ToolExecutor
+  ToolExecutor -->|tool.results| Kafka
+  Kafka -->|tool.results| Gateway
 ```
 
 ## Retention & Compaction

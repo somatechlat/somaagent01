@@ -1,4 +1,18 @@
-# ==============================================================================
+# Simple docs helpers
+
+.PHONY: docs-install docs-build docs-serve docs-verify
+
+docs-install:
+	pip install -r docs/requirements-docs.txt
+
+docs-build:
+	mkdocs build --strict
+
+docs-serve:
+	mkdocs serve -a 0.0.0.0:8001
+
+docs-verify: docs-build
+	@echo "Docs build OK"# ==============================================================================
 # Makefile for Agent Zero Development Environment
 #
 # Provides common commands for building, running, and managing the Docker stack.
