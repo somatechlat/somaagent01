@@ -159,18 +159,42 @@ if [ "$FEATURE_AUDIO" != "none" ]; then
 fi
 
 # --- 5. Post-installation Steps ---
+# Ensure critical runtime packages are present even if uv failed to resolve them
+set +e
+python - <<'PY'
+import importlib.util, sys
+missing = []
+for name in ("langchain", "aiohttp", "browser_use"):
+    if importlib.util.find_spec(name) is None:
+        missing.append(name)
+if missing:
+    print("Missing critical packages:", ", ".join(missing))
+    sys.exit(1)
+PY
+status=$?
+set -e
+if [ $status -ne 0 ]; then
+  echo "Installing missing critical packages via pip fallback..."
+  pip install --no-cache-dir "langchain<0.2" aiohttp browser-use || true
+fi
+# Back-compat: models.py imports from the legacy 'langchain' meta package.
+# Newer requirements provide langchain-core/community, but the top-level
+# package is still needed for compatibility.
+# Back-compat already handled above if missing; keep idempotent
+pip install --no-cache-dir "langchain<0.2" || true
+
 if [ "$FEATURE_BROWSER" = "true" ]; then
     echo "Installing Playwright browsers..."
     bash /ins/install_playwright.sh "$@"
 fi
 
 echo "Running application preload..."
-# Only run preload when explicitly requested or when AI features are enabled.
+# Only run preload when explicitly requested.
 # This prevents module-import-time failures in trimmed local copies.
-if [ "$INSTALL_PRELOAD" = "true" ] || [ "$FEATURE_AI" != "none" ]; then
+if [ "$INSTALL_PRELOAD" = "true" ]; then
     python /git/agent-zero/preload.py --dockerized=true
 else
-    echo "Skipping preload: INSTALL_PRELOAD=$INSTALL_PRELOAD FEATURE_AI=$FEATURE_AI"
+    echo "Skipping preload: INSTALL_PRELOAD=$INSTALL_PRELOAD"
 fi
 
 # --- 6. Finalization and Cleanup ---

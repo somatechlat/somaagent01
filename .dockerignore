@@ -8,6 +8,7 @@
 !requirements-core.txt
 !requirements.txt
 !requirements-dev.txt
+!requirements-*.txt
 !requirements-minimal.txt
 !requirements-canonical.txt
 !services/gateway/**

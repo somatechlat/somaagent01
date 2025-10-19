@@ -6,6 +6,7 @@ import os
 # Lazy-import kokoro_tts and whisper inside their preload functions to avoid
 # importing optional heavy audio dependencies at module import time.
 from python.helpers.print_style import PrintStyle
+from python.helpers import runtime
 
 
 async def preload():

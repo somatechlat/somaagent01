@@ -73,6 +73,7 @@ build:
 up:
 	@echo "Starting the stack in detached mode..."
 	# Expand comma-separated PROFILES into multiple --profile flags for docker compose
+	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
 	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) $(DOCKER_PROFILES) up -d
 
 down:
@@ -127,11 +128,11 @@ dev-rebuild:
 # Start core + ui profiles without editing docker files
 dev-up-ui:
 	@echo "Starting developer stack with UI profile..."
-	$(MAKE) up COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,ui COMPOSE_PROJECT_NAME=somaagent01_dev
+	$(MAKE) up COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,dev COMPOSE_PROJECT_NAME=somaagent01_dev
 
 dev-restart-ui:
 	@echo "Rebuilding developer stack with UI profile..."
-	$(MAKE) rebuild COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,ui COMPOSE_PROJECT_NAME=somaagent01_dev
+	$(MAKE) rebuild COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,dev COMPOSE_PROJECT_NAME=somaagent01_dev
 
 .PHONY: dev-build dev-up-services dev-restart-services dev-logs-svc dev-ps
 
