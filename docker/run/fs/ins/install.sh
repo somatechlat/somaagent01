@@ -164,7 +164,7 @@ pip install --no-cache-dir \
     fasta2a==0.5.0 \
     fastmcp==2.3.4 \
     mcp==1.13.1 \
-    crontab==1.0.1 || true
+    python-crontab==2.7.1 || true
 # Ensure critical runtime packages are present even if uv failed to resolve them
 set +e
 python - <<'PY'
