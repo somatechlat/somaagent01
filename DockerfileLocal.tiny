@@ -1,0 +1,34 @@
+# TRULY minimal Dockerfile - only essential files
+FROM python:3.13-slim
+
+ENV PYTHONPATH=/git/agent-zero
+ENV PATH="/venv/bin:${PATH}"
+WORKDIR /git/agent-zero
+
+# Copy ONLY the absolutely essential files
+COPY ./run_ui.py /git/agent-zero/
+COPY ./agent.py /git/agent-zero/
+COPY ./models.py /git/agent-zero/
+COPY ./initialize.py /git/agent-zero/
+COPY ./python/ /git/agent-zero/python/
+COPY ./services/ /git/agent-zero/services/
+COPY ./common/ /git/agent-zero/common/
+
+# Install ONLY critical packages
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install --no-cache-dir \
+        fastapi==0.115.2 \
+        uvicorn==0.32.0 \
+        fasta2a==0.5.0 \
+        fastmcp==2.3.4 \
+        mcp==1.13.1 \
+        python-dotenv==1.1.0 \
+        Flask==3.0.3 \
+        a2wsgi==1.10.3 \
+        PyYAML==6.0.2 \
+        httpx==0.28.1 \
+        redis==5.2.0 \
+        aiokafka==0.11.0
+
+EXPOSE 80
+CMD ["/venv/bin/python", "run_ui.py", "--host=0.0.0.0", "--port=80"]

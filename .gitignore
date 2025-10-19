@@ -1,3 +1,31 @@
+# Repo-wide ignores for generated or local-only files
+
+# Kafka logs and other runtime logs
+kafka-logs/
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Environment/virtualenv
+.env
+.venv/
+venv/
+env/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Build artifacts
+dist/
+build/
+tmp/
 docs.zip
 *.zip
 # Ignore common unwanted files globally
