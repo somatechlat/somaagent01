@@ -162,3 +162,56 @@ dev-logs-svc:
 # Show dev containers
 dev-ps:
 	$(DEV_DOCKER) ps
+# ------------------------------------------------------------------------------
+# Slim runtime (prebuilt image) helpers
+# ------------------------------------------------------------------------------
+
+SLIM_COMPOSE_FILE := docker-compose.slim.yaml
+SLIM_PROFILES := core,dev
+
+.PHONY: slim-up slim-down slim-logs slim-rebuild
+
+slim-up:
+	@echo "Starting slim stack (prebuilt image)..."
+	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
+	docker compose -p somaagent01_slim -f $(SLIM_COMPOSE_FILE) --profile core --profile dev up -d
+
+slim-down:
+	@echo "Stopping slim stack..."
+	docker compose -p somaagent01_slim -f $(SLIM_COMPOSE_FILE) down
+
+slim-logs:
+	@echo "Tailing logs for slim stack..."
+	docker compose -p somaagent01_slim -f $(SLIM_COMPOSE_FILE) --profile core --profile dev logs -f
+
+slim-rebuild: slim-down
+	@echo "Recreating slim stack..."
+	$(MAKE) slim-up
+
+# ------------------------------------------------------------------------------
+# Slim+Browser helpers
+# ------------------------------------------------------------------------------
+
+SLIM_BROWSER_COMPOSE_FILE := docker-compose.slim-browser.yaml
+
+.PHONY: slim-browser-up slim-browser-down slim-browser-logs slim-browser-rebuild slim-browser-build
+
+slim-browser-build:
+	@echo "Building slim-browser image..."
+	docker build -f Dockerfile -t somaagent01-slim:latest .
+	docker build -f Dockerfile.slim-browser -t somaagent01-slim-browser:latest .
+
+slim-browser-up: slim-browser-build
+	@echo "Starting slim-browser stack (prebuilt image with Chromium)..."
+	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
+	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) --profile core --profile dev up -d
+
+slim-browser-down:
+	@echo "Stopping slim-browser stack..."
+	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) down
+
+slim-browser-logs:
+	@echo "Tailing logs for slim-browser stack..."
+	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) --profile core --profile dev logs -f
+
+slim-browser-rebuild: slim-browser-down slim-browser-up

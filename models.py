@@ -65,7 +65,12 @@ except Exception:
 
     browser_use_monkeypatch = _BrowserUseMonkeypatchFallback()
 
-from langchain.embeddings.base import Embeddings
+try:
+    # Older import path provided by the monolithic 'langchain' package
+    from langchain.embeddings.base import Embeddings  # type: ignore
+except Exception:  # pragma: no cover - fallback for slim builds using langchain-core only
+    # Newer, lighter-weight location provided by langchain-core
+    from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
