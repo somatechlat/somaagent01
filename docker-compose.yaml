@@ -63,12 +63,11 @@ services:
         condition: service_healthy
     entrypoint: ["bash", "-lc"]
     command: >-
-      
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic conversation.inbound --partitions 3 --replication-factor 1 &&
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic conversation.outbound --partitions 3 --replication-factor 1 &&
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic tool.requests --partitions 3 --replication-factor 1 &&
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic tool.results --partitions 3 --replication-factor 1 &&
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic config_updates --partitions 1 --replication-factor 1 &&
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic conversation.inbound --partitions 3 --replication-factor 1 &&
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic conversation.outbound --partitions 3 --replication-factor 1 &&
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic tool.requests --partitions 3 --replication-factor 1 &&
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic tool.results --partitions 3 --replication-factor 1 &&
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic config_updates --partitions 1 --replication-factor 1 &&
       echo "Kafka topics ensured"
     restart: "no"
   kafka:
