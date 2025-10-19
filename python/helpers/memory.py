@@ -698,12 +698,25 @@ class _SomaDocStore:
             payload = self._build_payload(metadata, doc.page_content)
             try:
                 coord_str = self._format_coord(coord)
-                await self._client.remember(
-                    payload, coord=coord_str, universe=self.memory.memory_subdir
+                result = await self._client.remember(
+                    payload,
+                    coord=coord_str,
+                    universe=self.memory.memory_subdir,
+                    namespace=self.memory.memory_subdir,
                 )
             except SomaClientError as exc:
                 PrintStyle.error(f"Failed to store memory via SomaBrain: {exc}")
                 continue
+            else:
+                if isinstance(result, Mapping):
+                    returned_coord = result.get("coordinate") or result.get("coord")
+                    if returned_coord:
+                        metadata["coord"] = returned_coord
+                        metadata["soma_coord"] = returned_coord
+                    if result.get("trace_id"):
+                        metadata["trace_id"] = result["trace_id"]
+                    if result.get("request_id"):
+                        metadata["request_id"] = result["request_id"]
             doc.metadata = metadata
             self._cache[doc_id] = doc
             ids.append(doc_id)
@@ -748,12 +761,21 @@ class _SomaDocStore:
                 query,
                 top_k=limit or 3,
                 universe=self.memory.memory_subdir,
+                namespace=self.memory.memory_subdir,
             )
         except SomaClientError as exc:
             PrintStyle.error(f"SomaBrain recall failed: {exc}")
             return []
 
-        memory_items = response.get("memory") if isinstance(response, Mapping) else None
+        memory_items: Optional[List[Any]] = None
+        if isinstance(response, Mapping):
+            candidates = response.get("memory")
+            if isinstance(candidates, list):
+                memory_items = candidates
+            else:
+                candidates = response.get("results")
+                if isinstance(candidates, list):
+                    memory_items = candidates
         if not isinstance(memory_items, list):
             return []
 

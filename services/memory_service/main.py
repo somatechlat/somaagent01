@@ -34,7 +34,7 @@ class MemoryRepository:
         return self._pool
 
     async def ensure_schema(self) -> None:
-    pool = await self._get_pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """
@@ -59,7 +59,7 @@ class MemoryRepository:
     ) -> dict[str, Any]:
         record_id = uuid.uuid4().hex
         payload = metadata or {}
-    pool = await self._get_pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -79,7 +79,7 @@ class MemoryRepository:
         return dict(row)
 
     async def get_memory(self, *, memory_id: str) -> Optional[dict[str, Any]]:
-    pool = await self._get_pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -100,7 +100,7 @@ class MemoryRepository:
         persona_id: Optional[str],
         limit: int,
     ) -> list[dict[str, Any]]:
-        pool = await self._pool()
+        pool = await self._get_pool()
         async with pool.acquire() as conn:
             if persona_id:
                 rows = await conn.fetch(

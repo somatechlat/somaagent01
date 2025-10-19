@@ -24,7 +24,7 @@ title: Deployment
 ## Build Pipeline
 
 1. Run tests locally (`pytest`, Playwright).
-2. Build images: `docker compose build` or CI pipeline.
+2. Build images: `docker build -f Dockerfile.canonical -t somaagent01:latest .` or `docker compose -f docker-compose.yaml build`.
 3. Push to registry (tag with git SHA, semantic version).
 4. Deploy via Compose (staging) or Helm (production).
 
@@ -32,13 +32,13 @@ title: Deployment
 
 ```bash
 git pull
-docker compose -p somaagent01-staging --profile core --profile dev -f infra/docker-compose.somaagent01.yaml up -d
+docker compose -p somaagent01-staging --profile core --profile dev -f docker-compose.yaml up -d
 ```
 
 - Use `.env.staging` for environment-specific overrides.
 - Confirm health: `docker compose ps`.
 - Host ports default to the reserved range `20000-20199` (Kafka 20000, Redis 20001, Postgres 20002, Gateway 20016, UI 20015). Override via `PORT_POOL_START` / `PORT_POOL_MAX` if the range is occupied.
-- SomaBrain integration expects `http://host.docker.internal:9696`; ensure your local SomaBrain service is listening on that port.
+- SomaBrain integration expects `http://host.docker.internal:9696`; ensure your local SomaBrain or SKM service is listening on that port (set via `SOMA_BASE_URL` and `SKM_BASE_URL`).
 
 ## Kubernetes Deployment (Planned)
 

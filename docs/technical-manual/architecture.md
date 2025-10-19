@@ -13,7 +13,7 @@ prerequisites:
   - Access to repository diagrams under `docs/diagrams`
 verification:
   - Architecture diagram renders in MkDocs pipeline
-  - Service matrix matches `infra/docker-compose.somaagent01.yaml`
+  - Service matrix matches `docker-compose.yaml`
 ---
 
 # SomaAgent01 Architecture Overview
@@ -27,14 +27,14 @@ This document captures the current service layout, target consolidation, and imp
 | SA01 (SomaAgent01) | `agent.py`, `services/conversation_worker/main.py`, `services/gateway/main.py` | Agents | gRPC (high-throughput) | **50051** (planned) | gRPC stubs present; HTTP gateway on 8010 still active |
 | SB (SomaBrain) | `services/memory_service/main.py` | Memory | gRPC / HTTP | **20017** | Implemented; exposed via compose |
 | SAH (SomaAgentHub) | `services/ui/main.py`, `run_ui.py` | Experience | FastAPI (HTTP) | **8080** | Running via `agent-ui` and `gateway` services |
-| SMF (SomaFractalMemory) | `infra/docker-compose.somaagent01.yaml` (qdrant profile) | Knowledge | Async HTTP | **50053** / **6333-6334** | Optional compose profile |
+| SMF (SomaFractalMemory) | future `qdrant` add-on | Knowledge | Async HTTP | **50053** / **6333-6334** | Planned profile (not yet in compose) |
 | Auth | `infra/helm/soma-infra/charts/auth` | Platform | HTTP | **8080** | Helm chart deployed cluster-wide |
 | OPA | `services/common/policy_client.py`, compose `opa` service | Platform | HTTP | **8181** | Deployed in compose and Helm |
-| Kafka | `infra/docker-compose.somaagent01.yaml` | Platform | TCP | **9092** | Single node in compose, 3-node StatefulSet in Helm |
-| Redis | `infra/docker-compose.somaagent01.yaml` | Platform | TCP | **6379** | Single instance; cluster planned |
+| Kafka | `docker-compose.yaml` | Platform | TCP | **9092** | Single node in compose, 3-node StatefulSet in Helm |
+| Redis | `docker-compose.yaml` | Platform | TCP | **6379** | Single instance; cluster planned |
 | Prometheus | `infra/observability/prometheus.yml` | Platform | HTTP | **9090** | Live in compose and Helm |
 | Grafana | `infra/observability/grafana` | Platform | HTTP | **3000** | Optional profile |
-| Vault | `infra/docker-compose.somaagent01.yaml` | Platform | HTTP | **8200** | Dev mode compose; Helm chart forthcoming |
+| Vault | future compose add-on | Platform | HTTP | **8200** | Dev mode compose; Helm chart forthcoming |
 | Etcd | `infra/helm/soma-infra/charts/etcd` | Platform | HTTP | **2379** | Placeholder chart available |
 
 The stack currently runs four application services plus twelve infrastructure containers under Docker Compose. Consolidation work reduces duplication between local and cluster deployments.
@@ -72,7 +72,7 @@ agent-zero/
     tool_executor/
     ui/
   infra/
-    docker-compose.somaagent01.yaml
+    docker-compose.yaml
     helm/
       soma-infra/
       soma-stack/
@@ -168,6 +168,6 @@ flowchart TB
 ## 10. Verification Checklist
 
 - [ ] Diagram renders via MkDocs and linted with `markdownlint`.
-- [ ] Service matrix matches `infra/docker-compose.somaagent01.yaml`.
+- [ ] Service matrix matches `docker-compose.yaml`.
 - [ ] Helm values align with `infra/helm/soma-infra`.
 <!-- Roadmap items are tracked in release notes and changelog. -->

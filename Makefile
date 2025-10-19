@@ -98,8 +98,8 @@ clean: down
 # Lightweight developer stack helpers (docker-compose.dev.yaml)
 # ------------------------------------------------------------------------------
 
-DEV_COMPOSE_FILE := docker-compose.dev.yaml
-DEV_PROFILES := core
+DEV_COMPOSE_FILE := docker-compose.yaml
+DEV_PROFILES := core,dev
 
 # Convenience wrapper for dev docker compose
 DEV_DOCKER := docker compose -p somaagent01_dev -f $(DEV_COMPOSE_FILE)
@@ -161,65 +161,3 @@ dev-logs-svc:
 # Show dev containers
 dev-ps:
 	$(DEV_DOCKER) ps
-
-# ------------------------------------------------------------------------------
-# Minimal architecture helpers (docker-compose.minimal.yaml)
-# ------------------------------------------------------------------------------
-
-MINIMAL_COMPOSE_FILE := docker-compose.minimal.yaml
-MINIMAL_DOCKER := docker compose -p soma_minimal -f $(MINIMAL_COMPOSE_FILE)
-
-.PHONY: minimal-up minimal-down minimal-logs minimal-rebuild minimal-ps
-
-minimal-up:
-	@echo "Starting minimal architecture..."
-	$(MINIMAL_DOCKER) up -d --build
-
-minimal-down:
-	@echo "Stopping minimal architecture..."
-	$(MINIMAL_DOCKER) down
-
-minimal-logs:
-	@echo "Tailing logs for minimal architecture..."
-	$(MINIMAL_DOCKER) logs -f
-
-minimal-rebuild:
-	@echo "Rebuilding minimal architecture..."
-	$(MINIMAL_DOCKER) down && $(MINIMAL_DOCKER) up -d --build
-
-minimal-ps:
-	$(MINIMAL_DOCKER) ps
-
-# ------------------------------------------------------------------------------
-# Working architecture helpers (docker-compose.working.yaml)
-# ------------------------------------------------------------------------------
-
-WORKING_COMPOSE_FILE := docker-compose.working.yaml
-WORKING_DOCKER := docker compose -p soma_working -f $(WORKING_COMPOSE_FILE)
-
-.PHONY: working-up working-down working-logs working-rebuild working-ps
-
-working-up:
-	@echo "Starting working architecture..."
-	$(WORKING_DOCKER) up -d --build
-
-working-down:
-	@echo "Stopping working architecture..."
-	$(WORKING_DOCKER) down
-
-working-logs:
-	@echo "Tailing logs for working architecture..."
-	$(WORKING_DOCKER) logs -f
-
-working-rebuild:
-	@echo "Rebuilding working architecture..."
-	$(WORKING_DOCKER) down && $(WORKING_DOCKER) up -d --build
-
-working-ps:
-	$(WORKING_DOCKER) ps
-
-.PHONY: debug-profiles
-debug-profiles:
-	@echo "PROFILES='$(PROFILES)'"
-	@echo "DOCKER_PROFILES='$(DOCKER_PROFILES)'"
-	@echo "Direct expansion: '$(foreach p,$(shell echo $(PROFILES) | tr ',' ' '),--profile $(p))'"

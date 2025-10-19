@@ -7,7 +7,9 @@
 !docker/run/fs/
 !requirements-core.txt
 !requirements.txt
+!requirements-dev.txt
 !requirements-minimal.txt
+!requirements-canonical.txt
 !services/gateway/**
 !services/conversation_worker/**
 !services/tool_executor/**
@@ -20,6 +22,7 @@
 !lib/**
 !prompts/**
 !conf/**
+!webui/**
 !models.py
 !preload.py
 !prepare.py

@@ -39,7 +39,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 from weakref import WeakKeyDictionary
 
 import httpx
@@ -277,6 +277,7 @@ class SomaClient:
         path: str,
         *,
         json: Optional[Mapping[str, Any]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         allow_404: bool = False,
     ) -> Any:
@@ -299,6 +300,7 @@ class SomaClient:
                 "path": url,
                 "base_url": self.base_url,
                 "env_base_url": os.environ.get("SOMA_BASE_URL"),
+                "params": params or None,
                 "headers": request_headers or None,
             },
         )
@@ -306,7 +308,11 @@ class SomaClient:
         try:
             async with self._get_lock():
                 response = await self._get_client().request(
-                    method, url, json=json, headers=request_headers or None
+                    method,
+                    url,
+                    json=json,
+                    params=params,
+                    headers=request_headers or None,
                 )
         except httpx.RequestError as e:
             # Network / transport-level failure: record failure and wrap as SomaClientError
@@ -361,16 +367,90 @@ class SomaClient:
         *,
         coord: Optional[str] = None,
         universe: Optional[str] = None,
+        tenant: Optional[str] = None,
+        namespace: Optional[str] = None,
+        ttl_seconds: Optional[int] = None,
+        tags: Optional[Sequence[str]] = None,
+        policy_tags: Optional[Sequence[str]] = None,
+        importance: Optional[float] = None,
+        novelty: Optional[float] = None,
+        trace_id: Optional[str] = None,
     ) -> Mapping[str, Any]:
-        body: Dict[str, Any] = {"payload": dict(payload)}
+        """Store a memory item via SomaBrain.
+
+        The new `/memory/remember` endpoint is attempted first; if the server
+        only supports the legacy surface we fall back to `/remember`.
+        """
+
+        payload_dict = dict(payload)
+        metadata_dict = {}
+        if isinstance(payload_dict.get("metadata"), Mapping):
+            metadata_dict = dict(payload_dict["metadata"])  # type: ignore[assignment]
+        derived_tenant = (
+            tenant
+            or payload_dict.get("tenant")
+            or metadata_dict.get("tenant")
+            or os.getenv("SOMA_TENANT_ID", "").strip()
+            or "default"
+        )
+        derived_namespace = (
+            namespace
+            or payload_dict.get("namespace")
+            or metadata_dict.get("namespace")
+            or self.namespace
+            or "default"
+        )
+
+        body: Dict[str, Any] = {
+            "value": payload_dict,
+            "tenant": derived_tenant,
+            "namespace": derived_namespace,
+            "key": payload_dict.get("id"),
+        }
+
+        # Ensure we do not send empty strings for key/tenant/namespace
+        if not body["key"]:
+            body.pop("key")
+        if not body["tenant"]:
+            body["tenant"] = "default"
+        if not body["namespace"]:
+            body["namespace"] = "default"
+
         if coord:
             body["coord"] = coord
         if universe or self.namespace:
-            resolved_universe = universe or self.namespace
-            body["universe"] = resolved_universe
-            body.setdefault("payload", {})
-            body["payload"]["universe"] = resolved_universe
-        return await self._request("POST", "/remember", json=body)
+            body["universe"] = universe or self.namespace
+            body["value"].setdefault("universe", body["universe"])
+        if ttl_seconds is not None:
+            body["ttl_seconds"] = ttl_seconds
+        if tags:
+            body["tags"] = list(tags)
+        if policy_tags:
+            body["policy_tags"] = list(policy_tags)
+        if importance is not None:
+            body["importance"] = importance
+        if novelty is not None:
+            body["novelty"] = novelty
+        if trace_id:
+            body["trace_id"] = trace_id
+
+        response = await self._request(
+            "POST",
+            "/memory/remember",
+            json={k: v for k, v in body.items() if v is not None},
+            allow_404=True,
+        )
+        if response is None:
+            legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
+            if coord:
+                legacy_payload["coord"] = coord
+            if universe or self.namespace:
+                resolved_universe = universe or self.namespace
+                legacy_payload["universe"] = resolved_universe
+                legacy_payload.setdefault("payload", {})
+                legacy_payload["payload"]["universe"] = resolved_universe
+            return await self._request("POST", "/remember", json=legacy_payload)
+        return response
 
     async def recall(
         self,
@@ -378,11 +458,134 @@ class SomaClient:
         *,
         top_k: int = 3,
         universe: Optional[str] = None,
+        tenant: Optional[str] = None,
+        namespace: Optional[str] = None,
+        layer: Optional[str] = None,
+        tags: Optional[Sequence[str]] = None,
+        min_score: Optional[float] = None,
+        session_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        scoring_mode: Optional[str] = None,
+        pin_results: Optional[bool] = None,
+        chunk_size: Optional[int] = None,
+        chunk_index: Optional[int] = None,
     ) -> Mapping[str, Any]:
-        body: Dict[str, Any] = {"query": query, "top_k": top_k}
+        """Recall memories for a query.
+
+        Prefer the richer `/memory/recall` endpoint but tolerate the legacy
+        `/recall` surface to remain compatible with older deployments.
+        """
+
+        body: Dict[str, Any] = {
+            "tenant": tenant or os.getenv("SOMA_TENANT_ID", "").strip() or "default",
+            "namespace": namespace or self.namespace or "default",
+            "query": query,
+            "top_k": top_k,
+        }
         if universe or self.namespace:
             body["universe"] = universe or self.namespace
-        return await self._request("POST", "/recall", json=body)
+        if layer:
+            body["layer"] = layer
+        if tags:
+            body["tags"] = list(tags)
+        if min_score is not None:
+            body["min_score"] = float(min_score)
+        if session_id:
+            body["session_id"] = session_id
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        if scoring_mode:
+            body["scoring_mode"] = scoring_mode
+        if pin_results is not None:
+            body["pin_results"] = bool(pin_results)
+        if chunk_size is not None:
+            body["chunk_size"] = int(chunk_size)
+        if chunk_index is not None:
+            body["chunk_index"] = int(chunk_index)
+
+        response = await self._request(
+            "POST",
+            "/memory/recall",
+            json={k: v for k, v in body.items() if v is not None},
+            allow_404=True,
+        )
+        if response is None:
+            legacy_body = {"query": query, "top_k": top_k}
+            if universe or self.namespace:
+                legacy_body["universe"] = universe or self.namespace
+            return await self._request("POST", "/recall", json=legacy_body)
+        return response
+
+    async def recall_stream(
+        self,
+        payload: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """Invoke the streaming recall endpoint."""
+        return await self._request("POST", "/memory/recall/stream", json=dict(payload))
+
+    async def remember_batch(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Persist multiple memories in a single request."""
+        return await self._request("POST", "/memory/remember/batch", json=dict(payload))
+
+    async def get_recall_session(self, session_id: str) -> Mapping[str, Any]:
+        return await self._request("GET", f"/memory/context/{session_id}")
+
+    async def memory_metrics(self, *, tenant: str, namespace: str) -> Mapping[str, Any]:
+        params = {"tenant": tenant, "namespace": namespace}
+        return await self._request("GET", "/memory/metrics", params=params)
+
+    async def rag_retrieve(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/rag/retrieve", json=dict(payload))
+
+    async def context_evaluate(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/context/evaluate", json=dict(payload))
+
+    async def context_feedback(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/context/feedback", json=dict(payload))
+
+    async def adaptation_state(self, tenant_id: Optional[str] = None) -> Mapping[str, Any]:
+        params = {"tenant_id": tenant_id} if tenant_id else None
+        return await self._request("GET", "/context/adaptation/state", params=params)
+
+    async def put_persona(
+        self,
+        persona_id: str,
+        payload: Mapping[str, Any],
+        *,
+        etag: Optional[str] = None,
+    ) -> Any:
+        headers = {"If-Match": etag} if etag else None
+        return await self._request("PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers)
+
+    async def get_persona(self, persona_id: str) -> Mapping[str, Any]:
+        return await self._request("GET", f"/persona/{persona_id}")
+
+    async def delete_persona(self, persona_id: str) -> Any:
+        return await self._request("DELETE", f"/persona/{persona_id}")
+
+    async def link(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/link", json=dict(payload))
+
+    async def plan_suggest(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/plan/suggest", json=dict(payload))
+
+    async def recall_delete(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/recall/delete", json=dict(payload))
+
+    async def constitution_version(self) -> Mapping[str, Any]:
+        return await self._request("GET", "/constitution/version")
+
+    async def constitution_validate(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/constitution/validate", json=dict(payload))
+
+    async def constitution_load(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        return await self._request("POST", "/constitution/load", json=dict(payload))
+
+    async def opa_policy(self) -> Mapping[str, Any]:
+        return await self._request("GET", "/opa/policy")
+
+    async def update_opa_policy(self) -> Mapping[str, Any]:
+        return await self._request("POST", "/opa/policy")
 
     async def delete(self, coordinate: Iterable[float]) -> Mapping[str, Any]:
         body = {"coordinate": list(coordinate)}

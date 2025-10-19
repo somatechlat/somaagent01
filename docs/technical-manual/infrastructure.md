@@ -22,26 +22,24 @@ This blueprint documents how SomaAgent01 is provisioned across local, staging, a
 
 ## 1. Local Environment (Docker Compose)
 
-Compose file: `infra/docker-compose.somaagent01.yaml`
+Compose file: `docker-compose.yaml`
 
 ### Profiles
 
 | Profile | Services | Purpose |
 | ------- | -------- | ------- |
-| `default` | gateway, ui, conversation_worker, memory_service, tool_executor | Base runtime |
-| `vectorstore` | qdrant, pgvector | Advanced memory features |
-| `observability` | prometheus, grafana, loki (optional) | Local observability |
-| `kafka` | kafka, schema-registry | Streaming use cases |
+| `core` | kafka, postgres, redis, opa | Shared infrastructure required by the agent stack |
+| `dev` | gateway, conversation-worker, tool-executor, memory-service, agent-ui | Application services for local development |
 
 ### Bring-Up Command
 
 ```bash
-COMPOSE_PROFILES=default,vectorstore docker compose -f infra/docker-compose.somaagent01.yaml up --build
+docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yaml up -d --build
 ```
 
 **Verification:**
-- `docker compose ps` shows containers healthy.
-- `curl http://localhost:8010/health` returns `200`.
+- `docker compose -p somaagent01 ps` shows containers healthy.
+- `curl http://localhost:${GATEWAY_PORT:-20016}/health` returns `200`.
 
 ## 2. Cluster Deployments (Helm)
 
