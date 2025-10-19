@@ -3,7 +3,7 @@
 .PHONY: help build run clean test lint
 
 # Variables
-DOCKER_COMPOSE = docker-compose -f docker-compose.canonical.yaml
+DOCKER_COMPOSE = docker compose -f docker-compose.yaml
 PYTHON = python3
 PIP = pip3
 

@@ -1,63 +1,66 @@
-# Base Python image
-FROM python:3.11-slim AS python-base
+# Canonical multi-stage build that installs the complete Agent Zero runtime.
+
+FROM python:3.11-slim AS builder
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=1.7.1 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_NO_INTERACTION=1 \
-    PYSETUP_PATH="/opt/pysetup" \
-    VENV_PATH="/opt/pysetup/.venv"
+    VENV_PATH="/opt/venv"
 
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+ENV PATH="$VENV_PATH/bin:$PATH"
 
-# Builder stage
-FROM python-base AS builder
-RUN apt-get update && apt-get install -y \
-    curl \
-    build-essential
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN python -m venv "$VENV_PATH" && \
+    "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
 
-WORKDIR $PYSETUP_PATH
-COPY requirements-canonical.txt ./
-RUN python -m venv $VENV_PATH && \
-    . $VENV_PATH/bin/activate && \
-    pip install --no-cache-dir -r requirements-canonical.txt
+WORKDIR /opt/build
+COPY requirements*.txt ./
+RUN "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-canonical.txt
 
-# Runtime stage
-FROM python-base AS runtime
+
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    VENV_PATH="/opt/venv"
+
+ENV PATH="$VENV_PATH/bin:$PATH" \
+    PYTHONPATH=/app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+        libpq-dev \
+        libssl-dev \
+        libffi-dev \
+        libsasl2-dev \
+        libxml2-dev \
+        libxslt1-dev \
+        zlib1g-dev \
+        libsndfile1 \
+        tesseract-ocr \
+        poppler-utils \
+        ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder "$VENV_PATH" "$VENV_PATH"
 
 WORKDIR /app
-COPY --from=builder $VENV_PATH $VENV_PATH
+COPY . /app
 
-# Copy application code
-COPY services/ /app/services/
-COPY common/ /app/common/
-COPY conf/ /app/conf/
-COPY python/ /app/python/
-COPY models.py /app/models.py
-COPY webui/ /app/webui/
-
-# Create non-root user
 RUN useradd -m -u 1000 agent && \
     chown -R agent:agent /app
 
 USER agent
 
-ENV PATH="$VENV_PATH/bin:$PATH"
-ENV PYTHONPATH=/app
-
-# Health check
+# Health check endpoint defined in services.gateway.main
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 EXPOSE 8000
 
-# Default command (can be overridden)
 CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]

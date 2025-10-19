@@ -22,6 +22,7 @@ x-agent-env: &agent-env
   SOMA_BASE_URL: http://host.docker.internal:9696
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
+  SKM_BASE_URL: http://host.docker.internal:9696
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
 
 x-agent-service: &agent-service
@@ -43,6 +44,8 @@ x-agent-service: &agent-service
       FEATURE_INTEGRATIONS: "false"
       FEATURE_DEV: "true"
   working_dir: /git/agent-zero
+  environment:
+    <<: *agent-env
   volumes:
     - ./memory:/git/agent-zero/memory
     - ./logs:/git/agent-zero/logs

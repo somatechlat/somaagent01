@@ -9,17 +9,17 @@ last-reviewed: 2025-10-17
 Base URL
 
 - Container network: http://localhost:8010 (service listens on 8010)
-- Host (dev compose): http://localhost:${DEV_GATEWAY_PORT:-60816}
+- Host (dev compose): http://localhost:${GATEWAY_PORT:-20016}
 
-Tip: Use Makefile helpers to manage the dev stack without editing docker files:
+Tip: Use Makefile helpers to manage the dev stack (wrapping `docker-compose.yaml`):
 
-- make dev-up — start minimal stack (docker-compose.dev.yaml)
+- make dev-up — start the core + dev profiles
 - make dev-rebuild — rebuild and restart
 - make dev-logs — tail logs
 - make dev-up-services SERVICES="conversation-worker tool-executor" — start specific services
-- You can temporarily override the host port without file edits: make dev-up DEV_GATEWAY_PORT=60817
+- Override the exposed gateway port as needed: make dev-up GATEWAY_PORT=20050
 
-Tip: If you changed DEV_GATEWAY_PORT, substitute your host port in the examples below.
+Tip: If you changed `GATEWAY_PORT`, substitute your host port in the examples below.
 
 Authentication
 

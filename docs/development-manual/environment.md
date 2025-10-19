@@ -65,12 +65,13 @@ Verify: `npm run lint` passes.
 make dev-up
 ```
 
-- UI available at `http://localhost:7002`.
+- Gateway available at `http://localhost:${GATEWAY_PORT:-20016}`.
+- UI (when started) available at `http://localhost:${AGENT_UI_PORT:-20015}`.
 - Logs tail via `make dev-logs`.
 
 **Verification:**
-- `make dev-status` shows services healthy.
-- `curl http://localhost:8010/health` returns `200`.
+- `docker compose -p somaagent01 ps` shows services healthy.
+- `curl http://localhost:${GATEWAY_PORT:-20016}/health` returns `200`.
 
 ## 6. Testing
 
@@ -84,24 +85,31 @@ pytest tests/playwright/test_realtime_speech.py --headed
 | Task | Command |
 | ---- | ------- |
 | Stop stack | `make dev-down` |
-| Clean volumes | `make dev-clean` |
-| Format Python | `make fmt` |
-| Lint | `make lint` |
-| Apply lint fixes | `make lint-fix` |
+| Rebuild stack | `make dev-rebuild` |
+| Tail a specific service | `make dev-logs-svc SERVICES=gateway` |
+| Start selected services | `make dev-up-services SERVICES="gateway tool-executor"` |
+| Clean volumes | `make clean` |
+| Lint Python | `ruff check .` |
+| Format Python | `black .` |
 
 ## 8. Local Docker Compose Reference
 
-- **Lightweight developer stack** (`docker-compose.dev.yaml`): trimmed to Postgres, Redis, Kafka, OPA, Gateway, Conversation Worker, Tool Executor, optional UI. Default host ports live in the `608xx` range (e.g., gateway on `http://localhost:60816`). Handy shortcuts: `make dev-up`, `make dev-logs`, `make dev-down`.
-- **Full stack** (`docker-compose.somaagent01.yaml`): enables all profiles (`vectorstore`, `observability`, `kafka`) for parity with staging/production (`docker compose --profile vectorstore up`).
+- Single compose file `docker-compose.yaml` drives local development.
+- Profiles:
+  - `core`: Kafka (`${KAFKA_PORT:-20000}`), Redis (`${REDIS_PORT:-20001}`), Postgres (`${POSTGRES_PORT:-20002}`), OPA (`${OPA_PORT:-20009}`).
+  - `dev`: Gateway (`${GATEWAY_PORT:-20016}`), Conversation Worker, Tool Executor, Memory Service (`${MEMORY_SERVICE_PORT:-20017}`), Agent UI (`${AGENT_UI_PORT:-20015}`).
+- Bring-up examples:
+  - `docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yaml up -d`
+  - `docker compose -p somaagent01 --profile core -f docker-compose.yaml up -d kafka redis postgres`
 - Recommended Docker Desktop allocation: ≥8 CPUs, ≥12 GB RAM to keep Kafka/Postgres healthy.
 - Frequently used containers:
-  - `somaAgent01_gateway` → `http://localhost:8010`
-  - `somaAgent01_agent-ui` → `http://localhost:7002`
+  - `somaAgent01_gateway` → `http://localhost:${GATEWAY_PORT:-20016}`
+  - `somaAgent01_agent-ui` → `http://localhost:${AGENT_UI_PORT:-20015}`
   - `somaAgent01_tool-executor`
   - `somaAgent01_conversation-worker`
 - Verification checklist after `docker compose up`:
-  1. `curl http://localhost:8010/health`
-  2. `docker compose ps` shows services `healthy`
+  1. `curl http://localhost:${GATEWAY_PORT:-20016}/health`
+  2. `docker compose -p somaagent01 ps` shows services `healthy`
   3. `docker exec somaAgent01_postgres psql -U soma -d somaagent01 -c "SELECT NOW();"`
 - Troubleshooting quick hits:
   - Port clash on Kafka (`9092`): set `KAFKA_PORT` in `.env` or stop conflict.

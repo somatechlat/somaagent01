@@ -20,24 +20,25 @@ This chapter lists the sanctioned tooling for SomaAgent01 development and how to
 ## Command Interface
 
 - **Makefile targets** (see `Makefile`):
-  - `make dev-up`, `make dev-down`, `make dev-logs`.
-  - `make fmt`, `make lint`, `make test`, `make docs-verify`.
-- **Poetry** (if enabled): `poetry install`, `poetry run pytest`.
-- **Node toolchain:** `npm run lint`, `npm run build` under `webui/`.
+  - `make build`, `make up`, `make down`, `make logs`, `make clean`.
+  - `make dev-up`, `make dev-down`, `make dev-logs`, `make dev-rebuild`, `make dev-up-services SERVICES=gateway`.
+  - `make docs-install`, `make docs-build`, `make docs-verify`.
+- **Python environment:** `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
+- **Node toolchain:** `npm install && npm run build` under `webui/` when working on the UI.
 
 ## Linting & Formatting
 
 | Language | Tool | Command |
 | -------- | ---- | ------- |
-| Python | Black, Ruff, Mypy | `make fmt fmt-check lint mypy` |
+| Python | Ruff, Black | `ruff check .`, `black .` |
 | JavaScript/TypeScript | ESLint, Prettier | `npm run lint`, `npm run format` |
-| Markdown | markdownlint-cli2 | `make docs-verify` |
+| Markdown/Docs | MkDocs + markdownlint | `make docs-verify` |
 
 ## Documentation Pipeline
 
-- MkDocs configuration: `mkdocs.yml` (added in docs sprint).
-- Diagram rendering: `mmdc` (Mermaid CLI) invoked via `make docs-diagrams`.
-- Link checking: `lychee` executed in docs CI workflow.
+- MkDocs configuration: `mkdocs.yml`.
+- Local authoring: `make docs-install` once, then `make docs-build` (strict) or `make docs-serve`.
+- CI parity: `.github/workflows/docs.yml` runs `make docs-verify`.
 
 ## Observability & Debugging
 
@@ -57,4 +58,6 @@ This chapter lists the sanctioned tooling for SomaAgent01 development and how to
 
 ## Verification
 
-- Run `make tooling-audit` (script added in this sprint) to ensure required binaries are present and versions are compatible.
+- Run `pytest` for the Python test suite.
+- `make docs-verify` prior to publishing documentation changes.
+- `docker compose -p somaagent01 -f docker-compose.yaml ps` to confirm service health after stack changes.

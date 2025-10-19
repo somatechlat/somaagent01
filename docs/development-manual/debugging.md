@@ -22,9 +22,9 @@ Practical steps for diagnosing SomaAgent01 issues across services.
 
 | Service | Command |
 | --- | --- |
-| Gateway | `docker compose -f docker-compose.somaagent01.yaml logs -f gateway` |
-| Tool Executor | `docker compose -f docker-compose.somaagent01.yaml logs -f tool-executor` |
-| Conversation Worker | `docker compose -f docker-compose.somaagent01.yaml logs -f conversation-worker` |
+| Gateway | `docker compose -p somaagent01 -f docker-compose.yaml logs -f gateway` |
+| Tool Executor | `docker compose -p somaagent01 -f docker-compose.yaml logs -f tool-executor` |
+| Conversation Worker | `docker compose -p somaagent01 -f docker-compose.yaml logs -f conversation-worker` |
 | UI | Browser DevTools console (`speech-store` namespace for realtime) |
 
 ## Common Scenarios

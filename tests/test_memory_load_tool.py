@@ -66,8 +66,11 @@ class StubSomaClient:
         self._error = error
         self.calls: list[dict] = []
 
-    async def recall(self, query, *, top_k, universe=None):
-        self.calls.append({"query": query, "top_k": top_k, "universe": universe})
+    async def recall(self, query, *, top_k, universe=None, **kwargs):
+        call = {"query": query, "top_k": top_k, "universe": universe}
+        if kwargs:
+            call.update(kwargs)
+        self.calls.append(call)
         if self._error is not None:
             raise self._error
         return self._response or {}

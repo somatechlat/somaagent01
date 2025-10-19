@@ -36,12 +36,14 @@ ENV ENABLE_TORCH=$ENABLE_TORCH
 COPY ./docker/run/fs/ /
 COPY ./requirements-core.txt /git/agent-zero/
 COPY ./requirements.txt /git/agent-zero/
+COPY ./requirements-dev.txt /git/agent-zero/
 
 # Copy only necessary application files
 COPY ./services/ /git/agent-zero/services/
 COPY ./common/ /git/agent-zero/common/
 COPY ./python/ /git/agent-zero/python/
 COPY ./conf/ /git/agent-zero/conf/
+COPY ./lib/ /git/agent-zero/lib/
 COPY ./models.py /git/agent-zero/
 COPY ./run_ui.py /git/agent-zero/
 COPY ./initialize.py /git/agent-zero/
@@ -89,50 +91,8 @@ RUN if [ "$SERVICE" = "developer" ]; then \
 
 # Install ALL Python dependencies
 RUN pip install --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir \
-    fasta2a==0.5.0 \
-    fastmcp==2.3.4 \
-    mcp==1.13.1 \
-    flask[async]==3.0.3 \
-    flask-basicauth==0.2.0 \
-    browser-use==0.5.11 \
-    docker==7.1.0 \
-    duckduckgo-search==6.1.12 \
-    faiss-cpu==1.11.0 \
-    flaredantic==0.1.4 \
-    GitPython==3.1.43 \
-    inputimeout==1.0.4 \
-    kokoro>=0.9.2 \
-    simpleeval==1.0.3 \
-    langchain-core==0.3.49 \
-    langchain-community==0.3.19 \
-    langchain-unstructured==0.1.6 \
-    openai-whisper==20240930 \
-    lxml_html_clean==0.3.1 \
-    markdown==3.7 \
-    newspaper3k==0.2.8 \
-    paramiko==3.5.0 \
-    playwright==1.52.0 \
-    pytest-playwright==0.5.1 \
-    pypdf==6.0.0 \
-    python-dotenv==1.1.0 \
-    pytz==2024.2 \
-    sentence-transformers==3.0.1 \
-    tiktoken==0.8.0 \
-    unstructured[all-docs]==0.16.23 \
-    unstructured-client==0.31.0 \
-    webcolors==24.6.0 \
-    nest-asyncio==1.6.0 \
-    crontab==1.0.1 \
-    litellm==1.75.0 \
-    markdownify==1.1.0 \
-    pymupdf==1.25.3 \
-    pytesseract==0.3.13 \
-    pdf2image==1.17.0 \
-    pathspec>=0.12.1 \
-    psutil>=7.0.0 \
-    soundfile==0.13.1
-RUN pip install --no-cache-dir -r /git/agent-zero/requirements-core.txt
+RUN pip install --no-cache-dir -r /git/agent-zero/requirements.txt
+RUN pip install --no-cache-dir fasta2a==0.5.0 fastmcp==2.3.4 mcp==1.13.1
 
 # install additional software (full/dev image only)
 RUN if [ -z "$SERVICE" ]; then bash /ins/install_additional.sh $BRANCH; else echo "Skipping install_additional.sh for SERVICE=$SERVICE"; fi
