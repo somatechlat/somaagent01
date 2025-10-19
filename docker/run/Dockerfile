@@ -14,14 +14,14 @@ COPY ./fs/ /
 RUN bash /ins/pre_install.sh $BRANCH
 
 # install A0
-RUN bash /ins/install_A0.sh $BRANCH
+RUN bash /ins/install.sh $BRANCH
 
-# install additional software
+# install additional software (no-op currently, retained for compatibility)
 RUN bash /ins/install_additional.sh $BRANCH
 
-# cleanup repo and install A0 without caching, this speeds up builds
+# cache buster to avoid stale layers without invoking removed scripts
 ARG CACHE_DATE=none
-RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
+RUN echo "cache buster $CACHE_DATE"
 
 # post installation steps
 RUN bash /ins/post_install.sh $BRANCH

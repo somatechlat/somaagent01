@@ -8,135 +8,72 @@ ENV UV_HTTP_TIMEOUT=180
 # Set BRANCH to "local" if not provided
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
- 
+
 # Build-time toggles for feature-based installation
 # SERVICE: optional service name to include specific runtime deps (e.g. memory_service)
 # K8S: optional flag for k8s-tuned builds (not changing entrypoint or compose behavior)
 ARG SERVICE=""
 ARG K8S=false
 
-# Feature flags for modular installation
-# Dev-safe defaults: avoid heavy AI / DB / browser installs unless explicitly requested
-ARG FEATURE_AI=none
+# Feature flags for modular installation (defaults tuned for dev reliability)
+ARG FEATURE_AI=basic
 ARG FEATURE_AUDIO=none
-ARG FEATURE_BROWSER=false
-ARG FEATURE_DOCUMENTS=false
-ARG FEATURE_DATABASE=false
+ARG FEATURE_BROWSER=true
+ARG FEATURE_DOCUMENTS=true
+ARG FEATURE_DATABASE=true
 ARG FEATURE_MONITORING=false
 ARG FEATURE_DEV=true
-ARG FEATURE_GRPC=false
-ARG FEATURE_INTEGRATIONS=false
+ARG FEATURE_GRPC=true
+ARG FEATURE_INTEGRATIONS=true
 ARG TORCH_VARIANT=none
 ARG ENABLE_TORCH=false
 
-ENV TORCH_VARIANT=$TORCH_VARIANT
-ENV ENABLE_TORCH=$ENABLE_TORCH
+# Surface feature args to shell during RUN steps
+ENV FEATURE_AI=${FEATURE_AI} \
+    FEATURE_AUDIO=${FEATURE_AUDIO} \
+    FEATURE_BROWSER=${FEATURE_BROWSER} \
+    FEATURE_DOCUMENTS=${FEATURE_DOCUMENTS} \
+    FEATURE_DATABASE=${FEATURE_DATABASE} \
+    FEATURE_MONITORING=${FEATURE_MONITORING} \
+    FEATURE_DEV=${FEATURE_DEV} \
+    FEATURE_GRPC=${FEATURE_GRPC} \
+    FEATURE_INTEGRATIONS=${FEATURE_INTEGRATIONS} \
+    ENABLE_TORCH=${ENABLE_TORCH} \
+    TORCH_VARIANT=${TORCH_VARIANT} \
+    INSTALL_PRELOAD=false
 
-# Copy only essential files required during image build
+# Copy installer filesystem and the entire repo to ensure full context is available
+# Installer filesystem
 COPY ./docker/run/fs/ /
-COPY ./requirements-core.txt /git/agent-zero/
-COPY ./requirements.txt /git/agent-zero/
-COPY ./requirements-dev.txt /git/agent-zero/
 
-# Copy only necessary application files
+# Minimal agent project files only (avoid copying full repo)
+# Requirements for modular installer
+COPY ./requirements*.txt /git/agent-zero/
+
+# Core application code
+COPY ./run_ui.py /git/agent-zero/
+COPY ./agent.py /git/agent-zero/
+COPY ./models.py /git/agent-zero/
+COPY ./initialize.py /git/agent-zero/
+COPY ./prepare.py /git/agent-zero/
+COPY ./preload.py /git/agent-zero/
+
+# Packages and resources the agent needs
+COPY ./python/ /git/agent-zero/python/
 COPY ./services/ /git/agent-zero/services/
 COPY ./common/ /git/agent-zero/common/
-COPY ./python/ /git/agent-zero/python/
 COPY ./conf/ /git/agent-zero/conf/
 COPY ./lib/ /git/agent-zero/lib/
-COPY ./models.py /git/agent-zero/
-COPY ./run_ui.py /git/agent-zero/
-COPY ./initialize.py /git/agent-zero/
-COPY ./agent.py /git/agent-zero/
-COPY ./preload.py /git/agent-zero/
-COPY ./prepare.py /git/agent-zero/
+COPY ./prompts/ /git/agent-zero/prompts/
+COPY ./webui/ /git/agent-zero/webui/
 
+# Prefer Python 3.12 venv prepared in the base image for compatibility
+ENV PATH="/opt/venv-a0/bin:${PATH}"
 
-# pre installation steps
+# Pre-install, modular install, and post-install using the canonical installer
 RUN bash /ins/pre_install.sh $BRANCH
-
-# Prepare a dedicated venv that exposes system site packages so apt-provided wheels stay visible.
-RUN apt-get update && apt-get install -y python3-venv python3-pip && \
-    python3 -m venv --system-site-packages /venv && \
-    /venv/bin/pip install --upgrade pip setuptools wheel && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    echo "export PATH=/venv/bin:\$PATH" > /etc/profile.d/venv_path.sh
-
-# Make sure the container runtime uses the venv by default
-ENV PATH="/venv/bin:${PATH}"
-
-# Ensure native build tools and common dev libraries are available so extensions
-# (asyncpg, grpcio, cryptography, etc.) can compile during the install script.
-# For the lightweight developer image (SERVICE=developer) we skip this heavy
-# toolchain to keep the container small and faster to build.
-RUN if [ "$SERVICE" = "developer" ]; then \
-        echo "Skipping heavy build dependencies for SERVICE=developer"; \
-    else \
-        apt-get update && apt-get install -y --no-install-recommends \
-            build-essential \
-            gcc \
-            make \
-            pkg-config \
-            python3-dev \
-            libpq-dev \
-            libssl-dev \
-            libffi-dev \
-            zlib1g-dev \
-            libxml2-dev \
-            libxslt1-dev \
-            libsasl2-dev \
-            git \
-        && apt-get clean && rm -rf /var/lib/apt/lists/*; \
-    fi
-
-# Install ALL Python dependencies
-RUN pip install --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir -r /git/agent-zero/requirements.txt
-RUN pip install --no-cache-dir fasta2a==0.5.0 fastmcp==2.3.4 mcp==1.13.1
-
-# install additional software (full/dev image only)
-RUN if [ -z "$SERVICE" ]; then bash /ins/install_additional.sh $BRANCH; else echo "Skipping install_additional.sh for SERVICE=$SERVICE"; fi
-
-
-
-# post installation steps (full/dev image only)
-RUN if [ -z "$SERVICE" ]; then bash /ins/post_install.sh $BRANCH; else echo "Skipping post_install.sh for SERVICE=$SERVICE"; fi
-
-# Minimal extras required at runtime but not carried in upstream requirements.
-RUN /venv/bin/pip install --no-cache-dir supervisor jsonschema && \
-    if [ "$SERVICE" = "developer" ]; then \
-        /venv/bin/pip install --no-cache-dir "langchain<0.2"; \
-    else \
-        /venv/bin/pip install --no-cache-dir \
-            "asyncpg>=0.29" \
-            "langchain<0.2"; \
-    fi
-
-# Whisper installation is now handled by modular installer based on FEATURE_AUDIO
-
-# Torch installation handled by modular installer based on FEATURE_AI 
-
-# Playwright installation handled by modular installer based on FEATURE_BROWSER
-
-# Install asyncpg for async PostgreSQL access
-# Use the distribution package to avoid compiling wheels on Python 3.13.
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "gateway" ] || [ "$SERVICE" = "memory_service" ] || [ "$SERVICE" = "developer" ]; then \
-        apt-get update && apt-get install -y python3-asyncpg && \
-        apt-get clean && rm -rf /var/lib/apt/lists/*; \
-    else \
-        echo "Skipping asyncpg for SERVICE=$SERVICE"; \
-    fi
-
-# Install gRPC runtime for memory service (and full/dev)
-# Use the distribution package for grpc runtime to avoid building grpc C extensions in the image.
-RUN if [ -z "$SERVICE" ] || [ "$SERVICE" = "memory_service" ]; then \
-    apt-get update && apt-get install -y python3-grpcio && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*; \
-    else \
-        echo "Skipping grpcio for SERVICE=$SERVICE"; \
-    fi
-
-# Per-service extras handled via mounted source and feature flags at runtime
+RUN bash /ins/install.sh $BRANCH
+RUN bash /ins/post_install.sh $BRANCH
 
 # Expose ports
 EXPOSE 22 80 9000-9009 20017

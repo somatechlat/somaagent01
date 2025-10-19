@@ -30,19 +30,6 @@ x-agent-service: &agent-service
   build:
     context: .
     dockerfile: DockerfileLocal
-    args:
-      TORCH_VARIANT: ${TORCH_VARIANT:-none}
-      ENABLE_TORCH: "false"
-      # Developer-focused defaults: disable heavy libraries for fast local builds
-      FEATURE_AI: "none"
-      FEATURE_DATABASE: "false"
-      FEATURE_AUDIO: "none"
-      FEATURE_BROWSER: "false"
-      FEATURE_DOCUMENTS: "false"
-      FEATURE_MONITORING: "false"
-      FEATURE_GRPC: "false"
-      FEATURE_INTEGRATIONS: "false"
-      FEATURE_DEV: "true"
   working_dir: /git/agent-zero
   environment:
     <<: *agent-env
@@ -53,7 +40,6 @@ x-agent-service: &agent-service
     - ./instruments:/git/agent-zero/instruments:ro
     - ./tmp:/git/agent-zero/tmp
     - ./prompts:/git/agent-zero/prompts:ro
-    - ./webui:/git/agent-zero/webui:ro
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -199,6 +185,8 @@ services:
     <<: *agent-service
     container_name: somaAgent01_agent-ui
     profiles: ["dev"]
+    volumes:
+      - ./webui:/git/agent-zero/webui:ro
     command:
       - python3
       - run_ui.py
