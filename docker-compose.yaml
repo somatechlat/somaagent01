@@ -62,7 +62,7 @@ services:
       kafka:
         condition: service_healthy
     entrypoint: ["bash", "-lc"]
-    command: ["/init/init-topics.sh"]
+    command: bash /init/init-topics.sh
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     volumes:

@@ -160,7 +160,11 @@ fi
 
 # --- 5. Post-installation Steps ---
 # Ensure core extras used by the app are present (not covered by modular files)
-pip install --no-cache-dir fasta2a==0.5.0 fastmcp==2.3.4 mcp==1.13.1 || true
+pip install --no-cache-dir \
+    fasta2a==0.5.0 \
+    fastmcp==2.3.4 \
+    mcp==1.13.1 \
+    crontab==1.0.1 || true
 # Ensure critical runtime packages are present even if uv failed to resolve them
 set +e
 python - <<'PY'
