@@ -1378,7 +1378,16 @@ def _remove_sensitive_settings(settings: Settings):
 
 def _write_sensitive_settings(settings: Settings):
     for key, val in settings["api_keys"].items():
-        dotenv.save_dotenv_value(key.upper(), val)
+        # UI field ids are of the form "api_key_{provider}". Most libraries
+        # (litellm, provider SDKs) expect env vars like "OPENROUTER_API_KEY".
+        # Map api_key_openrouter -> OPENROUTER_API_KEY. Fall back to uppercased
+        # key for any other naming.
+        if isinstance(key, str) and key.startswith("api_key_"):
+            provider = key[len("api_key_"):]
+            env_key = f"{provider.upper()}_API_KEY"
+        else:
+            env_key = key.upper()
+        dotenv.save_dotenv_value(env_key, val)
 
     dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])
     if settings["auth_password"]:
