@@ -3,7 +3,7 @@
 
 x-agent-env: &agent-env
   # Include legacy /a0 path so services referencing /a0/common continue to work
-  PYTHONPATH: "/git/agent-zero:/a0"
+  PYTHONPATH: "/git/agent-zero"
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   REDIS_URL: redis://redis:6379/0
@@ -24,7 +24,8 @@ x-agent-env: &agent-env
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
   SKM_BASE_URL: http://host.docker.internal:9696
-  GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
+  # Default to empty in dev to avoid unintended authentication requirements.
+  GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
   USE_LLM: "true"
 
 x-agent-service: &agent-service
@@ -42,9 +43,8 @@ x-agent-service: &agent-service
     - ./instruments:/git/agent-zero/instruments:ro
     - ./tmp:/git/agent-zero/tmp
     - ./prompts:/git/agent-zero/prompts:ro
-    # Legacy A0 mounts for backward compatibility with older deployment layouts
-    - ./a0_data:/a0:ro
-    - ./common:/a0/common:ro
+    # Note: legacy /a0 mounts removed for modern deployments. If you need
+    # historic A0 data, restore from agent-zero/legacy_a0 or the legacy backup.
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -246,7 +246,9 @@ services:
     environment:
       <<: *agent-env
       PORT: "8010"
-      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-true}
+      # For local development default to false to simplify testing. Set the
+      # environment variable to 'true' in staging/production as needed.
+      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
     ports:
       - "${GATEWAY_PORT:-20016}:8010"
 

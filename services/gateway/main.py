@@ -105,6 +105,25 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
 
+
+# Helper to construct a CircuitBreaker in a backward-compatible way.
+def _make_circuit_breaker(*, fail_max: int = 5, reset_timeout: int = 60, expected_exception: type | None = None):
+    """Create a pybreaker.CircuitBreaker while accepting older pybreaker
+    versions that don't support the `expected_exception` keyword.
+
+    We try the modern signature first and fall back gracefully on TypeError.
+    """
+    if expected_exception is None:
+        # Simple fast path
+        return pybreaker.CircuitBreaker(fail_max=fail_max, reset_timeout=reset_timeout)
+    try:
+        return pybreaker.CircuitBreaker(
+            fail_max=fail_max, reset_timeout=reset_timeout, expected_exception=expected_exception
+        )
+    except TypeError:
+        # Older pybreaker versions don't accept `expected_exception`; fall back.
+        return pybreaker.CircuitBreaker(fail_max=fail_max, reset_timeout=reset_timeout)
+
 # ---------------------------------------------------------------------------
 # Feature‑flag hot‑reload background task
 # ---------------------------------------------------------------------------
@@ -508,9 +527,7 @@ async def _get_jwks_keys() -> list[dict[str, Any]]:
         return cached[0]
 
     # Use circuit breaker to protect JWKS fetches (mandatory for production)
-    breaker = pybreaker.CircuitBreaker(
-        fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError
-    )
+    breaker = _make_circuit_breaker(fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError)
 
     async def _fetch_jwks() -> list[dict[str, Any]]:
         async with httpx.AsyncClient(timeout=JWKS_TIMEOUT_SECONDS) as client:
@@ -588,9 +605,7 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
             return await client.post(decision_url, json={"input": opa_input})
 
     # Apply circuit breaker to protect OPA service (mandatory for production)
-    breaker = pybreaker.CircuitBreaker(
-        fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError
-    )
+    breaker = _make_circuit_breaker(fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError)
 
     try:
         response = await _post_opa()

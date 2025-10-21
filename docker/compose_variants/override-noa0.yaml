@@ -1,0 +1,55 @@
+version: '3.8'
+
+# Redefine the agent anchor without legacy A0 mounts so service-level merges
+# won't reintroduce ./a0_data or ./common bind mounts. This file is safe to
+# use as an override when running on macOS where the host /a0 mount may be
+# problematic; it's reversible by removing this override.
+
+# Redefine the agent service anchor without A0 mounts (no ./a0_data or ./common)
+services:
+  conversation-worker:
+    volumes:
+      - ./memory:/git/agent-zero/memory
+      - ./logs:/git/agent-zero/logs
+      - ./knowledge:/git/agent-zero/knowledge:ro
+      - ./instruments:/git/agent-zero/instruments:ro
+      - ./tmp:/git/agent-zero/tmp
+      - ./prompts:/git/agent-zero/prompts:ro
+
+  tool-executor:
+    volumes:
+      - ./memory:/git/agent-zero/memory
+      - ./logs:/git/agent-zero/logs
+      - ./knowledge:/git/agent-zero/knowledge:ro
+      - ./instruments:/git/agent-zero/instruments:ro
+      - ./tmp:/git/agent-zero/tmp
+      - ./prompts:/git/agent-zero/prompts:ro
+
+  memory-service:
+    volumes:
+      - ./memory:/git/agent-zero/memory
+      - ./logs:/git/agent-zero/logs
+      - ./knowledge:/git/agent-zero/knowledge:ro
+      - ./instruments:/git/agent-zero/instruments:ro
+      - ./tmp:/git/agent-zero/tmp
+      - ./prompts:/git/agent-zero/prompts:ro
+
+  agent-ui:
+    volumes:
+      - ./memory:/git/agent-zero/memory
+      - ./logs:/git/agent-zero/logs
+      - ./knowledge:/git/agent-zero/knowledge:ro
+      - ./instruments:/git/agent-zero/instruments:ro
+      - ./tmp:/git/agent-zero/tmp
+      - ./prompts:/git/agent-zero/prompts:ro
+      - ./webui:/git/agent-zero/webui:ro
+
+  gateway:
+    volumes:
+      - ./memory:/git/agent-zero/memory
+      - ./logs:/git/agent-zero/logs
+      - ./knowledge:/git/agent-zero/knowledge:ro
+      - ./instruments:/git/agent-zero/instruments:ro
+      - ./tmp:/git/agent-zero/tmp
+      - ./prompts:/git/agent-zero/prompts:ro
+

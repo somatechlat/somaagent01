@@ -370,6 +370,29 @@ class ConversationWorker:
                 record_metrics("validation_error")
                 return
 
+            # Emit a short, single-line log entry as early as possible when an inbound
+            # conversation event is processed. This helps correlate gateway POSTs
+            # with worker activity during debugging and Playwright runs.
+            try:
+                event_id = event.get("event_id") or str(uuid.uuid4())
+                tenant = (event.get("metadata") or {}).get("tenant", "default")
+                preview = (event.get("message") or "")[:200]
+            except Exception:
+                # Defensive fallback - never fail message processing due to logging
+                event_id = event.get("event_id") if isinstance(event, dict) else ""
+                tenant = "default"
+                preview = ""
+
+            LOGGER.info(
+                "Received inbound event",
+                extra={
+                    "event_id": event_id,
+                    "session_id": session_id,
+                    "tenant": tenant,
+                    "preview": preview,
+                },
+            )
+
             LOGGER.info("Processing message", extra={"session_id": session_id})
 
             analysis = self.preprocessor.analyze(event.get("message", ""))
