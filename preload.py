@@ -7,6 +7,7 @@ import os
 # importing optional heavy audio dependencies at module import time.
 from python.helpers.print_style import PrintStyle
 from python.helpers import runtime
+import inspect
 
 
 async def preload():
@@ -38,14 +39,64 @@ async def preload():
 
                 if set["embed_model_provider"].lower() == "huggingface":
                     try:
+                        # If sentence-transformers isn't installed in the image
+                        # the models.LocalSentenceTransformerWrapper will try to
+                        # call SentenceTransformer which will be None and raise
+                        # a confusing TypeError. Detect that case early and
+                        # skip embedding preload.
+                        import models as _models
+
+                        if getattr(_models, "SentenceTransformer", None) is None:
+                            PrintStyle().print(
+                                "Skipping embedding preload — sentence-transformers not installed in this image"
+                            )
+                            return
                         # Import models lazily to avoid importing heavy AI libraries at
                         # module import time during the installer/dev builds.
                         import models
 
                         # Use the new LiteLLM-based model system
-                        emb_mod = models.get_embedding_model("huggingface", set["embed_model_name"])
-                        emb_txt = await emb_mod.aembed_query("test")
-                        return emb_txt
+                        emb_mod = models.get_embedding_model(
+                            "huggingface", set["embed_model_name"]
+                        )
+
+                        # Some embedding wrappers expose an async `aembed_query`.
+                        # Others only implement a sync `embed_query`. Support both
+                        # to avoid 'NoneType' is not callable errors when aembed_query
+                        # is present but set to None by the base class.
+                        # Some wrappers expose an async `aembed_query`, others only
+                        # a sync `embed_query`. Use inspect to detect coroutine
+                        # functions and fall back to running sync methods in a
+                        # thread. Wrap calls to avoid accidentally calling None or
+                        # non-callable attributes which previously raised
+                        # "'NoneType' object is not callable".
+                        aembed = getattr(emb_mod, "aembed_query", None)
+                        embed_sync = getattr(emb_mod, "embed_query", None)
+
+                        async def _maybe_call(func, *args, **kwargs):
+                            if func is None:
+                                raise RuntimeError("No callable provided")
+                            # coroutine function
+                            if inspect.iscoroutinefunction(func):
+                                return await func(*args, **kwargs)
+                            # already a coroutine object (unlikely as attribute)
+                            if inspect.isawaitable(func):
+                                return await func
+                            # regular callable -> run in thread
+                            if callable(func):
+                                return await asyncio.to_thread(func, *args, **kwargs)
+                            raise RuntimeError("Embedding attribute is not callable")
+
+                        # Try async embed first, then sync fallback
+                        try:
+                            return await _maybe_call(aembed, "test")
+                        except Exception:
+                            try:
+                                return await _maybe_call(embed_sync, "test")
+                            except Exception as e:
+                                raise RuntimeError(
+                                    f"Embedding model has no usable embed_query method: {e}"
+                                )
                     except Exception as e:
                         PrintStyle().error(f"Error in preload_embedding: {e}")
 

@@ -2,7 +2,8 @@
 # This file defines all services for the development environment.
 
 x-agent-env: &agent-env
-  PYTHONPATH: /git/agent-zero
+  # Include legacy /a0 path so services referencing /a0/common continue to work
+  PYTHONPATH: "/git/agent-zero:/a0"
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   REDIS_URL: redis://redis:6379/0
@@ -24,6 +25,7 @@ x-agent-env: &agent-env
   SOMA_ENABLED: "true"
   SKM_BASE_URL: http://host.docker.internal:9696
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
+  USE_LLM: "true"
 
 x-agent-service: &agent-service
   image: somaagent01-dev:latest
@@ -40,6 +42,9 @@ x-agent-service: &agent-service
     - ./instruments:/git/agent-zero/instruments:ro
     - ./tmp:/git/agent-zero/tmp
     - ./prompts:/git/agent-zero/prompts:ro
+    # Legacy A0 mounts for backward compatibility with older deployment layouts
+    - ./a0_data:/a0:ro
+    - ./common:/a0/common:ro
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -82,14 +87,17 @@ services:
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CFG_NUM_PARTITIONS: "3"
-      KAFKA_CFG_MAX_REQUEST_SIZE: "2147483647"
-      KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483647"
-      KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483647"
+      # Keep request sizes reasonable to avoid large buffer allocations in the broker JVM
+      # (previously set to very large values which can trigger JVM allocation errors)
+      # KAFKA_CFG_MAX_REQUEST_SIZE: "2147483647"
+      # KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483647"
+      # KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483647"
       KAFKA_CLUSTER_ID: "kcqIv3RutQm49oJm9sYzVg"
       KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
       KAFKA_ENABLE_KRAFT: "yes"
       KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
-      KAFKA_HEAP_OPTS: "-Xms1g -Xmx2g"
+      # Lower default JVM heap for the broker to avoid host OOMs on dev machines; adjust if needed
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
       KAFKA_CFG_LOG_RETENTION_HOURS: "168"
       KAFKA_CFG_LOG_RETENTION_BYTES: "1073741824"
       BITNAMI_DEBUG: "true"
@@ -207,8 +215,11 @@ services:
     profiles: ["dev"]
     volumes:
       - ./webui:/git/agent-zero/webui:ro
+    # Run using the venv Python created by the installer so installed
+    # dependencies (under /opt/venv-a0) are available at runtime. The
+    # system python in the image may not have pip-installed packages.
     command:
-      - python3
+      - /opt/venv-a0/bin/python
       - run_ui.py
       - --dockerized=true
       - --host=0.0.0.0

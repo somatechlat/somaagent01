@@ -27,6 +27,10 @@ class EnvironmentAwareSettings(BaseSettings):
         env_file_encoding="utf-8",
         extra="allow",
         case_sensitive=False,
+        # Prevent pydantic warnings where fields like 'model_profiles_path'
+        # conflict with the 'model_' protected namespace. Adding a custom
+        # protected namespace for settings avoids the warning and is safe.
+        protected_namespaces=("settings_",),
     )
 
     @classmethod
@@ -164,6 +168,10 @@ class SA01Settings(EnvironmentAwareSettings):
         env_file_encoding="utf-8",
         extra="allow",
         case_sensitive=False,
+        # Avoid protected namespace conflicts reported by pydantic for
+        # fields that begin with 'model_'. This aligns with the warning
+        # remediation suggestion and prevents noisy logs.
+        protected_namespaces=("settings_",),
     )
 
     @classmethod

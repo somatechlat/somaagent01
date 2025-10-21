@@ -1,10 +1,19 @@
 import threading
 
-from flaredantic import FlareConfig, FlareTunnel, ServeoConfig, ServeoTunnel
+try:
+    from flaredantic import FlareConfig, FlareTunnel, ServeoConfig, ServeoTunnel
+    _FLAREDANTIC_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    _FLAREDANTIC_AVAILABLE = False
 
 
-# Singleton to manage the tunnel instance
 class TunnelManager:
+    """Singleton to manage the tunnel instance.
+
+    If `flaredantic` is not available, the manager will provide no-op methods
+    with clear messages so the rest of the app doesn't crash at import time.
+    """
+
     _instance = None
     _lock = threading.Lock()
 
@@ -22,14 +31,15 @@ class TunnelManager:
         self.provider = None
 
     def start_tunnel(self, port=80, provider="serveo"):
-        """Start a new tunnel or return the existing one's URL"""
-        if self.is_running and self.tunnel_url:
-            return self.tunnel_url
+        if not _FLAREDANTIC_AVAILABLE:
+            PrintError = __import__("python.helpers.print_style", fromlist=["PrintStyle"]).PrintStyle
+            PrintError.error("Tunnel provider not installed (flaredantic). Set up a tunnel or install 'flaredantic' to enable tunneling.")
+            return None
 
+        # Start tunnel in a separate thread to avoid blocking
         self.provider = provider
 
         try:
-            # Start tunnel in a separate thread to avoid blocking
             def run_tunnel():
                 try:
                     if self.provider == "cloudflared":
@@ -49,8 +59,8 @@ class TunnelManager:
             tunnel_thread.daemon = True
             tunnel_thread.start()
 
-            # Wait for tunnel to start (max 15 seconds instead of 5)
-            for _ in range(150):  # Increased from 50 to 150 iterations
+            # Wait for tunnel to start (max 15 seconds)
+            for _ in range(150):
                 if self.tunnel_url:
                     break
                 import time
@@ -63,7 +73,8 @@ class TunnelManager:
             return None
 
     def stop_tunnel(self):
-        """Stop the running tunnel"""
+        if not _FLAREDANTIC_AVAILABLE:
+            return False
         if self.tunnel and self.is_running:
             try:
                 self.tunnel.stop()
@@ -76,5 +87,4 @@ class TunnelManager:
         return False
 
     def get_tunnel_url(self):
-        """Get the current tunnel URL if available"""
         return self.tunnel_url if self.is_running else None

@@ -920,7 +920,23 @@ class LocalSentenceTransformerWrapper(Embeddings):
         }
         st_kwargs = {k: v for k, v in (kwargs or {}).items() if k in st_allowed_keys}
 
-        self.model = SentenceTransformer(model, **st_kwargs)
+        # Lazy-import SentenceTransformer to avoid import-time failures when
+        # the package is not installed in trimmed images. If it's missing,
+        # raise a clear ImportError with remediation instructions so the
+        # caller (installer or developer) can decide to install the package
+        # or choose a different embedding provider.
+        try:
+            if SentenceTransformer is None:
+                from sentence_transformers import SentenceTransformer as _ST  # type: ignore
+            else:
+                _ST = SentenceTransformer
+        except Exception as e:  # pragma: no cover - handled at runtime
+            raise ImportError(
+                "sentence-transformers is required for LocalSentenceTransformerWrapper. "
+                "Install it (e.g. set FEATURE_AI=cpu in DockerfileLocal to include sentence-transformers in the image, "
+                "or run: pip install 'sentence-transformers')"
+            ) from e
+        self.model = _ST(model, **st_kwargs)
         self.model_name = model
         self.a0_model_conf = model_config
 

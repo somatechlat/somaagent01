@@ -5,7 +5,12 @@ import base64
 import io
 import warnings
 
-import soundfile as sf
+try:
+    import soundfile as sf
+    _SOUNDFILE_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency may be missing in images
+    sf = None
+    _SOUNDFILE_AVAILABLE = False
 
 from python.helpers.notification import (
     NotificationManager,
@@ -125,6 +130,10 @@ async def _synthesize_sentences(sentences: list[str]):
                     combined_audio.extend(audio_numpy)
 
         # Convert combined audio to bytes
+        if not _SOUNDFILE_AVAILABLE:
+            raise RuntimeError(
+                "soundfile is not available in the runtime. Enable audio features or install 'soundfile' and libsndfile."
+            )
         buffer = io.BytesIO()
         sf.write(buffer, combined_audio, 24000, format="WAV")
         audio_bytes = buffer.getvalue()

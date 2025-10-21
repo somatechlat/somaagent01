@@ -29,7 +29,8 @@ markdownify==1.1.0
 mcp==1.13.1
 newspaper3k==0.2.8
 numpy==1.26.4
-openai-whisper==20240930
+# Whisper wheels still target Python <3.13; skip automatically to keep installs green.
+openai-whisper==20240930; python_version < "3.13"
 paramiko==3.5.0
 pathspec>=0.12.1
 pdf2image==1.17.0

@@ -2,7 +2,8 @@ from typing import Any
 
 import httpx
 
-from python.helpers import models, settings
+import models
+from python.helpers import settings
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.print_style import PrintStyle
 
