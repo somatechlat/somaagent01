@@ -31,6 +31,7 @@
 !run_tunnel.py
 !agent.py
 !initialize.py
+!scripts/fetch_vendors.sh
 
 # Keep .gitkeep markers anywhere
 !**/.gitkeep

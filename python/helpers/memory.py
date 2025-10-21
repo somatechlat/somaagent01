@@ -18,7 +18,16 @@ from typing import (
 from weakref import WeakKeyDictionary
 
 # faiss needs to be patched for python 3.12 on arm - production compatibility patch
-import faiss
+# Import faiss optionally to avoid crashing the UI when faiss is not installed in the
+# container. Many dev setups use remote memory (SOMA_ENABLED) and don't require
+# local FAISS. We set FAISS_AVAILABLE=False when the module is missing and provide
+# a helpful error at the point local index initialization is attempted.
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except Exception:  # pragma: no cover - runtime environment dependent
+    faiss = None
+    FAISS_AVAILABLE = False
 import numpy as np
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import InMemoryByteStore, LocalFileStore
@@ -248,6 +257,13 @@ class Memory:
 
         # DB not loaded, create one
         if not db:
+            if not FAISS_AVAILABLE:
+                raise RuntimeError(
+                    "Local FAISS library is not installed in the container. "
+                    "Install faiss for local vector DB support, or set SOMA_ENABLED=true "
+                    "to use remote SomaBrain memory instead."
+                )
+
             index = faiss.IndexFlatIP(len(embedder.embed_query("example")))
 
             db = MyFaiss(

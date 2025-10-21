@@ -19,11 +19,91 @@
     <link rel="stylesheet" href="css/scheduler-datepicker.css">
     <link rel="stylesheet" href="css/notification.css">
 
-    <!-- Flatpickr for datetime picker -->
-    <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css">
-    <script src="vendor/flatpickr/flatpickr.min.js"></script>
+    <!-- Flatpickr for datetime picker (local-first, CDN fallback) -->
+    <link id="flatpickr-local-css" rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css">
+    <script>
+        (function () {
+            function loadCSS(href) {
+                var l = document.createElement('link');
+                l.rel = 'stylesheet';
+                l.href = href;
+                document.head.appendChild(l);
+            }
+
+            function loadScript(src, onload) {
+                var s = document.createElement('script');
+                s.src = src;
+                if (onload) s.onload = onload;
+                s.onerror = function () { /* silent */ };
+                document.head.appendChild(s);
+                return s;
+            }
+
+            // Try to load local flatpickr first. If after a short timeout window.flatpickr is not available,
+            // load from CDN as a fallback (useful when webui/vendor is missing inside the container).
+            loadScript('vendor/flatpickr/flatpickr.min.js');
+            setTimeout(function () {
+                if (!window.flatpickr) {
+                    // ensure CSS is present from CDN too
+                    loadCSS('https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css');
+                    loadScript('https://cdn.jsdelivr.net/npm/flatpickr');
+                    console.warn('Flatpickr vendor not found locally — loaded from CDN fallback.');
+                }
+            }, 400);
+        })();
+    </script>
 
     <script>
+        // Shared loader: try a local asset first, then fallback to CDN if a
+        // provided test function doesn't become true within a short timeout.
+        globalThis.loadLocalOrCdn = function (localUrl, testFn, cdnUrl, isCss) {
+            function loadCSS(href) {
+                var l = document.createElement('link');
+                l.rel = 'stylesheet';
+                l.href = href;
+                document.head.appendChild(l);
+            }
+
+            function loadScript(src, onload) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.defer = true;
+                if (onload) s.onload = onload;
+                s.onerror = function () { /* silent */ };
+                document.head.appendChild(s);
+                return s;
+            }
+
+            // Attempt local asset first.
+            if (isCss) {
+                loadCSS(localUrl);
+            } else {
+                loadScript(localUrl);
+            }
+
+            // After short window, if testFn returns falsy, load CDN fallback.
+            setTimeout(function () {
+                try {
+                    if (!testFn()) {
+                        if (isCss) {
+                            loadCSS(cdnUrl);
+                        } else {
+                            loadScript(cdnUrl);
+                        }
+                        console.warn('Loaded CDN fallback for', localUrl);
+                    }
+                } catch (e) {
+                    // If test function throws, still load CDN as best-effort
+                    if (isCss) {
+                        loadCSS(cdnUrl);
+                    } else {
+                        loadScript(cdnUrl);
+                    }
+                    console.warn('Loaded CDN fallback for', localUrl, 'due to test error');
+                }
+            }, 500);
+        };
+
         globalThis.safeCall = function (name, ...args) {
             if (window[name]) window[name](...args)
         }
@@ -102,25 +182,72 @@
 
     <script type="module" src="index.js"></script>
 
-    <!-- Then load Alpine.js -->
-    <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
-    <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
+    <!-- Then load Alpine.js (local-first, CDN fallback) -->
+    <script>
+        globalThis.loadLocalOrCdn(
+            'vendor/alpine/alpine.collapse.min.js',
+            function () { return !!window.Alpine; },
+            'https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js',
+            false
+        );
+    </script>
     <script type="module" src="js/initFw.js"></script>
 
-    <script src="vendor/ace-min/ace.js"></script>
-    <link href="vendor/ace-min/ace.min.css" rel="stylesheet">
+    <!-- ACE editor (local-first, CDN fallback) -->
+    <script>
+        globalThis.loadLocalOrCdn(
+            'vendor/ace-min/ace.js',
+            function () { return !!window.ace; },
+            'https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.14/ace.min.js',
+            false
+        );
+        globalThis.loadLocalOrCdn(
+            'vendor/ace-min/ace.min.css',
+            function () { return !!window.ace; },
+            'https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.14/ace.min.css',
+            true
+        );
+    </script>
     <!-- KaTeX CSS -->
-    <link rel="stylesheet" href="vendor/katex/katex.min.css" crossorigin="anonymous">
+    <!-- KaTeX (local-first, CDN fallback) -->
+    <script>
+        globalThis.loadLocalOrCdn(
+            'vendor/katex/katex.min.css',
+            function () { return !!window.renderMathInElement || !!window.katex; },
+            'https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css',
+            true
+        );
+        globalThis.loadLocalOrCdn(
+            'vendor/katex/katex.min.js',
+            function () { return !!window.katex; },
+            'https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js',
+            false
+        );
+        globalThis.loadLocalOrCdn(
+            'vendor/katex/katex.auto-render.min.js',
+            function () { return !!window.renderMathInElement; },
+            'https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js',
+            false
+        );
+    </script>
 
-    <!-- KaTeX javascript -->
-    <script defer src="vendor/katex/katex.min.js" crossorigin="anonymous"></script>
-    <script defer src="vendor/katex/katex.auto-render.min.js" crossorigin="anonymous"></script>
+    <!-- QR Code Library (local-first, CDN fallback) -->
+    <script>
+        globalThis.loadLocalOrCdn(
+            'vendor/qrcode.min.js',
+            function () { return !!window.QRCode || !!window.qrcode; },
+            'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+            false
+        );
 
-    <!-- QR Code Library -->
-    <script src="vendor/qrcode.min.js"></script>
-
-    <!-- Google Icons -->
-    <link rel="stylesheet" href="vendor/google/google-icons.css" />
+        // Google Material Icons (local-first, CDN fallback)
+        globalThis.loadLocalOrCdn(
+            'vendor/google/google-icons.css',
+            function () { return document.querySelector('link[href*="Material+Icons"], link[href*="googleapis.com"]') !== null; },
+            'https://fonts.googleapis.com/icon?family=Material+Icons',
+            true
+        );
+    </script>
 
     <!-- Link the PWA manifest file -->
     <link rel="manifest" href="js/manifest.json">

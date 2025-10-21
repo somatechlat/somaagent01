@@ -1,0 +1,2 @@
+/* Minimal ACE CSS fallback used by the UI when a dedicated CSS isn't provided */
+.ace_editor { font-family: monospace; }

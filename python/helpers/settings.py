@@ -1299,8 +1299,19 @@ def set_settings_delta(delta: dict, apply: bool = True):
 
 
 def normalize_settings(settings: Settings) -> Settings:
-    copy = settings.copy()
-    default = get_default_settings()
+    # Work with plain dicts to avoid depending on pydantic BaseModel internals
+    if hasattr(settings, "model_dump"):
+        copy = settings.model_dump()
+    elif isinstance(settings, dict):
+        copy = dict(settings)
+    else:
+        try:
+            copy = dict(settings)
+        except Exception:
+            copy = {}
+
+    default_model = get_default_settings()
+    default = default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
 
     # adjust settings values to match current version if needed
     if "version" not in copy or copy["version"] != default["version"]:
@@ -1470,7 +1481,7 @@ def get_default_settings() -> Settings:
         variables="",
         secrets="",
         litellm_global_kwargs={},
-        USE_LLM=False,
+        USE_LLM=True,
     )
 
 

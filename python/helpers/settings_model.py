@@ -93,7 +93,10 @@ class SettingsModel(BaseSettings):
     root_password: str | None = Field(default=None)
 
     # Miscellaneous flags (kept as a generic catch‑all)
-    USE_LLM: bool = Field(default=False)
+    # Enable LLM usage by default in production. The legacy codebase sometimes
+    # assumes LLMs are available; keep the default 'True' to avoid surprising
+    # runtime errors when the settings file is missing or not yet persisted.
+    USE_LLM: bool = Field(default=True)
 
     class Config:
         # Allow any extra keys from the historic JSON file.

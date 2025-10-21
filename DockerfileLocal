@@ -15,9 +15,10 @@ ENV BRANCH=$BRANCH
 ARG SERVICE=""
 ARG K8S=false
 
-# Feature flags for modular installation (defaults tuned for dev reliability)
-ARG FEATURE_AI=basic
-ARG FEATURE_AUDIO=none
+# Feature flags for modular installation (defaults tuned for full-featured build)
+# Default to CPU AI and ML audio so the image includes heavy AI/audio deps.
+ARG FEATURE_AI=cpu
+ARG FEATURE_AUDIO=ml
 ARG FEATURE_BROWSER=true
 ARG FEATURE_DOCUMENTS=true
 ARG FEATURE_DATABASE=true
@@ -25,8 +26,8 @@ ARG FEATURE_MONITORING=false
 ARG FEATURE_DEV=true
 ARG FEATURE_GRPC=true
 ARG FEATURE_INTEGRATIONS=true
-ARG TORCH_VARIANT=none
-ARG ENABLE_TORCH=false
+ARG TORCH_VARIANT=cpu
+ARG ENABLE_TORCH=true
 
 # Surface feature args to shell during RUN steps
 ENV FEATURE_AI=${FEATURE_AI} \
@@ -66,6 +67,13 @@ COPY ./conf/ /git/agent-zero/conf/
 COPY ./lib/ /git/agent-zero/lib/
 COPY ./prompts/ /git/agent-zero/prompts/
 COPY ./webui/ /git/agent-zero/webui/
+
+# Fetch lightweight frontend vendor assets during image build so the image can
+# serve them locally instead of relying solely on CDN fallbacks. This step is
+# optional and will not fail the build if the network is unavailable.
+COPY ./scripts/fetch_vendors.sh /tmp/fetch_vendors.sh
+RUN chmod +x /tmp/fetch_vendors.sh && \
+    set -x && /tmp/fetch_vendors.sh || echo "WARNING: vendor fetch failed; falling back to CDN at runtime"
 
 # Prefer Python 3.12 venv prepared in the base image for compatibility
 ENV PATH="/opt/venv-a0/bin:${PATH}"
