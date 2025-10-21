@@ -95,6 +95,8 @@ from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
+import uuid
+import time
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -109,6 +111,19 @@ def turn_off_logging():
     for name in logging.Logger.manager.loggerDict:
         if name.lower().startswith("litellm"):
             logging.getLogger(name).setLevel(logging.ERROR)
+
+
+# dedicated logger for LLM call tracing (no secrets)
+llm_logger = logging.getLogger("agent_zero.llm")
+if not llm_logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "{\"timestamp\": \"%(asctime)s\", \"level\": \"%(levelname)s\", \"logger\": \"%(name)s\", \"message\": %(message)s}"
+    )
+    handler.setFormatter(formatter)
+    llm_logger.addHandler(handler)
+    llm_logger.setLevel(logging.INFO)
+
 
 
 # init
@@ -563,6 +578,19 @@ class LiteLLMChatWrapper(SimpleChatModel):
 
         msgs = self._convert_messages(messages)
 
+        req_id = str(uuid.uuid4())
+        start_ts = time.time()
+        try:
+            llm_logger.info(
+                "LLM call start: id=%s provider=%s model=%s messages_len=%d",
+                req_id,
+                getattr(self, "provider", "unknown"),
+                getattr(self, "model_name", "unknown"),
+                len(msgs),
+            )
+        except Exception:
+            pass
+
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
 
@@ -579,6 +607,18 @@ class LiteLLMChatWrapper(SimpleChatModel):
         # Parse output
         parsed = _parse_chunk(resp)
         output = ChatGenerationResult(parsed).output()
+        duration = time.time() - start_ts
+        try:
+            llm_logger.info(
+                "LLM call finished: id=%s provider=%s model=%s duration=%.3fs out_chars=%d",
+                req_id,
+                getattr(self, "provider", "unknown"),
+                getattr(self, "model_name", "unknown"),
+                duration,
+                len(output["response_delta"]) if output and output.get("response_delta") else 0,
+            )
+        except Exception:
+            pass
         return output["response_delta"]
 
     def _stream(
@@ -590,6 +630,19 @@ class LiteLLMChatWrapper(SimpleChatModel):
     ) -> Iterator[ChatGenerationChunk]:
 
         msgs = self._convert_messages(messages)
+
+        req_id = str(uuid.uuid4())
+        start_ts = time.time()
+        try:
+            llm_logger.info(
+                "LLM stream start: id=%s provider=%s model=%s messages_len=%d",
+                req_id,
+                getattr(self, "provider", "unknown"),
+                getattr(self, "model_name", "unknown"),
+                len(msgs),
+            )
+        except Exception:
+            pass
 
         # Apply rate limiting if configured
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
@@ -615,6 +668,17 @@ class LiteLLMChatWrapper(SimpleChatModel):
             # Only yield chunks with non-None content
             if output["response_delta"]:
                 yield ChatGenerationChunk(message=AIMessageChunk(content=output["response_delta"]))
+        try:
+            duration = time.time() - start_ts
+            llm_logger.info(
+                "LLM stream finished: id=%s provider=%s model=%s duration=%.3fs",
+                req_id,
+                getattr(self, "provider", "unknown"),
+                getattr(self, "model_name", "unknown"),
+                duration,
+            )
+        except Exception:
+            pass
 
     async def _astream(
         self,
@@ -650,6 +714,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
             # Only yield chunks with non-None content
             if output["response_delta"]:
                 yield ChatGenerationChunk(message=AIMessageChunk(content=output["response_delta"]))
+        # can't reliably measure end time here because iteration may be cancelled by caller
 
     async def unified_call(
         self,
@@ -693,6 +758,21 @@ class LiteLLMChatWrapper(SimpleChatModel):
         while True:
             got_any_chunk = False
             try:
+                req_id = str(uuid.uuid4())
+                start_ts = time.time()
+                try:
+                    # log a truncated preview (no secrets)
+                    preview = msgs_conv[-1]["content"] if msgs_conv and isinstance(msgs_conv[-1], dict) else ""
+                    preview = (preview[:200] + "...") if len(preview) > 200 else preview
+                    llm_logger.info(
+                        "LLM unified_call start: id=%s provider=%s model=%s preview=%s",
+                        req_id,
+                        getattr(self, "provider", "unknown"),
+                        getattr(self, "model_name", "unknown"),
+                        preview,
+                    )
+                except Exception:
+                    pass
                 # call model
                 _completion = await acompletion(
                     model=self.model_name,
@@ -734,6 +814,18 @@ class LiteLLMChatWrapper(SimpleChatModel):
                             limiter.add(output=approximate_tokens(output["response_delta"]))
 
                 # Successful completion of stream
+                try:
+                    duration = time.time() - start_ts
+                    llm_logger.info(
+                        "LLM unified_call finished: id=%s provider=%s model=%s duration=%.3fs out_chars=%d",
+                        req_id,
+                        getattr(self, "provider", "unknown"),
+                        getattr(self, "model_name", "unknown"),
+                        duration,
+                        len(result.response) if result and result.response else 0,
+                    )
+                except Exception:
+                    pass
                 return result.response, result.reasoning
 
             except Exception as e:
@@ -748,6 +840,16 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     return result.response, result.reasoning
 
                 if not _is_transient_litellm_error(e) or attempt >= max_retries:
+                    try:
+                        llm_logger.exception(
+                            "LLM unified_call error: id=%s provider=%s model=%s error=%s",
+                            req_id if 'req_id' in locals() else '<na>',
+                            getattr(self, "provider", "unknown"),
+                            getattr(self, "model_name", "unknown"),
+                            str(e),
+                        )
+                    except Exception:
+                        pass
                     raise
                 attempt += 1
                 await asyncio.sleep(retry_delay_s)
@@ -963,6 +1065,20 @@ def _get_litellm_chat(
     model_config: Optional[ModelConfig] = None,
     **kwargs: Any,
 ):
+    # do not log API keys; log instantiation metadata for visibility
+    try:
+        llm_logger.info(
+            "Instantiate LLM client: provider=%s model=%s cfg=%s",
+            provider_name,
+            model_name,
+            {
+                "ctx_length": getattr(model_config, "ctx_length", None),
+                "vision": getattr(model_config, "vision", None),
+            },
+        )
+    except Exception:
+        pass
+
     # use api key from kwargs or env
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
 
