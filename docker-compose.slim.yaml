@@ -7,7 +7,7 @@ x-agent-env: &agent-env
   REDIS_URL: redis://redis:6379/0
   POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
   POLICY_BASE_URL: http://opa:8181
-  POLICY_DATA_PATH: /v1/data/soma/allow
+  POLICY_DATA_PATH: /v1/data/soma/policy/allow
   POLICY_FAIL_OPEN: "false"
   OPA_URL: http://opa:8181
   CONVERSATION_INBOUND: conversation.inbound

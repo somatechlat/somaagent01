@@ -1,79 +1,93 @@
-# Agent Zero — Canonical Roadmap (Shared Infra + K8s parity)
+# Agent Zero — Messaging Architecture Canonical Roadmap
 
-Last updated: 2025-10-10
-Branch: soma_integration
+Last updated: 2025-03-28  
+Branch: messaging_architecture
 
-This is the canonical roadmap for delivering strict runtime parity between Docker and Kubernetes (Kind/Helm) for the Soma Agent 01 (SA01) scope, consolidating a Shared Infra layer and enforcing a single Dockerfile and a single Compose file for the app.
+This roadmap captures the end-to-end plan for restoring the full conversational pipeline, consolidating on the modern FastAPI gateway, and delivering a production-ready messaging backbone that runs locally with real services and scales to staging.
 
-## Objectives
+## Vision
 
-- Parity: “Run the whole cluster exactly as the one in Docker that works perfectly, but on Kubernetes.”
-- Canonical build: One Dockerfile for all services using build args; one app Compose file.
-- Port policy: App gateway on host 7001 (Docker) and on host 7002 (K8s via Kind NodePort/Ingress).
-- Shared Infra first: Treat Shared Infra as its own project, production-ready for developers, consumed by app-only stacks.
-- No mocks: Real services (Postgres, Kafka, Redis, OPA, Vault, Etcd, Prometheus, Grafana, optional OpenFGA/Jaeger/Loki).
+Provide a single, policy-aware messaging architecture that:
+
+- Runs the entire agent stack locally with all required dependencies (Kafka, Redis, Postgres, OPA, tool executor, UI) and zero mocks.
+- Persists LLM credentials captured in the UI into runtime configuration securely and immediately.
+- Uses the official single-node KRaft Kafka image across all environments.
+- Streams conversations and tool results end-to-end via Kafka topics with deterministic ordering and backpressure handling.
+- Exposes one modern FastAPI gateway for every ingress (HTTP, WebSocket, SSE) while decommissioning legacy Flask paths.
+- Ships with an executable roadmap and sprint plan (waves) so the team can deliver incrementally.
 
 ## Constraints
 
-- Single Dockerfile (DockerfileLocal) with SERVICE and K8S build args.
-- Single app Compose file for SA01; a separate Docker Compose file exists only for Shared Infra.
-- Stable endpoints contract via .env for Docker and cluster DNS for K8s.
-- Keep SA01 scope; do not widen beyond documented services.
+- No mocked dependencies: compose stack must bring up the real services used in production parity.
+- Gateway-first: All ingress traffic goes through `services/gateway/main.py`; legacy Flask endpoints are removed, not muted.
+- Kafka official image (`confluentinc/cp-kafka`) with single-node KRaft mode; topic configs managed via automation, not manual CLI.
+- Secrets and credentials flow from UI ➜ backend ➜ persisted env/secret store without manual edits.
+- Every behavioral change requires Playwright/E2E regression coverage for chat happy-path and tool execution.
+- Documentation updates ship with the code change that alters behavior.
 
-## Deliverables
+## Waves & Deliverables
 
-1) Shared Infra (Docker) — docker/compose with durable volumes, health checks, and ports
-2) Shared Infra (K8s via Kind) — Helm umbrella `infra/helm/soma-infra` with values overlays (dev/staging/prod)
-3) SA01 App (Docker) — app-only compose pointing to Shared Infra
-4) SA01 App (K8s) — Helm umbrella `soma-stack`, gateway on 7002
-5) Observability & Policy — Prometheus/Grafana, OPA policies, optional OpenFGA/Jaeger/Loki
-6) CI & GitOps — CI builds single Dockerfile images, spins Kind, installs charts, runs smoke tests; GitOps path outlined
+### Wave 0 – Baseline Integrity
+- Document and verify the current docker-compose stack on branch `messaging_architecture`.
+- Capture existing configs (.env, compose overrides) and codify smoke checks (Kafka health, gateway `/health`, worker consumer lag).
+- Acceptance: `docker compose up` brings all services healthy; minimal smoke script passes; roadmap + sprint docs merged.
 
-## Milestones and acceptance criteria
+### Wave 1 – Gateway Consolidation
+- Remove legacy Flask/`agent.py` messaging routes; migrate UI to call FastAPI gateway endpoints exclusively.
+- Implement unified request validation, JWT/OPA hooks, and consistent response schema across REST/WebSocket/SSE.
+- Acceptance: UI chat works only through gateway; legacy modules deleted; lint/tests green.
 
-M1 — Shared Infra up on Docker (COMPLETE)
-- Services: Postgres (host 5436), Kafka (9094), Redis (6380), OPA (8182->8181), Vault (8201), Etcd (2380), Prometheus (9091), Grafana (3001)
-- Acceptance: All containers Up/healthy; env contract `.env.shared` published; runbook in `docs/infra/runbook_shared_infra.md`.
+### Wave 2 – Messaging Backbone Restoration
+- Rebuild Kafka topic provisioning and consumer wiring for `conversation.inbound`, `conversation.outbound`, `tool.requests`, `tool.results` with aiokafka.
+- Ensure tool results bridge back to conversations, including error propagation and retry semantics.
+- Acceptance: Automated integration test publishes a message and receives a streamed answer including tool output; Kafka consumer lag < 5s under load test.
 
-M2 — Shared Infra up on Kind (IN PROGRESS)
-- Helm chart `infra/helm/soma-infra` with `values-dev.yaml`; namespace `soma`.
-- Acceptance: All pods Ready; services and endpoints present; Prometheus targets healthy.
+### Wave 3 – Credential Flow & Persistence
+- Implement UI form to store LLM credentials via settings API; persist to encrypted env store (filesystem secret vault or database table).
+- Ensure runtime services reload or fetch credentials without restart; add validation and redaction in logs.
+- Acceptance: Playwright test enters key, refreshes page, key still present (masked) and gateway uses it to call upstream LLM.
 
-M3 — Auth service + OPA policy bootstrap (PLANNED)
-- Real JWT auth service (local mode), OPA policy decision path wired, minimal policies shipped; optional OpenFGA migration job.
-- Acceptance: Policy decisions reachable; sample allow/deny evaluated via HTTP; audit logs visible.
+### Wave 4 – End-to-End Hardening
+- Expand Playwright suite to cover multi-turn conversations, tool invocation, and cancellation paths.
+- Add observability: OpenTelemetry spans across gateway ➜ worker ➜ tool executor; Grafana dashboard for messaging KPIs.
+- Acceptance: Playwright suite green in CI; trace correlation visible; dashboard panel shows live throughput/error rate.
 
-M4 — SA01 app-only on Docker (PLANNED)
-- App services built from single Dockerfile; gateway on 7001; memory-service gRPC 50052; use Shared Infra endpoints; no bind mounts that mask deps.
-- Acceptance: App HTTP /health OK, gRPC memory happy path OK, Kafka in/out OK.
+### Wave 5 – Performance & Release
+- Load test (500 concurrent sessions) with controlled degradation strategy; implement autoscaling hooks or worker concurrency controls.
+- Produce release runbook, rollback plan, and migration notes for removing legacy stack.
+- Acceptance: Load test stays within SLA (<2s average response, 0 data loss), runbook approved, release candidate tagged.
 
-M5 — SA01 app on Kind (PLANNED)
-- Helm umbrella `soma-stack`; gateway exposed on host 7002 (Kind NodePort); wired to Shared Infra DNS.
-- Acceptance: Same smoke tests as Docker; gateway reachable on 7002.
+## Milestones & Acceptance Criteria
 
-M6 — Observability extras (OPTIONAL)
-- Jaeger and/or Loki opt-in; baseline Grafana dashboards and scrape annotations present.
-- Acceptance: Traces/logs visible; key dashboards render without errors.
+| Milestone | Wave | Description | Acceptance |
+| --- | --- | --- | --- |
+| M0 | Wave 0 | Baseline compose stack + documentation committed | `docker compose ps` healthy, smoke script logs success |
+| M1 | Wave 1 | Gateway-only ingress with legacy removal | UI chat works via gateway; 100% tests pass |
+| M2 | Wave 2 | Kafka messaging pipeline restored | Automated test validates inbound/outbound/tool roundtrip |
+| M3 | Wave 3 | Credentials persisted & hot-loaded | Playwright credential scenario green; secrets encrypted |
+| M4 | Wave 4 | Observability & E2E coverage | Playwright suite + telemetry dashboards operational |
+| M5 | Wave 5 | Performance sign-off & release artifacts | Load test report approved; runbook + rollback published |
 
-M7 — CI pipeline + GitOps outline (PLANNED)
-- CI builds single Dockerfile images, launches Kind, installs `soma-infra` then `soma-stack`, runs smoke tests; document ArgoCD path for clusters.
-- Acceptance: CI green with infra+app smoke tests; docs include GitOps flow.
+## Dependencies & Environment Contract
 
-## Environment contract
+- `.env` files remain source of truth; credential secrets stored using `services/gateway/settings.py` helpers with encryption key from `conf/env/`.
+- Compose files: `docker-compose.yaml` (core stack), optional profiles for optimized builds. Official Kafka image referenced in all variants.
+- Topics and ACLs codified in `infra/kafka/` manifests (to be added/updated during Wave 2).
+- Playwright tests live under `tests/e2e/`; smoke tests under `scripts/`.
+- Documentation updates go into `docs/` (`docs/roadmap_sa01.md` or new `docs/messaging/` folder).
 
-- Docker (developer): Apps consume Shared Infra via `.env.shared` (ports listed in M1). App gateway must bind host 7001.
-- K8s (Kind): Apps use cluster DNS names configured in Helm values. App gateway exposed on host 7002.
+## Risks & Mitigations
 
-## References
+- **Credential leakage**: enforce redaction in logs, use secrets manager abstraction, add automated tests for redaction.
+- **Kafka instability**: monitor broker metrics, include restart scripts, keep local data volumes isolated per build.
+- **UI regressions**: rely on Playwright suite per PR and manual smoke as backup.
+- **Legacy removal fallout**: phased branch `messaging_architecture` with feature flags; maintain fallback compose profile until Wave 2 completes.
 
-- Helm: `infra/helm/soma-infra` (overlays: dev, staging, prod)
-- Docker Compose (Shared Infra): `infra/docker/shared-infra.compose.yaml`
-- Runbook: `docs/infra/runbook_shared_infra.md`
-- Environment example: `infra/env/.env.shared.example`
+## How to Maintain
 
-## How to maintain
-
-- Update this roadmap by PR when milestones change. Keep acceptance criteria concrete and verifiable. Avoid widening the SA01 scope.
+- Update this roadmap whenever scope or acceptance criteria shift.
+- Keep waves aligned with sprint plans in `ROADMAP_SPRINTS.md`.
+- Ensure every merge request references wave/milestone IDs and links to tests and documentation updates.
 
 ---
-Generated/maintained to reflect the integrated shared-infra-first plan and Kubernetes parity as of 2025-10-10.
+Canonical roadmap for the messaging architecture overhaul established on branch `messaging_architecture`.

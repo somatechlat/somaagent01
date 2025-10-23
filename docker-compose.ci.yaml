@@ -1,0 +1,68 @@
+version: '3.9'
+
+# CI-focused compose that uses the slim image and reduced resources.
+
+x-agent-env: &agent-env
+  PYTHONPATH: /git/agent-zero
+  LOG_LEVEL: INFO
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  REDIS_URL: redis://redis:6379/0
+  POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+  GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
+
+x-agent-service: &agent-service
+  image: somaagent01:slim
+  working_dir: /git/agent-zero
+  environment:
+    <<: *agent-env
+  volumes:
+    - ./memory:/git/agent-zero/memory
+    - ./logs:/git/agent-zero/logs
+  restart: unless-stopped
+
+services:
+  kafka:
+    image: bitnami/kafka:latest
+    profiles: ["core"]
+    environment:
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: "1"
+    ports:
+      - "${KAFKA_PORT:-21000}:9092"
+    healthcheck:
+      test: ["CMD", "true"]
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["core"]
+    ports:
+      - "${REDIS_PORT:-21001}:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["core"]
+    environment:
+      POSTGRES_USER: soma
+      POSTGRES_PASSWORD: soma
+      POSTGRES_DB: somaagent01
+    ports:
+      - "${POSTGRES_PORT:-21002}:5432"
+
+  gateway:
+    <<: *agent-service
+    profiles: ["dev"]
+    command:
+      - uvicorn
+      - services.gateway.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8010"
+    ports:
+      - "${GATEWAY_PORT:-21016}:8010"
+
+volumes:
+  kafka_data:
+  redis_data:
+  postgres_data:

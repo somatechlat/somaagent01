@@ -78,13 +78,37 @@ def import_module(file_path: str) -> ModuleType:
     abs_path = get_abs_path(file_path)
     module_name = os.path.basename(abs_path).replace(".py", "")
 
+    # Do not silently ignore missing files — importing should fail loudly so
+    # CI / dev environments surface missing expected modules. Callers will
+    # continue to handle ImportError/None as before when appropriate.
+    if not os.path.exists(abs_path):
+        raise ImportError(f"Module file not found: {abs_path}")
+
     # Create the module spec and load the module
     spec = importlib.util.spec_from_file_location(module_name, abs_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load module from {abs_path}")
 
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:
+        # Log import failure but don't let a single failing API handler crash the
+        # whole UI process. Caller functions will skip None modules.
+        try:
+            # Prefer using the project's PrintStyle when available
+            from python.helpers.print_style import PrintStyle
+
+            PrintStyle(font_color="yellow").print(
+                f"Warning: failed importing {abs_path}: {e}"
+            )
+        except Exception:
+            # Fallback to stderr
+            import traceback, sys
+
+            sys.stderr.write(f"Warning: failed importing {abs_path}: {e}\n")
+            traceback.print_exc()
+        return None
     return module
 
 
@@ -108,6 +132,9 @@ def load_classes_from_folder(
         file_path = os.path.join(abs_folder, file_name)
         # Use the new import_module function
         module = import_module(file_path)
+        if module is None:
+            # Skip modules that failed to import
+            continue
 
         # Get all classes in the module
         class_list = inspect.getmembers(module, inspect.isclass)

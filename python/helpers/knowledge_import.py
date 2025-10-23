@@ -3,12 +3,36 @@ import hashlib
 import os
 from typing import Any, Dict, Literal, TypedDict
 
-from langchain_community.document_loaders import (
-    CSVLoader,
-    PyPDFLoader,
-    TextLoader,
-    UnstructuredHTMLLoader,
-)
+# The langchain_community package is optional in some minimal/dev images.
+# Wrap its imports so the module can be imported even when those heavy
+# dependencies are not present. If the package is missing we'll set
+# KNOWLEDGE_AVAILABLE=False and skip knowledge loading at runtime.
+KNOWLEDGE_AVAILABLE = True
+try:
+    from langchain_community.document_loaders import (
+        CSVLoader,
+        PyPDFLoader,
+        TextLoader,
+        UnstructuredHTMLLoader,
+    )
+except Exception:  # pragma: no cover - optional dependency
+    KNOWLEDGE_AVAILABLE = False
+    # Define no-op placeholders to avoid NameError at module import-time.
+    class CSVLoader:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("langchain_community not installed; CSVLoader unavailable")
+
+    class PyPDFLoader:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("langchain_community not installed; PyPDFLoader unavailable")
+
+    class TextLoader:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("langchain_community not installed; TextLoader unavailable")
+
+    class UnstructuredHTMLLoader:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("langchain_community not installed; UnstructuredHTMLLoader unavailable")
 
 from python.helpers.log import LogItem
 from python.helpers.print_style import PrintStyle
@@ -45,6 +69,16 @@ def load_knowledge(
     This function now includes enhanced error handling and compatibility with the
     intelligent memory consolidation system.
     """
+
+    # If langchain_community isn't available, skip knowledge loading to allow
+    # the UI and other services to start in minimal/dev containers.
+    if not KNOWLEDGE_AVAILABLE:
+        if log_item:
+            log_item.stream(progress="\nKnowledge loading skipped: langchain_community not installed")
+        PrintStyle(font_color="yellow").print(
+            "Knowledge loading skipped: langchain_community not installed"
+        )
+        return index
 
     # Mapping file extensions to corresponding loader classes
     # Note: Using TextLoader for JSON and MD to avoid parsing issues with consolidation

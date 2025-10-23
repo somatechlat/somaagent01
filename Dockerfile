@@ -2,7 +2,7 @@
 FROM python:3.12-slim
 
 ENV PYTHONPATH=/git/agent-zero
-ENV PATH="/venv/bin:${PATH}"
+ENV PATH="/opt/venv-a0/bin:${PATH}"
 WORKDIR /git/agent-zero
 
 # Copy application files
@@ -15,9 +15,16 @@ COPY ./prompts/ /git/agent-zero/prompts/
 COPY ./webui/ /git/agent-zero/webui/
 
 # Install required dependencies (trimmed)
-RUN python3 -m venv /venv && \
-    /venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /venv/bin/pip install --no-cache-dir \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+                build-essential \
+                git \
+                cmake \
+                libopenblas-dev \
+                libomp-dev \
+        && rm -rf /var/lib/apt/lists/* \
+        && python3 -m venv /opt/venv-a0 \
+        && /opt/venv-a0/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+        && /opt/venv-a0/bin/pip install --no-cache-dir \
         fastapi==0.115.2 \
         uvicorn==0.32.0 \
         fasta2a==0.5.0 \
@@ -35,6 +42,8 @@ RUN python3 -m venv /venv && \
         grpcio==1.67.1 \
         protobuf==5.27.3 \
         aiohttp==3.13.1 \
+        asyncpg==0.30.0 \
+        a2wsgi==1.10.10 \
         opentelemetry-api==1.29.0 \
         opentelemetry-sdk==1.29.0 \
         opentelemetry-instrumentation==0.50b0 \
@@ -45,7 +54,26 @@ RUN python3 -m venv /venv && \
         nest-asyncio==1.6.0 \
         pybreaker==1.1.0 \
         regex==2024.9.11 \
-        pytz==2024.2
+        pytz==2024.2 \
+        # Ensure runtime crypto, HF hub and pydantic compatibility are present
+        cryptography==46.0.3 \
+        "huggingface-hub==0.13.3" \
+        pathspec==0.10.3 \
+        pydantic==2.11.0 \
+        PyJWT==2.8.0
+
+# Heavy ML deps for local embeddings and FAISS
+RUN /opt/venv-a0/bin/pip install --no-cache-dir \
+        "openai>=1.99.5,<3" \
+        litellm==1.78.6 \
+        sentence-transformers==2.2.2 \
+        transformers \
+        faiss-cpu \
+        langchain-community \
+        langchain \
+        # Install CPU wheels for torch from the official PyTorch CPU index
+        --extra-index-url https://download.pytorch.org/whl/cpu \
+        torch torchvision torchaudio
 
 EXPOSE 80 8010 20017
-CMD ["/venv/bin/python", "run_ui.py", "--host=0.0.0.0", "--port=80"]
+CMD ["/opt/venv-a0/bin/python", "run_ui.py", "--host=0.0.0.0", "--port=80"]

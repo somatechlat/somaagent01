@@ -9,7 +9,7 @@ x-agent-env: &agent-env
   REDIS_URL: redis://redis:6379/0
   POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
   POLICY_BASE_URL: http://opa:8181
-  POLICY_DATA_PATH: /v1/data/soma/allow
+  POLICY_DATA_PATH: /v1/data/soma/policy/allow
   POLICY_FAIL_OPEN: "false"
   OPA_URL: http://opa:8181
   CONVERSATION_INBOUND: conversation.inbound
@@ -32,10 +32,14 @@ x-agent-service: &agent-service
   image: somaagent01-dev:latest
   build:
     context: .
-    dockerfile: DockerfileLocal
+    dockerfile: Dockerfile
   working_dir: /git/agent-zero
   environment:
     <<: *agent-env
+  env_file:
+    - ./.env
+  # Give agent processes more memory for heavy ML package imports during runtime
+  mem_limit: 10g
   volumes:
     - ./memory:/git/agent-zero/memory
     - ./logs:/git/agent-zero/logs
@@ -60,7 +64,7 @@ x-agent-service: &agent-service
 
 services:
   kafka-init:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.4.0
     container_name: somaAgent01_kafka_init
     profiles: ["dev"]
     depends_on:
@@ -72,47 +76,45 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     volumes:
       - ./infra/kafka/init-topics.sh:/init/init-topics.sh:ro
+    mem_limit: 600m
     restart: "no"
   kafka:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.4.0
     container_name: somaAgent01_kafka
     profiles: ["core"]
     environment:
-      KAFKA_CFG_NODE_ID: "0"
-      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
-      KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_NUM_PARTITIONS: "3"
-      # Keep request sizes reasonable to avoid large buffer allocations in the broker JVM
-      # (previously set to very large values which can trigger JVM allocation errors)
-      # KAFKA_CFG_MAX_REQUEST_SIZE: "2147483647"
-      # KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "2147483647"
-      # KAFKA_CFG_MESSAGE_MAX_BYTES: "2147483647"
-      KAFKA_CLUSTER_ID: "kcqIv3RutQm49oJm9sYzVg"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
-      KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-cluster-01"
-      # Lower default JVM heap for the broker to avoid host OOMs on dev machines; adjust if needed
+      # KRaft mode: controller+broker in a single node for local dev
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "0"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_NUM_PARTITIONS: "3"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Unique cluster id for local KRaft cluster (can be any string)
+      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      # Tune JVM for local dev
       KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
-      KAFKA_CFG_LOG_RETENTION_HOURS: "168"
-      KAFKA_CFG_LOG_RETENTION_BYTES: "1073741824"
-      BITNAMI_DEBUG: "true"
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      KAFKA_LOG_RETENTION_BYTES: "1073741824"
     ports:
       - "${KAFKA_PORT:-20000}:9092"
     restart: unless-stopped
     volumes:
-      - kafka_data:/bitnami/kafka
-      - ./kafka-logs:/opt/bitnami/kafka/logs
+      - kafka_data:/var/lib/kafka/data
+      - ./kafka-logs:/var/log/kafka
     healthcheck:
-      test: ["CMD", "true"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 300s
+      # Lightweight healthcheck: wait until the broker port is listening
+      test: ["CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
     mem_limit: 4g
     cpus: "2"
 
