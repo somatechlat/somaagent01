@@ -14,6 +14,7 @@ import logging
 import os
 import time
 import uuid
+from datetime import datetime
 from typing import Annotated, Any, AsyncIterator, Dict, Optional
 
 import httpx
@@ -23,6 +24,7 @@ from fastapi import (
     Depends,
     FastAPI,
     HTTPException,
+    Query,
     Request,
     WebSocket,
     WebSocketDisconnect,
@@ -32,10 +34,10 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-
-SERVICE_NAME = "gateway"
 from prometheus_client import start_http_server
 from pydantic import BaseModel, Field
+
+SERVICE_NAME = "gateway"
 
 # Circuit breaker is mandatory for production resilience
 try:
@@ -65,6 +67,7 @@ from services.common.vault_secrets import load_kv_secret
 try:
     import jwt
 except ImportError:
+    # PyJWT is mandatory. Fail fast so missing dependencies are fixed in CI / build.
     raise ImportError(
         "PyJWT is required for production JWT authentication. Install with: pip install PyJWT"
     )
@@ -365,6 +368,31 @@ class ApiKeyResponse(BaseModel):
 
 class ApiKeyCreateResponse(ApiKeyResponse):
     secret: str
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    persona_id: str | None
+    tenant: str | None
+    subject: str | None
+    issuer: str | None
+    scope: str | None
+    metadata: dict[str, Any]
+    analysis: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SessionEventEntry(BaseModel):
+    id: int
+    occurred_at: datetime
+    payload: dict[str, Any]
+
+
+class SessionEventsResponse(BaseModel):
+    session_id: str
+    events: list[SessionEventEntry]
+    next_cursor: int | None
 
 
 QUICK_ACTIONS: dict[str, str] = {
@@ -821,6 +849,32 @@ async def enqueue_quick_action(
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
 
+@app.get("/v1/sessions", response_model=list[SessionSummary])
+async def list_sessions_endpoint(
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+    limit: int = Query(50, ge=1, le=200),
+    tenant: str | None = Query(None, description="Filter sessions by tenant identifier"),
+) -> list[SessionSummary]:
+    envelopes = await store.list_sessions(limit=limit, tenant=tenant)
+    summaries: list[SessionSummary] = []
+    for envelope in envelopes:
+        summaries.append(
+            SessionSummary(
+                session_id=str(envelope.session_id),
+                persona_id=envelope.persona_id,
+                tenant=envelope.tenant,
+                subject=envelope.subject,
+                issuer=envelope.issuer,
+                scope=envelope.scope,
+                metadata=envelope.metadata,
+                analysis=envelope.analysis,
+                created_at=envelope.created_at,
+                updated_at=envelope.updated_at,
+            )
+        )
+    return summaries
+
+
 @app.post("/v1/keys", response_model=ApiKeyCreateResponse)
 async def create_api_key(
     payload: ApiKeyCreatePayload,
@@ -927,6 +981,22 @@ async def sse_endpoint(session_id: str, request: Request) -> StreamingResponse:
 
     headers = {"Cache-Control": "no-cache", "Content-Type": "text/event-stream"}
     return StreamingResponse(event_generator(), headers=headers)
+
+
+@app.get("/v1/sessions/{session_id}/events", response_model=SessionEventsResponse)
+async def list_session_events(
+    session_id: str,
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+    after: int | None = Query(None, ge=0, description="Return events with database id greater than this cursor"),
+    limit: int = Query(100, ge=1, le=500),
+) -> SessionEventsResponse:
+    events = await store.list_events_after(session_id, after_id=after, limit=limit)
+    payload = [
+        SessionEventEntry(id=item["id"], occurred_at=item["occurred_at"], payload=item["payload"])
+        for item in events
+    ]
+    next_cursor = payload[-1].id if payload else after
+    return SessionEventsResponse(session_id=session_id, events=payload, next_cursor=next_cursor)
 
 
 def _capsule_registry_url(path: str) -> str:

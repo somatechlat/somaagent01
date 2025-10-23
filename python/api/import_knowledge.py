@@ -2,12 +2,17 @@ import os
 
 from werkzeug.utils import secure_filename
 
-from python.helpers import files, memory
+from python.helpers import files
 from python.helpers.api import ApiHandler, Request, Response
 
 
 class ImportKnowledge(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
+        # Import memory lazily to avoid heavy optional dependency imports at
+        # module import time (e.g., langchain). This keeps the UI starting even
+        # when optional packages are missing in a minimal dev container.
+        from python.helpers import memory
+
         if "files[]" not in request.files:
             raise Exception("No files part")
 

@@ -29,18 +29,39 @@ except Exception:  # pragma: no cover - runtime environment dependent
     faiss = None
     FAISS_AVAILABLE = False
 import numpy as np
-from langchain.embeddings import CacheBackedEmbeddings
-from langchain.storage import InMemoryByteStore, LocalFileStore
-from langchain_community.docstore.in_memory import InMemoryDocstore
 
-# from langchain_chroma import Chroma
-from langchain_community.vectorstores import FAISS
-from langchain_community.vectorstores.utils import (
-    DistanceStrategy,
-)
+# LangChain imports are optional in minimal dev environments. Wrap imports so the
+# server can start (using remote SOMA memory) even when langchain packages aren't
+# installed inside the container. If the imports are missing, set a flag so
+# runtime code can raise a clear error only when a local vector DB/embedder is
+# actually used.
+LANGCHAIN_AVAILABLE = True
+try:
+    from langchain.embeddings import CacheBackedEmbeddings
+    from langchain.storage import InMemoryByteStore, LocalFileStore
+    from langchain_community.docstore.in_memory import InMemoryDocstore
 
-# Note: Embeddings imported for type annotations; keep import to avoid breaking types
-from langchain_core.documents import Document
+    # from langchain_chroma import Chroma
+    from langchain_community.vectorstores import FAISS
+    from langchain_community.vectorstores.utils import (
+        DistanceStrategy,
+    )
+
+    # Note: Embeddings imported for type annotations; keep import to avoid breaking types
+    from langchain_core.documents import Document
+except Exception:  # pragma: no cover - may be missing in minimal dev images
+    LANGCHAIN_AVAILABLE = False
+    CacheBackedEmbeddings = None
+    InMemoryByteStore = None
+    LocalFileStore = None
+    InMemoryDocstore = None
+    FAISS = None
+    DistanceStrategy = None
+    # Provide a minimal Document placeholder for type compatibility
+    class Document(object):
+        def __init__(self, page_content: str = "", metadata: dict | None = None):
+            self.page_content = page_content
+            self.metadata = metadata or {}
 from simpleeval import simple_eval
 
 import models
@@ -82,10 +103,13 @@ class MemoryArea(Enum):
 
 
 class MyFaiss(FAISS):
-    # override aget_by_ids
+    # override get_by_ids to support faster retrieval from the in-memory docstore
     def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
-        # return all self.docstore._dict[id] in ids
-        return [self.docstore._dict[id] for id in (ids if isinstance(ids, list) else [ids]) if id in self.docstore._dict]  # type: ignore
+        return [
+            self.docstore._dict[id]
+            for id in (ids if isinstance(ids, list) else [ids])
+            if id in self.docstore._dict
+        ]  # type: ignore
 
     async def aget_by_ids(self, ids: Sequence[str], /) -> List[Document]:
         return self.get_by_ids(ids)

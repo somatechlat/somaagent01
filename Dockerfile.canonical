@@ -2,6 +2,8 @@
 
 FROM python:3.11-slim AS builder
 
+ARG INCLUDE_ML_DEPS=true
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     VENV_PATH="/opt/venv"
@@ -20,6 +22,14 @@ RUN python -m venv "$VENV_PATH" && \
 WORKDIR /opt/build
 COPY requirements*.txt ./
 RUN "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-canonical.txt
+
+# Optionally install heavy ML dependencies in the builder stage. Use:
+#  docker build --build-arg INCLUDE_ML_DEPS=false -t somaagent01:slim -f Dockerfile.canonical .
+RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
+            "$VENV_PATH/bin/pip" install --no-cache-dir "litellm>=1.78.0" "sentence-transformers>=2.2.0" "openai==1.99.2"; \
+        else \
+            echo "Skipping heavy ML deps (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})"; \
+        fi
 
 
 FROM python:3.11-slim AS runtime
@@ -58,9 +68,11 @@ RUN useradd -m -u 1000 agent && \
 USER agent
 
 # Health check endpoint defined in services.gateway.main
+# Standardize to use port 8010 (matches docker-compose service mapping)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8010/health || exit 1
 
-EXPOSE 8000
+EXPOSE 8010
 
-CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command runs the gateway on port 8010 to match compose and HEALTHCHECK.
+CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8010"]

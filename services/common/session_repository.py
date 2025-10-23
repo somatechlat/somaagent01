@@ -275,6 +275,122 @@ class PostgresSessionStore(SessionStore):
             )
         return [json.loads(r["payload"]) for r in rows]
 
+    async def list_events_after(
+        self,
+        session_id: str,
+        *,
+        after_id: Optional[int] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            if after_id is None:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, occurred_at, payload
+                    FROM session_events
+                    WHERE session_id = $1
+                    ORDER BY id ASC
+                    LIMIT $2
+                    """,
+                    session_id,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, occurred_at, payload
+                    FROM session_events
+                    WHERE session_id = $1
+                      AND id > $2
+                    ORDER BY id ASC
+                    LIMIT $3
+                    """,
+                    session_id,
+                    after_id,
+                    limit,
+                )
+        events: list[dict[str, Any]] = []
+        for row in rows:
+            payload = row["payload"]
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            events.append(
+                {
+                    "id": row["id"],
+                    "occurred_at": row["occurred_at"],
+                    "payload": payload,
+                }
+            )
+        return events
+
+    async def list_sessions(
+        self,
+        *,
+        limit: int = 50,
+        tenant: Optional[str] = None,
+    ) -> list[SessionEnvelope]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            if tenant:
+                rows = await conn.fetch(
+                    """
+                    SELECT session_id,
+                           persona_id,
+                           tenant,
+                           subject,
+                           issuer,
+                           scope,
+                           metadata,
+                           analysis,
+                           created_at,
+                           updated_at
+                    FROM session_envelopes
+                    WHERE tenant = $1
+                    ORDER BY updated_at DESC
+                    LIMIT $2
+                    """,
+                    tenant,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT session_id,
+                           persona_id,
+                           tenant,
+                           subject,
+                           issuer,
+                           scope,
+                           metadata,
+                           analysis,
+                           created_at,
+                           updated_at
+                    FROM session_envelopes
+                    ORDER BY updated_at DESC
+                    LIMIT $1
+                    """,
+                    limit,
+                )
+
+        envelopes: list[SessionEnvelope] = []
+        for row in rows:
+            envelopes.append(
+                SessionEnvelope(
+                    session_id=row["session_id"],
+                    persona_id=row["persona_id"],
+                    tenant=row["tenant"],
+                    subject=row["subject"],
+                    issuer=row["issuer"],
+                    scope=row["scope"],
+                    metadata=row["metadata"],
+                    analysis=row["analysis"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+            )
+        return envelopes
+
     async def close(self) -> None:
         if self._pool is not None:
             await self._pool.close()
