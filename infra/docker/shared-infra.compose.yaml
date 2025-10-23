@@ -103,13 +103,6 @@ services:
       - "9091:9090"
     restart: unless-stopped
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: sharedinfra_grafana
-    ports:
-      - "3001:3000"
-    restart: unless-stopped
-
 volumes:
   postgres_data:
   kafka_data:

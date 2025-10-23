@@ -1369,29 +1369,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Runbooks
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1923,10 +1900,11 @@
 <h2 id="command-interface">Command Interface<a class="headerlink" href="#command-interface" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Makefile targets</strong> (see <code>Makefile</code>):</li>
-<li><code>make dev-up</code>, <code>make dev-down</code>, <code>make dev-logs</code>.</li>
-<li><code>make fmt</code>, <code>make lint</code>, <code>make test</code>, <code>make docs-verify</code>.</li>
-<li><strong>Poetry</strong> (if enabled): <code>poetry install</code>, <code>poetry run pytest</code>.</li>
-<li><strong>Node toolchain:</strong> <code>npm run lint</code>, <code>npm run build</code> under <code>webui/</code>.</li>
+<li><code>make build</code>, <code>make up</code>, <code>make down</code>, <code>make logs</code>, <code>make clean</code>.</li>
+<li><code>make dev-up</code>, <code>make dev-down</code>, <code>make dev-logs</code>, <code>make dev-rebuild</code>, <code>make dev-up-services SERVICES=gateway</code>.</li>
+<li><code>make docs-install</code>, <code>make docs-build</code>, <code>make docs-verify</code>.</li>
+<li><strong>Python environment:</strong> <code>python3 -m venv .venv &amp;&amp; source .venv/bin/activate &amp;&amp; pip install -r requirements.txt</code>.</li>
+<li><strong>Node toolchain:</strong> <code>npm install &amp;&amp; npm run build</code> under <code>webui/</code> when working on the UI.</li>
 </ul>
 <h2 id="linting-formatting">Linting &amp; Formatting<a class="headerlink" href="#linting-formatting" title="Permanent link">&para;</a></h2>
 <table>
@@ -1940,8 +1918,8 @@
 <tbody>
 <tr>
 <td>Python</td>
-<td>Black, Ruff, Mypy</td>
-<td><code>make fmt fmt-check lint mypy</code></td>
+<td>Ruff, Black</td>
+<td><code>ruff check .</code>, <code>black .</code></td>
 </tr>
 <tr>
 <td>JavaScript/TypeScript</td>
@@ -1949,17 +1927,17 @@
 <td><code>npm run lint</code>, <code>npm run format</code></td>
 </tr>
 <tr>
-<td>Markdown</td>
-<td>markdownlint-cli2</td>
+<td>Markdown/Docs</td>
+<td>MkDocs + markdownlint</td>
 <td><code>make docs-verify</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="documentation-pipeline">Documentation Pipeline<a class="headerlink" href="#documentation-pipeline" title="Permanent link">&para;</a></h2>
 <ul>
-<li>MkDocs configuration: <code>mkdocs.yml</code> (added in docs sprint).</li>
-<li>Diagram rendering: <code>mmdc</code> (Mermaid CLI) invoked via <code>make docs-diagrams</code>.</li>
-<li>Link checking: <code>lychee</code> executed in docs CI workflow.</li>
+<li>MkDocs configuration: <code>mkdocs.yml</code>.</li>
+<li>Local authoring: <code>make docs-install</code> once, then <code>make docs-build</code> (strict) or <code>make docs-serve</code>.</li>
+<li>CI parity: <code>.github/workflows/docs.yml</code> runs <code>make docs-verify</code>.</li>
 </ul>
 <h2 id="observability-debugging">Observability &amp; Debugging<a class="headerlink" href="#observability-debugging" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1979,7 +1957,9 @@
 </ul>
 <h2 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Run <code>make tooling-audit</code> (script added in this sprint) to ensure required binaries are present and versions are compatible.</li>
+<li>Run <code>pytest</code> for the Python test suite.</li>
+<li><code>make docs-verify</code> prior to publishing documentation changes.</li>
+<li><code>docker compose -p somaagent01 -f docker-compose.yaml ps</code> to confirm service health after stack changes.</li>
 </ul>
 
 
@@ -2001,35 +1981,12 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 16, 2025 02:48:43 UTC">October 16, 2025</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 19, 2025 02:19:44 UTC">October 19, 2025</span>
   </span>
 
     
     
     
-    
-      
-  <span class="md-source-file__fact">
-    
-      
-  <span class="md-icon" title="Contributors">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"/></svg>
-  </span>
-  <span>GitHub</span>
-
-    
-    <nav>
-      
-        <a href="https://github.com/somatechlat" class="md-author" title="@somatechlat">
-          
-          <img src="https://avatars.githubusercontent.com/u/218019718?v=4&size=72" alt="somatechlat">
-        </a>
-      
-      
-      
-    </nav>
-  </span>
-
     
   </aside>
 

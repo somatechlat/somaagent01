@@ -1,93 +1,123 @@
-# Agent Zero — Messaging Architecture Canonical Roadmap
+# SomaAgent01 — Canonical Upgrade Roadmap (Next‑Gen Agent)
 
-Last updated: 2025-03-28  
-Branch: messaging_architecture
+Last updated: 2025‑10‑23  
+Scope: Full platform upgrade (orchestrator, memory, messaging, policy, tools, observability, security, CI/CD)
 
-This roadmap captures the end-to-end plan for restoring the full conversational pipeline, consolidating on the modern FastAPI gateway, and delivering a production-ready messaging backbone that runs locally with real services and scales to staging.
+This canonical roadmap supersedes the older messaging‑only plan and captures the end‑to‑end program to deliver a durable, policy‑safe, observable, and enterprise‑ready agent. It is repo‑accurate to this codebase (services/*, python/integrations/soma_client.py, conf/*, schemas/*, docs/*).
 
-## Vision
+## Vision and success criteria
 
-Provide a single, policy-aware messaging architecture that:
+| Goal | Success metric |
+| --- | --- |
+| Durable orchestrator | Checkpointed DAG in Postgres; recovery < 5s; rollback to prior snapshot |
+| Role‑based sub‑agents | Roles loaded from conf/roles.yaml; OPA enforces 100% of policy tests |
+| Tool framework | Auto‑generated JSON Schemas; schema validation errors < 0.1% in CI |
+| Enterprise integration | End‑to‑end latency < 200 ms excl. upstream; zero data loss under outages |
+| Security & isolation | Sandbox (gVisor/seccomp) per‑tool option; < 1/day false‑positive Falco alerts |
+| Observability | 99% trace coverage; dashboards maintained in external project; SLO=99.9% uptime |
+| CI/CD & deployability | Helm install < 10 min; Trivy finds 0 critical; blue/green canary succeeds |
 
-- Runs the entire agent stack locally with all required dependencies (Kafka, Redis, Postgres, OPA, tool executor, UI) and zero mocks.
-- Persists LLM credentials captured in the UI into runtime configuration securely and immediately.
-- Uses the official single-node KRaft Kafka image across all environments.
-- Streams conversations and tool results end-to-end via Kafka topics with deterministic ordering and backpressure handling.
-- Exposes one modern FastAPI gateway for every ingress (HTTP, WebSocket, SSE) while decommissioning legacy Flask paths.
-- Ships with an executable roadmap and sprint plan (waves) so the team can deliver incrementally.
+## Target architecture (text)
 
-## Constraints
+- Orchestrator (new: services/orchestrator): LangGraph‑style DAG with retry+jitter and Postgres checkpoint store (versioned); emits agent.runs.v1 and agent.steps.v1; optional visualization hooks.
+- Memory (SomaBrain‑only): Write‑through remember with Postgres outbox + health‑aware sync worker; Redis recall cache; /link provenance; optional short‑TTL SQLite micro‑cache (feature‑flagged).
+- Roles & policy: conf/roles.yaml; conf/policies/*.rego; hot‑reload; uniform policy node before tools; agent.audit.v1 for policy/delegation.
+- Tools & sandbox: Auto schema gen from docstrings; streaming delimiters {"delim":"start"|"end"}; optional gVisor/seccomp per‑tool; hard timeouts.
+- Messaging & validation: Tenant‑partitioned topics; publish‑time JSON Schema validation; optional Kafka Streams enricher for trace context.
+- Observability: OTEL spans propagate SomaBrain request_id; node metrics (success/failure/latency); Prometheus SLO alerts; dashboards maintained externally.
+- Deployment/CI/CD: Helm pre‑install (tables/topics); Vault JWT rotation; Trivy scans; benchmark CI job; HPA on custom metrics.
 
-- No mocked dependencies: compose stack must bring up the real services used in production parity.
-- Gateway-first: All ingress traffic goes through `services/gateway/main.py`; legacy Flask endpoints are removed, not muted.
-- Kafka official image (`confluentinc/cp-kafka`) with single-node KRaft mode; topic configs managed via automation, not manual CLI.
-- Secrets and credentials flow from UI ➜ backend ➜ persisted env/secret store without manual edits.
-- Every behavioral change requires Playwright/E2E regression coverage for chat happy-path and tool execution.
-- Documentation updates ship with the code change that alters behavior.
+## Folder‑by‑folder scope (highlights)
 
-## Waves & Deliverables
+- services/gateway: write‑through remember (user), streaming delimiters, schema validation on publish, trace & request_id propagation.
+- services/conversation_worker: integrate orchestrator; remember assistant; Redis recall; emit runs/steps.
+- services/tool_executor: centralized OPA check; delimiters; agent.tools.v1 analytics; sandbox hooks; memory linking.
+- services/orchestrator (new): minimal DAG, checkpoint store, retry+jitter, events, visualization hook.
+- services/delegation_*: agent.audit.v1 for delegation; optional child runs.
+- services/memory_service: deprecate after validation; remove from compose/helm.
+- services/common: publisher schema validation; outbox repo; trace utils; idempotency key gen.
+- python/integrations/soma_client.py: 1–1.5s /health probe; breaker signals; batch & link helpers.
+- conf/: roles.yaml; policies/*.rego; topics.yaml for tenant templates.
+- schemas/: add agent.runs.v1.json, agent.steps.v1.json, agent.tools.v1.json, agent.audit.v1.json; extend conversation/tool schemas with tracing.
+- docs/: messaging pages for new schemas; monitoring.md health/backoff; data/streams.md partitioning/validation.
+- scripts/: somabrain-sync CLI; breaker_open load test with assertions; schema smoke/diff tests in CI.
+- infra/: helm pre‑install job; OPA sidecar; Vault injector; HPA; dashboards; alert rules; Falco sidecar.
+- webui/: handle streaming delimiters and optional run timeline.
 
-### Wave 0 – Baseline Integrity
-- Document and verify the current docker-compose stack on branch `messaging_architecture`.
-- Capture existing configs (.env, compose overrides) and codify smoke checks (Kafka health, gateway `/health`, worker consumer lag).
-- Acceptance: `docker compose up` brings all services healthy; minimal smoke script passes; roadmap + sprint docs merged.
+## Contracts (authoritative)
 
-### Wave 1 – Gateway Consolidation
-- Remove legacy Flask/`agent.py` messaging routes; migrate UI to call FastAPI gateway endpoints exclusively.
-- Implement unified request validation, JWT/OPA hooks, and consistent response schema across REST/WebSocket/SSE.
-- Acceptance: UI chat works only through gateway; legacy modules deleted; lint/tests green.
+- Idempotency key: `{tenant}/{namespace}/{session_id}/{role}/{timestamp_iso}/{hash16}`; on collision append `~{shortuuid8}`; persist `idem_key_base` and `idem_suffix`; unique `(tenant, namespace, somabrain_key)`; mirror in memory.meta.
+- agent.runs.v1: `run_id, tenant, session_id, run_version, run_schema_version, orchestrator_name, orchestrator_build, model_profile, status, started_at, finished_at?, trace_id, request_ids?`.
+- agent.steps.v1: `run_id, step_id, node_id, node_type, status, retry_count, started_at, finished_at, latency_ms, span_id, request_id?, inputs_summary, outputs_summary`.
+- agent.tools.v1: `run_id, step_id, tool_name, status, tool_execution_ms, tool_error_type?, payload_size?, trace_id`.
+- agent.audit.v1: `event_id, category(policy|delegation|sync|security), actor, subject, decision, reason, policy_version?, timestamp, meta`.
+- agent.benchmarks.v1: as in `schemas/agent.benchmarks.v1.json`.
+- Extend conversation/tool event schemas with `trace_id`, `span_id`, `request_id`.
 
-### Wave 2 – Messaging Backbone Restoration
-- Rebuild Kafka topic provisioning and consumer wiring for `conversation.inbound`, `conversation.outbound`, `tool.requests`, `tool.results` with aiokafka.
-- Ensure tool results bridge back to conversations, including error propagation and retry semantics.
-- Acceptance: Automated integration test publishes a message and receives a streamed answer including tool output; Kafka consumer lag < 5s under load test.
+## Health‑aware outbox policy
 
-### Wave 3 – Credential Flow & Persistence
-- Implement UI form to store LLM credentials via settings API; persist to encrypted env store (filesystem secret vault or database table).
-- Ensure runtime services reload or fetch credentials without restart; add validation and redaction in logs.
-- Acceptance: Playwright test enters key, refreshes page, key still present (masked) and gateway uses it to call upstream LLM.
+- Probe `/health` with 1–1.5s timeout; degraded when `ok=true` but memory_ok=false or high latency, or breaker_open recently observed; down otherwise.
+- Degraded: flush concurrency=1, batch<=25, jittered backoff (cap 30s). Down: pause writes; probe only.
+- Metrics: `somabrain.health_state{normal|degraded|down}`, `somabrain_outbox.flush_concurrency`, `somabrain.requests.breaker_open.count`.
 
-### Wave 4 – End-to-End Hardening
-- Expand Playwright suite to cover multi-turn conversations, tool invocation, and cancellation paths.
-- Add observability: OpenTelemetry spans across gateway ➜ worker ➜ tool executor; Grafana dashboard for messaging KPIs.
-- Acceptance: Playwright suite green in CI; trace correlation visible; dashboard panel shows live throughput/error rate.
+## Waves and deliverables (6–8 weeks)
 
-### Wave 5 – Performance & Release
-- Load test (500 concurrent sessions) with controlled degradation strategy; implement autoscaling hooks or worker concurrency controls.
-- Produce release runbook, rollback plan, and migration notes for removing legacy stack.
-- Acceptance: Load test stays within SLA (<2s average response, 0 data loss), runbook approved, release candidate tagged.
+### Wave 0 – Contracts & docs (Days 1–3)
+- Add schemas: runs/steps/tools/audit; extend conversation/tool with tracing.
+- Docs: messaging pages; monitoring/backoff; streams/partitioning; update mkdocs nav; build docs.
+- Acceptance: schema smoke PASS; mkdocs build PASS.
 
-## Milestones & Acceptance Criteria
+### Wave 1 – Memory reliability (Week 1–2)
+- Outbox tables + repo; soma_client health/breaker; write‑through remember in gateway & worker; idempotent keys; user↔assistant links.
+- Sync worker degraded/down logic; Redis recall cache (5 min); tool output linking; unit/integration + breaker_open load tests.
+- Acceptance: bounded queue under breaker; successful drain; zero loss; links present.
+
+### Wave 2 – Orchestrator MVP (Week 2–4)
+- services/orchestrator minimal DAG; Postgres checkpoint store (versioned); start/resume/get APIs; emit runs/steps with versioning.
+- Policy node; retries with jitter; node.retry_count metric; visualization hook behind flag.
+- Acceptance: kill‑and‑resume passes; events + tracing correct; retries bounded.
+
+### Wave 3 – Roles, tools, sandbox (Week 3–5)
+- conf/roles.yaml; conf/policies/*.rego; hot‑reload; uniform OPA pre‑tool; agent.audit.v1 for decisions/delegations.
+- Auto schema gen (docstrings); agent.tools.v1 analytics; streaming delimiters; UI progressive render; gVisor/seccomp per‑tool; hard timeouts.
+- Acceptance: unauthorized calls denied + audited; tools stream; sandbox toggle operational.
+
+### Wave 4 – Messaging, observability, CI/CD (Week 5–6)
+- Tenant‑partitioned topics; publish‑time schema validation; optional Kafka Streams enricher; OTEL correlation with request_id; node metrics.
+- External dashboards wired to Prometheus; SLO alerts; Helm pre‑install tables/topics; Trivy in CI; benchmark job emits agent.benchmarks.v1.
+- Acceptance: invalid publishes rejected; dashboards live; alerts fire in drills; CI fails on critical CVEs.
+
+### Wave 5 – Security & ops (Week 6–8)
+- Vault JWT rotation + config watcher; Falco runtime monitor; OPA testing sandbox CLI.
+- somabrain-sync CLI; remove legacy services/memory_service; runbooks & incident playbooks complete.
+- Acceptance: rotation seamless; Falco events visible; memory_service removed; runbooks validated.
+
+## Milestones & acceptance criteria
 
 | Milestone | Wave | Description | Acceptance |
 | --- | --- | --- | --- |
-| M0 | Wave 0 | Baseline compose stack + documentation committed | `docker compose ps` healthy, smoke script logs success |
-| M1 | Wave 1 | Gateway-only ingress with legacy removal | UI chat works via gateway; 100% tests pass |
-| M2 | Wave 2 | Kafka messaging pipeline restored | Automated test validates inbound/outbound/tool roundtrip |
-| M3 | Wave 3 | Credentials persisted & hot-loaded | Playwright credential scenario green; secrets encrypted |
-| M4 | Wave 4 | Observability & E2E coverage | Playwright suite + telemetry dashboards operational |
-| M5 | Wave 5 | Performance sign-off & release artifacts | Load test report approved; runbook + rollback published |
+| M0 | 0 | Contracts + docs | Schemas + docs build PASS |
+| M1 | 1 | Outbox + write‑through + recall | Breaker test bounded + drain; zero loss |
+| M2 | 2 | Orchestrator MVP | Resume from checkpoint; events/traces OK |
+| M3 | 3 | Roles/policy/tools/sandbox | OPA enforced; streaming; analytics live |
+| M4 | 4 | Messaging/observability/CI | Validation on publish; dashboards; Trivy PASS |
+| M5 | 5 | Security/ops + deprecations | Vault rotation; Falco; memory_service removed |
 
-## Dependencies & Environment Contract
+## Risks & mitigations
 
-- `.env` files remain source of truth; credential secrets stored using `services/gateway/settings.py` helpers with encryption key from `conf/env/`.
-- Compose files: `docker-compose.yaml` (core stack), optional profiles for optimized builds. Official Kafka image referenced in all variants.
-- Topics and ACLs codified in `infra/kafka/` manifests (to be added/updated during Wave 2).
-- Playwright tests live under `tests/e2e/`; smoke tests under `scripts/`.
-- Documentation updates go into `docs/` (`docs/roadmap_sa01.md` or new `docs/messaging/` folder).
+- Orchestrator complexity → Minimal DAG + strict checkpoint contract first; expand iteratively.
+- OPA latency → Short‑TTL cache; batch evaluations; default‑deny on timeout with audit.
+- Sandbox overhead → Per‑tool toggle; profile; isolate only high‑risk tools.
+- Kafka Streams complexity → Keep optional; producer‑side enrichment baseline first.
+- Token rotation issues → Canary rollout; fallback token cache; alerting.
 
-## Risks & Mitigations
+## Governance and quality gates
 
-- **Credential leakage**: enforce redaction in logs, use secrets manager abstraction, add automated tests for redaction.
-- **Kafka instability**: monitor broker metrics, include restart scripts, keep local data volumes isolated per build.
-- **UI regressions**: rely on Playwright suite per PR and manual smoke as backup.
-- **Legacy removal fallout**: phased branch `messaging_architecture` with feature flags; maintain fallback compose profile until Wave 2 completes.
-
-## How to Maintain
-
-- Update this roadmap whenever scope or acceptance criteria shift.
-- Keep waves aligned with sprint plans in `ROADMAP_SPRINTS.md`.
-- Ensure every merge request references wave/milestone IDs and links to tests and documentation updates.
+- Build/Lint/Typecheck: PASS.
+- Tests: unit + integration + breaker_backpressure: PASS.
+- Observability: spans + external dashboards + SLO alerts verified in drills: PASS.
+- Security: Trivy 0 critical; OPA tests PASS; Vault rotation verified: PASS.
+- Docs: mkdocs build PASS; messaging pages up to date.
 
 ---
-Canonical roadmap for the messaging architecture overhaul established on branch `messaging_architecture`.
+This document is the single source of truth for SomaAgent01’s upgrade program. Update alongside any scope or acceptance change and keep sprints aligned with `ROADMAP_SPRINTS.md`.

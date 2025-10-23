@@ -45,7 +45,7 @@ docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yam
 
 Charts live under `infra/helm/`.
 
-- `soma-infra/`: shared infrastructure (Auth, OPA, Kafka, Redis, Prometheus, Grafana, Vault, Etcd).
+- `soma-infra/`: shared infrastructure (Auth, OPA, Kafka, Redis, Prometheus, Vault, Etcd).
 - `soma-stack/`: application bundle (gateway, conversation worker, memory service, UI, tool executor).
 
 ### Install Flow

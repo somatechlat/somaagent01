@@ -10,25 +10,21 @@
       
       
       
-        <link rel="canonical" href="https://docs.somaagent01.dev/user-manual/ui-overview/">
+        <link rel="canonical" href="https://docs.somaagent01.dev/messaging/">
       
       
-        <link rel="prev" href="../installation/">
       
       
-        <link rel="next" href="../tunnels/">
-      
-      
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
     
     
       
-        <title>Web UI Walkthrough - SomaAgent01 Docs</title>
+        <title>Messaging Architecture Documentation - SomaAgent01 Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
       
       
 
@@ -47,7 +43,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -66,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#web-ui-walkthrough" class="md-skip">
+        <a href="#messaging-architecture-documentation" class="md-skip">
           Skip to content
         </a>
       
@@ -82,7 +78,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+    <a href=".." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -102,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Web UI Walkthrough
+              Messaging Architecture Documentation
             
           </span>
         </div>
@@ -192,7 +188,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+    <a href=".." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -222,7 +218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -241,20 +237,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -270,7 +264,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             User Manual
@@ -284,7 +278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../user-manual/" class="md-nav__link">
         
   
   
@@ -307,7 +301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/" class="md-nav__link">
+      <a href="../user-manual/getting-started/" class="md-nav__link">
         
   
   
@@ -330,7 +324,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../user-manual/installation/" class="md-nav__link">
         
   
   
@@ -350,32 +344,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    UI Overview
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../user-manual/ui-overview/" class="md-nav__link">
         
   
   
@@ -386,89 +358,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-authentication-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Authentication Flow
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-chat-workspace" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Chat Workspace
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-settings-modal" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Settings Modal
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-voice-interface-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Voice Interface (Optional)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-extension-hooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Extension Hooks
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-accessibility-commitments" class="md-nav__link">
-    <span class="md-ellipsis">
-      6. Accessibility Commitments
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-future-enhancements" class="md-nav__link">
-    <span class="md-ellipsis">
-      7. Future Enhancements
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -481,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tunnels/" class="md-nav__link">
+      <a href="../user-manual/tunnels/" class="md-nav__link">
         
   
   
@@ -504,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../using-the-agent/" class="md-nav__link">
+      <a href="../user-manual/using-the-agent/" class="md-nav__link">
         
   
   
@@ -565,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../features/memory-management/" class="md-nav__link">
+      <a href="../user-manual/features/memory-management/" class="md-nav__link">
         
   
   
@@ -596,7 +485,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../user-manual/troubleshooting/" class="md-nav__link">
         
   
   
@@ -619,7 +508,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../accessibility/" class="md-nav__link">
+      <a href="../user-manual/accessibility/" class="md-nav__link">
         
   
   
@@ -687,7 +576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/" class="md-nav__link">
+      <a href="../technical-manual/" class="md-nav__link">
         
   
   
@@ -710,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/architecture/" class="md-nav__link">
+      <a href="../technical-manual/architecture/" class="md-nav__link">
         
   
   
@@ -733,7 +622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/deployment/" class="md-nav__link">
+      <a href="../technical-manual/deployment/" class="md-nav__link">
         
   
   
@@ -756,7 +645,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/monitoring/" class="md-nav__link">
+      <a href="../technical-manual/monitoring/" class="md-nav__link">
         
   
   
@@ -779,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/infrastructure/" class="md-nav__link">
+      <a href="../technical-manual/infrastructure/" class="md-nav__link">
         
   
   
@@ -802,7 +691,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/integrations/" class="md-nav__link">
+      <a href="../technical-manual/integrations/" class="md-nav__link">
         
   
   
@@ -825,7 +714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/security/" class="md-nav__link">
+      <a href="../technical-manual/security/" class="md-nav__link">
         
   
   
@@ -848,7 +737,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/data-flow/" class="md-nav__link">
+      <a href="../technical-manual/data-flow/" class="md-nav__link">
         
   
   
@@ -871,7 +760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/runbooks/" class="md-nav__link">
+      <a href="../technical-manual/runbooks/" class="md-nav__link">
         
   
   
@@ -932,7 +821,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/gateway/" class="md-nav__link">
+      <a href="../technical-manual/components/gateway/" class="md-nav__link">
         
   
   
@@ -955,7 +844,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/conversation-worker/" class="md-nav__link">
+      <a href="../technical-manual/components/conversation-worker/" class="md-nav__link">
         
   
   
@@ -978,7 +867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/tool-executor/" class="md-nav__link">
+      <a href="../technical-manual/components/tool-executor/" class="md-nav__link">
         
   
   
@@ -1001,7 +890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/memory/" class="md-nav__link">
+      <a href="../technical-manual/components/memory/" class="md-nav__link">
         
   
   
@@ -1024,7 +913,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/mcp-proxy/" class="md-nav__link">
+      <a href="../technical-manual/components/mcp-proxy/" class="md-nav__link">
         
   
   
@@ -1047,7 +936,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/realtime-speech/" class="md-nav__link">
+      <a href="../technical-manual/components/realtime-speech/" class="md-nav__link">
         
   
   
@@ -1070,7 +959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/components/ui/" class="md-nav__link">
+      <a href="../technical-manual/components/ui/" class="md-nav__link">
         
   
   
@@ -1146,7 +1035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/" class="md-nav__link">
+      <a href="../development-manual/" class="md-nav__link">
         
   
   
@@ -1169,7 +1058,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/environment/" class="md-nav__link">
+      <a href="../development-manual/environment/" class="md-nav__link">
         
   
   
@@ -1192,7 +1081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/contribution-workflow/" class="md-nav__link">
+      <a href="../development-manual/contribution-workflow/" class="md-nav__link">
         
   
   
@@ -1215,7 +1104,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/coding-standards/" class="md-nav__link">
+      <a href="../development-manual/coding-standards/" class="md-nav__link">
         
   
   
@@ -1238,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/testing/" class="md-nav__link">
+      <a href="../development-manual/testing/" class="md-nav__link">
         
   
   
@@ -1261,7 +1150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/debugging/" class="md-nav__link">
+      <a href="../development-manual/debugging/" class="md-nav__link">
         
   
   
@@ -1284,7 +1173,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/release-process/" class="md-nav__link">
+      <a href="../development-manual/release-process/" class="md-nav__link">
         
   
   
@@ -1307,7 +1196,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/tooling/" class="md-nav__link">
+      <a href="../development-manual/tooling/" class="md-nav__link">
         
   
   
@@ -1330,7 +1219,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/api-reference/" class="md-nav__link">
+      <a href="../development-manual/api-reference/" class="md-nav__link">
         
   
   
@@ -1353,7 +1242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/legacy-apis/" class="md-nav__link">
+      <a href="../development-manual/legacy-apis/" class="md-nav__link">
         
   
   
@@ -1421,7 +1310,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/" class="md-nav__link">
+      <a href="../onboarding-manual/" class="md-nav__link">
         
   
   
@@ -1444,7 +1333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/orientation/" class="md-nav__link">
+      <a href="../onboarding-manual/orientation/" class="md-nav__link">
         
   
   
@@ -1467,7 +1356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/first-90-days/" class="md-nav__link">
+      <a href="../onboarding-manual/first-90-days/" class="md-nav__link">
         
   
   
@@ -1490,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/toolchain/" class="md-nav__link">
+      <a href="../onboarding-manual/toolchain/" class="md-nav__link">
         
   
   
@@ -1513,7 +1402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/team-contacts/" class="md-nav__link">
+      <a href="../onboarding-manual/team-contacts/" class="md-nav__link">
         
   
   
@@ -1536,7 +1425,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/faq/" class="md-nav__link">
+      <a href="../onboarding-manual/faq/" class="md-nav__link">
         
   
   
@@ -1604,7 +1493,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../style-guide/" class="md-nav__link">
+      <a href="../style-guide/" class="md-nav__link">
         
   
   
@@ -1627,7 +1516,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
+      <a href="../glossary/" class="md-nav__link">
         
   
   
@@ -1650,7 +1539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../documentation-audit-checklist/" class="md-nav__link">
+      <a href="../documentation-audit-checklist/" class="md-nav__link">
         
   
   
@@ -1673,7 +1562,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../changelog/" class="md-nav__link">
         
   
   
@@ -1696,7 +1585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../data/streams/" class="md-nav__link">
+      <a href="../data/streams/" class="md-nav__link">
         
   
   
@@ -1764,7 +1653,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/" class="md-nav__link">
+      <a href="../reference/" class="md-nav__link">
         
   
   
@@ -1814,63 +1703,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-authentication-flow" class="md-nav__link">
+  <a href="#contents" class="md-nav__link">
     <span class="md-ellipsis">
-      1. Authentication Flow
+      Contents
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-chat-workspace" class="md-nav__link">
+  <a href="#maintenance-notes" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Chat Workspace
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-settings-modal" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Settings Modal
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-voice-interface-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Voice Interface (Optional)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-extension-hooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Extension Hooks
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-accessibility-commitments" class="md-nav__link">
-    <span class="md-ellipsis">
-      6. Accessibility Commitments
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-future-enhancements" class="md-nav__link">
-    <span class="md-ellipsis">
-      7. Future Enhancements
+      Maintenance Notes
     </span>
   </a>
   
@@ -1895,115 +1739,21 @@
   
 
 
-<h1 id="web-ui-walkthrough">Web UI Walkthrough<a class="headerlink" href="#web-ui-walkthrough" title="Permanent link">&para;</a></h1>
-<p>This guide explains every major surface in the SomaAgent01 web UI so operators can navigate confidently, extend the interface, and verify accessibility requirements.</p>
-<h2 id="1-authentication-flow">1. Authentication Flow<a class="headerlink" href="#1-authentication-flow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>flowchart LR
-    A[Login Page] --&gt; B[Submit credentials]
-    B --&gt; C{Valid?}
-    C -- Yes --&gt; D[Redirect to Chat UI]
-    C -- No --&gt; E[Show error]
-</code></pre></div>
+<h1 id="messaging-architecture-documentation">Messaging Architecture Documentation<a class="headerlink" href="#messaging-architecture-documentation" title="Permanent link">&para;</a></h1>
+<p>This directory houses living documentation for the messaging architecture overhaul tracked on the <code>messaging_architecture</code> branch.</p>
+<h2 id="contents">Contents<a class="headerlink" href="#contents" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Credentials default to the values stored in <code>.env</code> (<code>AUTH_LOGIN</code>, <code>AUTH_PASSWORD</code>) or the settings service.</li>
-<li>Failed attempts emit structured events for the security audit log.</li>
-<li>Passwords never render back into the DOM after successful login.</li>
+<li><code>baseline.md</code> – Captures the current state of the docker-compose stack, environment contracts, and smoke checks (Wave 0 deliverable).</li>
+<li><code>release.md</code> – Final runbook covering deployment, rollback, and validation steps (targeted for Sprint 4).</li>
+<li>Additional sub-documents for tooling, observability, and troubleshooting as they are produced.</li>
 </ul>
-<p><strong>Verification:</strong> Attempt a login with valid credentials; UI redirects to the chat view and the header shows the active tenant.</p>
-<h2 id="2-chat-workspace">2. Chat Workspace<a class="headerlink" href="#2-chat-workspace" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>flowchart TB
-    subgraph Chat UI
-        Input[Message input] --&gt; Send[Send button]
-        Send --&gt; WS[WebSocket stream]
-        WS --&gt; Core[Agent orchestration]
-        Core --&gt; Stream[Streamed response]
-        Stream --&gt; Render[Chat window]
-    end
-    Render --&gt; Actions[Copy / Regenerate]
-</code></pre></div>
+<h2 id="maintenance-notes">Maintenance Notes<a class="headerlink" href="#maintenance-notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Real-time responses flow through the <code>response_stream_chunk</code> hook before rendering.</li>
-<li>Managing sessions: <code>New Chat</code>, <code>Reset Chat</code>, <code>Save Chat</code>, and <code>Load Chat</code> manage JSON transcripts in <code>/tmp/chats</code>.</li>
-<li>Action bar controls pause/resume processing, import knowledge, inspect context/history, and retry the previous step via <strong>Nudge</strong>.</li>
+<li>Keep documents versioned alongside the roadmap milestones (Wave/Sprint references).</li>
+<li>Update tables of contents and cross-links whenever new documents are added.</li>
+<li>Reference acceptance criteria from <code>ROADMAP_CANONICAL.md</code> and <code>ROADMAP_SPRINTS.md</code> when drafting new guides.</li>
+<li>Keep automation aligned with documentation (e.g., <code>scripts/check_stack.py</code> referenced in <code>baseline.md</code>).</li>
 </ul>
-<p><strong>Verification:</strong> Send a message, observe streaming updates, and confirm transcript persistence by saving and reloading the chat file.</p>
-<h2 id="3-settings-modal">3. Settings Modal<a class="headerlink" href="#3-settings-modal" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>flowchart LR
-    Button[Settings button] --&gt; Modal[Open modal]
-    Modal --&gt; Tabs[Agent | Models | Speech | Advanced]
-    Tabs --&gt; Save[Save]
-    Save --&gt; Persist[Write tmp/settings.json]
-    Persist --&gt; Reload[Runtime reload]
-</code></pre></div>
-<ul>
-<li>Each tab maps to Pydantic schemas in <code>services/gateway/routes/settings.py</code>.</li>
-<li>Sensitive fields render masked placeholders to avoid leaking secrets.</li>
-<li>Changes trigger a runtime reload via the <code>apply_settings</code> pipeline.</li>
-</ul>
-<p><strong>Verification:</strong> Update a non-critical setting (for example, chat temperature), save, and confirm the change persists after refreshing the page.</p>
-<h2 id="4-voice-interface-optional">4. Voice Interface (Optional)<a class="headerlink" href="#4-voice-interface-optional" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>flowchart TB
-    Mic[Microphone button] --&gt; Capture[Capture audio]
-    Capture --&gt; Transcribe[POST /speech/transcribe]
-    Transcribe --&gt;|Success| Insert[Populate message input]
-    Transcribe --&gt;|Failure| Error[Show toast]
-</code></pre></div>
-<ul>
-<li>Speech-to-text runs locally via the speech service; no external API keys required.</li>
-<li>Text-to-speech toggles in the sidebar; playback can be stopped via the "Stop Speech" button.</li>
-</ul>
-<p><strong>Verification:</strong> Record a short prompt using the microphone and ensure the text populates in the message input field.</p>
-<h2 id="5-extension-hooks">5. Extension Hooks<a class="headerlink" href="#5-extension-hooks" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Hook</th>
-<th>Trigger</th>
-<th>Typical Use</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>response_stream_chunk</code></td>
-<td>Each streamed token</td>
-<td>Redact sensitive text or enrich with markdown</td>
-</tr>
-<tr>
-<td><code>ui_before_render</code></td>
-<td>Prior to DOM update</td>
-<td>Inject analytics, reaction buttons</td>
-</tr>
-<tr>
-<td><code>ui_on_error</code></td>
-<td>Exception propagation</td>
-<td>Replace default error alert</td>
-</tr>
-</tbody>
-</table>
-<p>Register hooks via <code>python/helpers/browser_use_monkeypatch.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">python.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">browser_use_monkeypatch</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">stamp_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="n">browser_use_monkeypatch</span><span class="o">.</span><span class="n">response_stream_chunk</span> <span class="o">=</span> <span class="n">stamp_chunk</span>
-</code></pre></div>
-<p>Changes take effect immediately after a page reload and preserve the lightweight HTML/JS implementation.</p>
-<h2 id="6-accessibility-commitments">6. Accessibility Commitments<a class="headerlink" href="#6-accessibility-commitments" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Keyboard navigation covers every action button and settings control.</li>
-<li><code>aria-label</code> attributes describe interactive elements; modals trap focus until closed.</li>
-<li>Colour palette meets WCAG AA contrast ratios; dark mode toggle (roadmap item) will keep the same guarantees.</li>
-<li>Screen readers announce agent messages and toast notifications via <code>aria-live</code> regions.</li>
-</ul>
-<p><strong>Verification:</strong> Run <code>make docs-verify</code> (includes accessibility lint) and perform a manual keyboard walk-through to ensure focus states cycle correctly.</p>
-<h2 id="7-future-enhancements">7. Future Enhancements<a class="headerlink" href="#7-future-enhancements" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Dark mode:</strong> persisted per user in <code>tmp/settings.json</code>.</li>
-<li><strong>Rich text editor:</strong> lightweight WYSIWYG for formatted prompts.</li>
-<li><strong>Metrics side panel:</strong> optional SSE-powered live telemetry for latency and cost.</li>
-</ul>
-<p>Track UI backlog items in the Documentation Change Log and update this page when features graduate from experimental status.</p>
 
 
 
@@ -2024,7 +1774,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 18, 2025 03:26:32 UTC">October 18, 2025</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 23, 2025 20:18:08 UTC">October 23, 2025</span>
   </span>
 
     
@@ -2081,10 +1831,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>

@@ -1,82 +1,102 @@
-# 🗺️ Canonical Sprint Roadmap – Messaging Architecture Overhaul
+# 🗺️ Canonical Sprint Roadmap – SomaAgent01 Next‑Gen Upgrade
 
-## Vision
-Deliver a resilient end-to-end messaging pipeline that powers Agent Zero’s conversational experience through the modern FastAPI gateway, official KRaft Kafka, and automated UI credential flows.
+This sprint plan operationalizes the canonical roadmap across 6–8 weeks. Sprints map to waves and reference real repo paths (services/*, python/integrations/*, conf/*, schemas/*, docs/*, infra/*, webui/*).
 
----
+## 📆 Sprint structure
+Two‑week sprints with explicit Goals, Deliverables, and Acceptance. Use IDs (e.g., W2‑S3) in PR titles.
 
-## 📆 Sprint Structure
-We operate in **3-week sprints** aligned with roadmap waves. Each sprint lists **Goals**, **Key Deliverables**, **Owners**, and **Acceptance Criteria**.
+### Sprint 0 (W0‑S0) – Contracts & Docs
+Goal: Lock contracts and docs so implementation starts cleanly.
+- Add schemas: `schemas/agent.runs.v1.json`, `schemas/agent.steps.v1.json`, `schemas/agent.tools.v1.json`, `schemas/agent.audit.v1.json`; extend conversation/tool schemas with tracing fields.
+- Docs: `docs/messaging/agent-*.md` pages; update `mkdocs.yml`; build docs.
+- Scripts: ensure `scripts/schema_smoke_test.py` covers new schemas.
+- Acceptance: schema smoke PASS; mkdocs build PASS.
 
-### Sprint 0 – Baseline & Roadmap Commit (Wave 0)
-**Goal**: Capture the current state, codify smoke checks, and merge the canonical roadmap + sprint plan.
-- Document compose services, env contracts, and smoke scripts in `docs/messaging/baseline.md`.
-- Add automated health probe script `scripts/check_stack.py` (gateway, Kafka, worker).
-- Merge updated `ROADMAP_CANONICAL.md` and this sprint file into `messaging_architecture` branch.
-- **Acceptance**: Smoke script exits 0 on fresh `docker compose up`; documentation PR approved.
+### Sprint 1 (W1‑S1) – Memory Reliability I
+Goal: Durable writes via outbox and write‑through integration.
+- services/common: outbox repo + idempotency key generator + publisher validation.
+- python/integrations/soma_client.py: `/health` probe (1–1.5s), breaker signals, batch & link helpers.
+- services/gateway + services/conversation_worker: write‑through remember (user/assistant) with idempotent keys; create user↔assistant links.
+- Acceptance: unit tests PASS; write‑through persists to outbox when degraded/down.
 
-### Sprint 1 – Gateway Consolidation (Wave 1)
-**Goal**: Route all ingress through FastAPI and delete legacy Flask pathways.
-- Refactor UI (`webui/`) to call FastAPI endpoints exclusively; remove references to legacy routes.
-- Delete `agent.py` legacy handlers and associated Flask blueprints/tests.
-- Implement unified error contract (`services/gateway/errors.py`) and ensure SSE/WebSocket parity.
-- Expand API tests under `tests/integration/gateway/` for chat start, stream, cancel.
-- **Acceptance**: UI chat works end-to-end via gateway; integration tests green; lint passes; no Flask code remains.
+### Sprint 2 (W1‑S2) – Memory Reliability II
+Goal: Health‑aware sync worker, recall cache, and back‑pressure test.
+- New sync worker: degraded/down modes, jittered backoff, concurrency=1, batch<=25; metrics.
+- Redis recall cache (5 min TTL); link tool outputs.
+- Load test: force `breaker_open` and verify bounded queue + drain.
+- Acceptance: load test PASS; zero loss; metrics show throttling.
 
-### Sprint 2 – Kafka Messaging Backbone (Wave 2)
-**Goal**: Restore Kafka topics, consumers, and tool result routing.
-- Codify topic creation in `infra/kafka/topics.yaml` and bootstrap script.
-- Update conversation worker to handle retries, DLQ, and tool result fan-in; ensure idempotent offsets.
-- Add contract tests ensuring `tool.results` messages bubble to UI stream.
-- Provide load-test harness (`scripts/loadtest_kafka.py`) hitting 50 concurrent sessions.
-- **Acceptance**: Automated test publishes message and receives response with tool data; no dropped events under load test; metrics confirm consumer lag < 5s.
+### Sprint 3 (W2‑S3) – Orchestrator MVP
+Goal: Minimal DAG + checkpoints + events.
+- services/orchestrator: DAG runner; checkpoint store (versioned); start/resume/get; emit runs/steps with versioning and tracing.
+- conversation_worker integration: delegate flow to orchestrator.
+- Acceptance: kill‑and‑resume PASS; events visible and valid.
 
-### Sprint 3 – Credential Persistence & E2E Tests (Wave 3)
-**Goal**: Make UI credential settings durable and verifiable via Playwright.
-- Extend settings API to encrypt/store LLM keys, backed by new secrets table or file vault.
-- Implement hot-reload for credentials in gateway/conversation worker with caching + invalidation.
-- Add Playwright tests for credential entry, persistence, and masked display; wire into CI.
-- Harden logging with redaction filters and add security regression tests.
-- **Acceptance**: Playwright workflow green; manual log review confirms no secret leakage; gateway uses stored key to call LLM stub successfully.
+### Sprint 4 (W2‑S4) – Policy Node & Visualization Hook
+Goal: Enforcement + introspection.
+- Central policy node calling OPA before tools; deny‑by‑default on timeout with audit.
+- Optional visualization export hook (flagged) to external consumer.
+- Acceptance: policy tests PASS; audit events present; retries bounded.
 
-### Sprint 4 – Observability & Release Prep (Waves 4-5)
-**Goal**: Harden system with observability, performance, and release artifacts.
-- Instrument OpenTelemetry traces across gateway ➜ worker ➜ tool executor; publish Grafana dashboard JSON.
-- Expand Playwright coverage for multi-turn, tool errors, cancellation, and network blips.
-- Run 500-session load test, capture metrics, and document fallback strategy.
-- Publish release runbook (`docs/messaging/release.md`) including rollback, smoke tests, and migration notes.
-- **Acceptance**: CI Playwright suite stable; load test meets SLA (<2s p95); dashboard deployed; runbook approved by stakeholders.
+### Sprint 5 (W3‑S5) – Roles, Tool Schemas, Streaming
+Goal: Safer tools with better UX.
+- conf/roles.yaml + conf/policies/*.rego + hot‑reload.
+- Auto schema gen from docstrings; agent.tools.v1 analytics.
+- tool_executor: streaming delimiters; webui: progressive render support.
+- Acceptance: unauthorized calls denied + audited; UI streams progressively.
 
-### Backlog / Stretch Items
-- Multi-tenant credential vault integration.
-- Kafka schema registry adoption with Avro/Protobuf contracts.
-- Automated chaos tests for broker restarts.
+### Sprint 6 (W3‑S6) – Sandbox & Timeouts
+Goal: Isolation for high‑risk tools.
+- Sandbox runner using gVisor/seccomp; per‑tool toggle; minimal FS; hard timeouts.
+- Falco rules and dashboards.
+- Acceptance: sandbox tools run; Falco events observable; performance impact documented.
 
----
+### Sprint 7 (W4‑S7) – Messaging Validation & Observability
+Goal: Safer bus and deeper visibility.
+- Tenant‑partitioned topics and publish‑time JSON Schema validation.
+- OTEL propagation of SomaBrain request_id; node metrics exported.
+- Grafana dashboards and SLO alerts for latency/error/outbox backlog.
+- Acceptance: invalid publishes rejected; dashboards live; alerts tested.
 
-## 🌊 Wave Alignment
+### Sprint 8 (W4‑S8) – Helm & CI Hardening
+Goal: Smooth installs and secure builds.
+- Helm pre‑install job for DB tables + topics; HPA on tool latency.
+- CI: Trivy scan (fail on critical), benchmark job emitting agent.benchmarks.v1; docs build.
+- Acceptance: helm install < 10 min; CI green with Trivy 0 critical.
 
-| Wave | Scope | Covered Sprint |
+### Sprint 9 (W5‑S9) – Vault Rotation & OPA Sandbox
+Goal: Secrets and policy ergonomics.
+- Vault‑based SURFSENSE_JWT rotation + config watcher; OPA testing sandbox CLI.
+- Acceptance: rotation seamless; policy sandbox usable by developers.
+
+### Sprint 10 (W5‑S10) – Ops Tools & Deprecations
+Goal: Final polish and cleanup.
+- scripts/somabrain-sync CLI (manual flush + audit); remove services/memory_service from compose/helm and code paths; runbooks & incident playbooks.
+- Acceptance: manual flush audited; memory_service fully removed; runbooks validated.
+
+## 🌊 Wave alignment
+
+| Wave | Scope | Sprints |
 | --- | --- | --- |
-| Wave 0 | Baseline integrity & documentation | Sprint 0 |
-| Wave 1 | Gateway consolidation | Sprint 1 |
-| Wave 2 | Kafka messaging restoration | Sprint 2 |
-| Wave 3 | Credential persistence | Sprint 3 |
-| Wave 4 | E2E hardening | Sprint 4 |
-| Wave 5 | Performance & release | Sprint 4 (second half) |
+| 0 | Contracts & docs | 0 |
+| 1 | Memory reliability | 1–2 |
+| 2 | Orchestrator MVP | 3–4 |
+| 3 | Roles, tools, sandbox | 5–6 |
+| 4 | Messaging/observability/CI | 7–8 |
+| 5 | Security & ops | 9–10 |
 
----
+## 📦 Canonical files & owners
+- `ROADMAP_CANONICAL.md` – Platform roadmap (Architecture)
+- `ROADMAP_SPRINTS.md` – Sprint schedule (Delivery)
+- `docs/messaging/` – Event contracts and runbooks (Tech Writing)
+- `schemas/` – JSON Schemas (Platform)
+- `services/*` – Services (Backend)
+- `python/integrations/` – Clients (Platform)
+- `infra/` – Helm/K8s/observability (DevOps)
+- `webui/` – UI streaming + run timelines (Frontend)
+- `scripts/` – Load tests, CLI, automation (Platform)
 
-## 📦 Canonical Files & Owners
-- `ROADMAP_CANONICAL.md` – Messaging roadmap (owner: Architecture).
-- `ROADMAP_SPRINTS.md` – Sprint schedule (owner: Delivery).
-- `docs/messaging/` – Living documentation, smoke scripts, runbooks (owner: Technical Writing).
-- `scripts/` – Automation, load tests, smoke checks (owner: Platform).
-- `tests/e2e/` – Playwright automation (owner: QA).
-
----
-
-## ✅ Next Steps
-1. Finalize Sprint 0 tickets in the project board and assign owners.
-2. Wire smoke script into CI (pre-merge) once Sprint 0 closes.
-3. Use wave/sprint IDs (e.g., `W1-S1`) in commit messages and PR titles for traceability.
+## ✅ Next steps
+1. Create Sprint 0 tickets and assign owners.
+2. Add schema/docs tasks to CI and verify mkdocs build.
+3. Start Sprints 1–2 focusing on outbox + write‑through + sync worker + load test.

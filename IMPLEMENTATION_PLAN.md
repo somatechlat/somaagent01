@@ -14,7 +14,7 @@
 
 ### Track 2: Observability (Weeks 1-6)
 **Owner:** DevOps Team  
-**Focus:** Dashboards + Kubernetes
+**Focus:** Prometheus + external dashboards coordination + Kubernetes
 
 ### Track 3: Validation (Weeks 7-16)
 **Owner:** QA Team  
@@ -101,7 +101,7 @@
 4. Embed Prometheus metrics (iframe or API)
 5. Embed Jaeger traces (iframe or API)
 6. Create Kafka stream viewer
-7. Deploy Grafana with pre-built dashboards
+7. Publish dashboards in external observability project (reference Prometheus)
 
 **Files to Create:**
 - `dashboard/package.json`
@@ -111,11 +111,10 @@
 - `dashboard/components/MetricsPanel.tsx`
 - `dashboard/components/TracesPanel.tsx`
 - `dashboard/components/KafkaStream.tsx`
-- `infra/grafana/dashboards/overview.json`
-- `infra/grafana/dashboards/agents.json`
+<!-- Grafana dashboards are maintained externally -->
 
 **Files to Modify:**
-- `docker-compose.yaml` - add dashboard + grafana services
+- `docker-compose.yaml` - add dashboard service
 
 **Acceptance Criteria:**
 - [ ] Dashboard accessible at localhost:3000
@@ -392,7 +391,7 @@ touch benchmarks/runner.py
 
 ### Frontend Team (2 engineers)
 - Dashboard UI
-- Grafana dashboards
+- External dashboards coordination (definitions, links)
 - Documentation site
 
 ### QA Team (1 engineer)
