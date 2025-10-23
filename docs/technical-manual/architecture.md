@@ -33,7 +33,7 @@ This document captures the current service layout, target consolidation, and imp
 | Kafka | `docker-compose.yaml` | Platform | TCP | **9092** | Single node in compose, 3-node StatefulSet in Helm |
 | Redis | `docker-compose.yaml` | Platform | TCP | **6379** | Single instance; cluster planned |
 | Prometheus | `infra/observability/prometheus.yml` | Platform | HTTP | **9090** | Live in compose and Helm |
-| Grafana | `infra/observability/grafana` | Platform | HTTP | **3000** | Optional profile |
+<!-- Grafana removed: dashboards live in external project -->
 | Vault | future compose add-on | Platform | HTTP | **8200** | Dev mode compose; Helm chart forthcoming |
 | Etcd | `infra/helm/soma-infra/charts/etcd` | Platform | HTTP | **2379** | Placeholder chart available |
 
@@ -43,7 +43,7 @@ The stack currently runs four application services plus twelve infrastructure co
 
 ### 2.1 Target State
 
-Shared services (Auth, OPA, Kafka, Redis, Prometheus/Grafana, Vault, Etcd) run once per cluster inside the `soma-infra` namespace. Applications reference them via Kubernetes DNS (`*.soma.svc.cluster.local`).
+Shared services (Auth, OPA, Kafka, Redis, Prometheus, Vault, Etcd) run once per cluster inside the `soma-infra` namespace. Applications reference them via Kubernetes DNS (`*.soma.svc.cluster.local`).
 
 | Service | Deployment strategy | Repository anchor | Rationale |
 | ------- | ------------------- | ----------------- | --------- |
@@ -51,7 +51,7 @@ Shared services (Auth, OPA, Kafka, Redis, Prometheus/Grafana, Vault, Etcd) run o
 | OPA | Deployment with sidecar | `infra/helm/soma-infra/charts/opa` | Prevent policy drift |
 | Kafka | StatefulSet (3 nodes) | `infra/helm/soma-infra/charts/kafka` | Shared event backbone |
 | Redis | RedisCluster (6 pods) | `infra/helm/soma-infra/charts/redis` | Shared cache and rate limiting |
-| Prometheus/Grafana | Operator + Deployment | `infra/helm/soma-infra/charts/prometheus`, `charts/grafana` | Unified observability |
+| Prometheus | Operator + Deployment | `infra/helm/soma-infra/charts/prometheus` | Metrics and alerting; dashboards external |
 | Vault | Deployment + Agent injector | `infra/helm/soma-infra/charts/vault` | Single secret source |
 | Etcd | StatefulSet | `infra/helm/soma-infra/charts/etcd` | Feature flag backend |
 
@@ -144,7 +144,6 @@ flowchart TB
     Vault[Vault]
     Etcd[Etcd]
     Prom[Prometheus]
-    Graf[Grafana]
   end
 
   subgraph Apps[Application Services]
@@ -162,7 +161,6 @@ flowchart TB
   Vault --> SA01
   Etcd --> SA01
   Prom --> Apps
-  Graf --> Prom
 ```
 
 ## 10. Verification Checklist

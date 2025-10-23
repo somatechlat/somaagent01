@@ -1,6 +1,6 @@
 apiVersion: v2
 name: soma-infra
-description: Helm chart for Soma Agent shared infrastructure (Auth, OPA, Kafka, Redis, Prometheus, Grafana, Vault, Etcd)
+description: Helm chart for Soma Agent shared infrastructure (Auth, OPA, Kafka, Redis, Prometheus, Vault, Etcd)
 type: application
 version: 0.1.0
 appVersion: "1.0"
@@ -35,10 +35,6 @@ dependencies:
     version: 0.1.0
     repository: file://charts/prometheus
     condition: prometheus.enabled
-  - name: grafana
-    version: 0.1.0
-    repository: file://charts/grafana
-    condition: grafana.enabled
   - name: vault
     version: 0.1.0
     repository: file://charts/vault

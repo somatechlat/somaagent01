@@ -1405,29 +1405,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Runbooks
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -2039,12 +2016,13 @@ npm<span class="w"> </span>install
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>dev-up
 </code></pre></div>
 <ul>
-<li>UI available at <code>http://localhost:7002</code>.</li>
+<li>Gateway available at <code>http://localhost:${GATEWAY_PORT:-20016}</code>.</li>
+<li>UI (when started) available at <code>http://localhost:${AGENT_UI_PORT:-20015}</code>.</li>
 <li>Logs tail via <code>make dev-logs</code>.</li>
 </ul>
 <p><strong>Verification:</strong>
-- <code>make dev-status</code> shows services healthy.
-- <code>curl http://localhost:8010/health</code> returns <code>200</code>.</p>
+- <code>docker compose -p somaagent01 ps</code> shows services healthy.
+- <code>curl http://localhost:${GATEWAY_PORT:-20016}/health</code> returns <code>200</code>.</p>
 <h2 id="6-testing">6. Testing<a class="headerlink" href="#6-testing" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>pytest
 pytest<span class="w"> </span>tests/playwright/test_realtime_speech.py<span class="w"> </span>--headed
@@ -2063,36 +2041,49 @@ pytest<span class="w"> </span>tests/playwright/test_realtime_speech.py<span clas
 <td><code>make dev-down</code></td>
 </tr>
 <tr>
+<td>Rebuild stack</td>
+<td><code>make dev-rebuild</code></td>
+</tr>
+<tr>
+<td>Tail a specific service</td>
+<td><code>make dev-logs-svc SERVICES=gateway</code></td>
+</tr>
+<tr>
+<td>Start selected services</td>
+<td><code>make dev-up-services SERVICES="gateway tool-executor"</code></td>
+</tr>
+<tr>
 <td>Clean volumes</td>
-<td><code>make dev-clean</code></td>
+<td><code>make clean</code></td>
+</tr>
+<tr>
+<td>Lint Python</td>
+<td><code>ruff check .</code></td>
 </tr>
 <tr>
 <td>Format Python</td>
-<td><code>make fmt</code></td>
-</tr>
-<tr>
-<td>Lint</td>
-<td><code>make lint</code></td>
-</tr>
-<tr>
-<td>Apply lint fixes</td>
-<td><code>make lint-fix</code></td>
+<td><code>black .</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="8-local-docker-compose-reference">8. Local Docker Compose Reference<a class="headerlink" href="#8-local-docker-compose-reference" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Lightweight developer stack</strong> (<code>docker-compose.dev.yaml</code>): trimmed to Postgres, Redis, Kafka, OPA, Gateway, Conversation Worker, Tool Executor, optional UI. Default host ports live in the <code>608xx</code> range (e.g., gateway on <code>http://localhost:60816</code>). Handy shortcuts: <code>make dev-up</code>, <code>make dev-logs</code>, <code>make dev-down</code>.</li>
-<li><strong>Full stack</strong> (<code>docker-compose.somaagent01.yaml</code>): enables all profiles (<code>vectorstore</code>, <code>observability</code>, <code>kafka</code>) for parity with staging/production (<code>docker compose --profile vectorstore up</code>).</li>
+<li>Single compose file <code>docker-compose.yaml</code> drives local development.</li>
+<li>Profiles:</li>
+<li><code>core</code>: Kafka (<code>${KAFKA_PORT:-20000}</code>), Redis (<code>${REDIS_PORT:-20001}</code>), Postgres (<code>${POSTGRES_PORT:-20002}</code>), OPA (<code>${OPA_PORT:-20009}</code>).</li>
+<li><code>dev</code>: Gateway (<code>${GATEWAY_PORT:-20016}</code>), Conversation Worker, Tool Executor, Memory Service (<code>${MEMORY_SERVICE_PORT:-20017}</code>), Agent UI (<code>${AGENT_UI_PORT:-20015}</code>).</li>
+<li>Bring-up examples:</li>
+<li><code>docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yaml up -d</code></li>
+<li><code>docker compose -p somaagent01 --profile core -f docker-compose.yaml up -d kafka redis postgres</code></li>
 <li>Recommended Docker Desktop allocation: ≥8 CPUs, ≥12 GB RAM to keep Kafka/Postgres healthy.</li>
 <li>Frequently used containers:</li>
-<li><code>somaAgent01_gateway</code> → <code>http://localhost:8010</code></li>
-<li><code>somaAgent01_agent-ui</code> → <code>http://localhost:7002</code></li>
+<li><code>somaAgent01_gateway</code> → <code>http://localhost:${GATEWAY_PORT:-20016}</code></li>
+<li><code>somaAgent01_agent-ui</code> → <code>http://localhost:${AGENT_UI_PORT:-20015}</code></li>
 <li><code>somaAgent01_tool-executor</code></li>
 <li><code>somaAgent01_conversation-worker</code></li>
 <li>Verification checklist after <code>docker compose up</code>:</li>
-<li><code>curl http://localhost:8010/health</code></li>
-<li><code>docker compose ps</code> shows services <code>healthy</code></li>
+<li><code>curl http://localhost:${GATEWAY_PORT:-20016}/health</code></li>
+<li><code>docker compose -p somaagent01 ps</code> shows services <code>healthy</code></li>
 <li><code>docker exec somaAgent01_postgres psql -U soma -d somaagent01 -c "SELECT NOW();"</code></li>
 <li>Troubleshooting quick hits:</li>
 <li>Port clash on Kafka (<code>9092</code>): set <code>KAFKA_PORT</code> in <code>.env</code> or stop conflict.</li>
@@ -2152,35 +2143,12 @@ pytest<span class="w"> </span>tests/playwright/test_realtime_speech.py<span clas
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 18, 2025 00:58:32 UTC">October 18, 2025</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 19, 2025 02:19:44 UTC">October 19, 2025</span>
   </span>
 
     
     
     
-    
-      
-  <span class="md-source-file__fact">
-    
-      
-  <span class="md-icon" title="Contributors">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"/></svg>
-  </span>
-  <span>GitHub</span>
-
-    
-    <nav>
-      
-        <a href="https://github.com/somatechlat" class="md-author" title="@somatechlat">
-          
-          <img src="https://avatars.githubusercontent.com/u/218019718?v=4&size=72" alt="somatechlat">
-        </a>
-      
-      
-      
-    </nav>
-  </span>
-
     
   </aside>
 

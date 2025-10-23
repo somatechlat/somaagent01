@@ -74,7 +74,7 @@ All three core sprints start **simultaneously**. Teams can be split into three s
 **Owner:** `ops‑team`
 **Key Deliverables**
 - **OpenTelemetry** tracing across gateway, conversation‑worker, tool‑executor.
-- **Prometheus** exporters already exist – create Grafana dashboards for latency, error‑rate, Kafka lag.
+- **Prometheus** exporters already exist – wire metrics to external dashboards project (latency, error‑rate, Kafka lag).
 - **Circuit‑breaker** around external tool calls (e.g., `tenacity` with exponential back‑off).
 - **Load‑testing harness** (locust or k6) to validate 500 concurrent sessions.
 
@@ -83,14 +83,14 @@ All three core sprints start **simultaneously**. Teams can be split into three s
 |---|-------------|-------|------|
 | 3.1 | Install `opentelemetry‑instrumentation‑fastapi` and configure exporter (OTLP to localhost). | ops | – |
 | 3.2 | Add tracing context propagation to Kafka messages (headers). | ops | 3.1 |
-| 3.3 | Create Grafana dashboards (`gateway_latency`, `tool_execution_time`, `kafka_consumer_lag`). | ops | – |
+| 3.3 | Publish dashboard definitions in external observability project (`gateway_latency`, `tool_execution_time`, `kafka_consumer_lag`). | ops | – |
 | 3.4 | Implement circuit‑breaker decorator around tool‑executor calls. | ops | – |
 | 3.5 | Write load‑test scenarios (chat creation, tool usage). | qa | 3.4 |
 | 3.6 | Set up alert rules in Prometheus (latency > 2 s, error‑rate > 1 %). | ops | 3.3 |
 
 **Acceptance Criteria**
-- End‑to‑end traces appear in Jaeger/Grafana Tempo UI.
-- Dashboard shows real‑time metrics; alerts fire on simulated failure.
+- End‑to‑end traces appear in Jaeger/Tempo UI.
+- External dashboards show real‑time metrics; alerts fire on simulated failure.
 - Load test passes with average latency < 2 s for 500 concurrent sessions.
 
 ---

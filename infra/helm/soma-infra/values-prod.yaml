@@ -23,10 +23,6 @@ prometheus:
   enabled: true
   replicaCount: 2
 
-grafana:
-  enabled: true
-  replicaCount: 2
-
 vault:
   enabled: true
   replicaCount: 3

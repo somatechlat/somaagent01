@@ -46,5 +46,5 @@ pytest tests/playwright/test_realtime_speech.py --headed
 
 ## Observability Checks
 
-- Metrics: verify Prometheus targets and Grafana dashboards.
+- Metrics: verify Prometheus targets are UP; dashboards live in the external observability project.
 - Logs: `docker logs -f somaAgent01_gateway`.

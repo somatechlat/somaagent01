@@ -48,11 +48,6 @@ prometheus:
   image: "prom/prometheus:latest"
   replicaCount: 1
 
-grafana:
-  enabled: true
-  image: "grafana/grafana:latest"
-  replicaCount: 1
-
 vault:
   enabled: true
   image: "hashicorp/vault:latest"
