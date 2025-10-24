@@ -3,6 +3,9 @@ from collections.abc import Mapping
 from python.helpers.tool import Response, Tool
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
+# Backwards-compatible alias expected by tests and some callers
+SomaClient = SomaBrainClient
+
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
 

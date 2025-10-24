@@ -109,6 +109,10 @@
          <lastmod>2025-10-24</lastmod>
     </url>
     <url>
+         <loc>https://docs.somaagent01.dev/reference/observability-alerts/</loc>
+         <lastmod>2025-10-24</lastmod>
+    </url>
+    <url>
          <loc>https://docs.somaagent01.dev/technical-manual/</loc>
          <lastmod>2025-10-24</lastmod>
     </url>
@@ -150,6 +154,10 @@
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/mcp-proxy/</loc>
+         <lastmod>2025-10-24</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.somaagent01.dev/technical-manual/components/memory-plane/</loc>
          <lastmod>2025-10-24</lastmod>
     </url>
     <url>

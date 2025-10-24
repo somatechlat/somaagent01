@@ -52,6 +52,24 @@ spec:
     - port: metrics
       interval: 30s
 {{- end }}
+{{- if .Values.services.memoryReplicator.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-memory-replicator
+  labels:
+    app.kubernetes.io/name: memory-replicator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: memory-replicator
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: metrics
+      interval: 30s
+{{- end }}
 {{- if .Values.services.delegationGateway.enabled }}
 ---
 apiVersion: monitoring.coreos.com/v1

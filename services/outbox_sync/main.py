@@ -16,9 +16,12 @@ import math
 import os
 from contextlib import suppress
 from typing import Optional
+import time
 
 from aiokafka.errors import KafkaError
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter, Gauge, start_http_server
+
+import httpx
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import (
@@ -27,7 +30,7 @@ from services.common.outbox_repository import (
     OutboxMessage,
     OutboxStore,
 )
-from services.common.telemetry import setup_tracing
+from services.common.tracing import setup_tracing
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +39,17 @@ PUBLISH_OK = Counter(
     "outbox_sync_publish_total",
     "Messages published by sync worker",
     labelnames=("result",),
+)
+
+HEALTH_STATE = Gauge(
+    "somabrain_health_state",
+    "Health state of SomaBrain as observed by outbox sync worker",
+    labelnames=("state",),  # states: normal|degraded|down
+)
+
+EFFECTIVE_BATCH = Gauge(
+    "outbox_sync_effective_batch_size",
+    "Effective batch size used by outbox sync based on health state",
 )
 
 
@@ -63,15 +77,30 @@ class OutboxSyncWorker:
         self.backoff_base = _env_float("OUTBOX_SYNC_BACKOFF_BASE_SECONDS", 1.0)
         self.backoff_max = _env_float("OUTBOX_SYNC_BACKOFF_MAX_SECONDS", 60.0)
         self._stopping = asyncio.Event()
+        # Health-aware controls
+        self._health_state: str = "normal"  # normal|degraded|down
+        self._health_checked_at: float = 0.0
+        self._health_interval: float = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
+        # Initial metrics
+        for state in ("normal", "degraded", "down"):
+            HEALTH_STATE.labels(state).set(1.0 if state == self._health_state else 0.0)
+        EFFECTIVE_BATCH.set(self.batch_size)
 
     async def start(self) -> None:
         await ensure_schema(self.store)
         LOGGER.info("Outbox sync worker started",
                     extra={"batch_size": self.batch_size, "interval": self.interval})
         while not self._stopping.is_set():
-            msgs = await self.store.claim_batch(limit=self.batch_size)
+            await self._maybe_probe_health()
+            effective_batch, effective_interval = self._compute_effective_limits()
+            EFFECTIVE_BATCH.set(effective_batch)
+            if self._health_state == "down":
+                # Pause publishes while SomaBrain is down; rely on health probe to recover
+                await asyncio.sleep(max(effective_interval, self._health_interval))
+                continue
+            msgs = await self.store.claim_batch(limit=effective_batch)
             if not msgs:
-                await asyncio.sleep(self.interval)
+                await asyncio.sleep(effective_interval)
                 continue
             await self._publish_batch(msgs)
 
@@ -87,6 +116,57 @@ class OutboxSyncWorker:
         exp = min(retry_count, self.max_retries)
         delay = self.backoff_base * math.pow(2, exp)
         return min(delay, self.backoff_max)
+
+    def _compute_effective_limits(self) -> tuple[int, float]:
+        """Return (batch_size, interval) adjusted for health state.
+
+        - normal: configured batch/interval
+        - degraded: cap batch<=25, widen interval>=1.0s
+        - down: use tiny batch (unused) and longer sleep to reduce churn
+        """
+        if self._health_state == "normal":
+            return self.batch_size, self.interval
+        if self._health_state == "degraded":
+            return min(self.batch_size, 25), max(self.interval, 1.0)
+        # down
+        return 1, max(self.interval * 2.0, 3.0)
+
+    async def _maybe_probe_health(self) -> None:
+        now = time.time()
+        if (now - self._health_checked_at) < self._health_interval:
+            return
+        self._health_checked_at = now
+        new_state = await self._probe_somabrain_health()
+        if new_state != self._health_state:
+            LOGGER.info("Outbox sync health state changed", extra={"from": self._health_state, "to": new_state})
+            self._health_state = new_state
+            for state in ("normal", "degraded", "down"):
+                HEALTH_STATE.labels(state).set(1.0 if state == self._health_state else 0.0)
+
+    async def _probe_somabrain_health(self) -> str:
+        """Probe SOMA_BASE_URL/health quickly and classify state.
+
+        - normal: HTTP 200 and body ok=true or status==ok within ~1.5s
+        - degraded: HTTP 200 but body not clearly ok
+        - down: request error/timeout/non-200
+        """
+        base = os.getenv("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+        url = f"{base}/health"
+        timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get(url)
+                if resp.status_code != 200:
+                    return "down"
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = None
+                if isinstance(body, dict) and (body.get("ok") is True or body.get("status") == "ok"):
+                    return "normal"
+                return "degraded"
+        except Exception:
+            return "down"
 
     async def _publish_batch(self, messages: list[OutboxMessage]) -> None:
         for msg in messages:
