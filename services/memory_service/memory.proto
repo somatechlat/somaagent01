@@ -46,4 +46,15 @@ service MemoryService {
   rpc CreateMemory(CreateMemoryRequest) returns (CreateMemoryResponse);
   rpc GetMemory(GetMemoryRequest) returns (GetMemoryResponse);
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
+  // Server-side streaming search over memories by simple text query.
+  // Matches against content or metadata stringified value; results are
+  // ordered by created_at DESC and limited by `limit`.
+  rpc SearchMemories(SearchMemoriesRequest) returns (stream MemoryRecord);
+}
+
+message SearchMemoriesRequest {
+  string tenant = 1;
+  string persona_id = 2;
+  string query = 3; // substring to search in content (case-insensitive)
+  int32 limit = 4;  // maximum number of records to stream
 }
