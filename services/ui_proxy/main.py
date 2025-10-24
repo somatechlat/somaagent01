@@ -6,7 +6,13 @@ import logging
 import os
 
 from fastapi import FastAPI
-from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, generate_latest
+from prometheus_client import (
+    CollectorRegistry,
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    generate_latest,
+)
 from starlette.responses import Response
 
 from services.common.logging_config import setup_logging

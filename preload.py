@@ -1,13 +1,16 @@
 import asyncio
+import inspect
+
 # Note: avoid importing runtime/settings at module import time because
 # those modules pull optional dependencies (aiohttp, etc.). Import them
 # lazily inside functions to keep the installer and dev builds lightweight.
 import os
+
+from python.helpers import runtime
+
 # Lazy-import kokoro_tts and whisper inside their preload functions to avoid
 # importing optional heavy audio dependencies at module import time.
 from python.helpers.print_style import PrintStyle
-from python.helpers import runtime
-import inspect
 
 
 async def preload():

@@ -51,11 +51,11 @@ except ImportError:
 from python.helpers.settings import set_settings
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
-from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
-from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
 from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.openfga_client import OpenFGAClient
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
@@ -1126,8 +1126,6 @@ async def shutdown_background_services() -> None:
 
     LOGGER.info("Gateway shutdown completed")
 
-from services.common.health_checks import http_ping, grpc_ping
-
 @app.get("/v1/health")
 async def health_check(
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
@@ -1393,7 +1391,7 @@ async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
 
     if publish and APP_SETTINGS.tool_requests_topic:
         try:
-            publisher: DurablePublisher = getattr(app.state, "publisher")
+            publisher: DurablePublisher = app.state.publisher
             await publisher.publish(
                 APP_SETTINGS.tool_requests_topic,
                 item["payload"],

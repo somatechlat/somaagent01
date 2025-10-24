@@ -104,7 +104,8 @@ def import_module(file_path: str) -> ModuleType:
             )
         except Exception:
             # Fallback to stderr
-            import traceback, sys
+            import sys
+            import traceback
 
             sys.stderr.write(f"Warning: failed importing {abs_path}: {e}\n")
             traceback.print_exc()

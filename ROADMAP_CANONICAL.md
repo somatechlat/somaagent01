@@ -5,6 +5,40 @@ Scope: Full platform upgrade (orchestrator, memory, messaging, policy, tools, ob
 
 This canonical roadmap supersedes the older messaging‑only plan and captures the end‑to‑end program to deliver a durable, policy‑safe, observable, and enterprise‑ready agent. It is repo‑accurate to this codebase (services/*, python/integrations/soma_client.py, conf/*, schemas/*, docs/*).
 
+## Addendum: SomaBrain‑Only Memory Plane (Authoritative)
+
+This addendum elevates the memory plane to a first‑class, SomaBrain‑only design and supersedes any prior references to legacy SKM or the gRPC memory_service. It is the plan of record for memory and must be kept in sync with code.
+
+Key points
+- Sole client: python/integrations/soma_client.py (to be renamed SomaBrainClient) is the only memory client.
+- Legacy removal: services/common/memory_client.py and services/memory_service/* are deleted. Helm memory‑service charts are removed.
+- Policy: Enforce OPA memory.write pre‑checks in conversation_worker and tool_executor before every write.
+- Resiliency: After a successful write, publish to Kafka memory.wal; a new memory_replicator writes to a replica; permanent failures go to memory.dlq; gateway exposes admin DLQ endpoints.
+- Observability: OTEL spans and Prometheus metrics around remember/recall/batch, WAL publish, replica writes, and DLQ.
+- Health: memory_health_aggregator exposes /v1/health/memory including replication lag.
+- Profiles: /v1/agents/profiles serves dynamic profiles from ModelProfileStore; UI passes X‑Agent‑Profile; workers include agent_profile_id.
+- Security: Propagate Authorization and X‑Request‑Id; optional mTLS via env‑provided certs; OPA ensures universe_id/persona_id match JWT claims.
+
+Data contracts (memory)
+- Write payload: tenant, universe_id, persona_id, agent_profile_id, session_id, message_id, content/tool_output, attachments, metadata, idempotency key.
+- WAL record: the write payload plus write_result metadata; idempotent at the replica.
+
+Acceptance (memory plane)
+- All writes flow through SomaBrainClient to SOMA_BASE_URL; no legacy clients/services remain.
+- OPA memory.write enforced for conversation_worker and tool_executor.
+- WAL → replicator → replica pipeline operational; DLQ admin endpoints verified; replay works.
+- Spans/metrics visible; alerts on replication lag > 30s and write error rate > 0.1%.
+
+Milestones (memory plane)
+- M1: Env and CI guard. Lock SOMA_BASE_URL/SOMA_NAMESPACE; CI fails if legacy artifacts exist.
+- M2: Harden SomaBrainClient (rename; spans; retries/backoff; X‑Request‑Id; embed_then_remember; remember_batch; metrics). Insert OPA memory.write in workers.
+- M3: WAL, replicator, DLQ (publish, consume, replicate, DLQ admin endpoints; Helm topics/envs).
+- M4: Universe/Persona/Profile propagation (middleware + payload updates).
+- M5: Health & Observability (aggregator, /v1/health/memory, lag metrics/panels).
+- M6: Dynamic profile service (/v1/agents/profiles + UI wiring).
+- M7: Full‑system validation (load + chaos + policy + security scans).
+- M8: Security hardening (optional mTLS).
+
 ## Vision and success criteria
 
 | Goal | Success metric |

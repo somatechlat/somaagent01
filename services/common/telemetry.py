@@ -12,9 +12,9 @@ import uuid
 from typing import Any, Optional
 
 from services.common.event_bus import KafkaEventBus
-from services.common.telemetry_store import TelemetryStore
-from services.common.publisher import DurablePublisher
 from services.common.outbox_repository import OutboxStore
+from services.common.publisher import DurablePublisher
+from services.common.telemetry_store import TelemetryStore
 
 
 class TelemetryPublisher:

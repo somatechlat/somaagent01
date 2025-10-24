@@ -45,7 +45,7 @@ if _enable_ai:
 # browser-use is required for production deployment; provide safe fallbacks
 # so classes can be referenced even when browser-use isn't installed.
 try:
-    from browser_use import ChatGoogle, ChatOpenRouter, browser_use_monkeypatch
+    from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter
 except Exception:
     class ChatGoogle:  # lightweight fallback
         def _fix_gemini_schema(self, s):
@@ -83,6 +83,7 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
+
 # sentence-transformers is optional for developer-mode; attempt import and
 # fall back to None if not present.
 try:
@@ -90,13 +91,14 @@ try:
 except Exception:
     SentenceTransformer = None
 
+import time
+import uuid
+
 from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-import uuid
-import time
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason

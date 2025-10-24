@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
-from pydantic import Field, AliasChoices
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

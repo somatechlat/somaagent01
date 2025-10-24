@@ -13,12 +13,12 @@ from typing import Any
 from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
-from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
-from python.integrations.soma_client import SomaClient, SomaClientError
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore
@@ -141,7 +141,7 @@ class ToolExecutor:
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         self.requeue_prefix = _policy_requeue_prefix()
         # Use SomaBrain HTTP client for memory persistence
-        self.soma = SomaClient.get()
+        self.soma = SomaBrainClient.get()
         stream_defaults = SERVICE_SETTINGS.extra.get(
             "tool_executor_topics",
             {
@@ -397,7 +397,7 @@ class ToolExecutor:
         if isinstance(payload, dict) and payload.get("model"):
             str_metadata.setdefault("tool_model", str(payload.get("model")))
 
-        # Persist tool result as a SomaBrain memory
+        # Pre-write OPA memory.write; then persist tool result as a SomaBrain memory
         memory_payload = {
             "id": result_event.get("event_id"),
             "type": "tool_result",
@@ -409,7 +409,35 @@ class ToolExecutor:
             "status": result_event.get("status"),
         }
         try:
-            await self.soma.remember(memory_payload)
+            allow_memory = True
+            try:
+                allow_memory = await self.policy.evaluate(
+                    PolicyRequest(
+                        tenant=tenant,
+                        persona_id=persona_id,
+                        action="memory.write",
+                        resource="somabrain",
+                        context={
+                            "payload_type": memory_payload.get("type"),
+                            "tool_name": memory_payload.get("tool_name"),
+                            "session_id": memory_payload.get("session_id"),
+                            "metadata": memory_payload.get("metadata", {}),
+                        },
+                    )
+                )
+            except Exception:
+                LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+            if allow_memory:
+                await self.soma.remember(memory_payload)
+            else:
+                LOGGER.info(
+                    "memory.write denied by policy",
+                    extra={
+                        "session_id": result_event.get("session_id"),
+                        "tool": result_event.get("tool_name"),
+                        "event_id": result_event.get("event_id"),
+                    },
+                )
         except SomaClientError as exc:
             LOGGER.warning(
                 "SomaBrain remember failed for tool result",

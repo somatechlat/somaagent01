@@ -9,8 +9,8 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-import httpx
 import grpc
+import httpx
 
 LOGGER = logging.getLogger(__name__)
 

@@ -22,10 +22,10 @@ from prometheus_client import Counter, start_http_server
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import (
-    OutboxMessage,
-    OutboxStore,
     ensure_schema,
     OUTBOX_PUBLISH_LATENCY,
+    OutboxMessage,
+    OutboxStore,
 )
 from services.common.telemetry import setup_tracing
 

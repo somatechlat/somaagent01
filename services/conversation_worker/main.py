@@ -13,16 +13,17 @@ from typing import Any, Dict, List
 from jsonschema import ValidationError
 from prometheus_client import Counter, Histogram, start_http_server
 
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
-from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
 from services.common.model_costs import estimate_escalation_cost
 from services.common.model_profiles import ModelProfileStore
-from services.common.policy_client import PolicyClient
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
 from services.common.schema_validator import validate_event
 from services.common.session_repository import (
@@ -31,7 +32,6 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
-from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.slm_client import ChatMessage, SLMClient
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
@@ -199,7 +199,7 @@ class ConversationWorker:
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         # SomaBrain HTTP client (centralized memory backend)
-        self.soma = SomaClient.get()
+        self.soma = SomaBrainClient.get()
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
@@ -481,7 +481,32 @@ class ConversationWorker:
                     "persona_id": event.get("persona_id"),
                     "metadata": dict(enriched_metadata),
                 }
-                await self.soma.remember(payload)
+                # Pre-write OPA policy check: memory.write
+                allow_memory = True
+                try:
+                    allow_memory = await self.policy_client.evaluate(
+                        PolicyRequest(
+                            tenant=tenant,
+                            persona_id=event.get("persona_id"),
+                            action="memory.write",
+                            resource="somabrain",
+                            context={
+                                "payload_type": payload.get("type"),
+                                "role": payload.get("role"),
+                                "session_id": session_id,
+                                "metadata": payload.get("metadata", {}),
+                            },
+                        )
+                    )
+                except Exception:
+                    LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+                if allow_memory:
+                    await self.soma.remember(payload)
+                else:
+                    LOGGER.info(
+                        "memory.write denied by policy",
+                        extra={"session_id": session_id, "event_id": payload.get("id")},
+                    )
             except SomaClientError as exc:
                 LOGGER.warning(
                     "SomaBrain remember failed for user message",
@@ -810,7 +835,31 @@ class ConversationWorker:
                     "persona_id": event.get("persona_id"),
                     "metadata": dict(response_metadata),
                 }
-                await self.soma.remember(payload)
+                allow_memory = True
+                try:
+                    allow_memory = await self.policy_client.evaluate(
+                        PolicyRequest(
+                            tenant=tenant,
+                            persona_id=event.get("persona_id"),
+                            action="memory.write",
+                            resource="somabrain",
+                            context={
+                                "payload_type": payload.get("type"),
+                                "role": payload.get("role"),
+                                "session_id": session_id,
+                                "metadata": payload.get("metadata", {}),
+                            },
+                        )
+                    )
+                except Exception:
+                    LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+                if allow_memory:
+                    await self.soma.remember(payload)
+                else:
+                    LOGGER.info(
+                        "memory.write denied by policy",
+                        extra={"session_id": session_id, "event_id": payload.get("id")},
+                    )
             except SomaClientError as exc:
                 LOGGER.warning(
                     "SomaBrain remember failed for assistant message",

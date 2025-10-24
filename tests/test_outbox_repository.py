@@ -1,11 +1,10 @@
-import asyncio
-from datetime import datetime, timezone
+ 
 
 import asyncpg
 import pytest
 from testcontainers.postgres import PostgresContainer
 
-from services.common.outbox_repository import OutboxStore, ensure_schema
+from services.common.outbox_repository import ensure_schema, OutboxStore
 
 
 @pytest.fixture(scope="module")

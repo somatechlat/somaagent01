@@ -101,6 +101,34 @@ Goal: Final polish and cleanup.
 - `scripts/` – Load tests, CLI, automation (Platform)
 
 ## ✅ Next steps
-1. Create Sprint 0 tickets and assign owners.
-2. Add schema/docs tasks to CI and verify mkdocs build.
-3. Start Sprints 1–2 focusing on outbox + write‑through + streaming search + sync worker + load test.
+1. Create feature branch: `feature/full-somabrain-memory`.
+2. Execute Memory Plane M1 tasks first (env and CI guard; remove legacy artifacts); then proceed with M2 (SomaBrainClient hardening and OPA pre‑write checks).
+3. Coordinate /v1/agents/profiles contract with frontend, then deliver replication/DLQ (M3) and health aggregator (M5) in subsequent sprints.
+
+---
+
+## Focused Memory Plane Sprint Plan (Appendix)
+
+Sprint A (1 week) – M1 Foundations
+- Lock envs: SOMA_BASE_URL and SOMA_NAMESPACE across dev/staging/prod.
+- Add CI guard: fail if legacy memory_service or memory_client exists.
+- Remove remaining memory_service code and Helm charts.
+- Acceptance: CI guard green; repo free of legacy artifacts; mkdocs build PASS.
+
+Sprint B (2 weeks) – M2 Harden SomaBrainClient
+- Rename SomaClient → SomaBrainClient with a short-lived alias.
+- Add OTEL spans, retry with jitter, X‑Request‑Id propagation.
+- Implement embed_then_remember and remember_batch; emit memory_write_* metrics.
+- Insert OPA memory.write pre-checks in conversation_worker and tool_executor.
+- Acceptance: unit tests PASS; metrics visible; OPA enforced (fail-open in dev toggleable).
+
+Sprint C (2 weeks) – M3 Replicator + DLQ
+- Publish to memory.wal after successful writes.
+- New services/memory_replicator consuming WAL to write to replica; send irrecoverable to memory.dlq.
+- Gateway admin endpoints for DLQ list/inspect/replay; Helm topics/envs.
+- Acceptance: e2e test PASS (primary+replica); DLQ replay works; Grafana shows replication metrics.
+
+Sprint D (1 week) – M4/M5 Profiles + Health
+- Middleware to propagate universe_id/persona_id and agent_profile_id.
+- Gateway /v1/agents/profiles; UI wiring; memory_health_aggregator with /v1/health/memory.
+- Acceptance: headers propagate; health shows lag; alerts configured.
