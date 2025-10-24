@@ -22,6 +22,8 @@ from starlette.responses import Response
 
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
+from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
 from services.common.settings_sa01 import SA01Settings
 from services.common.tracing import setup_tracing
@@ -86,6 +88,29 @@ def get_bus() -> KafkaEventBus:
     return KafkaEventBus(kafka_settings)
 
 
+def get_publisher() -> DurablePublisher:
+    # Shared durable publisher; construct lazily for DI, ensure outbox schema
+    # on first use to avoid race at startup.
+    bus = get_bus()
+    outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
+    # best-effort ensure schema
+    try:
+        import asyncio as _asyncio
+
+        async def _ensure():
+            await ensure_outbox_schema(outbox)
+
+        # If already in an event loop (typical in FastAPI), schedule it
+        loop = _asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_ensure())
+        else:
+            loop.run_until_complete(_ensure())
+    except Exception:
+        LOGGER.debug("Outbox schema ensure failed", exc_info=True)
+    return DurablePublisher(bus=bus, outbox=outbox)
+
+
 def get_store() -> DelegationStore:
     return DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
 
@@ -137,7 +162,7 @@ async def health() -> dict[str, str]:
 @app.post("/v1/delegation/task")
 async def create_delegation_task(
     request: DelegationRequest,
-    bus: KafkaEventBus = Depends(get_bus),
+    publisher: DurablePublisher = Depends(get_publisher),
     store: DelegationStore = Depends(get_store),
 ) -> dict[str, str]:
     task_id = request.task_id or str(uuid.uuid4())
@@ -156,7 +181,13 @@ async def create_delegation_task(
         "metadata": request.metadata or {},
     }
     topic = os.getenv("DELEGATION_TOPIC", "somastack.delegation")
-    await bus.publish(topic, event)
+    await publisher.publish(
+        topic,
+        event,
+        dedupe_key=task_id,
+        session_id=str(event.get("metadata", {}).get("session_id", "")),
+        tenant=(event.get("metadata") or {}).get("tenant"),
+    )
     return {"task_id": task_id, "status": "queued"}
 
 

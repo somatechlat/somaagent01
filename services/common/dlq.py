@@ -7,6 +7,8 @@ import time
 from typing import Any, Dict, Optional
 
 from services.common.event_bus import KafkaEventBus
+from services.common.publisher import DurablePublisher
+from services.common.outbox_repository import OutboxStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -14,10 +16,18 @@ LOGGER = logging.getLogger(__name__)
 class DeadLetterQueue:
     """Publish failed events to a ``*.dlq`` Kafka topic."""
 
-    def __init__(self, source_topic: str, bus: Optional[KafkaEventBus] = None) -> None:
+    def __init__(
+        self,
+        source_topic: str,
+        bus: Optional[KafkaEventBus] = None,
+        publisher: Optional[DurablePublisher] = None,
+    ) -> None:
         self.source_topic = source_topic
         self.dlq_topic = f"{source_topic}.dlq"
-        self.bus = bus or KafkaEventBus()
+        if publisher is not None:
+            self.publisher = publisher
+        else:
+            self.publisher = DurablePublisher(bus=bus or KafkaEventBus(), outbox=OutboxStore())
 
     async def send_to_dlq(
         self,
@@ -36,7 +46,13 @@ class DeadLetterQueue:
         }
 
         try:
-            await self.bus.publish(self.dlq_topic, payload)
+            await self.publisher.publish(
+                self.dlq_topic,
+                payload,
+                dedupe_key=str(event.get("event_id") or event.get("task_id") or ""),
+                session_id=str(event.get("session_id") or ""),
+                tenant=(event.get("metadata") or {}).get("tenant"),
+            )
             LOGGER.warning(
                 "Event forwarded to DLQ",
                 extra={

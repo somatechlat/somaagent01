@@ -27,6 +27,14 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 - Observability: OTEL spans propagate SomaBrain request_id; node metrics (success/failure/latency); Prometheus SLO alerts; dashboards maintained externally.
 - Deployment/CI/CD: Helm pre‑install (tables/topics); Vault JWT rotation; Trivy scans; benchmark CI job; HPA on custom metrics.
 
+## Mode taxonomy and configuration propagation (aligned)
+
+- Modes: dev_full, dev_prod, prod, prod_ha. One canonical configuration source drives both Docker‑Compose and Helm.
+- Global .env: A helper script generates `/root/soma-global.env` with security flags (JWT_ENABLED, OPA_ENABLED, MTLS_ENABLED), feature toggles (ENABLE_REAL_EMBEDDINGS, USE_REAL_INFRA), observability (PROMETHEUS_SCRAPE, OTEL_ENABLED), REPLICA_COUNT and resource hints, Istio/Vault injection flags, and infra ports.
+- Docker‑Compose: Services load environment via a unified env_file. In CI/dev_prod, the generated `/root/soma-global.env` is authoritative; in local dev we preserve developer overrides without breaking workflows.
+- Helm: Charts consume a global values block `{{ .Values.global.* }}`; overlays `dev-values.yaml`, `prod-values.yaml`, `prod-ha-values.yaml` set mode‑specific values. Service charts map replicas/resources/env/annotations to the global.
+- CI: The pipeline selects the overlay based on DEPLOY_MODE and runs validation before success, with canary/rollback logic.
+
 ## Folder‑by‑folder scope (highlights)
 
 - services/gateway: write‑through remember (user), streaming delimiters, schema validation on publish, trace & request_id propagation.
@@ -85,6 +93,7 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 ### Wave 4 – Messaging, observability, CI/CD (Week 5–6)
 - Tenant‑partitioned topics; publish‑time schema validation; optional Kafka Streams enricher; OTEL correlation with request_id; node metrics.
 - External dashboards wired to Prometheus; SLO alerts; Helm pre‑install tables/topics; Trivy in CI; benchmark job emits agent.benchmarks.v1.
+- Mode plumbing: add `/root/generate-global-env.sh`; adopt unified env_file in Compose; introduce Helm global block + overlays (dev/prod/prod_ha) and wire all service charts to globals (env, replicas, resources, Istio/Vault annotations, observability flags).
 - Acceptance: invalid publishes rejected; dashboards live; alerts fire in drills; CI fails on critical CVEs.
 
 ### Wave 5 – Security & ops (Week 6–8)
@@ -101,6 +110,7 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 | M2 | 2 | Orchestrator MVP | Resume from checkpoint; events/traces OK |
 | M3 | 3 | Roles/policy/tools/sandbox | OPA enforced; streaming; analytics live |
 | M4 | 4 | Messaging/observability/CI | Validation on publish; dashboards; Trivy PASS |
+|     |   | Mode propagation         | Helper script + Compose env alignment + Helm overlays wired |
 | M5 | 5 | Security/ops + deprecations | Vault rotation; Falco; memory_service removed |
 
 ## Risks & mitigations
@@ -118,6 +128,14 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 - Observability: spans + external dashboards + SLO alerts verified in drills: PASS.
 - Security: Trivy 0 critical; OPA tests PASS; Vault rotation verified: PASS.
 - Docs: mkdocs build PASS; messaging pages up to date.
+- Mode validation: CI pipeline selects overlay; all validation checklist items PASS; canary rollout/rollback observable in cluster.
+
+---
+Implementation notes for alignment
+
+- The outbox sync worker is deployable via docker-compose and Helm (chart under `infra/helm/outbox-sync`) and must be included in the umbrella release so durable messaging runs in every environment.
+- CI’s workflow `.github/workflows/deploy-soma-stack.yml` sets DEPLOY_MODE, generates `/root/soma-global.env`, chooses an overlay, lints charts, scans with Trivy, builds and pushes images, performs Helm upgrade/install with the selected overlay, executes the validation checklist, and optionally applies a canary VirtualService. Failures trigger `helm rollback` and reset traffic to 100% stable.
+- For local macOS development, the helper script’s output path is retained for CI parity. Developer ergonomics are preserved by keeping existing `.env` semantics; we will stage Compose updates safely to avoid breaking local setups while ensuring CI uses the canonical file.
 
 ---
 This document is the single source of truth for SomaAgent01’s upgrade program. Update alongside any scope or acceptance change and keep sprints aligned with `ROADMAP_SPRINTS.md`.

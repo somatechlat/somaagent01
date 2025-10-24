@@ -31,6 +31,7 @@ nav:
           - Gateway: technical-manual/components/gateway.md
           - Conversation Worker: technical-manual/components/conversation-worker.md
           - Tool Executor: technical-manual/components/tool-executor.md
+          - Outbox Sync: technical-manual/components/outbox-sync.md
           - Memory Subsystem: technical-manual/components/memory.md
           - MCP & A2A Proxy: technical-manual/components/mcp-proxy.md
           - Realtime Speech: technical-manual/components/realtime-speech.md
@@ -39,6 +40,7 @@ nav:
       - Overview: development-manual/index.md
       - Environment Setup: development-manual/environment.md
       - Contribution Workflow: development-manual/contribution-workflow.md
+      - CI/CD Pipeline: development-manual/ci-cd.md
       - Coding Standards: development-manual/coding-standards.md
       - Testing Strategy: development-manual/testing.md
       - Debugging Guide: development-manual/debugging.md
@@ -85,6 +87,8 @@ plugins:
   - search
   - git-revision-date-localized:
       fallback_to_build_date: true
+      enabled: !ENV [ENABLE_DOCS_GIT_PLUGINS, false]
   - git-committers:
       repository: somatechlat/somaagent01
       branch: soma_integration
+      enabled: !ENV [ENABLE_DOCS_GIT_PLUGINS, false]

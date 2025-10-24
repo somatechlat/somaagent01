@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "outbox-sync.fullname" . }}
+  labels:
+    app.kubernetes.io/name: outbox-sync
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.metrics.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app.kubernetes.io/name: outbox-sync
+    app.kubernetes.io/instance: {{ .Release.Name }}

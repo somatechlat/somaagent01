@@ -1,0 +1,140 @@
+name: Build, Deploy, and Progressive Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Overlay (dev|prod|prod-ha)"
+        required: true
+        default: "dev"
+        type: choice
+        options: ["dev", "prod", "prod-ha"]
+      target:
+        description: "Canary target (nginx|istio)"
+        required: true
+        default: "nginx"
+        type: choice
+        options: ["nginx", "istio"]
+      registry:
+        description: "OCI registry (e.g., ghcr.io/<owner>)"
+        required: true
+        default: "ghcr.io/${{ github.repository_owner }}"
+      imageName:
+        description: "Image name"
+        required: true
+        default: "somaagent01"
+      stableTag:
+        description: "Stable image tag for baseline deploy"
+        required: true
+        default: "stable"
+      canaryTag:
+        description: "Canary image tag (new version)"
+        required: true
+        default: "canary-${{ github.sha }}"
+      chartPath:
+        description: "Path to umbrella Helm chart"
+        required: true
+        default: "infra/helm/soma-stack"
+      releaseName:
+        description: "Helm release name"
+        required: true
+        default: "soma"
+      namespace:
+        description: "Kubernetes namespace"
+        required: true
+        default: "default"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Registry login (GHCR)
+        if: startsWith(github.event.inputs.registry, 'ghcr.io')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ github.event.inputs.registry }}/${{ github.event.inputs.imageName }}:${{ github.event.inputs.stableTag }}
+            ${{ github.event.inputs.registry }}/${{ github.event.inputs.imageName }}:${{ github.event.inputs.canaryTag }}
+
+  deploy-stable:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    env:
+      KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          echo "$KUBE_CONFIG_B64" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Select overlay
+        id: overlay
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            dev) echo "file=infra/helm/overlays/dev-values.yaml" >> $GITHUB_OUTPUT;;
+            prod) echo "file=infra/helm/overlays/prod-values.yaml" >> $GITHUB_OUTPUT;;
+            prod-ha) echo "file=infra/helm/overlays/prod-ha-values.yaml" >> $GITHUB_OUTPUT;;
+            *) echo "Unsupported environment"; exit 1;;
+          esac
+
+      - name: Deploy baseline (stable only)
+        run: |
+          CHART="${{ github.event.inputs.chartPath }}"
+          RELEASE="${{ github.event.inputs.releaseName }}"
+          NAMESPACE="${{ github.event.inputs.namespace }}"
+          OVERLAY_FILE="${{ steps.overlay.outputs.file }}"
+          IMAGE="${{ github.event.inputs.registry }}/${{ github.event.inputs.imageName }}:${{ github.event.inputs.stableTag }}"
+
+          helm upgrade --install "$RELEASE" "$CHART" \
+            --namespace "$NAMESPACE" --create-namespace \
+            -f "$OVERLAY_FILE" \
+            --set image.repository="${{ github.event.inputs.registry }}/${{ github.event.inputs.imageName }}" \
+            --set image.tag="${{ github.event.inputs.stableTag }}" \
+            --set services.gateway.canary.enabled=false
+
+  progressive-canary:
+    needs: [deploy-stable]
+    uses: ./.github/workflows/canary-progressive.yml
+    secrets:
+      KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      target: ${{ github.event.inputs.target }}
+      releaseName: ${{ github.event.inputs.releaseName }}
+      namespace: ${{ github.event.inputs.namespace }}
+      chartPath: ${{ github.event.inputs.chartPath }}
+      canaryImageTag: ${{ github.event.inputs.canaryTag }}

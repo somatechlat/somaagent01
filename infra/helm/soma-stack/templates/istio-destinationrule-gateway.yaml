@@ -1,0 +1,17 @@
+{{- $g := .Values.global -}}
+{{- $svc := .Values.services.gateway -}}
+{{- if and $g.ISTIO_ENABLED $svc.enabled $svc.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-gateway
+spec:
+  host: {{ include "soma-stack.fullname" . }}-gateway.{{ .Release.Namespace }}.svc.cluster.local
+  subsets:
+    - name: stable
+      labels:
+        track: stable
+    - name: canary
+      labels:
+        track: canary
+{{- end }}

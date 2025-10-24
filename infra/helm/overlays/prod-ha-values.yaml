@@ -1,0 +1,55 @@
+# prod-ha-values.yaml – high availability production
+global:
+  DEPLOY_MODE: prod_ha
+  JWT_ENABLED: true
+  OPA_ENABLED: true
+  MTLS_ENABLED: true
+  REPLICA_COUNT: 3
+  RESOURCE_REQUESTS:
+    cpu: 500m
+    memory: 512Mi
+  RESOURCE_LIMITS:
+    cpu: "1"
+    memory: 1Gi
+  ISTIO_INJECTION: true
+  VAULT_AGENT_INJECT: true
+  PROMETHEUS_SCRAPE: true
+  OTEL_ENABLED: true
+
+# HA toggles for stateful backends can be referenced in service charts
+
+services:
+  gateway:
+    ingress:
+      enabled: true
+      className: nginx
+      host: gateway.prod-ha.example.com
+      path: /
+      tls:
+        - hosts: [gateway.prod-ha.example.com]
+          secretName: gateway-ha-tls
+    istio:
+      enabled: true
+      host: gateway.prod-ha.example.com
+      gateways: ["istio-system/public-gateway"]
+      weights:
+        stable: 95
+        canary: 5
+  ui:
+    ingress:
+      enabled: true
+      className: nginx
+      host: ui.prod-ha.example.com
+      path: /
+      tls:
+        - hosts: [ui.prod-ha.example.com]
+          secretName: ui-ha-tls
+  uiProxy:
+    ingress:
+      enabled: true
+      className: nginx
+      host: uip.prod-ha.example.com
+      path: /
+      tls:
+        - hosts: [uip.prod-ha.example.com]
+          secretName: uip-ha-tls

@@ -17,6 +17,8 @@ from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
+from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
 from services.common.model_costs import estimate_escalation_cost
 from services.common.model_profiles import ModelProfileStore
@@ -177,6 +179,8 @@ class ConversationWorker:
             "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
+        self.outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
+        self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         redis_url = os.getenv("REDIS_URL", APP_SETTINGS.redis_url)
         self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
         self.cache = RedisSessionCache(url=redis_url)
@@ -193,7 +197,7 @@ class ConversationWorker:
         self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
-        self.telemetry = TelemetryPublisher(bus=self.bus, store=telemetry_store)
+        self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         skm_base_url = os.getenv("SKM_BASE_URL", "http://localhost:9696")
         self.skm = SKMClient(base_url=skm_base_url)
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
@@ -246,7 +250,13 @@ class ConversationWorker:
                     "message": "".join(buffer),
                     "metadata": metadata,
                 }
-                await self.bus.publish(self.settings["outbound"], streaming_event)
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    streaming_event,
+                    dedupe_key=streaming_event.get("event_id"),
+                    session_id=session_id,
+                    tenant=(metadata or {}).get("tenant"),
+                )
             finish_reason = choice.get("finish_reason")
             chunk_usage = chunk.get("usage")
             if isinstance(chunk_usage, dict):
@@ -324,6 +334,10 @@ class ConversationWorker:
 
     async def start(self) -> None:
         await ensure_schema(self.store)
+        try:
+            await ensure_outbox_schema(self.outbox)
+        except Exception:
+            LOGGER.debug("Outbox schema ensure failed", exc_info=True)
         await self.profile_store.ensure_schema()
         await self.store.append_event(
             "system",
@@ -445,7 +459,13 @@ class ConversationWorker:
                     },
                 }
                 validate_event(denial_response, "conversation_event")
-                await self.bus.publish(self.settings["outbound"], denial_response)
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    denial_response,
+                    dedupe_key=denial_response.get("event_id"),
+                    session_id=session_id,
+                    tenant=(denial_response.get("metadata") or {}).get("tenant"),
+                )
                 record_metrics("policy_denied", "policy")
                 return
 
@@ -564,7 +584,13 @@ class ConversationWorker:
                     session_id,
                     {"type": "assistant", **budget_response},
                 )
-                await self.bus.publish(self.settings["outbound"], budget_response)
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    budget_response,
+                    dedupe_key=budget_response.get("event_id"),
+                    session_id=session_id,
+                    tenant=(budget_response.get("metadata") or {}).get("tenant"),
+                )
                 record_metrics("budget_limit", "budget")
                 return
 
@@ -747,7 +773,13 @@ class ConversationWorker:
             validate_event(response_event, "conversation_event")
 
             await self.store.append_event(session_id, {"type": "assistant", **response_event})
-            await self.bus.publish(self.settings["outbound"], response_event)
+            await self.publisher.publish(
+                self.settings["outbound"],
+                response_event,
+                dedupe_key=response_event.get("event_id"),
+                session_id=session_id,
+                tenant=(response_event.get("metadata") or {}).get("tenant"),
+            )
             record_metrics(result_label, path)
 
         try:
