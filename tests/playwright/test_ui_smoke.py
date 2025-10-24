@@ -1,6 +1,7 @@
 import asyncio
-import time
 import os
+import time
+
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 

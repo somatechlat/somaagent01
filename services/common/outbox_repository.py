@@ -7,13 +7,12 @@ Kafka is unhealthy, and from the sync worker to publish pending rows.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Optional
+from datetime import datetime
+from typing import Any, Optional
 
 import asyncpg
 from prometheus_client import Counter, Histogram

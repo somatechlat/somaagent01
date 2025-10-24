@@ -34,6 +34,21 @@ jobs:
           helm lint infra/helm/soma-stack
           helm lint infra/helm/soma-infra
 
+      - name: Guard: memory plane is SomaBrain-only
+        run: |
+          set -euo pipefail
+          # Ensure legacy memory_client is tombstoned if present
+          if [ -f "services/common/memory_client.py" ] && ! grep -q "ImportError" services/common/memory_client.py; then
+            echo "ERROR: memory_client.py exists and is not tombstoned with ImportError" >&2
+            exit 1
+          fi
+          # Fail on MEMORY_SERVICE_* env references in tracked files (exclude docs)
+          if grep -R "MEMORY_SERVICE_" --exclude-dir=docs --exclude-dir=.git .; then
+            echo "ERROR: Found MEMORY_SERVICE_ references in code or configs" >&2
+            exit 1
+          fi
+          echo "SomaBrain-only memory plane guard passed"
+
       - name: Lint with ruff
         run: |
           pip install ruff

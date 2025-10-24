@@ -4,7 +4,7 @@ import pytest
 from aiokafka.errors import KafkaError
 from testcontainers.postgres import PostgresContainer
 
-from services.common.outbox_repository import OutboxStore, ensure_schema
+from services.common.outbox_repository import ensure_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 
 

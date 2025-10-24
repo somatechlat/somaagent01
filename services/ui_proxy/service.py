@@ -226,4 +226,3 @@ class PollAggregator:
         if value in {None, "", "null", "None"}:
             return None
         return str(value)
-*** End Patch

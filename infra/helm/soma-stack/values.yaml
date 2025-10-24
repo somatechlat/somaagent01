@@ -38,6 +38,8 @@ env:
   POSTGRES_DSN: "postgresql://soma:soma@postgres:5432/somaagent01"
   KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
   REDIS_URL: "redis://redis:6379/0"
+  SOMA_BASE_URL: "http://somabrain:9696"
+  SOMA_NAMESPACE: "default"
 
 services:
   gateway:

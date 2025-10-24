@@ -1,9 +1,8 @@
 """Port discovery service for automatic port assignment."""
-import socket
-import os
-from typing import Dict, Optional
 import logging
+import socket
 from pathlib import Path
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ class PortDiscovery:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind(('', port))
                 return True
-        except:
+        except Exception:
             return False
             
     def find_next_available_port(self, start_port: int) -> Optional[int]:

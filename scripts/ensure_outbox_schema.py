@@ -4,7 +4,7 @@
 import asyncio
 import logging
 
-from services.common.outbox_repository import OutboxStore, ensure_schema
+from services.common.outbox_repository import ensure_schema, OutboxStore
 
 
 async def _main() -> None:
