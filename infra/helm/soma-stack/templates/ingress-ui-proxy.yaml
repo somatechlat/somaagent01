@@ -7,10 +7,8 @@ metadata:
   labels:
     app.kubernetes.io/name: ui-proxy
     app.kubernetes.io/instance: {{ .Release.Name }}
-  {{- with $svc.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- include "soma-stack.ingressAnnotations" (dict "root" . "svcAnns" $svc.ingress.annotations) | nindent 4 }}
 spec:
   {{- if $svc.ingress.className }}
   ingressClassName: {{ $svc.ingress.className }}

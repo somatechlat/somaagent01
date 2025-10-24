@@ -19,18 +19,12 @@ global:
   OTEL_ENABLED: true
   ISTIO_ENABLED: false
   imagePullSecrets: []
+  CERT_MANAGER_CLUSTER_ISSUER: ""
   HPA_ENABLED: false
   NETWORK_POLICY_ENABLED: false
-  NETWORK_POLICY_ALLOWED_INFRA_NAMESPACE_LABEL:
-    key: soma.sh/allow-shared-infra
+  NETWORK_POLICY_ALLOWED_NAMESPACE_LABEL:
+    key: "soma.sh/allow-shared-infra"
     value: "true"
-  NETWORK_POLICY_INFRA_PORTS:
-    - 5432   # Postgres
-    - 6379   # Redis
-    - 9092   # Kafka client
-    - 9093   # Kafka controller
-    - 8181   # OPA
-    - 8200   # Vault
 
 image:
   repository: somaagent01

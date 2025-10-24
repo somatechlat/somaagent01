@@ -33,7 +33,7 @@ etcd:
 
 certManager:
   enabled: true
-  email: "ops@your-staging-domain"
+  email: "cannachaincosta@gmail.com"
   clusterIssuer:
     name: "letsencrypt-staging"
     server: "https://acme-staging-v02.api.letsencrypt.org/directory"

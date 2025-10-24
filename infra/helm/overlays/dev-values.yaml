@@ -15,6 +15,7 @@ global:
   VAULT_AGENT_INJECT: false
   PROMETHEUS_SCRAPE: true
   OTEL_ENABLED: true
+  CERT_MANAGER_CLUSTER_ISSUER: ""  # no TLS issuance in dev by default
 
 services:
   gateway:

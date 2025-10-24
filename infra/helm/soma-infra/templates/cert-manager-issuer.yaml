@@ -5,6 +5,7 @@ kind: ClusterIssuer
 metadata:
   name: {{ $c.clusterIssuer.name }}
 spec:
+  {{- if eq (default "acme" $c.type) "acme" }}
   acme:
     email: {{ $c.email | quote }}
     server: {{ $c.clusterIssuer.server | quote }}
@@ -14,4 +15,12 @@ spec:
       - http01:
           ingress:
             class: nginx
+  {{- else if eq $c.type "ca" }}
+  ca:
+    secretName: {{ $c.ca.secretName | quote }}
+  {{- else if eq $c.type "selfSigned" }}
+  selfSigned: {}
+  {{- else }}
+  {{- fail (printf "Unsupported certManager.type: %s" $c.type) }}
+  {{- end }}
 {{- end }}

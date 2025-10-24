@@ -1,8 +1,4 @@
 {{- if .Values.global.NETWORK_POLICY_ENABLED }}
-{{- $ns := .Release.Namespace -}}
-{{- $label := .Values.global.NETWORK_POLICY_ALLOWED_INFRA_NAMESPACE_LABEL -}}
-{{- $ports := .Values.global.NETWORK_POLICY_INFRA_PORTS | default (list 5432 6379 9092 9093 8181 8200) -}}
----
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -12,37 +8,41 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  # Allow same-namespace ingress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ $ns }}
-  # Egress rules: DNS, same-namespace, and infra namespace(s)
+        - podSelector: {}
   egress:
-    # DNS to kube-system
     - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
+        - podSelector: {}
       ports:
+        - protocol: TCP
+          port: 53
         - protocol: UDP
           port: 53
-        - protocol: TCP
-          port: 53
-    # Same namespace unrestricted egress
+    {{- $allowed := .Values.global.NETWORK_POLICY_ALLOWED_NAMESPACE_LABEL }}
+    {{- if and $allowed $allowed.key $allowed.value }}
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ $ns }}
-    # Egress to infra namespaces by label on common infra ports
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              {{ $label.key }}: {{ $label.value | quote }}
+              {{ $allowed.key }}: {{ $allowed.value | quote }}
       ports:
-        {{- range $p := $ports }}
+        # Postgres
         - protocol: TCP
-          port: {{ $p }}
-        {{- end }}
+          port: 5432
+        # Redis
+        - protocol: TCP
+          port: 6379
+        # Kafka (broker/controller)
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 9093
+        # OPA / OpenFGA / Vault (typical)
+        - protocol: TCP
+          port: 8181
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8200
+    {{- end }}
 {{- end }}
