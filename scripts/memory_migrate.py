@@ -39,7 +39,7 @@ from typing import Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 from langchain_core.documents import Document
 
 from python.helpers.memory import Memory
-from python.integrations.soma_client import SomaClient, SomaClientError
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 LOGGER = logging.getLogger("memory_migrate")
 
@@ -141,7 +141,7 @@ async def _ingest_batches(
     *,
     replace: bool,
 ) -> None:
-    client = SomaClient.get()
+    client = SomaBrainClient.get()
     for idx, batch in enumerate(batches, start=1):
         try:
             response = await client.migrate_import(

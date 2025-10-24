@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 
 from python.helpers.tool import Response, Tool
-from python.integrations.soma_client import SomaClient, SomaClientError
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 DEFAULT_THRESHOLD = 0.7
 DEFAULT_LIMIT = 10
@@ -11,7 +11,7 @@ class MemoryLoad(Tool):
     async def execute(
         self, query="", threshold=DEFAULT_THRESHOLD, limit=DEFAULT_LIMIT, filter="", **kwargs
     ):
-        client = SomaClient.get()
+        client = SomaBrainClient.get()
         universe = None
         if getattr(self.agent, "config", None):
             universe = getattr(self.agent.config, "memory_subdir", None)

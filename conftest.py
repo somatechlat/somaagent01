@@ -35,7 +35,13 @@ except Exception as e:
 # Existing plugin registration
 from pathlib import Path
 
-pytest_plugins = ["playwright.sync_api"]
+# Only enable the Playwright plugin when explicitly requested to avoid
+# importing heavy browser deps (and transitive packages like pyee.asyncio)
+# in environments where they are not installed.
+if os.getenv("RUN_PLAYWRIGHT"):
+    pytest_plugins = ["playwright.sync_api"]
+else:
+    pytest_plugins = []
 
 
 def pytest_ignore_collect(collection_path: Path, config):

@@ -428,7 +428,32 @@ class ToolExecutor:
             except Exception:
                 LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
             if allow_memory:
-                await self.soma.remember(memory_payload)
+                wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                result = await self.soma.remember(memory_payload)
+                try:
+                    wal_event = {
+                        "type": "memory.write",
+                        "role": "tool",
+                        "session_id": result_event.get("session_id"),
+                        "persona_id": persona_id,
+                        "tenant": tenant,
+                        "payload": memory_payload,
+                        "result": {
+                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "trace_id": (result or {}).get("trace_id"),
+                            "request_id": (result or {}).get("request_id"),
+                        },
+                        "timestamp": time.time(),
+                    }
+                    await self.publisher.publish(
+                        wal_topic,
+                        wal_event,
+                        dedupe_key=str(memory_payload.get("id")),
+                        session_id=str(result_event.get("session_id")),
+                        tenant=tenant,
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to publish memory WAL (tool result)", exc_info=True)
             else:
                 LOGGER.info(
                     "memory.write denied by policy",

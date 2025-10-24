@@ -71,8 +71,8 @@ from python.helpers import guids, knowledge_import
 # Note: Log imported for type annotations; LogItem used in signatures
 from python.helpers.log import LogItem
 from python.helpers.print_style import PrintStyle
-from python.integrations.soma_client import (
-    SomaClient,
+from python.integrations.somabrain_client import (
+    SomaBrainClient,
     SomaClientError,
     SomaMemoryRecord,
 )
@@ -567,7 +567,7 @@ class SomaMemory:
     def __init__(self, agent: Optional[Agent], memory_subdir: str) -> None:
         self.agent = agent
         self.memory_subdir = memory_subdir or "default"
-        self._client = SomaClient.get()
+        self._client = SomaBrainClient.get()
         self._docstore = _SomaDocStore(self)
         self.db = _SomaDocStoreAdapter(self._docstore)
 

@@ -7,8 +7,11 @@ from testcontainers.kafka import KafkaContainer
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
-# Enable Playwright pytest plugin
-pytest_plugins = ["playwright.sync_api"]
+# Enable Playwright pytest plugin only when explicitly requested
+if os.getenv("RUN_PLAYWRIGHT"):
+    pytest_plugins = ["playwright.sync_api"]
+else:
+    pytest_plugins = []
 
 
 @pytest.fixture(scope="session")

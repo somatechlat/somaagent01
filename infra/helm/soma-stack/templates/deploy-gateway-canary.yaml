@@ -41,6 +41,10 @@ spec:
               value: {{ .Values.env.KAFKA_BOOTSTRAP_SERVERS | quote }}
             - name: REDIS_URL
               value: {{ .Values.env.REDIS_URL | quote }}
+            - name: SOMA_BASE_URL
+              value: {{ .Values.env.SOMA_BASE_URL | quote }}
+            - name: SOMA_NAMESPACE
+              value: {{ .Values.env.SOMA_NAMESPACE | quote }}
             - name: JWT_ENABLED
               value: {{ .Values.global.JWT_ENABLED | quote }}
             - name: OPA_ENABLED
