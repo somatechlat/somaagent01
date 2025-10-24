@@ -15,6 +15,8 @@ global:
   VAULT_AGENT_INJECT: true
   PROMETHEUS_SCRAPE: true
   OTEL_ENABLED: true
+  NETWORK_POLICY_ENABLED: true
+  CERT_MANAGER_CLUSTER_ISSUER: letsencrypt-prod
 
 # HA toggles for stateful backends can be referenced in service charts
 
@@ -23,16 +25,15 @@ services:
     ingress:
       enabled: true
       className: nginx
-      host: gateway.prod-ha.example.com
+      host: gateway.prod-ha.soma.internal
       path: /
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-prod
+      annotations: {}
       tls:
-        - hosts: [gateway.prod-ha.example.com]
+        - hosts: [gateway.prod-ha.soma.internal]
           secretName: gateway-ha-tls
     istio:
       enabled: true
-      host: gateway.prod-ha.example.com
+      host: gateway.prod-ha.soma.internal
       gateways: ["istio-system/public-gateway"]
       weights:
         stable: 95
@@ -58,21 +59,19 @@ services:
     ingress:
       enabled: true
       className: nginx
-      host: ui.prod-ha.example.com
+      host: ui.prod-ha.soma.internal
       path: /
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-prod
+      annotations: {}
       tls:
-        - hosts: [ui.prod-ha.example.com]
+        - hosts: [ui.prod-ha.soma.internal]
           secretName: ui-ha-tls
   uiProxy:
     ingress:
       enabled: true
       className: nginx
-      host: uip.prod-ha.example.com
+      host: uip.prod-ha.soma.internal
       path: /
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-prod
+      annotations: {}
       tls:
-        - hosts: [uip.prod-ha.example.com]
+        - hosts: [uip.prod-ha.soma.internal]
           secretName: uip-ha-tls

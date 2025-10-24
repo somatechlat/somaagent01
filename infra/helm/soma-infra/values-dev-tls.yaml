@@ -1,0 +1,10 @@
+# Developer TLS values for soma-infra (optional)
+# Enables cert-manager with a self-signed ClusterIssuer for local TLS.
+
+namespace: soma-infra
+
+certManager:
+  enabled: true
+  type: selfSigned
+  clusterIssuer:
+    name: dev-selfsigned

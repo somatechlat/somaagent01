@@ -132,7 +132,10 @@ ingressNginx:
 
 certManager:
   enabled: false
+  type: acme  # acme | ca | selfSigned
   email: "ops@local.soma"
   clusterIssuer:
     name: "letsencrypt-staging"
     server: "https://acme-staging-v02.api.letsencrypt.org/directory"
+  ca:
+    secretName: ""  # name of Kubernetes secret containing CA key (tls.key) and cert (tls.crt) for type=ca

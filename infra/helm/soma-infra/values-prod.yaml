@@ -33,7 +33,7 @@ etcd:
 
 certManager:
   enabled: true
-  email: "ops@your-prod-domain"
+  email: "cannachaincosta@gmail.com"
   clusterIssuer:
     name: "letsencrypt-prod"
     server: "https://acme-v02.api.letsencrypt.org/directory"

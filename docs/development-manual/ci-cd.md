@@ -52,6 +52,7 @@ Requirements:
 
 The umbrella chart supports overlays in `infra/helm/overlays/`:
 - dev-values.yaml
+- staging-values.yaml
 - prod-values.yaml
 - prod-ha-values.yaml
 
@@ -147,4 +148,41 @@ Notes
 - The referenced secrets must exist in the target namespace before deployment.
 - Create them with your registry credentials using a `docker-registry` type secret.
 - Both the stable and canary Deployments inherit these settings.
+
+### TLS and cert-manager
+
+- Apps (umbrella chart) now accept a global issuer name: `global.CERT_MANAGER_CLUSTER_ISSUER`.
+	- In prod overlays we set `letsencrypt-prod` and remove per-service annotations.
+	- You can still set per-service `services.*.ingress.annotations` to override.
+- Infra chart (soma-infra) can install a `ClusterIssuer`:
+	- In prod overlay we enable cert-manager and set the ACME production server.
+	- For staging, use `letsencrypt-staging` and the staging ACME URL.
+
+Mode-to-domain-and-cert mapping:
+
+- dev_full: dev overlay (`dev-values.yaml`)
+	- Hosts: `*.127.0.0.1.sslip.io`
+	- Certs: none by default (global issuer empty)
+- dev_prod: staging overlay (`staging-values.yaml`)
+	- Hosts: `*.staging.soma.internal`
+	- Certs: Let's Encrypt staging (global issuer `letsencrypt-staging`), infra staging ClusterIssuer enabled
+- prod: prod overlay (`prod-values.yaml`)
+	- Hosts: `*.prod.soma.internal`
+	- Certs: Let's Encrypt production (global issuer `letsencrypt-prod`), infra prod ClusterIssuer enabled
+- prod_ha: prod-ha overlay (`prod-ha-values.yaml`)
+	- Hosts: `*.prod-ha.soma.internal`
+	- Certs: Let's Encrypt production (global issuer `letsencrypt-prod`), infra prod ClusterIssuer enabled
+
+### Network policies
+
+- Enable app-side policies via `global.NETWORK_POLICY_ENABLED`.
+- Cross-namespace egress can be allowed by label:
+	- `global.NETWORK_POLICY_ALLOWED_NAMESPACE_LABEL.key`
+	- `global.NETWORK_POLICY_ALLOWED_NAMESPACE_LABEL.value`
+- Infra chart allows ingress from namespaces labeled with the same key/value (default: `soma.sh/allow-shared-infra: "true"`). Ensure your app namespace has this label to permit traffic to infra services.
+
+### KinD convenience for ingress ports
+
+- A KinD config at `infra/kind/soma-kind-ingress.yaml` maps host ports 80/443 to the ingress-nginx NodePorts (30080/30443).
+- Use `scripts/kind-create-ingress.sh` to create this cluster.
 

@@ -157,3 +157,110 @@ Notes
 - Admin-only endpoints require a scope claim containing `admin` or `keys:manage`.
 - Tenant is derived from the first matching claim in `GATEWAY_JWT_TENANT_CLAIMS` (default: `tenant,org,customer`).
 - Health endpoints remain open for readiness checks.
+
+## 12. Local ingress and TLS on this machine (optional)
+
+You can expose the app via ingress locally and optionally enable TLS.
+
+- Quickest: HTTP only (default). Uses sslip.io hostnames without certificates.
+- Self-signed TLS: cert-manager issues self-signed certs (untrusted by browsers).
+- Trusted local TLS: Use mkcert to create a local CA and configure cert-manager with a CA issuer.
+
+### Option A — HTTP only (default)
+
+1) Create a KinD cluster that maps host 80/443 to ingress NodePorts:
+   - Optional script: `scripts/kind-create-ingress.sh`
+2) Install infra for dev with ingress-nginx:
+   - `helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml`
+3) Install app with dev overlay (hosts on sslip.io):
+   - `helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml`
+4) Visit:
+   - http://gateway.127.0.0.1.sslip.io/
+   - http://ui.127.0.0.1.sslip.io/
+   - http://uip.127.0.0.1.sslip.io/
+
+### Option B — Self-signed TLS (cert-manager)
+
+Pros: automated certs via cert-manager. Cons: browser warning (untrusted).
+
+1) Enable cert-manager self-signed issuer in infra:
+   - `helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml -f infra/helm/soma-infra/values-dev-tls.yaml`
+2) Enable TLS on app ingresses and point to the dev issuer:
+   - `helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml -f infra/helm/overlays/dev-tls-values.yaml`
+3) Access the HTTPS endpoints (expect a certificate warning):
+   - https://gateway.127.0.0.1.sslip.io/
+   - https://ui.127.0.0.1.sslip.io/
+   - https://uip.127.0.0.1.sslip.io/
+
+### Option C — Trusted local TLS (mkcert + cert-manager CA)
+
+Pros: Browser-trusted TLS locally. Cons: slightly more setup.
+
+1) Install mkcert (macOS):
+   - `brew install mkcert nss`
+   - `mkcert -install`  # installs local CA to Keychain/System trust
+2) Find mkcert CA root directory:
+   - `mkcert -CAROOT`
+3) Create a Kubernetes secret with the mkcert CA key and cert (development only):
+   - `kubectl -n soma-infra create secret tls mkcert-ca --cert="$CAROOT/rootCA.pem" --key="$CAROOT/rootCA-key.pem"`
+4) Configure cert-manager CA issuer (infra):
+   - Create or edit a values file with:
+     ```yaml
+     certManager:
+       enabled: true
+       type: ca
+       clusterIssuer:
+         name: mkcert-ca
+       ca:
+         secretName: mkcert-ca
+     ```
+   - Apply: `helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml -f <your-ca-values>.yaml`
+5) Point the app to the mkcert issuer and enable TLS on ingresses:
+   - Create or edit an overlay with:
+     ```yaml
+     global:
+       CERT_MANAGER_CLUSTER_ISSUER: mkcert-ca
+     services:
+       gateway:
+         ingress:
+           tls:
+             - hosts: [gateway.127.0.0.1.sslip.io]
+               secretName: gateway-dev-tls
+       ui:
+         ingress:
+           tls:
+             - hosts: [ui.127.0.0.1.sslip.io]
+               secretName: ui-dev-tls
+       uiProxy:
+         ingress:
+           tls:
+             - hosts: [uip.127.0.0.1.sslip.io]
+               secretName: uip-dev-tls
+     ```
+   - Deploy: `helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml -f <your-app-dev-tls-values>.yaml`
+6) Visit HTTPS endpoints; they should be trusted by your browser.
+
+Notes
+- For network policies, label your app namespace to allow access to infra:
+  - `kubectl label namespace <app-namespace> soma.sh/allow-shared-infra="true" --overwrite`
+- If using KinD convenience, see `scripts/kind-create-ingress.sh` and `infra/kind/soma-kind-ingress.yaml`.
+
+### Option D — Trusted local TLS (custom OpenSSL CA, no mkcert)
+
+Pros: Trusted TLS without installing mkcert. Cons: You still need to trust a local CA in macOS.
+
+1) Generate a local CA (OpenSSL):
+  - `./scripts/dev-ca/generate-dev-ca.sh "Soma Dev Local CA"`
+  - Output: `scripts/dev-ca/ca/dev-ca.key.pem` and `dev-ca.crt.pem`
+2) Trust the CA in macOS (requires sudo):
+  - `sudo ./scripts/dev-ca/install-macos-trust.sh scripts/dev-ca/ca/dev-ca.crt.pem`
+3) Create Kubernetes secret for cert-manager CA issuer:
+  - `./scripts/dev-ca/create-k8s-secret.sh soma-infra dev-ca scripts/dev-ca/ca/dev-ca.key.pem scripts/dev-ca/ca/dev-ca.crt.pem`
+4) Install infra with CA issuer:
+  - `helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml -f infra/helm/soma-infra/values-dev-ca.yaml`
+5) Install app with dev CA overlay:
+  - `helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml -f infra/helm/overlays/dev-ca-values.yaml`
+6) Open HTTPS endpoints (should be trusted):
+  - https://gateway.127.0.0.1.sslip.io/
+  - https://ui.127.0.0.1.sslip.io/
+  - https://uip.127.0.0.1.sslip.io/

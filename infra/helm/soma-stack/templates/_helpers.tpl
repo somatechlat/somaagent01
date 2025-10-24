@@ -30,3 +30,14 @@ default
 {{- end }}
 {{- end }}
 {{- end -}}
+
+{{- define "soma-stack.ingressAnnotations" -}}
+{{- /* Merge a global cert-manager issuer annotation with service-specific annotations. */ -}}
+{{- $root := .root -}}
+{{- $svcAnns := .svcAnns | default dict -}}
+{{- $base := dict -}}
+{{- if $root.Values.global.CERT_MANAGER_CLUSTER_ISSUER }}
+{{- $_ := set $base "cert-manager.io/cluster-issuer" $root.Values.global.CERT_MANAGER_CLUSTER_ISSUER -}}
+{{- end -}}
+{{- toYaml (merge $base $svcAnns) -}}
+{{- end -}}

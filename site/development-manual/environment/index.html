@@ -1235,6 +1235,48 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#12-local-ingress-and-tls-on-this-machine-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. Local ingress and TLS on this machine (optional)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Local ingress and TLS on this machine (optional)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-http-only-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option A — HTTP only (default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-self-signed-tls-cert-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option B — Self-signed TLS (cert-manager)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-c-trusted-local-tls-mkcert-cert-manager-ca" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option C — Trusted local TLS (mkcert + cert-manager CA)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1994,6 +2036,48 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#12-local-ingress-and-tls-on-this-machine-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. Local ingress and TLS on this machine (optional)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Local ingress and TLS on this machine (optional)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-http-only-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option A — HTTP only (default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-self-signed-tls-cert-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option B — Self-signed TLS (cert-manager)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-c-trusted-local-tls-mkcert-cert-manager-ca" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option C — Trusted local TLS (mkcert + cert-manager CA)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2169,6 +2253,81 @@ pytest<span class="w"> </span>tests/playwright/test_realtime_speech.py<span clas
 <li>Tenant is derived from the first matching claim in <code>GATEWAY_JWT_TENANT_CLAIMS</code> (default: <code>tenant,org,customer</code>).</li>
 <li>Health endpoints remain open for readiness checks.</li>
 </ul>
+<h2 id="12-local-ingress-and-tls-on-this-machine-optional">12. Local ingress and TLS on this machine (optional)<a class="headerlink" href="#12-local-ingress-and-tls-on-this-machine-optional" title="Permanent link">&para;</a></h2>
+<p>You can expose the app via ingress locally and optionally enable TLS.</p>
+<ul>
+<li>Quickest: HTTP only (default). Uses sslip.io hostnames without certificates.</li>
+<li>Self-signed TLS: cert-manager issues self-signed certs (untrusted by browsers).</li>
+<li>Trusted local TLS: Use mkcert to create a local CA and configure cert-manager with a CA issuer.</li>
+</ul>
+<h3 id="option-a-http-only-default">Option A — HTTP only (default)<a class="headerlink" href="#option-a-http-only-default" title="Permanent link">&para;</a></h3>
+<p>1) Create a KinD cluster that maps host 80/443 to ingress NodePorts:
+   - Optional script: <code>scripts/kind-create-ingress.sh</code>
+2) Install infra for dev with ingress-nginx:
+   - <code>helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml</code>
+3) Install app with dev overlay (hosts on sslip.io):
+   - <code>helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml</code>
+4) Visit:
+   - http://gateway.127.0.0.1.sslip.io/
+   - http://ui.127.0.0.1.sslip.io/
+   - http://uip.127.0.0.1.sslip.io/</p>
+<h3 id="option-b-self-signed-tls-cert-manager">Option B — Self-signed TLS (cert-manager)<a class="headerlink" href="#option-b-self-signed-tls-cert-manager" title="Permanent link">&para;</a></h3>
+<p>Pros: automated certs via cert-manager. Cons: browser warning (untrusted).</p>
+<p>1) Enable cert-manager self-signed issuer in infra:
+   - <code>helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml -f infra/helm/soma-infra/values-dev-tls.yaml</code>
+2) Enable TLS on app ingresses and point to the dev issuer:
+   - <code>helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml -f infra/helm/overlays/dev-tls-values.yaml</code>
+3) Access the HTTPS endpoints (expect a certificate warning):
+   - https://gateway.127.0.0.1.sslip.io/
+   - https://ui.127.0.0.1.sslip.io/
+   - https://uip.127.0.0.1.sslip.io/</p>
+<h3 id="option-c-trusted-local-tls-mkcert-cert-manager-ca">Option C — Trusted local TLS (mkcert + cert-manager CA)<a class="headerlink" href="#option-c-trusted-local-tls-mkcert-cert-manager-ca" title="Permanent link">&para;</a></h3>
+<p>Pros: Browser-trusted TLS locally. Cons: slightly more setup.</p>
+<p>1) Install mkcert (macOS):
+   - <code>brew install mkcert nss</code>
+   - <code>mkcert -install</code>  # installs local CA to Keychain/System trust
+2) Find mkcert CA root directory:
+   - <code>mkcert -CAROOT</code>
+3) Create a Kubernetes secret with the mkcert CA key and cert (development only):
+   - <code>kubectl -n soma-infra create secret tls mkcert-ca --cert="$CAROOT/rootCA.pem" --key="$CAROOT/rootCA-key.pem"</code>
+4) Configure cert-manager CA issuer (infra):
+   - Create or edit a values file with:
+     <div class="highlight"><pre><span></span><code><span class="nt">certManager</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ca</span>
+<span class="w">  </span><span class="nt">clusterIssuer</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mkcert-ca</span>
+<span class="w">  </span><span class="nt">ca</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mkcert-ca</span>
+</code></pre></div>
+   - Apply: <code>helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml -f &lt;your-ca-values&gt;.yaml</code>
+5) Point the app to the mkcert issuer and enable TLS on ingresses:
+   - Create or edit an overlay with:
+     <div class="highlight"><pre><span></span><code><span class="nt">global</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">CERT_MANAGER_CLUSTER_ISSUER</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mkcert-ca</span>
+<span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">gateway</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ingress</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">hosts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gateway.127.0.0.1.sslip.io</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway-dev-tls</span>
+<span class="w">  </span><span class="nt">ui</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ingress</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">hosts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ui.127.0.0.1.sslip.io</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ui-dev-tls</span>
+<span class="w">  </span><span class="nt">uiProxy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ingress</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">hosts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">uip.127.0.0.1.sslip.io</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uip-dev-tls</span>
+</code></pre></div>
+   - Deploy: <code>helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml -f &lt;your-app-dev-tls-values&gt;.yaml</code>
+6) Visit HTTPS endpoints; they should be trusted by your browser.</p>
+<p>Notes
+- For network policies, label your app namespace to allow access to infra:
+  - <code>kubectl label namespace &lt;app-namespace&gt; soma.sh/allow-shared-infra="true" --overwrite</code>
+- If using KinD convenience, see <code>scripts/kind-create-ingress.sh</code> and <code>infra/kind/soma-kind-ingress.yaml</code>.</p>
 
 
 

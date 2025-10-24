@@ -1279,6 +1279,33 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tls-and-cert-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      TLS and cert-manager
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Network policies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kind-convenience-for-ingress-ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      KinD convenience for ingress ports
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1995,6 +2022,33 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tls-and-cert-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      TLS and cert-manager
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Network policies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kind-convenience-for-ingress-ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      KinD convenience for ingress ports
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2062,6 +2116,7 @@
 <h2 id="overlays">Overlays<a class="headerlink" href="#overlays" title="Permanent link">&para;</a></h2>
 <p>The umbrella chart supports overlays in <code>infra/helm/overlays/</code>:
 - dev-values.yaml
+- staging-values.yaml
 - prod-values.yaml
 - prod-ha-values.yaml</p>
 <p>These are merged with <code>infra/helm/soma-stack/values.yaml</code> during deployment.</p>
@@ -2135,6 +2190,57 @@ These render into DestinationRule/VirtualService and apply to both stable and ca
 <li>The referenced secrets must exist in the target namespace before deployment.</li>
 <li>Create them with your registry credentials using a <code>docker-registry</code> type secret.</li>
 <li>Both the stable and canary Deployments inherit these settings.</li>
+</ul>
+<h3 id="tls-and-cert-manager">TLS and cert-manager<a class="headerlink" href="#tls-and-cert-manager" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Apps (umbrella chart) now accept a global issuer name: <code>global.CERT_MANAGER_CLUSTER_ISSUER</code>.<ul>
+<li>In prod overlays we set <code>letsencrypt-prod</code> and remove per-service annotations.</li>
+<li>You can still set per-service <code>services.*.ingress.annotations</code> to override.</li>
+</ul>
+</li>
+<li>Infra chart (soma-infra) can install a <code>ClusterIssuer</code>:<ul>
+<li>In prod overlay we enable cert-manager and set the ACME production server.</li>
+<li>For staging, use <code>letsencrypt-staging</code> and the staging ACME URL.</li>
+</ul>
+</li>
+</ul>
+<p>Mode-to-domain-and-cert mapping:</p>
+<ul>
+<li>dev_full: dev overlay (<code>dev-values.yaml</code>)<ul>
+<li>Hosts: <code>*.127.0.0.1.sslip.io</code></li>
+<li>Certs: none by default (global issuer empty)</li>
+</ul>
+</li>
+<li>dev_prod: staging overlay (<code>staging-values.yaml</code>)<ul>
+<li>Hosts: <code>*.staging.soma.internal</code></li>
+<li>Certs: Let's Encrypt staging (global issuer <code>letsencrypt-staging</code>), infra staging ClusterIssuer enabled</li>
+</ul>
+</li>
+<li>prod: prod overlay (<code>prod-values.yaml</code>)<ul>
+<li>Hosts: <code>*.prod.soma.internal</code></li>
+<li>Certs: Let's Encrypt production (global issuer <code>letsencrypt-prod</code>), infra prod ClusterIssuer enabled</li>
+</ul>
+</li>
+<li>prod_ha: prod-ha overlay (<code>prod-ha-values.yaml</code>)<ul>
+<li>Hosts: <code>*.prod-ha.soma.internal</code></li>
+<li>Certs: Let's Encrypt production (global issuer <code>letsencrypt-prod</code>), infra prod ClusterIssuer enabled</li>
+</ul>
+</li>
+</ul>
+<h3 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Enable app-side policies via <code>global.NETWORK_POLICY_ENABLED</code>.</li>
+<li>Cross-namespace egress can be allowed by label:<ul>
+<li><code>global.NETWORK_POLICY_ALLOWED_NAMESPACE_LABEL.key</code></li>
+<li><code>global.NETWORK_POLICY_ALLOWED_NAMESPACE_LABEL.value</code></li>
+</ul>
+</li>
+<li>Infra chart allows ingress from namespaces labeled with the same key/value (default: <code>soma.sh/allow-shared-infra: "true"</code>). Ensure your app namespace has this label to permit traffic to infra services.</li>
+</ul>
+<h3 id="kind-convenience-for-ingress-ports">KinD convenience for ingress ports<a class="headerlink" href="#kind-convenience-for-ingress-ports" title="Permanent link">&para;</a></h3>
+<ul>
+<li>A KinD config at <code>infra/kind/soma-kind-ingress.yaml</code> maps host ports 80/443 to the ingress-nginx NodePorts (30080/30443).</li>
+<li>Use <code>scripts/kind-create-ingress.sh</code> to create this cluster.</li>
 </ul>
 
 

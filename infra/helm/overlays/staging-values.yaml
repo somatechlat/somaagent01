@@ -1,6 +1,8 @@
-# prod-values.yaml – production (single-zone)
+# staging-values.yaml – staging configuration
+# Use with environment=staging to validate TLS against Let's Encrypt staging.
+
 global:
-  DEPLOY_MODE: prod
+  DEPLOY_MODE: dev_prod
   JWT_ENABLED: true
   OPA_ENABLED: true
   MTLS_ENABLED: true
@@ -16,40 +18,40 @@ global:
   PROMETHEUS_SCRAPE: true
   OTEL_ENABLED: true
   NETWORK_POLICY_ENABLED: true
-  CERT_MANAGER_CLUSTER_ISSUER: letsencrypt-prod
+  CERT_MANAGER_CLUSTER_ISSUER: letsencrypt-staging
 
 services:
   gateway:
     ingress:
       enabled: true
       className: nginx
-      host: gateway.prod.soma.internal
+      host: gateway.staging.soma.internal
       path: /
       annotations: {}
       tls:
-        - hosts: [gateway.prod.soma.internal]
-          secretName: gateway-tls
+        - hosts: [gateway.staging.soma.internal]
+          secretName: gateway-staging-tls
     istio:
       enabled: false
-      host: gateway.prod.soma.internal
+      host: gateway.staging.soma.internal
       gateways: ["istio-system/public-gateway"]
   ui:
     ingress:
       enabled: true
       className: nginx
-      host: ui.prod.soma.internal
+      host: ui.staging.soma.internal
       path: /
       annotations: {}
       tls:
-        - hosts: [ui.prod.soma.internal]
-          secretName: ui-tls
+        - hosts: [ui.staging.soma.internal]
+          secretName: ui-staging-tls
   uiProxy:
     ingress:
       enabled: true
       className: nginx
-      host: uip.prod.soma.internal
+      host: uip.staging.soma.internal
       path: /
       annotations: {}
       tls:
-        - hosts: [uip.prod.soma.internal]
-          secretName: uip-tls
+        - hosts: [uip.staging.soma.internal]
+          secretName: uip-staging-tls

@@ -17,6 +17,7 @@ Goal: Durable writes via outbox and write‑through integration.
 - services/common: outbox repo + idempotency key generator + publisher validation.
 - python/integrations/soma_client.py: `/health` probe (1–1.5s), breaker signals, batch & link helpers.
 - services/gateway + services/conversation_worker: write‑through remember (user/assistant) with idempotent keys; create user↔assistant links.
+- services/memory (SomaBrain): implement streaming SearchMemory RPC and client helper.
 - Acceptance: unit tests PASS; write‑through persists to outbox when degraded/down.
 
 ### Sprint 2 (W1‑S2) – Memory Reliability II
@@ -56,12 +57,14 @@ Goal: Safer bus and deeper visibility.
 - Tenant‑partitioned topics and publish‑time JSON Schema validation.
 - OTEL propagation of SomaBrain request_id; node metrics exported.
 - Grafana dashboards and SLO alerts for latency/error/outbox backlog.
+- Aggregated `/healthz` endpoint in gateway (fan‑out checks to core dependencies and sub‑services).
 - Acceptance: invalid publishes rejected; dashboards live; alerts tested.
 
 ### Sprint 8 (W4‑S8) – Helm & CI Hardening
 Goal: Smooth installs and secure builds.
 - Helm pre‑install job for DB tables + topics; HPA on tool latency.
 - CI: Trivy scan (fail on critical), benchmark job emitting agent.benchmarks.v1; docs build.
+- CI: OPA policy unit tests integrated; baseline performance thresholds enforced from benchmark job.
 - Acceptance: helm install < 10 min; CI green with Trivy 0 critical.
 
 ### Sprint 9 (W5‑S9) – Vault Rotation & OPA Sandbox
@@ -72,6 +75,7 @@ Goal: Secrets and policy ergonomics.
 ### Sprint 10 (W5‑S10) – Ops Tools & Deprecations
 Goal: Final polish and cleanup.
 - scripts/somabrain-sync CLI (manual flush + audit); remove services/memory_service from compose/helm and code paths; runbooks & incident playbooks.
+- webui: minimal Dead‑Letter UI to inspect Kafka DLQ, filter, and retry/ack.
 - Acceptance: manual flush audited; memory_service fully removed; runbooks validated.
 
 ## 🌊 Wave alignment
@@ -99,4 +103,4 @@ Goal: Final polish and cleanup.
 ## ✅ Next steps
 1. Create Sprint 0 tickets and assign owners.
 2. Add schema/docs tasks to CI and verify mkdocs build.
-3. Start Sprints 1–2 focusing on outbox + write‑through + sync worker + load test.
+3. Start Sprints 1–2 focusing on outbox + write‑through + streaming search + sync worker + load test.
