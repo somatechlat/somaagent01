@@ -21,6 +21,10 @@ spec:
         {{- include "soma-stack.annotations" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "soma-stack.saName" . }}
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "soma-stack.imagePullSecrets" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: conversation-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -48,6 +52,20 @@ spec:
           ports:
             - name: metrics
               containerPort: {{ .Values.services.conversationWorker.metricsPort }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
           resources:
             requests:
               cpu: {{ .Values.global.RESOURCE_REQUESTS.cpu | quote }}

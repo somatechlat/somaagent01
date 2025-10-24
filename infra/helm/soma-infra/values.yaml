@@ -113,3 +113,25 @@ networkPolicy:
   allowedNamespaceLabel:
     key: soma.sh/allow-shared-infra
     value: "true"
+
+ingressNginx:
+  enabled: false
+  image: "registry.k8s.io/ingress-nginx/controller:v1.11.2"
+  service:
+    type: NodePort
+    httpNodePort: 30080
+    httpsNodePort: 30443
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+certManager:
+  enabled: false
+  email: "ops@local.soma"
+  clusterIssuer:
+    name: "letsencrypt-staging"
+    server: "https://acme-staging-v02.api.letsencrypt.org/directory"

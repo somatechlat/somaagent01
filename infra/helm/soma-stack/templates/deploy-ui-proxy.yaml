@@ -21,6 +21,10 @@ spec:
         {{- include "soma-stack.annotations" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "soma-stack.saName" . }}
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "soma-stack.imagePullSecrets" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: ui-proxy
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -34,6 +38,20 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.services.uiProxy.port }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
           resources:
             requests:
               cpu: {{ .Values.global.RESOURCE_REQUESTS.cpu | quote }}

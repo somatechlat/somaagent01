@@ -21,6 +21,10 @@ spec:
         {{- include "soma-stack.annotations" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "soma-stack.saName" . }}
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "soma-stack.imagePullSecrets" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: gateway
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

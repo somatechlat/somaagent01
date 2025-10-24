@@ -23,6 +23,8 @@ services:
       className: nginx
       host: gateway.prod.example.com
       path: /
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-staging
       tls:
         - hosts: [gateway.prod.example.com]
           secretName: gateway-tls
@@ -36,6 +38,8 @@ services:
       className: nginx
       host: ui.prod.example.com
       path: /
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-staging
       tls:
         - hosts: [ui.prod.example.com]
           secretName: ui-tls
@@ -45,6 +49,8 @@ services:
       className: nginx
       host: uip.prod.example.com
       path: /
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-staging
       tls:
         - hosts: [uip.prod.example.com]
           secretName: uip-tls

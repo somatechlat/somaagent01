@@ -102,3 +102,21 @@ Umbrella chart `infra/helm/soma-stack` deploys:
 - The workflow attempts `helm rollback` automatically on failure.
 - You can also roll back manually via the Helm history and rollback commands.
 
+
+## Additional options
+
+Istio reliability policies (optional):
+- Configure `services.gateway.istio.trafficPolicy` for connection pooling and outlier detection.
+- Configure `services.gateway.istio.http` for `timeout` and `retries`.
+These render into DestinationRule/VirtualService and apply to both stable and canary subsets.
+
+Dev overlay with ingress and local hosts:
+- `infra/helm/overlays/dev-values.yaml` enables nginx ingress and sets hosts to `*.127.0.0.1.sslip.io` so they resolve to localhost without edits.
+	- Gateway: `gateway.127.0.0.1.sslip.io`
+	- UI: `ui.127.0.0.1.sslip.io`
+	- UI Proxy: `uip.127.0.0.1.sslip.io`
+
+Autoscaling and network policies (optional):
+- Toggle `global.HPA_ENABLED` and per-service `services.*.hpa.enabled` to render HPAs (CPU-based by default).
+- Toggle `global.NETWORK_POLICY_ENABLED` to apply a conservative, namespace-only allow policy plus DNS egress.
+
