@@ -32,6 +32,8 @@ jobs:
       - name: Lint Helm charts
         run: |
           helm lint infra/helm/memory-service
+          helm lint infra/helm/soma-stack
+          helm lint infra/helm/soma-infra
 
       - name: Lint with ruff
         run: |

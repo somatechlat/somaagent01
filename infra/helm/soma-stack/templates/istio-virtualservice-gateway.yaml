@@ -11,7 +11,15 @@ spec:
   gateways:
     {{- toYaml $svc.istio.gateways | nindent 4 }}
   http:
-    - route:
+    - {{- if $svc.istio.http.timeout }}
+      timeout: {{ $svc.istio.http.timeout }}
+      {{- end }}
+      {{- if $svc.istio.http.retries }}
+      retries:
+        attempts: {{ $svc.istio.http.retries.attempts | default 2 }}
+        perTryTimeout: {{ $svc.istio.http.retries.perTryTimeout | default "3s" }}
+      {{- end }}
+      route:
         - destination:
             host: {{ include "soma-stack.fullname" . }}-gateway.{{ .Release.Namespace }}.svc.cluster.local
             subset: stable

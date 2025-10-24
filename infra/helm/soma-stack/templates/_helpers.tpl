@@ -21,3 +21,12 @@ default
 {{- end -}}
 {{- toYaml $anns -}}
 {{- end -}}
+
+{{- define "soma-stack.imagePullSecrets" -}}
+{{- $secrets := .Values.global.imagePullSecrets | default list -}}
+{{- if $secrets }}
+{{- range $s := $secrets }}
+- name: {{ $s }}
+{{- end }}
+{{- end }}
+{{- end -}}

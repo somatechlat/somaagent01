@@ -18,6 +18,7 @@ global:
   PROM_OPERATOR_ENABLED: false
   OTEL_ENABLED: true
   ISTIO_ENABLED: false
+  imagePullSecrets: []
   HPA_ENABLED: false
   NETWORK_POLICY_ENABLED: false
 
@@ -64,6 +65,23 @@ services:
       weights:
         stable: 90
         canary: 10
+      trafficPolicy:
+        connectionPool:
+          http:
+            http1MaxPendingRequests: 1024
+            maxRequestsPerConnection: 100
+          tcp:
+            maxConnections: 1000
+        outlierDetection:
+          consecutive5xx: 5
+          interval: 5s
+          baseEjectionTime: 30s
+          maxEjectionPercent: 50
+      http:
+        timeout: 10s
+        retries:
+          attempts: 2
+          perTryTimeout: 3s
   conversationWorker:
     enabled: true
     replicas: 1

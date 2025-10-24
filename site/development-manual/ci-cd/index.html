@@ -1260,6 +1260,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#additional-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional options
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1952,6 +1961,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#additional-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional options
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2054,6 +2072,19 @@
 <li>The workflow attempts <code>helm rollback</code> automatically on failure.</li>
 <li>You can also roll back manually via the Helm history and rollback commands.</li>
 </ul>
+<h2 id="additional-options">Additional options<a class="headerlink" href="#additional-options" title="Permanent link">&para;</a></h2>
+<p>Istio reliability policies (optional):
+- Configure <code>services.gateway.istio.trafficPolicy</code> for connection pooling and outlier detection.
+- Configure <code>services.gateway.istio.http</code> for <code>timeout</code> and <code>retries</code>.
+These render into DestinationRule/VirtualService and apply to both stable and canary subsets.</p>
+<p>Dev overlay with ingress and local hosts:
+- <code>infra/helm/overlays/dev-values.yaml</code> enables nginx ingress and sets hosts to <code>*.127.0.0.1.sslip.io</code> so they resolve to localhost without edits.
+    - Gateway: <code>gateway.127.0.0.1.sslip.io</code>
+    - UI: <code>ui.127.0.0.1.sslip.io</code>
+    - UI Proxy: <code>uip.127.0.0.1.sslip.io</code></p>
+<p>Autoscaling and network policies (optional):
+- Toggle <code>global.HPA_ENABLED</code> and per-service <code>services.*.hpa.enabled</code> to render HPAs (CPU-based by default).
+- Toggle <code>global.NETWORK_POLICY_ENABLED</code> to apply a conservative, namespace-only allow policy plus DNS egress.</p>
 
 
 

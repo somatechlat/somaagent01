@@ -64,6 +64,10 @@ help:
 	@echo "  dev-ps                    Show dev stack containers."
 	@echo "  dev-up-ui                 Start dev stack including UI profile."
 	@echo "  dev-restart-ui            Rebuild and start dev stack including UI profile."
+	@echo ""
+	@echo "Helm quickstart targets:"
+	@echo "  helm-dev-up               Install soma-infra (dev) and soma-stack (dev) into cluster."
+	@echo "  helm-dev-down             Uninstall soma and soma-infra releases from cluster."
 
 build:
 	@echo "Building Docker images..."
@@ -162,6 +166,16 @@ dev-logs-svc:
 # Show dev containers
 dev-ps:
 	$(DEV_DOCKER) ps
+
+.PHONY: helm-dev-up helm-dev-down
+
+helm-dev-up:
+	@echo "Installing Helm charts for dev (infra + app)..."
+	bash scripts/bootstrap-dev.sh
+
+helm-dev-down:
+	@echo "Uninstalling Helm charts for dev (infra + app)..."
+	bash scripts/destroy-dev.sh
 # ------------------------------------------------------------------------------
 # Slim runtime (prebuilt image) helpers
 # ------------------------------------------------------------------------------

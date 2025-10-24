@@ -35,3 +35,13 @@ etcd:
 
 postgres:
   enabled: true
+
+ingressNginx:
+  enabled: true
+  service:
+    type: NodePort
+    httpNodePort: 30080
+    httpsNodePort: 30443
+
+certManager:
+  enabled: false
