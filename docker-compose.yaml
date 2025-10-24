@@ -23,6 +23,7 @@ x-agent-env: &agent-env
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
   SKM_BASE_URL: http://host.docker.internal:9696
+  MEMORY_WAL_TOPIC: memory.wal
   # Default to empty in dev to avoid unintended authentication requirements.
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
   USE_LLM: "true"
@@ -81,6 +82,7 @@ services:
     image: confluentinc/cp-kafka:7.4.0
     container_name: somaAgent01_kafka
     profiles: ["core"]
+    user: "0:0"
     environment:
       # KRaft mode: controller+broker in a single node for local dev
       KAFKA_PROCESS_ROLES: "broker,controller"
@@ -195,6 +197,18 @@ services:
       - python3
       - -m
       - services.tool_executor.main
+
+  memory-replicator:
+    <<: *agent-service
+    container_name: somaAgent01_memory-replicator
+    profiles: ["dev"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    command:
+      - python3
+      - -m
+      - services.memory_replicator.main
 
   # memory-service removed; SomaBrain HTTP is used directly by services
 

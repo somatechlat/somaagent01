@@ -33,6 +33,7 @@ nav:
           - Tool Executor: technical-manual/components/tool-executor.md
           - Outbox Sync: technical-manual/components/outbox-sync.md
           - Memory Subsystem: technical-manual/components/memory.md
+          - Memory Plane: technical-manual/components/memory-plane.md
           - MCP & A2A Proxy: technical-manual/components/mcp-proxy.md
           - Realtime Speech: technical-manual/components/realtime-speech.md
           - Agent UI: technical-manual/components/ui.md
@@ -63,6 +64,7 @@ nav:
       - Event Streams: data/streams.md
   - Reference:
       - Index: reference/index.md
+      - Observability & Alerts: reference/observability-alerts.md
 
 theme:
   name: material

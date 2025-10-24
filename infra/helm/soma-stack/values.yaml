@@ -107,6 +107,15 @@ services:
       minReplicas: 1
       maxReplicas: 5
       targetCPUUtilizationPercentage: 70
+  memoryReplicator:
+    enabled: true
+    replicas: 1
+    metricsPort: 9403
+    hpa:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
   delegationGateway:
     enabled: true
     replicas: 1

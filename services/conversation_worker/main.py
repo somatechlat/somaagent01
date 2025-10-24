@@ -24,6 +24,7 @@ from services.common.model_profiles import ModelProfileStore
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
+from services.common.idempotency import generate_for_memory_payload
 from services.common.router_client import RouterClient
 from services.common.schema_validator import validate_event
 from services.common.session_repository import (
@@ -477,10 +478,17 @@ class ConversationWorker:
                     "type": "conversation_event",
                     "role": "user",
                     "content": event.get("message", ""),
+                    "attachments": event.get("attachments", []) or [],
                     "session_id": session_id,
                     "persona_id": event.get("persona_id"),
-                    "metadata": dict(enriched_metadata),
+                    "metadata": {
+                        **dict(enriched_metadata),
+                        "agent_profile_id": enriched_metadata.get("agent_profile_id"),
+                        "universe_id": enriched_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    },
                 }
+                # Idempotency key per contract
+                payload["idempotency_key"] = generate_for_memory_payload(payload)
                 # Pre-write OPA policy check: memory.write
                 allow_memory = True
                 try:
@@ -856,10 +864,16 @@ class ConversationWorker:
                     "type": "conversation_event",
                     "role": "assistant",
                     "content": response_text,
+                    "attachments": [],
                     "session_id": session_id,
                     "persona_id": event.get("persona_id"),
-                    "metadata": dict(response_metadata),
+                    "metadata": {
+                        **dict(response_metadata),
+                        "agent_profile_id": response_metadata.get("agent_profile_id"),
+                        "universe_id": response_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    },
                 }
+                payload["idempotency_key"] = generate_for_memory_payload(payload)
                 allow_memory = True
                 try:
                     allow_memory = await self.policy_client.evaluate(

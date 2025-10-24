@@ -34,7 +34,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from prometheus_client import start_http_server
+from prometheus_client import Counter, start_http_server
 from pydantic import BaseModel, Field
 
 SERVICE_NAME = "gateway"
@@ -50,8 +50,10 @@ except ImportError:
 # Local package imports (alphabetical)
 from python.helpers.settings import set_settings
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
+from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
+from services.common.memory_replica_store import MemoryReplicaStore
 from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
@@ -63,6 +65,8 @@ from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry_store import TelemetryStore
 from services.common.tracing import setup_tracing
 from services.common.vault_secrets import load_kv_secret
+from services.common.idempotency import generate_for_memory_payload
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 # Import PyJWT properly - no fallbacks or shims allowed in production
 try:
@@ -107,6 +111,23 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
+
+# Gateway write-through metrics (emitted when GATEWAY_WRITE_THROUGH is enabled)
+GATEWAY_WT_ATTEMPTS = Counter(
+    "gateway_write_through_attempts_total",
+    "Total write-through attempts from gateway to SomaBrain",
+    labelnames=("path",),
+)
+GATEWAY_WT_RESULTS = Counter(
+    "gateway_write_through_results_total",
+    "Write-through outcomes from gateway to SomaBrain",
+    labelnames=("path", "result"),  # result: ok|client_error|server_error|exception
+)
+GATEWAY_WT_WAL_RESULTS = Counter(
+    "gateway_write_through_wal_results_total",
+    "Outcome of WAL publish following gateway write-through",
+    labelnames=("path", "result"),  # result: ok|error
+)
 
 
 # Helper to construct a CircuitBreaker in a backward-compatible way.
@@ -289,8 +310,22 @@ app.add_middleware(
 )
 
 API_VERSION = os.getenv("GATEWAY_API_VERSION", "v1")
+def _flag_truthy(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.lower() in {"true", "1", "yes", "on"}
+
+
+def _write_through_enabled() -> bool:
+    return _flag_truthy(os.getenv("GATEWAY_WRITE_THROUGH"), False)
+
+
+def _write_through_async() -> bool:
+    return _flag_truthy(os.getenv("GATEWAY_WRITE_THROUGH_ASYNC"), False)
 
 _API_KEY_STORE: Optional[ApiKeyStore] = None
+_DLQ_STORE: Optional[DLQStore] = None
+_REPLICA_STORE: Optional[MemoryReplicaStore] = None
 
 
 @app.middleware("http")
@@ -366,6 +401,22 @@ def get_api_key_store() -> ApiKeyStore:
     _API_KEY_STORE = RedisApiKeyStore(redis_url=redis_url, redis_password=redis_password)
     LOGGER.info("Initialized Redis‑based API‑key store.")
     return _API_KEY_STORE
+
+
+def get_dlq_store() -> DLQStore:
+    global _DLQ_STORE
+    if _DLQ_STORE is not None:
+        return _DLQ_STORE
+    _DLQ_STORE = DLQStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _DLQ_STORE
+
+
+def get_replica_store() -> MemoryReplicaStore:
+    global _REPLICA_STORE
+    if _REPLICA_STORE is not None:
+        return _REPLICA_STORE
+    _REPLICA_STORE = MemoryReplicaStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _REPLICA_STORE
 
 
 class MessagePayload(BaseModel):
@@ -549,6 +600,26 @@ def _apply_auth_metadata(metadata: Dict[str, str], auth_ctx: Dict[str, str]) -> 
     return merged
 
 
+def _apply_header_metadata(request: Request, metadata: Dict[str, Any]) -> tuple[Dict[str, Any], Optional[str]]:
+    """Hydrate metadata/persona_id from ingress headers.
+
+    - X-Agent-Profile -> metadata.agent_profile_id
+    - X-Universe-Id -> metadata.universe_id
+    - X-Persona-Id -> overrides persona_id if body omits it
+    Returns (metadata, persona_id_override)
+    """
+    headers = request.headers
+    merged = dict(metadata or {})
+    agent_profile = headers.get("x-agent-profile")
+    universe_id = headers.get("x-universe-id")
+    persona_override = headers.get("x-persona-id")
+    if agent_profile and not merged.get("agent_profile_id"):
+        merged["agent_profile_id"] = agent_profile
+    if universe_id and not merged.get("universe_id"):
+        merged["universe_id"] = universe_id
+    return merged, persona_override
+
+
 def _require_admin_scope(auth_ctx: Dict[str, str]) -> None:
     if not REQUIRE_AUTH:
         return
@@ -701,7 +772,8 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
 
     claims: Dict[str, Any] = {}
 
-    if token_required or auth_header:
+    # Enforce JWT only when required. If auth isn't required, ignore malformed/absent tokens.
+    if token_required or (auth_header and REQUIRE_AUTH):
         if not auth_header:
             # Audit log for missing token
             LOGGER.warning(
@@ -755,7 +827,9 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
             )
             raise HTTPException(status_code=401, detail="Invalid token") from exc
 
-    await _evaluate_opa(request, payload, claims)
+    # Evaluate OPA policy only when auth is enforced and a policy URL is configured
+    if REQUIRE_AUTH and OPA_URL:
+        await _evaluate_opa(request, payload, claims)
 
     tenant = _extract_tenant(claims)
     scope = _extract_scope(claims)
@@ -807,14 +881,15 @@ async def enqueue_message(
 ) -> JSONResponse:
     """Accept a user message and enqueue it for processing."""
     auth_metadata = await authorize_request(request, payload.model_dump())
-    metadata = _apply_auth_metadata(payload.metadata, auth_metadata)
+    base_meta = _apply_auth_metadata(payload.metadata, auth_metadata)
+    metadata, persona_hdr = _apply_header_metadata(request, base_meta)
 
     session_id = payload.session_id or str(uuid.uuid4())
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
         "session_id": session_id,
-        "persona_id": payload.persona_id,
+        "persona_id": payload.persona_id or persona_hdr,
         "message": payload.message,
         "attachments": payload.attachments,
         "metadata": metadata,
@@ -838,6 +913,78 @@ async def enqueue_message(
     await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
     await store.append_event(session_id, {"type": "user", **event})
 
+    # Optional write-through to SomaBrain with WAL emission
+    if _write_through_enabled():
+        async def _write_through() -> None:
+            try:
+                soma = SomaBrainClient.get()
+                GATEWAY_WT_ATTEMPTS.labels("/v1/session/message").inc()
+                mem_payload = {
+                    "id": event_id,
+                    "type": "conversation_event",
+                    "role": "user",
+                    "content": payload.message,
+                    "attachments": payload.attachments or [],
+                    "session_id": session_id,
+                    "persona_id": event.get("persona_id"),
+                    "metadata": {
+                        **dict(metadata or {}),
+                        "agent_profile_id": (metadata or {}).get("agent_profile_id"),
+                        "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    },
+                }
+                mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
+                result = await soma.remember(mem_payload)
+                GATEWAY_WT_RESULTS.labels("/v1/session/message", "ok").inc()
+                try:
+                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_event = {
+                        "type": "memory.write",
+                        "role": "user",
+                        "session_id": session_id,
+                        "persona_id": event.get("persona_id"),
+                        "tenant": (metadata or {}).get("tenant"),
+                        "payload": mem_payload,
+                        "result": {
+                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "trace_id": (result or {}).get("trace_id"),
+                            "request_id": (result or {}).get("request_id"),
+                        },
+                        "timestamp": time.time(),
+                    }
+                    await publisher.publish(
+                        wal_topic,
+                        wal_event,
+                        dedupe_key=str(mem_payload.get("id")),
+                        session_id=session_id,
+                        tenant=(metadata or {}).get("tenant"),
+                    )
+                    GATEWAY_WT_WAL_RESULTS.labels("/v1/session/message", "ok").inc()
+                except Exception:
+                    LOGGER.debug("Gateway failed to publish memory WAL (user)", exc_info=True)
+                    GATEWAY_WT_WAL_RESULTS.labels("/v1/session/message", "error").inc()
+            except SomaClientError as exc:
+                LOGGER.warning(
+                    "Gateway write-through remember failed",
+                    extra={"session_id": session_id, "error": str(exc)},
+                )
+                # Heuristically classify client/server from message; default to exception
+                label = "exception"
+                text = str(exc)
+                if " 4" in text or " 40" in text:
+                    label = "client_error"
+                elif " 5" in text or " 50" in text:
+                    label = "server_error"
+                GATEWAY_WT_RESULTS.labels("/v1/session/message", label).inc()
+            except Exception:
+                LOGGER.debug("Gateway write-through unexpected error", exc_info=True)
+                GATEWAY_WT_RESULTS.labels("/v1/session/message", "exception").inc()
+
+        if _write_through_async():
+            asyncio.create_task(_write_through())
+        else:
+            await _write_through()
+
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
 
@@ -854,14 +1001,15 @@ async def enqueue_quick_action(
         raise HTTPException(status_code=400, detail="Unknown action")
 
     auth_metadata = await authorize_request(request, payload.model_dump())
-    metadata = _apply_auth_metadata(payload.metadata, auth_metadata)
+    base_meta = _apply_auth_metadata(payload.metadata, auth_metadata)
+    metadata, persona_hdr = _apply_header_metadata(request, base_meta)
 
     session_id = payload.session_id or str(uuid.uuid4())
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
         "session_id": session_id,
-        "persona_id": payload.persona_id,
+        "persona_id": payload.persona_id or persona_hdr,
         "message": template,
         "attachments": [],
         "metadata": {**metadata, "source": "quick_action", "action": payload.action},
@@ -879,6 +1027,77 @@ async def enqueue_quick_action(
     )
     await _cache_session_metadata(cache, session_id, payload.persona_id, event["metadata"])
     await store.append_event(session_id, {"type": "user", **event})
+
+    # Optional write-through for quick actions as user messages
+    if _write_through_enabled():
+        async def _write_through() -> None:
+            try:
+                soma = SomaBrainClient.get()
+                GATEWAY_WT_ATTEMPTS.labels("/v1/session/action").inc()
+                mem_payload = {
+                    "id": event_id,
+                    "type": "conversation_event",
+                    "role": "user",
+                    "content": template,
+                    "attachments": [],
+                    "session_id": session_id,
+                    "persona_id": event.get("persona_id"),
+                    "metadata": {
+                        **dict(event.get("metadata", {})),
+                        "agent_profile_id": (event.get("metadata", {}) or {}).get("agent_profile_id"),
+                        "universe_id": (event.get("metadata", {}) or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    },
+                }
+                mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
+                result = await soma.remember(mem_payload)
+                GATEWAY_WT_RESULTS.labels("/v1/session/action", "ok").inc()
+                try:
+                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_event = {
+                        "type": "memory.write",
+                        "role": "user",
+                        "session_id": session_id,
+                        "persona_id": event.get("persona_id"),
+                        "tenant": (event.get("metadata") or {}).get("tenant"),
+                        "payload": mem_payload,
+                        "result": {
+                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "trace_id": (result or {}).get("trace_id"),
+                            "request_id": (result or {}).get("request_id"),
+                        },
+                        "timestamp": time.time(),
+                    }
+                    await publisher.publish(
+                        wal_topic,
+                        wal_event,
+                        dedupe_key=str(mem_payload.get("id")),
+                        session_id=session_id,
+                        tenant=(event.get("metadata") or {}).get("tenant"),
+                    )
+                    GATEWAY_WT_WAL_RESULTS.labels("/v1/session/action", "ok").inc()
+                except Exception:
+                    LOGGER.debug("Gateway failed to publish memory WAL (quick_action)", exc_info=True)
+                    GATEWAY_WT_WAL_RESULTS.labels("/v1/session/action", "error").inc()
+            except SomaClientError as exc:
+                LOGGER.warning(
+                    "Gateway write-through remember failed (quick_action)",
+                    extra={"session_id": session_id, "error": str(exc)},
+                )
+                label = "exception"
+                text = str(exc)
+                if " 4" in text or " 40" in text:
+                    label = "client_error"
+                elif " 5" in text or " 50" in text:
+                    label = "server_error"
+                GATEWAY_WT_RESULTS.labels("/v1/session/action", label).inc()
+            except Exception:
+                LOGGER.debug("Gateway write-through unexpected error (quick_action)", exc_info=True)
+                GATEWAY_WT_RESULTS.labels("/v1/session/action", "exception").inc()
+
+        if _write_through_async():
+            asyncio.create_task(_write_through())
+        else:
+            await _write_through()
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
@@ -1183,6 +1402,26 @@ async def health_check(
     await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
     await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
 
+    # Replication lag and DLQ depth (best-effort, do not hard-fail health)
+    try:
+        replica_store = get_replica_store()
+        latest_ts = await replica_store.latest_wal_timestamp()
+        if latest_ts is not None and latest_ts > 0:
+            lag = max(0.0, time.time() - float(latest_ts))
+            components["memory_replicator"] = {"status": "ok", "detail": f"lag_seconds={lag:.3f}"}
+        else:
+            components["memory_replicator"] = {"status": "degraded", "detail": "no WAL observed"}
+    except Exception as exc:
+        components["memory_replicator"] = {"status": "degraded", "detail": f"{type(exc).__name__}: {exc}"}
+
+    try:
+        dlq_topic = f"{os.getenv('MEMORY_WAL_TOPIC', 'memory.wal')}.dlq"
+        dlq_store = get_dlq_store()
+        depth = await dlq_store.count(topic=dlq_topic)
+        components["memory_dlq"] = {"status": "ok", "detail": f"depth={int(depth)}"}
+    except Exception as exc:
+        components["memory_dlq"] = {"status": "degraded", "detail": f"{type(exc).__name__}: {exc}"}
+
     return JSONResponse({"status": overall_status, "components": components})
 
 
@@ -1336,6 +1575,13 @@ async def delete_profile(role: str, deployment_mode: str) -> None:
     await PROFILE_STORE.delete_profile(role, deployment_mode)
 
 
+# Alias endpoint aligned with roadmap naming
+@app.get("/v1/agents/profiles")
+async def list_agent_profiles() -> list[ModelProfile]:
+    """List agent model profiles (alias for /v1/model-profiles)."""
+    return await PROFILE_STORE.list_profiles()
+
+
 # -----------------------------
 # Routing endpoint (from router)
 # -----------------------------
@@ -1418,3 +1664,104 @@ async def delete_requeue(requeue_id: str) -> dict:
     """Delete a requeue item."""
     await REQUEUE_STORE.delete_requeue(requeue_id)
     return {"status": "deleted"}
+
+
+# -----------------------------
+# DLQ admin endpoints
+# -----------------------------
+
+
+class DLQItem(BaseModel):
+    id: int
+    topic: str
+    event: dict[str, Any]
+    error: str | None
+    created_at: datetime
+
+
+@app.get("/v1/admin/dlq/{topic}", response_model=list[DLQItem])
+async def list_dlq(
+    topic: str,
+    request: Request,
+    limit: int = Query(100, ge=1, le=1000),
+    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
+) -> list[DLQItem]:
+    auth = await authorize_request(request, {"topic": topic})
+    _require_admin_scope(auth)
+    items = await store.list_recent(topic=topic, limit=limit)
+    return [
+        DLQItem(
+            id=i.id,
+            topic=i.topic,
+            event=i.event,
+            error=i.error,
+            created_at=i.created_at,
+        )
+        for i in items
+    ]
+
+
+@app.delete("/v1/admin/dlq/{topic}")
+async def purge_dlq(
+    topic: str,
+    request: Request,
+    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
+) -> dict:
+    auth = await authorize_request(request, {"topic": topic})
+    _require_admin_scope(auth)
+    deleted = await store.purge(topic=topic)
+    return {"status": "purged", "deleted": int(deleted)}
+
+
+@app.post("/v1/admin/dlq/{topic}/{item_id}/reprocess")
+async def reprocess_dlq_item(
+    topic: str,
+    item_id: int,
+    request: Request,
+    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)] = None,  # type: ignore[assignment]
+) -> dict:
+    """Replay a DLQ message back to its original topic (typically memory.wal).
+
+    By convention, topics ending with ".dlq" are mapped back to their base
+    topic for replay. On success, the DLQ row is deleted.
+    """
+    auth = await authorize_request(request, {"topic": topic, "id": item_id})
+    _require_admin_scope(auth)
+
+    item = await store.get_by_id(id=item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="DLQ item not found")
+
+    target = topic[:-4] if topic.endswith(".dlq") else topic
+    payload = dict(item.event)
+
+    # Compute reasonable dedupe/session/tenant for durable publish
+    dedupe_key = None
+    try:
+        dedupe_key = (
+            payload.get("payload", {}).get("id")
+            or payload.get("event_id")
+            or payload.get("id")
+        )
+    except Exception:
+        dedupe_key = None
+
+    session_id = payload.get("session_id") or (payload.get("payload", {}) or {}).get("session_id")
+    tenant = (
+        payload.get("tenant")
+        or (payload.get("metadata", {}) or {}).get("tenant")
+        or (payload.get("payload", {}).get("metadata", {}) if isinstance(payload.get("payload"), dict) else {}).get("tenant")
+    )
+
+    result = await publisher.publish(
+        target,
+        payload,
+        dedupe_key=str(dedupe_key) if dedupe_key else None,
+        session_id=str(session_id) if session_id else None,
+        tenant=str(tenant) if tenant else None,
+    )
+    # Delete DLQ entry upon successful publish or enqueue
+    if result.get("published") or result.get("enqueued"):
+        await store.delete_by_id(id=item_id)
+    return {"status": "reprocessed", "target": target, "published": bool(result.get("published")), "enqueued": bool(result.get("enqueued"))}

@@ -19,6 +19,7 @@ from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
+from services.common.idempotency import generate_for_memory_payload
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore
@@ -405,9 +406,14 @@ class ToolExecutor:
             "content": content,
             "session_id": result_event.get("session_id"),
             "persona_id": persona_id,
-            "metadata": str_metadata,
+            "metadata": {
+                **str_metadata,
+                "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
+                "universe_id": (result_event.get("metadata") or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+            },
             "status": result_event.get("status"),
         }
+        memory_payload["idempotency_key"] = generate_for_memory_payload(memory_payload)
         try:
             allow_memory = True
             try:

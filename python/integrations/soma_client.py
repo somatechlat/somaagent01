@@ -232,11 +232,28 @@ class SomaClient:
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
+        # TLS settings (optional mTLS)
+        ca_bundle = os.environ.get("SOMA_TLS_CA")
+        client_cert = os.environ.get("SOMA_TLS_CERT")
+        client_key = os.environ.get("SOMA_TLS_KEY")
+        verify_value: bool | str = True
+        if verify_ssl is not None:
+            verify_value = verify_ssl
+        if ca_bundle:
+            verify_value = ca_bundle
+
+        client_cert_param: str | tuple[str, str] | None = None
+        if client_cert and client_key:
+            client_cert_param = (client_cert, client_key)
+        elif client_cert:
+            client_cert_param = client_cert
+
         self._client_params = {
             "base_url": self.base_url,
             "timeout": httpx.Timeout(timeout),
             "headers": self._build_default_headers(),
-            "verify": verify_ssl if verify_ssl is not None else True,
+            "verify": verify_value,
+            **({"cert": client_cert_param} if client_cert_param else {}),
         }
         self._clients: WeakKeyDictionary[asyncio.AbstractEventLoop, httpx.AsyncClient] = (
             WeakKeyDictionary()

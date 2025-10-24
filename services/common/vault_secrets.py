@@ -109,7 +109,7 @@ def load_kv_secret(
         )
     except Exception as exc:
         log.error(
-            "Failed to load secret from Vault",
+            "Failed to read secret from Vault",
             extra={
                 "error": str(exc),
                 "error_type": type(exc).__name__,
