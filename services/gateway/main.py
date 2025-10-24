@@ -51,6 +51,8 @@ except ImportError:
 from python.helpers.settings import set_settings
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
+from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
+from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
 from services.common.memory_client import MemoryClient
 from services.common.model_profiles import ModelProfile, ModelProfileStore
@@ -169,6 +171,15 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Kafka event bus healthcheck failed at startup (will retry on demand)", exc_info=True)
     app.state.event_bus = event_bus
+
+    # Initialize durable publisher with Outbox fallback
+    outbox_store = OutboxStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    try:
+        await ensure_outbox_schema(outbox_store)
+    except Exception:
+        LOGGER.debug("Outbox schema ensure failed", exc_info=True)
+    app.state.outbox_store = outbox_store
+    app.state.publisher = DurablePublisher(bus=event_bus, outbox=outbox_store)
 
     # Initialize shared HTTP client with proper connection pooling
     app.state.http_client = httpx.AsyncClient(
@@ -309,6 +320,28 @@ app.openapi = _cached_openapi_schema  # type: ignore[assignment]
 
 def get_event_bus() -> KafkaEventBus:
     return KafkaEventBus(_kafka_settings())
+
+
+def get_publisher() -> DurablePublisher:
+    # If tests override the event bus, respect that by creating a temporary publisher
+    overrides = getattr(app, "dependency_overrides", {})
+    get_bus_override = overrides.get(get_event_bus)
+    if get_bus_override is not None:
+        bus = get_bus_override()
+        outbox = getattr(app.state, "outbox_store", None) or OutboxStore(
+            dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+        )
+        return DurablePublisher(bus=bus, outbox=outbox)
+
+    # Use the shared instance initialised at startup
+    publisher = getattr(app.state, "publisher", None)
+    if publisher is None:
+        # Fallback construction (should not happen in normal startup)
+        event_bus = KafkaEventBus(_kafka_settings())
+        outbox_store = OutboxStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+        publisher = DurablePublisher(bus=event_bus, outbox=outbox_store)
+        app.state.publisher = publisher
+    return publisher
 
 
 def get_session_cache() -> RedisSessionCache:
@@ -770,7 +803,7 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
 async def enqueue_message(
     payload: MessagePayload,
     request: Request,
-    bus: Annotated[KafkaEventBus, Depends(get_event_bus)],
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
     cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
 ) -> JSONResponse:
@@ -792,19 +825,16 @@ async def enqueue_message(
 
     validate_event(event, "conversation_event")
 
-    try:
-        await bus.publish("conversation.inbound", event)
-    except Exception as exc:
-        LOGGER.error(
-            "Failed to publish inbound event",
-            extra={
-                "error": str(exc),
-                "error_type": type(exc).__name__,
-                "session_id": session_id,
-                "event_id": event_id,
-            },
-        )
-        raise HTTPException(status_code=502, detail="Message queue unavailable") from exc
+    # Durable publish: try Kafka then fallback to Outbox
+    result = await publisher.publish(
+        "conversation.inbound",
+        event,
+        dedupe_key=event_id,
+        session_id=session_id,
+        tenant=metadata.get("tenant"),
+    )
+    if not result.get("published") and not result.get("enqueued"):
+        raise HTTPException(status_code=502, detail="Unable to enqueue message")
 
     # Cache most recent metadata for quick lookup.
     await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
@@ -817,7 +847,7 @@ async def enqueue_message(
 async def enqueue_quick_action(
     payload: QuickActionPayload,
     request: Request,
-    bus: Annotated[KafkaEventBus, Depends(get_event_bus)],
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
     cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
 ) -> JSONResponse:
@@ -842,7 +872,13 @@ async def enqueue_quick_action(
 
     validate_event(event, "conversation_event")
 
-    await bus.publish("conversation.inbound", event)
+    await publisher.publish(
+        "conversation.inbound",
+        event,
+        dedupe_key=event_id,
+        session_id=session_id,
+        tenant=metadata.get("tenant"),
+    )
     await _cache_session_metadata(cache, session_id, payload.persona_id, event["metadata"])
     await store.append_event(session_id, {"type": "user", **event})
 
@@ -1258,9 +1294,13 @@ async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
 
     if publish and APP_SETTINGS.tool_requests_topic:
         try:
-            # Use shared event bus for efficiency
-            bus = app.state.event_bus
-            await bus.publish(APP_SETTINGS.tool_requests_topic, item["payload"])
+            publisher: DurablePublisher = getattr(app.state, "publisher")
+            await publisher.publish(
+                APP_SETTINGS.tool_requests_topic,
+                item["payload"],
+                dedupe_key=requeue_id,
+                tenant=item.get("payload", {}).get("metadata", {}).get("tenant"),
+            )
             LOGGER.info("Requeue item published", extra={"requeue_id": requeue_id})
         except Exception as exc:
             LOGGER.error(

@@ -1,4 +1,9 @@
-"""Telemetry publisher for SomaAgent 01."""
+"""Telemetry publisher for SomaAgent 01.
+
+Now supports durable publishing via the outbox by accepting a
+DurablePublisher. If not provided, will construct one with a default
+KafkaEventBus and OutboxStore using environment configuration.
+"""
 
 from __future__ import annotations
 
@@ -8,15 +13,24 @@ from typing import Any, Optional
 
 from services.common.event_bus import KafkaEventBus
 from services.common.telemetry_store import TelemetryStore
+from services.common.publisher import DurablePublisher
+from services.common.outbox_repository import OutboxStore
 
 
 class TelemetryPublisher:
     def __init__(
         self,
-        bus: Optional[KafkaEventBus] = None,
+        publisher: Optional[DurablePublisher] = None,
         store: Optional[TelemetryStore] = None,
+        bus: Optional[KafkaEventBus] = None,
     ) -> None:
-        self.bus = bus or KafkaEventBus()
+        # prefer provided durable publisher; else wrap provided bus; else create both
+        if publisher is not None:
+            self.publisher = publisher
+        else:
+            event_bus = bus or KafkaEventBus()
+            outbox = OutboxStore()  # DSN from env
+            self.publisher = DurablePublisher(bus=event_bus, outbox=outbox)
         self.store = store or TelemetryStore()
         self.topics = {
             "slm": "slm.metrics",
@@ -25,6 +39,15 @@ class TelemetryPublisher:
             "budget": "budget.events",
             "escalation": "llm.escalation.metrics",
         }
+
+    async def _publish(self, topic: str, event: dict[str, Any]) -> None:
+        await self.publisher.publish(
+            topic,
+            event,
+            dedupe_key=event.get("event_id"),
+            session_id=event.get("session_id"),
+            tenant=(event.get("metadata") or {}).get("tenant") or event.get("tenant"),
+        )
 
     async def emit_slm(
         self,
@@ -51,7 +74,7 @@ class TelemetryPublisher:
             "timestamp": time.time(),
             "metadata": metadata or {},
         }
-        await self.bus.publish(self.topics["slm"], event)
+        await self._publish(self.topics["slm"], event)
         await self.store.insert_slm(event)
 
     async def emit_tool(
@@ -76,7 +99,7 @@ class TelemetryPublisher:
             "timestamp": time.time(),
             "metadata": metadata or {},
         }
-        await self.bus.publish(self.topics["tool"], event)
+        await self._publish(self.topics["tool"], event)
         await self.store.insert_tool(event)
 
     async def emit_budget(
@@ -101,7 +124,7 @@ class TelemetryPublisher:
             "timestamp": time.time(),
             "metadata": metadata or {},
         }
-        await self.bus.publish(self.topics["budget"], event)
+        await self._publish(self.topics["budget"], event)
         await self.store.insert_budget(event)
 
     async def emit_escalation_llm(
@@ -133,5 +156,5 @@ class TelemetryPublisher:
             "timestamp": time.time(),
             "metadata": metadata or {},
         }
-        await self.bus.publish(self.topics["escalation"], event)
+        await self._publish(self.topics["escalation"], event)
         await self.store.insert_escalation(event)

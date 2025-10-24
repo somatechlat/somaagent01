@@ -14,6 +14,8 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
+from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
 from services.common.memory_client import MemoryClient
 from services.common.policy_client import PolicyClient, PolicyRequest
@@ -122,6 +124,8 @@ class ToolExecutor:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
+        self.outbox = OutboxStore(dsn=SERVICE_SETTINGS.postgres_dsn)
+        self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.tenant_config = TenantConfig(path=_tenant_config_path())
         self.policy = PolicyClient(
             base_url=os.getenv("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
@@ -134,7 +138,7 @@ class ToolExecutor:
         self.tool_registry = ToolRegistry()
         self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
         telemetry_store = TelemetryStore.from_settings(SERVICE_SETTINGS)
-        self.telemetry = TelemetryPublisher(self.bus, telemetry_store)
+        self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         self.requeue_prefix = _policy_requeue_prefix()
         self.memory_client = MemoryClient(settings=SERVICE_SETTINGS)
         stream_defaults = SERVICE_SETTINGS.extra.get(
@@ -161,6 +165,10 @@ class ToolExecutor:
         await self.resources.initialize()
         await self.sandbox.initialize()
         await self.tool_registry.load_all_tools()
+        try:
+            await ensure_outbox_schema(self.outbox)
+        except Exception:
+            LOGGER.debug("Outbox schema ensure failed", exc_info=True)
         await self.bus.consume(
             self.streams["requests"],
             self.streams["group"],
@@ -311,7 +319,13 @@ class ToolExecutor:
         await self.store.append_event(
             event.get("session_id", "unknown"), {"type": "tool", **result_event}
         )
-        await self.bus.publish(self.streams["results"], result_event)
+        await self.publisher.publish(
+            self.streams["results"],
+            result_event,
+            dedupe_key=result_event.get("event_id"),
+            session_id=result_event.get("session_id"),
+            tenant=(result_event.get("metadata") or {}).get("tenant"),
+        )
 
         tenant_meta = result_event.get("metadata", {})
         tenant = tenant_meta.get("tenant", "default")

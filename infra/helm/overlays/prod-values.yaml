@@ -1,0 +1,50 @@
+# prod-values.yaml – production (single-zone)
+global:
+  DEPLOY_MODE: prod
+  JWT_ENABLED: true
+  OPA_ENABLED: true
+  MTLS_ENABLED: true
+  REPLICA_COUNT: 2
+  RESOURCE_REQUESTS:
+    cpu: 250m
+    memory: 256Mi
+  RESOURCE_LIMITS:
+    cpu: 500m
+    memory: 512Mi
+  ISTIO_INJECTION: true
+  VAULT_AGENT_INJECT: true
+  PROMETHEUS_SCRAPE: true
+  OTEL_ENABLED: true
+
+services:
+  gateway:
+    ingress:
+      enabled: true
+      className: nginx
+      host: gateway.prod.example.com
+      path: /
+      tls:
+        - hosts: [gateway.prod.example.com]
+          secretName: gateway-tls
+    istio:
+      enabled: false
+      host: gateway.prod.example.com
+      gateways: ["istio-system/public-gateway"]
+  ui:
+    ingress:
+      enabled: true
+      className: nginx
+      host: ui.prod.example.com
+      path: /
+      tls:
+        - hosts: [ui.prod.example.com]
+          secretName: ui-tls
+  uiProxy:
+    ingress:
+      enabled: true
+      className: nginx
+      host: uip.prod.example.com
+      path: /
+      tls:
+        - hosts: [uip.prod.example.com]
+          secretName: uip-tls

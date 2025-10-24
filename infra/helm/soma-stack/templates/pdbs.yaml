@@ -1,0 +1,54 @@
+{{- if .Values.global.PDB_ENABLED }}
+{{- $globalMin := .Values.global.PDB_MIN_AVAILABLE | default 1 -}}
+{{- if and .Values.services.gateway.enabled (gt (.Values.services.gateway.replicas | default .Values.global.REPLICA_COUNT) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-gateway
+spec:
+  minAvailable: {{ $globalMin }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+{{- if and .Values.services.conversationWorker.enabled (gt (.Values.services.conversationWorker.replicas | default .Values.global.REPLICA_COUNT) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-conversation-worker
+spec:
+  minAvailable: {{ $globalMin }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: conversation-worker
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+{{- if and .Values.services.toolExecutor.enabled (gt (.Values.services.toolExecutor.replicas | default .Values.global.REPLICA_COUNT) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-tool-executor
+spec:
+  minAvailable: {{ $globalMin }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tool-executor
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+{{- if and .Values.services.delegationGateway.enabled (gt (.Values.services.delegationGateway.replicas | default .Values.global.REPLICA_COUNT) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-delegation-gateway
+spec:
+  minAvailable: {{ $globalMin }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: delegation-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+{{- end }}

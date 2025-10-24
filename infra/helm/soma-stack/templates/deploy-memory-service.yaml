@@ -1,0 +1,63 @@
+{{- if .Values.services.memoryService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-memory-service
+  labels:
+    app.kubernetes.io/name: memory-service
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.services.memoryService.replicas | default .Values.global.REPLICA_COUNT }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: memory-service
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: memory-service
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        {{- include "soma-stack.annotations" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "soma-stack.saName" . }}
+      containers:
+        - name: memory-service
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python3", "-m", "services.memory_service.main"]
+          env:
+            - name: POSTGRES_DSN
+              value: {{ .Values.env.POSTGRES_DSN | quote }}
+            - name: OTEL_ENABLED
+              value: {{ .Values.global.OTEL_ENABLED | quote }}
+            - name: MEMORY_SERVICE_PORT
+              value: {{ .Values.services.memoryService.port | quote }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.services.memoryService.port }}
+          resources:
+            requests:
+              cpu: {{ .Values.global.RESOURCE_REQUESTS.cpu | quote }}
+              memory: {{ .Values.global.RESOURCE_REQUESTS.memory | quote }}
+            limits:
+              cpu: {{ .Values.global.RESOURCE_LIMITS.cpu | quote }}
+              memory: {{ .Values.global.RESOURCE_LIMITS.memory | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-memory-service
+  labels:
+    app.kubernetes.io/name: memory-service
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: {{ .Values.services.memoryService.port }}
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: memory-service
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

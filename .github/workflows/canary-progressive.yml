@@ -1,0 +1,199 @@
+name: Progressive Canary Rollout
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment overlay (dev|prod|prod-ha)"
+        required: true
+        default: "dev"
+        type: choice
+        options: ["dev", "prod", "prod-ha"]
+      target:
+        description: "Canary target (nginx|istio)"
+        required: true
+        default: "nginx"
+        type: choice
+        options: ["nginx", "istio"]
+      releaseName:
+        description: "Helm release name"
+        required: true
+        default: "soma"
+      namespace:
+        description: "Kubernetes namespace"
+        required: true
+        default: "default"
+      chartPath:
+        description: "Path to Helm chart"
+        required: true
+        default: "infra/helm/soma-stack"
+      canaryImageTag:
+        description: "Optional canary image tag (overrides values)"
+        required: false
+        default: ""
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment overlay (dev|prod|prod-ha)"
+        required: true
+        type: string
+      target:
+        description: "Canary target (nginx|istio)"
+        required: true
+        type: string
+      releaseName:
+        description: "Helm release name"
+        required: true
+        type: string
+      namespace:
+        description: "Kubernetes namespace"
+        required: true
+        type: string
+      chartPath:
+        description: "Path to Helm chart"
+        required: true
+        type: string
+      canaryImageTag:
+        description: "Optional canary image tag (overrides values)"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      KUBE_CONFIG_B64:
+        required: true
+
+jobs:
+  progressive-canary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig from secret
+        if: env.KUBE_CONFIG_B64 != ''
+        run: |
+          echo "$KUBE_CONFIG_B64" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          echo "KUBECONFIG configured from secret"
+
+      - name: Select overlay file
+        id: overlay
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            dev)
+              echo "file=infra/helm/overlays/dev-values.yaml" >> $GITHUB_OUTPUT;;
+            prod)
+              echo "file=infra/helm/overlays/prod-values.yaml" >> $GITHUB_OUTPUT;;
+            prod-ha)
+              echo "file=infra/helm/overlays/prod-ha-values.yaml" >> $GITHUB_OUTPUT;;
+            *) echo "Unsupported environment"; exit 1;;
+          esac
+
+      - name: Ensure canary resources exist (enable canary)
+        run: |
+          CHART="${{ github.event.inputs.chartPath }}"
+          RELEASE="${{ github.event.inputs.releaseName }}"
+          NAMESPACE="${{ github.event.inputs.namespace }}"
+          OVERLAY_FILE="${{ steps.overlay.outputs.file }}"
+          TARGET="${{ github.event.inputs.target }}"
+          CANARY_TAG="${{ github.event.inputs.canaryImageTag }}"
+
+          EXTRA_SET=""
+          if [ -n "$CANARY_TAG" ]; then
+            EXTRA_SET=",services.gateway.canary.imageTag=$CANARY_TAG"
+          fi
+
+          if [ "$TARGET" = "nginx" ]; then
+            # Enable nginx canary with small initial weight
+            helm upgrade --install "$RELEASE" "$CHART" \
+              --namespace "$NAMESPACE" --create-namespace \
+              -f "$OVERLAY_FILE" \
+              --set services.gateway.canary.enabled=true \
+              --set services.gateway.canary.weight=5 \
+              --set-string services.gateway.ingress.enabled=true$EXTRA_SET
+          else
+            # Enable Istio canary path; requires global and service-level flags
+            helm upgrade --install "$RELEASE" "$CHART" \
+              --namespace "$NAMESPACE" --create-namespace \
+              -f "$OVERLAY_FILE" \
+              --set global.ISTIO_ENABLED=true \
+              --set services.gateway.canary.enabled=true \
+              --set services.gateway.istio.enabled=true \
+              --set services.gateway.istio.weights.stable=95 \
+              --set services.gateway.istio.weights.canary=5$EXTRA_SET
+          fi
+
+      - name: Progressive traffic shifting
+        run: |
+          set -euo pipefail
+          CHART="${{ github.event.inputs.chartPath }}"
+          RELEASE="${{ github.event.inputs.releaseName }}"
+          NAMESPACE="${{ github.event.inputs.namespace }}"
+          OVERLAY_FILE="${{ steps.overlay.outputs.file }}"
+          TARGET="${{ github.event.inputs.target }}"
+
+          # progression steps (percent canary)
+          STEPS="10 25 50 75 100"
+
+          for CANARY in $STEPS; do
+            if [ "$TARGET" = "nginx" ]; then
+              echo "Shifting nginx canary weight to ${CANARY}%"
+              helm upgrade --install "$RELEASE" "$CHART" \
+                --namespace "$NAMESPACE" \
+                -f "$OVERLAY_FILE" \
+                --set services.gateway.canary.enabled=true \
+                --set services.gateway.canary.weight="$CANARY"
+            else
+              STABLE=$((100 - CANARY))
+              echo "Shifting Istio canary:${CANARY}% stable:${STABLE}%"
+              helm upgrade --install "$RELEASE" "$CHART" \
+                --namespace "$NAMESPACE" \
+                -f "$OVERLAY_FILE" \
+                --set global.ISTIO_ENABLED=true \
+                --set services.gateway.canary.enabled=true \
+                --set services.gateway.istio.enabled=true \
+                --set services.gateway.istio.weights.stable="$STABLE" \
+                --set services.gateway.istio.weights.canary="$CANARY"
+            fi
+
+            echo "Waiting for rollout to settle..."
+            sleep 30
+
+            echo "Running Helm tests"
+            if ! helm test "$RELEASE" --namespace "$NAMESPACE" --timeout 5m; then
+              echo "Tests failed at canary=${CANARY}. Rolling back to stable 100%."
+              if [ "$TARGET" = "nginx" ]; then
+                helm upgrade --install "$RELEASE" "$CHART" \
+                  --namespace "$NAMESPACE" \
+                  -f "$OVERLAY_FILE" \
+                  --set services.gateway.canary.enabled=false \
+                  --set services.gateway.canary.weight=0
+              else
+                helm upgrade --install "$RELEASE" "$CHART" \
+                  --namespace "$NAMESPACE" \
+                  -f "$OVERLAY_FILE" \
+                  --set global.ISTIO_ENABLED=true \
+                  --set services.gateway.canary.enabled=false \
+                  --set services.gateway.istio.enabled=true \
+                  --set services.gateway.istio.weights.stable=100 \
+                  --set services.gateway.istio.weights.canary=0
+              fi
+              exit 1
+            fi
+          done
+
+      - name: Promotion complete
+        run: |
+          echo "Canary promotion completed successfully."
