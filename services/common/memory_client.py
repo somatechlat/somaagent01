@@ -100,6 +100,7 @@ class MemoryClient:
         tenant: str,
         persona_id: Optional[str],
         limit: int = 20,
+        timeout: float | None = None,
     ) -> list[MemoryRecord]:
         stub = await self._stub_instance()
         response = await stub.ListMemories(
@@ -107,9 +108,33 @@ class MemoryClient:
                 tenant=tenant,
                 persona_id=persona_id or "",
                 limit=limit,
-            )
+            ),
+            timeout=timeout,
         )
         return [MemoryRecord.from_proto(record) for record in response.records]
+
+    async def search_memories(
+        self,
+        *,
+        tenant: str,
+        persona_id: Optional[str],
+        query: str,
+        limit: int = 20,
+        timeout: float | None = None,
+    ):
+        """Server-side streaming search yielding MemoryRecord items."""
+        stub = await self._stub_instance()
+        stream = stub.SearchMemories(
+            memory_pb2.SearchMemoriesRequest(
+                tenant=tenant,
+                persona_id=persona_id or "",
+                query=query,
+                limit=limit,
+            ),
+            timeout=timeout,
+        )
+        async for record in stream:
+            yield MemoryRecord.from_proto(record)
 
     async def __aenter__(self) -> "MemoryClient":
         await self._stub_instance()

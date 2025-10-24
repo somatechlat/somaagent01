@@ -129,6 +129,151 @@ class MemoryRepository:
                 )
         return [dict(row) for row in rows]
 
+    async def search_memories(
+        self,
+        *,
+        tenant: str,
+        persona_id: Optional[str],
+        query: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Simple text search over content and metadata.
+
+        NOTE: This is a baseline implementation using ILIKE on content and
+        metadata::text. For production vector search, replace with embedding
+        index lookup and similarity.
+        """
+        like = f"%{query}%"
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            if persona_id:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, tenant, persona_id, content, metadata,
+                           EXTRACT(EPOCH FROM created_at) AS created_at
+                    FROM memories
+                    WHERE tenant = $1 AND persona_id = $2
+                      AND (content ILIKE $3 OR metadata::text ILIKE $3)
+                    ORDER BY created_at DESC
+                    LIMIT $4
+                    """,
+                    tenant,
+                    persona_id,
+                    like,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, tenant, persona_id, content, metadata,
+                           EXTRACT(EPOCH FROM created_at) AS created_at
+                    FROM memories
+                    WHERE tenant = $1 AND (content ILIKE $2 OR metadata::text ILIKE $2)
+                    ORDER BY created_at DESC
+                    LIMIT $3
+                    """,
+                    tenant,
+                    like,
+                    limit,
+                )
+        return [dict(row) for row in rows]
+
+    async def search_memories(
+        self,
+        *,
+        tenant: str,
+        persona_id: Optional[str],
+        query: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Simple text search over content and metadata.
+
+        Note: This uses ILIKE on content OR metadata::text. For production
+        full‑text search or vector search, replace with proper indices.
+        """
+        pattern = f"%{query}%"
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            if persona_id:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, tenant, persona_id, content, metadata,
+                           EXTRACT(EPOCH FROM created_at) AS created_at
+                    FROM memories
+                    WHERE tenant = $1 AND persona_id = $2
+                      AND (content ILIKE $3 OR metadata::text ILIKE $3)
+                    ORDER BY created_at DESC
+                    LIMIT $4
+                    """,
+                    tenant,
+                    persona_id,
+                    pattern,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, tenant, persona_id, content, metadata,
+                           EXTRACT(EPOCH FROM created_at) AS created_at
+                    FROM memories
+                    WHERE tenant = $1
+                      AND (content ILIKE $2 OR metadata::text ILIKE $2)
+                    ORDER BY created_at DESC
+                    LIMIT $3
+                    """,
+                    tenant,
+                    pattern,
+                    limit,
+                )
+        return [dict(row) for row in rows]
+
+    async def search_memories_stream(
+        self,
+        *,
+        tenant: str,
+        persona_id: Optional[str],
+        query: str,
+        limit: int,
+    ):
+        """Stream memory rows matching a simple ILIKE on content.
+
+        Uses an async cursor to avoid loading all results into memory.
+        """
+        pattern = f"%{query}%"
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            if persona_id:
+                cursor = conn.cursor(
+                    """
+                    SELECT id, tenant, persona_id, content, metadata,
+                           EXTRACT(EPOCH FROM created_at) AS created_at
+                    FROM memories
+                    WHERE tenant = $1 AND persona_id = $2 AND content ILIKE $3
+                    ORDER BY created_at DESC
+                    LIMIT $4
+                    """,
+                    tenant,
+                    persona_id,
+                    pattern,
+                    limit,
+                )
+            else:
+                cursor = conn.cursor(
+                    """
+                    SELECT id, tenant, persona_id, content, metadata,
+                           EXTRACT(EPOCH FROM created_at) AS created_at
+                    FROM memories
+                    WHERE tenant = $1 AND content ILIKE $2
+                    ORDER BY created_at DESC
+                    LIMIT $3
+                    """,
+                    tenant,
+                    pattern,
+                    limit,
+                )
+            async for row in cursor:
+                yield dict(row)
+
 
 class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
     def __init__(self, repository: MemoryRepository) -> None:
@@ -168,6 +313,49 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
             limit=limit,
         )
         return memory_pb2.ListMemoriesResponse(records=[self._to_proto(row) for row in rows])
+
+    async def SearchMemories(self, request, context):  # type: ignore[override]
+        limit = request.limit if request.limit > 0 else 20
+        query = (request.query or "").strip()
+        if not query:
+            # Nothing to search; return empty stream
+            return
+        rows = await self.repository.search_memories(
+            tenant=request.tenant,
+            persona_id=request.persona_id or None,
+            query=query,
+            limit=limit,
+        )
+        for row in rows:
+            yield self._to_proto(row)
+
+    async def SearchMemories(self, request, context):  # type: ignore[override]
+        limit = request.limit if request.limit > 0 else 20
+        rows = await self.repository.search_memories(
+            tenant=request.tenant,
+            persona_id=request.persona_id or None,
+            query=request.query,
+            limit=limit,
+        )
+        for row in rows:
+            # If the client cancelled, stop streaming early.
+            if context.cancelled():
+                break
+            yield self._to_proto(row)
+
+    async def SearchMemories(self, request, context):  # type: ignore[override]
+        limit = request.limit if request.limit > 0 else 20
+        q = (request.query or "").strip()
+        if not q:
+            # Short-circuit: no query -> nothing to stream
+            return
+        async for row in self.repository.search_memories_stream(
+            tenant=request.tenant,
+            persona_id=request.persona_id or None,
+            query=q,
+            limit=limit,
+        ):
+            yield self._to_proto(row)
 
 
 async def _serve(settings: SA01Settings) -> None:

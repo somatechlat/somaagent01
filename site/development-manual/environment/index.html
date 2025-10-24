@@ -1272,6 +1272,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#option-d-trusted-local-tls-custom-openssl-ca-no-mkcert" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option D — Trusted local TLS (custom OpenSSL CA, no mkcert)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2073,6 +2082,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#option-d-trusted-local-tls-custom-openssl-ca-no-mkcert" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option D — Trusted local TLS (custom OpenSSL CA, no mkcert)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2328,6 +2346,23 @@ pytest<span class="w"> </span>tests/playwright/test_realtime_speech.py<span clas
 - For network policies, label your app namespace to allow access to infra:
   - <code>kubectl label namespace &lt;app-namespace&gt; soma.sh/allow-shared-infra="true" --overwrite</code>
 - If using KinD convenience, see <code>scripts/kind-create-ingress.sh</code> and <code>infra/kind/soma-kind-ingress.yaml</code>.</p>
+<h3 id="option-d-trusted-local-tls-custom-openssl-ca-no-mkcert">Option D — Trusted local TLS (custom OpenSSL CA, no mkcert)<a class="headerlink" href="#option-d-trusted-local-tls-custom-openssl-ca-no-mkcert" title="Permanent link">&para;</a></h3>
+<p>Pros: Trusted TLS without installing mkcert. Cons: You still need to trust a local CA in macOS.</p>
+<p>1) Generate a local CA (OpenSSL):
+  - <code>./scripts/dev-ca/generate-dev-ca.sh "Soma Dev Local CA"</code>
+  - Output: <code>scripts/dev-ca/ca/dev-ca.key.pem</code> and <code>dev-ca.crt.pem</code>
+2) Trust the CA in macOS (requires sudo):
+  - <code>sudo ./scripts/dev-ca/install-macos-trust.sh scripts/dev-ca/ca/dev-ca.crt.pem</code>
+3) Create Kubernetes secret for cert-manager CA issuer:
+  - <code>./scripts/dev-ca/create-k8s-secret.sh soma-infra dev-ca scripts/dev-ca/ca/dev-ca.key.pem scripts/dev-ca/ca/dev-ca.crt.pem</code>
+4) Install infra with CA issuer:
+  - <code>helm upgrade --install soma-infra infra/helm/soma-infra -f infra/helm/soma-infra/values-dev.yaml -f infra/helm/soma-infra/values-dev-ca.yaml</code>
+5) Install app with dev CA overlay:
+  - <code>helm upgrade --install soma infra/helm/soma-stack -f infra/helm/overlays/dev-values.yaml -f infra/helm/overlays/dev-ca-values.yaml</code>
+6) Open HTTPS endpoints (should be trusted):
+  - https://gateway.127.0.0.1.sslip.io/
+  - https://ui.127.0.0.1.sslip.io/
+  - https://uip.127.0.0.1.sslip.io/</p>
 
 
 

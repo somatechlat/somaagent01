@@ -26,6 +26,7 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 - Messaging & validation: Tenant‑partitioned topics; publish‑time JSON Schema validation; optional Kafka Streams enricher for trace context.
 - Observability: OTEL spans propagate SomaBrain request_id; node metrics (success/failure/latency); Prometheus SLO alerts; dashboards maintained externally.
 - Deployment/CI/CD: Helm pre‑install (tables/topics); Vault JWT rotation; Trivy scans; benchmark CI job; HPA on custom metrics.
+	- CI includes OPA policy unit tests; benchmark job enforces baseline performance thresholds.
 
 ## Mode taxonomy and configuration propagation (aligned)
 
@@ -38,6 +39,7 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 ## Folder‑by‑folder scope (highlights)
 
 - services/gateway: write‑through remember (user), streaming delimiters, schema validation on publish, trace & request_id propagation.
+	- Add aggregated `/healthz` that fans out to dependencies and sub‑services.
 - services/conversation_worker: integrate orchestrator; remember assistant; Redis recall; emit runs/steps.
 - services/tool_executor: centralized OPA check; delimiters; agent.tools.v1 analytics; sandbox hooks; memory linking.
 - services/orchestrator (new): minimal DAG, checkpoint store, retry+jitter, events, visualization hook.
@@ -51,6 +53,7 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 - scripts/: somabrain-sync CLI; breaker_open load test with assertions; schema smoke/diff tests in CI.
 - infra/: helm pre‑install job; OPA sidecar; Vault injector; HPA; dashboards; alert rules; Falco sidecar.
 - webui/: handle streaming delimiters and optional run timeline.
+	- Add a minimal Dead‑Letter UI for Kafka DLQ (inspect, filter, retry/ack).
 
 ## Contracts (authoritative)
 
