@@ -109,7 +109,6 @@ _SHARED_DEFAULTS: dict[str, Any] = {
     "feature_flag_endpoint": "etcd.soma.svc.cluster.local:2379",
     "metrics_host": "0.0.0.0",
     "metrics_port": 9301,
-    "memory_service_target": "sb.soma.svc.cluster.local:50052",
     "extra": {
         "metrics_host": "0.0.0.0",
         "metrics_port": 9301,
@@ -160,7 +159,6 @@ class SA01Settings(EnvironmentAwareSettings):
     feature_flag_endpoint: str = Field(default=_SHARED_DEFAULTS["feature_flag_endpoint"])
     metrics_host: str = Field(default=_SHARED_DEFAULTS["metrics_host"])
     metrics_port: int = Field(default=_SHARED_DEFAULTS["metrics_port"])
-    memory_service_target: str = Field(default=_SHARED_DEFAULTS["memory_service_target"])
 
     model_config = SettingsConfigDict(
         env_prefix="SA01_",

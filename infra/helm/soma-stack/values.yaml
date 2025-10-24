@@ -118,7 +118,7 @@ services:
     replicas: 1
     metricsPort: 9402
   memoryService:
-    enabled: true
+    enabled: false
     replicas: 1
     port: 20017
     hpa:

@@ -16,7 +16,6 @@ x-agent-env: &agent-env
   TOOL_REQUESTS_TOPIC: tool.requests
   TOOL_RESULTS_TOPIC: tool.results
   TOOL_EXECUTOR_GROUP: tool-executor
-  MEMORY_SERVICE_TARGET: memory-service:20017
   SOMA_AGENT_MODE: LOCAL
   SOMA_BASE_URL: http://host.docker.internal:9696
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
@@ -163,19 +162,7 @@ services:
       - -m
       - services.tool_executor.main
 
-  memory-service:
-    <<: *agent-service
-    container_name: somaAgent01_memory-service
-    profiles: ["dev"]
-    environment:
-      <<: *agent-env
-      MEMORY_SERVICE_PORT: "${MEMORY_SERVICE_PORT:-21017}"
-    command:
-      - python3
-      - -m
-      - services.memory_service.main
-    ports:
-      - "${MEMORY_SERVICE_PORT:-21017}:${MEMORY_SERVICE_PORT:-21017}"
+  # memory-service removed; SomaBrain HTTP is used directly by services
 
   agent-ui:
     <<: *agent-service

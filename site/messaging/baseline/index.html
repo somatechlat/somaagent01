@@ -1864,18 +1864,10 @@
 <td>Runs registered tools and emits <code>tool.results</code></td>
 <td>—</td>
 </tr>
-<tr>
-<td><code>memory-service</code></td>
-<td>gRPC memory API</td>
-<td><code>${MEMORY_SERVICE_PORT:-20017}</code></td>
-</tr>
-<tr>
-<td><code>agent-ui</code></td>
-<td>Developer UI (<code>run_ui.py</code>)</td>
-<td><code>${AGENT_UI_PORT:-20015}</code></td>
-</tr>
 </tbody>
 </table>
+<!-- memory-service removed; SomaBrain HTTP is used by services directly -->
+<p>| <code>agent-ui</code> | Developer UI (<code>run_ui.py</code>) | <code>${AGENT_UI_PORT:-20015}</code> |</p>
 <blockquote>
 <p><strong>Profiles:</strong> Launch with <code>docker compose --profile core --profile dev up -d</code> to include all messaging services without mocks.</p>
 </blockquote>

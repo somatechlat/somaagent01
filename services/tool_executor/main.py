@@ -17,7 +17,7 @@ from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
 from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
-from services.common.memory_client import MemoryClient
+from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
@@ -140,7 +140,8 @@ class ToolExecutor:
         telemetry_store = TelemetryStore.from_settings(SERVICE_SETTINGS)
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         self.requeue_prefix = _policy_requeue_prefix()
-        self.memory_client = MemoryClient(settings=SERVICE_SETTINGS)
+        # Use SomaBrain HTTP client for memory persistence
+        self.soma = SomaClient.get()
         stream_defaults = SERVICE_SETTINGS.extra.get(
             "tool_executor_topics",
             {
@@ -378,7 +379,7 @@ class ToolExecutor:
         tenant: str,
     ) -> None:
         persona_id = result_event.get("persona_id")
-        content: str
+        # Serialize tool payload to a stable string representation
         if isinstance(payload, str):
             content = payload
         else:
@@ -396,18 +397,30 @@ class ToolExecutor:
         if isinstance(payload, dict) and payload.get("model"):
             str_metadata.setdefault("tool_model", str(payload.get("model")))
 
+        # Persist tool result as a SomaBrain memory
+        memory_payload = {
+            "id": result_event.get("event_id"),
+            "type": "tool_result",
+            "tool_name": result_event.get("tool_name"),
+            "content": content,
+            "session_id": result_event.get("session_id"),
+            "persona_id": persona_id,
+            "metadata": str_metadata,
+            "status": result_event.get("status"),
+        }
         try:
-            await self.memory_client.create_memory(
-                tenant=tenant,
-                persona_id=persona_id,
-                content=content,
-                metadata=str_metadata,
-            )
-        except Exception as exc:
+            await self.soma.remember(memory_payload)
+        except SomaClientError as exc:
             LOGGER.warning(
-                "Error during tool executor shutdown",
-                extra={"error": str(exc), "error_type": type(exc).__name__},
+                "SomaBrain remember failed for tool result",
+                extra={
+                    "session_id": result_event.get("session_id"),
+                    "tool": result_event.get("tool_name"),
+                    "error": str(exc),
+                },
             )
+        except Exception:
+            LOGGER.debug("SomaBrain remember (tool result) unexpected error", exc_info=True)
 
 
 async def main() -> None:
@@ -416,7 +429,7 @@ async def main() -> None:
         await executor.start()
     finally:
         await executor.policy.close()
-        await executor.memory_client.close()
+        await executor.soma.close()
 
 
 if __name__ == "__main__":

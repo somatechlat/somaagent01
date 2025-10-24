@@ -2068,11 +2068,11 @@
 </tr>
 <tr>
 <td>SB (SomaBrain)</td>
-<td><code>services/memory_service/main.py</code></td>
+<td>external HTTP API (<code>SOMA_BASE_URL</code>)</td>
 <td>Memory</td>
-<td>gRPC / HTTP</td>
-<td><strong>20017</strong></td>
-<td>Implemented; exposed via compose</td>
+<td>HTTP</td>
+<td><strong>9696</strong></td>
+<td>Externalized; services call SomaBrain directly</td>
 </tr>
 <tr>
 <td>SAH (SomaAgentHub)</td>
@@ -2204,7 +2204,7 @@
   services/
     conversation_worker/
     gateway/
-    memory_service/
+    # memory_service (deprecated; removed)
     tool_executor/
     ui/
   infra/

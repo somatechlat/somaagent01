@@ -74,7 +74,7 @@ Goal: Secrets and policy ergonomics.
 
 ### Sprint 10 (W5‑S10) – Ops Tools & Deprecations
 Goal: Final polish and cleanup.
-- scripts/somabrain-sync CLI (manual flush + audit); remove services/memory_service from compose/helm and code paths; runbooks & incident playbooks.
+- scripts/somabrain-sync CLI (manual flush + audit); services/memory_service removed from compose/helm and code paths; runbooks & incident playbooks.
 - webui: minimal Dead‑Letter UI to inspect Kafka DLQ, filter, and retry/ack.
 - Acceptance: manual flush audited; memory_service fully removed; runbooks validated.
 

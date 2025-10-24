@@ -14,7 +14,7 @@ This document captures the current local runtime expectations for the messaging 
 | `gateway` | FastAPI ingress (`services/gateway/main.py`) | `${GATEWAY_PORT:-20016}` |
 | `conversation-worker` | Kafka consumer producing SLM/tool outputs | — |
 | `tool-executor` | Runs registered tools and emits `tool.results` | — |
-| `memory-service` | gRPC memory API | `${MEMORY_SERVICE_PORT:-20017}` |
+<!-- memory-service removed; SomaBrain HTTP is used by services directly -->
 | `agent-ui` | Developer UI (`run_ui.py`) | `${AGENT_UI_PORT:-20015}` |
 
 > **Profiles:** Launch with `docker compose --profile core --profile dev up -d` to include all messaging services without mocks.

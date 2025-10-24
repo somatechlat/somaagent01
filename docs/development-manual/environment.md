@@ -97,7 +97,7 @@ pytest tests/playwright/test_realtime_speech.py --headed
 - Single compose file `docker-compose.yaml` drives local development.
 - Profiles:
   - `core`: Kafka (`${KAFKA_PORT:-20000}`), Redis (`${REDIS_PORT:-20001}`), Postgres (`${POSTGRES_PORT:-20002}`), OPA (`${OPA_PORT:-20009}`).
-  - `dev`: Gateway (`${GATEWAY_PORT:-20016}`), Conversation Worker, Tool Executor, Memory Service (`${MEMORY_SERVICE_PORT:-20017}`), Agent UI (`${AGENT_UI_PORT:-20015}`).
+  - `dev`: Gateway (`${GATEWAY_PORT:-20016}`), Conversation Worker, Tool Executor, Agent UI (`${AGENT_UI_PORT:-20015}`).
 - Bring-up examples:
   - `docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yaml up -d`
   - `docker compose -p somaagent01 --profile core -f docker-compose.yaml up -d kafka redis postgres`

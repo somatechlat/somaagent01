@@ -54,7 +54,6 @@ from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSetting
 from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
 from services.common.publisher import DurablePublisher
 from services.common.logging_config import setup_logging
-from services.common.memory_client import MemoryClient
 from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.requeue_store import RequeueStore
@@ -84,7 +83,6 @@ tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
 # --- Consolidated service stores (moved in-process to the gateway) ---
 PROFILE_STORE = ModelProfileStore.from_settings(APP_SETTINGS)
 TELEMETRY_STORE = TelemetryStore.from_settings(APP_SETTINGS)
-MEMORY_CLIENT = MemoryClient(settings=APP_SETTINGS)
 REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
 
 
@@ -1124,10 +1122,7 @@ async def shutdown_background_services() -> None:
         await app.state.http_client.aclose()
 
     # Close consolidated service stores
-    try:
-        await MEMORY_CLIENT.close()
-    except Exception as exc:
-        LOGGER.warning("Error closing memory client", extra={"error": str(exc)})
+    # No per-process memory client to close; SomaBrain is accessed directly by services that need it.
 
     LOGGER.info("Gateway shutdown completed")
 
@@ -1248,14 +1243,7 @@ async def _gather_health_components_with_memory(
     await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
     await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
 
-    # Extra: memory service (gRPC) quick check using a fast ListMemories on a dummy tenant
-    try:
-        # Use very small timeout to avoid blocking /healthz
-        _ = await MEMORY_CLIENT.list_memories(tenant="__healthcheck__", persona_id=None, limit=1, timeout=1.0)
-        record_status("memory_service", "ok")
-    except Exception as exc:
-        LOGGER.debug("Memory service health check failed", extra={"error": str(exc)})
-        record_status("memory_service", "degraded", f"{type(exc).__name__}: {exc}")
+    # Note: gRPC memory service removed. Health now relies on SomaBrain HTTP check below.
 
     return {"status": overall_status, "components": components}
 
@@ -1269,159 +1257,56 @@ app.add_api_route(
 
 
 @app.get("/healthz")
-async def aggregated_healthz() -> JSONResponse:
-    """Aggregated health endpoint used by the roadmap and external probes.
-
-    This endpoint performs lightweight probes to core dependencies including
-    Postgres/Redis/Kafka (via existing checks) and the memory service (gRPC).
-    It favours fast timeouts and reports an overall status (+ per-component map).
-    """
-    components: dict[str, dict[str, str]] = {}
-    overall_status = "ok"
-
-    def record(name: str, status: str, detail: str | None = None) -> None:
-        nonlocal overall_status
-        components[name] = {"status": status}
-        if detail:
-            components[name]["detail"] = detail
-        if status == "down":
-            overall_status = "down"
-        elif status == "degraded" and overall_status == "ok":
-            overall_status = "degraded"
-
-    # Lightweight HTTP probe for OPA if configured
-    opa_url = OPA_URL
-    if opa_url:
-        opa_result = await http_ping(opa_url, timeout=1.0)
-        record("opa", opa_result.get("status", "down"), opa_result.get("detail"))
-
-    # Memory service gRPC readiness (use MemoryClient configured target)
-    try:
-        mem_target = MEMORY_CLIENT.target if hasattr(MEMORY_CLIENT, "target") else os.getenv("MEMORY_SERVICE_TARGET")
-        if mem_target:
-            mem_result = await grpc_ping(mem_target, stub_factory=None, timeout=1.0)
-            record("memory_service", mem_result.get("status", "down"), mem_result.get("detail"))
-        else:
-            record("memory_service", "degraded", "no target configured")
-    except Exception as exc:
-        record("memory_service", "down", str(exc))
-
-    # Reuse the existing /v1/health checks for core infra (postgres/redis/kafka)
-    # by calling the same logic — but avoid duplicate code: perform minimal checks
-    try:
-        # Postgres
-        store = get_session_store()
-        await store.ping()
-        record("postgres", "ok")
-    except Exception as exc:
-        record("postgres", "down", f"{type(exc).__name__}: {exc}")
-
-    try:
-        cache = get_session_cache()
-        await cache.ping()
-        record("redis", "ok")
-    except Exception as exc:
-        record("redis", "down", f"{type(exc).__name__}: {exc}")
-
-    kafka_bus = KafkaEventBus(_kafka_settings())
-    try:
-        await kafka_bus.healthcheck()
-        record("kafka", "ok")
-    except Exception as exc:
-        record("kafka", "down", f"{type(exc).__name__}: {exc}")
-    finally:
-        await kafka_bus.close()
-
-    return JSONResponse({"status": overall_status, "components": components})
-
-
-@app.get("/healthz")
-async def aggregated_healthz(
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
-) -> JSONResponse:
-    """Aggregated readiness/health endpoint.
-
-    Extends /v1/health with a direct gRPC probe to the Memory Service and
-    returns a component map with overall status in a format suitable for
-    Kubernetes readiness checks.
-    """
-    components: dict[str, dict[str, str]] = {}
-    overall_status = "ok"
-
-    def record_status(name: str, status: str, detail: str | None = None) -> None:
-        nonlocal overall_status
-        components[name] = {"status": status}
-        if detail:
-            components[name]["detail"] = detail
-        if status == "down":
-            overall_status = "down"
-        elif status == "degraded" and overall_status == "ok":
-            overall_status = "degraded"
-
-    # Postgres
-    try:
-        await store.ping()
-        record_status("postgres", "ok")
-    except Exception as exc:
-        LOGGER.warning("Postgres health check failed", extra={"error": str(exc)})
-        record_status("postgres", "down", f"{type(exc).__name__}: {exc}")
-
-    # Redis
-    try:
-        await cache.ping()
-        record_status("redis", "ok")
-    except Exception as exc:
-        LOGGER.warning("Redis health check failed", extra={"error": str(exc)})
-        record_status("redis", "down", f"{type(exc).__name__}: {exc}")
-
-    # Kafka
-    kafka_bus = KafkaEventBus(_kafka_settings())
-    try:
-        await kafka_bus.healthcheck()
-        record_status("kafka", "ok")
-    except Exception as exc:
-        LOGGER.warning("Kafka health check failed", extra={"error": str(exc)})
-        record_status("kafka", "down", f"{type(exc).__name__}: {exc}")
-    finally:
-        await kafka_bus.close()
-
-    # Memory Service (gRPC)
-    try:
-        async with MemoryClient(settings=APP_SETTINGS) as mc:
-            # Use a cheap call with timeout to validate reachability
-            _ = await mc.list_memories(tenant="healthcheck", persona_id=None, limit=1, timeout=1.5)
-        record_status("memory_service", "ok")
-    except Exception as exc:
-        LOGGER.debug("Memory service health failed", extra={"error": str(exc)})
-        record_status("memory_service", "degraded", f"{type(exc).__name__}: {exc}")
-
-    # Optional HTTP dependencies
-    async def check_http_target(name: str, url: str | None) -> None:
-        if not url:
-            return
-        try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-            record_status(name, "ok")
-        except Exception as exc:
-            record_status(name, "degraded", f"{type(exc).__name__}: {exc}")
-
-    await check_http_target("opa", OPA_URL)
-    await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
-    await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
-
-    return JSONResponse({"status": overall_status, "components": components})
-
-
-@app.get("/healthz")
 async def healthz(
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
     cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
 ) -> JSONResponse:
+    """Consolidated healthz endpoint.
+
+    This endpoint performs lightweight probes to core dependencies (Postgres,
+    Redis, Kafka) and to SomaBrain via its HTTP /health endpoint (configurable via
+    SOMA_BASE_URL). The overall status is computed from component
+    statuses and returned along with per-component details.
+    """
+
+    # Start with existing gRPC-based components from helper
     payload = await _gather_health_components_with_memory(store, cache)
-    return JSONResponse(payload)
+    components = payload.get("components", {})
+    overall_status = payload.get("status", "ok")
+
+    # Do an HTTP health check against the SomaBrain HTTP target
+    http_target = os.getenv("SOMA_BASE_URL", "http://localhost:9696")
+    mem_http_status = "degraded"
+    mem_http_detail: str | None = None
+    try:
+        health_url = f"{http_target.rstrip('/')}/health"
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(health_url)
+            resp.raise_for_status()
+            body = resp.json() if resp.content else {}
+            # Some services return {'ok': True} or {'status': 'ok'}
+            if isinstance(body, dict) and (body.get("ok") is True or body.get("status") == "ok"):
+                mem_http_status = "ok"
+            else:
+                mem_http_status = "ok" if resp.status_code == 200 else "degraded"
+            mem_http_detail = json.dumps(body) if isinstance(body, dict) else None
+    except Exception as exc:
+        mem_http_status = "down"
+        mem_http_detail = f"{type(exc).__name__}: {exc}"
+
+    # Merge SomaBrain HTTP check into components map
+    components["somabrain_http"] = {"status": mem_http_status}
+    if mem_http_detail:
+        components["somabrain_http"]["detail"] = mem_http_detail
+
+    # Recompute overall status conservatively
+    if any(c.get("status") == "down" for c in components.values()):
+        overall_status = "down"
+    elif any(c.get("status") == "degraded" for c in components.values()):
+        if overall_status != "down":
+            overall_status = "degraded"
+
+    return JSONResponse({"status": overall_status, "components": components})
 
 
 # -----------------------------
@@ -1482,16 +1367,6 @@ async def route_decision(payload: RouteRequest) -> RouteResponse:
             return RouteResponse(chosen=best["model"], score=best["score"])
     except Exception:
         LOGGER.debug("Telemetry routing failed, falling back to memory", exc_info=True)
-
-    # Memory fallback: query recent sessions for preferred models
-    try:
-        preferred = await MEMORY_CLIENT.find_preferred_model(
-            payload.tenant, payload.persona, payload.candidates
-        )
-        if preferred:
-            return RouteResponse(chosen=preferred, score=None)
-    except Exception:
-        LOGGER.debug("Memory routing failed, falling back to first candidate", exc_info=True)
 
     # Final fallback
     chosen = payload.candidates[0] if payload.candidates else ""

@@ -34,3 +34,4 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+# Deprecated: memory-service chart disabled. No resources defined.

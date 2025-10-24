@@ -29,7 +29,7 @@ Compose file: `docker-compose.yaml`
 | Profile | Services | Purpose |
 | ------- | -------- | ------- |
 | `core` | kafka, postgres, redis, opa | Shared infrastructure required by the agent stack |
-| `dev` | gateway, conversation-worker, tool-executor, memory-service, agent-ui | Application services for local development |
+| `dev` | gateway, conversation-worker, tool-executor, agent-ui | Application services for local development |
 
 ### Bring-Up Command
 

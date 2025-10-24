@@ -31,7 +31,7 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
-from services.common.skm_client import ProgressPayload, SKMClient
+from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.slm_client import ChatMessage, SLMClient
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
@@ -198,8 +198,8 @@ class ConversationWorker:
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
-        skm_base_url = os.getenv("SKM_BASE_URL", "http://localhost:9696")
-        self.skm = SKMClient(base_url=skm_base_url)
+        # SomaBrain HTTP client (centralized memory backend)
+        self.soma = SomaClient.get()
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
@@ -470,6 +470,25 @@ class ConversationWorker:
                 return
 
             await self.store.append_event(session_id, {"type": "user", **event})
+            # Save user message to SomaBrain as a memory (non-blocking semantics with error shielding)
+            try:
+                payload = {
+                    "id": event.get("event_id"),
+                    "type": "conversation_event",
+                    "role": "user",
+                    "content": event.get("message", ""),
+                    "session_id": session_id,
+                    "persona_id": event.get("persona_id"),
+                    "metadata": dict(enriched_metadata),
+                }
+                await self.soma.remember(payload)
+            except SomaClientError as exc:
+                LOGGER.warning(
+                    "SomaBrain remember failed for user message",
+                    extra={"session_id": session_id, "error": str(exc)},
+                )
+            except Exception:
+                LOGGER.debug("SomaBrain remember (user) unexpected error", exc_info=True)
 
             cache_metadata = dict(event.get("metadata", {}))
             try:
@@ -692,14 +711,14 @@ class ConversationWorker:
             if not budget_result.allowed:
                 response_text = "Token budget exceeded for this persona/tenant."
                 result_label = "budget_limit"
-                await self.skm.publish_progress(
-                    ProgressPayload(
-                        session_id=session_id,
-                        persona_id=event.get("persona_id"),
-                        status="budget_limit",
-                        detail="Token budget exceeded",
-                        metadata={"tenant": tenant},
-                    )
+                # Progress publishing via SKM removed; emit telemetry and continue
+                LOGGER.info(
+                    "Budget limit reached",
+                    extra={
+                        "session_id": session_id,
+                        "persona_id": event.get("persona_id"),
+                        "tenant": tenant,
+                    },
                 )
 
             if path == "escalation":
@@ -780,6 +799,25 @@ class ConversationWorker:
                 session_id=session_id,
                 tenant=(response_event.get("metadata") or {}).get("tenant"),
             )
+            # Save assistant response to SomaBrain as a memory
+            try:
+                payload = {
+                    "id": response_event.get("event_id"),
+                    "type": "conversation_event",
+                    "role": "assistant",
+                    "content": response_text,
+                    "session_id": session_id,
+                    "persona_id": event.get("persona_id"),
+                    "metadata": dict(response_metadata),
+                }
+                await self.soma.remember(payload)
+            except SomaClientError as exc:
+                LOGGER.warning(
+                    "SomaBrain remember failed for assistant message",
+                    extra={"session_id": session_id, "error": str(exc)},
+                )
+            except Exception:
+                LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
             record_metrics(result_label, path)
 
         try:
@@ -819,7 +857,7 @@ async def main() -> None:
         await worker.start()
     finally:
         await worker.slm.close()
-        await worker.skm.close()
+        await worker.soma.close()
         await worker.router.close()
         await worker.policy_client.close()
 

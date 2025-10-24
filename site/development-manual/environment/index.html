@@ -2219,7 +2219,7 @@ pytest<span class="w"> </span>tests/playwright/test_realtime_speech.py<span clas
 <li>Single compose file <code>docker-compose.yaml</code> drives local development.</li>
 <li>Profiles:</li>
 <li><code>core</code>: Kafka (<code>${KAFKA_PORT:-20000}</code>), Redis (<code>${REDIS_PORT:-20001}</code>), Postgres (<code>${POSTGRES_PORT:-20002}</code>), OPA (<code>${OPA_PORT:-20009}</code>).</li>
-<li><code>dev</code>: Gateway (<code>${GATEWAY_PORT:-20016}</code>), Conversation Worker, Tool Executor, Memory Service (<code>${MEMORY_SERVICE_PORT:-20017}</code>), Agent UI (<code>${AGENT_UI_PORT:-20015}</code>).</li>
+<li><code>dev</code>: Gateway (<code>${GATEWAY_PORT:-20016}</code>), Conversation Worker, Tool Executor, Agent UI (<code>${AGENT_UI_PORT:-20015}</code>).</li>
 <li>Bring-up examples:</li>
 <li><code>docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yaml up -d</code></li>
 <li><code>docker compose -p somaagent01 --profile core -f docker-compose.yaml up -d kafka redis postgres</code></li>
