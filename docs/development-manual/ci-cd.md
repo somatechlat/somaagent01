@@ -120,3 +120,31 @@ Autoscaling and network policies (optional):
 - Toggle `global.HPA_ENABLED` and per-service `services.*.hpa.enabled` to render HPAs (CPU-based by default).
 - Toggle `global.NETWORK_POLICY_ENABLED` to apply a conservative, namespace-only allow policy plus DNS egress.
 
+### Private container registries
+
+If your images are hosted in a private registry, configure image pull secrets in the charts:
+
+- Umbrella chart (`soma-stack`): set `global.imagePullSecrets` to a list of Kubernetes secret names.
+- Infra chart (`soma-infra`): set `imagePullSecrets` to a list of Kubernetes secret names.
+
+Example (values overlay):
+
+```yaml
+global:
+	imagePullSecrets:
+		- my-regcred
+```
+
+Infra chart:
+
+```yaml
+imagePullSecrets:
+	- my-regcred
+```
+
+Notes
+
+- The referenced secrets must exist in the target namespace before deployment.
+- Create them with your registry credentials using a `docker-registry` type secret.
+- Both the stable and canary Deployments inherit these settings.
+

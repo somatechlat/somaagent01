@@ -30,3 +30,10 @@ vault:
 etcd:
   enabled: true
   replicaCount: 1
+
+certManager:
+  enabled: true
+  email: "ops@your-staging-domain"
+  clusterIssuer:
+    name: "letsencrypt-staging"
+    server: "https://acme-staging-v02.api.letsencrypt.org/directory"

@@ -20,6 +20,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         component: {{ .Values.component.name | quote }}
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "soma-infra.imagePullSecrets" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Values.component.name | quote }}
           image: "{{- if .Values.component.image -}}{{ .Values.component.image -}}{{ else -}}{{ .Values.image | default "" }}{{- end }}"
