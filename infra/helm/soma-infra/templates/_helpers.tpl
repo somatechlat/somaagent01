@@ -23,3 +23,12 @@ app.kubernetes.io/instance: {{ .Release.Name | quote }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
 {{- end }}
+
+{{- define "soma-infra.imagePullSecrets" -}}
+{{- $secrets := .Values.imagePullSecrets | default list -}}
+{{- if $secrets }}
+{{- range $s := $secrets }}
+- name: {{ $s | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}

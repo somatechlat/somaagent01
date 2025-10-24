@@ -1267,6 +1267,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Additional options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#private-container-registries" class="md-nav__link">
+    <span class="md-ellipsis">
+      Private container registries
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1968,6 +1983,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Additional options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#private-container-registries" class="md-nav__link">
+    <span class="md-ellipsis">
+      Private container registries
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2085,6 +2115,27 @@ These render into DestinationRule/VirtualService and apply to both stable and ca
 <p>Autoscaling and network policies (optional):
 - Toggle <code>global.HPA_ENABLED</code> and per-service <code>services.*.hpa.enabled</code> to render HPAs (CPU-based by default).
 - Toggle <code>global.NETWORK_POLICY_ENABLED</code> to apply a conservative, namespace-only allow policy plus DNS egress.</p>
+<h3 id="private-container-registries">Private container registries<a class="headerlink" href="#private-container-registries" title="Permanent link">&para;</a></h3>
+<p>If your images are hosted in a private registry, configure image pull secrets in the charts:</p>
+<ul>
+<li>Umbrella chart (<code>soma-stack</code>): set <code>global.imagePullSecrets</code> to a list of Kubernetes secret names.</li>
+<li>Infra chart (<code>soma-infra</code>): set <code>imagePullSecrets</code> to a list of Kubernetes secret names.</li>
+</ul>
+<p>Example (values overlay):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">global</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">imagePullSecrets</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-regcred</span>
+</code></pre></div>
+<p>Infra chart:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">imagePullSecrets</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-regcred</span>
+</code></pre></div>
+<p>Notes</p>
+<ul>
+<li>The referenced secrets must exist in the target namespace before deployment.</li>
+<li>Create them with your registry credentials using a <code>docker-registry</code> type secret.</li>
+<li>Both the stable and canary Deployments inherit these settings.</li>
+</ul>
 
 
 

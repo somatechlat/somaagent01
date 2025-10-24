@@ -1,4 +1,8 @@
 {{- if .Values.global.NETWORK_POLICY_ENABLED }}
+{{- $ns := .Release.Namespace -}}
+{{- $label := .Values.global.NETWORK_POLICY_ALLOWED_INFRA_NAMESPACE_LABEL -}}
+{{- $ports := .Values.global.NETWORK_POLICY_INFRA_PORTS | default (list 5432 6379 9092 9093 8181 8200) -}}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -8,15 +12,37 @@ spec:
   policyTypes:
     - Ingress
     - Egress
+  # Allow same-namespace ingress
   ingress:
     - from:
-        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $ns }}
+  # Egress rules: DNS, same-namespace, and infra namespace(s)
   egress:
+    # DNS to kube-system
     - to:
-        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
       ports:
-        - protocol: TCP
-          port: 53
         - protocol: UDP
           port: 53
+        - protocol: TCP
+          port: 53
+    # Same namespace unrestricted egress
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $ns }}
+    # Egress to infra namespaces by label on common infra ports
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{ $label.key }}: {{ $label.value | quote }}
+      ports:
+        {{- range $p := $ports }}
+        - protocol: TCP
+          port: {{ $p }}
+        {{- end }}
 {{- end }}

@@ -30,3 +30,10 @@ vault:
 etcd:
   enabled: true
   replicaCount: 3
+
+certManager:
+  enabled: true
+  email: "ops@your-prod-domain"
+  clusterIssuer:
+    name: "letsencrypt-prod"
+    server: "https://acme-v02.api.letsencrypt.org/directory"

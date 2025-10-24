@@ -24,7 +24,7 @@ services:
       host: gateway.prod.example.com
       path: /
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-staging
+        cert-manager.io/cluster-issuer: letsencrypt-prod
       tls:
         - hosts: [gateway.prod.example.com]
           secretName: gateway-tls
@@ -39,7 +39,7 @@ services:
       host: ui.prod.example.com
       path: /
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-staging
+        cert-manager.io/cluster-issuer: letsencrypt-prod
       tls:
         - hosts: [ui.prod.example.com]
           secretName: ui-tls
@@ -50,7 +50,7 @@ services:
       host: uip.prod.example.com
       path: /
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-staging
+        cert-manager.io/cluster-issuer: letsencrypt-prod
       tls:
         - hosts: [uip.prod.example.com]
           secretName: uip-tls
