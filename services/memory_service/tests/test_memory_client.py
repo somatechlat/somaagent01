@@ -3,6 +3,10 @@ from __future__ import annotations
 import grpc
 import pytest
 
+# This entire test module targets the deprecated legacy memory_service and client.
+# Skip unconditionally now that SomaBrain is the sole memory backend.
+pytestmark = pytest.mark.skip("legacy memory_service removed; test disabled")
+
 from services.common.memory_client import MemoryClient
 from services.common.settings_sa01 import SA01Settings
 from services.memory_service.grpc_generated import memory_pb2, memory_pb2_grpc

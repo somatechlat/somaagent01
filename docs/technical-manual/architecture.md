@@ -25,7 +25,7 @@ This document captures the current service layout, target consolidation, and imp
 | Alias | Repository components | Owner | Primary protocol | Typical ports | Status |
 | ----- | --------------------- | ----- | ---------------- | ------------- | ------ |
 | SA01 (SomaAgent01) | `agent.py`, `services/conversation_worker/main.py`, `services/gateway/main.py` | Agents | gRPC (high-throughput) | **50051** (planned) | gRPC stubs present; HTTP gateway on 8010 still active |
-| SB (SomaBrain) | `services/memory_service/main.py` | Memory | gRPC / HTTP | **20017** | Implemented; exposed via compose |
+| SB (SomaBrain) | external HTTP API (`SOMA_BASE_URL`) | Memory | HTTP | **9696** | Externalized; services call SomaBrain directly |
 | SAH (SomaAgentHub) | `services/ui/main.py`, `run_ui.py` | Experience | FastAPI (HTTP) | **8080** | Running via `agent-ui` and `gateway` services |
 | SMF (SomaFractalMemory) | future `qdrant` add-on | Knowledge | Async HTTP | **50053** / **6333-6334** | Planned profile (not yet in compose) |
 | Auth | `infra/helm/soma-infra/charts/auth` | Platform | HTTP | **8080** | Helm chart deployed cluster-wide |
@@ -68,7 +68,7 @@ agent-zero/
   services/
     conversation_worker/
     gateway/
-    memory_service/
+    # memory_service (deprecated; removed)
     tool_executor/
     ui/
   infra/

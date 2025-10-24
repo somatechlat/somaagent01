@@ -14,7 +14,7 @@
 !services/gateway/**
 !services/conversation_worker/**
 !services/tool_executor/**
-!services/memory_service/**
+# memory_service deprecated; do not include in build context
 !services/common/**
 !services/ui/**
 !services/__init__.py

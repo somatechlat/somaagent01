@@ -44,7 +44,7 @@ This canonical roadmap supersedes the older messaging‑only plan and captures t
 - services/tool_executor: centralized OPA check; delimiters; agent.tools.v1 analytics; sandbox hooks; memory linking.
 - services/orchestrator (new): minimal DAG, checkpoint store, retry+jitter, events, visualization hook.
 - services/delegation_*: agent.audit.v1 for delegation; optional child runs.
-- services/memory_service: deprecate after validation; remove from compose/helm.
+- services/memory_service: deprecated and removed from compose/helm.
 - services/common: publisher schema validation; outbox repo; trace utils; idempotency key gen.
 - python/integrations/soma_client.py: 1–1.5s /health probe; breaker signals; batch & link helpers.
 - conf/: roles.yaml; policies/*.rego; topics.yaml for tenant templates.

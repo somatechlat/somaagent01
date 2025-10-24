@@ -8,8 +8,6 @@
 LOCAL:
   router:
     base_url: "http://localhost:8010"
-  memory_service:
-    target: "localhost:50052"
   profiles:
     - role: "developer"
       model: "gpt-4o-mini"
@@ -24,8 +22,6 @@ LOCAL:
 TEST:
   router:
     base_url: "http://router:8010"
-  memory_service:
-    target: "memory-service:50052"
   profiles:
     - role: "developer"
       model: "gpt-4o"
@@ -34,8 +30,6 @@ TEST:
 PROD:
   router:
     base_url: "https://router.sa01.internal"
-  memory_service:
-    target: "sb.soma.svc.cluster.local:50052"
   profiles:
     - role: "developer"
       model: "gpt-4o"

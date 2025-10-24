@@ -90,7 +90,6 @@ Umbrella chart `infra/helm/soma-stack` deploys:
 - tool-executor (metrics exposed)
 - delegation-gateway (FastAPI, HTTP)
 - delegation-worker
-- memory-service (gRPC)
 - ui (static FastAPI server)
 - outbox-sync (as a dependency chart)
 

@@ -74,7 +74,7 @@ wait_for_services() {
 # overridden via environment variables:
 #   Kafka broker, Redis, Postgres, Qdrant (HTTP), Qdrant (gRPC), ClickHouse (HTTP),
 #   ClickHouse (native), Prometheus, Vault, OPA, OpenFGA (gRPC), OpenFGA (HTTP), Whisper,
-#   Delegation Gateway primary, Delegation Gateway secondary, Gateway API, Memory Service.
+#   Delegation Gateway primary, Delegation Gateway secondary, Gateway API.
 # Track reserved ports to avoid duplicates during assignment (portable implementation).
 RESERVED_PORTS=""
 
@@ -141,7 +141,6 @@ PORT_VARS=(
   DELEGATION_GATEWAY_PORT_PRIMARY
   DELEGATION_GATEWAY_PORT_SECONDARY
   GATEWAY_PORT
-  MEMORY_SERVICE_PORT
 )
 
 PORT_BASES=(
@@ -161,7 +160,6 @@ PORT_BASES=(
   20013
   20014
   20016
-  20017
 )
 
 # Detect and assign ports (override defaults if occupied).
@@ -198,7 +196,6 @@ Port assignments:
   Delegation GW A:$DELEGATION_GATEWAY_PORT_PRIMARY
   Delegation GW B:$DELEGATION_GATEWAY_PORT_SECONDARY
   Gateway API:    $GATEWAY_PORT
-  Memory Service: $MEMORY_SERVICE_PORT
   Web UI:         $WEB_UI_PORT (static)
 EOF
 
