@@ -4,7 +4,6 @@ from . import (
     budget_manager,
     escalation,
     event_bus,
-    memory_client,
     model_costs,
     model_profiles,
     policy_client,
@@ -21,7 +20,6 @@ from . import (
 __all__ = [
     "event_bus",
     "session_repository",
-    "memory_client",
     "slm_client",
     "policy_client",
     "model_profiles",

@@ -40,11 +40,37 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
+from uuid import uuid4
 from weakref import WeakKeyDictionary
 
 import httpx
+from opentelemetry import trace
+from opentelemetry.propagate import inject
+from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
+
+# Prometheus metrics for SomaBrain client
+SOMA_REQUESTS_TOTAL = Counter(
+    "somabrain_requests_total",
+    "Total SomaBrain HTTP requests",
+    labelnames=("method", "path", "status"),
+)
+SOMA_REQUEST_SECONDS = Histogram(
+    "somabrain_request_seconds",
+    "Latency of SomaBrain HTTP requests",
+    labelnames=("method", "path", "status"),
+)
+MEMORY_WRITE_TOTAL = Counter(
+    "somabrain_memory_write_total",
+    "Count of memory writes via SomaBrain",
+    labelnames=("result",),
+)
+MEMORY_WRITE_SECONDS = Histogram(
+    "somabrain_memory_write_seconds",
+    "Latency of memory writes via SomaBrain",
+    labelnames=("result",),
+)
 
 
 def _sanitize_legacy_base_url(raw_base_url: str) -> str:
@@ -225,6 +251,10 @@ class SomaClient:
         self._CB_THRESHOLD: int = 3
         self._CB_COOLDOWN_SEC: float = 15.0
 
+        # Retry configuration
+        self._max_retries: int = int(os.environ.get("SOMA_MAX_RETRIES", "2"))
+        self._retry_base_ms: int = int(os.environ.get("SOMA_RETRY_BASE_MS", "150"))
+
     @classmethod
     def get(cls) -> "SomaClient":
         if cls._instance is None:
@@ -293,6 +323,14 @@ class SomaClient:
         if headers:
             request_headers.update(headers)
 
+        # Ensure a request id and propagate trace context into headers
+        request_headers.setdefault("X-Request-ID", str(uuid4()))
+        try:
+            inject(request_headers)
+        except Exception:
+            # Never fail on propagation
+            pass
+
         print(
             "[SomaClient] preparing",
             {
@@ -305,36 +343,67 @@ class SomaClient:
             },
         )
 
-        try:
-            async with self._get_lock():
-                response = await self._get_client().request(
-                    method,
-                    url,
-                    json=json,
-                    params=params,
-                    headers=request_headers or None,
-                )
-        except httpx.RequestError as e:
-            # Network / transport-level failure: record failure and wrap as SomaClientError
-            self._cb_failures += 1
-            if self._cb_failures >= self._CB_THRESHOLD:
-                self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
-            raise SomaClientError(f"SomaBrain request {method} {url} failed: {str(e)}")
+        attempt = 0
+        last_exc: Exception | None = None
+        start_ts = time.perf_counter()
+        status_label = "error"
+        while True:
+            try:
+                async with self._get_lock():
+                    response = await self._get_client().request(
+                        method,
+                        url,
+                        json=json,
+                        params=params,
+                        headers=request_headers or None,
+                    )
+            except httpx.RequestError as e:
+                # Network / transport-level failure: record failure and maybe retry
+                self._cb_failures += 1
+                last_exc = e
+                if self._cb_failures >= self._CB_THRESHOLD:
+                    self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
+                if attempt < self._max_retries:
+                    attempt += 1
+                    backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
+                    backoff = backoff * (1.0 + (0.25 * (os.getpid() % 4)))  # simple jitter
+                    await asyncio.sleep(backoff)
+                    continue
+                # No more retries
+                duration = time.perf_counter() - start_ts
+                SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+                SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
+                raise SomaClientError(f"SomaBrain request {method} {url} failed: {str(e)}") from e
 
-        print(
-            "[SomaClient] response",
-            {
-                "method": method,
-                "path": url,
-                "status_code": response.status_code,
-            },
-        )
+            # Response received
+            status_label = str(response.status_code)
+            print(
+                "[SomaClient] response",
+                {
+                    "method": method,
+                    "path": url,
+                    "status_code": response.status_code,
+                },
+            )
 
-        if allow_404 and response.status_code == 404:
-            # success path; reset breaker
-            self._cb_failures = 0
-            self._cb_open_until = 0.0
-            return None
+            if allow_404 and response.status_code == 404:
+                # success path; reset breaker and record metrics
+                self._cb_failures = 0
+                self._cb_open_until = 0.0
+                duration = time.perf_counter() - start_ts
+                SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+                SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
+                return None
+
+            if response.status_code >= 500 and attempt < self._max_retries:
+                # Retry on server errors
+                attempt += 1
+                backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
+                backoff = backoff * (1.0 + (0.25 * (os.getpid() % 4)))
+                await asyncio.sleep(backoff)
+                continue
+
+            break
 
         if response.status_code >= 400:
             detail: Optional[str]
@@ -347,12 +416,18 @@ class SomaClient:
                 self._cb_failures += 1
                 if self._cb_failures >= self._CB_THRESHOLD:
                     self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
+            duration = time.perf_counter() - start_ts
+            SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+            SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
             raise SomaClientError(
                 f"SomaBrain request {method} {url} failed: {response.status_code} {detail or response.text}"
             )
         # success path; reset breaker
         self._cb_failures = 0
         self._cb_open_until = 0.0
+        duration = time.perf_counter() - start_ts
+        SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+        SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
         if response.headers.get("content-type", "").startswith("application/json"):
             return response.json()
         return response.text
@@ -434,12 +509,15 @@ class SomaClient:
         if trace_id:
             body["trace_id"] = trace_id
 
-        response = await self._request(
-            "POST",
-            "/memory/remember",
-            json={k: v for k, v in body.items() if v is not None},
-            allow_404=True,
-        )
+        tracer = trace.get_tracer(__name__)
+        start_ts = time.perf_counter()
+        with tracer.start_as_current_span("somabrain.remember"):
+            response = await self._request(
+                "POST",
+                "/memory/remember",
+                json={k: v for k, v in body.items() if v is not None},
+                allow_404=True,
+            )
         if response is None:
             legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
             if coord:
@@ -449,7 +527,10 @@ class SomaClient:
                 legacy_payload["universe"] = resolved_universe
                 legacy_payload.setdefault("payload", {})
                 legacy_payload["payload"]["universe"] = resolved_universe
-            return await self._request("POST", "/remember", json=legacy_payload)
+            response = await self._request("POST", "/remember", json=legacy_payload)
+        duration = time.perf_counter() - start_ts
+        MEMORY_WRITE_TOTAL.labels("ok").inc()
+        MEMORY_WRITE_SECONDS.labels("ok").observe(duration)
         return response
 
     async def recall(
