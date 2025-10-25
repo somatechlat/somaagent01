@@ -10,25 +10,21 @@
       
       
       
-        <link rel="canonical" href="https://docs.somaagent01.dev/technical-manual/deployment/">
+        <link rel="canonical" href="https://docs.somaagent01.dev/DEV_HARDENED/">
       
       
-        <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="../monitoring/">
-      
-      
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
     
     
       
-        <title>Deployment - SomaAgent01 Docs</title>
+        <title>Dev‑Hardened Mode (near‑prod, local‑only) - SomaAgent01 Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
       
       
 
@@ -47,7 +43,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -66,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#deployment" class="md-skip">
+        <a href="#devhardened-mode-nearprod-localonly" class="md-skip">
           Skip to content
         </a>
       
@@ -82,7 +78,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+    <a href=".." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -102,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Deployment
+              Dev‑Hardened Mode (near‑prod, local‑only)
             
           </span>
         </div>
@@ -192,7 +188,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+    <a href=".." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -222,7 +218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -282,7 +278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/" class="md-nav__link">
+      <a href="../user-manual/" class="md-nav__link">
         
   
   
@@ -305,7 +301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/getting-started/" class="md-nav__link">
+      <a href="../user-manual/getting-started/" class="md-nav__link">
         
   
   
@@ -328,7 +324,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/installation/" class="md-nav__link">
+      <a href="../user-manual/installation/" class="md-nav__link">
         
   
   
@@ -351,7 +347,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/ui-overview/" class="md-nav__link">
+      <a href="../user-manual/ui-overview/" class="md-nav__link">
         
   
   
@@ -374,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/tunnels/" class="md-nav__link">
+      <a href="../user-manual/tunnels/" class="md-nav__link">
         
   
   
@@ -397,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/using-the-agent/" class="md-nav__link">
+      <a href="../user-manual/using-the-agent/" class="md-nav__link">
         
   
   
@@ -458,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/features/memory-management/" class="md-nav__link">
+      <a href="../user-manual/features/memory-management/" class="md-nav__link">
         
   
   
@@ -489,7 +485,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/troubleshooting/" class="md-nav__link">
+      <a href="../user-manual/troubleshooting/" class="md-nav__link">
         
   
   
@@ -512,7 +508,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-manual/accessibility/" class="md-nav__link">
+      <a href="../user-manual/accessibility/" class="md-nav__link">
         
   
   
@@ -539,20 +535,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -568,7 +562,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Technical Manual
@@ -582,7 +576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../technical-manual/" class="md-nav__link">
         
   
   
@@ -605,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../technical-manual/architecture/" class="md-nav__link">
         
   
   
@@ -625,32 +619,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Deployment
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../technical-manual/deployment/" class="md-nav__link">
         
   
   
@@ -661,116 +633,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#environments" class="md-nav__link">
-    <span class="md-ellipsis">
-      Environments
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-matrix" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configuration Matrix
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#build-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      Build Pipeline
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-compose-deployment-staging" class="md-nav__link">
-    <span class="md-ellipsis">
-      Docker Compose Deployment (Staging)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#kubernetes-deployment-planned" class="md-nav__link">
-    <span class="md-ellipsis">
-      Kubernetes Deployment (Planned)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rolling-update-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rolling Update Procedure
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rollback" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rollback
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#environment-promotion-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      Environment Promotion Checklist
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#secrets-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      Secrets Management
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#compliance-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      Compliance &amp; Audit
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -783,7 +645,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../monitoring/" class="md-nav__link">
+      <a href="../technical-manual/monitoring/" class="md-nav__link">
         
   
   
@@ -806,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../infrastructure/" class="md-nav__link">
+      <a href="../technical-manual/infrastructure/" class="md-nav__link">
         
   
   
@@ -829,7 +691,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../integrations/" class="md-nav__link">
+      <a href="../technical-manual/integrations/" class="md-nav__link">
         
   
   
@@ -852,7 +714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
+      <a href="../technical-manual/security/" class="md-nav__link">
         
   
   
@@ -875,7 +737,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../data-flow/" class="md-nav__link">
+      <a href="../technical-manual/data-flow/" class="md-nav__link">
         
   
   
@@ -898,7 +760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
+      <a href="../technical-manual/runbooks/" class="md-nav__link">
         
   
   
@@ -959,7 +821,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/gateway/" class="md-nav__link">
+      <a href="../technical-manual/components/gateway/" class="md-nav__link">
         
   
   
@@ -982,7 +844,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/conversation-worker/" class="md-nav__link">
+      <a href="../technical-manual/components/conversation-worker/" class="md-nav__link">
         
   
   
@@ -1005,7 +867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/tool-executor/" class="md-nav__link">
+      <a href="../technical-manual/components/tool-executor/" class="md-nav__link">
         
   
   
@@ -1028,7 +890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/outbox-sync/" class="md-nav__link">
+      <a href="../technical-manual/components/outbox-sync/" class="md-nav__link">
         
   
   
@@ -1051,7 +913,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/memory/" class="md-nav__link">
+      <a href="../technical-manual/components/memory/" class="md-nav__link">
         
   
   
@@ -1074,7 +936,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/memory-plane/" class="md-nav__link">
+      <a href="../technical-manual/components/memory-plane/" class="md-nav__link">
         
   
   
@@ -1097,7 +959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/mcp-proxy/" class="md-nav__link">
+      <a href="../technical-manual/components/mcp-proxy/" class="md-nav__link">
         
   
   
@@ -1120,7 +982,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/realtime-speech/" class="md-nav__link">
+      <a href="../technical-manual/components/realtime-speech/" class="md-nav__link">
         
   
   
@@ -1143,7 +1005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/ui/" class="md-nav__link">
+      <a href="../technical-manual/components/ui/" class="md-nav__link">
         
   
   
@@ -1219,7 +1081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/" class="md-nav__link">
+      <a href="../development-manual/" class="md-nav__link">
         
   
   
@@ -1242,7 +1104,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/environment/" class="md-nav__link">
+      <a href="../development-manual/environment/" class="md-nav__link">
         
   
   
@@ -1265,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/contribution-workflow/" class="md-nav__link">
+      <a href="../development-manual/contribution-workflow/" class="md-nav__link">
         
   
   
@@ -1288,7 +1150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/ci-cd/" class="md-nav__link">
+      <a href="../development-manual/ci-cd/" class="md-nav__link">
         
   
   
@@ -1311,7 +1173,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/coding-standards/" class="md-nav__link">
+      <a href="../development-manual/coding-standards/" class="md-nav__link">
         
   
   
@@ -1334,7 +1196,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/testing/" class="md-nav__link">
+      <a href="../development-manual/testing/" class="md-nav__link">
         
   
   
@@ -1357,7 +1219,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/debugging/" class="md-nav__link">
+      <a href="../development-manual/debugging/" class="md-nav__link">
         
   
   
@@ -1380,7 +1242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/release-process/" class="md-nav__link">
+      <a href="../development-manual/release-process/" class="md-nav__link">
         
   
   
@@ -1403,7 +1265,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/tooling/" class="md-nav__link">
+      <a href="../development-manual/tooling/" class="md-nav__link">
         
   
   
@@ -1426,7 +1288,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/api-reference/" class="md-nav__link">
+      <a href="../development-manual/api-reference/" class="md-nav__link">
         
   
   
@@ -1449,7 +1311,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development-manual/legacy-apis/" class="md-nav__link">
+      <a href="../development-manual/legacy-apis/" class="md-nav__link">
         
   
   
@@ -1517,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/" class="md-nav__link">
+      <a href="../onboarding-manual/" class="md-nav__link">
         
   
   
@@ -1540,7 +1402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/orientation/" class="md-nav__link">
+      <a href="../onboarding-manual/orientation/" class="md-nav__link">
         
   
   
@@ -1563,7 +1425,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/first-90-days/" class="md-nav__link">
+      <a href="../onboarding-manual/first-90-days/" class="md-nav__link">
         
   
   
@@ -1586,7 +1448,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/toolchain/" class="md-nav__link">
+      <a href="../onboarding-manual/toolchain/" class="md-nav__link">
         
   
   
@@ -1609,7 +1471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/team-contacts/" class="md-nav__link">
+      <a href="../onboarding-manual/team-contacts/" class="md-nav__link">
         
   
   
@@ -1632,7 +1494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../onboarding-manual/faq/" class="md-nav__link">
+      <a href="../onboarding-manual/faq/" class="md-nav__link">
         
   
   
@@ -1700,7 +1562,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../style-guide/" class="md-nav__link">
+      <a href="../style-guide/" class="md-nav__link">
         
   
   
@@ -1723,7 +1585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
+      <a href="../glossary/" class="md-nav__link">
         
   
   
@@ -1746,7 +1608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../documentation-audit-checklist/" class="md-nav__link">
+      <a href="../documentation-audit-checklist/" class="md-nav__link">
         
   
   
@@ -1769,7 +1631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../changelog/" class="md-nav__link">
         
   
   
@@ -1792,7 +1654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../data/streams/" class="md-nav__link">
+      <a href="../data/streams/" class="md-nav__link">
         
   
   
@@ -1860,7 +1722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/" class="md-nav__link">
+      <a href="../reference/" class="md-nav__link">
         
   
   
@@ -1883,7 +1745,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/observability-alerts/" class="md-nav__link">
+      <a href="../reference/observability-alerts/" class="md-nav__link">
         
   
   
@@ -1926,104 +1788,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#environments" class="md-nav__link">
-    <span class="md-ellipsis">
-      Environments
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-matrix" class="md-nav__link">
-    <span class="md-ellipsis">
-      Configuration Matrix
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#build-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      Build Pipeline
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-compose-deployment-staging" class="md-nav__link">
-    <span class="md-ellipsis">
-      Docker Compose Deployment (Staging)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#kubernetes-deployment-planned" class="md-nav__link">
-    <span class="md-ellipsis">
-      Kubernetes Deployment (Planned)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rolling-update-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rolling Update Procedure
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rollback" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rollback
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#environment-promotion-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      Environment Promotion Checklist
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#secrets-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      Secrets Management
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#compliance-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      Compliance &amp; Audit
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -2041,141 +1805,46 @@
   
 
 
-<h1 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">&para;</a></h1>
-<h2 id="environments">Environments<a class="headerlink" href="#environments" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Environment</th>
-<th>Purpose</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Local Dev</td>
-<td>Feature development, manual QA</td>
-<td><code>make dev-up</code></td>
-</tr>
-<tr>
-<td>Staging</td>
-<td>Pre-production validation</td>
-<td>Mirrors prod configuration, uses real providers</td>
-</tr>
-<tr>
-<td>Production</td>
-<td>Live users</td>
-<td>Hardened networking, autoscaling</td>
-</tr>
-</tbody>
-</table>
-<h2 id="configuration-matrix">Configuration Matrix<a class="headerlink" href="#configuration-matrix" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Config</th>
-<th>Local</th>
-<th>Staging</th>
-<th>Production</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>GATEWAY_REQUIRE_AUTH</code></td>
-<td>false</td>
-<td>true</td>
-<td>true</td>
-</tr>
-<tr>
-<td><code>OPENAI_API_KEY</code></td>
-<td>.env</td>
-<td>Secret manager</td>
-<td>Secret manager</td>
-</tr>
-<tr>
-<td>Kafka</td>
-<td>Docker compose</td>
-<td>Managed cluster</td>
-<td>Managed cluster</td>
-</tr>
-<tr>
-<td>Postgres</td>
-<td>Docker compose</td>
-<td>Managed instance</td>
-<td>Managed HA cluster</td>
-</tr>
-</tbody>
-</table>
-<h2 id="build-pipeline">Build Pipeline<a class="headerlink" href="#build-pipeline" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Run tests locally (<code>pytest</code>, Playwright).</li>
-<li>Build images: <code>docker build -f Dockerfile.canonical -t somaagent01:latest .</code> or <code>docker compose -f docker-compose.yaml build</code>.</li>
-<li>Push to registry (tag with git SHA, semantic version).</li>
-<li>Deploy via Compose (staging) or Helm (production).</li>
-</ol>
-<h2 id="docker-compose-deployment-staging">Docker Compose Deployment (Staging)<a class="headerlink" href="#docker-compose-deployment-staging" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>pull
-docker<span class="w"> </span>compose<span class="w"> </span>-p<span class="w"> </span>somaagent01-staging<span class="w"> </span>--profile<span class="w"> </span>core<span class="w"> </span>--profile<span class="w"> </span>dev<span class="w"> </span>-f<span class="w"> </span>docker-compose.yaml<span class="w"> </span>up<span class="w"> </span>-d
-</code></pre></div>
-<ul>
-<li>Use <code>.env.staging</code> for environment-specific overrides.</li>
-<li>Confirm health: <code>docker compose ps</code>.</li>
-<li>Host ports default to the reserved range <code>20000-20199</code> (Kafka 20000, Redis 20001, Postgres 20002, Gateway 20016, UI 20015). Override via <code>PORT_POOL_START</code> / <code>PORT_POOL_MAX</code> if the range is occupied.</li>
-<li>SomaBrain integration expects <code>http://host.docker.internal:9696</code>; ensure your local SomaBrain service is listening on that port (set via <code>SOMA_BASE_URL</code>).</li>
-</ul>
-<h2 id="kubernetes-deployment-planned">Kubernetes Deployment (Planned)<a class="headerlink" href="#kubernetes-deployment-planned" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Helm chart (<code>deploy/helm/somaagent01</code>) will manage:<ul>
-<li>StatefulSets for Postgres/Kafka/Redis</li>
-<li>Deployments for Gateway, UI, Tool Executor</li>
-<li>ConfigMaps for prompts, settings defaults</li>
-<li>Secrets for API keys, credentials</li>
-</ul>
-</li>
-<li>Ingress exposes Gateway + UI via HTTPS.</li>
-</ul>
-<h2 id="rolling-update-procedure">Rolling Update Procedure<a class="headerlink" href="#rolling-update-procedure" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Scale Gateway to zero traffic (if load balancer supports draining).</li>
-<li>Apply new build (<code>docker compose up -d gateway</code> or <code>helm upgrade</code>).</li>
-<li>Monitor health checks, metrics, logs.</li>
-<li>Re-enable traffic.</li>
-<li>Run smoke tests.</li>
-</ol>
-<h2 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Docker: <code>docker compose up -d gateway=&lt;previous-tag&gt;</code>.</li>
-<li>Helm: <code>helm rollback somaagent01 &lt;revision&gt;</code>.</li>
-<li>Ensure database migrations are backward compatible or have rollback scripts.</li>
-</ul>
-<h2 id="environment-promotion-checklist">Environment Promotion Checklist<a class="headerlink" href="#environment-promotion-checklist" title="Permanent link">&para;</a></h2>
-<ul>
-<li>[ ] Tests green (unit, integration, E2E).</li>
-<li>[ ] Release notes updated.</li>
-<li>[ ] Config parity reviewed (feature flags, API keys).</li>
-<li>[ ] Observability dashboards verified.</li>
-<li>[ ] Incident response contacts updated.</li>
-</ul>
-<h2 id="secrets-management">Secrets Management<a class="headerlink" href="#secrets-management" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Local: <code>.env</code> (never commit), <code>python/helpers/secrets.py</code> loads.</li>
-<li>Staging/Prod: managed secrets (Vault, AWS Secrets Manager). Mount or inject as env vars.</li>
-</ul>
-<h2 id="compliance-audit">Compliance &amp; Audit<a class="headerlink" href="#compliance-audit" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Record deployment metadata in <code>docs/changelog.md</code>.</li>
-<li>Tag git release (<code>git tag vX.Y.Z</code>).</li>
-<li>Store build artifacts and configuration in artifact repository.</li>
-</ul>
+<h1 id="devhardened-mode-nearprod-localonly">Dev‑Hardened Mode (near‑prod, local‑only)<a class="headerlink" href="#devhardened-mode-nearprod-localonly" title="Permanent link">&para;</a></h1>
+<p>Goals
+- Mirror production auth/policy, memory pipeline, and metrics locally.
+- Keep everything bound to localhost and safe for a single developer machine.
+- Avoid env provider keys; use Gateway credentials store.</p>
+<p>Quick Start
+1) Copy env template and generate an admin JWT
+   cp .env.devh.example .env.devh
+   export $(grep -v '^#' .env.devh | xargs -I{} echo {})
+   python3 scripts/gen_devh_jwt.py &gt; /tmp/devh.jwt
+   sed -i '' "s|^DEVH_ADMIN_JWT=.*|DEVH_ADMIN_JWT=$(cat /tmp/devh.jwt)|" .env.devh</p>
+<p>2) Bring up the stack (local‑only binds)
+   docker compose -f docker-compose.yaml -f docker-compose.devh.yaml --env-file .env.devh --profile core --profile devh up -d</p>
+<p>3) Store your LLM provider key via Gateway credentials (admin JWT)
+   curl -sS -X POST \
+     -H "Authorization: Bearer $(cat /tmp/devh.jwt)" \
+     -H 'Content-Type: application/json' \
+     http://localhost:${GATEWAY_PORT:-20016}/v1/llm/credentials \
+     -d '{"provider":"groq","secret":"REPLACE_WITH_YOUR_KEY"}'</p>
+<p>4) Open the UI and chat
+   open http://localhost:${AGENT_UI_PORT:-20015}/</p>
+<p>5) Run Playwright smoke locally
+   export RUN_PLAYWRIGHT=1
+   export AGENT_UI_URL=http://127.0.0.1:${AGENT_UI_PORT:-20015}/
+   pytest -q tests/playwright/test_ui_smoke.py</p>
+<p>What’s Enabled
+- Gateway auth required (HS256 JWT via header or cookie).
+- OPA available; start in monitor (default) and flip to enforce by setting OPA policy URL/decision path.
+- Write‑through to SomaBrain with WAL fallback and replica.
+- Export jobs (async) with local file output.
+- Full Prometheus metrics for Gateway/Replicator/OutboxSync.</p>
+<p>Safety &amp; Cleanup
+- All ports are bound to 127.0.0.1.
+- Volumes are local; to reset, stop and prune volumes as needed.</p>
 
 
 
 
 
 
-
-  
-  
 
 
 
@@ -2226,10 +1895,10 @@ docker<span class="w"> </span>compose<span class="w"> </span>-p<span class="w"> 
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>
