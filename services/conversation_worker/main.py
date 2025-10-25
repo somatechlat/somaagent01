@@ -14,6 +14,7 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
@@ -201,6 +202,7 @@ class ConversationWorker:
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         # SomaBrain HTTP client (centralized memory backend)
         self.soma = SomaBrainClient.get()
+        self.mem_outbox = MemoryWriteOutbox(dsn=APP_SETTINGS.postgres_dsn)
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
@@ -339,6 +341,10 @@ class ConversationWorker:
             await ensure_outbox_schema(self.outbox)
         except Exception:
             LOGGER.debug("Outbox schema ensure failed", exc_info=True)
+        try:
+            await ensure_mw_outbox_schema(self.mem_outbox)
+        except Exception:
+            LOGGER.debug("Memory write outbox schema ensure failed", exc_info=True)
         await self.profile_store.ensure_schema()
         await self.store.append_event(
             "system",
@@ -545,6 +551,17 @@ class ConversationWorker:
                     "SomaBrain remember failed for user message",
                     extra={"session_id": session_id, "error": str(exc)},
                 )
+                try:
+                    await self.mem_outbox.enqueue(
+                        payload=payload,
+                        tenant=tenant,
+                        session_id=session_id,
+                        persona_id=event.get("persona_id"),
+                        idempotency_key=payload.get("idempotency_key"),
+                        dedupe_key=str(payload.get("id")) if payload.get("id") else None,
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to enqueue memory write for retry (user)", exc_info=True)
             except Exception:
                 LOGGER.debug("SomaBrain remember (user) unexpected error", exc_info=True)
 
@@ -929,6 +946,17 @@ class ConversationWorker:
                     "SomaBrain remember failed for assistant message",
                     extra={"session_id": session_id, "error": str(exc)},
                 )
+                try:
+                    await self.mem_outbox.enqueue(
+                        payload=payload,
+                        tenant=tenant,
+                        session_id=session_id,
+                        persona_id=event.get("persona_id"),
+                        idempotency_key=payload.get("idempotency_key"),
+                        dedupe_key=str(payload.get("id")) if payload.get("id") else None,
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
             except Exception:
                 LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
             record_metrics(result_label, path)

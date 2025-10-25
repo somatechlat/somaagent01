@@ -1,178 +1,93 @@
-# SomaAgent01 — Canonical Upgrade Roadmap (Next‑Gen Agent)
-
-Last updated: 2025‑10‑23  
-Scope: Full platform upgrade (orchestrator, memory, messaging, policy, tools, observability, security, CI/CD)
-
-This canonical roadmap supersedes the older messaging‑only plan and captures the end‑to‑end program to deliver a durable, policy‑safe, observable, and enterprise‑ready agent. It is repo‑accurate to this codebase (services/*, python/integrations/soma_client.py, conf/*, schemas/*, docs/*).
-
-## Addendum: SomaBrain‑Only Memory Plane (Authoritative)
-
-This addendum elevates the memory plane to a first‑class, SomaBrain‑only design and supersedes any prior references to legacy SKM or the gRPC memory_service. It is the plan of record for memory and must be kept in sync with code.
-
-Key points
-- Sole client: python/integrations/soma_client.py (to be renamed SomaBrainClient) is the only memory client.
-- Legacy removal: services/common/memory_client.py and services/memory_service/* are deleted. Helm memory‑service charts are removed.
-- Policy: Enforce OPA memory.write pre‑checks in conversation_worker and tool_executor before every write.
-- Resiliency: After a successful write, publish to Kafka memory.wal; a new memory_replicator writes to a replica; permanent failures go to memory.dlq; gateway exposes admin DLQ endpoints.
-- Observability: OTEL spans and Prometheus metrics around remember/recall/batch, WAL publish, replica writes, and DLQ.
-- Health: memory_health_aggregator exposes /v1/health/memory including replication lag.
-- Profiles: /v1/agents/profiles serves dynamic profiles from ModelProfileStore; UI passes X‑Agent‑Profile; workers include agent_profile_id.
-- Security: Propagate Authorization and X‑Request‑Id; optional mTLS via env‑provided certs; OPA ensures universe_id/persona_id match JWT claims.
-
-Data contracts (memory)
-- Write payload: tenant, universe_id, persona_id, agent_profile_id, session_id, message_id, content/tool_output, attachments, metadata, idempotency key.
-- WAL record: the write payload plus write_result metadata; idempotent at the replica.
-
-Acceptance (memory plane)
-- All writes flow through SomaBrainClient to SOMA_BASE_URL; no legacy clients/services remain.
-- OPA memory.write enforced for conversation_worker and tool_executor.
-- WAL → replicator → replica pipeline operational; DLQ admin endpoints verified; replay works.
-- Spans/metrics visible; alerts on replication lag > 30s and write error rate > 0.1%.
-
-Milestones (memory plane)
-- M1: Env and CI guard. Lock SOMA_BASE_URL/SOMA_NAMESPACE; CI fails if legacy artifacts exist.
-- M2: Harden SomaBrainClient (rename; spans; retries/backoff; X‑Request‑Id; embed_then_remember; remember_batch; metrics). Insert OPA memory.write in workers.
-- M3: WAL, replicator, DLQ (publish, consume, replicate, DLQ admin endpoints; Helm topics/envs).
-- M4: Universe/Persona/Profile propagation (middleware + payload updates).
-- M5: Health & Observability (aggregator, /v1/health/memory, lag metrics/panels).
-- M6: Dynamic profile service (/v1/agents/profiles + UI wiring).
-- M7: Full‑system validation (load + chaos + policy + security scans).
-- M8: Security hardening (optional mTLS).
-
-## Vision and success criteria
-
-| Goal | Success metric |
-| --- | --- |
-| Durable orchestrator | Checkpointed DAG in Postgres; recovery < 5s; rollback to prior snapshot |
-| Role‑based sub‑agents | Roles loaded from conf/roles.yaml; OPA enforces 100% of policy tests |
-| Tool framework | Auto‑generated JSON Schemas; schema validation errors < 0.1% in CI |
-| Enterprise integration | End‑to‑end latency < 200 ms excl. upstream; zero data loss under outages |
-| Security & isolation | Sandbox (gVisor/seccomp) per‑tool option; < 1/day false‑positive Falco alerts |
-| Observability | 99% trace coverage; dashboards maintained in external project; SLO=99.9% uptime |
-| CI/CD & deployability | Helm install < 10 min; Trivy finds 0 critical; blue/green canary succeeds |
-
-## Target architecture (text)
-
-- Orchestrator (new: services/orchestrator): LangGraph‑style DAG with retry+jitter and Postgres checkpoint store (versioned); emits agent.runs.v1 and agent.steps.v1; optional visualization hooks.
-- Memory (SomaBrain‑only): Write‑through remember with Postgres outbox + health‑aware sync worker; Redis recall cache; /link provenance; optional short‑TTL SQLite micro‑cache (feature‑flagged).
-- Roles & policy: conf/roles.yaml; conf/policies/*.rego; hot‑reload; uniform policy node before tools; agent.audit.v1 for policy/delegation.
-- Tools & sandbox: Auto schema gen from docstrings; streaming delimiters {"delim":"start"|"end"}; optional gVisor/seccomp per‑tool; hard timeouts.
-- Messaging & validation: Tenant‑partitioned topics; publish‑time JSON Schema validation; optional Kafka Streams enricher for trace context.
-- Observability: OTEL spans propagate SomaBrain request_id; node metrics (success/failure/latency); Prometheus SLO alerts; dashboards maintained externally.
-- Deployment/CI/CD: Helm pre‑install (tables/topics); Vault JWT rotation; Trivy scans; benchmark CI job; HPA on custom metrics.
-	- CI includes OPA policy unit tests; benchmark job enforces baseline performance thresholds.
-
-## Mode taxonomy and configuration propagation (aligned)
-
-- Modes: dev_full, dev_prod, prod, prod_ha. One canonical configuration source drives both Docker‑Compose and Helm.
-- Global .env: A helper script generates `/root/soma-global.env` with security flags (JWT_ENABLED, OPA_ENABLED, MTLS_ENABLED), feature toggles (ENABLE_REAL_EMBEDDINGS, USE_REAL_INFRA), observability (PROMETHEUS_SCRAPE, OTEL_ENABLED), REPLICA_COUNT and resource hints, Istio/Vault injection flags, and infra ports.
-- Docker‑Compose: Services load environment via a unified env_file. In CI/dev_prod, the generated `/root/soma-global.env` is authoritative; in local dev we preserve developer overrides without breaking workflows.
-- Helm: Charts consume a global values block `{{ .Values.global.* }}`; overlays `dev-values.yaml`, `prod-values.yaml`, `prod-ha-values.yaml` set mode‑specific values. Service charts map replicas/resources/env/annotations to the global.
-- CI: The pipeline selects the overlay based on DEPLOY_MODE and runs validation before success, with canary/rollback logic.
-
-## Folder‑by‑folder scope (highlights)
-
-- services/gateway: write‑through remember (user), streaming delimiters, schema validation on publish, trace & request_id propagation.
-	- Add aggregated `/healthz` that fans out to dependencies and sub‑services.
-- services/conversation_worker: integrate orchestrator; remember assistant; Redis recall; emit runs/steps.
-- services/tool_executor: centralized OPA check; delimiters; agent.tools.v1 analytics; sandbox hooks; memory linking.
-- services/orchestrator (new): minimal DAG, checkpoint store, retry+jitter, events, visualization hook.
-- services/delegation_*: agent.audit.v1 for delegation; optional child runs.
-- services/memory_service: deprecated and removed from compose/helm.
-- services/common: publisher schema validation; outbox repo; trace utils; idempotency key gen.
-- python/integrations/soma_client.py: 1–1.5s /health probe; breaker signals; batch & link helpers.
-- conf/: roles.yaml; policies/*.rego; topics.yaml for tenant templates.
-- schemas/: add agent.runs.v1.json, agent.steps.v1.json, agent.tools.v1.json, agent.audit.v1.json; extend conversation/tool schemas with tracing.
-- docs/: messaging pages for new schemas; monitoring.md health/backoff; data/streams.md partitioning/validation.
-- scripts/: somabrain-sync CLI; breaker_open load test with assertions; schema smoke/diff tests in CI.
-- infra/: helm pre‑install job; OPA sidecar; Vault injector; HPA; dashboards; alert rules; Falco sidecar.
-- webui/: handle streaming delimiters and optional run timeline.
-	- Add a minimal Dead‑Letter UI for Kafka DLQ (inspect, filter, retry/ack).
-
-## Contracts (authoritative)
-
-- Idempotency key: `{tenant}/{namespace}/{session_id}/{role}/{timestamp_iso}/{hash16}`; on collision append `~{shortuuid8}`; persist `idem_key_base` and `idem_suffix`; unique `(tenant, namespace, somabrain_key)`; mirror in memory.meta.
-- agent.runs.v1: `run_id, tenant, session_id, run_version, run_schema_version, orchestrator_name, orchestrator_build, model_profile, status, started_at, finished_at?, trace_id, request_ids?`.
-- agent.steps.v1: `run_id, step_id, node_id, node_type, status, retry_count, started_at, finished_at, latency_ms, span_id, request_id?, inputs_summary, outputs_summary`.
-- agent.tools.v1: `run_id, step_id, tool_name, status, tool_execution_ms, tool_error_type?, payload_size?, trace_id`.
-- agent.audit.v1: `event_id, category(policy|delegation|sync|security), actor, subject, decision, reason, policy_version?, timestamp, meta`.
-- agent.benchmarks.v1: as in `schemas/agent.benchmarks.v1.json`.
-- Extend conversation/tool event schemas with `trace_id`, `span_id`, `request_id`.
-
-## Health‑aware outbox policy
-
-- Probe `/health` with 1–1.5s timeout; degraded when `ok=true` but memory_ok=false or high latency, or breaker_open recently observed; down otherwise.
-- Degraded: flush concurrency=1, batch<=25, jittered backoff (cap 30s). Down: pause writes; probe only.
-- Metrics: `somabrain.health_state{normal|degraded|down}`, `somabrain_outbox.flush_concurrency`, `somabrain.requests.breaker_open.count`.
-
-## Waves and deliverables (6–8 weeks)
-
-### Wave 0 – Contracts & docs (Days 1–3)
-- Add schemas: runs/steps/tools/audit; extend conversation/tool with tracing.
-- Docs: messaging pages; monitoring/backoff; streams/partitioning; update mkdocs nav; build docs.
-- Acceptance: schema smoke PASS; mkdocs build PASS.
-
-### Wave 1 – Memory reliability (Week 1–2)
-- Outbox tables + repo; soma_client health/breaker; write‑through remember in gateway & worker; idempotent keys; user↔assistant links.
-- Sync worker degraded/down logic; Redis recall cache (5 min); tool output linking; unit/integration + breaker_open load tests.
-- Acceptance: bounded queue under breaker; successful drain; zero loss; links present.
-
-### Wave 2 – Orchestrator MVP (Week 2–4)
-- services/orchestrator minimal DAG; Postgres checkpoint store (versioned); start/resume/get APIs; emit runs/steps with versioning.
-- Policy node; retries with jitter; node.retry_count metric; visualization hook behind flag.
-- Acceptance: kill‑and‑resume passes; events + tracing correct; retries bounded.
-
-### Wave 3 – Roles, tools, sandbox (Week 3–5)
-- conf/roles.yaml; conf/policies/*.rego; hot‑reload; uniform OPA pre‑tool; agent.audit.v1 for decisions/delegations.
-- Auto schema gen (docstrings); agent.tools.v1 analytics; streaming delimiters; UI progressive render; gVisor/seccomp per‑tool; hard timeouts.
-- Acceptance: unauthorized calls denied + audited; tools stream; sandbox toggle operational.
-
-### Wave 4 – Messaging, observability, CI/CD (Week 5–6)
-- Tenant‑partitioned topics; publish‑time schema validation; optional Kafka Streams enricher; OTEL correlation with request_id; node metrics.
-- External dashboards wired to Prometheus; SLO alerts; Helm pre‑install tables/topics; Trivy in CI; benchmark job emits agent.benchmarks.v1.
-- Mode plumbing: add `/root/generate-global-env.sh`; adopt unified env_file in Compose; introduce Helm global block + overlays (dev/prod/prod_ha) and wire all service charts to globals (env, replicas, resources, Istio/Vault annotations, observability flags).
-- Acceptance: invalid publishes rejected; dashboards live; alerts fire in drills; CI fails on critical CVEs.
-
-### Wave 5 – Security & ops (Week 6–8)
-- Vault JWT rotation + config watcher; Falco runtime monitor; OPA testing sandbox CLI.
-- somabrain-sync CLI; remove legacy services/memory_service; runbooks & incident playbooks complete.
-- Acceptance: rotation seamless; Falco events visible; memory_service removed; runbooks validated.
-
-## Milestones & acceptance criteria
-
-| Milestone | Wave | Description | Acceptance |
-| --- | --- | --- | --- |
-| M0 | 0 | Contracts + docs | Schemas + docs build PASS |
-| M1 | 1 | Outbox + write‑through + recall | Breaker test bounded + drain; zero loss |
-| M2 | 2 | Orchestrator MVP | Resume from checkpoint; events/traces OK |
-| M3 | 3 | Roles/policy/tools/sandbox | OPA enforced; streaming; analytics live |
-| M4 | 4 | Messaging/observability/CI | Validation on publish; dashboards; Trivy PASS |
-|     |   | Mode propagation         | Helper script + Compose env alignment + Helm overlays wired |
-| M5 | 5 | Security/ops + deprecations | Vault rotation; Falco; memory_service removed |
-
-## Risks & mitigations
-
-- Orchestrator complexity → Minimal DAG + strict checkpoint contract first; expand iteratively.
-- OPA latency → Short‑TTL cache; batch evaluations; default‑deny on timeout with audit.
-- Sandbox overhead → Per‑tool toggle; profile; isolate only high‑risk tools.
-- Kafka Streams complexity → Keep optional; producer‑side enrichment baseline first.
-- Token rotation issues → Canary rollout; fallback token cache; alerting.
-
-## Governance and quality gates
-
-- Build/Lint/Typecheck: PASS.
-- Tests: unit + integration + breaker_backpressure: PASS.
-- Observability: spans + external dashboards + SLO alerts verified in drills: PASS.
-- Security: Trivy 0 critical; OPA tests PASS; Vault rotation verified: PASS.
-- Docs: mkdocs build PASS; messaging pages up to date.
-- Mode validation: CI pipeline selects overlay; all validation checklist items PASS; canary rollout/rollback observable in cluster.
-
 ---
-Implementation notes for alignment
-
-- The outbox sync worker is deployable via docker-compose and Helm (chart under `infra/helm/outbox-sync`) and must be included in the umbrella release so durable messaging runs in every environment.
-- CI’s workflow `.github/workflows/deploy-soma-stack.yml` sets DEPLOY_MODE, generates `/root/soma-global.env`, chooses an overlay, lints charts, scans with Trivy, builds and pushes images, performs Helm upgrade/install with the selected overlay, executes the validation checklist, and optionally applies a canary VirtualService. Failures trigger `helm rollback` and reset traffic to 100% stable.
-- For local macOS development, the helper script’s output path is retained for CI parity. Developer ergonomics are preserved by keeping existing `.env` semantics; we will stage Compose updates safely to avoid breaking local setups while ensuring CI uses the canonical file.
-
+title: SomaAgent01 Canonical Roadmap
+version: 2.0.0
+last-reviewed: 2025-10-25
+owner: platform
+status: source-of-truth
 ---
-This document is the single source of truth for SomaAgent01’s upgrade program. Update alongside any scope or acceptance change and keep sprints aligned with `ROADMAP_SPRINTS.md`.
+
+**Purpose**
+- Establish a single, canonical plan to wire all memory operations through the Gateway to SomaBrain, guarantee durability (WAL → Kafka → Postgres replica + DLQ), and expose production-grade metrics for Voyant. UI never calls SomaBrain directly.
+
+**Scope & Principles**
+- Single front door: UI and external clients only talk to the Gateway (`services/gateway`).
+- Single memory backend: SomaBrain (dev default SOMA_BASE_URL=http://host.docker.internal:9696; health: /health or /healthz).
+- Durability-first writes: Gateway write-through → publish `memory.wal` → `memory_replicator` persists to Postgres; DLQ on failure.
+- Read path for UI: Postgres `memory_replica` via Gateway admin endpoints (fast filters/pagination).
+- Security: JWT + OPA/OpenFGA at the Gateway; no SomaBrain secrets in browsers.
+- Observability: Prometheus-only here; Voyant (separate project) renders dashboards and alerts.
+
+**Key Metrics (consumed by external dashboards)**
+- `gateway_dlq_depth{topic}` – DLQ size (Gateway Gauge; refreshed periodically).
+- `memory_replicator_lag_seconds` – WAL→replica lag (Replicator Gauge).
+- `gateway_write_through_attempts_total{path}`; `gateway_write_through_results_total{path,result}`; `gateway_write_through_wal_results_total{path,result}` – write-through health (Gateway Counters).
+- `somabrain_request_seconds_bucket{method,path,status}` (+ `_sum/_count`) and `somabrain_requests_total{method,path,status}` – client heatmap and request mix (SomaClient Histogram/Counter).
+- Supporting: `outbox_sync_effective_batch_size`, `somabrain_health_state{state}`, `memory_replicator_events_total{result}`, `memory_replicator_replication_seconds`.
+
+**Current State (2025-10-25)**
+- Gateway write-through, WAL emit, DLQ admin, health aggregation present.
+- SomaClient hardened (retries/backoff; honors Retry-After; circuit breaker; OTEL; logging redaction; correct universe vs. namespace).
+- Replicator writes `memory_replica`; emits lag/throughput metrics; stores DLQ rows.
+- DLQ depth gauge exported; docs and Compose cleaned of legacy SKM.
+
+**Target Architecture (steady state)**
+- UI → Gateway (`/v1/*`).
+- Gateway (auth/OPA/idempotency) → SomaBrain HTTP for writes/recalls; publishes `memory.wal` on successful writes.
+- Replicator → Postgres replica table for browse/audit; DLQ store + Kafka *.dlq topic on errors.
+- External monitoring scrapes Gateway/Replicator/Outbox metrics and renders dashboards/alerts.
+
+**Waves (Major Phases)**
+
+Wave A – Foundations & Hardening (security, correctness, metrics)
+- Lock universe vs. namespace semantics end-to-end.
+- Ensure sensitive header redaction everywhere; disable noisy prints (done).
+- Add background DLQ depth refresher task in Gateway (periodic Gauge update).
+- Expose `/ui/config.json` from Gateway for runtime UI config (api base, defaults, feature flags).
+- Verify Prometheus scrape ports and service discovery across envs.
+
+Wave B – Memory Admin API + UI Contract
+- Add Gateway endpoints for UI:
+  - `GET /v1/admin/memory` (list from `memory_replica` with filters/pagination)
+  - `GET /v1/admin/memory/{event_id}` (detail)
+  - `GET /v1/memory/export` (streamed; filters)
+  - `DELETE /v1/memory/{id}` (scoped delete via SomaClient)
+  - `POST /v1/memory/batch` (bulk remember/update; server idempotency)
+- Document scopes and OPA policy decisions; rate-limit and size-limit admin actions.
+
+Wave C – E2E & Capacity
+- Kafka+Postgres Testcontainers e2e for WAL→replica (happy path) and DLQ on forced error.
+- Soak/load tests for write-through + WAL; prove zero-loss and bounded lag under chaos.
+- Recording rules for Voyant (latency quantiles, error rates, lag maxima) – defined in Voyant repo.
+
+Wave D – Production Hardening
+- Enable `GATEWAY_REQUIRE_AUTH=true`, `GATEWAY_WRITE_THROUGH=true`, `GATEWAY_WRITE_THROUGH_ASYNC=true` in prod.
+- TLS/mTLS to SomaBrain as required; finalize OPA policies and OpenFGA checks.
+- Secret rotation runbooks; rate-limits; incident playbooks; disaster recovery path.
+
+Wave E – Scalability & UX Extras (optional)
+- Partition tuning for `memory.wal`; HPA for Replicator and Gateway.
+- Optional: SSE/WS for “memory changes” feed (post-replica) if UI needs live updates.
+- Optional: Envoy/Traefik as edge proxy in front of Gateway for TLS/circuit-breaking.
+
+**Sprint Overview (brief)**
+- S1–S2: Wave A tasks; config endpoint; DLQ refresher; metrics verification.
+- S3–S4: Wave B endpoints + indexes; OpenAPI; rate/size limits.
+- S5: Wave C e2e and initial load tests; tune knobs (`OUTBOX_SYNC_*`, SomaClient retries, partitions).
+- S6: Wave D security hardening; prod flags on; runbooks and alerts validated.
+- S7–S8: Wave E scalability and optional UX streams in parallel as needed.
+
+**Environment & Ports (defaults)**
+- SomaBrain (dev): `SOMA_BASE_URL=http://host.docker.internal:9696` (health: `/health` or `/healthz`).
+- Gateway metrics: `GATEWAY_METRICS_PORT` (recommend 9400).
+- Replicator metrics: `REPLICATOR_METRICS_PORT` (default ~9403).
+- Outbox Sync metrics: `OUTBOX_SYNC_METRICS_PORT` (default 9469).
+
+**Definition of Done (per Wave)**
+- A: No sensitive logs; DLQ Gauge refresh visible without calling `/v1/health`; `/ui/config.json` returns correct runtime config.
+- B: UI can list/filter/detail/delete/export/batch via Gateway only; performance acceptable at realistic volumes.
+- C: E2E/chaos tests prove zero-loss; recording rules validated in Voyant.
+- D: Security gates enforced; alerts firing thresholds proven in staging.
+- E: Throughput SLOs sustained under scaled traffic; optional UX streaming validated if implemented.
+
+**Source of Truth**
+- This file supersedes prior roadmap documents. Any sprint or milestone docs MUST align with this plan.

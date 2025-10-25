@@ -12,7 +12,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Iterable
 
 import asyncpg
 
@@ -113,6 +113,117 @@ class MemoryReplicaStore:
                 return None
             return float(row["wal_timestamp"]) if row["wal_timestamp"] is not None else None
 
+    async def get_by_event_id(self, event_id: str) -> Optional[MemoryReplicaRow]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, event_id, session_id, persona_id, tenant, role,
+                       coord, request_id, trace_id, payload, wal_timestamp, created_at
+                FROM memory_replica
+                WHERE event_id = $1
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                event_id,
+            )
+        if not row:
+            return None
+        return MemoryReplicaRow(
+            id=row["id"],
+            event_id=row["event_id"],
+            session_id=row["session_id"],
+            persona_id=row["persona_id"],
+            tenant=row["tenant"],
+            role=row["role"],
+            coord=row["coord"],
+            request_id=row["request_id"],
+            trace_id=row["trace_id"],
+            payload=row["payload"],
+            wal_timestamp=row["wal_timestamp"],
+            created_at=row["created_at"],
+        )
+
+    async def list_memories(
+        self,
+        *,
+        limit: int = 50,
+        after_id: Optional[int] = None,
+        tenant: Optional[str] = None,
+        persona_id: Optional[str] = None,
+        role: Optional[str] = None,
+        session_id: Optional[str] = None,
+        min_ts: Optional[float] = None,
+        max_ts: Optional[float] = None,
+        q: Optional[str] = None,
+    ) -> list[MemoryReplicaRow]:
+        """List replica rows with common filters.
+
+        Pagination uses id DESC with `after_id` acting as a cursor (exclusive upper bound).
+        """
+        pool = await self._ensure_pool()
+        conditions: list[str] = []
+        params: list[Any] = []
+
+        if after_id is not None:
+            params.append(after_id)
+            conditions.append(f"id < ${len(params)}")
+        if tenant:
+            params.append(tenant)
+            conditions.append(f"tenant = ${len(params)}")
+        if persona_id:
+            params.append(persona_id)
+            conditions.append(f"persona_id = ${len(params)}")
+        if role:
+            params.append(role)
+            conditions.append(f"role = ${len(params)}")
+        if session_id:
+            params.append(session_id)
+            conditions.append(f"session_id = ${len(params)}")
+        if min_ts is not None:
+            params.append(min_ts)
+            conditions.append(f"wal_timestamp >= ${len(params)}")
+        if max_ts is not None:
+            params.append(max_ts)
+            conditions.append(f"wal_timestamp <= ${len(params)}")
+        if q:
+            # Simple text search in JSON for now; consider GIN index for scale
+            params.append(f"%{q}%")
+            conditions.append(f"payload::text ILIKE ${len(params)}")
+
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        params.append(limit)
+        sql = f"""
+            SELECT id, event_id, session_id, persona_id, tenant, role,
+                   coord, request_id, trace_id, payload, wal_timestamp, created_at
+            FROM memory_replica
+            {where}
+            ORDER BY id DESC
+            LIMIT ${len(params)}
+        """
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(sql, *params)
+
+        items: list[MemoryReplicaRow] = []
+        for r in rows:
+            items.append(
+                MemoryReplicaRow(
+                    id=r["id"],
+                    event_id=r["event_id"],
+                    session_id=r["session_id"],
+                    persona_id=r["persona_id"],
+                    tenant=r["tenant"],
+                    role=r["role"],
+                    coord=r["coord"],
+                    request_id=r["request_id"],
+                    trace_id=r["trace_id"],
+                    payload=r["payload"],
+                    wal_timestamp=r["wal_timestamp"],
+                    created_at=r["created_at"],
+                )
+            )
+        return items
+
 
 MIGRATION_SQL = """
 CREATE TABLE IF NOT EXISTS memory_replica (
@@ -137,6 +248,14 @@ ON memory_replica(session_id, id DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS memory_replica_event_id_uniq
 ON memory_replica(event_id)
 WHERE event_id IS NOT NULL;
+
+-- Helpful indexes for common filters
+CREATE INDEX IF NOT EXISTS memory_replica_tenant_idx ON memory_replica(tenant, id DESC);
+CREATE INDEX IF NOT EXISTS memory_replica_persona_idx ON memory_replica(persona_id, id DESC);
+CREATE INDEX IF NOT EXISTS memory_replica_created_idx ON memory_replica(created_at DESC);
+CREATE INDEX IF NOT EXISTS memory_replica_wal_ts_idx ON memory_replica(wal_timestamp DESC);
+-- JSONB GIN index for payload text filters (optional but useful)
+CREATE INDEX IF NOT EXISTS memory_replica_payload_gin ON memory_replica USING gin (payload);
 """
 
 

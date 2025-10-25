@@ -20,7 +20,6 @@ x-agent-env: &agent-env
   SOMA_BASE_URL: http://host.docker.internal:9696
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
-  SKM_BASE_URL: http://host.docker.internal:9696
   GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-changeme}
 
 x-agent-service: &agent-service
@@ -209,4 +208,3 @@ volumes:
   kafka_data:
   redis_data:
   postgres_data:
-

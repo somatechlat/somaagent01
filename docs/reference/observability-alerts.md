@@ -34,7 +34,7 @@ groups:
       description: "Lag is {{ $value }}s (>300s) for 5m. WAL not applying."
 
   - alert: MemoryDLQNotEmpty
-    expr: sum by(topic) (increase(gateway_dlq_depth_total[10m])) > 0
+    expr: gateway_dlq_depth > 0
     for: 10m
     labels:
       severity: warning

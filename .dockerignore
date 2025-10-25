@@ -14,6 +14,8 @@
 !services/gateway/**
 !services/conversation_worker/**
 !services/tool_executor/**
+!services/outbox_sync/**
+!services/memory_replicator/**
 # memory_service deprecated; do not include in build context
 !services/common/**
 !services/ui/**
@@ -24,6 +26,7 @@
 !prompts/**
 !conf/**
 !webui/**
+!schemas/**
 !models.py
 !preload.py
 !prepare.py

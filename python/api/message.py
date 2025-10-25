@@ -1,4 +1,8 @@
 import os
+import json
+from typing import Any, Dict
+
+import httpx
 
 from werkzeug.utils import secure_filename
 
@@ -10,7 +14,58 @@ from python.helpers.print_style import PrintStyle
 
 
 class Message(ApiHandler):
+    async def _use_gateway(self) -> bool:
+        flag = os.getenv("UI_USE_GATEWAY", "false").strip().lower()
+        return flag in {"1", "true", "yes", "on"}
+
+    def _gateway_base(self) -> str:
+        # When running inside docker-compose, the gateway hostname resolves to "gateway:8010"
+        return os.getenv("UI_GATEWAY_BASE", os.getenv("GATEWAY_BASE_URL", "http://localhost:20016")).rstrip("/")
+
+    def _gateway_headers(self) -> Dict[str, str]:
+        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        if (bearer := os.getenv("UI_GATEWAY_BEARER")):
+            headers["Authorization"] = f"Bearer {bearer}"
+        # Optional persona/universe hints forwarded via headers
+        if (universe := os.getenv("UI_UNIVERSE_ID")):
+            headers["X-Universe-Id"] = universe
+        if (persona := os.getenv("UI_PERSONA_ID")):
+            headers["X-Persona-Id"] = persona
+        if (agent_profile := os.getenv("UI_AGENT_PROFILE_ID")):
+            headers["X-Agent-Profile"] = agent_profile
+        return headers
+
     async def process(self, input: dict, request: Request) -> dict | Response:
+        # When UI_USE_GATEWAY=true, forward the message to the Gateway instead of executing locally.
+        if await self._use_gateway():
+            try:
+                text = input.get("text", "")
+                metadata = input.get("metadata") or {}
+                # Allow tenant override via UI_TENANT_ID env for dev convenience
+                if os.getenv("UI_TENANT_ID") and not metadata.get("tenant"):
+                    metadata["tenant"] = os.getenv("UI_TENANT_ID")
+                payload: Dict[str, Any] = {"message": text, "attachments": [], "metadata": metadata}
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(
+                        f"{self._gateway_base()}/v1/session/message",
+                        headers=self._gateway_headers(),
+                        content=json.dumps(payload),
+                    )
+                resp.raise_for_status()
+                body = resp.json()
+                # Return an accepted-style response for the UI; immediate assistant message is produced asynchronously via SSE.
+                return {
+                    "accepted": True,
+                    "session_id": body.get("session_id"),
+                    "event_id": body.get("event_id"),
+                }
+            except Exception as exc:
+                # Fall back to local pipeline if gateway path fails
+                PrintStyle().print(f"Gateway path failed ({type(exc).__name__}): falling back to local agent")
+                task, context = await self.communicate(input=input, request=request)
+                return await self.respond(task, context)
+
+        # Default: run through the local Agent pipeline
         task, context = await self.communicate(input=input, request=request)
         return await self.respond(task, context)
 

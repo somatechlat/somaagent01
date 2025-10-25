@@ -34,7 +34,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter, Gauge, start_http_server
 from pydantic import BaseModel, Field
 
 SERVICE_NAME = "gateway"
@@ -54,9 +54,11 @@ from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
@@ -67,6 +69,7 @@ from services.common.tracing import setup_tracing
 from services.common.vault_secrets import load_kv_secret
 from services.common.idempotency import generate_for_memory_payload
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common.memory_write_outbox import MemoryWriteOutbox
 
 # Import PyJWT properly - no fallbacks or shims allowed in production
 try:
@@ -112,6 +115,44 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
 
+
+# -----------------------------
+# CORS configuration (env-driven)
+# -----------------------------
+
+def _csv_list(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _setup_cors() -> None:
+    origins = _csv_list(os.getenv("GATEWAY_CORS_ORIGINS"))
+    methods = _csv_list(os.getenv("GATEWAY_CORS_METHODS"))
+    headers = _csv_list(os.getenv("GATEWAY_CORS_HEADERS"))
+    expose = _csv_list(os.getenv("GATEWAY_CORS_EXPOSE_HEADERS"))
+    allow_credentials = os.getenv("GATEWAY_CORS_CREDENTIALS", "false").lower() in {"true", "1", "yes", "on"}
+
+    # Defaults: permissive in dev, explicit in prod via env
+    if not origins:
+        origins = ["*"]
+    if not methods:
+        methods = ["*"]
+    if not headers:
+        headers = ["*"]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_methods=methods,
+        allow_headers=headers,
+        expose_headers=expose or None,
+        allow_credentials=allow_credentials,
+    )
+
+
+_setup_cors()
+
 # Gateway write-through metrics (emitted when GATEWAY_WRITE_THROUGH is enabled)
 GATEWAY_WT_ATTEMPTS = Counter(
     "gateway_write_through_attempts_total",
@@ -128,6 +169,30 @@ GATEWAY_WT_WAL_RESULTS = Counter(
     "Outcome of WAL publish following gateway write-through",
     labelnames=("path", "result"),  # result: ok|error
 )
+
+# DLQ depth gauge for observability/alerts
+GATEWAY_DLQ_DEPTH = Gauge(
+    "gateway_dlq_depth",
+    "Current depth of DLQ messages recorded in Postgres",
+    labelnames=("topic",),
+)
+
+# -----------------------------
+# DLQ depth refresher settings
+# -----------------------------
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
+def _dlq_topics_from_env() -> list[str]:
+    raw = os.getenv("DLQ_TOPICS", "")
+    topics = [t.strip() for t in raw.split(",") if t.strip()]
+    if not topics:
+        topics = [f"{os.getenv('MEMORY_WAL_TOPIC', 'memory.wal')}.dlq"]
+    return topics
 
 
 # Helper to construct a CircuitBreaker in a backward-compatible way.
@@ -200,6 +265,14 @@ async def start_background_services() -> None:
     app.state.outbox_store = outbox_store
     app.state.publisher = DurablePublisher(bus=event_bus, outbox=outbox_store)
 
+    # Initialize memory write outbox for fail-safe remember() retry
+    mem_outbox = MemoryWriteOutbox(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    try:
+        await ensure_mw_outbox_schema(mem_outbox)
+    except Exception:
+        LOGGER.debug("MemoryWriteOutbox schema ensure failed", exc_info=True)
+    app.state.mem_write_outbox = mem_outbox
+
     # Initialize shared HTTP client with proper connection pooling
     app.state.http_client = httpx.AsyncClient(
         timeout=30.0, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
@@ -207,6 +280,13 @@ async def start_background_services() -> None:
 
     # Start config update listener in background
     asyncio.create_task(_config_update_listener())
+
+    # Start DLQ depth refresher in background
+    try:
+        app.state._dlq_refresher_stop = asyncio.Event()
+        asyncio.create_task(_dlq_depth_refresher())
+    except Exception:
+        LOGGER.debug("Failed to start DLQ refresher task", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -302,12 +382,7 @@ def _start_metrics_server() -> None:
     asyncio.create_task(_ensure_aux_services())
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is configured via _setup_cors above
 
 API_VERSION = os.getenv("GATEWAY_API_VERSION", "v1")
 def _flag_truthy(value: str | None, default: bool = False) -> bool:
@@ -334,6 +409,38 @@ async def add_version_header(request: Request, call_next):
     if "X-API-Version" not in response.headers:
         response.headers["X-API-Version"] = API_VERSION
     return response
+
+
+# -----------------------------
+# Optional CSRF protection (for cookie-based sessions)
+# -----------------------------
+
+def _csrf_enabled() -> bool:
+    return os.getenv("GATEWAY_CSRF_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+
+
+def _csrf_enforce_for_bearer() -> bool:
+    return os.getenv("GATEWAY_CSRF_ENFORCE_FOR_BEARER", "false").lower() in {"true", "1", "yes", "on"}
+
+
+@app.middleware("http")
+async def csrf_protect(request: Request, call_next):
+    if not _csrf_enabled():
+        return await call_next(request)
+
+    if request.method in {"GET", "HEAD", "OPTIONS"}:
+        return await call_next(request)
+
+    # If using bearer tokens and not enforcing CSRF for Authorization flows, skip
+    if (not _csrf_enforce_for_bearer()) and request.headers.get("authorization"):
+        return await call_next(request)
+
+    cookie_name = os.getenv("GATEWAY_CSRF_COOKIE_NAME", "csrf_token")
+    expected = request.cookies.get(cookie_name)
+    header = request.headers.get("x-csrf-token")
+    if not expected or not header or header != expected:
+        return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
+    return await call_next(request)
 
 
 def _cached_openapi_schema() -> dict[str, Any]:
@@ -419,6 +526,262 @@ def get_replica_store() -> MemoryReplicaStore:
     return _REPLICA_STORE
 
 
+# -----------------------------
+# Admin memory endpoints (list/detail)
+# -----------------------------
+
+
+@app.get("/v1/admin/memory", response_model=AdminMemoryListResponse)
+async def list_admin_memory(
+    request: Request,
+    tenant: str | None = Query(None, description="Filter by tenant"),
+    persona_id: str | None = Query(None, description="Filter by persona id"),
+    role: str | None = Query(None, description="Filter by role (user|assistant|tool)"),
+    session_id: str | None = Query(None, description="Filter by session id"),
+    q: str | None = Query(None, description="Case-insensitive search in payload JSON text"),
+    min_ts: float | None = Query(None, description="Minimum wal_timestamp (epoch seconds)"),
+    max_ts: float | None = Query(None, description="Maximum wal_timestamp (epoch seconds)"),
+    after: int | None = Query(None, ge=0, description="Return items with database id less than this cursor (paging)"),
+    limit: int = Query(50, ge=1, le=200),
+    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
+) -> AdminMemoryListResponse:
+    # Require admin scope when auth is enabled
+    auth = await authorize_request(request, {
+        "tenant": tenant,
+        "persona_id": persona_id,
+        "role": role,
+        "session_id": session_id,
+    })
+    _require_admin_scope(auth)
+
+    rows = await store.list_memories(
+        limit=limit,
+        after_id=after,
+        tenant=tenant,
+        persona_id=persona_id,
+        role=role,
+        session_id=session_id,
+        min_ts=min_ts,
+        max_ts=max_ts,
+        q=q,
+    )
+    items = [
+        AdminMemoryItem(
+            id=r.id,
+            event_id=r.event_id,
+            session_id=r.session_id,
+            persona_id=r.persona_id,
+            tenant=r.tenant,
+            role=r.role,
+            coord=r.coord,
+            request_id=r.request_id,
+            trace_id=r.trace_id,
+            payload=r.payload,
+            wal_timestamp=r.wal_timestamp,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+    next_cursor = items[-1].id if items else None
+    return AdminMemoryListResponse(items=items, next_cursor=next_cursor)
+
+
+@app.get("/v1/admin/memory/{event_id}", response_model=AdminMemoryItem)
+async def get_admin_memory_item(
+    event_id: str,
+    request: Request,
+    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
+) -> AdminMemoryItem:
+    auth = await authorize_request(request, {"event_id": event_id})
+    _require_admin_scope(auth)
+    row = await store.get_by_event_id(event_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="memory event not found")
+    return AdminMemoryItem(
+        id=row.id,
+        event_id=row.event_id,
+        session_id=row.session_id,
+        persona_id=row.persona_id,
+        tenant=row.tenant,
+        role=row.role,
+        coord=row.coord,
+        request_id=row.request_id,
+        trace_id=row.trace_id,
+        payload=row.payload,
+        wal_timestamp=row.wal_timestamp,
+        created_at=row.created_at,
+    )
+
+
+# -----------------------------
+# Memory batch/write + delete + export
+# -----------------------------
+
+
+@app.post("/v1/memory/batch")
+async def memory_batch_write(
+    payload: MemoryBatchPayload,
+    request: Request,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+) -> dict:
+    auth = await authorize_request(request, payload.model_dump())
+    _require_admin_scope(auth)
+
+    items = list(payload.items or [])
+    max_items = int(os.getenv("MEMORY_BATCH_MAX_ITEMS", "500"))
+    if len(items) > max_items:
+        raise HTTPException(status_code=413, detail=f"Too many items (>{max_items})")
+
+    soma = SomaBrainClient.get()
+    results: list[dict[str, Any]] = []
+    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+
+    for m in items:
+        try:
+            m = dict(m)
+            # Ensure idempotency on server side if missing
+            if not m.get("idempotency_key"):
+                try:
+                    m["idempotency_key"] = generate_for_memory_payload(m)
+                except Exception:
+                    pass
+            res = await soma.remember(m)
+            results.append({"id": m.get("id"), "ok": True, "result": res})
+            try:
+                wal_event = {
+                    "type": "memory.write",
+                    "role": m.get("role"),
+                    "session_id": m.get("session_id"),
+                    "persona_id": m.get("persona_id"),
+                    "tenant": (m.get("metadata") or {}).get("tenant"),
+                    "payload": m,
+                    "result": {
+                        "coord": (res or {}).get("coordinate") or (res or {}).get("coord"),
+                        "trace_id": (res or {}).get("trace_id"),
+                        "request_id": (res or {}).get("request_id"),
+                    },
+                    "timestamp": time.time(),
+                }
+                await publisher.publish(
+                    wal_topic,
+                    wal_event,
+                    dedupe_key=str(m.get("id")) if m.get("id") else None,
+                    session_id=str(m.get("session_id")) if m.get("session_id") else None,
+                    tenant=(m.get("metadata") or {}).get("tenant"),
+                )
+            except Exception:
+                LOGGER.debug("batch: WAL publish failed", exc_info=True)
+        except SomaClientError as exc:
+            results.append({"id": m.get("id"), "ok": False, "error": str(exc)})
+            # Enqueue for later retry via memory_sync
+            try:
+                mem_outbox: MemoryWriteOutbox = getattr(app.state, "mem_write_outbox", None)
+                if mem_outbox:
+                    await mem_outbox.enqueue(
+                        payload=m,
+                        tenant=(m.get("metadata") or {}).get("tenant"),
+                        session_id=m.get("session_id"),
+                        persona_id=m.get("persona_id"),
+                        idempotency_key=m.get("idempotency_key"),
+                        dedupe_key=str(m.get("id")) if m.get("id") else None,
+                    )
+            except Exception:
+                LOGGER.debug("batch: enqueue for retry failed", exc_info=True)
+        except Exception as exc:
+            results.append({"id": m.get("id"), "ok": False, "error": str(exc)})
+
+    return {"items": results}
+
+
+@app.delete("/v1/memory/{mem_id}")
+async def memory_delete(
+    mem_id: str,
+    request: Request,
+) -> dict:
+    auth = await authorize_request(request, {"id": mem_id})
+    _require_admin_scope(auth)
+    soma = SomaBrainClient.get()
+    # Prefer recall_delete that can accept identifiers; fall back to no-op if unsupported
+    try:
+        res = await soma.recall_delete({"id": mem_id})  # type: ignore[arg-type]
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"delete failed: {exc}") from exc
+    return {"deleted": True, "result": res}
+
+
+@app.get("/v1/memory/export")
+async def memory_export(
+    request: Request,
+    tenant: str | None = Query(None),
+    persona_id: str | None = Query(None),
+    role: str | None = Query(None),
+    session_id: str | None = Query(None),
+    q: str | None = Query(None),
+    min_ts: float | None = Query(None),
+    max_ts: float | None = Query(None),
+    limit_total: int | None = Query(None, ge=1),
+    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
+):
+    auth = await authorize_request(request, {
+        "tenant": tenant,
+        "persona_id": persona_id,
+        "role": role,
+        "session_id": session_id,
+    })
+    _require_admin_scope(auth)
+
+    max_rows = int(os.getenv("MEMORY_EXPORT_MAX_ROWS", "100000"))
+    hard_limit = min(limit_total or max_rows, max_rows)
+
+    filename = f"memory_export_{int(time.time())}.ndjson"
+
+    async def streamer():
+        sent = 0
+        after: int | None = None
+        page = int(os.getenv("MEMORY_EXPORT_PAGE_SIZE", "1000"))
+        while True:
+            rows = await store.list_memories(
+                limit=min(page, hard_limit - sent),
+                after_id=after,
+                tenant=tenant,
+                persona_id=persona_id,
+                role=role,
+                session_id=session_id,
+                min_ts=min_ts,
+                max_ts=max_ts,
+                q=q,
+            )
+            if not rows:
+                break
+            for r in rows:
+                obj = {
+                    "id": r.id,
+                    "event_id": r.event_id,
+                    "session_id": r.session_id,
+                    "persona_id": r.persona_id,
+                    "tenant": r.tenant,
+                    "role": r.role,
+                    "coord": r.coord,
+                    "request_id": r.request_id,
+                    "trace_id": r.trace_id,
+                    "wal_timestamp": r.wal_timestamp,
+                    "created_at": r.created_at.isoformat(),
+                    "payload": r.payload,
+                }
+                line = json.dumps(obj, ensure_ascii=False) + "\n"
+                yield line.encode("utf-8")
+                sent += 1
+                after = r.id
+                if sent >= hard_limit:
+                    return
+
+    headers = {
+        "Content-Type": "application/x-ndjson",
+        "Content-Disposition": f"attachment; filename={filename}",
+    }
+    return StreamingResponse(streamer(), headers=headers)
+
+
 class MessagePayload(BaseModel):
     session_id: str | None = Field(default=None, description="Conversation context identifier")
     persona_id: str | None = Field(default=None, description="Persona guiding this session")
@@ -475,6 +838,35 @@ class SessionEventsResponse(BaseModel):
     session_id: str
     events: list[SessionEventEntry]
     next_cursor: int | None
+
+
+# -----------------------------
+# Admin memory models
+# -----------------------------
+
+
+class AdminMemoryItem(BaseModel):
+    id: int
+    event_id: str | None
+    session_id: str | None
+    persona_id: str | None
+    tenant: str | None
+    role: str | None
+    coord: str | None
+    request_id: str | None
+    trace_id: str | None
+    payload: dict[str, Any]
+    wal_timestamp: float | None
+    created_at: datetime
+
+
+class AdminMemoryListResponse(BaseModel):
+    items: list[AdminMemoryItem]
+    next_cursor: int | None
+
+
+class MemoryBatchPayload(BaseModel):
+    items: list[dict[str, Any]] = Field(default_factory=list, description="Memory payloads to persist")
 
 
 QUICK_ACTIONS: dict[str, str] = {
@@ -783,9 +1175,10 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
             raise HTTPException(status_code=401, detail="Missing Authorization header")
         scheme, _, token = auth_header.partition(" ")
         if scheme.lower() != "bearer" or not token:
+            # Do not log raw header/token content to avoid leaking secrets
             LOGGER.warning(
                 "Authorization failed – malformed header",
-                extra={"path": request.url.path, "header": auth_header},
+                extra={"path": request.url.path},
             )
             raise HTTPException(status_code=401, detail="Invalid Authorization header")
         try:
@@ -976,6 +1369,20 @@ async def enqueue_message(
                 elif " 5" in text or " 50" in text:
                     label = "server_error"
                 GATEWAY_WT_RESULTS.labels("/v1/session/message", label).inc()
+                # Enqueue for memory_sync fail-safe
+                try:
+                    mem_outbox: MemoryWriteOutbox = getattr(app.state, "mem_write_outbox", None)
+                    if mem_outbox:
+                        await mem_outbox.enqueue(
+                            payload=mem_payload,
+                            tenant=(mem_payload.get("metadata") or {}).get("tenant"),
+                            session_id=session_id,
+                            persona_id=event.get("persona_id"),
+                            idempotency_key=mem_payload.get("idempotency_key"),
+                            dedupe_key=str(mem_payload.get("id")) if mem_payload.get("id") else None,
+                        )
+                except Exception:
+                    LOGGER.debug("Failed to enqueue memory write for retry", exc_info=True)
             except Exception:
                 LOGGER.debug("Gateway write-through unexpected error", exc_info=True)
                 GATEWAY_WT_RESULTS.labels("/v1/session/message", "exception").inc()
@@ -1090,6 +1497,20 @@ async def enqueue_quick_action(
                 elif " 5" in text or " 50" in text:
                     label = "server_error"
                 GATEWAY_WT_RESULTS.labels("/v1/session/action", label).inc()
+                # Enqueue for memory_sync fail-safe
+                try:
+                    mem_outbox: MemoryWriteOutbox = getattr(app.state, "mem_write_outbox", None)
+                    if mem_outbox:
+                        await mem_outbox.enqueue(
+                            payload=mem_payload,
+                            tenant=(mem_payload.get("metadata") or {}).get("tenant"),
+                            session_id=session_id,
+                            persona_id=event.get("persona_id"),
+                            idempotency_key=mem_payload.get("idempotency_key"),
+                            dedupe_key=str(mem_payload.get("id")) if mem_payload.get("id") else None,
+                        )
+                except Exception:
+                    LOGGER.debug("Failed to enqueue memory write for retry (quick_action)", exc_info=True)
             except Exception:
                 LOGGER.debug("Gateway write-through unexpected error (quick_action)", exc_info=True)
                 GATEWAY_WT_RESULTS.labels("/v1/session/action", "exception").inc()
@@ -1345,6 +1766,10 @@ async def shutdown_background_services() -> None:
 
     LOGGER.info("Gateway shutdown completed")
 
+    # Stop DLQ refresher
+    if hasattr(app.state, "_dlq_refresher_stop"):
+        app.state._dlq_refresher_stop.set()
+
 @app.get("/v1/health")
 async def health_check(
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
@@ -1418,11 +1843,81 @@ async def health_check(
         dlq_topic = f"{os.getenv('MEMORY_WAL_TOPIC', 'memory.wal')}.dlq"
         dlq_store = get_dlq_store()
         depth = await dlq_store.count(topic=dlq_topic)
+        # Emit depth to Prometheus for alerting
+        try:
+            GATEWAY_DLQ_DEPTH.labels(dlq_topic).set(int(depth))
+        except Exception:
+            pass
         components["memory_dlq"] = {"status": "ok", "detail": f"depth={int(depth)}"}
     except Exception as exc:
         components["memory_dlq"] = {"status": "degraded", "detail": f"{type(exc).__name__}: {exc}"}
 
     return JSONResponse({"status": overall_status, "components": components})
+
+
+# -----------------------------
+# UI runtime config endpoint
+# -----------------------------
+
+@app.get("/ui/config.json")
+async def ui_runtime_config() -> JSONResponse:
+    """Serve minimal runtime configuration for the Web UI.
+
+    Contains safe, non-secret values the UI can use for wiring.
+    """
+    payload = {
+        "api_base": f"/{API_VERSION}",
+        "universe_default": os.getenv("SOMA_NAMESPACE"),
+        "namespace_default": os.getenv("SOMA_MEMORY_NAMESPACE", "wm"),
+        "features": {
+            "write_through": _write_through_enabled(),
+            "write_through_async": _write_through_async(),
+            "require_auth": REQUIRE_AUTH,
+        },
+    }
+    return JSONResponse(payload)
+
+
+# -----------------------------
+# DLQ depth refresher (background)
+# -----------------------------
+
+async def _refresh_dlq_depth_once(topics: list[str]) -> dict[str, int]:
+    results: dict[str, int] = {}
+    try:
+        store = get_dlq_store()
+        for topic in topics:
+            try:
+                depth = int(await store.count(topic=topic))
+            except Exception as exc:
+                LOGGER.debug("DLQ count failed", extra={"topic": topic, "error": str(exc)})
+                continue
+            results[topic] = depth
+            try:
+                GATEWAY_DLQ_DEPTH.labels(topic).set(depth)
+            except Exception:
+                pass
+    except Exception:
+        LOGGER.debug("DLQ refresh pass failed", exc_info=True)
+    return results
+
+
+async def _dlq_depth_refresher() -> None:
+    poll = max(10.0, _env_float("GATEWAY_DLQ_POLL_SECONDS", 30.0))
+    topics = _dlq_topics_from_env()
+    # simple jitter to stagger across replicas
+    try:
+        await asyncio.sleep(min(5.0, poll * 0.1))
+    except Exception:
+        pass
+    while True:
+        try:
+            if getattr(app.state, "_dlq_refresher_stop", None) and app.state._dlq_refresher_stop.is_set():
+                break
+            await _refresh_dlq_depth_once(topics)
+        except Exception:
+            LOGGER.debug("DLQ refresher iteration failed", exc_info=True)
+        await asyncio.sleep(poll)
 
 
 async def _gather_health_components_with_memory(

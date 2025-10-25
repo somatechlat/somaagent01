@@ -7,6 +7,7 @@ topics=(
   conversation.outbound:3
   tool.requests:3
   tool.results:3
+  memory.wal:3
   config_updates:1
 )
 
@@ -18,7 +19,8 @@ function ensure_topic() {
   local parts="$2"
   echo "Ensuring topic: $name partitions=$parts"
 
-  /opt/bitnami/kafka/bin/kafka-topics.sh \
+  # Use the kafka-topics CLI available in the Confluent image
+  kafka-topics \
     --bootstrap-server "$BS" \
     --create --if-not-exists \
     --topic "$name" \
