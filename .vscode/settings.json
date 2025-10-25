@@ -14,5 +14,6 @@
     // Optional: point VSCode to jsconfig.json if you add one
     "jsconfig.json": "${workspaceFolder}/jsconfig.json",
     "postman.settings.dotenv-detection-notification-visibility": false,
-    "chatgpt.openOnStartup": true
+    "chatgpt.openOnStartup": true,
+    "python-envs.pythonProjects": []
 }

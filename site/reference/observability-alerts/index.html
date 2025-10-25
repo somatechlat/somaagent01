@@ -1956,7 +1956,7 @@
 <span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Lag</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$value</span><span class="nv"> </span><span class="s">}}s</span><span class="nv"> </span><span class="s">(&gt;300s)</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">5m.</span><span class="nv"> </span><span class="s">WAL</span><span class="nv"> </span><span class="s">not</span><span class="nv"> </span><span class="s">applying.&quot;</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MemoryDLQNotEmpty</span>
-<span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum by(topic) (increase(gateway_dlq_depth_total[10m])) &gt; 0</span>
+<span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway_dlq_depth &gt; 0</span>
 <span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10m</span>
 <span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>

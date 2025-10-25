@@ -1,0 +1,41 @@
+version: "3.9"
+
+# Dev‑Hardened override: mirrors production behavior while staying local-only.
+
+services:
+  gateway:
+    profiles: ["devh"]
+    environment:
+      GATEWAY_REQUIRE_AUTH: "true"
+      GATEWAY_JWT_SECRET: "${DEVH_JWT_SECRET:-devh-secret}"
+      GATEWAY_CSRF_ENABLED: "false"
+      GATEWAY_CORS_ORIGINS: "http://localhost:${AGENT_UI_PORT:-20015}"
+      GATEWAY_ENC_KEY: "${GATEWAY_ENC_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
+      GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
+      GATEWAY_WRITE_THROUGH: "true"
+      GATEWAY_WRITE_THROUGH_ASYNC: "false"
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-20016}:8010"
+
+  conversation-worker:
+    profiles: ["devh"]
+    environment:
+      WORKER_GATEWAY_BASE: "http://gateway:8010"
+      GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
+
+  outbox-sync:
+    profiles: ["devh"]
+
+  memory-replicator:
+    profiles: ["devh"]
+
+  agent-ui:
+    profiles: ["devh"]
+    environment:
+      UI_USE_GATEWAY: "true"
+      UI_GATEWAY_BASE: "http://gateway:8010"
+      # Bearer sent from UI proxy to Gateway (admin scope token)
+      UI_GATEWAY_BEARER: "${DEVH_ADMIN_JWT:-}"
+    ports:
+      - "127.0.0.1:${AGENT_UI_PORT:-20015}:80"
+

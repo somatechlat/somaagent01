@@ -226,6 +226,32 @@ def _make_circuit_breaker(*, fail_max: int = 5, reset_timeout: int = 60, expecte
         # Older pybreaker versions don't accept `expected_exception`; fall back.
         return pybreaker.CircuitBreaker(fail_max=fail_max, reset_timeout=reset_timeout)
 
+
+def _classify_wt_error(exc: Exception) -> str:
+    """Map exceptions to stable result labels for write-through metrics.
+
+    Returns one of: client_error | server_error | exception.
+    Attempts to parse a 3-digit HTTP status from the exception text.
+    """
+    text = str(exc)
+    try:
+        import re
+
+        m = re.search(r"\b(\d{3})\b", text)
+        if m:
+            code = int(m.group(1))
+            if 400 <= code < 500:
+                return "client_error"
+            if 500 <= code < 600:
+                return "server_error"
+    except Exception:
+        pass
+    if " 4" in text or " 40" in text:
+        return "client_error"
+    if " 5" in text or " 50" in text:
+        return "server_error"
+    return "exception"
+
 # ---------------------------------------------------------------------------
 # Feature‑flag hot‑reload background task
 # ---------------------------------------------------------------------------
@@ -1337,6 +1363,13 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
     token_required = REQUIRE_AUTH or any([JWT_SECRET, JWT_PUBLIC_KEY, JWT_JWKS_URL])
     auth_header = request.headers.get("authorization")
 
+    # Support JWT in cookie when configured (useful for browser sessions)
+    if not auth_header:
+        cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+        token_cookie = request.cookies.get(cookie_name)
+        if token_cookie:
+            auth_header = f"Bearer {token_cookie}"
+
     claims: Dict[str, Any] = {}
 
     # Enforce JWT only when required. If auth isn't required, ignore malformed/absent tokens.
@@ -1536,13 +1569,7 @@ async def enqueue_message(
                     "Gateway write-through remember failed",
                     extra={"session_id": session_id, "error": str(exc)},
                 )
-                # Heuristically classify client/server from message; default to exception
-                label = "exception"
-                text = str(exc)
-                if " 4" in text or " 40" in text:
-                    label = "client_error"
-                elif " 5" in text or " 50" in text:
-                    label = "server_error"
+                label = _classify_wt_error(exc)
                 GATEWAY_WT_RESULTS.labels("/v1/session/message", label).inc()
                 # Enqueue for memory_sync fail-safe
                 try:
@@ -1558,9 +1585,9 @@ async def enqueue_message(
                         )
                 except Exception:
                     LOGGER.debug("Failed to enqueue memory write for retry", exc_info=True)
-            except Exception:
+            except Exception as exc:
                 LOGGER.debug("Gateway write-through unexpected error", exc_info=True)
-                GATEWAY_WT_RESULTS.labels("/v1/session/message", "exception").inc()
+                GATEWAY_WT_RESULTS.labels("/v1/session/message", _classify_wt_error(exc)).inc()
 
         if _write_through_async():
             asyncio.create_task(_write_through())
@@ -1665,12 +1692,7 @@ async def enqueue_quick_action(
                     "Gateway write-through remember failed (quick_action)",
                     extra={"session_id": session_id, "error": str(exc)},
                 )
-                label = "exception"
-                text = str(exc)
-                if " 4" in text or " 40" in text:
-                    label = "client_error"
-                elif " 5" in text or " 50" in text:
-                    label = "server_error"
+                label = _classify_wt_error(exc)
                 GATEWAY_WT_RESULTS.labels("/v1/session/action", label).inc()
                 # Enqueue for memory_sync fail-safe
                 try:
@@ -1686,9 +1708,9 @@ async def enqueue_quick_action(
                         )
                 except Exception:
                     LOGGER.debug("Failed to enqueue memory write for retry (quick_action)", exc_info=True)
-            except Exception:
+            except Exception as exc:
                 LOGGER.debug("Gateway write-through unexpected error (quick_action)", exc_info=True)
-                GATEWAY_WT_RESULTS.labels("/v1/session/action", "exception").inc()
+                GATEWAY_WT_RESULTS.labels("/v1/session/action", _classify_wt_error(exc)).inc()
 
         if _write_through_async():
             asyncio.create_task(_write_through())

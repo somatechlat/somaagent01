@@ -59,14 +59,17 @@ Wave B – Memory Admin API + UI Contract
 - Document scopes and OPA policy decisions; rate-limit and size-limit admin actions.
 
 Wave C – E2E & Capacity
-- Kafka+Postgres Testcontainers e2e for WAL→replica (happy path) and DLQ on forced error.
-- Soak/load tests for write-through + WAL; prove zero-loss and bounded lag under chaos.
-- Recording rules for Voyant (latency quantiles, error rates, lag maxima) – defined in Voyant repo.
+- Kafka+Postgres Testcontainers e2e for WAL→replica (happy path) and DLQ on forced error. (done)
+- Add outage→recovery e2e for memory_sync. (done)
+- Soak/load tests for write-through + WAL; prove zero-loss and bounded lag under chaos. (pending)
+- Recording rules for Voyant (latency quantiles, error rates, lag maxima) – defined in Voyant repo. (external)
 
 Wave D – Production Hardening
-- Enable `GATEWAY_REQUIRE_AUTH=true`, `GATEWAY_WRITE_THROUGH=true`, `GATEWAY_WRITE_THROUGH_ASYNC=true` in prod.
-- TLS/mTLS to SomaBrain as required; finalize OPA policies and OpenFGA checks.
-- Secret rotation runbooks; rate-limits; incident playbooks; disaster recovery path.
+- Enable `GATEWAY_REQUIRE_AUTH=true`, `GATEWAY_WRITE_THROUGH=true`, `GATEWAY_WRITE_THROUGH_ASYNC=true` in prod. (auth enforced in code; compose defaults vary by profile)
+- JWT via header or cookie: `GATEWAY_JWT_COOKIE_NAME` supported for browser sessions; CSRF middleware available via env flags. (done)
+- OPA evaluation and optional OpenFGA tenant checks enforced when `REQUIRE_AUTH=true`. (present)
+- TLS/mTLS to SomaBrain as required (config/env-driven). (pending env)
+- Secret rotation runbooks; rate-limits; incident playbooks; disaster recovery path. (pending docs)
 
 Wave E – Scalability & UX Extras (optional)
 - Partition tuning for `memory.wal`; HPA for Replicator and Gateway.
@@ -77,7 +80,7 @@ Wave E – Scalability & UX Extras (optional)
 - S1: Remove UI fallback; health proxy wiring; Send gating (done).
 - S2: Config endpoint and DLQ refresher verification (done).
 - S3–S4: Wave B endpoints + indexes; OpenAPI; rate/size limits.
-- S5: Wave C e2e and initial load tests; tune knobs (`OUTBOX_SYNC_*`, SomaClient retries, partitions).
+- S5: Wave C e2e and initial load tests; tune knobs (`OUTBOX_SYNC_*`, SomaClient retries, partitions). (partially done: e2e complete; load test pending)
 - S6: Wave D security hardening; prod flags on; runbooks and alerts validated.
 - S7–S8: Wave E scalability and optional UX streams in parallel as needed.
 
