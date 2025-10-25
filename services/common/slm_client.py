@@ -25,7 +25,7 @@ class SLMClient:
         self.default_model = model or os.getenv(
             "SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct"
         )
-        self.api_key = os.getenv("SLM_API_KEY")  # optional for authenticated gateways
+        self.api_key = os.getenv("SLM_API_KEY")  # required for authenticated providers
         self._client = httpx.AsyncClient(timeout=30.0)
 
     async def chat(
@@ -37,6 +37,12 @@ class SLMClient:
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> Tuple[str, dict[str, int]]:
+        # No dev fallback: fail fast if misconfigured
+        if not (self.base_url and (model or self.default_model)):
+            raise RuntimeError("SLM misconfigured: base_url or model missing")
+        if not self.api_key:
+            # Some providers allow no key; most require it. Enforce presence to avoid silent failures.
+            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         url = f"{(base_url or self.base_url).rstrip('/')}/v1/chat/completions"
         payload = {
@@ -79,6 +85,10 @@ class SLMClient:
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> AsyncIterator[Dict[str, Any]]:
+        if not (self.base_url and (model or self.default_model)):
+            raise RuntimeError("SLM misconfigured: base_url or model missing")
+        if not self.api_key:
+            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         url = f"{(base_url or self.base_url).rstrip('/')}/v1/chat/completions"
         payload = {

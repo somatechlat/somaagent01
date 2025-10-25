@@ -29,6 +29,8 @@ status: source-of-truth
 - SomaClient hardened (retries/backoff; honors Retry-After; circuit breaker; OTEL; logging redaction; correct universe vs. namespace).
 - Replicator writes `memory_replica`; emits lag/throughput metrics; stores DLQ rows.
 - DLQ depth gauge exported; docs and Compose cleaned of legacy SKM.
+- UI Gateway mode enabled: `/message_async` forwards to Gateway; SSE via `/gateway_stream?session_id=…` renders streamed events.
+- UI health now proxies Gateway `/healthz`; status indicator reflects Gateway/SomaBrain health; Send is gated when unhealthy. Local-agent fallback in the UI message path has been removed.
 
 **Target Architecture (steady state)**
 - UI → Gateway (`/v1/*`).
@@ -44,6 +46,8 @@ Wave A – Foundations & Hardening (security, correctness, metrics)
 - Add background DLQ depth refresher task in Gateway (periodic Gauge update).
 - Expose `/ui/config.json` from Gateway for runtime UI config (api base, defaults, feature flags).
 - Verify Prometheus scrape ports and service discovery across envs.
+- Remove UI local-agent fallback; Gateway errors surface to UI (done).
+- Gate Send on Gateway/SomaBrain health; use UI `/health` → Gateway `/healthz` proxy (done).
 
 Wave B – Memory Admin API + UI Contract
 - Add Gateway endpoints for UI:
@@ -70,7 +74,8 @@ Wave E – Scalability & UX Extras (optional)
 - Optional: Envoy/Traefik as edge proxy in front of Gateway for TLS/circuit-breaking.
 
 **Sprint Overview (brief)**
-- S1–S2: Wave A tasks; config endpoint; DLQ refresher; metrics verification.
+- S1: Remove UI fallback; health proxy wiring; Send gating (done).
+- S2: Config endpoint and DLQ refresher verification (done).
 - S3–S4: Wave B endpoints + indexes; OpenAPI; rate/size limits.
 - S5: Wave C e2e and initial load tests; tune knobs (`OUTBOX_SYNC_*`, SomaClient retries, partitions).
 - S6: Wave D security hardening; prod flags on; runbooks and alerts validated.

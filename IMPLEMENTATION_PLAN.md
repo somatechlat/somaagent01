@@ -1,3 +1,5 @@
+<!-- DEPRECATION NOTE: For current plan and execution order see ROADMAP_CANONICAL.md. This document is retained for historical context. -->
+
 # 🚀 SRS Implementation Plan - SomaAgent01
 
 **Based on:** SRS_GAP_ANALYSIS.md  

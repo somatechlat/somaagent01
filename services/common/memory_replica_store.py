@@ -153,6 +153,8 @@ class MemoryReplicaStore:
         persona_id: Optional[str] = None,
         role: Optional[str] = None,
         session_id: Optional[str] = None,
+        universe: Optional[str] = None,
+        namespace: Optional[str] = None,
         min_ts: Optional[float] = None,
         max_ts: Optional[float] = None,
         q: Optional[str] = None,
@@ -180,6 +182,16 @@ class MemoryReplicaStore:
         if session_id:
             params.append(session_id)
             conditions.append(f"session_id = ${len(params)}")
+        if universe:
+            params.append(universe)
+            conditions.append(
+                f"(payload->'metadata'->>'universe_id') = ${len(params)}"
+            )
+        if namespace:
+            params.append(namespace)
+            conditions.append(
+                f"COALESCE(payload->>'namespace', payload->'metadata'->>'namespace') = ${len(params)}"
+            )
         if min_ts is not None:
             params.append(min_ts)
             conditions.append(f"wal_timestamp >= ${len(params)}")
@@ -256,6 +268,11 @@ CREATE INDEX IF NOT EXISTS memory_replica_created_idx ON memory_replica(created_
 CREATE INDEX IF NOT EXISTS memory_replica_wal_ts_idx ON memory_replica(wal_timestamp DESC);
 -- JSONB GIN index for payload text filters (optional but useful)
 CREATE INDEX IF NOT EXISTS memory_replica_payload_gin ON memory_replica USING gin (payload);
+-- Expression indexes for structured filters (universe / namespace)
+CREATE INDEX IF NOT EXISTS memory_replica_universe_expr_idx
+ON memory_replica ((payload->'metadata'->>'universe_id'));
+CREATE INDEX IF NOT EXISTS memory_replica_namespace_expr_idx
+ON memory_replica ((COALESCE(payload->>'namespace', payload->'metadata'->>'namespace')));
 """
 
 

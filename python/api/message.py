@@ -36,15 +36,16 @@ class Message(ApiHandler):
         return headers
 
     async def process(self, input: dict, request: Request) -> dict | Response:
-        # When UI_USE_GATEWAY=true, forward the message to the Gateway instead of executing locally.
+        # When UI_USE_GATEWAY=true, forward the message to the Gateway.
+        # No local fallback is allowed: failures must surface to the UI.
         if await self._use_gateway():
+            text = input.get("text", "")
+            metadata = input.get("metadata") or {}
+            # Allow tenant override via UI_TENANT_ID env for dev convenience
+            if os.getenv("UI_TENANT_ID") and not metadata.get("tenant"):
+                metadata["tenant"] = os.getenv("UI_TENANT_ID")
+            payload: Dict[str, Any] = {"message": text, "attachments": [], "metadata": metadata}
             try:
-                text = input.get("text", "")
-                metadata = input.get("metadata") or {}
-                # Allow tenant override via UI_TENANT_ID env for dev convenience
-                if os.getenv("UI_TENANT_ID") and not metadata.get("tenant"):
-                    metadata["tenant"] = os.getenv("UI_TENANT_ID")
-                payload: Dict[str, Any] = {"message": text, "attachments": [], "metadata": metadata}
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.post(
                         f"{self._gateway_base()}/v1/session/message",
@@ -53,19 +54,27 @@ class Message(ApiHandler):
                     )
                 resp.raise_for_status()
                 body = resp.json()
-                # Return an accepted-style response for the UI; immediate assistant message is produced asynchronously via SSE.
                 return {
                     "accepted": True,
                     "session_id": body.get("session_id"),
                     "event_id": body.get("event_id"),
                 }
+            except httpx.HTTPStatusError as exc:
+                # Surface Gateway HTTP error to UI (no fallback)
+                status = exc.response.status_code
+                return Response(
+                    response=f"Gateway error {status}: {exc.response.text}",
+                    status=status,
+                    mimetype="text/plain",
+                )
             except Exception as exc:
-                # Fall back to local pipeline if gateway path fails
-                PrintStyle().print(f"Gateway path failed ({type(exc).__name__}): falling back to local agent")
-                task, context = await self.communicate(input=input, request=request)
-                return await self.respond(task, context)
+                return Response(
+                    response=f"Gateway unreachable: {type(exc).__name__}: {str(exc)}",
+                    status=502,
+                    mimetype="text/plain",
+                )
 
-        # Default: run through the local Agent pipeline
+        # Default (legacy dev mode): run through the local Agent pipeline
         task, context = await self.communicate(input=input, request=request)
         return await self.respond(task, context)
 
