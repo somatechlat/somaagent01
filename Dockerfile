@@ -13,6 +13,7 @@ COPY ./common/ /git/agent-zero/common/
 COPY ./conf/ /git/agent-zero/conf/
 COPY ./prompts/ /git/agent-zero/prompts/
 COPY ./webui/ /git/agent-zero/webui/
+COPY ./schemas/ /git/agent-zero/schemas/
 
 # Install required dependencies (trimmed)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -55,6 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pybreaker==1.1.0 \
         regex==2024.9.11 \
         pytz==2024.2 \
+        simpleeval==1.0.3 \
         # Ensure runtime crypto, HF hub and pydantic compatibility are present
         cryptography==46.0.3 \
         "huggingface-hub==0.13.3" \

@@ -17,6 +17,7 @@ from python.integrations.somabrain_client import SomaBrainClient, SomaClientErro
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
 from services.common.idempotency import generate_for_memory_payload
@@ -143,6 +144,7 @@ class ToolExecutor:
         self.requeue_prefix = _policy_requeue_prefix()
         # Use SomaBrain HTTP client for memory persistence
         self.soma = SomaBrainClient.get()
+        self.mem_outbox = MemoryWriteOutbox(dsn=SERVICE_SETTINGS.postgres_dsn)
         stream_defaults = SERVICE_SETTINGS.extra.get(
             "tool_executor_topics",
             {
@@ -171,6 +173,10 @@ class ToolExecutor:
             await ensure_outbox_schema(self.outbox)
         except Exception:
             LOGGER.debug("Outbox schema ensure failed", exc_info=True)
+        try:
+            await ensure_mw_outbox_schema(self.mem_outbox)
+        except Exception:
+            LOGGER.debug("Memory write outbox schema ensure failed", exc_info=True)
         await self.bus.consume(
             self.streams["requests"],
             self.streams["group"],
@@ -478,6 +484,17 @@ class ToolExecutor:
                     "error": str(exc),
                 },
             )
+            try:
+                await self.mem_outbox.enqueue(
+                    payload=memory_payload,
+                    tenant=tenant,
+                    session_id=result_event.get("session_id"),
+                    persona_id=persona_id,
+                    idempotency_key=memory_payload.get("idempotency_key"),
+                    dedupe_key=str(memory_payload.get("id")) if memory_payload.get("id") else None,
+                )
+            except Exception:
+                LOGGER.debug("Failed to enqueue memory write for retry (tool)", exc_info=True)
         except Exception:
             LOGGER.debug("SomaBrain remember (tool result) unexpected error", exc_info=True)
 

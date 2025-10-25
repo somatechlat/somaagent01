@@ -76,9 +76,9 @@ MEMORY_WRITE_SECONDS = Histogram(
 def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     """Sanitize the provided base URL.
 
-    The function now only ensures a non‑empty, well‑formed URL and rewrites
-    the legacy port ``9595`` to the current default ``9696``. All references
-    to the old ``somafractalmemory`` host markers have been removed.
+    - Ensures a non‑empty, well‑formed URL string
+    - If the legacy port 9595 is detected, preserve the original host and
+      scheme but rewrite the port to 9696
     """
     candidate = (raw_base_url or "").strip()
     if not candidate:
@@ -92,18 +92,19 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
         logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
         return "http://localhost:9696"
 
-    port = url.port
-    scheme = url.scheme or "http"
-
-    # Rewrite only the legacy port 9595 to the current default.
-    if port == 9595:
-        override = httpx.URL(f"{scheme}://localhost:9696")
+    # Rewrite only the legacy port 9595 to the current default (9696),
+    # preserving original host and scheme.
+    if url.port == 9595:
+        try:
+            override = url.copy_with(port=9696)
+        except Exception:
+            override = httpx.URL("http://localhost:9696")
         logger.warning(
-            "Detected legacy SomaBrain endpoint %s; redirecting to %s",
+            "Detected legacy SomaBrain port on %s; redirecting to %s",
             normalized,
             override,
         )
-        return str(override)
+        return str(override).rstrip("/")
 
     return normalized
 
@@ -122,7 +123,12 @@ def _default_base_url() -> str:
 
 DEFAULT_BASE_URL = _default_base_url()
 DEFAULT_TIMEOUT = float(os.environ.get("SOMA_TIMEOUT_SECONDS", "30"))
-DEFAULT_NAMESPACE = os.environ.get("SOMA_NAMESPACE")
+# IMPORTANT: Distinguish logical universe vs. memory namespace
+# - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
+# - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
+#   If not provided, default to "wm" for working memory.
+DEFAULT_UNIVERSE = os.environ.get("SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = os.environ.get("SOMA_MEMORY_NAMESPACE", "wm")
 
 TENANT_HEADER = os.environ.get("SOMA_TENANT_HEADER", "X-Tenant-ID")
 AUTH_HEADER = os.environ.get("SOMA_AUTH_HEADER", "Authorization")
@@ -216,16 +222,19 @@ class SomaClient:
         timeout: float = DEFAULT_TIMEOUT,
         verify_ssl: Optional[bool] = None,
     ) -> None:
-        print(
-            "[SomaClient.__init__] initializing",
-            {
+        logger.debug(
+            "SomaClient initializing",
+            extra={
                 "provided_base_url": base_url,
                 "env_base_url": os.environ.get("SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
         self.base_url = _normalize_base_url(sanitized_base_url)
+        # Memory namespace (e.g. "wm"). Not the same as the logical universe.
         self.namespace = namespace
+        # Universe/context identifier (e.g. "somabrain_ns:public")
+        self.universe = DEFAULT_UNIVERSE
         self._tenant_id = tenant_id or os.environ.get("SOMA_TENANT_ID")
         self._api_key = api_key or os.environ.get("SOMA_API_KEY")
         verify_override = _boolean(os.environ.get("SOMA_VERIFY_SSL"))
@@ -348,15 +357,14 @@ class SomaClient:
             # Never fail on propagation
             pass
 
-        print(
-            "[SomaClient] preparing",
-            {
+        logger.debug(
+            "SomaClient request",
+            extra={
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
                 "env_base_url": os.environ.get("SOMA_BASE_URL"),
-                "params": params or None,
-                "headers": request_headers or None,
+                "params_present": bool(params),
             },
         )
 
@@ -394,9 +402,9 @@ class SomaClient:
 
             # Response received
             status_label = str(response.status_code)
-            print(
-                "[SomaClient] response",
-                {
+            logger.debug(
+                "SomaClient response",
+                extra={
                     "method": method,
                     "path": url,
                     "status_code": response.status_code,
@@ -412,11 +420,33 @@ class SomaClient:
                 SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
                 return None
 
-            if response.status_code >= 500 and attempt < self._max_retries:
-                # Retry on server errors
+            # Retry on 5xx and 429 (Too Many Requests); honor Retry-After if present
+            if (response.status_code >= 500 or response.status_code == 429) and attempt < self._max_retries:
                 attempt += 1
+                # Baseline exponential backoff with jitter
                 backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
                 backoff = backoff * (1.0 + (0.25 * (os.getpid() % 4)))
+                # If server provided Retry-After, prefer it when longer
+                ra = response.headers.get("retry-after")
+                if ra:
+                    try:
+                        # Retry-After can be seconds or HTTP-date; try seconds first
+                        ra_s = float(ra)
+                    except ValueError:
+                        # Fallback: parse HTTP-date to seconds delta (simple/lenient)
+                        try:
+                            import email.utils as _eutils, time as _time
+
+                            ts = _eutils.parsedate_to_datetime(ra)
+                            if ts is not None:
+                                delta = (ts.timestamp() - _time.time())
+                                ra_s = max(0.0, float(delta))
+                            else:
+                                ra_s = 0.0
+                        except Exception:
+                            ra_s = 0.0
+                    if ra_s and ra_s > backoff:
+                        backoff = min(ra_s, 120.0)  # cap to a sane upper bound
                 await asyncio.sleep(backoff)
                 continue
 
@@ -485,12 +515,20 @@ class SomaClient:
             or os.getenv("SOMA_TENANT_ID", "").strip()
             or "default"
         )
+        # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
         derived_namespace = (
             namespace
             or payload_dict.get("namespace")
             or metadata_dict.get("namespace")
             or self.namespace
-            or "default"
+            or "wm"
+        )
+
+        # Determine the logical universe. Prefer explicit arg, then metadata.universe_id, then client default.
+        derived_universe = (
+            universe
+            or metadata_dict.get("universe_id")
+            or self.universe
         )
 
         body: Dict[str, Any] = {
@@ -510,9 +548,9 @@ class SomaClient:
 
         if coord:
             body["coord"] = coord
-        if universe or self.namespace:
-            body["universe"] = universe or self.namespace
-            body["value"].setdefault("universe", body["universe"])
+        if derived_universe:
+            body["universe"] = derived_universe
+            body["value"].setdefault("universe", derived_universe)
         if ttl_seconds is not None:
             body["ttl_seconds"] = ttl_seconds
         if tags:
@@ -539,11 +577,13 @@ class SomaClient:
             legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
             if coord:
                 legacy_payload["coord"] = coord
-            if universe or self.namespace:
-                resolved_universe = universe or self.namespace
-                legacy_payload["universe"] = resolved_universe
-                legacy_payload.setdefault("payload", {})
-                legacy_payload["payload"]["universe"] = resolved_universe
+            # Use logical universe fallback, not memory namespace
+            if universe or self.universe:
+                resolved_universe = universe or self.universe
+                if resolved_universe:
+                    legacy_payload["universe"] = resolved_universe
+                    legacy_payload.setdefault("payload", {})
+                    legacy_payload["payload"]["universe"] = resolved_universe
             response = await self._request("POST", "/remember", json=legacy_payload)
         duration = time.perf_counter() - start_ts
         MEMORY_WRITE_TOTAL.labels("ok").inc()
@@ -580,8 +620,9 @@ class SomaClient:
             "query": query,
             "top_k": top_k,
         }
-        if universe or self.namespace:
-            body["universe"] = universe or self.namespace
+        # Use logical universe fallback, not memory namespace
+        if universe or self.universe:
+            body["universe"] = universe or self.universe
         if layer:
             body["layer"] = layer
         if tags:
@@ -609,8 +650,8 @@ class SomaClient:
         )
         if response is None:
             legacy_body = {"query": query, "top_k": top_k}
-            if universe or self.namespace:
-                legacy_body["universe"] = universe or self.namespace
+            if universe or self.universe:
+                legacy_body["universe"] = universe or self.universe
             return await self._request("POST", "/recall", json=legacy_body)
         return response
 
