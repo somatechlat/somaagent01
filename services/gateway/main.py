@@ -55,10 +55,12 @@ from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSetting
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import MemoryReplicaStore
 from services.common.memory_write_outbox import MemoryWriteOutbox
+from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
+from services.common.llm_credentials_store import LlmCredentialsStore
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
@@ -177,6 +179,17 @@ GATEWAY_DLQ_DEPTH = Gauge(
     labelnames=("topic",),
 )
 
+# Export jobs metrics
+EXPORT_JOBS = Counter(
+    "gateway_export_jobs_total",
+    "Export job outcomes",
+    labelnames=("result",),
+)
+EXPORT_JOB_SECONDS = Histogram(
+    "gateway_export_job_seconds",
+    "Export job processing time (seconds)",
+)
+
 # -----------------------------
 # DLQ depth refresher settings
 # -----------------------------
@@ -287,6 +300,18 @@ async def start_background_services() -> None:
         asyncio.create_task(_dlq_depth_refresher())
     except Exception:
         LOGGER.debug("Failed to start DLQ refresher task", exc_info=True)
+
+    # Initialize export jobs store and schema, then start worker
+    try:
+        export_store = get_export_job_store()
+        await ensure_export_jobs_schema(export_store)
+    except Exception:
+        LOGGER.debug("Export jobs schema ensure failed", exc_info=True)
+    try:
+        app.state._export_runner_stop = asyncio.Event()
+        asyncio.create_task(_export_jobs_runner())
+    except Exception:
+        LOGGER.debug("Failed to start export jobs runner", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +426,7 @@ def _write_through_async() -> bool:
 _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
 _REPLICA_STORE: Optional[MemoryReplicaStore] = None
+_LLM_CRED_STORE: Optional[LlmCredentialsStore] = None
 
 
 @app.middleware("http")
@@ -526,6 +552,27 @@ def get_replica_store() -> MemoryReplicaStore:
     return _REPLICA_STORE
 
 
+def get_export_job_store() -> ExportJobStore:
+    global _EXPORT_STORE
+    if _EXPORT_STORE is not None:
+        return _EXPORT_STORE
+    _EXPORT_STORE = ExportJobStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _EXPORT_STORE
+
+
+def get_llm_credentials_store() -> LlmCredentialsStore:
+    global _LLM_CRED_STORE
+    if _LLM_CRED_STORE is not None:
+        return _LLM_CRED_STORE
+    # Enforce presence of encryption key; fail fast if missing
+    try:
+        _LLM_CRED_STORE = LlmCredentialsStore(redis_url=_redis_url())
+    except Exception as exc:
+        LOGGER.error("Failed to initialize LLM credentials store", extra={"error": str(exc)})
+        raise
+    return _LLM_CRED_STORE
+
+
 # -----------------------------
 # Admin memory endpoints (list/detail)
 # -----------------------------
@@ -538,6 +585,8 @@ async def list_admin_memory(
     persona_id: str | None = Query(None, description="Filter by persona id"),
     role: str | None = Query(None, description="Filter by role (user|assistant|tool)"),
     session_id: str | None = Query(None, description="Filter by session id"),
+    universe: str | None = Query(None, description="Filter by universe_id (logical scope)"),
+    namespace: str | None = Query(None, description="Filter by memory namespace (e.g., wm, ltm)"),
     q: str | None = Query(None, description="Case-insensitive search in payload JSON text"),
     min_ts: float | None = Query(None, description="Minimum wal_timestamp (epoch seconds)"),
     max_ts: float | None = Query(None, description="Maximum wal_timestamp (epoch seconds)"),
@@ -561,6 +610,8 @@ async def list_admin_memory(
         persona_id=persona_id,
         role=role,
         session_id=session_id,
+        universe=universe,
+        namespace=namespace,
         min_ts=min_ts,
         max_ts=max_ts,
         q=q,
@@ -709,6 +760,15 @@ async def memory_delete(
     return {"deleted": True, "result": res}
 
 
+def _export_semaphore() -> asyncio.Semaphore:
+    sem = getattr(app.state, "_export_sem", None)
+    if sem is None:
+        limit = int(os.getenv("GATEWAY_EXPORT_CONCURRENCY", "2"))
+        app.state._export_sem = asyncio.Semaphore(max(1, limit))
+        sem = app.state._export_sem
+    return sem
+
+
 @app.get("/v1/memory/export")
 async def memory_export(
     request: Request,
@@ -716,6 +776,8 @@ async def memory_export(
     persona_id: str | None = Query(None),
     role: str | None = Query(None),
     session_id: str | None = Query(None),
+    universe: str | None = Query(None),
+    namespace: str | None = Query(None),
     q: str | None = Query(None),
     min_ts: float | None = Query(None),
     max_ts: float | None = Query(None),
@@ -729,6 +791,10 @@ async def memory_export(
         "session_id": session_id,
     })
     _require_admin_scope(auth)
+
+    # Optionally enforce tenant scoping for exports
+    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not tenant:
+        raise HTTPException(status_code=400, detail="tenant parameter required for export")
 
     max_rows = int(os.getenv("MEMORY_EXPORT_MAX_ROWS", "100000"))
     hard_limit = min(limit_total or max_rows, max_rows)
@@ -747,6 +813,8 @@ async def memory_export(
                 persona_id=persona_id,
                 role=role,
                 session_id=session_id,
+                universe=universe,
+                namespace=namespace,
                 min_ts=min_ts,
                 max_ts=max_ts,
                 q=q,
@@ -779,7 +847,113 @@ async def memory_export(
         "Content-Type": "application/x-ndjson",
         "Content-Disposition": f"attachment; filename={filename}",
     }
-    return StreamingResponse(streamer(), headers=headers)
+    # Bound concurrency with a semaphore (simple rate-limiting)
+    async def guarded_streamer():
+        sem = _export_semaphore()
+        async with sem:  # type: ignore
+            async for chunk in streamer():
+                yield chunk
+
+    return StreamingResponse(guarded_streamer(), headers=headers)
+
+
+# -----------------------------
+# Asynchronous export jobs
+# -----------------------------
+
+class ExportJobCreate(BaseModel):
+    tenant: str | None = None
+    persona_id: str | None = None
+    role: str | None = None
+    session_id: str | None = None
+    universe: str | None = None
+    namespace: str | None = None
+    q: str | None = None
+    min_ts: float | None = None
+    max_ts: float | None = None
+    limit_total: int | None = Field(None, ge=1)
+
+
+class ExportJobStatus(BaseModel):
+    id: int
+    status: str
+    row_count: int | None = None
+    byte_size: int | None = None
+    error: str | None = None
+    download_url: str | None = None
+
+
+def _exports_dir() -> str:
+    path = os.getenv("EXPORT_JOBS_DIR", "/tmp/soma_export_jobs")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+@app.post("/v1/memory/export/jobs", response_model=dict)
+async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict:
+    auth = await authorize_request(request, payload.model_dump())
+    _require_admin_scope(auth)
+    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not payload.tenant:
+        raise HTTPException(status_code=400, detail="tenant parameter required for export jobs")
+
+    job_id = await get_export_job_store().create(params=payload.model_dump(), tenant=payload.tenant)
+    return {"job_id": job_id, "status": "queued"}
+
+
+@app.get("/v1/memory/export/jobs/{job_id}", response_model=ExportJobStatus)
+async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
+    auth = await authorize_request(request, {"job_id": job_id})
+    _require_admin_scope(auth)
+    job = await get_export_job_store().get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    download = None
+    if job.status == "completed" and job.file_path:
+        download = f"/v1/memory/export/jobs/{job_id}/download"
+    return ExportJobStatus(
+        id=job.id,
+        status=job.status,
+        row_count=job.row_count,
+        byte_size=job.byte_size,
+        error=job.error,
+        download_url=download,
+    )
+
+
+@app.get("/v1/memory/export/jobs/{job_id}/download")
+async def export_jobs_download(job_id: int, request: Request):
+    auth = await authorize_request(request, {"job_id": job_id})
+    _require_admin_scope(auth)
+    job = await get_export_job_store().get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    if job.status != "completed" or not job.file_path:
+        raise HTTPException(status_code=409, detail="job not completed")
+
+    try:
+        fh = open(job.file_path, "rb")
+    except FileNotFoundError:
+        raise HTTPException(status_code=410, detail="export file no longer available")
+
+    headers = {
+        "Content-Type": "application/x-ndjson",
+        "Content-Disposition": f"attachment; filename=export_{job_id}.ndjson",
+    }
+
+    async def file_streamer():
+        try:
+            while True:
+                chunk = fh.read(64 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            try:
+                fh.close()
+            except Exception:
+                pass
+
+    return StreamingResponse(file_streamer(), headers=headers)
 
 
 class MessagePayload(BaseModel):
@@ -909,6 +1083,7 @@ CAPSULE_REGISTRY_TIMEOUT = float(os.getenv("CAPSULE_REGISTRY_TIMEOUT_SECONDS", "
 
 _OPENAPI_CACHE: dict[str, Any] | None = None
 _OPENFGA_CLIENT: OpenFGAClient | None = None
+_EXPORT_STORE: ExportJobStore | None = None
 
 
 def _hydrate_jwt_credentials_from_vault() -> None:
@@ -1920,6 +2095,117 @@ async def _dlq_depth_refresher() -> None:
         await asyncio.sleep(poll)
 
 
+async def _process_export_job(job_id: int) -> None:
+    store = get_export_job_store()
+    replica = get_replica_store()
+    job = await store.get(job_id)
+    if not job:
+        return
+    params = job.params or {}
+    # Enforce tenant requirement if configured
+    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not (params.get("tenant")):
+        await store.mark_failed(job_id, error="tenant required by policy")
+        EXPORT_JOBS.labels("rejected").inc()
+        return
+
+    dir_path = _exports_dir()
+    tmp_path = os.path.join(dir_path, f"job_{job_id}.ndjson.part")
+    final_path = os.path.join(dir_path, f"job_{job_id}.ndjson")
+    max_rows = int(os.getenv("EXPORT_JOBS_MAX_ROWS", os.getenv("MEMORY_EXPORT_MAX_ROWS", "100000")))
+    page = int(os.getenv("EXPORT_JOBS_PAGE_SIZE", os.getenv("MEMORY_EXPORT_PAGE_SIZE", "1000")))
+    sent = 0
+    after: int | None = None
+    rows_written = 0
+    bytes_written = 0
+    start = time.perf_counter()
+    with EXPORT_JOB_SECONDS.time():
+        try:
+            with open(tmp_path, "wb") as fh:
+                while True:
+                    batch = await replica.list_memories(
+                        limit=min(page, max_rows - sent),
+                        after_id=after,
+                        tenant=params.get("tenant"),
+                        persona_id=params.get("persona_id"),
+                        role=params.get("role"),
+                        session_id=params.get("session_id"),
+                        universe=params.get("universe"),
+                        namespace=params.get("namespace"),
+                        min_ts=params.get("min_ts"),
+                        max_ts=params.get("max_ts"),
+                        q=params.get("q"),
+                    )
+                    if not batch:
+                        break
+                    for r in batch:
+                        obj = {
+                            "id": r.id,
+                            "event_id": r.event_id,
+                            "session_id": r.session_id,
+                            "persona_id": r.persona_id,
+                            "tenant": r.tenant,
+                            "role": r.role,
+                            "coord": r.coord,
+                            "request_id": r.request_id,
+                            "trace_id": r.trace_id,
+                            "wal_timestamp": r.wal_timestamp,
+                            "created_at": r.created_at.isoformat(),
+                            "payload": r.payload,
+                        }
+                        line = json.dumps(obj, ensure_ascii=False) + "\n"
+                        data = line.encode("utf-8")
+                        fh.write(data)
+                        rows_written += 1
+                        bytes_written += len(data)
+                        sent += 1
+                        after = r.id
+                        if sent >= max_rows:
+                            break
+                    if sent >= max_rows:
+                        break
+            os.replace(tmp_path, final_path)
+            await store.mark_complete(job_id, file_path=final_path, rows=rows_written, byte_size=bytes_written)
+            EXPORT_JOBS.labels("ok").inc()
+        except Exception as exc:
+            try:
+                await store.mark_failed(job_id, error=str(exc))
+            except Exception:
+                pass
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
+            EXPORT_JOBS.labels("error").inc()
+
+
+async def _export_jobs_runner() -> None:
+    poll = max(1.0, _env_float("EXPORT_JOBS_POLL_SECONDS", 2.0))
+    concurrency = max(1, int(os.getenv("EXPORT_JOBS_CONCURRENCY", "1")))
+    sem = asyncio.Semaphore(concurrency)
+    try:
+        await asyncio.sleep(min(1.0, poll * 0.25))
+    except Exception:
+        pass
+    while True:
+        try:
+            if getattr(app.state, "_export_runner_stop", None) and app.state._export_runner_stop.is_set():
+                break
+            job_id = await get_export_job_store().claim_next()
+            if not job_id:
+                await asyncio.sleep(poll)
+                continue
+
+            async def _run(jid: int):
+                async with sem:  # type: ignore
+                    await _process_export_job(jid)
+
+            asyncio.create_task(_run(job_id))
+        except Exception:
+            LOGGER.debug("Export jobs runner iteration failed", exc_info=True)
+            await asyncio.sleep(poll)
+
+
 async def _gather_health_components_with_memory(
     store: PostgresSessionStore, cache: RedisSessionCache
 ) -> dict[str, Any]:
@@ -2260,3 +2546,56 @@ async def reprocess_dlq_item(
     if result.get("published") or result.get("enqueued"):
         await store.delete_by_id(id=item_id)
     return {"status": "reprocessed", "target": target, "published": bool(result.get("published")), "enqueued": bool(result.get("enqueued"))}
+
+
+# -----------------------------
+# LLM credentials management
+# -----------------------------
+
+class LlmCredPayload(BaseModel):
+    provider: str
+    secret: str
+
+
+@app.post("/v1/llm/credentials")
+async def upsert_llm_credentials(
+    payload: LlmCredPayload,
+    request: Request,
+    store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None,  # type: ignore[assignment]
+) -> dict:
+    # Require admin scope when auth is enabled
+    auth = await authorize_request(request, payload.model_dump())
+    _require_admin_scope(auth)
+    provider = payload.provider.strip().lower()
+    if not provider or not payload.secret:
+        raise HTTPException(status_code=400, detail="provider and secret required")
+    await store.set(provider, payload.secret)
+    # Broadcast config update so workers may refresh
+    try:
+        publisher: DurablePublisher = app.state.publisher
+        await publisher.publish("config_updates", {"type": "llm.credentials.updated", "provider": provider})
+    except Exception:
+        LOGGER.debug("Failed to publish config update (llm credentials)", exc_info=True)
+    return {"ok": True}
+
+
+def _internal_token_ok(request: Request) -> bool:
+    expected = os.getenv("GATEWAY_INTERNAL_TOKEN")
+    if not expected:
+        return False
+    got = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
+    return bool(got and got == expected)
+
+
+@app.get("/v1/llm/credentials/{provider}")
+async def get_llm_credentials(provider: str, request: Request, store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None) -> dict:  # type: ignore[assignment]
+    # Only allow internal calls with X-Internal-Token; do not expose via normal auth
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+    provider = (provider or "").strip().lower()
+    if not provider:
+        raise HTTPException(status_code=400, detail="missing provider")
+    secret = await store.get(provider)
+    if not secret:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"provider": provider, "secret": secret}

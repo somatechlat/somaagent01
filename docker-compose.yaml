@@ -48,6 +48,7 @@ x-agent-service: &agent-service
     - ./logs:/git/agent-zero/logs
     - ./knowledge:/git/agent-zero/knowledge:ro
     - ./instruments:/git/agent-zero/instruments:ro
+    - ./agents:/git/agent-zero/agents:ro
     - ./tmp:/git/agent-zero/tmp
     - ./prompts:/git/agent-zero/prompts:ro
     # Note: legacy /a0 mounts removed for modern deployments. If you need
@@ -189,6 +190,15 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+    environment:
+      <<: *agent-env
+      # Use real LLM (OpenAI-compatible). In DEV, env override is allowed; in non‑DEV the worker ignores env and fetches from Gateway.
+      SLM_BASE_URL: "${SLM_BASE_URL:-https://api.groq.com/openai/v1}"
+      SLM_MODEL: "${SLM_MODEL:-openai/gpt-oss-120b}"
+      SLM_API_KEY: "${SLM_API_KEY:-}"
+      WORKER_GATEWAY_BASE: "http://gateway:8010"
+      # Gateway-side internal token used for worker-only credential fetch
+      GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
     command:
       - python3
       - -m
@@ -241,6 +251,13 @@ services:
       UI_USE_GATEWAY: "true"
       UI_GATEWAY_BASE: "http://gateway:8010"
     volumes:
+      - ./memory:/git/agent-zero/memory
+      - ./logs:/git/agent-zero/logs
+      - ./knowledge:/git/agent-zero/knowledge:ro
+      - ./instruments:/git/agent-zero/instruments:ro
+      - ./agents:/git/agent-zero/agents:ro
+      - ./tmp:/git/agent-zero/tmp
+      - ./prompts:/git/agent-zero/prompts:ro
       - ./webui:/git/agent-zero/webui:ro
     # Run using the venv Python created by the installer so installed
     # dependencies (under /opt/venv-a0) are available at runtime. The
@@ -273,6 +290,10 @@ services:
     environment:
       <<: *agent-env
       PORT: "8010"
+      # Encryption key (Fernet urlsafe base64) required to store provider secrets securely
+      # Dev-safe Fernet key (urlsafe base64 32-byte). Replace with a secure value in staging/prod.
+      GATEWAY_ENC_KEY: "${GATEWAY_ENC_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
+      GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
       # For local development default to false to simplify testing. Set the
       # environment variable to 'true' in staging/production as needed.
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}

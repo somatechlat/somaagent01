@@ -393,7 +393,7 @@ document.addEventListener('alpine:init', function () {
             async fetchSettings() {
                 try {
                     this.isLoading = true;
-                    const response = await fetchApi('/api/settings_get', {
+                    const response = await fetchApi('/settings_get', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -466,7 +466,7 @@ document.addEventListener('alpine:init', function () {
                     }
 
                     // Send request
-                    const response = await fetchApi('/api/settings_save', {
+                    const response = await fetchApi('/settings_set', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -476,6 +476,47 @@ document.addEventListener('alpine:init', function () {
 
                     if (response.ok) {
                         showToast('Settings saved successfully', 'success');
+                        // Apply LLM profile to Gateway so worker picks up latest model/base/temperature
+                        try {
+                            const cfg = this._extractLlmConfigFromSections(this.settingsData.sections || []);
+                            if (cfg && cfg.model) {
+                                const applyResp = await fetchApi('/llm_profile_apply', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(cfg)
+                                });
+                                const body = await applyResp.json();
+                                if (!applyResp.ok || !body.ok) {
+                                    console.error('Failed to apply LLM profile:', body);
+                                    showToast('Saved, but failed to apply LLM profile to Gateway', 'warning');
+                                } else {
+                                    showToast('LLM profile applied to Gateway', 'success');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('LLM profile apply error:', e);
+                            showToast('Saved, but failed to apply LLM profile', 'warning');
+                        }
+                        // Push provider API keys to Gateway (if present and not placeholders)
+                        try {
+                            const creds = this._extractProviderCredentials(this.settingsData.sections || []);
+                            for (const c of creds) {
+                                const r = await fetchApi('/llm_credentials_apply', {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c)
+                                });
+                                const b = await r.json();
+                                if (!r.ok || !b.ok) {
+                                    console.error('LLM credentials apply failed for', c.provider, b);
+                                    showToast(`Saved, but failed to store credentials for ${c.provider}`, 'warning');
+                                } else {
+                                    showToast(`Credentials stored for ${c.provider}`, 'success');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('LLM credentials apply error:', e);
+                            showToast('Saved, but failed to store provider credentials', 'warning');
+                        }
+
                         // Refresh settings
                         await this.fetchSettings();
                     } else {
@@ -486,6 +527,59 @@ document.addEventListener('alpine:init', function () {
                     console.error('Error saving settings:', error);
                     showToast('Failed to save settings: ' + error.message, 'error');
                 }
+            },
+
+            _extractLlmConfigFromSections(sections){
+                try{
+                    const sec = sections.find(s => s.id === 'chat_model' || s.title === 'Chat Model');
+                    if(!sec || !Array.isArray(sec.fields)) return null;
+                    let model='', base_url='', temperature=0.2, kwargs={};
+                    for(const f of sec.fields){
+                        if(f.id==='chat_model_name') model = (f.value||'').trim();
+                        if(f.id==='chat_model_api_base') base_url = (f.value||'').trim();
+                        if(f.id==='chat_model_kwargs'){
+                            if(typeof f.value==='string'){
+                                const lines = f.value.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+                                for(const ln of lines){
+                                    const idx = ln.indexOf('=');
+                                    if(idx>0){
+                                        const k=ln.slice(0,idx).trim();
+                                        const v=ln.slice(idx+1).trim();
+                                        kwargs[k]=v;
+                                        if(k.toLowerCase()==='temperature'){
+                                            const t=parseFloat(v); if(!Number.isNaN(t)) temperature=t;
+                                        }
+                                    }
+                                }
+                            } else if(f.value && typeof f.value==='object'){
+                                kwargs={...f.value};
+                                if(kwargs.temperature!==undefined){
+                                    const t=parseFloat(kwargs.temperature); if(!Number.isNaN(t)) temperature=t;
+                                }
+                            }
+                        }
+                    }
+                    return {model, base_url, temperature, kwargs};
+                }catch(e){
+                    console.error('extractLlmConfig error:', e);
+                    return null;
+                }
+            },
+
+            _extractProviderCredentials(sections){
+                const creds=[];
+                for(const sec of sections){
+                    if(!sec || !Array.isArray(sec.fields)) continue;
+                    for(const f of sec.fields){
+                        if(typeof f.id==='string' && f.id.startsWith('api_key_')){
+                            const provider = f.id.substring('api_key_'.length).trim().toLowerCase();
+                            const val = (f.value||'').trim();
+                            if(!val || val==='************') continue; // skip placeholder
+                            creds.push({provider, secret: val});
+                        }
+                    }
+                }
+                return creds;
             },
 
             // Handle special button field actions

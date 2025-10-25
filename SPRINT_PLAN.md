@@ -1,3 +1,5 @@
+<!-- DEPRECATION NOTE: This document is superseded by ROADMAP_CANONICAL.md. Keep for historical context. -->
+
 # 🏎️ Parallel Sprint Plan – SomaAgentHub (Enterprise Edition)
 
 **Goal:** Deliver a production‑ready, enterprise‑grade AI‑agent platform while keeping the existing Kafka‑based event backbone. The plan runs **three sprints in parallel** (Sprints 1‑3) followed by dependent sprints (4‑5). Each sprint is a 4‑week timebox.

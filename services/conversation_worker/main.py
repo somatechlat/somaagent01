@@ -39,6 +39,7 @@ from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
+import httpx
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 
 setup_logging()
@@ -188,6 +189,9 @@ class ConversationWorker:
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         self.slm = SLMClient()
+        # Attempt to fetch provider key from Gateway if not supplied via env
+        self._gateway_base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        self._internal_token = os.getenv("GATEWAY_INTERNAL_TOKEN")
         self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
         tenant_config_path = os.getenv(
             "TENANT_CONFIG_PATH",
@@ -206,6 +210,12 @@ class ConversationWorker:
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
+        # Enforce secure credential flow: outside DEV do not honor env SLM_API_KEY
+        try:
+            if self.deployment_mode != "DEV" and getattr(self.slm, "api_key", None):
+                self.slm.api_key = None
+        except Exception:
+            pass
         self.preprocessor = ConversationPreprocessor()
         self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {
             "1",
@@ -579,6 +589,8 @@ class ConversationWorker:
                 SESSION_CACHE_SYNC.labels("success").inc()
 
             history = await self.store.list_events(session_id, limit=20)
+            # Ensure SLM API key present (fetch from Gateway when missing)
+            await self._ensure_llm_key()
             messages: list[ChatMessage] = []
             for item in reversed(history):
                 if item.get("type") == "user":
@@ -686,7 +698,39 @@ class ConversationWorker:
                     tenant=(budget_response.get("metadata") or {}).get("tenant"),
                 )
                 record_metrics("budget_limit", "budget")
-                return
+        return
+
+    async def _ensure_llm_key(self) -> None:
+        if getattr(self.slm, 'api_key', None):
+            return
+        # Infer provider from base_url
+        host = ''
+        try:
+            host = (self.slm.base_url or '').split('//',1)[-1].split('/',1)[0]
+        except Exception:
+            host = ''
+        provider = 'openai'
+        if 'groq' in host:
+            provider = 'groq'
+        elif 'openrouter' in host:
+            provider = 'openrouter'
+        if not self._internal_token:
+            LOGGER.warning("No GATEWAY_INTERNAL_TOKEN; cannot fetch LLM credentials from Gateway")
+            return
+        url = f"{self._gateway_base}/v1/llm/credentials/{provider}"
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(url, headers={"X-Internal-Token": self._internal_token})
+                if resp.status_code == 200:
+                    body = resp.json()
+                    key = body.get('secret')
+                    if key:
+                        self.slm.api_key = key
+                        LOGGER.info("Fetched LLM credentials from Gateway", extra={"provider": provider})
+                else:
+                    LOGGER.debug("Failed to fetch LLM credentials", extra={"status": resp.status_code})
+        except Exception:
+            LOGGER.debug("Error fetching LLM credentials", exc_info=True)
 
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}

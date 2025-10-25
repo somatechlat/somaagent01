@@ -16,6 +16,7 @@
 !services/tool_executor/**
 !services/outbox_sync/**
 !services/memory_replicator/**
+!services/memory_sync/**
 # memory_service deprecated; do not include in build context
 !services/common/**
 !services/ui/**

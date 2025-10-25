@@ -29,6 +29,55 @@ let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 let healthState = { status: "unknown", components: {} };
 
+// --- Gateway SSE streaming helpers (Sprint S2) ---
+let _gatewaySSE = null;
+let _gatewaySSESession = null;
+
+function closeGatewayStream() {
+  if (_gatewaySSE) {
+    try {
+      _gatewaySSE.close();
+    } catch (e) {
+      // ignore
+    }
+    _gatewaySSE = null;
+    _gatewaySSESession = null;
+  }
+}
+
+function openGatewayStream(sessionId) {
+  if (!sessionId) return;
+  if (_gatewaySSE && _gatewaySSESession === sessionId) return;
+  // Replace any existing stream
+  closeGatewayStream();
+
+  const url = `/gateway_stream?session_id=${encodeURIComponent(sessionId)}`;
+  const es = new EventSource(url);
+  _gatewaySSE = es;
+  _gatewaySSESession = sessionId;
+
+  es.onmessage = (evt) => {
+    if (!evt?.data) return;
+    try {
+      const event = JSON.parse(evt.data);
+      // Expect conversation.outbound payloads: {event_id, session_id, role, message, metadata}
+      const eid = event.event_id || event.id || generateGUID();
+      const role = (event.role || "assistant").toLowerCase();
+      const heading = role === "assistant" ? "Assistant" : (role === "tool" ? "Tool" : "Info");
+      const type = role === "assistant" ? "agent" : (role === "tool" ? "tool" : "info");
+      const content = event.message || "";
+      const kvps = { ...(event.metadata || {}) };
+      setMessage(eid, type, heading, content, false, kvps);
+    } catch (e) {
+      console.warn("SSE parse error:", e);
+    }
+  };
+
+  es.onerror = () => {
+    // Browser auto-retries; we keep the reference and let it recover.
+  };
+}
+
 // Initialize the toggle button
 setupSidebarToggle();
 // Initialize tabs
@@ -98,6 +147,14 @@ document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 
 export async function sendMessage() {
   try {
+    // Gate sending if backend/gateway is unhealthy
+    if (!getConnectionStatus()) {
+      await toastFrontendError(
+        "Agent is offline or initializing. Please wait until the status indicator is green.",
+        "Unavailable"
+      );
+      return;
+    }
     const message = chatInput.value.trim();
     const attachmentsWithUrls = attachmentsStore.getAttachmentsForSending();
     const hasAttachments = attachmentsWithUrls.length > 0;
@@ -160,7 +217,18 @@ export async function sendMessage() {
       if (!jsonResponse) {
         toast("No response returned.", "error");
       } else {
-        setContext(jsonResponse.context);
+        // Gateway mode returns {accepted: true, session_id, event_id}
+        if (jsonResponse.accepted && jsonResponse.session_id) {
+          setContext(jsonResponse.session_id);
+          try {
+            openGatewayStream(jsonResponse.session_id);
+          } catch (e) {
+            console.warn("Failed to open Gateway SSE stream:", e);
+          }
+        } else if (jsonResponse.context) {
+          // Local mode legacy path
+          setContext(jsonResponse.context);
+        }
       }
     }
   } catch (e) {
@@ -824,6 +892,10 @@ export const newContext = function () {
 export const setContext = function (id) {
   if (id == context) return;
   context = id;
+  // Close any active Gateway SSE stream when switching context; a next send will reopen
+  try { closeGatewayStream(); } catch (_) {}
+  // Close any active Gateway stream for previous session
+  closeGatewayStream();
   // Always reset the log tracking variables when switching contexts
   // This ensures we get fresh data from the backend
   lastLogGuid = "";
