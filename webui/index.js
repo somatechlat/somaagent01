@@ -415,7 +415,7 @@ function setConnectionStatus(status, components = null) {
     statusIconEl.setAttribute("title", tooltip);
   }
   if (offlineBanner) {
-    if (indicatorStatus !== "ok") {
+    if (indicatorStatus === "down") {
       offlineBanner.classList.remove("hidden");
       // Show toast notification once when going offline
       if (!window.__offlineNotified) {

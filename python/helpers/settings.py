@@ -426,7 +426,9 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "title": "HTTP Headers",
             "description": "HTTP headers to include with all browser requests. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string. Example: Authorization=Bearer token123",
             "type": "textarea",
-            "value": _dict_to_env(settings.get("browser_http_headers", {})),
+            # SettingsModel is not a dict; avoid .get which raises AttributeError.
+            # Access the validated field directly and render to KEY=VALUE lines.
+            "value": _dict_to_env(settings["browser_http_headers"]),
         }
     )
 
@@ -869,7 +871,9 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # Speech to text + TTS section
     speech_fields: list[SettingsField] = []
 
-    selected_speech_provider = settings.get("speech_provider", default_settings["speech_provider"])
+    # SettingsModel supports attribute and ["key"] access but not .get();
+    # default_settings is already applied by convert_out, so direct access is safe.
+    selected_speech_provider = settings["speech_provider"]
 
     speech_fields.append(
         {

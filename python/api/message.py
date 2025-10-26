@@ -11,6 +11,7 @@ from python.helpers import files
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.defer import DeferredTask
 from python.helpers.print_style import PrintStyle
+from urllib.parse import urlparse
 
 
 class Message(ApiHandler):
@@ -45,6 +46,29 @@ class Message(ApiHandler):
             if os.getenv("UI_TENANT_ID") and not metadata.get("tenant"):
                 metadata["tenant"] = os.getenv("UI_TENANT_ID")
             payload: Dict[str, Any] = {"message": text, "attachments": [], "metadata": metadata}
+            # Guard against misconfiguration: if UI_GATEWAY_BASE points to this UI host:port,
+            # users will get 405/HTML from Flask instead of JSON from FastAPI. Detect and fail fast.
+            try:
+                gw = urlparse(self._gateway_base())
+                ui_host = request.host.split(":")[0] if request.host else None
+                ui_port = None
+                try:
+                    ui_port = int(request.host.split(":")[1]) if ":" in (request.host or "") else None
+                except Exception:
+                    ui_port = None
+                same_host = (gw.hostname in {ui_host, "localhost", "127.0.0.1"}) if ui_host else False
+                same_port = (ui_port == (gw.port or (80 if gw.scheme == "http" else 443))) if ui_port else False
+                if same_host and same_port:
+                    detail = {
+                        "accepted": False,
+                        "error": "gateway_misconfigured",
+                        "status": 502,
+                        "detail": f"UI_GATEWAY_BASE ({gw.geturl()}) points to the UI server itself ({request.host}). Set UI_GATEWAY_BASE to the Gateway, e.g. http://127.0.0.1:21016.",
+                    }
+                    return Response(response=json.dumps(detail), status=502, mimetype="application/json")
+            except Exception:
+                # Non-fatal; proceed with request and let normal error handling surface issues
+                pass
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.post(

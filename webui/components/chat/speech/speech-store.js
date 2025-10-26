@@ -116,8 +116,8 @@ const model = {
   // Load settings from server
   async loadSettings() {
     try {
-      const response = await fetchApi("/settings_get", { method: "POST" });
-      const data = await response.json();
+      // Use JSON helper to avoid JSON.parse errors on non-OK responses
+      const data = await callJsonApi("/settings_get", {});
       const speechSection = data.settings.sections.find(
         (s) => s.title === "Speech"
       );

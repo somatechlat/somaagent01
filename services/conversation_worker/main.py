@@ -295,6 +295,12 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
+        # Hydrate API key on-demand if missing (pull from Gateway using internal token)
+        if not getattr(self.slm, "api_key", None):
+            try:
+                await self._ensure_llm_key()
+            except Exception:
+                LOGGER.debug("On-demand LLM credential fetch failed", exc_info=True)
         try:
             return await self._stream_response(
                 session_id=session_id,
@@ -362,6 +368,19 @@ class ConversationWorker:
                 "type": "worker_start",
                 "event_id": str(uuid.uuid4()),
                 "message": "Conversation worker online",
+            },
+        )
+        # Ensure LLM credentials are available before consumption starts (DEV-friendly)
+        try:
+            await self._ensure_llm_key()
+        except Exception:
+            LOGGER.debug("LLM credential fetch failed/skipped at startup", exc_info=True)
+        LOGGER.info(
+            "Starting consumer",
+            extra={
+                "topic": self.settings["inbound"],
+                "group": self.settings["group"],
+                "bootstrap": self.kafka_settings.bootstrap_servers,
             },
         )
         await self.bus.consume(
@@ -880,13 +899,25 @@ class ConversationWorker:
             validate_event(response_event, "conversation_event")
 
             await self.store.append_event(session_id, {"type": "assistant", **response_event})
-            await self.publisher.publish(
+            _pub_res = await self.publisher.publish(
                 self.settings["outbound"],
                 response_event,
                 dedupe_key=response_event.get("event_id"),
                 session_id=session_id,
                 tenant=(response_event.get("metadata") or {}).get("tenant"),
             )
+            try:
+                LOGGER.info(
+                    "Published assistant event",
+                    extra={
+                        "topic": self.settings["outbound"],
+                        "session_id": session_id,
+                        "event_id": response_event.get("event_id"),
+                        "result": _pub_res,
+                    },
+                )
+            except Exception:
+                LOGGER.debug("Failed to log assistant publish", exc_info=True)
             # Save assistant response to SomaBrain as a memory
             try:
                 payload = {

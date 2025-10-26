@@ -23,7 +23,7 @@ from flask import (
 from werkzeug.wrappers.response import Response as BaseResponse
 
 import initialize
-from python.helpers import dotenv, fasta2a_server, files, git, mcp_server, process, runtime
+from python.helpers import dotenv, files, git, process, runtime
 from python.helpers.api import ApiHandler
 from python.helpers.extract_tools import load_classes_from_folder
 from python.helpers.files import get_abs_path
@@ -265,11 +265,24 @@ def run():
     for handler in handlers:
         register_api_handler(webapp, handler)
 
-    # add the webapp, mcp, and a2a to the app
-    middleware_routes = {
-        "/mcp": ASGIMiddleware(app=mcp_server.DynamicMcpProxy.get_instance()),  # type: ignore
-        "/a2a": ASGIMiddleware(app=fasta2a_server.DynamicA2AProxy.get_instance()),  # type: ignore
-    }
+    # add the webapp, and optionally MCP/A2A (disabled by default for local UI)
+    middleware_routes = {}
+    if os.getenv("UI_ENABLE_MCP", "false").lower() in {"1","true","yes","on"}:
+        try:
+            from python.helpers import mcp_server as _mcp_server  # type: ignore
+            middleware_routes["/mcp"] = ASGIMiddleware(app=_mcp_server.DynamicMcpProxy.get_instance())  # type: ignore
+        except Exception as e:
+            PrintStyle(background_color="yellow", font_color="black", padding=True).print(
+                f"MCP disabled (import error): {e}"
+            )
+    if os.getenv("UI_ENABLE_A2A", "false").lower() in {"1","true","yes","on"}:
+        try:
+            from python.helpers import fasta2a_server as _fasta2a_server  # type: ignore
+            middleware_routes["/a2a"] = ASGIMiddleware(app=_fasta2a_server.DynamicA2AProxy.get_instance())  # type: ignore
+        except Exception as e:
+            PrintStyle(background_color="yellow", font_color="black", padding=True).print(
+                f"A2A disabled (import error): {e}"
+            )
 
     app = DispatcherMiddleware(webapp, middleware_routes)  # type: ignore
 
@@ -289,6 +302,23 @@ def run():
     # threading.Thread(target=init_a0, daemon=True).start()
     init_a0()
 
+    # Dev-time misconfiguration guard: prevent UI posting to itself instead of Gateway
+    try:
+        if os.getenv("UI_USE_GATEWAY", "false").lower() in {"1", "true", "yes", "on"}:
+            from urllib.parse import urlparse
+
+            gw = urlparse(os.getenv("UI_GATEWAY_BASE", os.getenv("GATEWAY_BASE_URL", "http://localhost:20016")))
+            gw_port = gw.port or (80 if gw.scheme == "http" else 443)
+            same_host = (gw.hostname in {host, "127.0.0.1", "localhost"})
+            same_port = (int(gw_port) == int(port))
+            if same_host and same_port:
+                PrintStyle(background_color="yellow", font_color="black", padding=True).print(
+                    f"Warning: UI_GATEWAY_BASE ({gw.geturl()}) points to this UI server ({host}:{port}). "
+                    "This will cause 405/HTML responses on send. Set UI_GATEWAY_BASE to the Gateway (e.g., http://127.0.0.1:21016)."
+                )
+    except Exception:
+        pass
+
     # run the server
     server.serve_forever()
 
@@ -298,12 +328,27 @@ def init_a0():
     init_chats = initialize.initialize_chats()
     # only wait for init chats, otherwise they would seem to disappear for a while on restart
     init_chats.result_sync()
-
-    initialize.initialize_mcp()
-    # start job loop
-    initialize.initialize_job_loop()
-    # preload
-    initialize.initialize_preload()
+    # Optional subsystems for local UI
+    try:
+        if os.getenv("UI_ENABLE_MCP", "false").lower() in {"1","true","yes","on"}:
+            initialize.initialize_mcp()
+    except Exception as e:
+        PrintStyle(background_color="yellow", font_color="black", padding=True).print(
+            f"MCP init skipped: {e}"
+        )
+    try:
+        if os.getenv("UI_ENABLE_JOB_LOOP", "false").lower() in {"1","true","yes","on"}:
+            initialize.initialize_job_loop()
+    except Exception as e:
+        PrintStyle(background_color="yellow", font_color="black", padding=True).print(
+            f"Job loop init skipped: {e}"
+        )
+    try:
+        initialize.initialize_preload()
+    except Exception as e:
+        PrintStyle(background_color="yellow", font_color="black", padding=True).print(
+            f"Preload warnings: {e}"
+        )
 
 
 # run the internal server

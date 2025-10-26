@@ -32,17 +32,32 @@ except Exception:  # pragma: no cover - runtime environment dependent
     FAISS_AVAILABLE = False
 import numpy as np
 
-# LangChain imports: required when using local FAISS memory. We do not provide
-# runtime fallbacks here — if local memory is selected and dependencies are
-# missing, the code will fail fast with a clear error in the appropriate path.
-from langchain.embeddings import CacheBackedEmbeddings
-from langchain.storage import InMemoryByteStore, LocalFileStore
-from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores import FAISS
-from langchain_community.vectorstores.utils import (
-    DistanceStrategy,
-)
-from langchain_core.documents import Document
+# LangChain imports (optional in dev). If unavailable, we defer errors until
+# local FAISS is actually used. Remote SomaBrain paths stay functional.
+LC_AVAILABLE = True
+try:
+    try:
+        # Newer LC: cache class moved under embeddings.cache
+        from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
+    except Exception:
+        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+    from langchain.storage import InMemoryByteStore, LocalFileStore
+    from langchain_community.docstore.in_memory import InMemoryDocstore
+    from langchain_community.vectorstores import FAISS
+    from langchain_community.vectorstores.utils import DistanceStrategy
+    from langchain_core.documents import Document
+except Exception:
+    LC_AVAILABLE = False
+    LC_CacheBackedEmbeddings = None
+    InMemoryByteStore = None  # type: ignore
+    LocalFileStore = None  # type: ignore
+    InMemoryDocstore = None  # type: ignore
+    FAISS = None  # type: ignore
+    DistanceStrategy = None  # type: ignore
+    class Document(object):  # fallback for type compatibility
+        def __init__(self, page_content: str = "", metadata: dict | None = None):
+            self.page_content = page_content
+            self.metadata = metadata or {}
 try:
     from simpleeval import simple_eval  # type: ignore
 except Exception:  # pragma: no cover - optional dependency in minimal images
@@ -103,7 +118,7 @@ class MemoryArea(Enum):
     INSTRUMENTS = "instruments"
 
 
-if FAISS_AVAILABLE:
+if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None:
     class MyFaiss(FAISS):
         # override get_by_ids to support faster retrieval from the in-memory docstore
         def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
@@ -116,9 +131,9 @@ if FAISS_AVAILABLE:
         async def aget_by_ids(self, ids: Sequence[str], /) -> List[Document]:
             return self.get_by_ids(ids)
 else:
-    # MyFaiss is intentionally undefined at runtime when FAISS is unavailable;
-    # type annotations are postponed via `from __future__ import annotations`.
-    pass
+    # Minimal placeholder so import-time does not fail when FAISS/LC are missing.
+    class MyFaiss:  # type: ignore
+        pass
     # override get_by_ids to support faster retrieval from the in-memory docstore
     def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
         # When using the remote SomaMemory path, this method won't be called.
@@ -244,9 +259,13 @@ class Memory:
         os.makedirs(db_dir, exist_ok=True)
 
         if in_memory:
+            if not LC_AVAILABLE or InMemoryByteStore is None:
+                raise RuntimeError("LangChain storage not available for in-memory FAISS path")
             store = InMemoryByteStore()
         else:
             os.makedirs(em_dir, exist_ok=True)
+            if not LC_AVAILABLE or LocalFileStore is None:
+                raise RuntimeError("LangChain storage not available for local FAISS path")
             store = LocalFileStore(em_dir)
 
         embeddings_model = models.get_embedding_model(
@@ -257,7 +276,12 @@ class Memory:
         embeddings_model_id = files.safe_file_name(model_config.provider + "_" + model_config.name)
 
         # here we setup the embeddings model with the chosen cache storage
-        embedder = CacheBackedEmbeddings.from_bytes_store(
+        if LC_CacheBackedEmbeddings is None:
+            raise RuntimeError(
+                "LangChain CacheBackedEmbeddings not available. Install compatible langchain packages "
+                "or set SOMA_ENABLED=true to use remote SomaBrain memory."
+            )
+        embedder = LC_CacheBackedEmbeddings.from_bytes_store(  # type: ignore
             embeddings_model, store, namespace=embeddings_model_id
         )
 
@@ -309,7 +333,7 @@ class Memory:
             db = MyFaiss(
                 embedding_function=embedder,
                 index=index,
-                docstore=InMemoryDocstore(),
+                docstore=InMemoryDocstore() if LC_AVAILABLE and InMemoryDocstore is not None else None,
                 index_to_docstore_id={},
                 distance_strategy=DistanceStrategy.COSINE,
                 # normalize_L2=True,

@@ -1,16 +1,37 @@
 import uuid
 from typing import Any, List, Sequence
 
-# faiss needs to be patched for python 3.12 on arm - production compatibility patch
-import faiss
-from langchain.embeddings import CacheBackedEmbeddings
-from langchain.storage import InMemoryByteStore
-from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores import FAISS
-from langchain_community.vectorstores.utils import (
-    DistanceStrategy,
-)
-from langchain_core.documents import Document
+# Optional FAISS import: tolerate absence in minimal/dev images
+try:  # pragma: no cover - environment dependent
+    import faiss  # type: ignore
+    _FAISS_AVAILABLE = True
+except Exception:  # pragma: no cover
+    faiss = None  # type: ignore
+    _FAISS_AVAILABLE = False
+
+# LangChain imports with compatibility across versions
+try:  # Newer LC moved CacheBackedEmbeddings
+    from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+except Exception:  # pragma: no cover - fallback for older LC
+    try:
+        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+    except Exception:
+        LC_CacheBackedEmbeddings = None  # type: ignore
+
+try:
+    from langchain.storage import InMemoryByteStore  # type: ignore
+    from langchain_community.docstore.in_memory import InMemoryDocstore  # type: ignore
+    from langchain_community.vectorstores import FAISS  # type: ignore
+    from langchain_community.vectorstores.utils import DistanceStrategy  # type: ignore
+    from langchain_core.documents import Document  # type: ignore
+    _LC_AVAILABLE = True
+except Exception:  # pragma: no cover
+    InMemoryByteStore = None  # type: ignore
+    InMemoryDocstore = None  # type: ignore
+    FAISS = None  # type: ignore
+    DistanceStrategy = None  # type: ignore
+    _LC_AVAILABLE = False
+
 
 from agent import Agent
 
@@ -30,7 +51,7 @@ class MyFaiss(FAISS):
 
 class VectorDB:
 
-    _cached_embeddings: dict[str, CacheBackedEmbeddings] = {}
+    _cached_embeddings: dict[str, Any] = {}
 
     @staticmethod
     def _get_embeddings(agent: Agent, cache: bool = True):
@@ -43,8 +64,12 @@ class VectorDB:
             "default",
         )
         if namespace not in VectorDB._cached_embeddings:
+            if LC_CacheBackedEmbeddings is None or InMemoryByteStore is None:
+                raise RuntimeError(
+                    "LangChain cache embeddings not available. Install langchain>=0.2 and langchain-community."
+                )
             store = InMemoryByteStore()
-            VectorDB._cached_embeddings[namespace] = CacheBackedEmbeddings.from_bytes_store(
+            VectorDB._cached_embeddings[namespace] = LC_CacheBackedEmbeddings.from_bytes_store(  # type: ignore
                 model,
                 store,
                 namespace=namespace,
@@ -55,9 +80,17 @@ class VectorDB:
         self.agent = agent
         self.cache = cache  # store cache preference
         self.embeddings = self._get_embeddings(agent, cache=cache)
-        self.index = faiss.IndexFlatIP(len(self.embeddings.embed_query("example")))
+        if not _FAISS_AVAILABLE:
+            raise RuntimeError(
+                "FAISS is not installed. Install faiss to use the local VectorDB or use SomaBrain remote memory."
+            )
+        self.index = faiss.IndexFlatIP(len(self.embeddings.embed_query("example")))  # type: ignore
 
-        self.db = MyFaiss(
+        if FAISS is None or InMemoryDocstore is None or DistanceStrategy is None:
+            raise RuntimeError(
+                "LangChain vectorstores not available. Ensure langchain-community is installed."
+            )
+        self.db = MyFaiss(  # type: ignore
             embedding_function=self.embeddings,
             index=self.index,
             docstore=InMemoryDocstore(),

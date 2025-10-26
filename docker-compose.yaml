@@ -192,6 +192,9 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *agent-env
+      # Run worker in DEV so it honors SLM_API_KEY for direct LLM calls in development.
+      # In non‑DEV the worker fetches credentials from Gateway via internal token.
+      SOMA_AGENT_MODE: DEV
       # Use real LLM (OpenAI-compatible). In DEV, env override is allowed; in non‑DEV the worker ignores env and fetches from Gateway.
       SLM_BASE_URL: "${SLM_BASE_URL:-https://api.groq.com/openai/v1}"
       SLM_MODEL: "${SLM_MODEL:-openai/gpt-oss-120b}"
