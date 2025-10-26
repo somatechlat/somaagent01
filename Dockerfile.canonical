@@ -1,5 +1,0 @@
-FROM busybox:1.36
-
-# Deprecated file: use the root-level Dockerfile instead.
-# This Dockerfile intentionally fails the build to prevent accidental use.
-RUN echo "Dockerfile.canonical is deprecated. Use the root Dockerfile." && false

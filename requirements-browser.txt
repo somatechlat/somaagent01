@@ -1,3 +1,0 @@
-# Web Automation & Browser
-playwright==1.52.0
-browser-use==0.5.11

@@ -33,7 +33,7 @@ echo "[4/7] Create Python venv and install UI deps ..."
 python3 -m venv .uv-venv >/dev/null 2>&1 || true
 source .uv-venv/bin/activate
 pip install -U pip wheel setuptools >/dev/null
-pip install -r requirements-core.txt -r requirements-browser.txt -r requirements-dev.txt websockets aiohttp pathspec python-crontab numpy >/dev/null
+pip install -r requirements.txt websockets aiohttp pathspec python-crontab numpy >/dev/null
 
 echo "[5/7] Start UI on http://127.0.0.1:${UI_PORT} (Gateway: $GW_URL) ..."
 export UI_USE_GATEWAY=true

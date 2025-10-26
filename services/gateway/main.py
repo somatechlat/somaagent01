@@ -988,7 +988,7 @@ class AdminMemoryListResponse(BaseModel):
     next_cursor: int | None
 
 
-@app.get("/v1/admin/memory", response_model=AdminMemoryListResponse)
+@app.get("/v1/admin/memory", response_model=AdminMemoryListResponse, tags=["admin"], summary="List memory replica rows")
 async def list_admin_memory(
     request: Request,
     tenant: str | None = Query(None, description="Filter by tenant"),
@@ -1004,6 +1004,12 @@ async def list_admin_memory(
     limit: int = Query(50, ge=1, le=200),
     store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
 ) -> AdminMemoryListResponse:
+    """List memory replica rows with filters and pagination.
+
+    - Filters: tenant, persona_id, role, session_id, universe, namespace, q, min/max wal_timestamp
+    - Pagination: id-desc cursor via 'after' and 'limit' (max 200)
+    """
+    await _enforce_admin_rate_limit(request)
     # Require admin scope when auth is enabled
     auth = await authorize_request(request, {
         "tenant": tenant,
@@ -1047,12 +1053,14 @@ async def list_admin_memory(
     return AdminMemoryListResponse(items=items, next_cursor=next_cursor)
 
 
-@app.get("/v1/admin/memory/{event_id}", response_model=AdminMemoryItem)
+@app.get("/v1/admin/memory/{event_id}", response_model=AdminMemoryItem, tags=["admin"], summary="Get memory by event_id")
 async def get_admin_memory_item(
     event_id: str,
     request: Request,
     store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
 ) -> AdminMemoryItem:
+    """Fetch a single memory replica item by its event_id."""
+    await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"event_id": event_id})
     _require_admin_scope(auth)
     row = await store.get_by_event_id(event_id)
@@ -1179,7 +1187,7 @@ def _export_semaphore() -> asyncio.Semaphore:
     return sem
 
 
-@app.get("/v1/memory/export")
+@app.get("/v1/memory/export", tags=["admin"], summary="Export memory as NDJSON stream")
 async def memory_export(
     request: Request,
     tenant: str | None = Query(None),
@@ -1194,6 +1202,12 @@ async def memory_export(
     limit_total: int | None = Query(None, ge=1),
     store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
 ):
+    """Stream an NDJSON export of memory replica rows.
+
+    Applies filters similar to the admin list endpoint. Concurrency is
+    bounded by a semaphore; optional rate limits can also apply.
+    """
+    await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {
         "tenant": tenant,
         "persona_id": persona_id,
@@ -1299,8 +1313,9 @@ def _exports_dir() -> str:
     return path
 
 
-@app.post("/v1/memory/export/jobs", response_model=dict)
+@app.post("/v1/memory/export/jobs", response_model=dict, tags=["admin"], summary="Create async export job")
 async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict:
+    await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
     if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not payload.tenant:
@@ -1310,8 +1325,9 @@ async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict
     return {"job_id": job_id, "status": "queued"}
 
 
-@app.get("/v1/memory/export/jobs/{job_id}", response_model=ExportJobStatus)
+@app.get("/v1/memory/export/jobs/{job_id}", response_model=ExportJobStatus, tags=["admin"], summary="Get export job status")
 async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
+    await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"job_id": job_id})
     _require_admin_scope(auth)
     job = await get_export_job_store().get(job_id)
@@ -1330,8 +1346,9 @@ async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
     )
 
 
-@app.get("/v1/memory/export/jobs/{job_id}/download")
+@app.get("/v1/memory/export/jobs/{job_id}/download", tags=["admin"], summary="Download export result")
 async def export_jobs_download(job_id: int, request: Request):
+    await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"job_id": job_id})
     _require_admin_scope(auth)
     job = await get_export_job_store().get(job_id)
@@ -1472,6 +1489,65 @@ CAPSULE_REGISTRY_TIMEOUT = float(os.getenv("CAPSULE_REGISTRY_TIMEOUT_SECONDS", "
 _OPENAPI_CACHE: dict[str, Any] | None = None
 _OPENFGA_CLIENT: OpenFGAClient | None = None
 _EXPORT_STORE: ExportJobStore | None = None
+
+
+# -----------------------------
+# Optional admin rate limiter (token bucket)
+# -----------------------------
+
+class _TokenBucketLimiter:
+    """Simple token bucket limiter keyed by an arbitrary string.
+
+    Not distributed; intended for single-process gateway instances or as a
+    best-effort protection when running behind a global rate limiter.
+    """
+
+    def __init__(self, rate_per_sec: float, burst: int) -> None:
+        self.rate = max(0.0, float(rate_per_sec))
+        self.capacity = max(1, int(burst))
+        self._buckets: dict[str, tuple[float, float]] = {}
+        # key -> (tokens, last_refill_ts)
+
+    def allow(self, key: str, *, now: float | None = None) -> bool:
+        if self.rate <= 0:
+            return True
+        t = now if now is not None else time.monotonic()
+        tokens, last = self._buckets.get(key, (float(self.capacity), t))
+        # Refill tokens
+        if t > last:
+            tokens = min(self.capacity, tokens + (t - last) * self.rate)
+            last = t
+        if tokens >= 1.0:
+            tokens -= 1.0
+            self._buckets[key] = (tokens, last)
+            return True
+        self._buckets[key] = (tokens, last)
+        return False
+
+
+def _admin_rate_limiter() -> _TokenBucketLimiter | None:
+    lim = getattr(app.state, "_admin_rl", None)
+    if lim is not None:
+        return lim  # type: ignore[return-value]
+    try:
+        rps = float(os.getenv("GATEWAY_ADMIN_RPS", "0"))
+        burst = int(os.getenv("GATEWAY_ADMIN_BURST", "10"))
+    except Exception:
+        rps, burst = 0.0, 10
+    if rps <= 0:
+        app.state._admin_rl = None
+        return None
+    app.state._admin_rl = _TokenBucketLimiter(rate_per_sec=rps, burst=burst)
+    return app.state._admin_rl
+
+
+async def _enforce_admin_rate_limit(request: Request) -> None:
+    limiter = _admin_rate_limiter()
+    if not limiter:
+        return
+    key = request.url.path  # global per-path limiter; refine by tenant/subject if needed
+    if not limiter.allow(key):
+        raise HTTPException(status_code=429, detail="Too Many Requests (admin rate limit)")
 
 
 def _hydrate_jwt_credentials_from_vault() -> None:
