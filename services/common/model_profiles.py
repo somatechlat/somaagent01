@@ -80,6 +80,36 @@ class ModelProfileStore:
                 json.dumps(profile.kwargs or {}, ensure_ascii=False),
             )
 
+    # Backward-compat helpers to match Gateway endpoint names
+    async def create_profile(self, profile: ModelProfile) -> None:
+        """Create or replace a model profile.
+
+        Gateway's /v1/model-profiles (POST) calls this method. We simply ensure the
+        schema exists and delegate to upsert() so the operation is idempotent in dev.
+        """
+        await self.ensure_schema()
+        await self.upsert(profile)
+
+    async def update_profile(self, role: str, deployment_mode: str, profile: ModelProfile) -> None:
+        """Update an existing model profile identified by (role, deployment_mode).
+
+        The payload may include role/deployment_mode, but we trust the path
+        parameters to avoid accidental mismatches.
+        """
+        await self.ensure_schema()
+        effective = ModelProfile(
+            role=role,
+            deployment_mode=deployment_mode,
+            model=profile.model,
+            base_url=profile.base_url,
+            temperature=profile.temperature,
+            kwargs=profile.kwargs,
+        )
+        await self.upsert(effective)
+
+    async def delete_profile(self, role: str, deployment_mode: str) -> None:
+        await self.delete(role, deployment_mode)
+
     async def delete(self, role: str, deployment_mode: str) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
@@ -135,6 +165,11 @@ class ModelProfileStore:
             )
             for row in rows
         ]
+
+    # Backward-compatible alias used by gateway endpoints
+    async def list_profiles(self, deployment_mode: Optional[str] = None) -> list[ModelProfile]:
+        """Alias for list(); maintained for gateway handler compatibility."""
+        return await self.list(deployment_mode)
 
     async def sync_from_settings(self, settings: BaseServiceSettings) -> None:
         """Upsert profiles defined in the shared ``model_profiles.yaml`` file."""

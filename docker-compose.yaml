@@ -299,7 +299,7 @@ services:
       GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
       # Enable write-through to SomaBrain in dev so WAL is emitted immediately.
       GATEWAY_WRITE_THROUGH: "true"
-      GATEWAY_WRITE_THROUGH_ASYNC: "false"
+      GATEWAY_WRITE_THROUGH_ASYNC: "true"
     ports:
       - "${GATEWAY_PORT:-20016}:8010"
 

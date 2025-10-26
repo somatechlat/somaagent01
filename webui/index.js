@@ -130,6 +130,10 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleSidebar(false);
     }
   });
+  // Prime CSRF/session early to avoid a race on first poll
+  try {
+    fetch("/csrf_token", { credentials: "same-origin" }).catch(() => {});
+  } catch (_) {}
 });
 
 function setupSidebarToggle() {
@@ -212,8 +216,16 @@ export async function sendMessage() {
         });
       }
 
-      // Handle response
-      const jsonResponse = await response.json();
+      // Handle response (be robust to non-JSON error bodies)
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        await toastFrontendError(
+          `Message send failed: HTTP ${response.status}${text ? ` — ${text}` : ""}`,
+          "Send Failed"
+        );
+        return;
+      }
+      const jsonResponse = await response.json().catch(() => null);
       if (!jsonResponse) {
         toast("No response returned.", "error");
       } else {
@@ -388,7 +400,8 @@ function setConnectionStatus(status, components = null) {
   let indicatorStatus;
   if (typeof status === "string") {
     indicatorStatus = status;
-    connectionStatus = status === "ok";
+    // Consider "degraded" as connected so users can send messages while memory is unavailable
+    connectionStatus = status !== "down";
   } else {
     indicatorStatus = status ? "ok" : "down";
     connectionStatus = !!status;

@@ -698,40 +698,9 @@ class ConversationWorker:
                     tenant=(budget_response.get("metadata") or {}).get("tenant"),
                 )
                 record_metrics("budget_limit", "budget")
-        return
+                return
 
-    async def _ensure_llm_key(self) -> None:
-        if getattr(self.slm, 'api_key', None):
-            return
-        # Infer provider from base_url
-        host = ''
-        try:
-            host = (self.slm.base_url or '').split('//',1)[-1].split('/',1)[0]
-        except Exception:
-            host = ''
-        provider = 'openai'
-        if 'groq' in host:
-            provider = 'groq'
-        elif 'openrouter' in host:
-            provider = 'openrouter'
-        if not self._internal_token:
-            LOGGER.warning("No GATEWAY_INTERNAL_TOKEN; cannot fetch LLM credentials from Gateway")
-            return
-        url = f"{self._gateway_base}/v1/llm/credentials/{provider}"
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(url, headers={"X-Internal-Token": self._internal_token})
-                if resp.status_code == 200:
-                    body = resp.json()
-                    key = body.get('secret')
-                    if key:
-                        self.slm.api_key = key
-                        LOGGER.info("Fetched LLM credentials from Gateway", extra={"provider": provider})
-                else:
-                    LOGGER.debug("Failed to fetch LLM credentials", extra={"status": resp.status_code})
-        except Exception:
-            LOGGER.debug("Error fetching LLM credentials", exc_info=True)
-
+            # Continue normal processing when budget not exceeded
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
@@ -1005,35 +974,38 @@ class ConversationWorker:
                 LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
             record_metrics(result_label, path)
 
+    async def _ensure_llm_key(self) -> None:
+        if getattr(self.slm, 'api_key', None):
+            return
+        # Infer provider from base_url
+        host = ''
         try:
-            with tracer.start_as_current_span(
-                "conversation_worker.process_event",
-                attributes={
-                    "soma.session_id": session_id or "",
-                    "messaging.destination": self.settings["outbound"],
-                },
-            ):
-                await _process()
-        except Exception as exc:
-            result_label = "error"
-            LOGGER.exception(
-                "Unhandled error while processing conversation event",
-                extra={
-                    "session_id": session_id,
-                    "event_id": event.get("event_id"),
-                },
-            )
-            try:
-                await self.dlq.send_to_dlq(event, exc)
-            except Exception:
-                LOGGER.exception(
-                    "Failed to forward event to DLQ",
-                    extra={
-                        "session_id": session_id,
-                        "dlq_topic": self.dlq.dlq_topic,
-                    },
-                )
-            record_metrics("error", "exception")
+            host = (self.slm.base_url or '').split('//',1)[-1].split('/',1)[0]
+        except Exception:
+            host = ''
+        provider = 'openai'
+        if 'groq' in host:
+            provider = 'groq'
+        elif 'openrouter' in host:
+            provider = 'openrouter'
+        if not self._internal_token:
+            LOGGER.warning("No GATEWAY_INTERNAL_TOKEN; cannot fetch LLM credentials from Gateway")
+            return
+        url = f"{self._gateway_base}/v1/llm/credentials/{provider}"
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(url, headers={"X-Internal-Token": self._internal_token})
+                if resp.status_code == 200:
+                    body = resp.json()
+                    key = body.get('secret')
+                    if key:
+                        self.slm.api_key = key
+                        LOGGER.info("Fetched LLM credentials from Gateway", extra={"provider": provider})
+                else:
+                    LOGGER.debug("Failed to fetch LLM credentials", extra={"status": resp.status_code})
+        except Exception:
+            LOGGER.debug("Error fetching LLM credentials", exc_info=True)
+
 
 
 async def main() -> None:

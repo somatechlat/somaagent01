@@ -52,6 +52,10 @@ def _stub_jwt(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.asyncio
 async def test_authorize_request_accepts_jwt_cookie(monkeypatch: pytest.MonkeyPatch):
     _stub_jwt(monkeypatch)
+    # Unit tests should not make real OPA calls; stub evaluation to a no-op
+    async def noop_opa(*_, **__):
+        return None
+    monkeypatch.setattr(gateway_main, "_evaluate_opa", noop_opa)
     request = _make_cookie_request("jwt", "good-token")
     meta = await gateway_main.authorize_request(request, {})
     assert meta["tenant"] == "t-cookie"

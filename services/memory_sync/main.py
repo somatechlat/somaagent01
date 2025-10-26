@@ -17,6 +17,7 @@ from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
+from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
 from services.common.memory_write_outbox import (
     MemoryWriteOutbox,
     ensure_schema as ensure_mw_schema,
@@ -55,7 +56,9 @@ class MemorySyncWorker:
     def __init__(self) -> None:
         self.store = MemoryWriteOutbox(dsn=os.getenv("POSTGRES_DSN"))
         self.bus = KafkaEventBus(_kafka_settings())
-        self.publisher = DurablePublisher(bus=self.bus)
+        # Durable publisher requires an OutboxStore for reliability
+        self.outbox = OutboxStore(dsn=os.getenv("POSTGRES_DSN"))
+        self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.soma = SomaClient.get()
         self.batch_size = _env_int("MEMORY_SYNC_BATCH_SIZE", 100)
         self.interval = _env_float("MEMORY_SYNC_INTERVAL_SECONDS", 1.0)
@@ -66,6 +69,10 @@ class MemorySyncWorker:
 
     async def start(self) -> None:
         await ensure_mw_schema(self.store)
+        try:
+            await ensure_outbox_schema(self.outbox)
+        except Exception:
+            LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
         metrics_port = int(os.getenv("MEMORY_SYNC_METRICS_PORT", "9471"))
         start_http_server(metrics_port)
         LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
@@ -83,6 +90,10 @@ class MemorySyncWorker:
     async def stop(self) -> None:
         self._stopping.set()
         await self.bus.close()
+        try:
+            await self.outbox.close()
+        except Exception:
+            pass
         await self.store.close()
 
     async def _process(self, item) -> None:  # item: MemoryWriteItem
