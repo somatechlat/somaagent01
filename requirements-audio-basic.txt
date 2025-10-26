@@ -1,2 +1,0 @@
-# Audio Processing Basic - No ML
-soundfile==0.13.1

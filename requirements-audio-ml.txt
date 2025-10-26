@@ -1,2 +1,0 @@
-# Audio Processing ML - Requires Torch
-openai-whisper==20240930

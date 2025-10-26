@@ -1,2 +1,0 @@
-########## DEPRECATED: Use requirements.txt ##########
--r requirements.txt
