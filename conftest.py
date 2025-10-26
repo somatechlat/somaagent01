@@ -44,10 +44,17 @@ try:
 except Exception as _e:
     print("DEBUG dotenv load failed:", _e)
 # Disable OTLP exports during tests to avoid network calls, but keep SDK enabled for context tests
+# Keep OTel SDK enabled for context-related unit tests, but avoid any network exporters.
+# Standard OTel envs to disable default exporters used by instrumentations.
 os.environ.setdefault("OTEL_TRACES_EXPORTER", "none")
 os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
 os.environ.setdefault("OTEL_LOGS_EXPORTER", "none")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+
+# Also inform our internal tracing helper to skip creating an OTLP exporter.
+# This prevents attempts to connect to Jaeger during tests when modules import
+# setup_tracing() at import time (e.g., the gateway).
+os.environ.setdefault("OTEL_EXPORTER_OTLP_DISABLED", "true")
 # Top-level pytest configuration
 # Existing plugin registration
 from pathlib import Path

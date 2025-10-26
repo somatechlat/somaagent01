@@ -2,8 +2,8 @@
 # This file defines all services for the development environment.
 
 x-agent-env: &agent-env
-  # Include legacy /a0 path so services referencing /a0/common continue to work
-  PYTHONPATH: "/git/agent-zero"
+  # Ensure both the baked app code (/app) and mounted repo path are importable
+  PYTHONPATH: "/app:/git/agent-zero"
   LOG_LEVEL: INFO
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   REDIS_URL: redis://redis:6379/0
@@ -36,6 +36,9 @@ x-agent-service: &agent-service
   build:
     context: .
     dockerfile: Dockerfile
+    args:
+      # Skip heavy ML deps (torch, CUDA, unstructured) for local dev builds
+      INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-false}
   working_dir: /git/agent-zero
   environment:
     <<: *agent-env
@@ -277,6 +280,9 @@ services:
       GATEWAY_WRITE_THROUGH_ASYNC: "true"
     ports:
       - "${GATEWAY_PORT:-20016}:8010"
+    networks:
+      - default
+      - somaagent01_dev
 
   outbox-sync:
     <<: *agent-service
@@ -302,6 +308,9 @@ networks:
   default:
     external: true
     name: somaagent01
+  somaagent01_dev:
+    external: true
+    name: somaagent01_dev
 
 volumes:
   kafka_data:
