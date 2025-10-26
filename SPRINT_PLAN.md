@@ -1,3 +1,19 @@
+# Sprint Plan (updated 2025-10-26)
+
+This file tracks sprint goals and status.
+
+## Wave B wrap-up
+
+- Gateway admin endpoints delivered: list/detail/export/delete/batch
+- Optional admin rate limiter added via env flags
+- Replica schema/indexes ensured by store
+
+## Wave C kickoff
+
+- Added lightweight load/soak harness: `scripts/load/soak_gateway.py`
+- Make targets: `make load-smoke`, `make load-soak`
+- Docs: `docs/technical-manual/load-testing.md`
+- Next: execute in staging with write-through and capture baselines (latency p95, error rate, WAL→replica lag)
 <!-- DEPRECATION NOTE: This document is superseded by ROADMAP_CANONICAL.md. Keep for historical context. -->
 
 # 🏎️ Parallel Sprint Plan – SomaAgentHub (Enterprise Edition)

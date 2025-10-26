@@ -38,12 +38,15 @@ Sprint S4 (Weeks 7–8)
 - Security: enforce admin scopes; rate limiting; audit logs.
 - Exit: UI contract frozen; latency within target; rate/size limits enforced.
 
+Status: Completed (admin endpoints delivered; OpenAPI tags added; optional admin rate limit shipped).
+
 **Wave C – E2E & Capacity**
 
 Sprint S5 (Weeks 9–10)
 - E2E: Testcontainers (Kafka+Postgres): WAL→replica (ok) and forced error→DLQ.
 - Load/soak: gateway write-through + WAL knobs; measure replication lag and error rate.
 - Exit: zero-loss proven; lag steady ≤ 2s at baseline; chaos recovery drains backlog.
+	- Harness: `scripts/load/soak_gateway.py`; run via `make load-soak` with env overrides. Pending: execute in CI/staging and capture baselines.
 
 **Wave D – Production Hardening**
 

@@ -69,19 +69,19 @@ infrastructure (Kafka, Redis, Postgres, OPA) stays in Docker:
 make deps-up
 ```
 
-- Kafka → `localhost:${KAFKA_PORT:-21000}`
-- Redis → `localhost:${REDIS_PORT:-21001}`
-- Postgres → `localhost:${POSTGRES_PORT:-21002}`
-- OPA → `http://localhost:${OPA_PORT:-21009}`
+- Kafka → `localhost:${KAFKA_PORT:-20000}`
+- Redis → `localhost:${REDIS_PORT:-20001}`
+- Postgres → `localhost:${POSTGRES_PORT:-20002}`
+- OPA → `http://localhost:${OPA_PORT:-20009}`
 
 Tail dependency logs with `make deps-logs`. Stop them via `make deps-down`.
 
 **Verification:**
 
 ```bash
-docker compose -p somaagent01_deps -f docker-compose.dependencies.yaml ps
-curl http://localhost:${OPA_PORT:-21009}/health | jq
-pg_isready -h localhost -p ${POSTGRES_PORT:-21002} -d somaagent01 -U soma
+docker compose -p somaagent01_deps -f docker-compose.yaml --profile core ps
+curl http://localhost:${OPA_PORT:-20009}/health | jq
+pg_isready -h localhost -p ${POSTGRES_PORT:-20002} -d somaagent01 -U soma
 ```
 
 ## 6. Start Gateway & Workers Locally
@@ -131,7 +131,7 @@ pytest tests/playwright/test_realtime_speech.py --headed
 | Stop Python services | `Ctrl+C` in the terminal running `make stack-up` |
 | Stop dependencies | `make deps-down` |
 | Tail dependencies | `make deps-logs` |
-| Full Docker stack (legacy) | `make dev-up` |
+| Full Docker stack | `make dev-up` |
 | Full Docker teardown | `make dev-down` |
 | Rebuild Docker images | `make dev-rebuild` |
 | Clean volumes | `make clean` |
@@ -140,7 +140,7 @@ pytest tests/playwright/test_realtime_speech.py --headed
 
 ## 10. Local Docker Compose Reference
 
-- `docker-compose.dependencies.yaml` now contains only Kafka/Redis/Postgres/OPA.
+- Use `docker-compose.yaml` with the `core` profile for dependencies-only workflows.
 - Default `docker-compose.yaml` still builds the full deployment (Gateway,
   workers, Agent UI). Use this for production parity or CI:
   - `docker compose -p somaagent01 --profile core --profile dev up -d`

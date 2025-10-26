@@ -24,13 +24,15 @@ status: source-of-truth
 - `somabrain_request_seconds_bucket{method,path,status}` (+ `_sum/_count`) and `somabrain_requests_total{method,path,status}` – client heatmap and request mix (SomaClient Histogram/Counter).
 - Supporting: `outbox_sync_effective_batch_size`, `somabrain_health_state{state}`, `memory_replicator_events_total{result}`, `memory_replicator_replication_seconds`.
 
-**Current State (2025-10-25)**
+**Current State (2025-10-26)**
 - Gateway write-through, WAL emit, DLQ admin, health aggregation present.
 - SomaClient hardened (retries/backoff; honors Retry-After; circuit breaker; OTEL; logging redaction; correct universe vs. namespace).
 - Replicator writes `memory_replica`; emits lag/throughput metrics; stores DLQ rows.
 - DLQ depth gauge exported; docs and Compose cleaned of legacy SKM.
 - UI Gateway mode enabled: `/message_async` forwards to Gateway; SSE via `/gateway_stream?session_id=…` renders streamed events.
 - UI health now proxies Gateway `/healthz`; status indicator reflects Gateway/SomaBrain health; Send is gated when unhealthy. Local-agent fallback in the UI message path has been removed.
+-- Wave B admin APIs implemented in Gateway: list/detail/export/delete/batch, with OpenAPI tags and optional admin rate limiting. Replica schema/indexes ensured by store.
+-- Wave C harness added: `scripts/load/soak_gateway.py` plus Make targets (`make load-smoke`, `make load-soak`) and docs in `docs/technical-manual/load-testing.md`.
 
 **Target Architecture (steady state)**
 - UI → Gateway (`/v1/*`).
@@ -58,10 +60,12 @@ Wave B – Memory Admin API + UI Contract
   - `POST /v1/memory/batch` (bulk remember/update; server idempotency)
 - Document scopes and OPA policy decisions; rate-limit and size-limit admin actions.
 
+Status: delivered in Gateway; optional token-bucket rate limit via `GATEWAY_ADMIN_RPS`/`GATEWAY_ADMIN_BURST`.
+
 Wave C – E2E & Capacity
 - Kafka+Postgres Testcontainers e2e for WAL→replica (happy path) and DLQ on forced error. (done)
 - Add outage→recovery e2e for memory_sync. (done)
-- Soak/load tests for write-through + WAL; prove zero-loss and bounded lag under chaos. (pending)
+- Soak/load tests for write-through + WAL; prove zero-loss and bounded lag under chaos. (harness available; execute/tune pending)
 - Recording rules for Voyant (latency quantiles, error rates, lag maxima) – defined in Voyant repo. (external)
 
 Wave D – Production Hardening
