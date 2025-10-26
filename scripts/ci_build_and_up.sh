@@ -10,7 +10,7 @@ cd "$ROOT_DIR"
 IMAGE_NAME=${IMAGE_NAME:-somaagent01:slim}
 
 echo "Building slim image (${IMAGE_NAME})..."
-docker build --build-arg INCLUDE_ML_DEPS=false -t "${IMAGE_NAME}" -f Dockerfile.canonical .
+docker build --build-arg INCLUDE_ML_DEPS=false -t "${IMAGE_NAME}" -f Dockerfile .
 
 echo "Bringing up CI compose..."
 docker network create somaagent01 || true

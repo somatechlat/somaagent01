@@ -1037,7 +1037,7 @@ class LocalSentenceTransformerWrapper(Embeddings):
         except Exception as e:  # pragma: no cover - handled at runtime
             raise ImportError(
                 "sentence-transformers is required for LocalSentenceTransformerWrapper. "
-                "Install it (e.g. set FEATURE_AI=cpu in DockerfileLocal to include sentence-transformers in the image, "
+                "Install it (e.g. build with --build-arg INCLUDE_ML_DEPS=true in the Dockerfile to include ML deps, "
                 "or run: pip install 'sentence-transformers')"
             ) from e
         self.model = _ST(model, **st_kwargs)

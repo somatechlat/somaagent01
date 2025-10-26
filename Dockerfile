@@ -1,81 +1,79 @@
-# Production-ready Dockerfile with all dependencies
-FROM python:3.12-slim
+# Canonical multi-stage build that installs the complete Agent Zero runtime.
 
-ENV PYTHONPATH=/git/agent-zero
-ENV PATH="/opt/venv-a0/bin:${PATH}"
-WORKDIR /git/agent-zero
+FROM python:3.11-slim AS builder
 
-# Copy application files
-COPY ./run_ui.py ./agent.py ./models.py ./initialize.py ./preload.py ./prepare.py /git/agent-zero/
-COPY ./python/ /git/agent-zero/python/
-COPY ./services/ /git/agent-zero/services/
-COPY ./common/ /git/agent-zero/common/
-COPY ./conf/ /git/agent-zero/conf/
-COPY ./prompts/ /git/agent-zero/prompts/
-COPY ./webui/ /git/agent-zero/webui/
-COPY ./schemas/ /git/agent-zero/schemas/
+ARG INCLUDE_ML_DEPS=true
 
-# Install required dependencies (trimmed)
+ENV PYTHONUNBUFFERED=1 \
+        PYTHONDONTWRITEBYTECODE=1 \
+        VENV_PATH="/opt/venv"
+
+ENV PATH="$VENV_PATH/bin:$PATH"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
                 build-essential \
+                curl \
                 git \
-                cmake \
-                libopenblas-dev \
-                libomp-dev \
-        && rm -rf /var/lib/apt/lists/* \
-        && python3 -m venv /opt/venv-a0 \
-        && /opt/venv-a0/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
-        && /opt/venv-a0/bin/pip install --no-cache-dir \
-        fastapi==0.115.2 \
-        uvicorn==0.32.0 \
-        fasta2a==0.5.0 \
-        fastmcp==2.3.4 \
-        mcp==1.13.1 \
-        python-dotenv==1.1.0 \
-        Flask==3.1.2 \
-        PyYAML==6.0.3 \
-        httpx==0.28.1 \
-        redis==6.4.0 \
-        aiokafka==0.11.0 \
-        langchain-core==0.1.53 \
-        python-crontab==2.7.1 \
-        psycopg[binary]==3.2.3 \
-        grpcio==1.67.1 \
-        protobuf==5.27.3 \
-        aiohttp==3.13.1 \
-        asyncpg==0.30.0 \
-        a2wsgi==1.10.10 \
-        opentelemetry-api==1.29.0 \
-        opentelemetry-sdk==1.29.0 \
-        opentelemetry-instrumentation==0.50b0 \
-        opentelemetry-instrumentation-fastapi==0.50b0 \
-        opentelemetry-instrumentation-httpx==0.50b0 \
-        prometheus-client==0.21.0 \
-        webcolors==24.11.1 \
-        nest-asyncio==1.6.0 \
-        pybreaker==1.1.0 \
-        regex==2024.9.11 \
-        pytz==2024.2 \
-        simpleeval==1.0.3 \
-        # Ensure runtime crypto, HF hub and pydantic compatibility are present
-        cryptography==46.0.3 \
-        "huggingface-hub==0.13.3" \
-        pathspec==0.10.3 \
-        pydantic==2.11.0 \
-        PyJWT==2.8.0
+        && rm -rf /var/lib/apt/lists/*
 
-# Heavy ML deps for local embeddings and FAISS
-RUN /opt/venv-a0/bin/pip install --no-cache-dir \
-        "openai>=1.99.5,<3" \
-        litellm==1.78.6 \
-        sentence-transformers==2.2.2 \
-        transformers \
-        faiss-cpu \
-        langchain-community \
-        langchain \
-        # Install CPU wheels for torch from the official PyTorch CPU index
-        --extra-index-url https://download.pytorch.org/whl/cpu \
-        torch torchvision torchaudio
+RUN python -m venv "$VENV_PATH" && \
+        "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
 
-EXPOSE 80 8010 20017
-CMD ["/opt/venv-a0/bin/python", "run_ui.py", "--host=0.0.0.0", "--port=80"]
+WORKDIR /opt/build
+COPY requirements.txt requirements-ml.txt ./
+RUN "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt
+
+# Optionally install heavy ML/document-processing dependencies.
+#   docker build --build-arg INCLUDE_ML_DEPS=false -t somaagent01:slim .
+RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
+                echo "Installing ML/document-processing deps" && \
+                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-ml.txt; \
+        else \
+                echo "Skipping heavy ML deps (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})"; \
+        fi
+
+
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+        PYTHONDONTWRITEBYTECODE=1 \
+        VENV_PATH="/opt/venv"
+
+ENV PATH="$VENV_PATH/bin:$PATH" \
+        PYTHONPATH=/app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+                curl \
+                git \
+                libpq-dev \
+                libssl-dev \
+                libffi-dev \
+                libsasl2-dev \
+                libxml2-dev \
+                libxslt1-dev \
+                zlib1g-dev \
+                libsndfile1 \
+                tesseract-ocr \
+                poppler-utils \
+                ffmpeg \
+        && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder "$VENV_PATH" "$VENV_PATH"
+
+WORKDIR /app
+COPY . /app
+
+RUN useradd -m -u 1000 agent && \
+        chown -R agent:agent /app
+
+USER agent
+
+# Health check endpoint defined in services.gateway.main
+# Standardize to use port 8010 (matches docker-compose service mapping)
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+        CMD curl -f http://localhost:8010/health || exit 1
+
+EXPOSE 8010
+
+# Default command runs the gateway on port 8010 to match compose and HEALTHCHECK.
+CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8010"]

@@ -2476,6 +2476,29 @@ app.add_api_route(
 
 
 # -----------------------------
+# UI runtime config endpoint
+# -----------------------------
+
+@app.get("/ui/config.json")
+async def ui_runtime_config() -> JSONResponse:
+    """Serve minimal runtime configuration for the Web UI.
+
+    Contains safe, non-secret values the UI can use for wiring.
+    """
+    payload = {
+        "api_base": f"/{API_VERSION}",
+        "universe_default": os.getenv("SOMA_NAMESPACE"),
+        "namespace_default": os.getenv("SOMA_MEMORY_NAMESPACE", "wm"),
+        "features": {
+            "write_through": _write_through_enabled(),
+            "write_through_async": _write_through_async(),
+            "require_auth": REQUIRE_AUTH,
+        },
+    }
+    return JSONResponse(payload)
+
+
+# -----------------------------
 # Static UI (serve Web UI same-origin)
 # -----------------------------
 # Mount last so API routes win precedence. Directory path is relative to the
@@ -2652,29 +2675,6 @@ async def health_check(
         components["memory_dlq"] = {"status": "degraded", "detail": f"{type(exc).__name__}: {exc}"}
 
     return JSONResponse({"status": overall_status, "components": components})
-
-
-# -----------------------------
-# UI runtime config endpoint
-# -----------------------------
-
-@app.get("/ui/config.json")
-async def ui_runtime_config() -> JSONResponse:
-    """Serve minimal runtime configuration for the Web UI.
-
-    Contains safe, non-secret values the UI can use for wiring.
-    """
-    payload = {
-        "api_base": f"/{API_VERSION}",
-        "universe_default": os.getenv("SOMA_NAMESPACE"),
-        "namespace_default": os.getenv("SOMA_MEMORY_NAMESPACE", "wm"),
-        "features": {
-            "write_through": _write_through_enabled(),
-            "write_through_async": _write_through_async(),
-            "require_auth": REQUIRE_AUTH,
-        },
-    }
-    return JSONResponse(payload)
 
 
 # -----------------------------

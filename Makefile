@@ -38,8 +38,13 @@ STACK_RUNNER := scripts/runstack.py
 
 # Use this to export environment variables from a .env file if it exists
 ifneq (,$(wildcard ./.env))
-    include .env
-    export
+	include .env
+	export
+endif
+# Central build configuration (single source of truth for Docker variables)
+ifneq (,$(wildcard ./.build.env))
+	include .build.env
+	export
 endif
 
 .PHONY: help build up down restart logs rebuild clean
@@ -275,3 +280,32 @@ slim-browser-logs:
 	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) --profile core --profile dev logs -f
 
 slim-browser-rebuild: slim-browser-down slim-browser-up
+
+# ------------------------------------------------------------------------------
+# Canonical Docker image build/push with branch+date+sha tag
+# ------------------------------------------------------------------------------
+
+# Default image repo; override via .build.env or environment
+IMAGE_REPO ?= $(IMAGE_REPO)
+# Build arg for ML deps; override via .build.env or environment
+INCLUDE_ML_DEPS ?= false
+
+# Compute tag components
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
+DATE := $(shell date +%y%m%d)
+SHA := $(shell git rev-parse --short HEAD)
+TAG := $(BRANCH)-$(DATE)-$(SHA)
+
+.PHONY: docker-image docker-push print-tag
+
+print-tag:
+	@echo "Image tag: $(TAG)"
+
+docker-image:
+	@echo "Building image $(IMAGE_REPO):$(TAG) (INCLUDE_ML_DEPS=$(INCLUDE_ML_DEPS))"
+	docker build -f Dockerfile -t $(IMAGE_REPO):$(TAG) --build-arg INCLUDE_ML_DEPS=$(INCLUDE_ML_DEPS) .
+
+docker-push:
+	@if [ -z "$(IMAGE_REPO)" ]; then echo "IMAGE_REPO is required (set in .build.env or env)"; exit 1; fi
+	@echo "Pushing image $(IMAGE_REPO):$(TAG)"
+	docker push $(IMAGE_REPO):$(TAG)

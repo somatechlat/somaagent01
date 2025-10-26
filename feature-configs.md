@@ -78,31 +78,15 @@ FEATURE_INTEGRATIONS=true
 
 ### Lean Developer Build (Recommended)
 ```bash
-docker build -f DockerfileLocal \
-  --build-arg FEATURE_DEV=true \
-  --build-arg FEATURE_AI=basic \
-  --build-arg FEATURE_AUDIO=none \
-  --build-arg FEATURE_BROWSER=true \
-  --build-arg FEATURE_DOCUMENTS=true \
-  --build-arg FEATURE_DATABASE=true \
-  --build-arg FEATURE_MONITORING=false \
-  --build-arg FEATURE_GRPC=false \
-  --build-arg FEATURE_INTEGRATIONS=true \
+docker build -f Dockerfile \
+  --build-arg INCLUDE_ML_DEPS=false \
   -t agent-zero-dev:lean .
 ```
 
 ### Minimal Build (Ultra-Fast)
 ```bash
-docker build -f DockerfileLocal \
-  --build-arg FEATURE_AI=basic \
-  --build-arg FEATURE_AUDIO=none \
-  --build-arg FEATURE_BROWSER=false \
-  --build-arg FEATURE_DOCUMENTS=false \
-  --build-arg FEATURE_DATABASE=false \
-  --build-arg FEATURE_MONITORING=false \
-  --build-arg FEATURE_DEV=false \
-  --build-arg FEATURE_GRPC=false \
-  --build-arg FEATURE_INTEGRATIONS=false \
+docker build -f Dockerfile \
+  --build-arg INCLUDE_ML_DEPS=false \
   -t agent-zero:minimal .
 ```
 
