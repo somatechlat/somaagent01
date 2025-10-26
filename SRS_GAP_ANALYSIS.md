@@ -14,7 +14,7 @@
 1. **LangGraph-style Orchestrator** - Need formal state machine with checkpointed nodes
 2. **Role-Based Agents** - Need dedicated Researcher/Coder/Operator profiles
 3. **Benchmark Harness** - Need WebArena/GAIA/SWE-bench runners
-4. **Enhanced Observability** - Need Grafana dashboards and advanced tracing
+4. **Enhanced Observability** - Need advanced tracing
 5. **Kubernetes Deployment** - Need Helm charts and production configs
 
 **Implementation Effort:** 12-16 weeks across 8 milestones
@@ -150,7 +150,7 @@
 - **OpenTelemetry:** FastAPI auto-instrumentation, httpx client instrumentation
 - **Structured Logging:** JSON logs with session_id, tenant, etc.
 
-**Gap:** Need Grafana dashboards and Jaeger deployment
+**Gap:** Need Jaeger deployment
 
 ---
 
@@ -349,7 +349,7 @@
 **Wave 4 - E2E Hardening:** 📋 Planned
 - Playwright test suite
 - OpenTelemetry spans
-- Grafana dashboards
+-
 
 **Wave 5 - Performance:** 📋 Planned
 - Load testing

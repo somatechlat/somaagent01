@@ -51,6 +51,7 @@ x-agent-service: &agent-service
     - ./agents:/git/agent-zero/agents:ro
     - ./tmp:/git/agent-zero/tmp
     - ./prompts:/git/agent-zero/prompts:ro
+    - ./webui:/git/agent-zero/webui:ro
     # Note: legacy /a0 mounts removed for modern deployments. If you need
     # historic A0 data, restore from agent-zero/legacy_a0 or the legacy backup.
   extra_hosts:

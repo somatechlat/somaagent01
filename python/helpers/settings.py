@@ -7,7 +7,6 @@ import subprocess
 from typing import Any, cast, Literal, TypedDict
 
 # Third‑party imports (alphabetical)
-import models
 from python.helpers import defer, git, runtime, whisper
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
@@ -890,15 +889,28 @@ def convert_out(settings: Settings) -> SettingsOutput:
         }
     )
 
-    stt_fields: list[SettingsField] = []
+    dev_fields: list[SettingsField] = []
 
-    stt_fields.append(
+    dev_fields.append(
         {
-            "id": "stt_microphone_section",
-            "title": "Microphone device",
-            "description": "Select the microphone device to use for speech-to-text.",
-            "value": "<x-component path='/settings/speech/microphone.html' />",
-            "type": "html",
+            "id": "INGEST_OFFLOAD_THRESHOLD_MB",
+            "title": "Ingestion Offload Threshold (MB)",
+            "description": "Files larger than this threshold will be offloaded to background ingestion jobs. Default: 5 MB.",
+            "type": "number",
+            "min": 1,
+            "max": 512,
+            "step": 1,
+            "value": settings.get("INGEST_OFFLOAD_THRESHOLD_MB", 5),
+        }
+    )
+
+    dev_fields.append(
+        {
+            "id": "shell_interface",
+            "title": "Shell Interface",
+            "description": "Enable shell interface for advanced debugging and scripting.",
+            "type": "switch",
+            "value": settings["shell_interface"],
         }
     )
 
@@ -1246,13 +1258,13 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
 
 def _get_api_key_field(settings: Settings, provider: str, title: str) -> SettingsField:
-    key = settings["api_keys"].get(provider, models.get_api_key(provider))
-    # For API keys, use simple asterisk placeholder for existing keys
+    key = settings["api_keys"].get(provider, "")
+    has_secret = isinstance(key, str) and key.strip() not in {"", "None"}
     return {
         "id": f"api_key_{provider}",
         "title": title,
         "type": "text",
-        "value": (API_KEY_PLACEHOLDER if key and key != "None" else ""),
+        "value": API_KEY_PLACEHOLDER if has_secret else "",
     }
 
 
@@ -1271,7 +1283,15 @@ def convert_in(settings: dict) -> Settings:
                     if field["id"] == "browser_http_headers" or field["id"].endswith("_kwargs"):
                         current[field["id"]] = _env_to_dict(field["value"])
                     elif field["id"].startswith("api_key_"):
-                        current["api_keys"][field["id"]] = field["value"]
+                        provider = field["id"][len("api_key_") :]
+                        if isinstance(current, dict):
+                            existing = current.get("api_keys")
+                        else:
+                            existing = getattr(current, "api_keys", None)
+                        if not isinstance(existing, dict):
+                            existing = {}
+                        existing[provider] = field["value"]
+                        current["api_keys"] = existing
                     else:
                         current[field["id"]] = field["value"]
     return current

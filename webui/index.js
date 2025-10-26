@@ -51,12 +51,14 @@ function openGatewayStream(sessionId) {
   // Replace any existing stream
   closeGatewayStream();
 
-  const url = `/gateway_stream?session_id=${encodeURIComponent(sessionId)}`;
-  const es = new EventSource(url);
+  // Direct Gateway SSE only (legacy proxy removed)
+  const directUrl = `/v1/session/${encodeURIComponent(sessionId)}/events`;
+  const es = new EventSource(directUrl);
+
   _gatewaySSE = es;
   _gatewaySSESession = sessionId;
 
-  es.onmessage = (evt) => {
+  const _handleSSEMessage = (evt) => {
     if (!evt?.data) return;
     try {
       const event = JSON.parse(evt.data);
@@ -72,6 +74,8 @@ function openGatewayStream(sessionId) {
       console.warn("SSE parse error:", e);
     }
   };
+
+  es.onmessage = _handleSSEMessage;
 
   es.onerror = () => {
     // Browser auto-retries; we keep the reference and let it recover.
@@ -187,33 +191,56 @@ export async function sendMessage() {
         // sleep one frame to render the message before upload starts - better UX
         sleep(0);
 
-        const formData = new FormData();
-        formData.append("text", message);
-        formData.append("context", context);
-        formData.append("message_id", messageId);
-
-        for (let i = 0; i < attachmentsWithUrls.length; i++) {
-          formData.append("attachments", attachmentsWithUrls[i].file);
-        }
-
-        response = await api.fetchApi("/message_async", {
-          method: "POST",
-          body: formData,
-        });
+        // Gateway-first two-step: 1) upload files, 2) post message with attachment paths.
+        let gatewaySucceeded = false;
+        try {
+          const uploadFd = new FormData();
+          if (context) uploadFd.append("session_id", context);
+          for (let i = 0; i < attachmentsWithUrls.length; i++) {
+            uploadFd.append("files", attachmentsWithUrls[i].file);
+          }
+          const upResp = await api.fetchApi("/v1/uploads", { method: "POST", body: uploadFd });
+          if (upResp.ok) {
+            const filesJson = await upResp.json();
+            const paths = Array.isArray(filesJson) ? filesJson.map((d) => d.path).filter(Boolean) : [];
+            const msgResp = await api.fetchApi("/v1/session/message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_id: context || undefined,
+                persona_id: undefined,
+                message,
+                attachments: paths,
+                metadata: {},
+              }),
+            });
+            if (msgResp.ok) {
+              const body = await msgResp.json().catch(() => ({}));
+              response = new Response(
+                JSON.stringify({ accepted: true, session_id: body.session_id, event_id: body.event_id }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+              );
+              gatewaySucceeded = true;
+            }
+          }
+        } catch (_) {}
+      if (!gatewaySucceeded) {
+        throw new Error("Failed to send message via Gateway");
+      }
       } else {
         // For text-only messages
-        const data = {
-          text: message,
-          context,
-          message_id: messageId,
-        };
-        response = await api.fetchApi("/message_async", {
+        // Prefer direct Gateway API; fall back to local UI endpoint on error
+        const gwResp = await api.fetchApi("/v1/session/message", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: context || undefined, persona_id: undefined, message, attachments: [], metadata: {} })
         });
+        if (gwResp.ok) {
+          const body = await gwResp.json().catch(() => ({}));
+          response = new Response(JSON.stringify({ accepted: true, session_id: body.session_id, event_id: body.event_id }), { status: 200, headers: { "Content-Type": "application/json" } });
+        } else {
+          throw new Error(`Gateway message send failed: ${gwResp.status}`);
+        }
       }
 
       // Handle response (be robust to non-JSON error bodies)

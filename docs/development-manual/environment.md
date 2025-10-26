@@ -12,7 +12,8 @@ prerequisites:
   - Docker Desktop 4.36+
   - Python 3.12+
 verification:
-  - `make dev-up` succeeds
+  - `make deps-up` succeeds
+  - `make stack-up` streams healthy logs
   - `pytest` passes locally
 ---
 
@@ -59,70 +60,106 @@ Verify: `npm run lint` passes.
    - `SLM_API_KEY` (or alternate model provider).
    - `POSTGRES_DSN`, `REDIS_URL` if using external services.
 
-## 5. Start the Stack
+## 5. Bring Up Shared Dependencies
+
+The Python services now run directly inside your virtualenv. Only the shared
+infrastructure (Kafka, Redis, Postgres, OPA) stays in Docker:
 
 ```bash
-make dev-up
+make deps-up
 ```
 
-- Gateway available at `http://localhost:${GATEWAY_PORT:-20016}`.
-- UI (when started) available at `http://localhost:${AGENT_UI_PORT:-20015}`.
-- Logs tail via `make dev-logs`.
+- Kafka → `localhost:${KAFKA_PORT:-21000}`
+- Redis → `localhost:${REDIS_PORT:-21001}`
+- Postgres → `localhost:${POSTGRES_PORT:-21002}`
+- OPA → `http://localhost:${OPA_PORT:-21009}`
+
+Tail dependency logs with `make deps-logs`. Stop them via `make deps-down`.
 
 **Verification:**
-- `docker compose -p somaagent01 ps` shows services healthy.
-- `curl http://localhost:${GATEWAY_PORT:-20016}/health` returns `200`.
 
-## 6. Testing
+```bash
+docker compose -p somaagent01_deps -f docker-compose.dependencies.yaml ps
+curl http://localhost:${OPA_PORT:-21009}/health | jq
+pg_isready -h localhost -p ${POSTGRES_PORT:-21002} -d somaagent01 -U soma
+```
+
+## 6. Start Gateway & Workers Locally
+
+```bash
+make stack-up
+```
+
+This runs:
+
+- `uvicorn services.gateway.main:app --host 0.0.0.0 --port ${GATEWAY_PORT:-21016}`
+- `python -m services.conversation_worker.main`
+- `python -m services.tool_executor.main`
+- `python -m services.memory_replicator.main`
+- `python -m services.memory_sync.main`
+- `python -m services.outbox_sync.main`
+
+Use `Ctrl+C` to stop the stack. For auto-reload on Gateway code changes, run
+`make stack-up-reload`.
+
+**Verification:**
+
+```bash
+curl http://localhost:${GATEWAY_PORT:-21016}/health
+```
+
+## 7. Run Agent UI Locally
+
+```bash
+make ui   # http://127.0.0.1:3000
+```
+
+Ensure `.env` has `UI_USE_GATEWAY=true` and `UI_GATEWAY_BASE` pointed at the
+local Gateway (`http://127.0.0.1:${GATEWAY_PORT:-21016}`).
+
+## 8. Testing
 
 ```bash
 pytest
 pytest tests/playwright/test_realtime_speech.py --headed
 ```
 
-## 7. Common Tasks
+## 9. Common Tasks
 
 | Task | Command |
 | ---- | ------- |
-| Stop stack | `make dev-down` |
-| Rebuild stack | `make dev-rebuild` |
-| Tail a specific service | `make dev-logs-svc SERVICES=gateway` |
-| Start selected services | `make dev-up-services SERVICES="gateway tool-executor"` |
+| Stop Python services | `Ctrl+C` in the terminal running `make stack-up` |
+| Stop dependencies | `make deps-down` |
+| Tail dependencies | `make deps-logs` |
+| Full Docker stack (legacy) | `make dev-up` |
+| Full Docker teardown | `make dev-down` |
+| Rebuild Docker images | `make dev-rebuild` |
 | Clean volumes | `make clean` |
 | Lint Python | `ruff check .` |
 | Format Python | `black .` |
 
-## 8. Local Docker Compose Reference
+## 10. Local Docker Compose Reference
 
-- Single compose file `docker-compose.yaml` drives local development.
-- Profiles:
-  - `core`: Kafka (`${KAFKA_PORT:-20000}`), Redis (`${REDIS_PORT:-20001}`), Postgres (`${POSTGRES_PORT:-20002}`), OPA (`${OPA_PORT:-20009}`).
-  - `dev`: Gateway (`${GATEWAY_PORT:-20016}`), Conversation Worker, Tool Executor, Agent UI (`${AGENT_UI_PORT:-20015}`).
-- Bring-up examples:
-  - `docker compose -p somaagent01 --profile core --profile dev -f docker-compose.yaml up -d`
-  - `docker compose -p somaagent01 --profile core -f docker-compose.yaml up -d kafka redis postgres`
-- Recommended Docker Desktop allocation: ≥8 CPUs, ≥12 GB RAM to keep Kafka/Postgres healthy.
-- Frequently used containers:
-  - `somaAgent01_gateway` → `http://localhost:${GATEWAY_PORT:-20016}`
-  - `somaAgent01_agent-ui` → `http://localhost:${AGENT_UI_PORT:-20015}`
-  - `somaAgent01_tool-executor`
-  - `somaAgent01_conversation-worker`
-- Verification checklist after `docker compose up`:
-  1. `curl http://localhost:${GATEWAY_PORT:-20016}/health`
-  2. `docker compose -p somaagent01 ps` shows services `healthy`
-  3. `docker exec somaAgent01_postgres psql -U soma -d somaagent01 -c "SELECT NOW();"`
-- Troubleshooting quick hits:
-  - Port clash on Kafka (`9092`): set `KAFKA_PORT` in `.env` or stop conflict.
-  - Gateway 5xx on boot: wait for OPA/OpenFGA migrations to finish.
-  - High CPU idle: disable optional profiles or lower `WHISPER_MODEL`.
+- `docker-compose.dependencies.yaml` now contains only Kafka/Redis/Postgres/OPA.
+- Default `docker-compose.yaml` still builds the full deployment (Gateway,
+  workers, Agent UI). Use this for production parity or CI:
+  - `docker compose -p somaagent01 --profile core --profile dev up -d`
+  - UI exposed at `http://localhost:${AGENT_UI_PORT:-21015}` when using Docker.
+- Recommended Docker Desktop allocation: ≥8 CPUs, ≥12 GB RAM.
+- Troubleshooting:
+  - Port clash on Kafka (`9092`): adjust `KAFKA_PORT` or stop the conflicting
+    process.
+  - Gateway 5xx on Docker boot: wait for OPA migrations.
+  - High CPU idle: stop unused services or run via `make stack-up` instead of
+    full Docker.
 
-## 9. IDE Configuration
+## 11. IDE Configuration
 
 - VS Code recommended with Python and Docker extensions.
 - Select `.venv` interpreter.
 - Use `.vscode/launch.json` launchers for `run_ui.py` and `run_tunnel.py`.
 
-## 10. Troubleshooting
+## 12. Troubleshooting
 
 - **Docker missing:** Install from [docker.com](https://www.docker.com/products/docker-desktop/).
 - **Port conflicts:** Adjust `WEB_UI_PORT` before invoking `make dev-up`.
@@ -130,7 +167,7 @@ pytest tests/playwright/test_realtime_speech.py --headed
 
 Once the environment is verified, continue with the [Contribution Workflow](./contribution-workflow.md).
 
-## 11. Optional: Enable SSO/JWT in Dev
+## 13. Optional: Enable SSO/JWT in Dev
 
 The gateway supports JWT auth for local development. Choose one of the following and export as environment variables before `make dev-up` (or set in your shell):
 
@@ -158,7 +195,7 @@ Notes
 - Tenant is derived from the first matching claim in `GATEWAY_JWT_TENANT_CLAIMS` (default: `tenant,org,customer`).
 - Health endpoints remain open for readiness checks.
 
-## 12. Local ingress and TLS on this machine (optional)
+## 14. Local ingress and TLS on this machine (optional)
 
 You can expose the app via ingress locally and optionally enable TLS.
 

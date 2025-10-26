@@ -137,20 +137,33 @@ docker run -p 50001:80 agent0ai/agent-zero
 
 ### 🧰 Local SomaAgent01 stack via Makefile
 
-The repository now includes a `Makefile` that simplifies the management of the complete SomaAgent01 environment—Kafka, Redis, Postgres, OpenFGA, OPA, delegation services, background workers, and the Agent UI—inside Docker.
+For day-to-day development, run the Python services directly while Docker hosts
+only the shared infrastructure:
 
 ```bash
-# Build and start all services
-make up
+# 1) Start Kafka/Redis/Postgres/OPA
+make deps-up
 
-# Stop and remove all services
-make down
+# 2) Launch gateway + workers inside your virtualenv (Ctrl+C to stop)
+make stack-up
 
-# Rebuild images and restart the stack
-make rebuild
+# 3) Run the Agent UI locally (http://127.0.0.1:3000)
+make ui
 ```
 
-Once the stack is healthy, you can reach the Agent UI at `http://localhost:20015`, the delegation gateway on port `20016`, and supporting services across the reserved host range `20000-20099`. The `Makefile` provides a convenient way to manage the entire lifecycle of your development environment. For more commands, run `make help`.
+When you need a full Docker deployment (for parity with staging or CI), the
+classic targets remain available:
+
+```bash
+make up        # start gateway, workers, and UI in containers
+make down      # stop the full stack
+make rebuild   # rebuild images and restart everything
+```
+
+Once the Docker stack is healthy, you can reach the Agent UI at
+`http://localhost:20015`, the delegation gateway on port `20016`, and
+supporting services across the reserved host range `20000-20099`. Run
+`make help` for the complete command catalog.
 
 > **Observability tip:** The gateway now exports circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`. Prometheus scrapes this endpoint via the `circuit-breakers` job, enabling the `CircuitBreakerOpenEvents` alert without additional wiring. Alertmanager ships alongside Prometheus—access it on `${ALERTMANAGER_PORT:-9093}` to manage silences or webhook routes. Override `CIRCUIT_BREAKER_METRICS_HOST`/`PORT` if you relocate the exporter.
 

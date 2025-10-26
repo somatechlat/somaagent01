@@ -84,7 +84,17 @@ const settingsModalProxy = {
 
         //get settings from backend
         try {
-            const set = await sendJsonData("/settings_get", null);
+            // Prefer Gateway UI-shaped settings; fall back to legacy UI endpoint
+            let set;
+            try {
+                const resp = await fetchApi('/v1/ui/settings/sections', { method: 'GET' });
+                if (resp.ok) {
+                    set = await resp.json();
+                }
+            } catch (_) {}
+            if (!set) {
+                set = await sendJsonData("/settings_get", null);
+            }
 
             // First load the settings data without setting the active tab
             const settings = {
@@ -110,6 +120,19 @@ const settingsModalProxy = {
             modalAD.settings = settings;
             this.settings = settings;
             this.updateSpeechFieldVisibility();
+            // Apply initial readonly state for Uploads & AV based on current values
+            try{
+                const getField=(id)=>{
+                    for(const s of (this.settings.sections||[])){
+                        for(const f of (s.fields||[])) if(f.id===id) return f;
+                    }
+                    return null;
+                };
+                const ue=(getField('uploads_enabled')||{}).value !== false;
+                this._updateUploadsReadonly(ue);
+                const ae=(getField('av_enabled')||{}).value === true;
+                this._updateAvReadonly(ae);
+            }catch(_){}
 
             // Now set the active tab after the modal is open
             // This ensures Alpine reactivity works as expected
@@ -205,6 +228,43 @@ const settingsModalProxy = {
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
             try {
+                // Validate Uploads + AV fields prior to save
+                const errs = [];
+                const getField = (id)=>{
+                    for(const s of (modalAD.settings.sections||[])){
+                        for(const f of (s.fields||[])) if(f.id===id) return f;
+                    }
+                    return null;
+                };
+                const numInRange = (val,min,max)=>{ const n=Number(val); return Number.isFinite(n)&&n>=min&&n<=max; };
+                const uploadsEnabled = (getField('uploads_enabled')||{}).value !== false;
+                if(uploadsEnabled){
+                    if(!numInRange((getField('uploads_max_mb')||{}).value,1,512)) errs.push('Max File Size (MB) must be 1-512');
+                    if(!numInRange((getField('uploads_max_files')||{}).value,1,25)) errs.push('Max Files must be 1-25');
+                    if(!numInRange((getField('uploads_ttl_days')||{}).value,1,180)) errs.push('TTL (days) must be 1-180');
+                    if(!numInRange((getField('uploads_janitor_interval_seconds')||{}).value,60,86400)) errs.push('Janitor interval must be 60-86400');
+                }
+                const avEnabled = (getField('av_enabled')||{}).value === true;
+                const avStrict = (getField('av_strict')||{}).value === true;
+                if(avStrict && !avEnabled) errs.push('Strict Mode requires Antivirus enabled');
+                if(avEnabled && !numInRange((getField('av_port')||{}).value,1,65535)) errs.push('ClamAV Port must be 1-65535');
+                if(errs.length){ showToast(errs.join('\n'),'error'); return; }
+
+                // Prefer Gateway; fall back to legacy if needed
+                try {
+                    const gwResp = await fetchApi('/v1/ui/settings/sections', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sections: modalAD.settings.sections })
+                    });
+                    if (gwResp.ok) {
+                        const body = await gwResp.json();
+                        document.dispatchEvent(new CustomEvent('settings-updated', { detail: body.settings }));
+                        this.resolvePromise({ status: 'saved', data: body.settings });
+                        this.stopSchedulerPolling();
+                        this.isOpen = false;
+                        const store = Alpine.store('root'); if (store) setTimeout(()=>{ store.isOpen=false; },10);
+                        return;
+                    }
+                } catch (_) {}
                 resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
@@ -285,6 +345,19 @@ const settingsModalProxy = {
             openModal("settings/external/api-examples.html");
         } else if (field.id === "memory_dashboard") {
             openModal("settings/memory/memory-dashboard.html");
+        } else if (field.id === "av_test") {
+            try {
+                const resp = await fetchApi('/v1/av/test', { method: 'GET' });
+                const body = await resp.json().catch(() => ({}));
+                if (resp.ok && body.status === 'ok') {
+                    showToast(`ClamAV reachable at ${body.host}:${body.port}`, 'success');
+                } else {
+                    const detail = body.detail || 'Unknown error';
+                    showToast(`ClamAV not reachable: ${detail}`, 'warning');
+                }
+            } catch (e) {
+                showToast('AV test failed: ' + (e?.message || String(e)), 'error');
+            }
         }
     },
 
@@ -298,6 +371,12 @@ const settingsModalProxy = {
 
         if (field.id === "speech_provider") {
             this.updateSpeechFieldVisibility();
+        }
+        if (field.id === 'uploads_enabled') {
+            this._updateUploadsReadonly(field.value !== false);
+        }
+        if (field.id === 'av_enabled') {
+            this._updateAvReadonly(field.value === true);
         }
     },
 
@@ -322,6 +401,52 @@ const settingsModalProxy = {
     getSpeechSection() {
         if (!this.settings || !Array.isArray(this.settings.sections)) return null;
         return this.settings.sections.find((section) => section.id === "speech") || null;
+    },
+
+    _getSection(id){
+        if(!this.settings || !Array.isArray(this.settings.sections)) return null;
+        return this.settings.sections.find(s => s.id===id) || null;
+    },
+    _setReadonly(sectionId, ids, ro){
+        const sec = this._getSection(sectionId);
+        if(!sec || !Array.isArray(sec.fields)) return;
+        for(const f of sec.fields){
+            if(ids.includes(f.id)) {
+                f.readonly = !!ro;
+                f._ui_disabled = !!ro;
+            }
+        }
+    },
+    _updateUploadsReadonly(enabled){
+        // Always keep uploads_dir read-only; others depend on enabled
+        const ro = !enabled;
+        const ids = ['uploads_max_mb','uploads_max_files','uploads_allowed_mime','uploads_denied_mime','uploads_ttl_days','uploads_janitor_interval_seconds'];
+        this._setReadonly('uploads', ids, ro);
+        // Add UI class for disabled fields
+        const sec = this._getSection('uploads');
+        if(sec && Array.isArray(sec.fields)){
+            for(const f of sec.fields){
+                if(ids.includes(f.id)){
+                    f._ui_disabled = ro;
+                }
+            }
+        }
+        this.updateFilteredSections();
+    },
+    _updateAvReadonly(enabled){
+        const ro = !enabled;
+        const ids = ['av_strict','av_host','av_port'];
+        this._setReadonly('antivirus', ids, ro);
+        // Add UI class for disabled fields
+        const sec = this._getSection('antivirus');
+        if(sec && Array.isArray(sec.fields)){
+            for(const f of sec.fields){
+                if(ids.includes(f.id)){
+                    f._ui_disabled = ro;
+                }
+            }
+        }
+        this.updateFilteredSections();
     }
 };
 
@@ -466,56 +591,21 @@ document.addEventListener('alpine:init', function () {
                     }
 
                     // Send request
-                    const response = await fetchApi('/settings_set', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(formData)
+                    // Prefer Gateway UI-shaped settings endpoint; fall back to legacy
+                    let response = await fetchApi('/v1/ui/settings/sections', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sections: this.settingsData.sections || [] })
                     });
+                    if (!response.ok) {
+                        response = await fetchApi('/settings_set', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(formData)
+                        });
+                    }
 
                     if (response.ok) {
                         showToast('Settings saved successfully', 'success');
-                        // Apply LLM profile to Gateway so worker picks up latest model/base/temperature
-                        try {
-                            const cfg = this._extractLlmConfigFromSections(this.settingsData.sections || []);
-                            if (cfg && cfg.model) {
-                                const applyResp = await fetchApi('/llm_profile_apply', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(cfg)
-                                });
-                                const body = await applyResp.json();
-                                if (!applyResp.ok || !body.ok) {
-                                    console.error('Failed to apply LLM profile:', body);
-                                    showToast('Saved, but failed to apply LLM profile to Gateway', 'warning');
-                                } else {
-                                    showToast('LLM profile applied to Gateway', 'success');
-                                }
-                            }
-                        } catch (e) {
-                            console.error('LLM profile apply error:', e);
-                            showToast('Saved, but failed to apply LLM profile', 'warning');
-                        }
-                        // Push provider API keys to Gateway (if present and not placeholders)
-                        try {
-                            const creds = this._extractProviderCredentials(this.settingsData.sections || []);
-                            for (const c of creds) {
-                                const r = await fetchApi('/llm_credentials_apply', {
-                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c)
-                                });
-                                const b = await r.json();
-                                if (!r.ok || !b.ok) {
-                                    console.error('LLM credentials apply failed for', c.provider, b);
-                                    showToast(`Saved, but failed to store credentials for ${c.provider}`, 'warning');
-                                } else {
-                                    showToast(`Credentials stored for ${c.provider}`, 'success');
-                                }
-                            }
-                        } catch (e) {
-                            console.error('LLM credentials apply error:', e);
-                            showToast('Saved, but failed to store provider credentials', 'warning');
-                        }
+                        // Gateway UI-shaped endpoint already applies model profile and credentials
 
                         // Refresh settings
                         await this.fetchSettings();

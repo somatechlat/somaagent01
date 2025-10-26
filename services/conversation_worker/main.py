@@ -41,6 +41,8 @@ from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 import httpx
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
+import mimetypes
+from pathlib import Path
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -226,6 +228,149 @@ class ConversationWorker:
         self.escalation_fallback_enabled = os.getenv(
             "ESCALATION_FALLBACK_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
+
+    async def _extract_text_from_path(self, path: str) -> str:
+        """Best-effort text extraction for common file types.
+
+        Uses lightweight heuristics and optional libraries if present. Never raises.
+        """
+        try:
+            p = Path(path)
+            if not p.exists() or not p.is_file():
+                return ""
+            mime, _ = mimetypes.guess_type(str(p))
+            mime = mime or "application/octet-stream"
+            # Text-like
+            if mime.startswith("text/") or mime in {"application/json", "application/xml"}:
+                try:
+                    return p.read_text(errors="ignore")[:200_000]
+                except Exception:
+                    try:
+                        return p.read_bytes()[:200_000].decode("utf-8", errors="ignore")
+                    except Exception:
+                        return ""
+            # PDF via PyMuPDF if available
+            if mime == "application/pdf" or p.suffix.lower() == ".pdf":
+                try:
+                    import fitz  # PyMuPDF
+
+                    text_parts: list[str] = []
+                    with fitz.open(str(p)) as doc:
+                        for page in doc:
+                            text_parts.append(page.get_text("text"))
+                    return "\n".join(text_parts)[:400_000]
+                except Exception:
+                    return ""
+            # Images via pytesseract if available
+            if mime.startswith("image/"):
+                try:
+                    from PIL import Image  # type: ignore
+                    import pytesseract  # type: ignore
+
+                    img = Image.open(str(p))
+                    return pytesseract.image_to_string(img)[:200_000]
+                except Exception:
+                    return ""
+            # Fallback: return nothing for unknown binary types
+            return ""
+        except Exception:
+            return ""
+
+    async def _ingest_attachment(self, *, path: str, session_id: str, persona_id: str | None, tenant: str, metadata: dict[str, Any]) -> None:
+        try:
+            text = await self._extract_text_from_path(path)
+            if not text:
+                return
+            payload = {
+                "id": str(uuid.uuid4()),
+                "type": "attachment_ingest",
+                "role": "user",
+                "content": text,
+                "attachments": [path],
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "metadata": {
+                    **dict(metadata or {}),
+                    "source": "ingest",
+                    "agent_profile_id": (metadata or {}).get("agent_profile_id"),
+                    "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                },
+            }
+            payload["idempotency_key"] = generate_for_memory_payload(payload)
+            allow_memory = True
+            try:
+                allow_memory = await self.policy_client.evaluate(
+                    PolicyRequest(
+                        tenant=tenant,
+                        persona_id=persona_id,
+                        action="memory.write",
+                        resource="somabrain",
+                        context={
+                            "payload_type": payload.get("type"),
+                            "role": payload.get("role"),
+                            "session_id": session_id,
+                            "metadata": payload.get("metadata", {}),
+                        },
+                    )
+                )
+            except Exception:
+                LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+            if not allow_memory:
+                return
+            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            try:
+                result = await self.soma.remember(payload)
+            except Exception:
+                # best-effort: enqueue to mem outbox for retry
+                try:
+                    await self.mem_outbox.enqueue(
+                        payload=payload,
+                        tenant=tenant,
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        idempotency_key=payload.get("idempotency_key"),
+                        dedupe_key=str(payload.get("id")),
+                    )
+                except Exception:
+                    pass
+                return
+            try:
+                wal_event = {
+                    "type": "memory.write",
+                    "role": "user",
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "tenant": tenant,
+                    "payload": payload,
+                    "result": {
+                        "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                        "trace_id": (result or {}).get("trace_id"),
+                        "request_id": (result or {}).get("request_id"),
+                    },
+                    "timestamp": time.time(),
+                }
+                await self.publisher.publish(
+                    wal_topic,
+                    wal_event,
+                    dedupe_key=str(payload.get("id")),
+                    session_id=session_id,
+                    tenant=tenant,
+                )
+            except Exception:
+                LOGGER.debug("Failed to publish memory WAL (ingest)", exc_info=True)
+        except Exception:
+            LOGGER.debug("Attachment ingest failed", exc_info=True)
+
+    def _should_offload_ingest(self, path: str) -> bool:
+        try:
+            threshold_mb = float(os.getenv("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
+        except ValueError:
+            threshold_mb = 5.0
+        try:
+            size = Path(path).stat().st_size
+        except Exception:
+            size = 0
+        return size > int(threshold_mb * 1024 * 1024)
 
     async def _stream_response(
         self,
@@ -570,6 +715,51 @@ class ConversationWorker:
                         )
                     except Exception:
                         LOGGER.debug("Failed to publish memory WAL (user)", exc_info=True)
+                # Best-effort: ingest attachments in background (parse → remember)
+                try:
+                    attach_list = event.get("attachments") or []
+                    for apath in attach_list:
+                        if not isinstance(apath, str) or not apath.strip():
+                            continue
+                        fullpath = apath.strip()
+                        # Offload large/expensive files to tool-executor, otherwise ingest inline
+                        if self._should_offload_ingest(fullpath):
+                            try:
+                                tool_event = {
+                                    "event_id": str(uuid.uuid4()),
+                                    "session_id": session_id,
+                                    "persona_id": event.get("persona_id"),
+                                    "tool_name": "document_ingest",
+                                    "args": {
+                                        "path": fullpath,
+                                        "session_id": session_id,
+                                        "persona_id": event.get("persona_id"),
+                                        "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                    },
+                                    "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                }
+                                topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                await self.publisher.publish(
+                                    topic,
+                                    tool_event,
+                                    dedupe_key=tool_event.get("event_id"),
+                                    session_id=session_id,
+                                    tenant=tenant,
+                                )
+                            except Exception:
+                                LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                        else:
+                            asyncio.create_task(
+                                self._ingest_attachment(
+                                    path=fullpath,
+                                    session_id=session_id,
+                                    persona_id=event.get("persona_id"),
+                                    tenant=tenant,
+                                    metadata=enriched_metadata,
+                                )
+                            )
+                except Exception:
+                    LOGGER.debug("Scheduling attachment ingest failed", exc_info=True)
                 else:
                     LOGGER.info(
                         "memory.write denied by policy",

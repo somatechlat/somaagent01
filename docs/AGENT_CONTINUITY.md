@@ -18,7 +18,7 @@ All content reflects the repository state as of 2025‑10‑25.
 - Memory Replicator consumes `memory.wal` and writes Postgres `memory_replica` (for admin browse/audit); DLQ on failure.
 - NEW: True fail‑safe memory persistence via a Postgres `memory_write_outbox` + `memory_sync` worker that retries remembers and publishes `memory.wal` on success.
 - Web UI (Flask static app + API handlers) can now operate in Gateway mode: UI messages post to Gateway and stream replies via a proxy to Gateway SSE.
-- Observability is Prometheus‑only (no Grafana code in this repo). Export signals are sufficient for external dashboards.
+- Observability is Prometheus-only. Export signals are sufficient for external dashboards.
 
 ## What’s Implemented (Key Deltas)
 

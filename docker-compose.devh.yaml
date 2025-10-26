@@ -3,6 +3,21 @@ version: "3.9"
 # Dev‑Hardened override: mirrors production behavior while staying local-only.
 
 services:
+  clamav:
+    image: clamav/clamav:stable
+    container_name: somaAgent01_clamav
+    profiles: ["devh"]
+    environment:
+      - CLAMD_STARTUP=on
+    ports:
+      - "127.0.0.1:${CLAMAV_PORT:-3310}:3310"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/3310' && echo 'PONG' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   gateway:
     profiles: ["devh"]
     environment:
@@ -14,6 +29,10 @@ services:
       GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
       GATEWAY_WRITE_THROUGH: "true"
       GATEWAY_WRITE_THROUGH_ASYNC: "false"
+      # Antivirus defaults: explicitly OFF; enable when your clamd is ready
+      CLAMAV_ENABLED: "${CLAMAV_ENABLED:-false}"
+      CLAMAV_HOST: "clamav"
+      CLAMAV_PORT: "3310"
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-20016}:8010"
 
@@ -38,4 +57,3 @@ services:
       UI_GATEWAY_BEARER: "${DEVH_ADMIN_JWT:-}"
     ports:
       - "127.0.0.1:${AGENT_UI_PORT:-20015}:80"
-

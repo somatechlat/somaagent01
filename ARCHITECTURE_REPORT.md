@@ -629,7 +629,7 @@ LOGGER.info(
 **Wave 4 - End-to-End Hardening:**
 - Expanded Playwright suite
 - OpenTelemetry spans across services
-- Grafana dashboards
+-
 - Chaos testing
 
 **Wave 5 - Performance & Release:**
@@ -899,7 +899,7 @@ pytest tests/integration/gateway/
 - [ ] SomaKamachiq remote execution
 - [ ] Multi-region deployment
 - [ ] Horizontal autoscaling
-- [ ] Advanced observability (Grafana dashboards)
+- [ ] Advanced observability (Prometheus metrics)
 - [ ] Chaos engineering tests
 
 ---
