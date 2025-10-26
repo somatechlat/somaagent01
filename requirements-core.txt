@@ -50,3 +50,5 @@ opentelemetry-semantic-conventions==0.50b0
 opentelemetry-exporter-otlp-proto-grpc==1.29.0
 # Simple expression evaluator used by python.helpers.memory
 simpleeval==1.0.3
+# File path pattern matching used by backup helpers and API endpoints
+pathspec>=0.12.1

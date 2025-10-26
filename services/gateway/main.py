@@ -58,6 +58,7 @@ from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 from services.common.model_profiles import ModelProfile, ModelProfileStore
 from services.common.ui_settings_store import UiSettingsStore
+from services.common.ui_settings_store import UiSettingsStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
@@ -223,6 +224,103 @@ EXPORT_JOB_SECONDS = _get_or_create_histogram(
 )
 
 # -----------------------------
+# Kafka debug (dev-only admin) endpoint
+# -----------------------------
+
+@app.get("/v1/admin/kafka/status")
+async def kafka_status(topic: str = Query(...), group: str = Query(...)) -> dict[str, Any]:
+    """Return partition end offsets and group committed offsets for a topic.
+
+    Development aid to diagnose publish/consume mismatches without external tools.
+    """
+    try:
+        from aiokafka import AIOKafkaConsumer  # type: ignore
+        from aiokafka.structs import TopicPartition  # type: ignore
+    except Exception as exc:  # pragma: no cover - env dependent
+        raise HTTPException(status_code=500, detail=f"aiokafka unavailable: {exc}")
+
+    ks = _kafka_settings()
+    consumer = AIOKafkaConsumer(
+        topic,
+        bootstrap_servers=ks.bootstrap_servers,
+        group_id=group,
+        enable_auto_commit=False,
+        security_protocol=ks.security_protocol,
+        sasl_mechanism=ks.sasl_mechanism,
+        sasl_plain_username=ks.sasl_username,
+        sasl_plain_password=ks.sasl_password,
+    )
+    await consumer.start()
+    try:
+        # partitions_for_topic returns a set synchronously once metadata is available
+        parts = consumer.partitions_for_topic(topic) or set()
+        tps = [TopicPartition(topic, p) for p in sorted(parts)]
+        end_offsets = await consumer.end_offsets(tps) if tps else {}
+        committed = {tp: (await consumer.committed(tp)) for tp in tps}
+        return {
+            "topic": topic,
+            "group": group,
+            "bootstrap": ks.bootstrap_servers,
+            "partitions": [
+                {
+                    "partition": tp.partition,
+                    "committed": int(committed.get(tp) or -1),
+                    "end": int(end_offsets.get(tp) or -1),
+                    "lag": max(0, int((end_offsets.get(tp) or 0) - (committed.get(tp) or 0))),
+                }
+                for tp in tps
+            ],
+        }
+    finally:
+        await consumer.stop()
+
+
+@app.post("/v1/admin/kafka/seek_to_end")
+async def kafka_seek_to_end(topic: str = Query(...), group: str = Query(...)) -> dict[str, Any]:
+    """DEV‑only: set the consumer group's committed offsets to end for a topic."""
+    try:
+        from aiokafka import AIOKafkaConsumer  # type: ignore
+        from aiokafka.structs import TopicPartition  # type: ignore
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=f"aiokafka unavailable: {exc}")
+
+    ks = _kafka_settings()
+    consumer = AIOKafkaConsumer(
+        topic,
+        bootstrap_servers=ks.bootstrap_servers,
+        group_id=group,
+        enable_auto_commit=False,
+        security_protocol=ks.security_protocol,
+        sasl_mechanism=ks.sasl_mechanism,
+        sasl_plain_username=ks.sasl_username,
+        sasl_plain_password=ks.sasl_password,
+        auto_offset_reset="latest",
+    )
+    await consumer.start()
+    try:
+        parts = consumer.partitions_for_topic(topic) or set()
+        tps = [TopicPartition(topic, p) for p in sorted(parts)]
+        if not tps:
+            return {"topic": topic, "group": group, "updated": [], "detail": "no partitions"}
+        await consumer.assign(tps)
+        await consumer.seek_to_end(*tps)
+        offsets = {}
+        for tp in tps:
+            pos = await consumer.position(tp)
+            offsets[tp] = pos
+        # Commit the end positions
+        await consumer.commit(offsets=offsets)
+        return {
+            "topic": topic,
+            "group": group,
+            "updated": [
+                {"partition": tp.partition, "committed": int(offsets.get(tp) or -1)} for tp in tps
+            ],
+        }
+    finally:
+        await consumer.stop()
+
+# -----------------------------
 # DLQ depth refresher settings
 # -----------------------------
 def _env_float(name: str, default: float) -> float:
@@ -377,6 +475,12 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("UI settings schema ensure failed", exc_info=True)
 
+    # Ensure UI settings schema exists (best-effort)
+    try:
+        await get_ui_settings_store().ensure_schema()
+    except Exception:
+        LOGGER.debug("UI settings schema ensure failed", exc_info=True)
+
 
 # ---------------------------------------------------------------------------
 # Sprint 2 – Self‑service UI for API‑key management & policy overview
@@ -491,6 +595,7 @@ _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
 _REPLICA_STORE: Optional[MemoryReplicaStore] = None
 _LLM_CRED_STORE: Optional[LlmCredentialsStore] = None
+_UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
 _UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
 
 
@@ -636,6 +741,14 @@ def get_llm_credentials_store() -> LlmCredentialsStore:
         LOGGER.error("Failed to initialize LLM credentials store", extra={"error": str(exc)})
         raise
     return _LLM_CRED_STORE
+
+
+def get_ui_settings_store() -> UiSettingsStore:
+    global _UI_SETTINGS_STORE
+    if _UI_SETTINGS_STORE is not None:
+        return _UI_SETTINGS_STORE
+    _UI_SETTINGS_STORE = UiSettingsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _UI_SETTINGS_STORE
 
 
 def get_ui_settings_store() -> UiSettingsStore:
@@ -1552,6 +1665,18 @@ async def enqueue_message(
         session_id=session_id,
         tenant=metadata.get("tenant"),
     )
+    try:
+        LOGGER.info(
+            "Published inbound message",
+            extra={
+                "topic": "conversation.inbound",
+                "session_id": session_id,
+                "event_id": event_id,
+                "result": {k: bool(v) if isinstance(v, (bool, int)) else v for k, v in (result or {}).items()},
+            },
+        )
+    except Exception:
+        LOGGER.debug("Failed to log publish result (conversation.inbound)", exc_info=True)
     if not result.get("published") and not result.get("enqueued"):
         raise HTTPException(status_code=502, detail="Unable to enqueue message")
 
@@ -2436,6 +2561,127 @@ async def delete_profile(role: str, deployment_mode: str) -> None:
 async def list_agent_profiles() -> list[ModelProfile]:
     """List agent model profiles (alias for /v1/model-profiles)."""
     return await PROFILE_STORE.list_profiles()
+
+
+# -----------------------------
+# Composite UI settings (single source of truth)
+# -----------------------------
+
+
+def _default_ui_agent() -> dict[str, str]:
+    return {
+        "agent_profile": "agent0",
+        "agent_memory_subdir": "default",
+        "agent_knowledge_subdir": "custom",
+    }
+
+
+@app.get("/v1/ui/settings")
+async def get_ui_settings() -> dict[str, Any]:
+    ui_store = get_ui_settings_store()
+    agent_cfg = await ui_store.get()
+    if not agent_cfg:
+        agent_cfg = _default_ui_agent()
+
+    deployment = APP_SETTINGS.deployment_mode
+    profile = await PROFILE_STORE.get("dialogue", deployment)
+    profile_payload: dict[str, Any] | None = None
+    if profile:
+        # Normalise kwargs to a dict (DB may return JSON as text depending on driver settings)
+        from json import loads as _json_loads
+        kwargs: dict[str, Any] | None
+        if isinstance(profile.kwargs, dict):
+            kwargs = profile.kwargs
+        elif isinstance(profile.kwargs, str):
+            try:
+                parsed = _json_loads(profile.kwargs)
+                kwargs = parsed if isinstance(parsed, dict) else None
+            except Exception:
+                kwargs = None
+        else:
+            kwargs = None
+        profile_payload = {
+            "role": profile.role,
+            "deployment_mode": profile.deployment_mode,
+            "model": profile.model,
+            "base_url": profile.base_url,
+            "temperature": profile.temperature,
+            "kwargs": kwargs or {},
+        }
+
+    creds = get_llm_credentials_store()
+    try:
+        providers = await creds.list_providers()
+    except Exception:
+        providers = []
+    llm_info = {p: True for p in providers}
+
+    return {
+        "agent": agent_cfg,
+        "model_profile": profile_payload,
+        "llm_credentials": {"has_secret": llm_info},
+        "deployment_mode": deployment,
+    }
+
+
+class UiSettingsPayload(BaseModel):
+    agent: Optional[Dict[str, Any]] = None
+    model_profile: Optional[Dict[str, Any]] = None
+    llm_credentials: Optional[Dict[str, Any]] = None
+
+
+@app.put("/v1/ui/settings")
+async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
+    if payload.agent:
+        agent_cfg = _default_ui_agent() | payload.agent
+        await get_ui_settings_store().set(agent_cfg)
+
+    if payload.model_profile:
+        mp = payload.model_profile
+        deployment = APP_SETTINGS.deployment_mode
+        # Normalise kwargs to a dict (may arrive as JSON string)
+        extra = mp.get("kwargs")
+        if isinstance(extra, str):
+            try:
+                from json import loads as _loads
+                loaded = _loads(extra)
+                extra = loaded if isinstance(loaded, dict) else None
+            except Exception:
+                extra = None
+        to_save = ModelProfile(
+            role="dialogue",
+            deployment_mode=deployment,
+            model=str(mp.get("model", "")),
+            base_url=str(mp.get("base_url", "")),
+            temperature=float(mp.get("temperature", 0.2)),
+            kwargs=extra if isinstance(extra, dict) else None,
+        )
+        await PROFILE_STORE.upsert(to_save)
+
+    if payload.llm_credentials and isinstance(payload.llm_credentials.get("provider"), str):
+        provider = payload.llm_credentials.get("provider", "").strip().lower()
+        secret = payload.llm_credentials.get("secret", "")
+        if provider and secret:
+            store = get_llm_credentials_store()
+            await store.set(provider, secret)
+
+    return {"ok": True}
+
+
+@app.get("/v1/ui/settings/backup")
+async def backup_ui_settings() -> dict[str, Any]:
+    """Return a JSON backup of current UI settings.
+
+    This includes agent config, dialogue model profile, credential presence map,
+    and metadata with an export timestamp.
+    """
+    data = await get_ui_settings()
+    return {
+        "version": 1,
+        "format": "ui_settings",
+        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "data": data,
+    }
 
 
 # -----------------------------

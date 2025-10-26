@@ -257,9 +257,12 @@ CREATE INDEX IF NOT EXISTS memory_replica_session_idx
 ON memory_replica(session_id, id DESC);
 
 -- Ensure idempotency on event_id when provided
-CREATE UNIQUE INDEX IF NOT EXISTS memory_replica_event_id_uniq
-ON memory_replica(event_id)
-WHERE event_id IS NOT NULL;
+-- For ON CONFLICT (event_id) to work without specifying a predicate,
+-- an unqualified UNIQUE index (or constraint) must exist on (event_id).
+-- We keep the historical partial index if present, but add a full unique
+-- index to satisfy Postgres' conflict target inference.
+CREATE UNIQUE INDEX IF NOT EXISTS memory_replica_event_id_uniq_full
+ON memory_replica(event_id);
 
 -- Helpful indexes for common filters
 CREATE INDEX IF NOT EXISTS memory_replica_tenant_idx ON memory_replica(tenant, id DESC);

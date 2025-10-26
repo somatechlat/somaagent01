@@ -65,6 +65,13 @@ class LlmCredentialsStore:
             return []
         return [str(p) for p in items]
 
+    async def list_providers(self) -> list[str]:
+        try:
+            items = await self._r.hkeys(self._ns)
+        except Exception:
+            return []
+        return [str(p) for p in items]
+
 
 def _looks_base64(s: str) -> bool:
     try:
