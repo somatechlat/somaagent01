@@ -8,7 +8,7 @@ from python.helpers.api import ApiHandler, Request, Response
 class GetSettings(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         # Start from defaults, then overlay values from Gateway composite settings
-        out = settings.convert_out(settings.get_default_settings())
+        base_settings = settings.get_default_settings()
 
         base = os.getenv("UI_GATEWAY_BASE", os.getenv("GATEWAY_BASE_URL", "http://localhost:20016")).rstrip("/")
         headers = {}
@@ -22,6 +22,18 @@ class GetSettings(ApiHandler):
                 gw = resp.json()
         except Exception:
             gw = None
+
+        if gw and isinstance(gw, dict):
+            llm_info = (gw.get("llm_credentials") or {}).get("has_secret") or {}
+            if isinstance(llm_info, dict):
+                for provider, has_secret in llm_info.items():
+                    if has_secret:
+                        try:
+                            base_settings["api_keys"][provider] = settings.API_KEY_PLACEHOLDER
+                        except Exception:
+                            pass
+
+        out = settings.convert_out(base_settings)
 
         try:
             if gw and isinstance(gw, dict):

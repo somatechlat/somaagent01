@@ -15,7 +15,8 @@ import os
 import time
 import uuid
 from datetime import datetime
-from typing import Annotated, Any, AsyncIterator, Dict, Optional
+import secrets
+from typing import Annotated, Any, AsyncIterator, Dict, Optional, List
 
 import httpx
 
@@ -24,6 +25,9 @@ from fastapi import (
     Depends,
     FastAPI,
     HTTPException,
+    File,
+    UploadFile,
+    Form,
     Query,
     Request,
     WebSocket,
@@ -32,10 +36,17 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
 from pydantic import BaseModel, Field
+from werkzeug.utils import secure_filename
+import hashlib
+from pathlib import Path
+import subprocess
+import socket
+import contextlib
 
 SERVICE_NAME = "gateway"
 
@@ -49,6 +60,7 @@ except ImportError:
 
 # Local package imports (alphabetical)
 from python.helpers.settings import set_settings
+from python.helpers.settings import convert_out as ui_convert_out, get_default_settings as ui_get_defaults
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
@@ -222,6 +234,153 @@ EXPORT_JOB_SECONDS = _get_or_create_histogram(
     "gateway_export_job_seconds",
     "Export job processing time (seconds)",
 )
+
+# Upload metrics
+GATEWAY_UPLOADS = _get_or_create_counter(
+    "gateway_uploads_total",
+    "Gateway file upload outcomes",
+    labelnames=("result",),  # ok|blocked|error
+)
+GATEWAY_UPLOAD_SECONDS = _get_or_create_histogram(
+    "gateway_upload_seconds",
+    "Gateway file upload processing time (seconds)",
+)
+
+# Antivirus metrics (optional)
+GATEWAY_AV_SCANS = _get_or_create_counter(
+    "gateway_av_scans_total",
+    "Gateway antivirus scan results",
+    labelnames=("result",),  # clean|infected|error|disabled
+)
+
+# Janitor metrics
+JANITOR_FILES_DELETED = _get_or_create_counter(
+    "gateway_uploads_janitor_files_deleted_total",
+    "Total files deleted by uploads janitor",
+)
+JANITOR_ERRORS = _get_or_create_counter(
+    "gateway_uploads_janitor_errors_total",
+    "Total errors encountered by uploads janitor",
+)
+JANITOR_LAST_RUN = _get_or_create_gauge(
+    "gateway_uploads_janitor_last_run_timestamp",
+    "Last uploads janitor run timestamp (seconds since epoch)",
+)
+
+
+def _uploads_root() -> Path:
+    base = os.getenv("GATEWAY_UPLOAD_DIR", "/git/agent-zero/tmp/uploads")
+    p = Path(base)
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        LOGGER.debug("Failed to ensure uploads root exists", exc_info=True)
+    return p
+
+
+def _csv_env(name: str) -> set[str]:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return set()
+    return {item.strip().lower() for item in raw.split(",") if item.strip()}
+
+
+def _upload_limits() -> tuple[int, int]:
+    # Prefer runtime overlays saved via UI settings; fall back to env
+    cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+    try:
+        max_mb = float(cfg.get("uploads_max_mb", os.getenv("GATEWAY_UPLOAD_MAX_MB", "25")))
+    except Exception:
+        max_mb = 25.0
+    try:
+        max_files = int(cfg.get("uploads_max_files", os.getenv("GATEWAY_UPLOAD_MAX_FILES", "10")))
+    except Exception:
+        max_files = 10
+    return int(max_mb * 1024 * 1024), max_files
+
+
+def _mime_allowed(mime: str) -> bool:
+    # Prefer overlays
+    mime = (mime or "").lower() or "application/octet-stream"
+    cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+    raw_allowed = cfg.get("uploads_allowed_mime") if isinstance(cfg, dict) else None
+    raw_denied = cfg.get("uploads_denied_mime") if isinstance(cfg, dict) else None
+    def _parse_list(val: Any) -> set[str]:
+        if not isinstance(val, str) or not val.strip():
+            return set()
+        items = []
+        for part in val.replace("\n", ",").split(","):
+            part = part.strip()
+            if part:
+                items.append(part.lower())
+        return set(items)
+    allowed = _parse_list(raw_allowed) or _csv_env("GATEWAY_UPLOAD_ALLOWED_MIME")
+    denied = _parse_list(raw_denied) or _csv_env("GATEWAY_UPLOAD_DENIED_MIME")
+    if denied and mime in denied:
+        return False
+    if allowed and mime not in allowed:
+        return False
+    return True
+
+
+def _clamav_enabled() -> bool:
+    # Prefer overlays from settings
+    cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
+    if isinstance(cfg, dict) and cfg.get("av_enabled") is not None:
+        return bool(cfg.get("av_enabled"))
+    return os.getenv("CLAMAV_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+
+
+def _clamav_strict() -> bool:
+    cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
+    if isinstance(cfg, dict) and cfg.get("av_strict") is not None:
+        return bool(cfg.get("av_strict"))
+    return False
+
+
+async def _clamav_scan(path: Path) -> tuple[str, str]:
+    """Scan a file with ClamAV if available.
+
+    Returns (result, detail): result in {clean, infected, error}.
+    Tries TCP clamd first (python 'clamd' if installed), then 'clamdscan' CLI.
+    """
+    try:
+        # Try python-clamd (optional dependency)
+        try:
+            import clamd  # type: ignore
+
+            host = os.getenv("CLAMAV_HOST", "clamav")
+            port = int(os.getenv("CLAMAV_PORT", "3310"))
+            cd = clamd.ClamdNetworkSocket(host=host, port=port)
+            resp = await asyncio.to_thread(cd.scan, str(path))
+            # resp like {"/path": ("OK"|"FOUND"|"ERROR", "detail")}
+            _, (status, detail) = next(iter(resp.items()))
+            if status == "OK":
+                return "clean", detail or ""
+            if status == "FOUND":
+                return "infected", detail or "infected"
+            return "error", detail or status
+        except Exception:
+            pass
+
+        # Fallback to clamdscan CLI
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "clamdscan", "--no-summary", str(path),
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            out = (stdout or b"").decode("utf-8", errors="ignore").strip()
+            err = (stderr or b"").decode("utf-8", errors="ignore").strip()
+            if proc.returncode == 0:
+                return "clean", out
+            if proc.returncode == 1:
+                return "infected", out
+            return "error", err or out or str(proc.returncode)
+        except FileNotFoundError:
+            return "error", "clamdscan not installed"
+    except Exception as exc:
+        return "error", str(exc)
 
 # -----------------------------
 # Kafka debug (dev-only admin) endpoint
@@ -481,6 +640,15 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("UI settings schema ensure failed", exc_info=True)
 
+    # Load runtime overlays for uploads/antivirus from stored UI settings
+    try:
+        doc = await get_ui_settings_store().get()
+        if isinstance(doc, dict):
+            app.state.uploads_cfg = dict(doc.get("uploads") or {})
+            app.state.av_cfg = dict(doc.get("antivirus") or {})
+    except Exception:
+        LOGGER.debug("Failed to load UI settings overlays at startup", exc_info=True)
+
 
 # ---------------------------------------------------------------------------
 # Sprint 2 – Self‑service UI for API‑key management & policy overview
@@ -590,6 +758,42 @@ def _write_through_enabled() -> bool:
 
 def _write_through_async() -> bool:
     return _flag_truthy(os.getenv("GATEWAY_WRITE_THROUGH_ASYNC"), False)
+
+
+# -----------------------------
+# Central CSRF token issuance (browser flow)
+# -----------------------------
+
+
+@app.get("/v1/csrf")
+async def issue_csrf_token(request: Request) -> JSONResponse:
+    """Issue a CSRF token and set the matching cookie for double‑submit validation.
+
+    - Returns JSON: {"token": <token>} for the SPA to attach in X-CSRF-Token.
+    - Sets cookie named by GATEWAY_CSRF_COOKIE_NAME (default: csrf_token).
+    - Cookie attributes: SameSite=Lax, Secure when HTTPS or GATEWAY_COOKIE_SECURE=true.
+
+    Gateway middleware enforces CSRF only when enabled via GATEWAY_CSRF_ENABLED
+    and primarily for cookie-authenticated browser flows.
+    """
+    token = secrets.token_urlsafe(32)
+    cookie_name = os.getenv("GATEWAY_CSRF_COOKIE_NAME", "csrf_token")
+    same_site = os.getenv("GATEWAY_CSRF_COOKIE_SAMESITE", "Lax")
+    # Treat forwarded https as secure in typical reverse-proxy deployments
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+    secure_env = os.getenv("GATEWAY_COOKIE_SECURE", "false").lower() in {"true", "1", "yes", "on"}
+    secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
+
+    resp = JSONResponse({"token": token})
+    resp.set_cookie(
+        key=cookie_name,
+        value=token,
+        httponly=False,  # double-submit cookie must be readable by client OR returned in body (we do both)
+        secure=secure,
+        samesite=same_site,
+        path="/",
+    )
+    return resp
 
 _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
@@ -1767,6 +1971,161 @@ async def enqueue_message(
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
 
+@app.post("/v1/uploads")
+async def upload_files(
+    request: Request,
+    files: List[UploadFile] = File(...),
+    session_id: str | None = Form(default=None),
+) -> JSONResponse:
+    """Upload one or more files and return normalized descriptors.
+
+    - Enforces per-file size caps and per-request file count caps.
+    - Applies optional allow/deny MIME rules.
+    - Stores files under a durable, worker-readable path within the shared volume.
+    - Evaluates OPA when auth is enforced (reuses existing authorize_request evaluation).
+    """
+    start = time.perf_counter()
+    max_bytes, max_files = _upload_limits()
+
+    # Enforce uploads enabled
+    uploads_cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+    if isinstance(uploads_cfg, dict) and uploads_cfg.get("uploads_enabled") is False:
+        raise HTTPException(status_code=403, detail="Uploads are disabled by administrator")
+
+    if not files or len(files) == 0:
+        raise HTTPException(status_code=400, detail="No files provided")
+    if len(files) > max_files:
+        raise HTTPException(status_code=400, detail=f"Too many files (max {max_files})")
+
+    # Validate auth and (if enabled) policy at request-level
+    auth_meta = await authorize_request(request, {"action": "attachments.upload", "count": len(files)})
+    tenant = auth_meta.get("tenant") or "public"
+    sess = (session_id or "").strip() or "unspecified"
+
+    root = _uploads_root()
+    date_dir = datetime.utcnow().strftime("%Y%m%d")
+    base_dir = root / date_dir / tenant / sess
+    try:
+        base_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        LOGGER.error("Failed to create upload directory", extra={"dir": str(base_dir), "error": str(exc)})
+        raise HTTPException(status_code=500, detail="Unable to store files")
+
+    results: list[dict[str, Any]] = []
+
+    for upl in files:
+        fname = upl.filename or "file"
+        safe_name = secure_filename(fname) or "file"
+        mime = upl.content_type or "application/octet-stream"
+
+        if not _mime_allowed(mime):
+            GATEWAY_UPLOADS.labels("blocked").inc()
+            raise HTTPException(status_code=415, detail=f"MIME type not allowed: {mime}")
+
+        target = base_dir / safe_name
+        sha = hashlib.sha256()
+        size = 0
+        try:
+            with target.open("wb") as out:
+                while True:
+                    chunk = await upl.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > max_bytes:
+                        try:
+                            out.flush()
+                        except Exception:
+                            pass
+                        try:
+                            target.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        GATEWAY_UPLOADS.labels("blocked").inc()
+                        raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes} bytes)")
+                    sha.update(chunk)
+                    out.write(chunk)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            LOGGER.error("Upload write failed", extra={"file": safe_name, "error": str(exc)})
+            try:
+                target.unlink(missing_ok=True)
+            except Exception:
+                pass
+            GATEWAY_UPLOADS.labels("error").inc()
+            raise HTTPException(status_code=500, detail="Upload failed")
+        finally:
+            try:
+                await upl.close()
+            except Exception:
+                pass
+
+        # Optional antivirus scan
+        quarantined = False
+        quarantine_reason = None
+        if _clamav_enabled():
+            status, detail = await _clamav_scan(target)
+            GATEWAY_AV_SCANS.labels(status).inc()
+            if status == "infected":
+                quarantined = True
+                quarantine_reason = "infected"
+            elif status == "error":
+                LOGGER.warning("AV scan error", extra={"file": safe_name, "detail": detail})
+                if _clamav_strict():
+                    try:
+                        target.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    GATEWAY_UPLOADS.labels("blocked").inc()
+                    raise HTTPException(status_code=502, detail="Antivirus error (strict mode)")
+                else:
+                    quarantined = True
+                    quarantine_reason = "av_error"
+
+        # Per-file OPA evaluation (optional; piggybacks on authorize_request)
+        try:
+            if REQUIRE_AUTH and OPA_URL:
+                await _evaluate_opa(
+                    request,
+                    {
+                        "action": "attachments.upload.file",
+                        "tenant": tenant,
+                        "session_id": sess,
+                        "filename": safe_name,
+                        "mime": mime,
+                        "size": size,
+                    },
+                    {},
+                )
+        except HTTPException:
+            try:
+                target.unlink(missing_ok=True)
+            except Exception:
+                pass
+            GATEWAY_UPLOADS.labels("blocked").inc()
+            raise
+
+        descriptor = {
+            "id": str(uuid.uuid4()),
+            "filename": safe_name,
+            "mime": mime,
+            "size": size,
+            "sha256": sha.hexdigest(),
+            "path": str(target),
+            "created_at": time.time(),
+            "tenant": tenant,
+            "session_id": sess,
+            "status": "quarantined" if quarantined else "clean",
+            "quarantine_reason": quarantine_reason if quarantined else None,
+        }
+        results.append(descriptor)
+        GATEWAY_UPLOADS.labels("ok" if not quarantined else "blocked").inc()
+
+    GATEWAY_UPLOAD_SECONDS.observe(time.perf_counter() - start)
+    return JSONResponse(results)
+
+
 @app.post("/v1/session/action")
 async def enqueue_quick_action(
     payload: QuickActionPayload,
@@ -2115,6 +2474,79 @@ app.add_api_route(
     include_in_schema=False,
 )
 
+
+# -----------------------------
+# Static UI (serve Web UI same-origin)
+# -----------------------------
+# Mount last so API routes win precedence. Directory path is relative to the
+# working directory (/git/agent-zero) inside the container.
+try:
+    app.mount("/", StaticFiles(directory="webui", html=True), name="webui")
+except Exception:
+    # Mounting static UI is best-effort; in environments without the assets present
+    # (e.g., slim gateway-only images), skip without failing the API server.
+    LOGGER.debug("Static UI mount skipped (webui/ missing)", exc_info=True)
+
+
+# -----------------------------
+# Uploads janitor (TTL cleanup)
+# -----------------------------
+
+
+async def _uploads_janitor(stop_event: asyncio.Event) -> None:
+    root = _uploads_root()
+    while not stop_event.is_set():
+        files_deleted = 0
+        try:
+            cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+            try:
+                ttl_days = float(cfg.get("uploads_ttl_days", os.getenv("GATEWAY_UPLOAD_TTL_DAYS", "7")))
+            except Exception:
+                ttl_days = 7.0
+            if ttl_days <= 0:
+                ttl_days = 0.0
+            ttl_seconds = ttl_days * 24 * 3600
+            cutoff = time.time() - ttl_seconds if ttl_seconds > 0 else float("inf")
+            for path in root.rglob("*"):
+                try:
+                    if path.is_file() and path.stat().st_mtime < cutoff:
+                        path.unlink(missing_ok=True)
+                        files_deleted += 1
+                except Exception:
+                    JANITOR_ERRORS.inc()
+                    continue
+            JANITOR_FILES_DELETED.inc(files_deleted)
+            JANITOR_LAST_RUN.set(time.time())
+        except Exception:
+            JANITOR_ERRORS.inc()
+            LOGGER.debug("Uploads janitor pass failed", exc_info=True)
+        try:
+            cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+            try:
+                interval = float(cfg.get("uploads_janitor_interval_seconds", os.getenv("GATEWAY_UPLOAD_JANITOR_INTERVAL_SECONDS", "3600")))
+            except Exception:
+                interval = 3600.0
+            await asyncio.wait_for(stop_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            pass
+
+
+@app.on_event("startup")
+async def _start_uploads_janitor() -> None:
+    try:
+        app.state._uploads_stop = asyncio.Event()
+        asyncio.create_task(_uploads_janitor(app.state._uploads_stop))
+    except Exception:
+        LOGGER.debug("Failed to start uploads janitor", exc_info=True)
+
+
+@app.on_event("shutdown")
+async def _stop_uploads_janitor() -> None:
+    try:
+        if hasattr(app.state, "_uploads_stop"):
+            app.state._uploads_stop.set()
+    except Exception:
+        pass
 
 @app.on_event("shutdown")
 async def shutdown_background_services() -> None:
@@ -2666,6 +3098,276 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
             await store.set(provider, secret)
 
     return {"ok": True}
+
+
+# -----------------------------
+# UI-shaped settings endpoints (compatibility for SPA "sections")
+# -----------------------------
+
+
+@app.get("/v1/ui/settings/sections")
+async def ui_sections_get() -> dict[str, Any]:
+    """Return the UI modal 'sections' structure assembled from Gateway stores.
+
+    This preserves the simple front-end contract while centralizing the source
+    of truth in the Gateway. It overlays agent settings and model profile values
+    into the default UI sections.
+    """
+    # Base UI sections from server-side defaults
+    out = ui_convert_out(ui_get_defaults())
+
+    # Load current UI settings document (top-level dict)
+    agent_cfg = await get_ui_settings_store().get()
+    deployment = APP_SETTINGS.deployment_mode
+    profile = await PROFILE_STORE.get("dialogue", deployment)
+
+    # Apply overlays to fields
+    try:
+        sections = out.get("sections", [])
+        # Agent overlays
+        if agent_cfg:
+            for sec in sections:
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if fid in {"agent_profile", "agent_memory_subdir", "agent_knowledge_subdir"}:
+                        val = agent_cfg.get(fid)
+                        if val:
+                            fld["value"] = val
+        # Model overlays
+        if profile:
+            provider = ""
+            host = (profile.base_url or "").lower()
+            if "groq" in host:
+                provider = "groq"
+            elif "openrouter" in host:
+                provider = "openrouter"
+            for sec in sections:
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if fid == "chat_model_provider" and provider:
+                        fld["value"] = provider
+                    elif fid == "chat_model_name" and profile.model:
+                        fld["value"] = profile.model
+                    elif fid == "chat_model_api_base" and profile.base_url:
+                        fld["value"] = profile.base_url
+                    elif fid == "chat_model_kwargs" and profile.kwargs:
+                        kv = profile.kwargs or {}
+                        try:
+                            fld["value"] = "\n".join(f"{k}={v}" for k, v in kv.items())
+                        except Exception:
+                            fld["value"] = kv
+    except Exception:
+        LOGGER.debug("Failed to overlay UI sections", exc_info=True)
+
+    # Append Uploads and Antivirus sections using the existing sections/fields schema
+    uploads = agent_cfg.get("uploads") if isinstance(agent_cfg, dict) else None
+    antivirus = agent_cfg.get("antivirus") if isinstance(agent_cfg, dict) else None
+
+    uploads_defaults = {
+        "uploads_enabled": True,
+        "uploads_max_mb": 25,
+        "uploads_max_files": 10,
+        "uploads_allowed_mime": "",
+        "uploads_denied_mime": "",
+        "uploads_dir": str(_uploads_root()),
+        "uploads_ttl_days": 7,
+        "uploads_janitor_interval_seconds": 3600,
+    }
+    av_defaults = {
+        "av_enabled": False,
+        "av_strict": False,
+        "av_host": os.getenv("CLAMAV_HOST", "clamav"),
+        "av_port": int(os.getenv("CLAMAV_PORT", "3310")),
+    }
+
+    def _merge(defs: dict[str, Any], doc: dict[str, Any] | None) -> dict[str, Any]:
+        merged = dict(defs)
+        if isinstance(doc, dict):
+            for k, v in doc.items():
+                if k in merged:
+                    merged[k] = v
+        return merged
+
+    uploads_vals = _merge(uploads_defaults, uploads if isinstance(uploads, dict) else None)
+    av_vals = _merge(av_defaults, antivirus if isinstance(antivirus, dict) else None)
+
+    sections = out.get("sections", [])
+    sections.append(
+        {
+            "id": "uploads",
+            "title": "Uploads",
+            "description": "Configure file upload behavior and limits.",
+            "tab": "agent",
+            "fields": [
+                {"id": "uploads_enabled", "title": "Enable Uploads", "type": "switch", "value": uploads_vals["uploads_enabled"]},
+                {"id": "uploads_max_mb", "title": "Max File Size (MB)", "type": "number", "value": uploads_vals["uploads_max_mb"]},
+                {"id": "uploads_max_files", "title": "Max Files Per Message", "type": "number", "value": uploads_vals["uploads_max_files"]},
+                {"id": "uploads_allowed_mime", "title": "Allowed MIME Types (CSV/lines)", "type": "textarea", "value": uploads_vals["uploads_allowed_mime"]},
+                {"id": "uploads_denied_mime", "title": "Denied MIME Types (CSV/lines)", "type": "textarea", "value": uploads_vals["uploads_denied_mime"]},
+                {"id": "uploads_dir", "title": "Upload Directory", "type": "text", "value": uploads_vals["uploads_dir"], "readonly": True},
+                {"id": "uploads_ttl_days", "title": "Retention TTL (days)", "type": "number", "value": uploads_vals["uploads_ttl_days"]},
+                {"id": "uploads_janitor_interval_seconds", "title": "Janitor Interval (seconds)", "type": "number", "value": uploads_vals["uploads_janitor_interval_seconds"]},
+            ],
+        }
+    )
+
+    sections.append(
+        {
+            "id": "antivirus",
+            "title": "Antivirus",
+            "description": "Scan uploaded files with ClamAV (disabled by default).",
+            "tab": "agent",
+            "fields": [
+                {"id": "av_enabled", "title": "Enable Antivirus", "type": "switch", "value": av_vals["av_enabled"]},
+                {"id": "av_strict", "title": "Strict Mode (block on AV error)", "type": "switch", "value": av_vals["av_strict"]},
+                {"id": "av_host", "title": "ClamAV Host", "type": "text", "value": av_vals["av_host"]},
+                {"id": "av_port", "title": "ClamAV Port", "type": "number", "value": av_vals["av_port"]},
+                {"id": "av_test", "title": "Test Scan", "type": "button", "value": "Test Scan"},
+            ],
+        }
+    )
+
+    out["sections"] = sections
+    return {"settings": out}
+
+
+class UiSectionsPayload(BaseModel):
+    sections: list[Dict[str, Any]]
+
+
+@app.post("/v1/ui/settings/sections")
+async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
+    """Accept UI 'sections' and persist to Gateway stores.
+
+    - Persists agent settings (ui_settings table).
+    - Upserts the dialogue model profile.
+    - Stores any provider credentials embedded in fields (keys starting with 'api_key_').
+    Returns refreshed UI sections.
+    """
+    sections = payload.sections or []
+    # Extract top-level agent settings and new nested groups
+    agent: Dict[str, Any] = {}
+    model_profile: Dict[str, Any] = {}
+    creds: list[tuple[str, str]] = []
+    uploads_cfg: Dict[str, Any] = {}
+    av_cfg: Dict[str, Any] = {}
+
+    def _as_env_kv(text: str) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for line in (text or "").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip()
+        return out
+
+    for sec in sections:
+        for fld in sec.get("fields", []):
+            fid = (fld.get("id") or "").strip()
+            val = fld.get("value")
+            if not fid:
+                continue
+            if fid in {"agent_profile", "agent_memory_subdir", "agent_knowledge_subdir"} and val:
+                agent[fid] = val
+            elif fid == "chat_model_name" and isinstance(val, str):
+                model_profile["model"] = val.strip()
+            elif fid == "chat_model_api_base" and isinstance(val, str):
+                model_profile["base_url"] = val.strip()
+            elif fid == "chat_model_kwargs" and isinstance(val, str):
+                kv = _as_env_kv(val)
+                model_profile["kwargs"] = kv
+                if "temperature" in kv:
+                    try:
+                        model_profile["temperature"] = float(kv["temperature"])  # type: ignore
+                    except Exception:
+                        pass
+            elif fid.startswith("api_key_") and isinstance(val, str) and val and val != "************":
+                provider = fid[len("api_key_") :].strip().lower()
+                creds.append((provider, val))
+            # Uploads config fields
+            elif fid in {
+                "uploads_enabled",
+                "uploads_max_mb",
+                "uploads_max_files",
+                "uploads_allowed_mime",
+                "uploads_denied_mime",
+                "uploads_ttl_days",
+                "uploads_janitor_interval_seconds",
+            }:
+                uploads_cfg[fid] = val
+            elif fid == "uploads_dir":
+                # read-only; ignore client attempts to change
+                pass
+            # Antivirus config fields
+            elif fid in {"av_enabled", "av_strict", "av_host", "av_port"}:
+                av_cfg[fid] = val
+
+    # Persist settings (merge with existing document)
+    ui_store = get_ui_settings_store()
+    current_doc = await ui_store.get()
+    if not isinstance(current_doc, dict):
+        current_doc = {}
+    # Agent settings are top-level keys
+    for k, v in agent.items():
+        current_doc[k] = v
+    # Nested groups
+    if uploads_cfg:
+        current_doc["uploads"] = {**dict(current_doc.get("uploads") or {}), **uploads_cfg}
+    if av_cfg:
+        current_doc["antivirus"] = {**dict(current_doc.get("antivirus") or {}), **av_cfg}
+    await ui_store.set(current_doc)
+
+    # Upsert dialogue model profile
+    if model_profile:
+        mp = ModelProfile(
+            role="dialogue",
+            deployment_mode=APP_SETTINGS.deployment_mode,
+            model=str(model_profile.get("model", "")),
+            base_url=str(model_profile.get("base_url", "")),
+            temperature=float(model_profile.get("temperature", 0.2)),
+            kwargs=(model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else None),
+        )
+        await PROFILE_STORE.upsert(mp)
+
+    # Store provider credentials
+    if creds:
+        store = get_llm_credentials_store()
+        for provider, secret in creds:
+            try:
+                await store.set(provider, secret)
+            except Exception as exc:
+                LOGGER.warning("Failed to store LLM credentials", extra={"provider": provider, "error": str(exc)})
+
+    # Return refreshed sections
+    return await ui_sections_get()
+
+
+@app.get("/v1/av/test")
+async def av_test() -> dict[str, Any]:
+    """Connectivity check to ClamAV daemon using current settings (or env defaults)."""
+    # Determine current AV config (merge store values on top of defaults)
+    doc = await get_ui_settings_store().get()
+    cfg = dict(doc.get("antivirus")) if isinstance(doc, dict) and isinstance(doc.get("antivirus"), dict) else {}
+    host = str(cfg.get("av_host") or os.getenv("CLAMAV_HOST", "clamav"))
+    try:
+        port = int(cfg.get("av_port") or int(os.getenv("CLAMAV_PORT", "3310")))
+    except Exception:
+        port = 3310
+    # Attempt TCP connect with short timeout
+    try:
+        fut = asyncio.open_connection(host, port)
+        reader, writer = await asyncio.wait_for(fut, timeout=2.0)
+        try:
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
+        except Exception:
+            pass
+        return {"status": "ok", "host": host, "port": port}
+    except Exception as exc:
+        return {"status": "error", "host": host, "port": port, "detail": str(exc)}
 
 
 @app.get("/v1/ui/settings/backup")

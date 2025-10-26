@@ -34,6 +34,7 @@ x-agent-service: &agent-service
     - ./instruments:/git/agent-zero/instruments:ro
     - ./tmp:/git/agent-zero/tmp
     - ./prompts:/git/agent-zero/prompts:ro
+    - ./webui:/git/agent-zero/webui:ro
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:

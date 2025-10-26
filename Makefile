@@ -31,6 +31,11 @@ PROFILES ?= core,dev
 # Use shell `tr` to convert commas to spaces robustly, then prefix each with --profile
 DOCKER_PROFILES := $(foreach p,$(shell echo $(PROFILES) | tr ',' ' '),--profile $(p))
 
+# Local development helpers
+DEPS_COMPOSE_FILE := docker-compose.dependencies.yaml
+DEPS_PROJECT_NAME := somaagent01_deps
+STACK_RUNNER := scripts/runstack.py
+
 # Use this to export environment variables from a .env file if it exists
 ifneq (,$(wildcard ./.env))
     include .env
@@ -64,6 +69,15 @@ help:
 	@echo "  dev-ps                    Show dev stack containers."
 	@echo "  dev-up-ui                 Start dev stack including UI profile."
 	@echo "  dev-restart-ui            Rebuild and start dev stack including UI profile."
+	@echo ""
+	@echo "Dependency & local runtime targets:"
+	@echo "  deps-up                   Start Kafka/Redis/Postgres/OPA via docker-compose.dependencies.yaml."
+	@echo "  deps-down                 Stop dependency containers."
+	@echo "  deps-logs                 Tail dependency container logs."
+	@echo "  stack-up                  Run gateway + workers locally (Ctrl+C to stop)."
+	@echo "  stack-up-reload           Same as stack-up but with uvicorn --reload."
+	@echo "  stack-down                Alias for stack-up (use Ctrl+C)."
+	@echo "  ui                        Run Agent UI locally (Ctrl+C to stop)."
 	@echo ""
 	@echo "Helm quickstart targets:"
 	@echo "  helm-dev-up               Install soma-infra (dev) and soma-stack (dev) into cluster."
@@ -137,6 +151,38 @@ dev-up-ui:
 dev-restart-ui:
 	@echo "Rebuilding developer stack with UI profile..."
 	$(MAKE) rebuild COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,dev COMPOSE_PROJECT_NAME=somaagent01_dev
+
+.PHONY: deps-up deps-down deps-logs stack-up stack-up-reload stack-down
+
+deps-up:
+	@echo "Starting shared dependencies (Kafka/Redis/Postgres/OPA)..."
+	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
+	docker compose -p $(DEPS_PROJECT_NAME) -f $(DEPS_COMPOSE_FILE) up -d
+
+deps-down:
+	@echo "Stopping dependency containers..."
+	docker compose -p $(DEPS_PROJECT_NAME) -f $(DEPS_COMPOSE_FILE) down
+
+deps-logs:
+	@echo "Tailing dependency container logs..."
+	docker compose -p $(DEPS_PROJECT_NAME) -f $(DEPS_COMPOSE_FILE) logs -f
+
+stack-up:
+	@echo "Starting local runtime stack (Ctrl+C to stop)..."
+	python $(STACK_RUNNER)
+
+stack-up-reload:
+	@echo "Starting local runtime stack with uvicorn --reload (Ctrl+C to stop)..."
+	python $(STACK_RUNNER) --reload
+
+stack-down:
+	@echo "Local stack runs in the foreground. Use Ctrl+C in the stack-up terminal to stop it."
+
+.PHONY: ui
+
+ui:
+	@echo "Starting Agent UI locally on http://127.0.0.1:3000 (Ctrl+C to stop)..."
+	python run_ui.py --host 127.0.0.1 --port 3000
 
 .PHONY: dev-build dev-up-services dev-restart-services dev-logs-svc dev-ps
 

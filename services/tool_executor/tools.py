@@ -12,6 +12,18 @@ from pathlib import Path
 from typing import Any, Dict
 
 import httpx
+import mimetypes
+
+try:
+    import fitz  # PyMuPDF
+except Exception:  # pragma: no cover
+    fitz = None  # type: ignore
+try:
+    from PIL import Image  # type: ignore
+    import pytesseract  # type: ignore
+except Exception:  # pragma: no cover
+    Image = None  # type: ignore
+    pytesseract = None  # type: ignore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -181,3 +193,55 @@ AVAILABLE_TOOLS = {
         CanvasAppendTool(),
     ]
 }
+
+
+class IngestDocumentTool(BaseTool):
+    name = "document_ingest"
+
+    async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        path = args.get("path")
+        if not isinstance(path, str) or not path.strip():
+            raise ToolExecutionError("'path' is required")
+        p = Path(path)
+        if not p.exists() or not p.is_file():
+            raise ToolExecutionError("File not found for ingestion")
+        mime, _ = mimetypes.guess_type(str(p))
+        text = ""
+        try:
+            if (mime or "").startswith("text/") or mime in {"application/json", "application/xml"}:
+                try:
+                    text = p.read_text(errors="ignore")
+                except Exception:
+                    text = p.read_bytes().decode("utf-8", errors="ignore")
+            elif (mime == "application/pdf" or p.suffix.lower() == ".pdf") and fitz is not None:
+                try:
+                    parts = []
+                    with fitz.open(str(p)) as doc:
+                        for page in doc:
+                            parts.append(page.get_text("text"))
+                    text = "\n".join(parts)
+                except Exception as exc:
+                    LOGGER.warning("PyMuPDF extraction failed", extra={"error": str(exc)})
+            elif mime and mime.startswith("image/") and Image is not None and pytesseract is not None:
+                try:
+                    img = Image.open(str(p))
+                    text = pytesseract.image_to_string(img)
+                except Exception as exc:
+                    LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
+        except Exception as exc:
+            LOGGER.error("Ingestion failed", extra={"error": str(exc)})
+            raise ToolExecutionError("Ingestion error")
+
+        if not text:
+            raise ToolExecutionError("No text could be extracted")
+
+        # Return text as payload; tool executor will remember tool results automatically
+        return {
+            "path": str(p),
+            "mime": mime or "application/octet-stream",
+            "text": text[:400_000],
+        }
+
+
+# Register tool at import time
+AVAILABLE_TOOLS[IngestDocumentTool.name] = IngestDocumentTool()

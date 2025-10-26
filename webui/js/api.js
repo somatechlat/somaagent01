@@ -80,15 +80,10 @@ async function getCsrfToken() {
   if (csrfToken) return csrfToken;
   if (!csrfTokenPromise) {
     csrfTokenPromise = (async () => {
-      const response = await fetch("/csrf_token", {
-        credentials: "same-origin",
-      });
-      if (response.redirected && response.url.endsWith("/login")) {
-        window.location.href = response.url;
-        return "";
-      }
-      const json = await response.json();
-      csrfToken = json.token;
+      const gw = await fetch("/v1/csrf", { credentials: "include" });
+      if (!gw.ok) throw new Error("Failed to fetch CSRF token");
+      const json = await gw.json();
+      csrfToken = json.token || "";
       return csrfToken;
     })()
       .catch((error) => {
