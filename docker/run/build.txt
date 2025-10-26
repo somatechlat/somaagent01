@@ -3,10 +3,10 @@
 # Run these commands from the project root folder
 
 # local development image based on local files with smart cache
-docker build -f DockerfileLocal -t somaagent01-local --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
+docker build -f Dockerfile -t somaagent01-local --build-arg INCLUDE_ML_DEPS=false --build-arg CACHE_DATE=$(date +%Y-%m-%d:%H:%M:%S) .
 
 # local development image based on local files without cache
-docker build -f DockerfileLocal -t somaagent01-local --no-cache .
+docker build -f Dockerfile -t somaagent01-local --build-arg INCLUDE_ML_DEPS=false --no-cache .
 
 
 # GIT BASED BUILDS

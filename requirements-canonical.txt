@@ -1,2 +1,2 @@
-# Canonical Docker image uses the unified dependency set.
+########## DEPRECATED: Use requirements.txt ##########
 -r requirements.txt

@@ -1,27 +1,5 @@
-FROM agent0ai/agent-zero-base:latest
+FROM busybox:1.36
 
-ARG BRANCH=local
-ENV BRANCH=${BRANCH}
-
-ENV PYTHONPATH=/git/agent-zero
-WORKDIR /git/agent-zero
-
-# Copy application files into the image
-COPY ./run_ui.py ./agent.py ./models.py ./initialize.py ./preload.py ./prepare.py /git/agent-zero/
-COPY ./python/ /git/agent-zero/python/
-COPY ./services/ /git/agent-zero/services/
-COPY ./common/ /git/agent-zero/common/
-COPY ./conf/ /git/agent-zero/conf/
-COPY ./prompts/ /git/agent-zero/prompts/
-COPY ./webui/ /git/agent-zero/webui/
-
-# Install LLM provider libraries into the base venv so services have them
-RUN if [ -x "/opt/venv-a0/bin/pip" ]; then \
-      /opt/venv-a0/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-      /opt/venv-a0/bin/pip install --no-cache-dir "litellm>=1.78.0" "sentence-transformers>=2.2.0" "openai==1.99.2"; \
-    fi
-
-EXPOSE 80 8010 20017
-
-# Default command: run the project's initialize entry in the base image
-CMD ["/exe/initialize.sh", "$BRANCH"]
+# Deprecated file: use the root-level Dockerfile instead.
+# This Dockerfile intentionally fails the build to prevent accidental use.
+RUN echo "DockerfileLocal is deprecated. Use the root Dockerfile." && false

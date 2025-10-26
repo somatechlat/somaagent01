@@ -24,7 +24,7 @@ title: Deployment
 ## Build Pipeline
 
 1. Run tests locally (`pytest`, Playwright).
-2. Build images: `docker build -f Dockerfile.canonical -t somaagent01:latest .` or `docker compose -f docker-compose.yaml build`.
+2. Build images: `docker build -f Dockerfile -t somaagent01:latest .` or `docker compose -f docker-compose.yaml build`.
 3. Push to registry (tag with git SHA, semantic version).
 4. Deploy via Compose (staging) or Helm (production).
 
