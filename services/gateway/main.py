@@ -34,7 +34,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from prometheus_client import Counter, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
 from pydantic import BaseModel, Field
 
 SERVICE_NAME = "gateway"
@@ -57,6 +57,7 @@ from services.common.memory_replica_store import MemoryReplicaStore
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 from services.common.model_profiles import ModelProfile, ModelProfileStore
+from services.common.ui_settings_store import UiSettingsStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
@@ -155,37 +156,68 @@ def _setup_cors() -> None:
 
 _setup_cors()
 
+def _get_or_create_counter(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Counter:
+    try:
+        return Counter(name, documentation, labelnames=labelnames)
+    except ValueError:
+        # Attempt to reuse existing collector when tests import module multiple times
+        existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)  # type: ignore[attr-defined]
+        if isinstance(existing, Counter):
+            return existing
+        raise
+
+
+def _get_or_create_gauge(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Gauge:
+    try:
+        return Gauge(name, documentation, labelnames=labelnames)
+    except ValueError:
+        existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)  # type: ignore[attr-defined]
+        if isinstance(existing, Gauge):
+            return existing
+        raise
+
+
+def _get_or_create_histogram(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Histogram:
+    try:
+        return Histogram(name, documentation, labelnames=labelnames)
+    except ValueError:
+        existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)  # type: ignore[attr-defined]
+        if isinstance(existing, Histogram):
+            return existing
+        raise
+
+
 # Gateway write-through metrics (emitted when GATEWAY_WRITE_THROUGH is enabled)
-GATEWAY_WT_ATTEMPTS = Counter(
+GATEWAY_WT_ATTEMPTS = _get_or_create_counter(
     "gateway_write_through_attempts_total",
     "Total write-through attempts from gateway to SomaBrain",
     labelnames=("path",),
 )
-GATEWAY_WT_RESULTS = Counter(
+GATEWAY_WT_RESULTS = _get_or_create_counter(
     "gateway_write_through_results_total",
     "Write-through outcomes from gateway to SomaBrain",
     labelnames=("path", "result"),  # result: ok|client_error|server_error|exception
 )
-GATEWAY_WT_WAL_RESULTS = Counter(
+GATEWAY_WT_WAL_RESULTS = _get_or_create_counter(
     "gateway_write_through_wal_results_total",
     "Outcome of WAL publish following gateway write-through",
     labelnames=("path", "result"),  # result: ok|error
 )
 
 # DLQ depth gauge for observability/alerts
-GATEWAY_DLQ_DEPTH = Gauge(
+GATEWAY_DLQ_DEPTH = _get_or_create_gauge(
     "gateway_dlq_depth",
     "Current depth of DLQ messages recorded in Postgres",
     labelnames=("topic",),
 )
 
 # Export jobs metrics
-EXPORT_JOBS = Counter(
+EXPORT_JOBS = _get_or_create_counter(
     "gateway_export_jobs_total",
     "Export job outcomes",
     labelnames=("result",),
 )
-EXPORT_JOB_SECONDS = Histogram(
+EXPORT_JOB_SECONDS = _get_or_create_histogram(
     "gateway_export_job_seconds",
     "Export job processing time (seconds)",
 )
@@ -339,6 +371,12 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Failed to start export jobs runner", exc_info=True)
 
+    # Ensure UI settings schema exists (best-effort)
+    try:
+        await get_ui_settings_store().ensure_schema()
+    except Exception:
+        LOGGER.debug("UI settings schema ensure failed", exc_info=True)
+
 
 # ---------------------------------------------------------------------------
 # Sprint 2 – Self‑service UI for API‑key management & policy overview
@@ -453,6 +491,7 @@ _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
 _REPLICA_STORE: Optional[MemoryReplicaStore] = None
 _LLM_CRED_STORE: Optional[LlmCredentialsStore] = None
+_UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
 
 
 @app.middleware("http")
@@ -599,9 +638,37 @@ def get_llm_credentials_store() -> LlmCredentialsStore:
     return _LLM_CRED_STORE
 
 
+def get_ui_settings_store() -> UiSettingsStore:
+    global _UI_SETTINGS_STORE
+    if _UI_SETTINGS_STORE is not None:
+        return _UI_SETTINGS_STORE
+    _UI_SETTINGS_STORE = UiSettingsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _UI_SETTINGS_STORE
+
+
 # -----------------------------
-# Admin memory endpoints (list/detail)
+# Admin memory endpoints (models + list/detail)
 # -----------------------------
+
+
+class AdminMemoryItem(BaseModel):
+    id: int
+    event_id: str | None
+    session_id: str | None
+    persona_id: str | None
+    tenant: str | None
+    role: str | None
+    coord: str | None
+    request_id: str | None
+    trace_id: str | None
+    payload: dict[str, Any]
+    wal_timestamp: float | None
+    created_at: datetime
+
+
+class AdminMemoryListResponse(BaseModel):
+    items: list[AdminMemoryItem]
+    next_cursor: int | None
 
 
 @app.get("/v1/admin/memory", response_model=AdminMemoryListResponse)
@@ -1040,29 +1107,7 @@ class SessionEventsResponse(BaseModel):
     next_cursor: int | None
 
 
-# -----------------------------
-# Admin memory models
-# -----------------------------
-
-
-class AdminMemoryItem(BaseModel):
-    id: int
-    event_id: str | None
-    session_id: str | None
-    persona_id: str | None
-    tenant: str | None
-    role: str | None
-    coord: str | None
-    request_id: str | None
-    trace_id: str | None
-    payload: dict[str, Any]
-    wal_timestamp: float | None
-    created_at: datetime
-
-
-class AdminMemoryListResponse(BaseModel):
-    items: list[AdminMemoryItem]
-    next_cursor: int | None
+    # (AdminMemoryItem/AdminMemoryListResponse moved above their usage)
 
 
 class MemoryBatchPayload(BaseModel):
@@ -2339,9 +2384,17 @@ async def healthz(
     if mem_http_detail:
         components["somabrain_http"]["detail"] = mem_http_detail
 
-    # Recompute overall status conservatively
-    if any(c.get("status") == "down" for c in components.values()):
+    # Recompute overall status conservatively, but do not mark overall "down"
+    # solely because SomaBrain HTTP is unavailable in dev; treat that scenario as
+    # "degraded" when core deps (postgres, redis, kafka) are healthy.
+    down_components = {name for name, c in components.items() if c.get("status") == "down"}
+    non_memory_down = {n for n in down_components if n != "somabrain_http"}
+    if non_memory_down:
         overall_status = "down"
+    elif down_components == {"somabrain_http"}:
+        # Only SomaBrain is down => degraded
+        if overall_status != "down":
+            overall_status = "degraded"
     elif any(c.get("status") == "degraded" for c in components.values()):
         if overall_status != "down":
             overall_status = "degraded"
@@ -2383,6 +2436,89 @@ async def delete_profile(role: str, deployment_mode: str) -> None:
 async def list_agent_profiles() -> list[ModelProfile]:
     """List agent model profiles (alias for /v1/model-profiles)."""
     return await PROFILE_STORE.list_profiles()
+
+
+# -----------------------------
+# Composite UI settings (single source of truth)
+# -----------------------------
+
+
+def _default_ui_agent() -> dict[str, str]:
+    return {
+        "agent_profile": "agent0",
+        "agent_memory_subdir": "default",
+        "agent_knowledge_subdir": "custom",
+    }
+
+
+@app.get("/v1/ui/settings")
+async def get_ui_settings() -> dict[str, Any]:
+    ui_store = get_ui_settings_store()
+    agent_cfg = await ui_store.get()
+    if not agent_cfg:
+        agent_cfg = _default_ui_agent()
+
+    deployment = APP_SETTINGS.deployment_mode
+    profile = await PROFILE_STORE.get("dialogue", deployment)
+    profile_payload: dict[str, Any] | None = None
+    if profile:
+        profile_payload = {
+            "role": profile.role,
+            "deployment_mode": profile.deployment_mode,
+            "model": profile.model,
+            "base_url": profile.base_url,
+            "temperature": profile.temperature,
+            "kwargs": profile.kwargs or {},
+        }
+
+    creds = get_llm_credentials_store()
+    try:
+        providers = await creds.list_providers()
+    except Exception:
+        providers = []
+    llm_info = {p: True for p in providers}
+
+    return {
+        "agent": agent_cfg,
+        "model_profile": profile_payload,
+        "llm_credentials": {"has_secret": llm_info},
+        "deployment_mode": deployment,
+    }
+
+
+class UiSettingsPayload(BaseModel):
+    agent: Optional[Dict[str, Any]] = None
+    model_profile: Optional[Dict[str, Any]] = None
+    llm_credentials: Optional[Dict[str, Any]] = None
+
+
+@app.put("/v1/ui/settings")
+async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
+    if payload.agent:
+        agent_cfg = _default_ui_agent() | payload.agent
+        await get_ui_settings_store().set(agent_cfg)
+
+    if payload.model_profile:
+        mp = payload.model_profile
+        deployment = APP_SETTINGS.deployment_mode
+        to_save = ModelProfile(
+            role="dialogue",
+            deployment_mode=deployment,
+            model=str(mp.get("model", "")),
+            base_url=str(mp.get("base_url", "")),
+            temperature=float(mp.get("temperature", 0.2)),
+            kwargs=mp.get("kwargs") if isinstance(mp.get("kwargs"), dict) else None,
+        )
+        await PROFILE_STORE.upsert(to_save)
+
+    if payload.llm_credentials and isinstance(payload.llm_credentials.get("provider"), str):
+        provider = payload.llm_credentials.get("provider", "").strip().lower()
+        secret = payload.llm_credentials.get("secret", "")
+        if provider and secret:
+            store = get_llm_credentials_store()
+            await store.set(provider, secret)
+
+    return {"ok": True}
 
 
 # -----------------------------

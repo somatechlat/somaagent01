@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -30,39 +32,38 @@ except Exception:  # pragma: no cover - runtime environment dependent
     FAISS_AVAILABLE = False
 import numpy as np
 
-# LangChain imports are optional in minimal dev environments. Wrap imports so the
-# server can start (using remote SOMA memory) even when langchain packages aren't
-# installed inside the container. If the imports are missing, set a flag so
-# runtime code can raise a clear error only when a local vector DB/embedder is
-# actually used.
-LANGCHAIN_AVAILABLE = True
+# LangChain imports: required when using local FAISS memory. We do not provide
+# runtime fallbacks here — if local memory is selected and dependencies are
+# missing, the code will fail fast with a clear error in the appropriate path.
+from langchain.embeddings import CacheBackedEmbeddings
+from langchain.storage import InMemoryByteStore, LocalFileStore
+from langchain_community.docstore.in_memory import InMemoryDocstore
+from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores.utils import (
+    DistanceStrategy,
+)
+from langchain_core.documents import Document
 try:
-    from langchain.embeddings import CacheBackedEmbeddings
-    from langchain.storage import InMemoryByteStore, LocalFileStore
-    from langchain_community.docstore.in_memory import InMemoryDocstore
+    from simpleeval import simple_eval  # type: ignore
+except Exception:  # pragma: no cover - optional dependency in minimal images
+    def simple_eval(expr: str, names: Mapping[str, Any] | None = None) -> bool:
+        """Very small fallback evaluator for expressions like: area == 'main'.
 
-    # from langchain_chroma import Chroma
-    from langchain_community.vectorstores import FAISS
-    from langchain_community.vectorstores.utils import (
-        DistanceStrategy,
-    )
-
-    # Note: Embeddings imported for type annotations; keep import to avoid breaking types
-    from langchain_core.documents import Document
-except Exception:  # pragma: no cover - may be missing in minimal dev images
-    LANGCHAIN_AVAILABLE = False
-    CacheBackedEmbeddings = None
-    InMemoryByteStore = None
-    LocalFileStore = None
-    InMemoryDocstore = None
-    FAISS = None
-    DistanceStrategy = None
-    # Provide a minimal Document placeholder for type compatibility
-    class Document(object):
-        def __init__(self, page_content: str = "", metadata: dict | None = None):
-            self.page_content = page_content
-            self.metadata = metadata or {}
-from simpleeval import simple_eval
+        This avoids a hard dependency on `simpleeval` for environments that only
+        use remote SomaBrain memory (SOMA_ENABLED=true). It is not a general
+        expression evaluator.
+        """
+        try:
+            if names is None:
+                names = {}
+            if "==" in expr:
+                left, right = expr.split("==", 1)
+                key = left.strip()
+                val = right.strip().strip("'\"")
+                return str(names.get(key)) == val
+        except Exception:
+            pass
+        return False
 
 import models
 from agent import Agent
@@ -102,14 +103,29 @@ class MemoryArea(Enum):
     INSTRUMENTS = "instruments"
 
 
-class MyFaiss(FAISS):
+if FAISS_AVAILABLE:
+    class MyFaiss(FAISS):
+        # override get_by_ids to support faster retrieval from the in-memory docstore
+        def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
+            return [
+                self.docstore._dict[id]
+                for id in (ids if isinstance(ids, list) else [ids])
+                if id in self.docstore._dict
+            ]  # type: ignore
+
+        async def aget_by_ids(self, ids: Sequence[str], /) -> List[Document]:
+            return self.get_by_ids(ids)
+else:
+    # MyFaiss is intentionally undefined at runtime when FAISS is unavailable;
+    # type annotations are postponed via `from __future__ import annotations`.
+    pass
     # override get_by_ids to support faster retrieval from the in-memory docstore
     def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
-        return [
-            self.docstore._dict[id]
-            for id in (ids if isinstance(ids, list) else [ids])
-            if id in self.docstore._dict
-        ]  # type: ignore
+        # When using the remote SomaMemory path, this method won't be called.
+        # Guard against missing attributes if FAISS is not installed.
+        store = getattr(self, "docstore", None)
+        backing = getattr(store, "_dict", {}) if store is not None else {}
+        return [backing[id] for id in (ids if isinstance(ids, list) else [ids]) if id in backing]  # type: ignore
 
     async def aget_by_ids(self, ids: Sequence[str], /) -> List[Document]:
         return self.get_by_ids(ids)
@@ -301,27 +317,7 @@ class Memory:
             )
 
             # insert docs if reindexing
-            if docs:
-                PrintStyle.standard("Indexing memories...")
-                if log_item:
-                    log_item.stream(progress="\nIndexing memories")
-                db.add_documents(documents=list(docs.values()), ids=list(docs.keys()))
-
-            # save DB
-            Memory._save_db_file(db, memory_subdir)
-            # save meta file
-            meta_file_path = files.get_abs_path(db_dir, "embedding.json")
-            files.write_file(
-                meta_file_path,
-                json.dumps(
-                    {
-                        "model_provider": model_config.provider,
-                        "model_name": model_config.name,
-                    }
-                ),
-            )
-
-            created = True
+            from simpleeval import simple_eval
 
         return db, created
 

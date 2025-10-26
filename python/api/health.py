@@ -51,8 +51,20 @@ class HealthCheck(ApiHandler):
             status = (data.get("status") or "ok") if isinstance(data, dict) else "ok"
             components = (data.get("components") or {}) if isinstance(data, dict) else {}
         except Exception as exc:
-            status = "down"
-            components = {"gateway": {"status": "down", "detail": f"{type(exc).__name__}: {str(exc)}"}}
+            # Fallback to host.docker.internal:<GATEWAY_PORT> for dev
+            try:
+                host_alias = os.getenv("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
+                gw_port = os.getenv("GATEWAY_PORT", "21016")
+                alt = f"http://{host_alias}:{gw_port}/healthz"
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.get(alt)
+                    resp.raise_for_status()
+                    data = resp.json() if resp.content else {}
+                status = (data.get("status") or "ok") if isinstance(data, dict) else "ok"
+                components = (data.get("components") or {}) if isinstance(data, dict) else {}
+            except Exception:
+                status = "down"
+                components = {"gateway": {"status": "down", "detail": f"{type(exc).__name__}: {str(exc)}"}}
 
         # Return a combined payload (keep legacy fields for compatibility)
         return {

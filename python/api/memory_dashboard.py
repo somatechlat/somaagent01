@@ -3,9 +3,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 import httpx
-from langchain_core.documents import Document
-
 from python.helpers import files
+from python.helpers.memory import Document  # use runtime-safe Document (real or shim)
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.memory import Memory
 

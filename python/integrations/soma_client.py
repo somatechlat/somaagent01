@@ -567,12 +567,24 @@ class SomaClient:
         tracer = trace.get_tracer(__name__)
         start_ts = time.perf_counter()
         with tracer.start_as_current_span("somabrain.remember"):
-            response = await self._request(
-                "POST",
-                "/memory/remember",
-                json={k: v for k, v in body.items() if v is not None},
-                allow_404=True,
-            )
+            # Prefer new endpoint; if unavailable (404) we fall back below.
+            # Additionally, tolerate certain 4xx responses (e.g. "memory pool unavailable")
+            # by treating them as a signal to attempt the legacy endpoint.
+            try:
+                response = await self._request(
+                    "POST",
+                    "/memory/remember",
+                    json={k: v for k, v in body.items() if v is not None},
+                    allow_404=True,
+                )
+            except SomaClientError as exc:
+                msg = str(exc).lower()
+                # Some deployments respond 400 with detail "memory pool unavailable"
+                # while the legacy /remember path continues to work. Fall back in that case.
+                if "memory pool unavailable" in msg or " 400 " in msg:
+                    response = None
+                else:
+                    raise
         if response is None:
             legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
             if coord:

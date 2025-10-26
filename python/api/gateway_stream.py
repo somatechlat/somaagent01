@@ -30,18 +30,31 @@ class GatewayStream(ApiHandler):
 
         # Stream SSE from Gateway and forward to the client
         async def sse_generator() -> AsyncIterator[bytes]:
-            try:
+            async def _stream_from(target_url: str) -> AsyncIterator[bytes]:
                 async with httpx.AsyncClient(timeout=None) as client:
-                    async with client.stream("GET", url, headers=headers) as resp:
+                    async with client.stream("GET", target_url, headers=headers) as resp:
                         resp.raise_for_status()
                         async for chunk in resp.aiter_bytes():
-                            # Forward raw SSE bytes
                             yield chunk
+
+            # Try primary, then dev fallback via host.docker.internal:<GATEWAY_PORT>
+            try:
+                async for chunk in _stream_from(url):
+                    yield chunk
+                return
             except Exception as exc:
-                # Emit a terminal SSE error event so the client can handle it
-                msg = f"event: error\ndata: {type(exc).__name__}: {str(exc)}\n\n"
-                PrintStyle.error(f"GatewayStream error: {exc}")
-                yield msg.encode("utf-8")
+                try:
+                    host_alias = os.getenv("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
+                    gw_port = os.getenv("GATEWAY_PORT", "21016")
+                    alt = f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events"
+                    if alt.rstrip("/") != url.rstrip("/"):
+                        async for chunk in _stream_from(alt):
+                            yield chunk
+                        return
+                except Exception as exc2:
+                    msg = f"event: error\ndata: {type(exc2).__name__}: {str(exc2)}\n\n"
+                    PrintStyle.error(f"GatewayStream error: {exc}; fallback: {exc2}")
+                    yield msg.encode("utf-8")
 
         headers_resp = {
             "Content-Type": "text/event-stream",
@@ -49,4 +62,3 @@ class GatewayStream(ApiHandler):
             "Connection": "keep-alive",
         }
         return Response(sse_generator(), headers=headers_resp)
-

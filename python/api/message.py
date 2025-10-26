@@ -60,18 +60,52 @@ class Message(ApiHandler):
                     "event_id": body.get("event_id"),
                 }
             except httpx.HTTPStatusError as exc:
-                # Surface Gateway HTTP error to UI (no fallback)
+                # Surface Gateway HTTP error to UI (no fallback) in JSON form
                 status = exc.response.status_code
+                payload = {
+                    "accepted": False,
+                    "error": "gateway_error",
+                    "status": status,
+                    "detail": exc.response.text,
+                }
                 return Response(
-                    response=f"Gateway error {status}: {exc.response.text}",
+                    response=json.dumps(payload),
                     status=status,
-                    mimetype="text/plain",
+                    mimetype="application/json",
                 )
             except Exception as exc:
+                # Dev-resilient fallback: try host.docker.internal:<GATEWAY_PORT>
+                try:
+                    host_alias = os.getenv("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
+                    gw_port = os.getenv("GATEWAY_PORT", "21016")
+                    fallback = f"http://{host_alias}:{gw_port}"
+                    # Avoid retrying the same base
+                    if fallback.rstrip("/") != self._gateway_base():
+                        async with httpx.AsyncClient(timeout=10.0) as client:
+                            resp = await client.post(
+                                f"{fallback}/v1/session/message",
+                                headers=self._gateway_headers(),
+                                content=json.dumps(payload),
+                            )
+                        resp.raise_for_status()
+                        body = resp.json()
+                        return {
+                            "accepted": True,
+                            "session_id": body.get("session_id"),
+                            "event_id": body.get("event_id"),
+                        }
+                except Exception:
+                    pass
+                payload = {
+                    "accepted": False,
+                    "error": "gateway_unreachable",
+                    "status": 502,
+                    "detail": f"{type(exc).__name__}: {str(exc)}",
+                }
                 return Response(
-                    response=f"Gateway unreachable: {type(exc).__name__}: {str(exc)}",
+                    response=json.dumps(payload),
                     status=502,
-                    mimetype="text/plain",
+                    mimetype="application/json",
                 )
 
         # Default (legacy dev mode): run through the local Agent pipeline
