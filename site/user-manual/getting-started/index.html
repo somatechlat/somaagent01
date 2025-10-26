@@ -1979,7 +1979,7 @@
 </ol>
 <blockquote>
 <p>[!TIP]
-If you are running through Docker Compose, use <code>docker compose -p somaagent01 --profile dev -f docker-compose.yaml up agent-ui</code>. The default host port is <code>${AGENT_UI_PORT:-20015}</code>, but you can override it via environment variables or the compose file.</p>
+If you are running through Docker Compose, start the Gateway (<code>gateway</code> service). The UI is served by the Gateway at <code>http://localhost:${GATEWAY_PORT:-20016}</code>.</p>
 </blockquote>
 <h2 id="2-explore-the-chat-interface">2. Explore the Chat Interface<a class="headerlink" href="#2-explore-the-chat-interface" title="Permanent link">&para;</a></h2>
 <p>The UI exposes four primary controls below the conversation panel:</p>

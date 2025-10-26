@@ -73,8 +73,31 @@ docker compose -p somaagent01-staging --profile core --profile dev -f docker-com
 
 ## Secrets Management
 
-- Local: `.env` (never commit), `python/helpers/secrets.py` loads.
-- Staging/Prod: managed secrets (Vault, AWS Secrets Manager). Mount or inject as env vars.
+- Local: `.env` (never commit). The runtime also supports file- and base64-based secrets automatically.
+- Staging/Prod: use a secret manager (Vault, AWS/GCP/Azure Secrets). Inject as files or env vars.
+
+Resolution order for any KEY (first non-empty wins):
+
+1) `KEY`
+2) `KEY_FILE` → read file contents, strip trailing newline
+3) `KEY_B64` → base64 decode value
+4) `KEY_B64_FILE` → read file and base64 decode
+
+Examples:
+
+- `SLM_API_KEY_FILE=/var/run/secrets/slm_api_key`
+- `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key`
+- `REDIS_PASSWORD_FILE=/run/secrets/redis_password`
+- `GATEWAY_JWT_SECRET_FILE=/run/secrets/gateway_jwt_secret`
+
+Kubernetes:
+
+- Mount a Secret as a file and set `*_FILE` to the mount path.
+- Prefer files over plain env vars to reduce accidental leaks in process dumps.
+
+Vault:
+
+- JWT HS secrets can be hydrated from Vault with `GATEWAY_JWT_VAULT_PATH`, `GATEWAY_JWT_VAULT_SECRET_KEY` (see gateway README/comments). For other keys, prefer mounting via CSI driver or syncing to K8s Secrets and using `*_FILE`.
 
 ## Compliance & Audit
 

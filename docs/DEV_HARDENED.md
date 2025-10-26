@@ -24,11 +24,11 @@ Quick Start
      -d '{"provider":"groq","secret":"REPLACE_WITH_YOUR_KEY"}'
 
 4) Open the UI and chat
-   open http://localhost:${AGENT_UI_PORT:-20015}/
+   open http://localhost:${GATEWAY_PORT:-20016}/
 
 5) Run Playwright smoke locally
    export RUN_PLAYWRIGHT=1
-   export AGENT_UI_URL=http://127.0.0.1:${AGENT_UI_PORT:-20015}/
+   export WEB_UI_BASE_URL=http://127.0.0.1:${GATEWAY_PORT:-20016}/
    pytest -q tests/playwright/test_ui_smoke.py
 
 What’s Enabled

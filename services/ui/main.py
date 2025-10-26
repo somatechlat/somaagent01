@@ -1,38 +1,9 @@
-"""Serve the existing Agent Zero web UI with FastAPI.
+"""DEPRECATED: Standalone FastAPI UI has been removed.
 
-This allows the legacy layout to run alongside the new SomaAgent 01 services
-without relying on the old Flask stack.
+The Gateway serves the Web UI same-origin at its root path. Start the Gateway
+and open http://127.0.0.1:${GATEWAY_PORT:-20016}/.
 """
 
-from __future__ import annotations
-
-import logging
-import os
-from pathlib import Path
-
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-
-from services.common.logging_config import setup_logging
-from services.common.settings_sa01 import SA01Settings
-from services.common.tracing import setup_tracing
-
-setup_logging()
-LOGGER = logging.getLogger(__name__)
-
-APP_SETTINGS = SA01Settings.from_env()
-setup_tracing("ui-service", endpoint=APP_SETTINGS.otlp_endpoint)
-
-app = FastAPI(title="SomaAgent 01 UI")
-
-webui_path = Path(__file__).resolve().parent.parent.parent / "webui"
-if not webui_path.exists():
-    raise RuntimeError(f"webui directory not found at {webui_path}")
-
-app.mount("/", StaticFiles(directory=str(webui_path), html=True), name="webui")
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+raise ImportError(
+    "services/ui/main.py removed. Use the Gateway for serving the UI (single origin)."
+)

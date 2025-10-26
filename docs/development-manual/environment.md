@@ -59,6 +59,10 @@ Verify: `npm run lint` passes.
 2. Provide required keys:
    - `SLM_API_KEY` (or alternate model provider).
    - `POSTGRES_DSN`, `REDIS_URL` if using external services.
+3. Secrets can also be read from files or base64 values. For any `KEY`, you may set:
+  - `KEY_FILE=/path/to/secret` (file contents win if `KEY` is empty)
+  - `KEY_B64=...` or `KEY_B64_FILE=/path/to/secret.b64` (base64 decoded)
+  Examples: `SLM_API_KEY_FILE=/var/run/secrets/slm_api_key`, `GATEWAY_JWT_SECRET_FILE=/run/secrets/jwt_secret`.
 
 ## 5. Bring Up Shared Dependencies
 
@@ -144,7 +148,7 @@ pytest tests/playwright/test_realtime_speech.py --headed
 - Default `docker-compose.yaml` still builds the full deployment (Gateway,
   workers, Agent UI). Use this for production parity or CI:
   - `docker compose -p somaagent01 --profile core --profile dev up -d`
-  - UI exposed at `http://localhost:${AGENT_UI_PORT:-21015}` when using Docker.
+  - UI exposed at `http://localhost:${GATEWAY_PORT:-20016}` (served by Gateway).
 - Recommended Docker Desktop allocation: ≥8 CPUs, ≥12 GB RAM.
 - Troubleshooting:
   - Port clash on Kafka (`9092`): adjust `KAFKA_PORT` or stop the conflicting

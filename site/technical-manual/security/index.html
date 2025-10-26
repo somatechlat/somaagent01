@@ -2050,6 +2050,21 @@
 <h2 id="4-data-protection">4. Data Protection<a class="headerlink" href="#4-data-protection" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Data in transit:</strong> TLS enforced for external endpoints; mTLS configurable between services.</li>
+<li>Gateway production flags (enable in staging/prod):</li>
+<li><code>GATEWAY_REQUIRE_AUTH=true</code> – enforce JWT on all protected routes.</li>
+<li><code>OPA_URL</code> and <code>OPA_DECISION_PATH</code> – enable policy checks; <code>OPENFGA_*</code> for optional tenant membership checks.</li>
+<li><code>GATEWAY_WRITE_THROUGH=true</code> and <code>GATEWAY_WRITE_THROUGH_ASYNC=true</code> – write-through to SomaBrain with WAL emission.</li>
+<li><code>GATEWAY_CSRF_ENABLED=true</code> and <code>GATEWAY_JWT_COOKIE_NAME=jwt</code> for browser sessions; consider <code>GATEWAY_CSRF_ENFORCE_FOR_BEARER=true</code> if needed.</li>
+<li>
+<p>Admin protection knobs: <code>GATEWAY_ADMIN_RPS</code> and <code>GATEWAY_ADMIN_BURST</code> for rate limiting.</p>
+</li>
+<li>
+<p>SomaBrain client TLS/mTLS (env-driven):</p>
+</li>
+<li><code>SOMA_VERIFY_SSL=true|false</code> – certificate verification toggle (prefer <code>true</code>).</li>
+<li><code>SOMA_TLS_CA=/path/ca.pem</code> – custom CA bundle for verification.</li>
+<li><code>SOMA_TLS_CERT=/path/cert.pem</code> and <code>SOMA_TLS_KEY=/path/key.pem</code> – client cert/key for mTLS.</li>
+<li><code>SOMA_BASE_URL=https://somabrain.yourdomain</code> – HTTPS endpoint.</li>
 <li><strong>Data at rest:</strong></li>
 <li>Redis backed by encrypted volumes in production.</li>
 <li>Kafka topics using disk encryption on managed clusters.</li>
@@ -2111,6 +2126,8 @@
 <li>[ ] Policy bundles validated with <code>opa test</code>.</li>
 <li>[ ] Trivy scans clear of critical CVEs.</li>
 <li>[ ] Incident response drills executed within SLA.</li>
+<li>[ ] Gateway prod flags set (<code>GATEWAY_REQUIRE_AUTH</code>, <code>GATEWAY_WRITE_THROUGH</code>, <code>GATEWAY_WRITE_THROUGH_ASYNC</code>).</li>
+<li>[ ] TLS/mTLS validated for SomaBrain (<code>SOMA_VERIFY_SSL</code>, <code>SOMA_TLS_*</code>).</li>
 </ul>
 
 

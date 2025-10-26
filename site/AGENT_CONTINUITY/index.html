@@ -1922,7 +1922,7 @@
 <li>Memory Replicator consumes <code>memory.wal</code> and writes Postgres <code>memory_replica</code> (for admin browse/audit); DLQ on failure.</li>
 <li>NEW: True fail‑safe memory persistence via a Postgres <code>memory_write_outbox</code> + <code>memory_sync</code> worker that retries remembers and publishes <code>memory.wal</code> on success.</li>
 <li>Web UI (Flask static app + API handlers) can now operate in Gateway mode: UI messages post to Gateway and stream replies via a proxy to Gateway SSE.</li>
-<li>Observability is Prometheus‑only (no Grafana code in this repo). Export signals are sufficient for external dashboards.</li>
+<li>Observability is Prometheus-only. Export signals are sufficient for external dashboards.</li>
 </ul>
 <h2 id="whats-implemented-key-deltas">What’s Implemented (Key Deltas)<a class="headerlink" href="#whats-implemented-key-deltas" title="Permanent link">&para;</a></h2>
 <p>1) Memory client &amp; resiliency
@@ -1981,7 +1981,7 @@ curl -s http://localhost:${GATEWAY_PORT:-20016}/healthz | jq
 curl -s http://localhost:${GATEWAY_PORT:-20016}/ui/config.json | jq
 </code></pre></div></p>
 <p>5) UI (gateway mode enabled by compose)
-- Open: <code>http://localhost:${AGENT_UI_PORT:-20015}</code>
+- Open: <code>http://localhost:${GATEWAY_PORT:-20016}</code> (Gateway serves the UI)
 - Send a message; you’ll get <code>{accepted: true, session_id, event_id}</code>.
 - Subscribe SSE in the SPA to: <code>/gateway_stream?session_id=&lt;id&gt;</code> (proxy) for live updates.</p>
 <h2 id="validation-scenarios">Validation Scenarios<a class="headerlink" href="#validation-scenarios" title="Permanent link">&para;</a></h2>

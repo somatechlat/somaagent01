@@ -93,7 +93,7 @@ curl -s http://localhost:${GATEWAY_PORT:-20016}/ui/config.json | jq
 ```
 
 5) UI (gateway mode enabled by compose)
-- Open: `http://localhost:${AGENT_UI_PORT:-20015}`
+- Open: `http://localhost:${GATEWAY_PORT:-20016}` (Gateway serves the UI)
 - Send a message; you’ll get `{accepted: true, session_id, event_id}`.
 - Subscribe SSE in the SPA to: `/gateway_stream?session_id=<id>` (proxy) for live updates.
 
