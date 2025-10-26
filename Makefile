@@ -32,7 +32,6 @@ PROFILES ?= core,dev
 DOCKER_PROFILES := $(foreach p,$(shell echo $(PROFILES) | tr ',' ' '),--profile $(p))
 
 # Local development helpers
-DEPS_COMPOSE_FILE := docker-compose.dependencies.yaml
 DEPS_PROJECT_NAME := somaagent01_deps
 STACK_RUNNER := scripts/runstack.py
 
@@ -63,7 +62,7 @@ help:
 	@echo "  clean     Remove all build artifacts and Docker volumes."
 	@echo ""
 	@echo "Developer (lightweight) targets:"
-	@echo "  dev-up                    Start minimal dev stack (docker-compose.dev.yaml)."
+	@echo "  dev-up                    Start minimal dev stack (docker-compose.yaml)."
 	@echo "  dev-down                  Stop minimal dev stack."
 	@echo "  dev-logs                  Tail logs for minimal dev stack."
 	@echo "  dev-rebuild               Rebuild and restart minimal dev stack."
@@ -76,7 +75,7 @@ help:
 	@echo "  dev-restart-ui            Rebuild and start dev stack including UI profile."
 	@echo ""
 	@echo "Dependency & local runtime targets:"
-	@echo "  deps-up                   Start Kafka/Redis/Postgres/OPA via docker-compose.dependencies.yaml."
+	@echo "  deps-up                   Start Kafka/Redis/Postgres/OPA (core profile only)."
 	@echo "  deps-down                 Stop dependency containers."
 	@echo "  deps-logs                 Tail dependency container logs."
 	@echo "  stack-up                  Run gateway + workers locally (Ctrl+C to stop)."
@@ -162,15 +161,15 @@ dev-restart-ui:
 deps-up:
 	@echo "Starting shared dependencies (Kafka/Redis/Postgres/OPA)..."
 	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
-	docker compose -p $(DEPS_PROJECT_NAME) -f $(DEPS_COMPOSE_FILE) up -d
+	$(MAKE) up COMPOSE_FILE=$(COMPOSE_FILE) PROFILES=core COMPOSE_PROJECT_NAME=$(DEPS_PROJECT_NAME)
 
 deps-down:
 	@echo "Stopping dependency containers..."
-	docker compose -p $(DEPS_PROJECT_NAME) -f $(DEPS_COMPOSE_FILE) down
+	$(MAKE) down COMPOSE_FILE=$(COMPOSE_FILE) COMPOSE_PROJECT_NAME=$(DEPS_PROJECT_NAME)
 
 deps-logs:
 	@echo "Tailing dependency container logs..."
-	docker compose -p $(DEPS_PROJECT_NAME) -f $(DEPS_COMPOSE_FILE) logs -f
+	$(MAKE) logs COMPOSE_FILE=$(COMPOSE_FILE) PROFILES=core COMPOSE_PROJECT_NAME=$(DEPS_PROJECT_NAME)
 
 stack-up:
 	@echo "Starting local runtime stack (Ctrl+C to stop)..."
@@ -228,58 +227,23 @@ helm-dev-down:
 	@echo "Uninstalling Helm charts for dev (infra + app)..."
 	bash scripts/destroy-dev.sh
 # ------------------------------------------------------------------------------
-# Slim runtime (prebuilt image) helpers
+# Load / Soak testing helpers (Wave C)
 # ------------------------------------------------------------------------------
 
-SLIM_COMPOSE_FILE := docker-compose.slim.yaml
-SLIM_PROFILES := core,dev
+.PHONY: load-smoke load-soak
 
-.PHONY: slim-up slim-down slim-logs slim-rebuild
+# Quick smoke: 5 RPS for 15s, concurrency 20
+load-smoke:
+	@echo "Running smoke load (5 RPS x 15s) against Gateway..."
+	TARGET_URL?=http://127.0.0.1:8010 ; \
+	RPS=5 DURATION=15 CONCURRENCY=20 \
+	python scripts/load/soak_gateway.py
 
-slim-up:
-	@echo "Starting slim stack (prebuilt image)..."
-	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
-	docker compose -p somaagent01_slim -f $(SLIM_COMPOSE_FILE) --profile core --profile dev up -d
-
-slim-down:
-	@echo "Stopping slim stack..."
-	docker compose -p somaagent01_slim -f $(SLIM_COMPOSE_FILE) down
-
-slim-logs:
-	@echo "Tailing logs for slim stack..."
-	docker compose -p somaagent01_slim -f $(SLIM_COMPOSE_FILE) --profile core --profile dev logs -f
-
-slim-rebuild: slim-down
-	@echo "Recreating slim stack..."
-	$(MAKE) slim-up
-
-# ------------------------------------------------------------------------------
-# Slim+Browser helpers
-# ------------------------------------------------------------------------------
-
-SLIM_BROWSER_COMPOSE_FILE := docker-compose.slim-browser.yaml
-
-.PHONY: slim-browser-up slim-browser-down slim-browser-logs slim-browser-rebuild slim-browser-build
-
-slim-browser-build:
-	@echo "Building slim-browser image..."
-	docker build -f Dockerfile -t somaagent01-slim:latest .
-	docker build -f Dockerfile.slim-browser -t somaagent01-slim-browser:latest .
-
-slim-browser-up: slim-browser-build
-	@echo "Starting slim-browser stack (prebuilt image with Chromium)..."
-	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
-	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) --profile core --profile dev up -d
-
-slim-browser-down:
-	@echo "Stopping slim-browser stack..."
-	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) down
-
-slim-browser-logs:
-	@echo "Tailing logs for slim-browser stack..."
-	docker compose -p somaagent01_slim_browser -f $(SLIM_BROWSER_COMPOSE_FILE) --profile core --profile dev logs -f
-
-slim-browser-rebuild: slim-browser-down slim-browser-up
+# Longer soak: override RPS/DURATION/CONCURRENCY via env
+load-soak:
+	@echo "Running configurable soak load against Gateway..."
+	python scripts/load/soak_gateway.py
+ 
 
 # ------------------------------------------------------------------------------
 # Canonical Docker image build/push with branch+date+sha tag

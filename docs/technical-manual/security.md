@@ -45,6 +45,18 @@ This document defines the authentication, authorization, secrets, and compliance
 ## 4. Data Protection
 
 - **Data in transit:** TLS enforced for external endpoints; mTLS configurable between services.
+- Gateway production flags (enable in staging/prod):
+  - `GATEWAY_REQUIRE_AUTH=true` – enforce JWT on all protected routes.
+  - `OPA_URL` and `OPA_DECISION_PATH` – enable policy checks; `OPENFGA_*` for optional tenant membership checks.
+  - `GATEWAY_WRITE_THROUGH=true` and `GATEWAY_WRITE_THROUGH_ASYNC=true` – write-through to SomaBrain with WAL emission.
+  - `GATEWAY_CSRF_ENABLED=true` and `GATEWAY_JWT_COOKIE_NAME=jwt` for browser sessions; consider `GATEWAY_CSRF_ENFORCE_FOR_BEARER=true` if needed.
+  - Admin protection knobs: `GATEWAY_ADMIN_RPS` and `GATEWAY_ADMIN_BURST` for rate limiting.
+
+- SomaBrain client TLS/mTLS (env-driven):
+  - `SOMA_VERIFY_SSL=true|false` – certificate verification toggle (prefer `true`).
+  - `SOMA_TLS_CA=/path/ca.pem` – custom CA bundle for verification.
+  - `SOMA_TLS_CERT=/path/cert.pem` and `SOMA_TLS_KEY=/path/key.pem` – client cert/key for mTLS.
+  - `SOMA_BASE_URL=https://somabrain.yourdomain` – HTTPS endpoint.
 - **Data at rest:**
   - Redis backed by encrypted volumes in production.
   - Kafka topics using disk encryption on managed clusters.
@@ -88,3 +100,5 @@ This document defines the authentication, authorization, secrets, and compliance
 - [ ] Policy bundles validated with `opa test`.
 - [ ] Trivy scans clear of critical CVEs.
 - [ ] Incident response drills executed within SLA.
+ - [ ] Gateway prod flags set (`GATEWAY_REQUIRE_AUTH`, `GATEWAY_WRITE_THROUGH`, `GATEWAY_WRITE_THROUGH_ASYNC`).
+ - [ ] TLS/mTLS validated for SomaBrain (`SOMA_VERIFY_SSL`, `SOMA_TLS_*`).

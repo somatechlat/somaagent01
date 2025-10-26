@@ -31,6 +31,18 @@ try:
     print("DEBUG imported python package from:", getattr(python, "__file__", None))
 except Exception as e:
     print("DEBUG import error for python package:", e)
+# Ensure .env is loaded so tests can see provider keys saved via the Settings page
+try:
+    from python.helpers.dotenv import load_dotenv as _a0_load_dotenv
+
+    _a0_load_dotenv()
+    # Optional: reflect that OPENAI_API_KEY is visible to pytest skip markers
+    if os.getenv("OPENAI_API_KEY"):
+        print("DEBUG .env loaded: OPENAI_API_KEY detected")
+    else:
+        print("DEBUG .env loaded: OPENAI_API_KEY not set")
+except Exception as _e:
+    print("DEBUG dotenv load failed:", _e)
 # Disable OTLP exports during tests to avoid network calls, but keep SDK enabled for context tests
 os.environ.setdefault("OTEL_TRACES_EXPORTER", "none")
 os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
@@ -66,6 +78,10 @@ def pytest_ignore_collect(collection_path: Path, config):
     if ("tests/integration" in path_str or "tests/context" in path_str) and not run_integration:
         return True
     if path_str.endswith("tests/test_outbox_repository.py") and not run_integration:
+        return True
+    # When running full integration, avoid collecting duplicate unit test module names
+    # that clash with their integration counterparts (e.g., test_session_repository).
+    if run_integration and path_str.endswith("tests/test_session_repository.py"):
         return True
     # Skip the async FastA2A CLI client test in unit-only runs
     if (

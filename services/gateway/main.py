@@ -66,6 +66,7 @@ from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 from services.common.model_profiles import ModelProfile, ModelProfileStore
@@ -648,6 +649,13 @@ async def start_background_services() -> None:
             app.state.av_cfg = dict(doc.get("antivirus") or {})
     except Exception:
         LOGGER.debug("Failed to load UI settings overlays at startup", exc_info=True)
+
+    # Ensure memory replica schema exists (best-effort)
+    try:
+        store = get_replica_store()
+        await ensure_replica_schema(store)
+    except Exception:
+        LOGGER.debug("Memory replica schema ensure failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------

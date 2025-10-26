@@ -684,27 +684,13 @@ make up PROFILES=core,dev
 - Agent UI on localhost:20015
 - Gateway on localhost:20016
 
-### Slim Runtime (docker-compose.slim.yaml)
+### Slim Runtime (deprecated)
 
-```bash
-make slim-up
-```
+This mode has been removed. Use the canonical `docker-compose.yaml` for all local and CI workflows. If you need prebuilt images, build with `make docker-image` and run with the `dev` profile disabled for services you don't need.
 
-**Uses prebuilt images:**
-- `agent0ai/agent-zero:latest`
-- Faster startup
-- No local build required
+### CI/CD (compose file removed)
 
-### CI/CD (docker-compose.ci.yaml)
-
-```bash
-make ci-up
-```
-
-**Optimized for testing:**
-- Minimal resource limits
-- Ephemeral volumes
-- Automated smoke tests
+The separate CI compose has been consolidated. CI should use the canonical `docker-compose.yaml` (with selective profiles) or Helm charts under `infra/helm/`.
 
 ---
 

@@ -4,7 +4,6 @@
 
 # Essential files only - explicitly include what we need
 **/*
-!docker/run/fs/
 !requirements-core.txt
 !requirements.txt
 !requirements-dev.txt
