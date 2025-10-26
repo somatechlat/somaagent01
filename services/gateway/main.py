@@ -35,7 +35,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
@@ -47,6 +47,7 @@ from pathlib import Path
 import subprocess
 import socket
 import contextlib
+from urllib.parse import urlencode
 
 SERVICE_NAME = "gateway"
 
@@ -133,6 +134,9 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
+
+# Defer mounting the Web UI to later in the file to ensure explicit routes like
+# /ui/config.json take precedence over the static mount.
 
 
 # -----------------------------
@@ -960,6 +964,311 @@ async def csrf_protect(request: Request, call_next):
     return await call_next(request)
 
 
+def _session_claims_from_cookie(request: Request) -> dict[str, Any] | None:
+    """Decode the session JWT from cookie if present and valid.
+
+    Only verifies signature/exp using the configured JWT_SECRET or public key.
+    """
+    try:
+        cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+        token = request.cookies.get(cookie_name)
+        if not token:
+            return None
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg")
+        key = None
+        if alg and alg.startswith("HS"):
+            key = JWT_SECRET
+        elif alg and (alg.startswith("RS") or alg.startswith("ES")):
+            key = JWT_PUBLIC_KEY
+        if not key:
+            # Re-read env in case tests or runtime set it after import
+            env_secret = os.getenv("GATEWAY_JWT_SECRET")
+            env_pub = os.getenv("GATEWAY_JWT_PUBLIC_KEY")
+            key = JWT_SECRET or env_secret or JWT_PUBLIC_KEY or env_pub
+        if not key:
+            return None
+        claims = jwt.decode(token, key=key, algorithms=[alg] if alg else (JWT_ALGORITHMS or ["HS256"]))
+        return dict(claims)
+    except Exception:
+        return None
+
+
+@app.middleware("http")
+async def ui_auth_guard(request: Request, call_next):
+    """Redirect unauthenticated users to /login for top-level UI routes when auth is required.
+
+    - Allows API paths (/v1/...), auth endpoints, docs, and static assets to pass through.
+    - When OIDC is enabled or REQUIRE_AUTH is true, and request is for '/', '/ui', '/ui/', or '/ui/index.html',
+      redirect to /login if no valid session cookie is present.
+    """
+    path = request.url.path
+    if path.startswith("/v1/auth") or path.startswith("/v1/csrf") or path.startswith("/openapi") or path.startswith("/docs"):
+        return await call_next(request)
+
+    need_auth = _oidc_enabled() or REQUIRE_AUTH
+    if need_auth:
+        # Permit visiting /login and its assets without auth
+        if path == "/login" or path.startswith("/ui/login"):
+            return await call_next(request)
+        # Guard common UI entry points
+        if path in {"/", "/ui", "/ui/", "/ui/index", "/ui/index.html"}:
+            if _session_claims_from_cookie(request) is None:
+                return RedirectResponse(url="/login")
+    return await call_next(request)
+
+
+# -----------------------------
+# Minimal Login UI and OIDC login/logout
+# -----------------------------
+
+def _oidc_enabled() -> bool:
+    return os.getenv("OIDC_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+
+
+def _oidc_client() -> dict[str, Any]:
+    return {
+        "issuer": os.getenv("OIDC_ISSUER", os.getenv("GOOGLE_ISSUER", "https://accounts.google.com")),
+        "client_id": os.getenv("OIDC_CLIENT_ID", os.getenv("GOOGLE_CLIENT_ID", "")),
+        "client_secret": os.getenv("OIDC_CLIENT_SECRET", os.getenv("GOOGLE_CLIENT_SECRET", "")),
+        "redirect_uri": os.getenv("OIDC_REDIRECT_URI", os.getenv("GATEWAY_BASE_URL", "http://localhost:8080").rstrip("/") + "/v1/auth/callback"),
+        "scopes": os.getenv("OIDC_SCOPES", "openid email profile"),
+        "provider": os.getenv("OIDC_PROVIDER", "google"),
+    }
+
+
+async def _oidc_discovery() -> dict[str, Any]:
+    global _OIDC_DISCOVERY_CACHE, _OIDC_DISCOVERY_TS
+    if not _oidc_enabled():
+        return {}
+    cli = _oidc_client()
+    issuer = str(cli["issuer"]).rstrip("/")
+    now = time.time()
+    # Cache discovery for 10 minutes
+    if _OIDC_DISCOVERY_CACHE and _OIDC_DISCOVERY_TS and (now - _OIDC_DISCOVERY_TS) < 600:
+        return _OIDC_DISCOVERY_CACHE
+    url = issuer + "/.well-known/openid-configuration"
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        _OIDC_DISCOVERY_CACHE = resp.json()
+        _OIDC_DISCOVERY_TS = now
+        return _OIDC_DISCOVERY_CACHE
+
+
+def _jwt_cookie_flags(request: Request) -> dict[str, Any]:
+    same_site = os.getenv("GATEWAY_JWT_COOKIE_SAMESITE", os.getenv("GATEWAY_CSRF_COOKIE_SAMESITE", "Lax"))
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+    secure_env = os.getenv("GATEWAY_COOKIE_SECURE", "false").lower() in {"true", "1", "yes", "on"}
+    secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
+    http_only_env = os.getenv("GATEWAY_JWT_COOKIE_HTTPONLY", "true").lower() in {"true", "1", "yes", "on"}
+    path = os.getenv("GATEWAY_JWT_COOKIE_PATH", "/")
+    domain = os.getenv("GATEWAY_JWT_COOKIE_DOMAIN")
+    max_age = os.getenv("GATEWAY_JWT_COOKIE_MAX_AGE")
+    try:
+        max_age_int = int(max_age) if max_age else None
+    except Exception:
+        max_age_int = None
+    return {
+        "httponly": http_only_env,
+        "secure": secure,
+        "samesite": same_site,
+        "path": path,
+        "domain": domain,
+        "max_age": max_age_int,
+    }
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request) -> HTMLResponse:
+    # If already authenticated, go to main UI
+    if _session_claims_from_cookie(request):
+        return RedirectResponse(url="/ui/index.html")
+    enabled = _oidc_enabled()
+    provider = _oidc_client().get("provider") or "SSO"
+    # Prefer serving the repo's webui/login.html if present
+    try:
+        ui_dir = (Path(__file__).resolve().parents[2] / "webui").resolve()
+        login_file = ui_dir / "login.html"
+        if login_file.exists():
+            content = login_file.read_text(encoding="utf-8")
+            # Ensure the button points to our OIDC start if the template uses a placeholder
+            content = content.replace("/auth/login", "/v1/auth/login")
+            return HTMLResponse(content=content)
+    except Exception:
+        LOGGER.debug("Failed to serve webui/login.html; falling back to inline", exc_info=True)
+    btn = "<button disabled>SSO not configured</button>" if not enabled else f"<a href=\"/v1/auth/login?provider={provider}\"><button>Continue with {provider.title()}</button></a>"
+    html = f"""
+    <html><head><title>Sign in</title></head><body>
+    <h1>Sign in</h1>
+    <p>{'Use your organization SSO to continue.' if enabled else 'Single Sign-On is not configured.'}</p>
+    <div>{btn}</div>
+    </body></html>
+    """
+    return HTMLResponse(content=html)
+
+
+@app.get("/v1/auth/login")
+async def auth_login(request: Request, provider: str = "google") -> RedirectResponse:
+    if not _oidc_enabled():
+        raise HTTPException(status_code=503, detail="OIDC not enabled")
+    disc = await _oidc_discovery()
+    cli = _oidc_client()
+    auth_url = disc.get("authorization_endpoint")
+    if not auth_url:
+        raise HTTPException(status_code=500, detail="OIDC discovery failed")
+    state = secrets.token_urlsafe(24)
+    nonce = secrets.token_urlsafe(24)
+    # Cache state+nonce to validate callback
+    try:
+        cache = get_session_cache()
+        await cache.set(f"oidc:state:{state}", {"nonce": nonce}, ex=300)
+    except Exception:
+        LOGGER.debug("Failed to save OIDC state in cache", exc_info=True)
+    params = {
+        "response_type": "code",
+        "client_id": cli["client_id"],
+        "redirect_uri": cli["redirect_uri"],
+        "scope": cli["scopes"],
+        "state": state,
+        "nonce": nonce,
+    }
+    url = auth_url + ("?" + urlencode(params))
+    return RedirectResponse(url)
+
+
+@app.get("/v1/auth/callback")
+async def auth_callback(request: Request, code: str | None = None, state: str | None = None) -> Response:
+    if not _oidc_enabled():
+        raise HTTPException(status_code=503, detail="OIDC not enabled")
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="missing code/state")
+    disc = await _oidc_discovery()
+    token_url = disc.get("token_endpoint")
+    if not token_url:
+        raise HTTPException(status_code=500, detail="OIDC discovery incomplete")
+    cli = _oidc_client()
+    # Validate state and retrieve nonce
+    nonce_expected = None
+    try:
+        cache = get_session_cache()
+        item = await cache.get(f"oidc:state:{state}")
+        if isinstance(item, dict):
+            nonce_expected = item.get("nonce")
+        await cache.delete(f"oidc:state:{state}")
+    except Exception:
+        LOGGER.debug("Failed to read OIDC state from cache", exc_info=True)
+    if not nonce_expected:
+        raise HTTPException(status_code=400, detail="state expired or invalid")
+
+    # Exchange code for tokens
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": cli["redirect_uri"],
+        "client_id": cli["client_id"],
+        "client_secret": cli["client_secret"],
+    }
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        resp = await client.post(token_url, data=data)
+        try:
+            resp.raise_for_status()
+        except Exception as exc:
+            LOGGER.warning("OIDC token exchange failed", extra={"status": getattr(resp, 'status_code', None), "error": str(exc)})
+            raise HTTPException(status_code=502, detail="OIDC token exchange failed")
+        token = resp.json()
+    id_token = token.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=502, detail="id_token missing")
+
+    # Verify ID token
+    try:
+        jwks_uri = disc.get("jwks_uri")
+        keys = []
+        if jwks_uri:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                jwks_resp = await client.get(jwks_uri)
+                jwks_resp.raise_for_status()
+                keys = jwks_resp.json().get("keys", [])
+        unverified = jwt.get_unverified_header(id_token)
+        key = None
+        for jwk in keys:
+            if unverified.get("kid") and jwk.get("kid") != unverified.get("kid"):
+                continue
+            key = _load_key_from_jwk(jwk, unverified.get("alg"))
+            if key:
+                break
+        claims = jwt.decode(
+            id_token,
+            key=key,
+            algorithms=[unverified.get("alg")],
+            audience=cli["client_id"],
+            issuer=str(_oidc_client()["issuer"]).rstrip("/"),
+        )
+    except Exception as exc:
+        LOGGER.warning("ID token verification failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=401, detail="invalid id_token")
+
+    if claims.get("nonce") != nonce_expected:
+        raise HTTPException(status_code=401, detail="nonce mismatch")
+
+    # Issue our own session JWT cookie for the Gateway
+    global JWT_SECRET
+    if not JWT_SECRET:
+        # Attempt vault load if configured
+        _hydrate_jwt_credentials_from_vault()
+    if not JWT_SECRET:
+        raise HTTPException(status_code=500, detail="server not configured to sign session JWTs")
+    cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+    # Build minimal session claims
+    session_claims: dict[str, Any] = {
+        "sub": claims.get("sub"),
+        "email": claims.get("email"),
+        "name": claims.get("name") or claims.get("given_name"),
+        "iss": "gateway",
+    }
+    if os.getenv("OIDC_TENANT_FROM_EMAIL_DOMAIN", "true").lower() in {"true", "1", "yes"}:
+        email = (claims.get("email") or "").strip()
+        if "@" in email:
+            session_claims["tenant"] = email.split("@", 1)[1]
+    token_ttl = int(os.getenv("GATEWAY_JWT_TTL_SECONDS", "3600"))
+    now = int(time.time())
+    session_claims.update({"iat": now, "exp": now + token_ttl})
+    session_jwt = jwt.encode(session_claims, JWT_SECRET, algorithm=(JWT_ALGORITHMS[0] if JWT_ALGORITHMS else "HS256"))
+
+    resp = RedirectResponse(url="/ui/index.html")
+    flags = _jwt_cookie_flags(request)
+    resp.set_cookie(
+        key=cookie_name,
+        value=session_jwt,
+        httponly=flags["httponly"],
+        secure=flags["secure"],
+        samesite=flags["samesite"],
+        path=flags["path"],
+        domain=flags["domain"],
+        max_age=flags["max_age"],
+    )
+    return resp
+
+
+@app.get("/")
+async def root_entry(request: Request) -> Response:
+    """Top-level entry point. Redirect to login or UI index depending on auth state."""
+    need_auth = _oidc_enabled() or REQUIRE_AUTH
+    if need_auth and _session_claims_from_cookie(request) is None:
+        return RedirectResponse(url="/login")
+    return RedirectResponse(url="/ui/index.html")
+
+
+@app.post("/v1/auth/logout")
+async def auth_logout(request: Request) -> Response:
+    cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+    resp = JSONResponse({"status": "ok"})
+    flags = _jwt_cookie_flags(request)
+    resp.delete_cookie(key=cookie_name, path=flags["path"], domain=flags["domain"])
+    return resp
+
+
 def _cached_openapi_schema() -> dict[str, Any]:
     global _OPENAPI_CACHE
     if _OPENAPI_CACHE is None:
@@ -1612,6 +1921,8 @@ CAPSULE_REGISTRY_TIMEOUT = float(os.getenv("CAPSULE_REGISTRY_TIMEOUT_SECONDS", "
 _OPENAPI_CACHE: dict[str, Any] | None = None
 _OPENFGA_CLIENT: OpenFGAClient | None = None
 _EXPORT_STORE: ExportJobStore | None = None
+_OIDC_DISCOVERY_CACHE: dict[str, Any] | None = None
+_OIDC_DISCOVERY_TS: float | None = None
 
 
 # -----------------------------
@@ -2699,16 +3010,22 @@ async def ui_runtime_config() -> JSONResponse:
 
 
 # -----------------------------
-# Static UI (serve Web UI same-origin)
+# Static UI note
 # -----------------------------
-# Mount last so API routes win precedence. Directory path is relative to the
-# working directory (/git/agent-zero) inside the container.
+"""
+Serve the Web UI under /ui, but mount it AFTER defining explicit /ui/* routes
+like /ui/config.json so those routes take precedence over static files.
+"""
+
 try:
-    app.mount("/", StaticFiles(directory="webui", html=True), name="webui")
+    UI_DIR = (Path(__file__).resolve().parents[2] / "webui").resolve()
+    if UI_DIR.exists():
+        app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+        LOGGER.info("Mounted WebUI", extra={"path": str(UI_DIR)})
+    else:
+        LOGGER.info("WebUI directory not found", extra={"expected": str(UI_DIR)})
 except Exception:
-    # Mounting static UI is best-effort; in environments without the assets present
-    # (e.g., slim gateway-only images), skip without failing the API server.
-    LOGGER.debug("Static UI mount skipped (webui/ missing)", exc_info=True)
+    LOGGER.debug("Failed to mount WebUI", exc_info=True)
 
 
 # -----------------------------
