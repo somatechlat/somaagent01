@@ -48,21 +48,16 @@ class UiMessageService:
         uploads: Iterable[UploadFile],
         message_id: str,
     ) -> List[str]:
-        stored: List[str] = []
-        destination = files.get_abs_path(self.upload_dir)
-        os.makedirs(destination, exist_ok=True)
+        # File saving is disabled; discard attachments after reading to free resources
         for upload in uploads:
-            if not upload.filename:
-                continue
-            safe_name = secure_filename(upload.filename)
-            unique_name = f"{message_id}_{safe_name}" if message_id else safe_name
-            output_path = os.path.join(destination, unique_name)
-            content = await upload.read()
-            with open(output_path, "wb") as fh:
-                fh.write(content)
-            await upload.close()
-            stored.append(os.path.join(self.internal_prefix, unique_name))
-        return stored
+            try:
+                _ = await upload.read()  # read and discard
+            finally:
+                try:
+                    await upload.close()
+                except Exception:
+                    pass
+        return []
 
     async def _dispatch_to_gateway(
         self,

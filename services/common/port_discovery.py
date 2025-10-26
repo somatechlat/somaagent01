@@ -33,19 +33,12 @@ class PortDiscovery:
         return None
         
     def _load_assignments(self):
-        """Load port assignments from file."""
+        """Load port assignments (disabled: no file I/O)."""
         self.assignments = {}
-        if self.port_file.exists():
-            with open(self.port_file) as f:
-                for line in f:
-                    service, port = line.strip().split("=")
-                    self.assignments[service] = int(port)
 
     def _save_assignments(self):
-        """Save port assignments to file."""
-        with open(self.port_file, "w") as f:
-            for service, port in self.assignments.items():
-                f.write(f"{service}={port}\n")
+        """Persisting assignments is disabled (no file saving)."""
+        return
 
     def get_service_port(self, service_name: str, preferred_port: int) -> int:
         """Get port for a service, assign if not exists."""

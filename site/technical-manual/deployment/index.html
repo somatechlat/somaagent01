@@ -2109,7 +2109,7 @@
 <h2 id="build-pipeline">Build Pipeline<a class="headerlink" href="#build-pipeline" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Run tests locally (<code>pytest</code>, Playwright).</li>
-<li>Build images: <code>docker build -f Dockerfile.canonical -t somaagent01:latest .</code> or <code>docker compose -f docker-compose.yaml build</code>.</li>
+<li>Build images: <code>docker build -f Dockerfile -t somaagent01:latest .</code> or <code>docker compose -f docker-compose.yaml build</code>.</li>
 <li>Push to registry (tag with git SHA, semantic version).</li>
 <li>Deploy via Compose (staging) or Helm (production).</li>
 </ol>
@@ -2158,8 +2158,29 @@ docker<span class="w"> </span>compose<span class="w"> </span>-p<span class="w"> 
 </ul>
 <h2 id="secrets-management">Secrets Management<a class="headerlink" href="#secrets-management" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Local: <code>.env</code> (never commit), <code>python/helpers/secrets.py</code> loads.</li>
-<li>Staging/Prod: managed secrets (Vault, AWS Secrets Manager). Mount or inject as env vars.</li>
+<li>Local: <code>.env</code> (never commit). The runtime also supports file- and base64-based secrets automatically.</li>
+<li>Staging/Prod: use a secret manager (Vault, AWS/GCP/Azure Secrets). Inject as files or env vars.</li>
+</ul>
+<p>Resolution order for any KEY (first non-empty wins):</p>
+<p>1) <code>KEY</code>
+2) <code>KEY_FILE</code> → read file contents, strip trailing newline
+3) <code>KEY_B64</code> → base64 decode value
+4) <code>KEY_B64_FILE</code> → read file and base64 decode</p>
+<p>Examples:</p>
+<ul>
+<li><code>SLM_API_KEY_FILE=/var/run/secrets/slm_api_key</code></li>
+<li><code>OPENAI_API_KEY_FILE=/run/secrets/openai_api_key</code></li>
+<li><code>REDIS_PASSWORD_FILE=/run/secrets/redis_password</code></li>
+<li><code>GATEWAY_JWT_SECRET_FILE=/run/secrets/gateway_jwt_secret</code></li>
+</ul>
+<p>Kubernetes:</p>
+<ul>
+<li>Mount a Secret as a file and set <code>*_FILE</code> to the mount path.</li>
+<li>Prefer files over plain env vars to reduce accidental leaks in process dumps.</li>
+</ul>
+<p>Vault:</p>
+<ul>
+<li>JWT HS secrets can be hydrated from Vault with <code>GATEWAY_JWT_VAULT_PATH</code>, <code>GATEWAY_JWT_VAULT_SECRET_KEY</code> (see gateway README/comments). For other keys, prefer mounting via CSI driver or syncing to K8s Secrets and using <code>*_FILE</code>.</li>
 </ul>
 <h2 id="compliance-audit">Compliance &amp; Audit<a class="headerlink" href="#compliance-audit" title="Permanent link">&para;</a></h2>
 <ul>

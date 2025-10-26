@@ -1,7 +1,7 @@
 ---
 title: SomaAgent01 Sprint & Wave Plan
-version: 2.0.0
-last-reviewed: 2025-10-25
+version: 2.1.0
+last-reviewed: 2025-10-26
 owner: platform
 status: synchronized-with-ROADMAP_CANONICAL
 ---
@@ -79,3 +79,61 @@ Sprint S8 (Weeks 15–16)
 **Dependencies**
 - SomaBrain dev endpoint (health: /health or /healthz).
 - Kafka/Postgres reachable for WAL and replica.
+
+---
+
+# Attachments over Postgres – Sprint Plan (No Local Files)
+
+Overview
+- Deliver file uploads with AV INSTREAM, Postgres persistence, DB janitor, streamed downloads/exports, and Settings-driven controls. No filesystem writes.
+
+Sprint A1 (Schema & Store)
+- Create `attachments` table and indexes.
+- Implement `AttachmentsStore` (ensure_schema, insert streaming, get_metadata/open_stream, delete/delete_older_than, optional find_by_sha256).
+- Wire metrics counters/gauges for inserts and janitor deletions.
+- Acceptance: round-trip store/retrieve, TTL purge unit tests.
+
+Sprint A2 (Antivirus INSTREAM)
+- Implement clamd INSTREAM client with timeouts and clear errors.
+- Add `/v1/av/test` to exercise EICAR via INSTREAM with current settings.
+- Acceptance: strict vs non-strict behavior validated; connectivity errors surfaced.
+
+Sprint B1 (Upload Endpoint Refactor)
+- Replace filesystem writes with streaming to AV and Postgres BYTEA.
+- Enforce uploads_max_mb, uploads_max_files, allowed/denied MIME; compute sha256 on the fly.
+- Implement inline cap (uploads_inline_max_mb) and rejection or external_ref-only path.
+- Return attachment descriptors; include refs in message events.
+- Acceptance: happy path + 413 + 415 + AV strict (502) + quarantine meta.
+
+Sprint B2 (Download Endpoint)
+- Implement `GET /v1/attachments/{id}` streaming bytes from Postgres with auth/tenant checks.
+- Enforce quarantine policy (store_and_block vs drop_bytes_keep_meta); optional signed download token TTL.
+- Acceptance: download authorized; quarantined blocked per policy.
+
+Sprint C1 (DB Janitor & Metrics)
+- Replace uploads janitor with DB purge by TTL; schedule with interval config.
+- Expose metrics: attachments_deleted_total, uploads_janitor_errors_total, uploads_janitor_last_run_timestamp.
+- Acceptance: synthetic purge run deletes old rows; metrics increment.
+
+Sprint C2 (Streamed Exports)
+- Convert memory export to streamed NDJSON directly from Postgres (no temp files).
+- Maintain filters and admin scope; keep rate limits and size caps.
+- Acceptance: large export streams within limits; zero local files.
+
+Sprint D (Settings & Docs)
+- Extend UI settings sections: storage_backend=postgres (read-only), inline_max_mb, external_ref toggles, quarantine policy.
+- Update docs (deployment/admin): AV setup, uploads policies, janitor, exports behavior, backup.
+- Acceptance: settings round-trip via `/v1/ui/settings/sections`; docs built.
+
+Sprint E (Hardening & Optional Features)
+- OPA policy points for upload/download; signed download tokens; external_ref allowlist enforcement.
+- Optional per-tenant quotas (daily bytes/files) and observability.
+- Acceptance: security checks pass; quotas enforced in dev profile if enabled.
+
+Risks & Mitigation
+- DB growth → enforce TTL; optional sha256 dedup per tenant; monitoring.
+- AV downtime → strict blocks; non-strict quarantines; alerts.
+- Large files → caps + external_ref; never disk-buffer.
+
+Deliverables per Sprint
+- Code + tests + docs + updated OpenAPI; Prometheus metrics visible in dev/staging; ChangeLog entries.

@@ -1913,7 +1913,7 @@
 </tbody>
 </table>
 <!-- memory-service removed; SomaBrain HTTP is used by services directly -->
-<p>| <code>agent-ui</code> | Developer UI (<code>run_ui.py</code>) | <code>${AGENT_UI_PORT:-20015}</code> |</p>
+
 <blockquote>
 <p><strong>Profiles:</strong> Launch with <code>docker compose --profile core --profile dev up -d</code> to include all messaging services without mocks.</p>
 </blockquote>
@@ -1968,9 +1968,9 @@
 <td>Exposes FastAPI ingress to the host.</td>
 </tr>
 <tr>
-<td><code>AGENT_UI_PORT</code></td>
-<td><code>20015</code></td>
-<td>UI served at <code>http://localhost:20015</code>.</td>
+<td><code>WEB_UI_BASE_URL</code></td>
+<td><code>http://127.0.0.1:${GATEWAY_PORT}</code></td>
+<td>UI is served by Gateway (single origin).</td>
 </tr>
 </tbody>
 </table>

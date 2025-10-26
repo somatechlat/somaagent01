@@ -1,7 +1,7 @@
 ---
 title: SomaAgent01 Canonical Roadmap
-version: 2.0.0
-last-reviewed: 2025-10-25
+version: 2.1.0
+last-reviewed: 2025-10-26
 owner: platform
 status: source-of-truth
 ---
@@ -103,3 +103,100 @@ Wave E – Scalability & UX Extras (optional)
 
 **Source of Truth**
 - This file supersedes prior roadmap documents. Any sprint or milestone docs MUST align with this plan.
+
+---
+
+# Attachments Architecture (No Local Files) – Canonical Plan
+
+Purpose
+- Enable file uploads with antivirus and strict admin controls without writing to local disk. Persist attachments in Postgres, reference them from memory events, and stream downloads/exports directly from the DB.
+
+Constraints
+- No local filesystem writes anywhere in the app, except user-initiated Settings backup download (server does not persist a backup file).
+- Antivirus scanning must occur without temp files (clamd INSTREAM).
+- Admin Settings are the single control plane.
+
+Data Model (Postgres)
+- Table: attachments
+  - id UUID PRIMARY KEY
+  - tenant TEXT
+  - session_id TEXT
+  - persona_id TEXT NULL
+  - filename TEXT
+  - mime TEXT
+  - size INTEGER
+  - sha256 TEXT
+  - status TEXT CHECK ('clean','quarantined')
+  - quarantine_reason TEXT NULL
+  - created_at TIMESTAMPTZ DEFAULT NOW()
+  - content BYTEA NULL (NULL when using external_ref or strict quarantine policy that drops bytes)
+- Indexes: (session_id, created_at DESC), (tenant, created_at DESC), (sha256)
+- Optional dedup (per-tenant) by sha256 if enabled.
+
+Gateway Flows
+- Upload (POST /v1/uploads)
+  - Enforce: uploads_enabled, uploads_max_mb, uploads_max_files, allowed/denied MIME.
+  - Stream to ClamAV via INSTREAM; compute sha256 while reading; no temp files.
+  - On strict AV error → 502; non-strict → status=quarantined with reason.
+  - Storage policy:
+    - If size ≤ uploads_inline_max_mb → store bytes in BYTEA; save metadata; return descriptor.
+    - If size > inline cap → either 413 (default) or accept only external_ref if enabled and domain allowlisted.
+  - Memory integration: message events include ["att://<uuid>"] references.
+- Download (GET /v1/attachments/{id})
+  - Authz via authorize_request (+OPA when enabled); tenant/session scoping.
+  - Quarantined behavior:
+    - store_and_block → 403 until cleared.
+    - drop_bytes_keep_meta → content unavailable by design.
+  - If external_ref → 302 to URL or signed proxy URL (future optional).
+
+Admin Settings (extends existing sections)
+- Uploads
+  - uploads_enabled: bool (default false in prod; true in dev)
+  - uploads_max_mb: number (default 25)
+  - uploads_max_files: int (default 10)
+  - uploads_allowed_mime / uploads_denied_mime: CSV/lines
+  - uploads_ttl_days: number (default 7)
+  - uploads_janitor_interval_seconds: number (default 3600)
+  - uploads_storage_backend: "postgres" (read-only)
+  - uploads_inline_max_mb: number (default 16)
+  - uploads_allow_external_ref: bool (default false)
+  - uploads_external_ref_allowlist: CSV domains
+  - uploads_dedup_sha256: bool (default false)
+  - uploads_quarantine_policy: enum {store_and_block, drop_bytes_keep_meta}
+  - uploads_download_token_ttl_seconds: int (optional; for signed URLs)
+- Antivirus
+  - av_enabled: bool (default false)
+  - av_strict: bool (default false)
+  - av_host: string (default "clamav")
+  - av_port: number (default 3310)
+  - av_test: test action (EICAR via INSTREAM)
+
+Janitor & Metrics
+- Replace filesystem janitor with DB purge by TTL.
+- Metrics: attachments_deleted_total, attachments_quarantined_total, uploads_janitor_errors_total, uploads_janitor_last_run_timestamp.
+
+Exports (Admin)
+- Replace local NDJSON files with streamed NDJSON over HTTP directly from Postgres (memory_replica and optional attachment metadata). No server file artifacts.
+
+Security & Privacy
+- No local files; AV INSTREAM only; external URLs gated by allowlist when enabled; optional signed download tokens; OPA policy points for upload/download.
+
+Waves Addendum (Attachments)
+- Wave A: INSTREAM AV helper, minimal schema/store, feature flags off by default.
+- Wave B: Upload endpoint refactor to Postgres storage; Download endpoint; Settings wiring; unit tests.
+- Wave C: DB janitor and metrics; streamed exports; e2e tests incl. AV strict/non-strict.
+- Wave D: Prod hardening (OPA rules for attachments, signed URLs if enabled), runbooks.
+- Wave E: Optional external_ref proxying & quotas (per-tenant caps), dedup toggle.
+
+Success Criteria (Attachments)
+- Uploads function with AV without local disk usage.
+- Attachments referenced in events; downloads authorized and policy-compliant.
+- TTL purge and metrics observable; export streams work without temp files.
+
+Risks & Mitigations
+- DB bloat → Enforce TTL; optional sha256 dedup per tenant; observability on table growth.
+- AV downtime → strict mode blocks; non-strict quarantines; alert on AV connectivity.
+- Large files → hard caps; optional external_ref allowlist; never buffer on disk.
+
+Rollback
+- Feature flag off disables uploads; existing attachments remain accessible until TTL purge.

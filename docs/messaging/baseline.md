@@ -15,7 +15,6 @@ This document captures the current local runtime expectations for the messaging 
 | `conversation-worker` | Kafka consumer producing SLM/tool outputs | — |
 | `tool-executor` | Runs registered tools and emits `tool.results` | — |
 <!-- memory-service removed; SomaBrain HTTP is used by services directly -->
-| `agent-ui` | Developer UI (`run_ui.py`) | `${AGENT_UI_PORT:-20015}` |
 
 > **Profiles:** Launch with `docker compose --profile core --profile dev up -d` to include all messaging services without mocks.
 
@@ -31,7 +30,7 @@ This document captures the current local runtime expectations for the messaging 
 | `REDIS_URL` | `redis://redis:6379/0` | Cache + budget ledger. |
 | `POSTGRES_DSN` | `postgresql://soma:soma@postgres:5432/somaagent01` | Session/event persistence. |
 | `GATEWAY_PORT` | `20016` | Exposes FastAPI ingress to the host. |
-| `AGENT_UI_PORT` | `20015` | UI served at `http://localhost:20015`. |
+| `WEB_UI_BASE_URL` | `http://127.0.0.1:${GATEWAY_PORT}` | UI is served by Gateway (single origin). |
 
 ## Smoke Checks
 

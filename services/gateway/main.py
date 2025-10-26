@@ -61,11 +61,13 @@ except ImportError:
 # Local package imports (alphabetical)
 from python.helpers.settings import set_settings
 from python.helpers.settings import convert_out as ui_convert_out, get_default_settings as ui_get_defaults
+from python.helpers.dotenv import get_dotenv_value
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.attachments_store import AttachmentsStore
 from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
@@ -270,6 +272,11 @@ JANITOR_LAST_RUN = _get_or_create_gauge(
 
 
 def _uploads_root() -> Path:
+    # Respect global file-saving disable switch; never create directories when disabled
+    if os.getenv("DISABLE_FILE_SAVING", "true").lower() in {"true", "1", "yes", "on"} or os.getenv(
+        "GATEWAY_DISABLE_FILE_SAVING", "true"
+    ).lower() in {"true", "1", "yes", "on"}:
+        return Path("/")  # dummy path; callers should have short-circuited already
     base = os.getenv("GATEWAY_UPLOAD_DIR", "/git/agent-zero/tmp/uploads")
     p = Path(base)
     try:
@@ -340,11 +347,7 @@ def _clamav_strict() -> bool:
 
 
 async def _clamav_scan(path: Path) -> tuple[str, str]:
-    """Scan a file with ClamAV if available.
-
-    Returns (result, detail): result in {clean, infected, error}.
-    Tries TCP clamd first (python 'clamd' if installed), then 'clamdscan' CLI.
-    """
+    """Scan a file on disk with ClamAV (legacy path-based). Prefer _clamav_scan_bytes."""
     try:
         # Try python-clamd (optional dependency)
         try:
@@ -380,6 +383,34 @@ async def _clamav_scan(path: Path) -> tuple[str, str]:
             return "error", err or out or str(proc.returncode)
         except FileNotFoundError:
             return "error", "clamdscan not installed"
+    except Exception as exc:
+        return "error", str(exc)
+
+
+async def _clamav_scan_bytes(data: bytes) -> tuple[str, str]:
+    """Scan bytes in-memory using clamd INSTREAM.
+
+    Returns (result, detail): result in {clean, infected, error}.
+    """
+    try:
+        try:
+            import clamd  # type: ignore
+            host = os.getenv("CLAMAV_HOST", "clamav")
+            port = int(os.getenv("CLAMAV_PORT", "3310"))
+            cd = clamd.ClamdNetworkSocket(host=host, port=port)
+            # clamd expects a file-like object; wrap bytes
+            import io
+            bio = io.BytesIO(data)
+            resp = await asyncio.to_thread(cd.instream, bio)
+            # resp like {'stream': ('OK'|'FOUND'|'ERROR', detail)}
+            _, (status, detail) = next(iter(resp.items()))
+            if status == "OK":
+                return "clean", detail or ""
+            if status == "FOUND":
+                return "infected", detail or "infected"
+            return "error", detail or status
+        except Exception as exc:
+            return "error", str(exc)
     except Exception as exc:
         return "error", str(exc)
 
@@ -617,17 +648,18 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Failed to start DLQ refresher task", exc_info=True)
 
-    # Initialize export jobs store and schema, then start worker
-    try:
-        export_store = get_export_job_store()
-        await ensure_export_jobs_schema(export_store)
-    except Exception:
-        LOGGER.debug("Export jobs schema ensure failed", exc_info=True)
-    try:
-        app.state._export_runner_stop = asyncio.Event()
-        asyncio.create_task(_export_jobs_runner())
-    except Exception:
-        LOGGER.debug("Failed to start export jobs runner", exc_info=True)
+    # Initialize export jobs store and schema, then start worker (skip local-file exports entirely)
+    if False:
+        try:
+            export_store = get_export_job_store()
+            await ensure_export_jobs_schema(export_store)
+        except Exception:
+            LOGGER.debug("Export jobs schema ensure failed", exc_info=True)
+        try:
+            app.state._export_runner_stop = asyncio.Event()
+            asyncio.create_task(_export_jobs_runner())
+        except Exception:
+            LOGGER.debug("Failed to start export jobs runner", exc_info=True)
 
     # Ensure UI settings schema exists (best-effort)
     try:
@@ -647,6 +679,12 @@ async def start_background_services() -> None:
         if isinstance(doc, dict):
             app.state.uploads_cfg = dict(doc.get("uploads") or {})
             app.state.av_cfg = dict(doc.get("antivirus") or {})
+        # Enforce uploads disabled when file saving is disabled
+        if _file_saving_disabled():
+            cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+            if isinstance(cfg, dict):
+                cfg["uploads_enabled"] = False
+                app.state.uploads_cfg = cfg
     except Exception:
         LOGGER.debug("Failed to load UI settings overlays at startup", exc_info=True)
 
@@ -656,6 +694,12 @@ async def start_background_services() -> None:
         await ensure_replica_schema(store)
     except Exception:
         LOGGER.debug("Memory replica schema ensure failed", exc_info=True)
+
+    # Ensure attachments schema exists (best-effort)
+    try:
+        await get_attachments_store().ensure_schema()
+    except Exception:
+        LOGGER.debug("Attachments store schema ensure failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -768,6 +812,32 @@ def _write_through_async() -> bool:
     return _flag_truthy(os.getenv("GATEWAY_WRITE_THROUGH_ASYNC"), False)
 
 
+def _file_saving_disabled() -> bool:
+    """Global guard to disable any on-disk writes from the gateway by default.
+
+    Controlled via either DISABLE_FILE_SAVING or GATEWAY_DISABLE_FILE_SAVING env vars.
+    Defaults to True (disabled) to honor strict no-file-saving mode.
+    """
+    # This flag disables local filesystem writes, not database persistence.
+    return _flag_truthy(os.getenv("DISABLE_FILE_SAVING", "true"), True) or _flag_truthy(
+        os.getenv("GATEWAY_DISABLE_FILE_SAVING", "true"), True
+    )
+
+
+# -----------------------------
+# Attachments store accessor
+# -----------------------------
+
+_ATTACHMENTS_STORE: AttachmentsStore | None = None
+
+
+def get_attachments_store() -> AttachmentsStore:
+    global _ATTACHMENTS_STORE
+    if _ATTACHMENTS_STORE is None:
+        _ATTACHMENTS_STORE = AttachmentsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _ATTACHMENTS_STORE
+
+
 # -----------------------------
 # Central CSRF token issuance (browser flow)
 # -----------------------------
@@ -793,10 +863,11 @@ async def issue_csrf_token(request: Request) -> JSONResponse:
     secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
 
     resp = JSONResponse({"token": token})
+    http_only_env = os.getenv("GATEWAY_CSRF_COOKIE_HTTPONLY", "true").lower() in {"true", "1", "yes", "on"}
     resp.set_cookie(
         key=cookie_name,
         value=token,
-        httponly=False,  # double-submit cookie must be readable by client OR returned in body (we do both)
+        httponly=http_only_env,  # SPA reads token from JSON body; cookie can be HttpOnly in hardened setups
         secure=secure,
         samesite=same_site,
         path="/",
@@ -816,6 +887,44 @@ async def add_version_header(request: Request, call_next):
     response = await call_next(request)
     if "X-API-Version" not in response.headers:
         response.headers["X-API-Version"] = API_VERSION
+    return response
+
+
+# -----------------------------
+# Security headers (env-driven)
+# -----------------------------
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+
+    # X-Content-Type-Options
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+
+    # X-Frame-Options
+    if os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper() in {"DENY", "SAMEORIGIN"}:
+        response.headers.setdefault("X-Frame-Options", os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper())
+
+    # Referrer-Policy
+    response.headers.setdefault("Referrer-Policy", os.getenv("GATEWAY_REFERRER_POLICY", "no-referrer"))
+
+    # Permissions-Policy (string, optional)
+    perm = os.getenv("GATEWAY_PERMISSIONS_POLICY")
+    if perm:
+        response.headers.setdefault("Permissions-Policy", perm)
+
+    # Content-Security-Policy (string, optional)
+    csp = os.getenv("GATEWAY_CSP")
+    if csp:
+        response.headers.setdefault("Content-Security-Policy", csp)
+
+    # HSTS (enable only when TLS is terminated upstream)
+    if os.getenv("GATEWAY_HSTS", "false").lower() in {"true", "1", "yes", "on"}:
+        max_age = os.getenv("GATEWAY_HSTS_MAX_AGE", "15552000")  # ~180 days
+        inc_sub = "; includeSubDomains" if os.getenv("GATEWAY_HSTS_INCLUDE_SUBDOMAINS", "true").lower() in {"true", "1", "yes", "on"} else ""
+        preload = "; preload" if os.getenv("GATEWAY_HSTS_PRELOAD", "false").lower() in {"true", "1", "yes", "on"} else ""
+        response.headers.setdefault("Strict-Transport-Security", f"max-age={max_age}{inc_sub}{preload}")
+
     return response
 
 
@@ -908,7 +1017,7 @@ def get_api_key_store() -> ApiKeyStore:
 
     # Require Redis configuration for production use
     redis_url = _redis_url()
-    redis_password = os.getenv("REDIS_PASSWORD")
+    redis_password = get_dotenv_value("REDIS_PASSWORD")
     if not redis_url:
         raise RuntimeError(
             "API‑key store requires a Redis configuration. Set REDIS_URL (and optionally REDIS_PASSWORD)."
@@ -1323,6 +1432,8 @@ def _exports_dir() -> str:
 
 @app.post("/v1/memory/export/jobs", response_model=dict, tags=["admin"], summary="Create async export job")
 async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict:
+    if _file_saving_disabled():
+        raise HTTPException(status_code=403, detail="File export is disabled")
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
@@ -1335,6 +1446,8 @@ async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict
 
 @app.get("/v1/memory/export/jobs/{job_id}", response_model=ExportJobStatus, tags=["admin"], summary="Get export job status")
 async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
+    if _file_saving_disabled():
+        raise HTTPException(status_code=403, detail="File export is disabled")
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"job_id": job_id})
     _require_admin_scope(auth)
@@ -1356,6 +1469,8 @@ async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
 
 @app.get("/v1/memory/export/jobs/{job_id}/download", tags=["admin"], summary="Download export result")
 async def export_jobs_download(job_id: int, request: Request):
+    if _file_saving_disabled():
+        raise HTTPException(status_code=403, detail="File export is disabled")
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"job_id": job_id})
     _require_admin_scope(auth)
@@ -1467,8 +1582,8 @@ REQUIRE_AUTH = os.getenv("GATEWAY_REQUIRE_AUTH", "false").lower() in {
     "1",
     "yes",
 }
-JWT_SECRET = os.getenv("GATEWAY_JWT_SECRET")
-JWT_PUBLIC_KEY = os.getenv("GATEWAY_JWT_PUBLIC_KEY")
+JWT_SECRET = get_dotenv_value("GATEWAY_JWT_SECRET")
+JWT_PUBLIC_KEY = get_dotenv_value("GATEWAY_JWT_PUBLIC_KEY")
 JWT_AUDIENCE = os.getenv("GATEWAY_JWT_AUDIENCE")
 JWT_ISSUER = os.getenv("GATEWAY_JWT_ISSUER")
 JWT_ALGORITHMS = [
@@ -2086,15 +2201,6 @@ async def upload_files(
     tenant = auth_meta.get("tenant") or "public"
     sess = (session_id or "").strip() or "unspecified"
 
-    root = _uploads_root()
-    date_dir = datetime.utcnow().strftime("%Y%m%d")
-    base_dir = root / date_dir / tenant / sess
-    try:
-        base_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as exc:
-        LOGGER.error("Failed to create upload directory", extra={"dir": str(base_dir), "error": str(exc)})
-        raise HTTPException(status_code=500, detail="Unable to store files")
-
     results: list[dict[str, Any]] = []
 
     for upl in files:
@@ -2106,50 +2212,36 @@ async def upload_files(
             GATEWAY_UPLOADS.labels("blocked").inc()
             raise HTTPException(status_code=415, detail=f"MIME type not allowed: {mime}")
 
-        target = base_dir / safe_name
         sha = hashlib.sha256()
         size = 0
+        chunks: list[bytes] = []
         try:
-            with target.open("wb") as out:
-                while True:
-                    chunk = await upl.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    size += len(chunk)
-                    if size > max_bytes:
-                        try:
-                            out.flush()
-                        except Exception:
-                            pass
-                        try:
-                            target.unlink(missing_ok=True)
-                        except Exception:
-                            pass
-                        GATEWAY_UPLOADS.labels("blocked").inc()
-                        raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes} bytes)")
-                    sha.update(chunk)
-                    out.write(chunk)
+            while True:
+                chunk = await upl.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > max_bytes:
+                    GATEWAY_UPLOADS.labels("blocked").inc()
+                    raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes} bytes)")
+                sha.update(chunk)
+                chunks.append(chunk)
         except HTTPException:
             raise
         except Exception as exc:
-            LOGGER.error("Upload write failed", extra={"file": safe_name, "error": str(exc)})
-            try:
-                target.unlink(missing_ok=True)
-            except Exception:
-                pass
+            LOGGER.error("Upload read failed", extra={"file": safe_name, "error": str(exc)})
             GATEWAY_UPLOADS.labels("error").inc()
             raise HTTPException(status_code=500, detail="Upload failed")
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 await upl.close()
-            except Exception:
-                pass
 
         # Optional antivirus scan
         quarantined = False
         quarantine_reason = None
         if _clamav_enabled():
-            status, detail = await _clamav_scan(target)
+            data = b"".join(chunks)
+            status, detail = await _clamav_scan_bytes(data)
             GATEWAY_AV_SCANS.labels(status).inc()
             if status == "infected":
                 quarantined = True
@@ -2157,10 +2249,6 @@ async def upload_files(
             elif status == "error":
                 LOGGER.warning("AV scan error", extra={"file": safe_name, "detail": detail})
                 if _clamav_strict():
-                    try:
-                        target.unlink(missing_ok=True)
-                    except Exception:
-                        pass
                     GATEWAY_UPLOADS.labels("blocked").inc()
                     raise HTTPException(status_code=502, detail="Antivirus error (strict mode)")
                 else:
@@ -2183,20 +2271,48 @@ async def upload_files(
                     {},
                 )
         except HTTPException:
-            try:
-                target.unlink(missing_ok=True)
-            except Exception:
-                pass
             GATEWAY_UPLOADS.labels("blocked").inc()
             raise
 
+        # Persist to Postgres attachments store
+        content_bytes: bytes | None = b"".join(chunks)
+        # Inline cap (optional); default to min(max_mb, 16MB)
+        try:
+            cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+            inline_mb = float(cfg.get("uploads_inline_max_mb", min(max_bytes / (1024 * 1024), 16)))
+        except Exception:
+            inline_mb = min(max_bytes / (1024 * 1024), 16)
+        inline_cap = int(inline_mb * 1024 * 1024)
+        if size > inline_cap:
+            # For now reject oversize inline; external_ref path can be added later via settings
+            GATEWAY_UPLOADS.labels("blocked").inc()
+            raise HTTPException(status_code=413, detail=f"File exceeds inline cap ({inline_mb} MB)")
+
+        try:
+            att_store = get_attachments_store()
+            att_id = await att_store.insert(
+                tenant=tenant,
+                session_id=sess,
+                persona_id=auth_meta.get("persona_id"),
+                filename=safe_name,
+                mime=mime,
+                size=size,
+                sha256=sha.hexdigest(),
+                status="quarantined" if quarantined else "clean",
+                quarantine_reason=quarantine_reason,
+                content=content_bytes,
+            )
+        except Exception as exc:
+            LOGGER.error("Attachment persist failed", extra={"file": safe_name, "error": str(exc)})
+            GATEWAY_UPLOADS.labels("error").inc()
+            raise HTTPException(status_code=500, detail="Unable to persist attachment")
+
         descriptor = {
-            "id": str(uuid.uuid4()),
+            "id": str(att_id),
             "filename": safe_name,
             "mime": mime,
             "size": size,
             "sha256": sha.hexdigest(),
-            "path": str(target),
             "created_at": time.time(),
             "tenant": tenant,
             "session_id": sess,
@@ -2601,9 +2717,8 @@ except Exception:
 
 
 async def _uploads_janitor(stop_event: asyncio.Event) -> None:
-    root = _uploads_root()
     while not stop_event.is_set():
-        files_deleted = 0
+        rows_deleted = 0
         try:
             cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
             try:
@@ -2612,17 +2727,12 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
                 ttl_days = 7.0
             if ttl_days <= 0:
                 ttl_days = 0.0
-            ttl_seconds = ttl_days * 24 * 3600
-            cutoff = time.time() - ttl_seconds if ttl_seconds > 0 else float("inf")
-            for path in root.rglob("*"):
+            if ttl_days > 0:
                 try:
-                    if path.is_file() and path.stat().st_mtime < cutoff:
-                        path.unlink(missing_ok=True)
-                        files_deleted += 1
+                    rows_deleted = await get_attachments_store().delete_older_than(ttl_days)
                 except Exception:
                     JANITOR_ERRORS.inc()
-                    continue
-            JANITOR_FILES_DELETED.inc(files_deleted)
+            JANITOR_FILES_DELETED.inc(rows_deleted)
             JANITOR_LAST_RUN.set(time.time())
         except Exception:
             JANITOR_ERRORS.inc()
@@ -3253,9 +3363,15 @@ async def ui_sections_get() -> dict[str, Any]:
         "uploads_max_files": 10,
         "uploads_allowed_mime": "",
         "uploads_denied_mime": "",
-        "uploads_dir": str(_uploads_root()),
+        "uploads_dir": "postgres",  # storage backend label (read-only)
         "uploads_ttl_days": 7,
         "uploads_janitor_interval_seconds": 3600,
+        "uploads_inline_max_mb": 16,
+        "uploads_allow_external_ref": False,
+        "uploads_external_ref_allowlist": "",
+        "uploads_dedup_sha256": False,
+        "uploads_quarantine_policy": "store_and_block",
+        "uploads_download_token_ttl_seconds": 0,
     }
     av_defaults = {
         "av_enabled": False,
@@ -3288,9 +3404,15 @@ async def ui_sections_get() -> dict[str, Any]:
                 {"id": "uploads_max_files", "title": "Max Files Per Message", "type": "number", "value": uploads_vals["uploads_max_files"]},
                 {"id": "uploads_allowed_mime", "title": "Allowed MIME Types (CSV/lines)", "type": "textarea", "value": uploads_vals["uploads_allowed_mime"]},
                 {"id": "uploads_denied_mime", "title": "Denied MIME Types (CSV/lines)", "type": "textarea", "value": uploads_vals["uploads_denied_mime"]},
-                {"id": "uploads_dir", "title": "Upload Directory", "type": "text", "value": uploads_vals["uploads_dir"], "readonly": True},
+                {"id": "uploads_dir", "title": "Storage Backend", "type": "text", "value": uploads_vals["uploads_dir"], "readonly": True},
                 {"id": "uploads_ttl_days", "title": "Retention TTL (days)", "type": "number", "value": uploads_vals["uploads_ttl_days"]},
                 {"id": "uploads_janitor_interval_seconds", "title": "Janitor Interval (seconds)", "type": "number", "value": uploads_vals["uploads_janitor_interval_seconds"]},
+                {"id": "uploads_inline_max_mb", "title": "Inline Cap (MB)", "type": "number", "value": uploads_vals["uploads_inline_max_mb"]},
+                {"id": "uploads_allow_external_ref", "title": "Allow External References (URLs)", "type": "switch", "value": uploads_vals["uploads_allow_external_ref"]},
+                {"id": "uploads_external_ref_allowlist", "title": "External URL Allowlist (CSV domains)", "type": "textarea", "value": uploads_vals["uploads_external_ref_allowlist"]},
+                {"id": "uploads_dedup_sha256", "title": "Enable SHA256 Dedup (per tenant)", "type": "switch", "value": uploads_vals["uploads_dedup_sha256"]},
+                {"id": "uploads_quarantine_policy", "title": "Quarantine Policy", "type": "select", "options": ["store_and_block", "drop_bytes_keep_meta"], "value": uploads_vals["uploads_quarantine_policy"]},
+                {"id": "uploads_download_token_ttl_seconds", "title": "Signed Download Token TTL (seconds)", "type": "number", "value": uploads_vals["uploads_download_token_ttl_seconds"]},
             ],
         }
     )
@@ -3379,6 +3501,12 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
                 "uploads_denied_mime",
                 "uploads_ttl_days",
                 "uploads_janitor_interval_seconds",
+                "uploads_inline_max_mb",
+                "uploads_allow_external_ref",
+                "uploads_external_ref_allowlist",
+                "uploads_dedup_sha256",
+                "uploads_quarantine_policy",
+                "uploads_download_token_ttl_seconds",
             }:
                 uploads_cfg[fid] = val
             elif fid == "uploads_dir":
@@ -3470,87 +3598,46 @@ async def backup_ui_settings() -> dict[str, Any]:
     }
 
 
-# -----------------------------
-# Composite UI settings (single source of truth)
-# -----------------------------
+@app.get("/v1/attachments/{att_id}")
+async def download_attachment(att_id: str, request: Request):
+    """Download an attachment stored in Postgres (no local files).
 
-
-def _default_ui_agent() -> dict[str, str]:
-    return {
-        "agent_profile": "agent0",
-        "agent_memory_subdir": "default",
-        "agent_knowledge_subdir": "custom",
-    }
-
-
-@app.get("/v1/ui/settings")
-async def get_ui_settings() -> dict[str, Any]:
-    ui_store = get_ui_settings_store()
-    agent_cfg = await ui_store.get()
-    if not agent_cfg:
-        agent_cfg = _default_ui_agent()
-
-    deployment = APP_SETTINGS.deployment_mode
-    profile = await PROFILE_STORE.get("dialogue", deployment)
-    profile_payload: dict[str, Any] | None = None
-    if profile:
-        profile_payload = {
-            "role": profile.role,
-            "deployment_mode": profile.deployment_mode,
-            "model": profile.model,
-            "base_url": profile.base_url,
-            "temperature": profile.temperature,
-            "kwargs": profile.kwargs or {},
-        }
-
-    creds = get_llm_credentials_store()
+    Enforces auth/tenant scoping and quarantine policy.
+    """
     try:
-        providers = await creds.list_providers()
+        att_uuid = uuid.UUID(att_id)
     except Exception:
-        providers = []
-    llm_info = {p: True for p in providers}
+        raise HTTPException(status_code=400, detail="invalid attachment id")
 
-    return {
-        "agent": agent_cfg,
-        "model_profile": profile_payload,
-        "llm_credentials": {"has_secret": llm_info},
-        "deployment_mode": deployment,
+    # Basic authz: include attachment id in context; OPA may consult tenant/session
+    _ = await authorize_request(request, {"action": "attachments.download", "id": att_id})
+
+    store = get_attachments_store()
+    meta = await store.get_metadata(att_uuid)
+    if not meta:
+        raise HTTPException(status_code=404, detail="not found")
+
+    # Quarantine policy: block downloads when status is quarantined (store_and_block)
+    if meta.status == "quarantined":
+        raise HTTPException(status_code=403, detail="attachment quarantined")
+
+    content = await store.get_content(att_uuid)
+    if content is None:
+        raise HTTPException(status_code=410, detail="content unavailable")
+
+    headers = {
+        "Content-Type": meta.mime or "application/octet-stream",
+        "Content-Disposition": f"attachment; filename={meta.filename}",
     }
 
+    async def streamer():
+        # Chunk the in-memory bytes to avoid sending as one huge payload
+        view = memoryview(content)
+        chunk_size = 64 * 1024
+        for i in range(0, len(view), chunk_size):
+            yield bytes(view[i : i + chunk_size])
 
-class UiSettingsPayload(BaseModel):
-    agent: Optional[Dict[str, Any]] = None
-    model_profile: Optional[Dict[str, Any]] = None
-    llm_credentials: Optional[Dict[str, Any]] = None
-
-
-@app.put("/v1/ui/settings")
-async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
-    if payload.agent:
-        agent_cfg = _default_ui_agent() | payload.agent
-        await get_ui_settings_store().set(agent_cfg)
-
-    if payload.model_profile:
-        mp = payload.model_profile
-        deployment = APP_SETTINGS.deployment_mode
-        to_save = ModelProfile(
-            role="dialogue",
-            deployment_mode=deployment,
-            model=str(mp.get("model", "")),
-            base_url=str(mp.get("base_url", "")),
-            temperature=float(mp.get("temperature", 0.2)),
-            kwargs=mp.get("kwargs") if isinstance(mp.get("kwargs"), dict) else None,
-        )
-        await PROFILE_STORE.upsert(to_save)
-
-    if payload.llm_credentials and isinstance(payload.llm_credentials.get("provider"), str):
-        provider = payload.llm_credentials.get("provider", "").strip().lower()
-        secret = payload.llm_credentials.get("secret", "")
-        if provider and secret:
-            store = get_llm_credentials_store()
-            await store.set(provider, secret)
-
-    return {"ok": True}
+    return StreamingResponse(streamer(), headers=headers)
 
 
 # -----------------------------

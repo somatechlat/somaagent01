@@ -2,230 +2,234 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://docs.somaagent01.dev/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/AGENT_CONTINUITY/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/DEV_HARDENED/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/changelog/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/documentation-audit-checklist/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/glossary/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/style-guide/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/data/streams/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/api-reference/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/ci-cd/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/coding-standards/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/contribution-workflow/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/debugging/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/environment/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/legacy-apis/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/release-process/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/runbooks/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/testing/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/development-manual/tooling/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/messaging/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/messaging/baseline/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/faq/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/first-90-days/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/orientation/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/team-contacts/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/onboarding-manual/toolchain/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/reference/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/reference/observability-alerts/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/architecture/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/data-flow/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/deployment/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/infrastructure/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/integrations/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.somaagent01.dev/technical-manual/load-testing/</loc>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/monitoring/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/security/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/conversation-worker/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/gateway/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/mcp-proxy/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/memory-plane/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/memory/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/outbox-sync/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/realtime-speech/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/tool-executor/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/components/ui/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/technical-manual/runbooks/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/accessibility/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/getting-started/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/installation/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/troubleshooting/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/tunnels/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/ui-overview/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/using-the-agent/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
     <url>
          <loc>https://docs.somaagent01.dev/user-manual/features/memory-management/</loc>
-         <lastmod>2025-10-25</lastmod>
+         <lastmod>2025-10-26</lastmod>
     </url>
 </urlset>

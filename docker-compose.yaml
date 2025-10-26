@@ -246,35 +246,6 @@ services:
 
   # memory-service removed; SomaBrain HTTP is used directly by services
 
-  agent-ui:
-    <<: *agent-service
-    container_name: somaAgent01_agent-ui
-    profiles: ["dev"]
-    environment:
-      <<: *agent-env
-      UI_USE_GATEWAY: "true"
-      UI_GATEWAY_BASE: "http://gateway:8010"
-    volumes:
-      - ./memory:/git/agent-zero/memory
-      - ./logs:/git/agent-zero/logs
-      - ./knowledge:/git/agent-zero/knowledge:ro
-      - ./instruments:/git/agent-zero/instruments:ro
-      - ./agents:/git/agent-zero/agents:ro
-      - ./tmp:/git/agent-zero/tmp
-      - ./prompts:/git/agent-zero/prompts:ro
-      - ./webui:/git/agent-zero/webui:ro
-    # Run using the venv Python created by the installer so installed
-    # dependencies (under /opt/venv-a0) are available at runtime. The
-    # system python in the image may not have pip-installed packages.
-    command:
-      - /opt/venv-a0/bin/python
-      - run_ui.py
-      - --dockerized=true
-      - --host=0.0.0.0
-      - --port=80
-    ports:
-      - "${AGENT_UI_PORT:-20015}:80"
-
   gateway:
     <<: *agent-service
     container_name: somaAgent01_gateway

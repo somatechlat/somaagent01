@@ -35,7 +35,7 @@ python run_ui.py
 5. Open the URL in your browser. You should see the SomaAgent01 UI with the dashboard and left-hand navigation.
 
 > [!TIP]
-> If you are running through Docker Compose, use `docker compose -p somaagent01 --profile dev -f docker-compose.yaml up agent-ui`. The default host port is `${AGENT_UI_PORT:-20015}`, but you can override it via environment variables or the compose file.
+> If you are running through Docker Compose, start the Gateway (`gateway` service). The UI is served by the Gateway at `http://localhost:${GATEWAY_PORT:-20016}`.
 
 ## 2. Explore the Chat Interface
 

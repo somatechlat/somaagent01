@@ -6,7 +6,8 @@ from playwright.async_api import async_playwright, TimeoutError as PlaywrightTim
 
 
 async def run_test():
-    url = os.environ.get('AGENT_UI_URL', 'http://127.0.0.1:21015/')
+    # Single-origin rule: always target the Gateway (serves UI + /v1 APIs)
+    url = os.environ.get('WEB_UI_BASE_URL', 'http://127.0.0.1:21016/')
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
@@ -46,14 +47,14 @@ async def run_test():
             send_btn = await page.query_selector('#send-button')
             if chat and send_btn:
                 await chat.fill('Hello from Playwright')
-                # Wait for the POST to /message_async
+                # Wait for the POST to Gateway message endpoint
                 try:
-                    async with page.expect_response(lambda r: '/message_async' in r.url and r.request.method == 'POST', timeout=20000) as resp_info:
+                    async with page.expect_response(lambda r: '/v1/session/message' in r.url and r.request.method == 'POST', timeout=20000) as resp_info:
                         await send_btn.click()
                     resp = await resp_info.value
                     print('Message async response status:', resp.status)
                 except PlaywrightTimeoutError:
-                    print('Timed out waiting for /message_async response')
+                    print('Timed out waiting for /v1/session/message response')
             else:
                 print('Chat input or send button not found')
         except PlaywrightTimeoutError:
