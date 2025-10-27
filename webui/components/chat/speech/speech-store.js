@@ -130,8 +130,9 @@ const model = {
         this.onSpeechProviderChange();
       }
     } catch (error) {
-      window.toastFetchError?.("Failed to load speech settings", error);
-      console.error("Failed to load speech settings:", error);
+      // Speech settings are optional; avoid noisy toasts on transient failures or during offline/dev.
+      // Log for diagnostics, but don't interrupt UX with a toast.
+      console.warn("Speech settings fetch skipped/failed:", error?.message || error);
     }
   },
 
@@ -1164,4 +1165,9 @@ export const store = createStore("speech", model);
 
 // Event listeners
 document.addEventListener("settings-updated", () => store.loadSettings());
-// document.addEventListener("DOMContentLoaded", () => speechStore.init());
+// Auto-init on load to hydrate TTS/Realtime flags; defer slightly to allow CSRF priming
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    try { store.init(); } catch (_) { /* non-fatal */ }
+  }, 150);
+});

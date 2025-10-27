@@ -156,7 +156,8 @@ const model = {
   async generateLink() {
     // First check if authentication is enabled
     try {
-      const authCheckResponse = await fetchApi("/settings_get");
+      // Use Gateway UI-shaped settings endpoint (replaces legacy /settings_get)
+      const authCheckResponse = await fetchApi("/v1/ui/settings/sections", { method: 'GET' });
       const authData = await authCheckResponse.json();
 
       // Find the auth_login and auth_password in the settings

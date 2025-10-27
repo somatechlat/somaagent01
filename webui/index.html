@@ -176,11 +176,11 @@
         };
     </script>
 
-    <!-- Load module scripts first -->
-    <script type="module" src="js/scheduler.js"></script>
-    <script type="module" src="js/history.js"></script>
+    <!-- Load module scripts first (cache-busted) -->
+    <script type="module" src="js/scheduler.js?v=20251027"></script>
+    <script type="module" src="js/history.js?v=20251027"></script>
 
-    <script type="module" src="index.js"></script>
+    <script type="module" src="index.js?v=20251027"></script>
 
     <!-- Then load Alpine.js (local-first, CDN fallback) -->
     <script>
@@ -191,7 +191,7 @@
             false
         );
     </script>
-    <script type="module" src="js/initFw.js"></script>
+    <script type="module" src="js/initFw.js?v=20251027"></script>
 
     <!-- ACE editor (local-first, CDN fallback) -->
     <script>
@@ -253,9 +253,9 @@
     <link rel="manifest" href="js/manifest.json">
 
     <!-- Non-module scripts after Alpine.js -->
-    <script type="text/javascript" src="js/settings.js"></script>
-    <script type="text/javascript" src="js/file_browser.js"></script>
-    <script type="text/javascript" src="js/modal.js"></script>
+    <script type="text/javascript" src="js/settings.js?v=20251027"></script>
+    <script type="text/javascript" src="js/file_browser.js?v=20251027"></script>
+    <script type="text/javascript" src="js/modal.js?v=20251027"></script>
 </head>
 
 <body class="dark-mode device-pointer">

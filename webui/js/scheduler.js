@@ -229,6 +229,13 @@ const fullComponentImplementation = function() {
 
         // Start polling for task updates
         startPolling() {
+            // Only poll when Settings modal is open and scheduler tab is active
+            try {
+                const root = window.Alpine && window.Alpine.store ? window.Alpine.store('root') : null;
+                if (!root || !root.isOpen || root.activeTab !== 'scheduler') {
+                    return;
+                }
+            } catch (_) { /* ignore */ }
             // Don't start if already polling
             if (this.pollingInterval) {
                 console.log('Polling already active, not starting again');
@@ -260,6 +267,13 @@ const fullComponentImplementation = function() {
 
         // Fetch tasks from API
         async fetchTasks() {
+            // Only fetch when Settings modal is open and scheduler tab is active
+            try {
+                const root = window.Alpine && window.Alpine.store ? window.Alpine.store('root') : null;
+                if (!root || !root.isOpen || root.activeTab !== 'scheduler') {
+                    return;
+                }
+            } catch (_) { /* ignore */ }
             // Don't fetch if polling is inactive (prevents race conditions)
             if (!this.pollingActive && this.pollingInterval) {
                 return;

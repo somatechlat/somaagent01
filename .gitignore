@@ -57,4 +57,4 @@ a0_data/
 # Global rules
 **/.DS_Store
 **/__pycache__/
-!**/.gitkeep
+!**/.gitkeepserver.log
