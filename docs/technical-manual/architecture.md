@@ -1,171 +1,171 @@
----
-title: SomaAgent01 Architecture Overview
-slug: technical-architecture
-version: 1.0.0
-last-reviewed: 2025-10-15
-audience: architects, senior engineers
-owner: platform-architecture
-reviewers:
-  - infra
-  - security
-prerequisites:
-  - Familiarity with SomaAgent01 services
-  - Access to repository diagrams under `docs/diagrams`
-verification:
-  - Architecture diagram renders in MkDocs pipeline
-  - Service matrix matches `docker-compose.yaml`
----
+# Architecture
 
-# SomaAgent01 Architecture Overview
+**Standards**: ISO/IEC 42010
 
-This document captures the current service layout, target consolidation, and implementation roadmap for the Soma stack as of 2025-10-15. It supersedes earlier partial diagrams and aligns with code paths in `services/`, `common/`, and `infra/`.
+## System Context
 
-## 1. Service Landscape Snapshot
+SomaAgent01 is a distributed conversational AI platform using microservices architecture with event-driven communication via Kafka.
 
-| Alias | Repository components | Owner | Primary protocol | Typical ports | Status |
-| ----- | --------------------- | ----- | ---------------- | ------------- | ------ |
-| SA01 (SomaAgent01) | `agent.py`, `services/conversation_worker/main.py`, `services/gateway/main.py` | Agents | gRPC (high-throughput) | **50051** (planned) | gRPC stubs present; HTTP gateway on 8010 still active |
-| SB (SomaBrain) | external HTTP API (`SOMA_BASE_URL`) | Memory | HTTP | **9696** | Externalized; services call SomaBrain directly |
-| SAH (SomaAgentHub) | `services/ui/main.py`, `run_ui.py` | Experience | FastAPI (HTTP) | **8080** | Running via `agent-ui` and `gateway` services |
-| SMF (SomaFractalMemory) | future `qdrant` add-on | Knowledge | Async HTTP | **50053** / **6333-6334** | Planned profile (not yet in compose) |
-| Auth | `infra/helm/soma-infra/charts/auth` | Platform | HTTP | **8080** | Helm chart deployed cluster-wide |
-| OPA | `services/common/policy_client.py`, compose `opa` service | Platform | HTTP | **8181** | Deployed in compose and Helm |
-| Kafka | `docker-compose.yaml` | Platform | TCP | **9092** | Single node in compose, 3-node StatefulSet in Helm |
-| Redis | `docker-compose.yaml` | Platform | TCP | **6379** | Single instance; cluster planned |
-| Prometheus | `infra/observability/prometheus.yml` | Platform | HTTP | **9090** | Live in compose and Helm |
-<!-- Grafana removed: dashboards live in external project -->
-| Vault | future compose add-on | Platform | HTTP | **8200** | Dev mode compose; Helm chart forthcoming |
-| Etcd | `infra/helm/soma-infra/charts/etcd` | Platform | HTTP | **2379** | Placeholder chart available |
+## Components
 
-The stack currently runs four application services plus twelve infrastructure containers under Docker Compose. Consolidation work reduces duplication between local and cluster deployments.
+### Gateway (`services/gateway/main.py`)
 
-## 2. Shared Infrastructure Goal
+**Purpose**: Public-facing HTTP/WebSocket API
 
-### 2.1 Target State
+**Responsibilities**:
+- Accept user messages via POST /v1/session/message
+- Publish to conversation.inbound topic
+- Stream responses from conversation.outbound via WebSocket/SSE
+- Authenticate requests (JWT/API keys)
+- Enforce OPA policies
+- Manage sessions in PostgreSQL
+- Cache session metadata in Redis
 
-Shared services (Auth, OPA, Kafka, Redis, Prometheus, Vault, Etcd) run once per cluster inside the `soma-infra` namespace. Applications reference them via Kubernetes DNS (`*.soma.svc.cluster.local`).
+**Technology**: FastAPI, aiokafka, asyncpg, redis-py
 
-| Service | Deployment strategy | Repository anchor | Rationale |
-| ------- | ------------------- | ----------------- | --------- |
-| Auth | Deployment + Service | `infra/helm/soma-infra/charts/auth` | Centralize signing keys |
-| OPA | Deployment with sidecar | `infra/helm/soma-infra/charts/opa` | Prevent policy drift |
-| Kafka | StatefulSet (3 nodes) | `infra/helm/soma-infra/charts/kafka` | Shared event backbone |
-| Redis | RedisCluster (6 pods) | `infra/helm/soma-infra/charts/redis` | Shared cache and rate limiting |
-| Prometheus | Operator + Deployment | `infra/helm/soma-infra/charts/prometheus` | Metrics and alerting; dashboards external |
-| Vault | Deployment + Agent injector | `infra/helm/soma-infra/charts/vault` | Single secret source |
-| Etcd | StatefulSet | `infra/helm/soma-infra/charts/etcd` | Feature flag backend |
+**Ports**:
+- HTTP: 20016
+- Metrics: 9600 (Prometheus)
 
-### 2.2 Resulting Footprint
+### Conversation Worker (`services/conversation_worker/main.py`)
 
-- Application services: 4.
-- Infra services: 7 shared deployments.
-- Pods per environment: ~25 (down from 40).
+**Purpose**: Process user messages and generate responses
 
-## 3. Repository Alignment Plan
+**Responsibilities**:
+- Consume conversation.inbound topic
+- Analyze message intent/sentiment
+- Fetch conversation history from PostgreSQL
+- Call SLM (OpenAI-compatible API) for response generation
+- Publish response to conversation.outbound
+- Write user and assistant messages to SomaBrain via HTTP
+- Emit memory.wal events
+- Handle escalation to larger models
+- Track token budgets per tenant/persona
+
+**Technology**: aiokafka, httpx, asyncpg
+
+**Metrics**: 9601
+
+### Tool Executor (`services/tool_executor/main.py`)
+
+**Purpose**: Execute tools requested by conversation worker
+
+**Responsibilities**:
+- Consume tool.requests topic
+- Execute tool functions (code execution, web search, etc.)
+- Publish results to tool.results topic
+- Sandbox execution environment
+
+**Technology**: aiokafka, subprocess
+
+**Metrics**: 9602
+
+### Memory Replicator (`services/memory_replicator/main.py`)
+
+**Purpose**: Replicate memory events to PostgreSQL
+
+**Responsibilities**:
+- Consume memory.wal topic
+- Insert events into memory_replica table
+- Track replication lag
+- Send failed events to memory.wal.dlq
+
+**Technology**: aiokafka, asyncpg
+
+**Metrics**: 9603
+
+### Memory Sync (`services/memory_sync/main.py`)
+
+**Purpose**: Retry failed memory writes
+
+**Responsibilities**:
+- Poll memory_write_outbox table
+- Retry SomaBrain HTTP calls
+- Emit memory.wal on success
+- Exponential backoff for retries
+
+**Technology**: asyncpg, httpx
+
+**Metrics**: 9604
+
+### Outbox Sync (`services/outbox_sync/main.py`)
+
+**Purpose**: Retry failed Kafka publishes
+
+**Responsibilities**:
+- Poll outbox table
+- Retry Kafka publish
+- Delete on success
+- Exponential backoff
+
+**Technology**: aiokafka, asyncpg
+
+**Metrics**: 9415
+
+## Data Stores
+
+### PostgreSQL
+
+**Schema**:
+- `sessions`: session_id, persona_id, tenant, metadata, created_at, updated_at
+- `session_events`: id, session_id, occurred_at, payload
+- `outbox`: id, topic, payload, dedupe_key, created_at, published_at
+- `memory_replica`: id, event_id, session_id, persona_id, tenant, role, payload, wal_timestamp, created_at
+- `memory_write_outbox`: id, payload, tenant, session_id, persona_id, idempotency_key, created_at, retry_count
+- `dlq`: id, topic, event, error, created_at
+- `model_profiles`: role, deployment_mode, model, base_url, temperature, kwargs
+- `ui_settings`: id, document (JSONB)
+- `attachments`: id, tenant, session_id, filename, mime, size, sha256, status, content, created_at
+
+### Redis
+
+**Keys**:
+- `session:{session_id}:meta`: Session metadata cache
+- `api_key:{key_id}`: API key details
+- `llm_cred:{provider}`: Encrypted LLM credentials (Fernet)
+- `budget:{tenant}:{persona_id}`: Token usage counters
+
+### Kafka
+
+**Configuration**:
+- Mode: KRaft (no Zookeeper)
+- Partitions: 3 per topic
+- Replication: 1 (single broker)
+- Retention: 168 hours (7 days)
+
+## Communication Patterns
+
+### Request-Response (HTTP)
 
 ```
-agent-zero/
-  services/
-    conversation_worker/
-    gateway/
-    # memory_service (deprecated; removed)
-    tool_executor/
-    ui/
-  infra/
-    docker-compose.yaml
-    helm/
-      soma-infra/
-      soma-stack/
-  docs/
-    technical-manual/architecture.md (this file)
+Client → Gateway → SomaBrain HTTP API
 ```
 
-Planned adjustments:
+### Event-Driven (Kafka)
 
-1. Introduce service-specific subdirectories (`services/sa01`, etc.) as we modularize entrypoints.
-2. Ensure `infra/helm/soma-stack` consumes the shared infra chart and removes duplicated settings.
-3. Keep `common/` as the shared client library for configuration, telemetry, and memory access.
-
-## 4. Configuration Baseline
-
-All services load shared settings via `common/config/settings.py`. SA01 overrides live in `services/common/settings_sa01.py`.
-
-**Key defaults:**
-- Kafka: `kafka.soma.svc.cluster.local:9092`
-- Redis: `redis.soma.svc.cluster.local:6379`
-- Postgres: `postgres.soma.svc.cluster.local:5432`
-- OPA: `http://opa.soma.svc.cluster.local:8181`
-- Auth: `http://auth.soma.svc.cluster.local:8080`
-- Etcd: `etcd.soma.svc.cluster.local:2379`
-- Metrics: Prometheus scrape endpoints defined in `infra/observability/prometheus.yml`
-
-## 5. Deployment Model
-
-| Layer | Tooling | Outcome |
-| ----- | ------- | ------- |
-| Cluster | Managed Kubernetes (EKS/GKE/AKS) | Scalable, managed control plane |
-| GitOps | Argo CD tracking `infra/helm` | Declarative rollouts, audit trail |
-| Packaging | Helm chart `soma-stack` + `soma-infra` dependency | Single artifact per environment |
-| Traffic | Istio weighted routing | Safe canaries and blue/green |
-| CI/CD | `.github/workflows/ci.yml` | Lint, test, Kind-based Helm install |
-
-## 6. Observability Stack
-
-- Metrics: `/metrics` exposed on FastAPI workers, scraped by Prometheus.
-- Tracing: OpenTelemetry exporters configured via `common/utils/trace.py` to Jaeger.
-- Logging: JSON logs ingested by Loki via Promtail (Helm update pending).
-- Alerting: Alertmanager rules for latency (>200 ms), error rate (>1%), Kafka lag (>5k).
-
-## 7. Resource Footprint
-
-| Category | Before | Target |
-| -------- | ------ | ------ |
-| Application services | 4 | 4 |
-| Infra services | 12 | 7 |
-| Pods | 30-40 | 20-25 |
-| Helm releases | 16 | 5 |
-
-## 8. Implementation Roadmap
-
-1. Finish provider SDK skeleton under `common/provider_sdk/`.
-2. Complete Vault and Etcd Helm charts with production values.
-3. Extend CI to run Kind-based installs and smoke tests (`scripts/smoke_test.py`).
-4. Update runbooks in the [Operations Manual](../development-manual/runbooks.md) after each deployment milestone.
-
-## 9. Mermaid Diagram
-
-```mermaid
-flowchart TB
-  subgraph Infra[Shared Infra]
-    Auth[Auth Service]
-    OPA[OPA]
-    Kafka[Kafka Cluster]
-    Redis[Redis Cluster]
-    Vault[Vault]
-    Etcd[Etcd]
-    Prom[Prometheus]
-  end
-
-  subgraph Apps[Application Services]
-    SA01[SomaAgent01]
-    SB[SomaBrain]
-    SAH[SomaAgentHub]
-    SMF[SomaFractalMemory]
-  end
-
-  Auth --> SAH
-  OPA --> SAH
-  Kafka --> SA01
-  Kafka --> SAH
-  Redis --> SA01
-  Vault --> SA01
-  Etcd --> SA01
-  Prom --> Apps
+```
+Gateway → conversation.inbound → Conversation Worker → conversation.outbound → Gateway
 ```
 
-## 10. Verification Checklist
+### Outbox Pattern
 
-- [ ] Diagram renders via MkDocs and linted with `markdownlint`.
-- [ ] Service matrix matches `docker-compose.yaml`.
-- [ ] Helm values align with `infra/helm/soma-infra`.
-<!-- Roadmap items are tracked in release notes and changelog. -->
+```
+Service → PostgreSQL outbox → Outbox Sync → Kafka
+```
+
+## Deployment Modes
+
+- **DEV**: Local development, env-based LLM keys
+- **STAGING**: Pre-production, Gateway-managed credentials
+- **PROD**: Production, Gateway-managed credentials, strict auth
+
+## Observability
+
+- **Metrics**: Prometheus (per-service ports 9600-9610)
+- **Tracing**: OpenTelemetry (OTLP endpoint configurable)
+- **Logging**: Structured JSON logs to stdout
+
+## Standards Compliance
+
+- **ISO/IEC 42010**: Architecture viewpoints (functional, deployment, information)
+- **ISO/IEC 12207§6.3.3**: Software architectural design

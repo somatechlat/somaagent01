@@ -1,40 +1,66 @@
----
-title: SomaAgent01 User Manual
-slug: user-manual
-version: 1.0.0
-last-reviewed: 2025-10-15
-audience: end-users, operators
-owner: soma-docs
-reviewers:
-  - product
-  - support
-links:
-  - label: Release Notes
-    url: ../changelog.md
-  - label: Glossary
-    url: ../glossary.md
----
+# User Manual
 
-# SomaAgent01 User Manual
+**Standards**: ISO 21500§4.2
 
-Welcome to the SomaAgent01 User Manual. This handbook explains how to deploy, configure, and operate the agent stack from a user perspective. Each section is validated against the documentation checklist—purpose, prerequisites, procedures, verification, and references—so you always know what to do and how to confirm success.
+## Overview
 
-## How to Use This Manual
+SomaAgent01 provides a conversational AI interface accessible via Web UI or API.
 
-- **Start with Quick Wins:** Follow the [Getting Started](./getting-started.md) guide to launch the stack in minutes.
-- **Go Deeper:** The [Feature Playbook](./using-the-agent.md) covers day-to-day tasks in the Web UI, including file management and multi-agent orchestration.
-- **Stay Operational:** When something goes wrong, the [Troubleshooting Matrix](./troubleshooting.md) provides decision trees, log breadcrumbs, and escalation paths.
-- **Learn the Vocabulary:** Refer to the [Glossary](../glossary.md) for canonical terminology.
+## Quick Start
 
-> [!TIP]
-> All user-facing procedures include a "Verification" section so you can confirm that the step completed successfully before moving on.
+### Docker (Recommended)
 
-## Manual Structure
+```bash
+docker pull agent0ai/agent-zero
+docker run -p 50001:80 agent0ai/agent-zero
+```
 
-- [Getting Started](./getting-started.md)
-- [Installation Paths](./installation.md)
-- [Using the Agent](./using-the-agent.md)
-- [Troubleshooting & FAQ](./troubleshooting.md)
-- [Accessibility Statement](./accessibility.md)
+Visit `http://localhost:50001`
 
-Every page declares ownership, reviewers, and a last-reviewed date. When content changes, update the metadata and notify stakeholders through the documentation change log.
+### Local Development
+
+```bash
+# 1. Start infrastructure
+make deps-up
+
+# 2. Start services
+make stack-up
+
+# 3. Start UI
+make ui
+```
+
+Visit `http://127.0.0.1:3000`
+
+## Features
+
+- **Conversational Interface**: Chat with AI assistant
+- **Memory**: Persistent conversation history
+- **Multi-agent**: Delegate subtasks to subordinate agents
+- **Tools**: Code execution, web search, file operations
+- **Streaming**: Real-time response streaming
+- **Attachments**: Upload files for context
+
+## System Requirements
+
+- **Docker**: 20.10+ (for containerized deployment)
+- **Python**: 3.11+ (for local development)
+- **Memory**: 8GB RAM minimum
+- **Storage**: 10GB available space
+
+## Ports
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| UI | 20015 | Web interface |
+| Gateway | 20016 | API endpoint |
+| Kafka | 20000 | Event streaming |
+| Redis | 20001 | Cache |
+| PostgreSQL | 20002 | Database |
+| OPA | 20009 | Policy engine |
+
+## Related Documents
+
+- [Installation Guide](./installation.md)
+- [Usage Guide](./using-the-agent.md)
+- [Troubleshooting](./troubleshooting.md)
