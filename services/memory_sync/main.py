@@ -10,7 +10,8 @@ import asyncio
 import logging
 import os
 import time
-from typing import Optional
+from typing import Optional, Any, Mapping, Sequence
+import json
 
 import httpx
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
@@ -97,7 +98,35 @@ class MemorySyncWorker:
         await self.store.close()
 
     async def _process(self, item) -> None:  # item: MemoryWriteItem
-        payload = dict(item.payload)
+        # Coerce stored JSON payload into a dict robustly. Some older rows may
+        # contain strings or list formats; handle them defensively instead of crashing.
+        raw = item.payload
+        payload: dict[str, Any]
+        try:
+            if isinstance(raw, Mapping):
+                payload = dict(raw)
+            elif isinstance(raw, str):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, Mapping):
+                        payload = dict(parsed)
+                    else:
+                        raise ValueError("memory_write_outbox payload JSON is not an object")
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"invalid JSON payload: {exc}")
+            elif isinstance(raw, Sequence):
+                # Accept legacy [[k,v], ...] form
+                try:
+                    payload = dict(raw)  # type: ignore[arg-type]
+                except Exception as exc:
+                    raise ValueError(f"unsupported legacy payload sequence: {exc}")
+            else:
+                raise ValueError(f"unsupported payload type: {type(raw).__name__}")
+        except Exception as exc:
+            # Mark as failed and continue with next item instead of aborting the worker
+            await self.store.mark_failed(item.id, error=f"payload error: {exc}")
+            JOBS.labels("failed").inc()
+            return
         # Ensure idempotency key is populated
         if "idempotency_key" not in payload and payload.get("id"):
             payload["idempotency_key"] = payload.get("id")

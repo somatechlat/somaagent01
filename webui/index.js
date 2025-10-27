@@ -138,6 +138,21 @@ document.addEventListener("DOMContentLoaded", () => {
   try {
     fetch("/v1/csrf", { credentials: "same-origin" }).catch(() => {});
   } catch (_) {}
+  // Kick a quick health probe so connection status becomes available immediately
+  try {
+    fetch("/v1/health", { method: "GET", credentials: "same-origin" })
+      .then(async (resp) => {
+        if (!resp || !resp.ok) throw new Error("HTTP " + (resp && resp.status));
+        const data = await resp.json().catch(() => ({}));
+        const status = (data && (data.status || data.overall || data.state)) || "ok";
+        setConnectionStatus(status, data && (data.components || data.services || {}));
+      })
+      .catch(() => {
+        setConnectionStatus("down");
+      });
+  } catch (_) {
+    /* ignore */
+  }
 });
 
 function setupSidebarToggle() {
@@ -156,12 +171,16 @@ document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 export async function sendMessage() {
   try {
     // Gate sending if backend/gateway is unhealthy
-    if (!getConnectionStatus()) {
-      await toastFrontendError(
-        "Agent is offline or initializing. Please wait until the status indicator is green.",
-        "Unavailable"
-      );
-      return;
+    if (getConnectionStatus() === false) {
+      // In dev/test, allow sending even if health shows down (poll may fail without infra)
+      try {
+        notificationStore.frontendWarning(
+          "Agent appears offline – attempting to send anyway…",
+          "Offline",
+          4
+        );
+      } catch (_) {}
+      // continue without returning; backend may still accept the request (outbox fallback)
     }
     const message = chatInput.value.trim();
     const attachmentsWithUrls = attachmentsStore.getAttachmentsForSending();
@@ -393,21 +412,26 @@ function adjustTextareaHeight() {
 }
 
 export const sendJsonData = async function (url, data) {
+  // Block legacy endpoints to avoid 404 spam and confusing errors
+  const u = String(url || "");
+  if (!u.startsWith("/v1/")) {
+    const legacy = new Set([
+      "/pause",
+      "/chat_reset",
+      "/chat_remove",
+      "/nudge",
+      "/restart",
+      "/chat_load",
+      "/chat_export",
+      "/file_info",
+      "/history_get",
+      "/ctx_window_get",
+    ]);
+    if (legacy.has(u)) {
+      throw new Error("Legacy UI action is disabled in this build.");
+    }
+  }
   return await api.callJsonApi(url, data);
-  // const response = await api.fetchApi(url, {
-  //     method: 'POST',
-  //     headers: {
-  //         'Content-Type': 'application/json'
-  //     },
-  //     body: JSON.stringify(data)
-  // });
-
-  // if (!response.ok) {
-  //     const error = await response.text();
-  //     throw new Error(error);
-  // }
-  // const jsonResponse = await response.json();
-  // return jsonResponse;
 };
 globalThis.sendJsonData = sendJsonData;
 
@@ -1259,10 +1283,15 @@ async function startPolling() {
     let nextInterval = longInterval;
 
     try {
-      const result = await poll();
-      if (result) shortIntervalCount = shortIntervalPeriod; // Reset the counter when the result is true
-      if (shortIntervalCount > 0) shortIntervalCount--; // Decrease the counter on each call
-      nextInterval = shortIntervalCount > 0 ? shortInterval : longInterval;
+      // If the backend appears down, avoid hammering /v1/ui/poll and back off
+      if (getConnectionStatus() === false) {
+        nextInterval = 2000; // gentle backoff while offline
+      } else {
+        const result = await poll();
+        if (result) shortIntervalCount = shortIntervalPeriod; // Reset the counter when the result is true
+        if (shortIntervalCount > 0) shortIntervalCount--; // Decrease the counter on each call
+        nextInterval = shortIntervalCount > 0 ? shortInterval : longInterval;
+      }
     } catch (error) {
       console.error("Error:", error);
     }

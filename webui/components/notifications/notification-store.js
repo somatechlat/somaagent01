@@ -568,7 +568,7 @@ const model = {
     return notification.id;
   },
 
-  // NEW: Enhanced frontend toast that tries backend first, falls back to frontend-only
+  // NEW: Frontend-only toast (no backend attempts)
   async addFrontendToast(
     type,
     message,
@@ -577,34 +577,7 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    // Try to send to backend first if connected
-    if (this.isConnected()) {
-      try {
-        const notificationId = await this.createNotification(
-          type,
-          message,
-          title,
-          "",
-          display_time,
-          group,
-          priority
-        );
-        if (notificationId) {
-          // Backend handled it, notification will arrive via polling
-          return notificationId;
-        }
-      } catch (error) {
-        console.log(
-          `Backend unavailable for notification, showing as frontend-only: ${
-            error.message || error
-          }`
-        );
-      }
-    } else {
-      console.log("Backend disconnected, showing as frontend-only toast");
-    }
-
-    // Fallback to frontend-only toast
+    // Always use frontend-only path to avoid any 404s or legacy endpoints
     return this.addFrontendToastOnly(
       type,
       message,

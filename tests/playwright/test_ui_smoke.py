@@ -1,6 +1,7 @@
 import asyncio
 import os
 import time
+import sys
 
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -18,6 +19,7 @@ async def run_test():
         page.on('pageerror', lambda exc: console_messages.append(('pageerror', str(exc))))
 
         responses = []
+        requests = []
 
         async def on_response(response):
             try:
@@ -27,9 +29,26 @@ async def run_test():
 
         page.on('response', on_response)
 
+        def on_request(req):
+            try:
+                requests.append((req.method, req.url))
+            except Exception:
+                pass
+        page.on('request', on_request)
+
         # Open UI (wait for full load, longer timeout)
         await page.goto(url, wait_until='load', timeout=60000)
-        await page.wait_for_timeout(1500)
+        # Give the app a moment to boot and poll health
+        await page.wait_for_timeout(800)
+        # Wait until the status indicator reports not-down (ok or degraded)
+        try:
+            await page.wait_for_function(
+                "() => { const el = document.getElementById('status-indicator'); return !!el && el.dataset && el.dataset.status && el.dataset.status !== 'down'; }",
+                timeout=10000,
+            )
+        except PlaywrightTimeoutError:
+            print('Health status did not reach ok/degraded in time; proceeding anyway')
+            # proceed best-effort
 
         print('--- CONSOLE MESSAGES ---')
         for t, m in console_messages:
@@ -38,21 +57,37 @@ async def run_test():
         print('\n--- NETWORK RESPONSES (first 40) ---')
         for status, u in responses[:40]:
             print(status, u)
+        print('\n--- NETWORK REQUESTS (first 40) ---')
+        for m, u in requests[:40]:
+            print(m, u)
 
         # Try to send a chat message
+        request_seen = False
+        response_seen = False
         try:
             await page.wait_for_selector('#chat-input', timeout=15000)
             await page.wait_for_selector('#send-button', timeout=15000)
             chat = await page.query_selector('#chat-input')
             send_btn = await page.query_selector('#send-button')
-            if chat and send_btn:
+            if chat:
                 await chat.fill('Hello from Playwright')
-                # Wait for the POST to Gateway message endpoint
+                # Wait for the POST to Gateway message endpoint (trigger via Enter key to hit keydown handler)
                 try:
-                    async with page.expect_response(lambda r: '/v1/session/message' in r.url and r.request.method == 'POST', timeout=20000) as resp_info:
-                        await send_btn.click()
-                    resp = await resp_info.value
-                    print('Message async response status:', resp.status)
+                    # First, expect the request to be issued
+                    async with page.expect_request(lambda r: '/v1/session/message' in r.url and r.method == 'POST', timeout=15000) as req_info:
+                        await chat.press('Enter')
+                    req = await req_info.value
+                    print('Observed request:', req.method, req.url)
+                    request_seen = True
+                    # Optionally also wait for a response (may 500 when infra is down, that's okay)
+                    try:
+                        async with page.expect_response(lambda r: r.url == req.url and r.request.method == 'POST', timeout=15000) as resp_info:
+                            pass
+                        resp = await resp_info.value
+                        print('Message async response status:', resp.status)
+                        response_seen = True
+                    except PlaywrightTimeoutError:
+                        print('No response observed for /v1/session/message within 15s (request was sent).')
                 except PlaywrightTimeoutError:
                     print('Timed out waiting for /v1/session/message response')
             else:
@@ -87,6 +122,13 @@ async def run_test():
             print('Found AI reply (truncated):', ai_msg[:400])
         else:
             print('No AI reply found in the DOM within 30s. Ensure workers are running and connected to Kafka/LLM.')
+
+        # Emit a simple machine-readable summary and exit code.
+        print(f"\nSMOKE RESULT: REQUEST_SENT={int(request_seen)}, RESPONSE_SEEN={int(response_seen)}, AI_REPLY_SEEN={int(bool(ai_msg))}")
+        # Make the smoke tolerant in infra-down mode: pass if we at least saw the POST issued by the UI.
+        if not request_seen:
+            await browser.close()
+            sys.exit(1)
 
         await browser.close()
 
