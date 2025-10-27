@@ -1,72 +1,60 @@
-# Repo-wide ignores for generated or local-only files
-
-# Kafka logs and other runtime logs
-kafka-logs/
-logs/
-*.log
-
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.cache/
 
-# Environment/virtualenv
+# Virtual environments
 .env
 .venv/
 venv/
 env/
+.uv-venv/
 
-# OS/editor
+# Runtime logs and data
+kafka-logs/
+logs/
+*.log
+tmp/
+postgres-backups/
+redis-conf/
+
+# OS/Editor
 .DS_Store
 Thumbs.db
 .vscode/
+.cursor/
 
 # Build artifacts
 dist/
 build/
-tmp/
-docs.zip
+site/
+*.egg-info/
 *.zip
-# Ignore common unwanted files globally
-**/.DS_Store
-**/.env
-**/__pycache__/
-**/.conda/
 
-#Ignore cursor rules
-.cursor/
-
-# ignore test files in root dir
-/*.test.py
-
-# Ignore all contents of the virtual environment directory
-.venv/
-
-# Handle memory directory
+# Memory/Knowledge/Instruments (runtime data)
 memory/**
-!memory/**/
-
-# Handle logs directory
-logs/*
-
-# Handle tmp directory
-tmp/*
-
-# Handle knowledge directory
+!memory/.gitkeep
 knowledge/**
-!knowledge/**/
-# Explicitly allow the default folder in knowledge
 !knowledge/default/
 !knowledge/default/**
-
-# Handle instruments directory
+!knowledge/.gitkeep
 instruments/**
-!instruments/**/
-# Explicitly allow the default folder in instruments
 !instruments/default/
 !instruments/default/**
+!instruments/.gitkeep
 
-# Global rule to include .gitkeep files anywhere
+# Empty/unused directories
+a0_data/
+
+# Test artifacts
+/*.test.py
+
+# Global rules
+**/.DS_Store
+**/__pycache__/
 !**/.gitkeep
-agent_history.gif
