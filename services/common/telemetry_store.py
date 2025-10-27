@@ -13,9 +13,10 @@ from services.common.settings_base import BaseServiceSettings
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.getenv(
+        raw_dsn = dsn or os.getenv(
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
+        self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod

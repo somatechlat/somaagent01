@@ -79,7 +79,8 @@ class SessionCache(ABC):
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
-        self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.url = os.path.expandvars(raw_url)
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
         if ttl is None:
@@ -172,9 +173,10 @@ class SessionEnvelope:
 
 class PostgresSessionStore(SessionStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.getenv(
+        raw_dsn = dsn or os.getenv(
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
+        self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:

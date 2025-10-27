@@ -22,7 +22,8 @@ class BudgetManager:
     def __init__(
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
-        self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.url = os.path.expandvars(raw_url)
         self.prefix = os.getenv("BUDGET_PREFIX", "budget:tokens")
         self.limit = int(os.getenv("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)

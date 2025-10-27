@@ -160,7 +160,9 @@ class RedisApiKeyStore(ApiKeyStore):
     """Redis-backed key store suitable for production deployments."""
 
     def __init__(self, url: str | None = None) -> None:
-        self.url = url or "redis://localhost:6379/0"
+        raw_url = url or "redis://localhost:6379/0"
+        # Expand env placeholders so URLs like redis://localhost:${REDIS_PORT}/0 work in local .env
+        self.url = os.path.expandvars(raw_url)
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         self._namespace = "gateway:api_keys"
 

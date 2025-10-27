@@ -16,7 +16,10 @@ class RequeueStore:
         *,
         prefix: Optional[str] = None,
     ) -> None:
-        self.url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        # Resolve Redis URL with environment variable expansion to support values like
+        # REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
+        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.url = os.path.expandvars(raw_url)
         self.prefix = prefix or os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
