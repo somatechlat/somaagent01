@@ -3020,7 +3020,17 @@ like /ui/config.json so those routes take precedence over static files.
 try:
     UI_DIR = (Path(__file__).resolve().parents[2] / "webui").resolve()
     if UI_DIR.exists():
+        # Mount the Web UI root under /ui so /ui/index.html and related relative paths work
         app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+
+        # Additionally mount common asset subpaths at the root to satisfy absolute imports
+        # used by the UI (e.g., "/js/...", "/public/...", "/components/...").
+        for sub in ("js", "css", "components", "public", "vendor"):
+            subdir = UI_DIR / sub
+            if subdir.exists():
+                # Do not use html=True for asset folders
+                app.mount(f"/{sub}", StaticFiles(directory=str(subdir), html=False), name=f"ui-{sub}")
+
         LOGGER.info("Mounted WebUI", extra={"path": str(UI_DIR)})
     else:
         LOGGER.info("WebUI directory not found", extra={"expected": str(UI_DIR)})
