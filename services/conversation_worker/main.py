@@ -834,8 +834,17 @@ class ConversationWorker:
                         "temperature": model_profile.temperature,
                     }
                 )
-                if model_profile.kwargs:
+                # Be defensive: only merge kwargs when it's a dict
+                if isinstance(model_profile.kwargs, dict) and model_profile.kwargs:
                     slm_kwargs.update(model_profile.kwargs)
+                elif model_profile.kwargs is not None and not isinstance(model_profile.kwargs, dict):
+                    try:
+                        LOGGER.warning(
+                            "Ignoring non-dict model_profile.kwargs",
+                            extra={"type": str(type(model_profile.kwargs))},
+                        )
+                    except Exception:
+                        pass
             routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
 
             if model_profile and os.getenv("ROUTER_URL"):
@@ -872,7 +881,6 @@ class ConversationWorker:
                     message=event.get("message", ""),
                     analysis=analysis_dict,
                     event_metadata=metadata_for_decision,
-                    fallback_enabled=self.escalation_fallback_enabled,
                 )
 
             budget_check = await self.budgets.consume(tenant, persona_id, 0)
@@ -1194,6 +1202,17 @@ class ConversationWorker:
             except Exception:
                 LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
             record_metrics(result_label, path)
+        # Execute the processing pipeline and ensure metrics are recorded on unexpected errors
+        try:
+            await _process()
+        except Exception:
+            try:
+                # Best-effort metrics in case of an unhandled exception
+                MESSAGE_PROCESSING_COUNTER.labels("error").inc()
+                MESSAGE_LATENCY.labels(path).observe(time.perf_counter() - start_time)
+            except Exception:
+                pass
+            LOGGER.exception("Unhandled error while processing conversation event")
 
     async def _ensure_llm_key(self) -> None:
         if getattr(self.slm, 'api_key', None):

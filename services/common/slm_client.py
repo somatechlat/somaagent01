@@ -68,7 +68,13 @@ class SLMClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         response = await self._client.post(url, json=payload, headers=headers)
-        response.raise_for_status()
+        if response.is_error:
+            try:
+                body = response.text
+                LOGGER.error("SLM error response", extra={"status": response.status_code, "body": body[:800]})
+            except Exception:
+                pass
+            response.raise_for_status()
         data: dict[str, Any] = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
@@ -114,7 +120,13 @@ class SLMClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         async with self._client.stream("POST", url, json=payload, headers=headers) as response:
-            response.raise_for_status()
+            if response.is_error:
+                try:
+                    body = await response.aread()
+                    LOGGER.error("SLM stream error response", extra={"status": response.status_code, "body": body.decode("utf-8", errors="ignore")[:800]})
+                except Exception:
+                    pass
+                response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line or not line.startswith("data:"):
                     continue
