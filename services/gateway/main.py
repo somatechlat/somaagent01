@@ -37,6 +37,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
@@ -3030,6 +3031,13 @@ try:
             if subdir.exists():
                 # Do not use html=True for asset folders
                 app.mount(f"/{sub}", StaticFiles(directory=str(subdir), html=False), name=f"ui-{sub}")
+
+        # Serve root-level index.js for absolute imports (e.g., import "/index.js") used by some modules
+        index_js = UI_DIR / "index.js"
+        if index_js.exists():
+            @app.get("/index.js", include_in_schema=False)
+            async def _index_js() -> FileResponse:  # type: ignore
+                return FileResponse(str(index_js), media_type="application/javascript")
 
         LOGGER.info("Mounted WebUI", extra={"path": str(UI_DIR)})
     else:
