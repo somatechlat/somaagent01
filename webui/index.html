@@ -664,7 +664,7 @@
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
                 <div class="modal-container">
                     <div class="modal-header">
-                        <h2 x-text="settings.title"></h2>
+                        <h2 x-text="settings.title" data-testid="settings-modal-title"></h2>
                         <button class="modal-close" @click="handleCancel()">&times;</button>
                     </div>
 

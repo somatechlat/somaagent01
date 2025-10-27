@@ -1402,8 +1402,29 @@ def _remove_sensitive_settings(settings: Settings):
 
 
 def _write_sensitive_settings(settings: Settings):
+    # Normalize API key env var names to the conventional {PROVIDER}_API_KEY.
+    # The keys may be stored as 'api_key_{provider}' by the UI layer.
     for key, val in settings["api_keys"].items():
-        dotenv.save_dotenv_value(key.upper(), val)
+        if not isinstance(key, str):
+            continue
+        provider = key.strip()
+        if provider.startswith("api_key_"):
+            provider = provider[len("api_key_"):]
+        if not provider:
+            continue
+        if not isinstance(val, str) or val.strip() in {"", "None"}:
+            continue
+        env_key = f"{provider.upper()}_API_KEY"
+        # Migrate legacy layout API_KEY_{PROVIDER} -> {PROVIDER}_API_KEY if necessary
+        legacy_key = f"API_KEY_{provider.upper()}"
+        try:
+            cur = dotenv.get_dotenv_value(env_key)
+            legacy = dotenv.get_dotenv_value(legacy_key)
+            if (not cur) and legacy:
+                dotenv.save_dotenv_value(env_key, legacy)
+        except Exception:
+            pass
+        dotenv.save_dotenv_value(env_key, val)
 
     dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])
     if settings["auth_password"]:

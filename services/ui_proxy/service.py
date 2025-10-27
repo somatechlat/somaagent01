@@ -132,8 +132,14 @@ class PollAggregator:
     async def _fetch_sessions(self) -> List[Dict[str, Any]]:
         try:
             response = await self.client.get_contexts()
+        except httpx.HTTPStatusError as exc:
+            # Treat upstream 5xx as transient and return an empty session list for UI resiliency
+            if 500 <= exc.response.status_code < 600:
+                return []
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
         except httpx.HTTPError as exc:
-            raise HTTPException(status_code=502, detail=f"Gateway session fetch failed: {exc}") from exc
+            # Network or protocol error – surface as 502 but keep UI alive with no sessions
+            return []
 
         if isinstance(response, list):
             return response

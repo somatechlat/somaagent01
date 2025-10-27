@@ -869,6 +869,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     # Speech to text + TTS section
     speech_fields: list[SettingsField] = []
+    stt_fields: list[SettingsField] = []
 
     # SettingsModel supports attribute and ["key"] access but not .get();
     # default_settings is already applied by convert_out, so direct access is safe.
@@ -889,9 +890,8 @@ def convert_out(settings: Settings) -> SettingsOutput:
         }
     )
 
-    dev_fields: list[SettingsField] = []
-
-    dev_fields.append(
+    # Optional ingestion offload threshold (not always present in defaults)
+    stt_fields.append(
         {
             "id": "INGEST_OFFLOAD_THRESHOLD_MB",
             "title": "Ingestion Offload Threshold (MB)",
@@ -900,17 +900,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "min": 1,
             "max": 512,
             "step": 1,
-            "value": settings.get("INGEST_OFFLOAD_THRESHOLD_MB", 5),
-        }
-    )
-
-    dev_fields.append(
-        {
-            "id": "shell_interface",
-            "title": "Shell Interface",
-            "description": "Enable shell interface for advanced debugging and scripting.",
-            "type": "switch",
-            "value": settings["shell_interface"],
+            "value": getattr(settings, "INGEST_OFFLOAD_THRESHOLD_MB", 5),
         }
     )
 
@@ -1401,16 +1391,32 @@ def _remove_sensitive_settings(settings: Settings):
 
 
 def _write_sensitive_settings(settings: Settings):
+    # Persist provider API keys into .env using the conventional {PROVIDER}_API_KEY
+    # naming (e.g. OPENROUTER_API_KEY, GROQ_API_KEY). The internal api_keys
+    # dictionary stores entries keyed by provider id (e.g. "openrouter", "groq").
+    # Be tolerant to legacy shapes where keys might already be prefixed with
+    # "api_key_" from older UIs.
     for key, val in settings["api_keys"].items():
-        # UI field ids are of the form "api_key_{provider}". Most libraries
-        # (litellm, provider SDKs) expect env vars like "OPENROUTER_API_KEY".
-        # Map api_key_openrouter -> OPENROUTER_API_KEY. Fall back to uppercased
-        # key for any other naming.
-        if isinstance(key, str) and key.startswith("api_key_"):
-            provider = key[len("api_key_"):]
-            env_key = f"{provider.upper()}_API_KEY"
-        else:
-            env_key = key.upper()
+        if not isinstance(key, str):
+            continue
+        provider = key.strip()
+        if provider.startswith("api_key_"):
+            provider = provider[len("api_key_"):]
+        if not provider:
+            continue
+        if not isinstance(val, str) or val.strip() in {"", "None"}:
+            # Skip empty placeholders
+            continue
+        env_key = f"{provider.upper()}_API_KEY"
+        # One-time migration support: if old "API_KEY_{PROVIDER}" exists and new key is empty, copy it.
+        legacy_key = f"API_KEY_{provider.upper()}"
+        try:
+            cur = dotenv.get_dotenv_value(env_key)
+            legacy = dotenv.get_dotenv_value(legacy_key)
+            if (not cur) and legacy:
+                dotenv.save_dotenv_value(env_key, legacy)
+        except Exception:
+            pass
         dotenv.save_dotenv_value(env_key, val)
 
     dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])

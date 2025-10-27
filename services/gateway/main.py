@@ -177,6 +177,61 @@ def _setup_cors() -> None:
 
 _setup_cors()
 
+# Include UI proxy routes to provide legacy-compatible UI endpoints like /v1/ui/poll
+# This allows the Web UI to aggregate sessions and events via the gateway process.
+# If the router import fails (older image/build), we install a safe fallback below.
+try:
+    from services.ui_proxy.routes import router as ui_proxy_router  # type: ignore
+
+    app.include_router(ui_proxy_router)
+except Exception as _e:  # pragma: no cover - optional wiring for local/dev
+    # If UI proxy is not available at import time, log and fall back to inline endpoints below.
+    logging.getLogger(__name__).warning("UI proxy router import failed, will install inline fallback endpoints: %s", _e)
+
+# Install inline fallback implementations for /v1/ui/poll and /v1/ui/message if not already registered
+def _route_exists(path: str, methods: set[str]) -> bool:
+    try:
+        for r in getattr(app, "routes", []):
+            r_path = getattr(r, "path", None)
+            r_methods = set(getattr(r, "methods", set()) or set())
+            if r_path == path and methods.issubset(r_methods):
+                return True
+    except Exception:
+        pass
+    return False
+
+try:
+    from services.ui_proxy.service import PollAggregator, UiMessageService  # type: ignore
+    from services.ui_proxy.client import GatewayClient  # type: ignore
+except Exception:
+    PollAggregator = None  # type: ignore
+    UiMessageService = None  # type: ignore
+    GatewayClient = None  # type: ignore
+
+if PollAggregator and GatewayClient and not _route_exists("/v1/ui/poll", {"POST"}):
+    async def _ui_poll_fallback(request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        base = str(request.base_url).rstrip("/")
+        client = GatewayClient(base_url=base)
+        aggregator = PollAggregator(client)
+        payload = await aggregator.poll(body)
+        return JSONResponse(payload)
+
+    app.add_api_route("/v1/ui/poll", _ui_poll_fallback, methods=["POST"])
+
+if UiMessageService and GatewayClient and not _route_exists("/v1/ui/message", {"POST"}):
+    async def _ui_message_fallback(request: Request) -> JSONResponse:
+        base = str(request.base_url).rstrip("/")
+        client = GatewayClient(base_url=base)
+        service = UiMessageService()
+        payload = await service.handle_request(request, client)
+        return JSONResponse(payload)
+
+    app.add_api_route("/v1/ui/message", _ui_message_fallback, methods=["POST"])
+
 def _get_or_create_counter(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Counter:
     try:
         return Counter(name, documentation, labelnames=labelnames)
@@ -2770,6 +2825,28 @@ async def list_sessions_endpoint(
     envelopes = await store.list_sessions(limit=limit, tenant=tenant)
     summaries: list[SessionSummary] = []
     for envelope in envelopes:
+        # Ensure metadata/analysis are dicts for pydantic model validation.
+        md = envelope.metadata
+        if isinstance(md, str):
+            try:
+                from json import loads as _loads
+                parsed = _loads(md)
+                md = parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                md = {}
+        elif not isinstance(md, dict):
+            md = {}
+
+        an = envelope.analysis
+        if isinstance(an, str):
+            try:
+                from json import loads as _loads
+                parsed = _loads(an)
+                an = parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                an = {}
+        elif not isinstance(an, dict):
+            an = {}
         summaries.append(
             SessionSummary(
                 session_id=str(envelope.session_id),
@@ -2778,8 +2855,8 @@ async def list_sessions_endpoint(
                 subject=envelope.subject,
                 issuer=envelope.issuer,
                 scope=envelope.scope,
-                metadata=envelope.metadata,
-                analysis=envelope.analysis,
+                metadata=md,
+                analysis=an,
                 created_at=envelope.created_at,
                 updated_at=envelope.updated_at,
             )

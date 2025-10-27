@@ -12,8 +12,21 @@ from services.ui_proxy.service import PollAggregator, UiMessageService
 LOGGER = logging.getLogger(__name__)
 
 
-def get_gateway_client() -> GatewayClient:
-	return GatewayClient()
+def get_gateway_client(request: Request) -> GatewayClient:
+	"""Construct a GatewayClient pointing at this same server's base URL.
+
+	Fallbacks:
+	- If GATEWAY_BASE_URL is set, GatewayClient will already honor it.
+	- Otherwise, prefer the incoming request's base_url to avoid hardcoded
+	  container DNS names like http://gateway:8010 that aren't resolvable in
+	  single-process or host-local runs.
+	"""
+	try:
+		base = str(request.base_url).rstrip("/")
+		return GatewayClient(base_url=base)
+	except Exception:
+		# Final fallback to default behavior
+		return GatewayClient()
 
 
 router = APIRouter()

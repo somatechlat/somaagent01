@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // Prime CSRF/session early to avoid a race on first poll
   try {
-    fetch("/csrf_token", { credentials: "same-origin" }).catch(() => {});
+    fetch("/v1/csrf", { credentials: "same-origin" }).catch(() => {});
   } catch (_) {}
 });
 
@@ -487,7 +487,7 @@ async function poll() {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const log_from = lastLogVersion;
-    const response = await sendJsonData("/poll", {
+    const response = await sendJsonData("/v1/ui/poll", {
       log_from: log_from,
       notifications_from: notificationStore.lastNotificationVersion || 0,
       context: context || null,
@@ -665,7 +665,7 @@ async function poll() {
 async function monitorHealth() {
   while (true) {
     try {
-      const response = await fetch("/health", {
+      const response = await fetch("/v1/health", {
         method: "GET",
         credentials: "same-origin",
       });
@@ -1042,7 +1042,8 @@ globalThis.restart = async function () {
 
     while (retries < maxRetries) {
       try {
-        const resp = await sendJsonData("/health", {});
+        const resp = await fetch("/v1/health", { method: "GET", credentials: "same-origin" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         // Server is back up, show success message that replaces the restarting message
         await new Promise((resolve) => setTimeout(resolve, 250));
         await toastFrontendSuccess("Restarted", "System Restart", 5, "restart");

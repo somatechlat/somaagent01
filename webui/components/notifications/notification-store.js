@@ -1,5 +1,4 @@
 import { createStore } from "/js/AlpineStore.js";
-import * as API from "/js/api.js";
 import { openModal } from "/js/modals.js";
 
 export const NotificationType = {
@@ -229,16 +228,7 @@ const model = {
     if (notification && !notification.read) {
       notification.read = true;
       this.updateUnreadCount();
-
-      // Sync with backend (non-blocking)
-      try {
-        await API.callJsonApi("notifications_mark_read", {
-          notification_ids: [notificationId],
-        });
-      } catch (error) {
-        console.error("Failed to sync notification read status:", error);
-        // Don't revert the UI change - user experience should not be affected
-      }
+      // Frontend-only: no backend sync
     }
   },
 
@@ -256,14 +246,7 @@ const model = {
     // Clear toast stack when marking all as read
     this.clearToastStack(false);
 
-    // Sync with backend (non-blocking)
-    try {
-      await API.callJsonApi("notifications_mark_read", {
-        mark_all: true,
-      });
-    } catch (error) {
-      console.error("Failed to sync mark all as read:", error);
-    }
+    // Frontend-only: no backend sync
   },
 
   // Clear all notifications
@@ -275,11 +258,7 @@ const model = {
   },
 
   async clearBackendNotifications() {
-    try {
-      await API.callJsonApi("notifications_clear", null);
-    } catch (error) {
-      console.error("Failed to clear notifications:", error);
-    }
+    // Frontend-only: no backend sync
   },
 
   // Get notifications by type
@@ -386,27 +365,8 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    try {
-      const response = await globalThis.sendJsonData("/notification_create", {
-        type: type,
-        message: message,
-        title: title,
-        detail: detail,
-        display_time: display_time,
-        group: group,
-        priority: priority,
-      });
-
-      if (response.success) {
-        return response.notification_id;
-      } else {
-        console.error("Failed to create notification:", response.error);
-        return null;
-      }
-    } catch (error) {
-      console.error("Error creating notification:", error);
-      return null;
-    }
+    // Frontend-only notifications: push directly to toast stack and return id
+    return this.addFrontendToastOnly(type, message, title, display_time, group, priority);
   },
 
   // Convenience methods for different notification types

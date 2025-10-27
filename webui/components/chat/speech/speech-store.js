@@ -1,7 +1,7 @@
 import { createStore } from "/js/AlpineStore.js";
 import { updateChatInput, sendMessage } from "/index.js";
 import { sleep } from "/js/sleep.js";
-import { callJsonApi, fetchApi } from "/js/api.js";
+import { fetchApi } from "/js/api.js";
 import { store as microphoneSettingStore } from "/components/settings/speech/microphone-setting-store.js";
 
 const Status = {
@@ -116,22 +116,21 @@ const model = {
   // Load settings from server
   async loadSettings() {
     try {
-      // Use JSON helper to avoid JSON.parse errors on non-OK responses
-      const data = await callJsonApi("/settings_get", {});
-      const speechSection = data.settings.sections.find(
-        (s) => s.title === "Speech"
-      );
-
-      if (speechSection) {
+      const resp = await fetchApi('/v1/ui/settings/sections', { method: 'GET' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const sections = (data && data.settings && Array.isArray(data.settings.sections)) ? data.settings.sections : [];
+      const speechSection = sections.find((s) => s.id === 'speech' || s.title === 'Speech');
+      if (speechSection && Array.isArray(speechSection.fields)) {
         speechSection.fields.forEach((field) => {
-          if (this.hasOwnProperty(field.id)) {
+          if (Object.prototype.hasOwnProperty.call(this, field.id)) {
             this[field.id] = field.value;
           }
         });
         this.onSpeechProviderChange();
       }
     } catch (error) {
-      window.toastFetchError("Failed to load speech settings", error);
+      window.toastFetchError?.("Failed to load speech settings", error);
       console.error("Failed to load speech settings:", error);
     }
   },
@@ -208,95 +207,14 @@ const model = {
   },
 
   async _createRealtimeConnection() {
-    try {
-      const payload = await callJsonApi("/realtime_session", {
-        model: this.speech_realtime_model,
-        voice: this.speech_realtime_voice,
-        endpoint: this.speech_realtime_endpoint,
-      });
-
-      const session = payload?.session || {};
-      const clientSecret = session?.client_secret?.value;
-      if (!clientSecret) {
-        throw new Error("Realtime session did not return a client secret");
-      }
-
-      this.realtime.session = session;
-      this.realtime.clientSecret = clientSecret;
-      this.realtime.model = session?.model || this.speech_realtime_model;
-
-      const pc = new RTCPeerConnection();
-      pc.addEventListener("track", (event) => this.handleRealtimeTrack(event));
-      pc.addEventListener("connectionstatechange", () => {
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") {
-          this.closeRealtimeConnection();
-        }
-      });
-
-      // request downstream audio track
-      try {
-        pc.addTransceiver("audio", { direction: "recvonly" });
-      } catch (err) {
-        console.warn("Failed to add audio transceiver", err);
-      }
-
-      const dataChannel = pc.createDataChannel("oai-events");
-      dataChannel.addEventListener("open", () => {
-        const queued = [...this.realtime.pendingMessages];
-        this.realtime.pendingMessages = [];
-        queued.forEach((message) => {
-          try {
-            dataChannel.send(message);
-          } catch (err) {
-            console.error("Failed to send queued realtime message", err);
-          }
-        });
-      });
-      dataChannel.addEventListener("message", (event) =>
-        this.handleRealtimeMessage(event)
-      );
-      dataChannel.addEventListener("close", () => {
-        if (this.speech_provider === "openai_realtime") {
-          console.warn("Realtime data channel closed");
-        }
-      });
-
-      this.realtime.peerConnection = pc;
-      this.realtime.dataChannel = dataChannel;
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      const model = encodeURIComponent(this.speech_realtime_model);
-      const response = await fetch(
-        `https://api.openai.com/v1/realtime?model=${model}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${clientSecret}`,
-            "Content-Type": "application/sdp",
-            Accept: "application/sdp",
-          },
-          body: offer.sdp,
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Realtime session negotiation failed: ${response.status} ${errorText}`
-        );
-      }
-
-      const answer = await response.text();
-      await pc.setRemoteDescription({ type: "answer", sdp: answer });
-      this.createRealtimeAudioElement();
-    } catch (error) {
-      console.error("Failed to initialize realtime speech", error);
-      window.toastFetchError?.("Realtime session error", error);
-      this.closeRealtimeConnection();
-      throw error;
-    }
+    // Realtime session backend not yet exposed under /v1; gracefully disable and fallback
+    const err = new Error("Realtime speech not available in this build");
+    window.toastFrontendWarning?.(
+      "Realtime speech is not available yet. Falling back to browser TTS.",
+      "Speech"
+    );
+    this.closeRealtimeConnection();
+    throw err;
   },
 
   async waitForRealtimeChannel(timeoutMs = 8000) {
@@ -713,35 +631,9 @@ const model = {
 
   // Kokoro TTS
   async speakWithKokoro(text, waitForPrevious = false, terminator = null) {
-    try {
-      // synthesize on the backend
-      const response = await sendJsonData("/synthesize", { text });
-
-      // wait for previous to finish if requested
-      while (waitForPrevious && this.isSpeaking) await sleep(25);
-      if (terminator && terminator()) return;
-
-      // stop previous if any
-      this.stopAudio();
-
-      if (response.success) {
-        if (response.audio_parts) {
-          // Multiple chunks - play sequentially
-          for (const audioPart of response.audio_parts) {
-            if (terminator && terminator()) return;
-            await this.playAudio(audioPart);
-            await sleep(100); // Brief pause
-          }
-        } else if (response.audio) {
-          // Single audio
-          this.playAudio(response.audio);
-        }
-      } else {
-        throw new Error("Kokoro TTS error:", response.error);
-      }
-    } catch (error) {
-      throw new Error("Kokoro TTS error:", error);
-    }
+    // Backend synthesize endpoint not available; fallback to browser
+    window.toastFrontendInfo?.("Kokoro TTS is not configured; using browser TTS.", "Speech", 4);
+    return this.speakWithBrowser(text, waitForPrevious, terminator);
   },
 
   // Play base64 audio
@@ -1197,24 +1089,17 @@ class MicrophoneInput {
       return;
     }
 
-    const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
-    const base64 = await this.convertBlobToBase64Wav(audioBlob);
-
-    try {
-      const result = await sendJsonData("/transcribe", { audio: base64 });
-      const text = this.filterResult(result.text || "");
-
-      if (text) {
-        console.log("Transcription:", result.text);
-        await this.updateCallback(result.text, true);
-      }
-    } catch (error) {
-      window.toastFetchError("Transcription error", error);
-      console.error("Transcription error:", error);
-    } finally {
-      this.audioChunks = [];
-      this.status = Status.LISTENING;
+    // STT backend is not wired; skip processing and gently inform once
+    if (!this._sttWarned) {
+      window.toastFrontendWarning?.(
+        "Speech-to-text is not available in this build.",
+        "Speech",
+        5
+      );
+      this._sttWarned = true;
     }
+    this.audioChunks = [];
+    this.status = Status.LISTENING;
   }
 
   convertBlobToBase64Wav(audioBlob) {

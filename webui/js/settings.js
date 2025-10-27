@@ -1,3 +1,5 @@
+// Expose settings modal controller in a way Alpine inline handlers can access reliably.
+// Note: top-level const/let do not create window properties in browsers; ensure we also assign to globalThis.
 const settingsModalProxy = {
     isOpen: false,
     settings: {},
@@ -82,18 +84,19 @@ const settingsModalProxy = {
             store.isOpen = true;
         }
 
+        // Optimistically open the modal UI before network calls so users see it even if fetch fails
+        try { if (modalAD) modalAD.isOpen = true; } catch(_) {}
+        this.isOpen = true;
+
         //get settings from backend
         try {
-            // Prefer Gateway UI-shaped settings; fall back to legacy UI endpoint
+            // Gateway UI-shaped settings only (no legacy fallback)
             let set;
-            try {
-                const resp = await fetchApi('/v1/ui/settings/sections', { method: 'GET' });
-                if (resp.ok) {
-                    set = await resp.json();
-                }
-            } catch (_) {}
-            if (!set) {
-                set = await sendJsonData("/settings_get", null);
+            const resp = await fetchApi('/v1/ui/settings/sections', { method: 'GET' });
+            if (resp.ok) {
+                set = await resp.json();
+            } else {
+                throw new Error(`HTTP ${resp.status}`);
             }
 
             // First load the settings data without setting the active tab
@@ -251,30 +254,25 @@ const settingsModalProxy = {
                 if(errs.length){ showToast(errs.join('\n'),'error'); return; }
 
                 // Prefer Gateway; fall back to legacy if needed
-                try {
-                    const gwResp = await fetchApi('/v1/ui/settings/sections', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sections: modalAD.settings.sections })
-                    });
-                    if (gwResp.ok) {
-                        const body = await gwResp.json();
-                        document.dispatchEvent(new CustomEvent('settings-updated', { detail: body.settings }));
-                        this.resolvePromise({ status: 'saved', data: body.settings });
-                        this.stopSchedulerPolling();
-                        this.isOpen = false;
-                        const store = Alpine.store('root'); if (store) setTimeout(()=>{ store.isOpen=false; },10);
-                        return;
-                    }
-                } catch (_) {}
-                resp = await window.sendJsonData("/settings_set", modalAD.settings);
+                const gwResp = await fetchApi('/v1/ui/settings/sections', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sections: modalAD.settings.sections })
+                });
+                if (gwResp.ok) {
+                    const body = await gwResp.json();
+                    document.dispatchEvent(new CustomEvent('settings-updated', { detail: body.settings }));
+                    this.resolvePromise({ status: 'saved', data: body.settings });
+                    this.stopSchedulerPolling();
+                    this.isOpen = false;
+                    const store = Alpine.store('root'); if (store) setTimeout(()=>{ store.isOpen=false; },10);
+                    return;
+                } else {
+                    throw new Error(`HTTP ${gwResp.status}`);
+                }
             } catch (e) {
                 window.toastFetchError("Error saving settings", e)
                 return
             }
-            document.dispatchEvent(new CustomEvent('settings-updated', { detail: resp.settings }));
-            this.resolvePromise({
-                status: 'saved',
-                data: resp.settings
-            });
+            // Successful path returned earlier; this is not reached.
         } else if (buttonId === 'cancel') {
             this.handleCancel();
         }
@@ -518,22 +516,13 @@ document.addEventListener('alpine:init', function () {
             async fetchSettings() {
                 try {
                     this.isLoading = true;
-                    const response = await fetchApi('/settings_get', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data && data.settings) {
-                            this.settingsData = data.settings;
-                        } else {
-                            console.error('Invalid settings data format');
-                        }
+                    const response = await fetchApi('/v1/ui/settings/sections', { method: 'GET' });
+                    if (!response.ok) throw new Error(response.statusText || 'settings fetch failed');
+                    const data = await response.json();
+                    if (data && data.settings) {
+                        this.settingsData = data.settings;
                     } else {
-                        console.error('Failed to fetch settings:', response.statusText);
+                        console.error('Invalid settings data format');
                     }
                 } catch (error) {
                     console.error('Error fetching settings:', error);
@@ -590,18 +579,11 @@ document.addEventListener('alpine:init', function () {
                         }
                     }
 
-                    // Send request
-                    // Prefer Gateway UI-shaped settings endpoint; fall back to legacy
+                    // Send request to Gateway UI-shaped settings endpoint
                     let response = await fetchApi('/v1/ui/settings/sections', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ sections: this.settingsData.sections || [] })
                     });
-                    if (!response.ok) {
-                        response = await fetchApi('/settings_set', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(formData)
-                        });
-                    }
 
                     if (response.ok) {
                         showToast('Settings saved successfully', 'success');
@@ -811,3 +793,29 @@ function showToast(message, type = 'info') {
         return null;
     }
 }
+
+// Make the proxy available to Alpine inline expressions (e.g., @click="settingsModalProxy.openModal()")
+// Some browsers won't resolve global lexical bindings from Alpine's evaluator; attach to global object explicitly.
+try {
+    if (!globalThis.settingsModalProxy) {
+        globalThis.settingsModalProxy = settingsModalProxy;
+    }
+    // If Alpine already started before this script loaded, ensure the settings modal node is initialized now
+    if (globalThis.Alpine) {
+        const modalEl = document.getElementById('settingsModal');
+        if (modalEl) {
+            const hasData = (()=>{ try { return !!Alpine.$data(modalEl); } catch(_) { return false; } })();
+            if (!hasData && typeof Alpine.initTree === 'function') {
+                Alpine.initTree(modalEl);
+            }
+        }
+    } else {
+        // If Alpine isn't ready yet, register a hook to init when it is
+        document.addEventListener('alpine:init', () => {
+            const modalEl = document.getElementById('settingsModal');
+            if (modalEl && typeof Alpine.initTree === 'function') {
+                Alpine.initTree(modalEl);
+            }
+        });
+    }
+} catch (_) { /* no-op */ }
