@@ -77,8 +77,23 @@ function openGatewayStream(sessionId) {
 
   es.onmessage = _handleSSEMessage;
 
-  es.onerror = () => {
-    // Browser auto-retries; we keep the reference and let it recover.
+  es.onerror = (e) => {
+    // Notify once that live updates are offline; browser will auto-retry.
+    if (!window.__sseWarned) {
+      try {
+        notificationStore.frontendWarning(
+          "Live updates connection lost. We'll retry in the background.",
+          "Live updates offline",
+          6
+        );
+      } catch (_) {}
+      window.__sseWarned = true;
+    }
+  };
+
+  es.onopen = () => {
+    // Reset warning flag when connection re-establishes
+    window.__sseWarned = false;
   };
 }
 
@@ -679,7 +694,10 @@ async function poll() {
     lastLogVersion = response.log_version;
     lastLogGuid = response.log_guid;
   } catch (error) {
-    console.error("Error:", error);
+    // Reduce console noise when infra is down; mark offline and back off via scheduler
+    try {
+      console.debug("poll failed:", (error && (error.message || String(error))) || error);
+    } catch (_) {}
     setConnectionStatus("down");
   }
 
@@ -1284,7 +1302,7 @@ async function startPolling() {
 
     try {
       // If the backend appears down, avoid hammering /v1/ui/poll and back off
-      if (getConnectionStatus() === false) {
+      if (getConnectionStatus() === false || typeof getConnectionStatus() === 'undefined') {
         nextInterval = 2000; // gentle backoff while offline
       } else {
         const result = await poll();

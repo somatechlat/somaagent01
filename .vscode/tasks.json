@@ -1,4 +1,59 @@
 {
+  // VS Code tasks to make testing and stack control one-click
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Stack: Up (dev)",
+      "type": "shell",
+      "command": "make dev-up",
+      "problemMatcher": []
+    },
+    {
+      "label": "Stack: Logs (dev)",
+      "type": "shell",
+      "command": "make dev-logs",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Stack: Down (dev)",
+      "type": "shell",
+      "command": "make dev-down",
+      "problemMatcher": []
+    },
+    {
+      "label": "UI: Smoke (Playwright)",
+      "type": "shell",
+      "options": {
+        "env": {
+          "WEB_UI_BASE_URL": "http://127.0.0.1:21016/"
+        }
+      },
+      "command": "./scripts/ui-smoke.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "E2E: Quick (SSE)",
+      "type": "shell",
+      "command": ".venv/bin/python scripts/e2e_quick.py http://127.0.0.1:21016",
+      "problemMatcher": []
+    },
+    {
+      "label": "Gateway: Health",
+      "type": "shell",
+      "command": "curl -fsS -D - http://127.0.0.1:21016/v1/health -o /dev/null",
+      "problemMatcher": []
+    },
+    {
+      "label": "LLM: Set Groq key",
+      "type": "shell",
+      "detail": "Requires GROQ_API_KEY in your environment",
+      "command": "curl -fsS -X POST http://127.0.0.1:21016/v1/llm/credentials -H 'Content-Type: application/json' -d '{\"provider\":\"groq\",\"secret\":\"'\${GROQ_API_KEY:-}\"}'",
+      "problemMatcher": []
+    }
+  ]
+}
+{
 	"version": "2.0.0",
 	"tasks": [
 		{

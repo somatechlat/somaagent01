@@ -1253,7 +1253,7 @@ def _get_api_key_field(settings: Settings, provider: str, title: str) -> Setting
     return {
         "id": f"api_key_{provider}",
         "title": title,
-        "type": "text",
+        "type": "password",
         "value": API_KEY_PLACEHOLDER if has_secret else "",
     }
 

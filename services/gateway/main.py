@@ -83,7 +83,7 @@ from services.common.llm_credentials_store import LlmCredentialsStore
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
 from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry_store import TelemetryStore
 from services.common.tracing import setup_tracing
@@ -760,6 +760,12 @@ async def start_background_services() -> None:
         await get_attachments_store().ensure_schema()
     except Exception:
         LOGGER.debug("Attachments store schema ensure failed", exc_info=True)
+
+    # Ensure session schema exists so SSE/poll can function even before worker runs
+    try:
+        await ensure_session_schema(get_session_store())
+    except Exception:
+        LOGGER.debug("Session schema ensure failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1877,6 +1883,42 @@ class MessagePayload(BaseModel):
     message: str = Field(..., description="User message")
     attachments: list[str] = Field(default_factory=list)
     metadata: dict[str, str] = Field(default_factory=dict)
+
+
+# -----------------------------
+# Conversation: message ingress and session/event queries
+# -----------------------------
+
+
+def _inbound_topic() -> str:
+    return os.getenv("CONVERSATION_INBOUND", "conversation.inbound")
+
+
+# Removed DEV echo: no synthetic assistant responses. The gateway never fabricates events.
+
+
+# Removed legacy /v1/session/message implementation that synthesized events. See the unified
+# enqueue_message implementation below for the only supported behavior.
+
+
+# Removed legacy dict-shaped /v1/sessions; keeping the typed response version below.
+
+
+# Removed legacy dict-shaped /v1/sessions/{id}/events; keeping the typed response version below.
+
+
+# Removed legacy SSE endpoint that polled the session store to avoid duplicate route definitions.
+
+
+# -----------------------------
+# Minimal health and uploads endpoints used by UI
+# -----------------------------
+
+
+# Removed minimal /v1/health; keeping the comprehensive health_check implementation below.
+
+
+# Removed DEV-safe uploads stub; keeping the full-featured /v1/uploads below.
 
 
 class QuickActionPayload(BaseModel):
@@ -3762,6 +3804,29 @@ async def ui_sections_get() -> dict[str, Any]:
                             fld["value"] = "\n".join(f"{k}={v}" for k, v in kv.items())
                         except Exception:
                             fld["value"] = kv
+
+        # Credentials overlay: mark providers with stored secrets using placeholder
+        try:
+            creds_store = get_llm_credentials_store()
+            providers_with_keys = set(await creds_store.list_providers())
+        except Exception:
+            providers_with_keys = set()
+        if providers_with_keys:
+            for sec in sections:
+                for fld in sec.get("fields", []):
+                    try:
+                        fid = fld.get("id") or ""
+                        if isinstance(fid, str) and fid.startswith("api_key_"):
+                            prov = fid[len("api_key_"):].strip().lower()
+                            if prov in providers_with_keys:
+                                # Use the same placeholder the UI expects
+                                fld["value"] = "************"
+                                # Prefer password type for secrets if not already
+                                if fld.get("type") not in {"password"}:
+                                    fld["type"] = "password"
+                    except Exception:
+                        # non-fatal; continue overlaying others
+                        pass
     except Exception:
         LOGGER.debug("Failed to overlay UI sections", exc_info=True)
 

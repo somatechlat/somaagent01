@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0  
 **Last Updated**: 2025-01-24  
-**Standards Compliance**: ISO/IEC 12207, ISO/IEC 42010, ISO 21500
+**Standards Compliance**: ISO/IEC 12207, ISO/IEC 42010, ISO 21500, ISO/IEC 27001
 
 ## Documentation Structure
 
@@ -13,16 +13,31 @@ This documentation follows ISO/IEC standards for software lifecycle processes an
 | Manual | Purpose | ISO/IEC Mapping |
 |--------|---------|-----------------|
 | [User Manual](./user-manual/index.md) | Installation, usage, troubleshooting | ISO 21500§4.2 |
-| [Technical Manual](./technical-manual/index.md) | Architecture, API, security | ISO 12207§6, ISO 42010 |
+| [Technical Manual](./technical-manual/index.md) | Architecture, deployment, security | ISO 12207§6, ISO 42010 |
 | [Development Manual](./development-manual/index.md) | Coding standards, CI/CD, testing | ISO 29148, IEEE 1016 |
 | [Onboarding Manual](./onboarding-manual/index.md) | Team setup, contribution workflow | ISO 21500§7 |
 
 ### Quick Links
 
+#### User Documentation
 - [Installation Guide](./user-manual/installation.md)
+- [Quick Start Tutorial](./user-manual/quick-start-tutorial.md)
+- [Features Overview](./user-manual/features.md)
+- [FAQ](./user-manual/faq.md)
+- [Troubleshooting](./user-manual/troubleshooting.md)
+
+#### Technical Documentation
 - [Architecture Overview](./technical-manual/architecture.md)
+- [Deployment Guide](./technical-manual/deployment.md)
+- [Monitoring & Observability](./technical-manual/monitoring.md)
+- [Security Controls](./technical-manual/security.md)
+
+#### Development Documentation
+- [Local Setup](./development-manual/local-setup.md)
+- [Coding Standards](./development-manual/coding-standards.md)
+- [Testing Guidelines](./development-manual/testing-guidelines.md)
 - [API Reference](./development-manual/api-reference.md)
-- [Contributing](./development-manual/contribution-workflow.md)
+- [Contribution Workflow](./development-manual/contribution-workflow.md)
 
 ## Project Overview
 

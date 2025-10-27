@@ -1,12 +1,20 @@
 """Health-aware publisher with durable outbox fallback.
 
 Usage:
-    publisher = DurablePublisher(bus=KafkaEventBus(...), outbox=OutboxStore(...))
-    await publisher.publish("topic", payload, dedupe_key=event_id, session_id=..., tenant=...)
+        publisher = DurablePublisher(bus=KafkaEventBus(...), outbox=OutboxStore(...))
+        await publisher.publish("topic", payload, dedupe_key=event_id, session_id=..., tenant=...)
+
+Notes:
+- In unstable broker scenarios AIOKafka's producer.start()/send can hang awaiting
+    metadata. To avoid blocking HTTP request handlers, we enforce a short, configurable
+    timeout on the Kafka publish attempt and fall back to the Postgres outbox when it
+    elapses. Control via env PUBLISH_KAFKA_TIMEOUT_SECONDS (default: 2.0 seconds).
 """
 
 from __future__ import annotations
 
+import asyncio
+import os
 import logging
 from typing import Any, Optional
 
@@ -46,11 +54,17 @@ class DurablePublisher:
 
         Returns a dict with {"published": bool, "enqueued": bool, "id": Optional[int]}.
         """
+        # Apply a bounded timeout to avoid hanging request paths on metadata waits
+        timeout_s: float
         try:
-            await self.bus.publish(topic, payload)
+            timeout_s = float(os.getenv("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0"))
+        except Exception:
+            timeout_s = 2.0
+        try:
+            await asyncio.wait_for(self.bus.publish(topic, payload), timeout=timeout_s)
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
-        except (KafkaError, Exception) as exc:
+        except (asyncio.TimeoutError, KafkaError, Exception) as exc:
             if not fallback:
                 PUBLISH_EVENTS.labels("failed").inc()
                 raise
@@ -66,13 +80,14 @@ class DurablePublisher:
             )
             PUBLISH_EVENTS.labels("enqueued").inc()
             LOGGER.warning(
-                "Kafka publish failed; enqueued to outbox",
+                "Kafka publish failed or timed out; enqueued to outbox",
                 extra={
                     "error": str(exc),
                     "topic": topic,
                     "dedupe_key": dedupe_key,
                     "session_id": session_id,
                     "tenant": tenant,
+                    "timeout_seconds": timeout_s,
                 },
             )
             return {"published": False, "enqueued": True, "id": msg_id}
