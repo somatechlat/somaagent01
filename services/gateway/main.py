@@ -2180,27 +2180,30 @@ def _hydrate_jwt_credentials_from_vault() -> None:
     # app instance exists.
 
 
-def _get_openfga_client() -> OpenFGAClient | None:
-    """Lazily construct the OpenFGA authorization client when configured."""
+def _get_openfga_client() -> OpenFGAClient:
+    """Return a process-wide OpenFGA client.
+
+    Hardened behavior: fail-closed. If OpenFGA is not configured or cannot
+    be initialized, raise to indicate service misconfiguration rather than
+    silently skipping enforcement.
+    """
 
     global _OPENFGA_CLIENT
-
-    if os.getenv("OPENFGA_DISABLED", "false").lower() in {"true", "1", "yes"}:
-        return None
 
     if _OPENFGA_CLIENT is not None:
         return _OPENFGA_CLIENT
 
     try:
         _OPENFGA_CLIENT = OpenFGAClient()
-    except ValueError:
-        LOGGER.debug("OpenFGA client not configured; skipping enforcement")
-        _OPENFGA_CLIENT = None
-    except Exception:
-        LOGGER.warning("Failed to initialise OpenFGA client", exc_info=True)
-        _OPENFGA_CLIENT = None
-
-    return _OPENFGA_CLIENT
+        return _OPENFGA_CLIENT
+    except Exception as exc:
+        # Treat missing configuration (ValueError) and other errors uniformly
+        # to ensure we never run without authorization enforcement.
+        LOGGER.error(
+            "OpenFGA client initialization failed",
+            extra={"error": str(exc), "error_type": type(exc).__name__},
+        )
+        raise
 
 
 def _extract_tenant(claims: Dict[str, Any]) -> str | None:
@@ -2484,8 +2487,15 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
     if scope:
         auth_metadata["scope"] = scope
 
-    client = _get_openfga_client()
-    if client and tenant and subject:
+    # Enforce OpenFGA in fail-closed mode when auth is required
+    if REQUIRE_AUTH:
+        # Require basic identity attributes
+        if not tenant or not subject:
+            raise HTTPException(status_code=401, detail="Missing identity claims")
+        try:
+            client = _get_openfga_client()
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Authorization not configured") from exc
         try:
             allowed = await client.check_tenant_access(
                 tenant=tenant,
@@ -2501,9 +2511,7 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                     "error_type": type(exc).__name__,
                 },
             )
-            raise HTTPException(
-                status_code=502, detail="Authorization service unavailable"
-            ) from exc
+            raise HTTPException(status_code=502, detail="Authorization service unavailable") from exc
         if not allowed:
             raise HTTPException(status_code=403, detail="Tenant access denied")
 

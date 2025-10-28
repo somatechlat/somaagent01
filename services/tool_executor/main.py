@@ -421,7 +421,8 @@ class ToolExecutor:
         }
         memory_payload["idempotency_key"] = generate_for_memory_payload(memory_payload)
         try:
-            allow_memory = True
+            # Fail-closed by default
+            allow_memory = False
             try:
                 allow_memory = await self.policy.evaluate(
                     PolicyRequest(
@@ -438,7 +439,7 @@ class ToolExecutor:
                     )
                 )
             except Exception:
-                LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if allow_memory:
                 wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self.soma.remember(memory_payload)

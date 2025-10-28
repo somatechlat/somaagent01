@@ -111,24 +111,8 @@ class PollAggregator:
         log_from = int(payload.get("log_from", 0) or 0)
 
         logs = [self._event_to_log(idx, event) for idx, event in enumerate(events)]
-        # Optional greeting when no history exists
-        try:
-            greet = os.getenv("UI_GREETING_TEXT", "").strip()
-            if greet and not logs:
-                logs = [
-                    {
-                        "id": "greeting",
-                        "no": 1,
-                        "type": "response",
-                        "heading": "Welcome",
-                        "content": greet,
-                        "temp": False,
-                        "kvps": None,
-                    }
-                ]
-                total = 1
-        except Exception:
-            pass
+        # Exclude transient streaming chunks; live streaming is handled by SSE in the UI
+        logs = [l for l in logs if not l.get("temp")]
         logs_delta = logs[log_from:]
         # Optional notifications sourced from gateway health
         notifications: List[Dict[str, Any]] = []
@@ -242,11 +226,27 @@ class PollAggregator:
         }
 
     def _event_to_log(self, index: int, event: Dict[str, Any]) -> Dict[str, Any]:
-        event_id = event.get("event_id") or f"event-{index}"
-        event_type = str(event.get("type") or event.get("role") or "info")
-        metadata = event.get("metadata") or {}
+        # Support both legacy flat events and typed gateway events shape: {id, occurred_at, payload}
+        payload = event.get("payload") if isinstance(event.get("payload"), dict) else event
+        event_id = (
+            event.get("event_id")
+            or payload.get("event_id")
+            or event.get("id")
+            or f"event-{index}"
+        )
+        event_type = str(
+            payload.get("type") or payload.get("role") or event.get("type") or event.get("role") or "info"
+        )
+        metadata = payload.get("metadata") or event.get("metadata") or {}
         heading = metadata.get("heading")
-        content = event.get("message") or event.get("content") or event.get("details") or ""
+        content = (
+            payload.get("message")
+            or payload.get("content")
+            or event.get("message")
+            or event.get("content")
+            or event.get("details")
+            or ""
+        )
 
         log_type = self._map_event_type(event_type)
         if not heading:

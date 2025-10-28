@@ -297,7 +297,8 @@ class ConversationWorker:
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
-            allow_memory = True
+            # Fail-closed: default to deny when OPA is unavailable
+            allow_memory = False
             try:
                 allow_memory = await self.policy_client.evaluate(
                     PolicyRequest(
@@ -314,7 +315,7 @@ class ConversationWorker:
                     )
                 )
             except Exception:
-                LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if not allow_memory:
                 return
             wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
@@ -440,15 +441,6 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
-        # DEV-only safety net: optionally generate a mock response when no SLM API key is configured.
-        # This keeps local UI flows and Playwright tests green without external credentials.
-        try:
-            if os.getenv("DEV_FAKE_SLM", "false").lower() in {"1", "true", "yes", "on"} and not getattr(self.slm, "api_key", None):
-                last = messages[-1].content if messages else ""
-                text = f"(mock) Echo: {last[:500]}"
-                return text, {"input_tokens": 0, "output_tokens": len(text.split())}
-        except Exception:
-            pass
         # Hydrate API key on-demand if missing (pull from Gateway using internal token)
         if not getattr(self.slm, "api_key", None):
             try:
@@ -609,15 +601,13 @@ class ConversationWorker:
             tenant = enriched_metadata.get("tenant", "default")
             persona_id = event.get("persona_id")
 
-            enforce_policy = os.getenv("POLICY_ENFORCE_CONVERSATION", "true").lower() in {"1", "true", "yes", "on"}
-            allowed = True
-            if enforce_policy:
-                allowed = await self.policy_enforcer.check_message_policy(
-                    tenant=tenant,
-                    persona_id=persona_id,
-                    message=event.get("message", ""),
-                    metadata=enriched_metadata,
-                )
+            # Always enforce conversation policy (fail-closed)
+            allowed = await self.policy_enforcer.check_message_policy(
+                tenant=tenant,
+                persona_id=persona_id,
+                message=event.get("message", ""),
+                metadata=enriched_metadata,
+            )
             if not allowed:
                 policy_record = {
                     "type": "policy_denied",
@@ -681,8 +671,8 @@ class ConversationWorker:
                 }
                 # Idempotency key per contract
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
-                # Pre-write OPA policy check: memory.write
-                allow_memory = True
+                # Pre-write OPA policy check: memory.write (fail-closed)
+                allow_memory = False
                 try:
                     allow_memory = await self.policy_client.evaluate(
                         PolicyRequest(
@@ -699,7 +689,7 @@ class ConversationWorker:
                         )
                     )
                 except Exception:
-                    LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+                    LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
                 if allow_memory:
                     wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
@@ -1145,7 +1135,7 @@ class ConversationWorker:
                     },
                 }
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
-                allow_memory = True
+                allow_memory = False
                 try:
                     allow_memory = await self.policy_client.evaluate(
                         PolicyRequest(
@@ -1162,7 +1152,7 @@ class ConversationWorker:
                         )
                     )
                 except Exception:
-                    LOGGER.debug("OPA memory.write check failed; honoring fail-open defaults", exc_info=True)
+                    LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
                 if allow_memory:
                     wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)

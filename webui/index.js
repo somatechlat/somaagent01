@@ -28,12 +28,12 @@ let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 let healthState = { status: "unknown", components: {} };
-// Track which contexts already received a UI-side greeting
-const _greetedContexts = new Set();
 
 // --- Gateway SSE streaming helpers (Sprint S2) ---
 let _gatewaySSE = null;
 let _gatewaySSESession = null;
+let _sseActiveAssistantBySession = {}; // sessionId -> stable in-progress assistant message id
+let __sseConnected = false; // dedupe poll vs SSE when connected
 
 function closeGatewayStream() {
   if (_gatewaySSE) {
@@ -65,13 +65,31 @@ function openGatewayStream(sessionId) {
     try {
       const event = JSON.parse(evt.data);
       // Expect conversation.outbound payloads: {event_id, session_id, role, message, metadata}
-      const eid = event.event_id || event.id || generateGUID();
       const role = (event.role || "assistant").toLowerCase();
-      const heading = role === "assistant" ? "Assistant" : (role === "tool" ? "Tool" : "Info");
-      const type = role === "assistant" ? "agent" : (role === "tool" ? "tool" : "info");
+      const meta = event.metadata || {};
+      const status = String(meta.status || "").toLowerCase();
+      const isStreaming = status === "streaming";
       const content = event.message || "";
-      const kvps = { ...(event.metadata || {}) };
-      setMessage(eid, type, heading, content, false, kvps);
+
+      // Use a stable id for all streaming chunks in a single assistant turn
+      let stableId = event.event_id || event.id || generateGUID();
+      if (role === "assistant") {
+        if (isStreaming) {
+          if (!_sseActiveAssistantBySession[sessionId]) {
+            _sseActiveAssistantBySession[sessionId] = `assistant-current-${sessionId}`;
+          }
+          stableId = _sseActiveAssistantBySession[sessionId];
+        } else if (_sseActiveAssistantBySession[sessionId]) {
+          // Finalize by reusing the in-progress id, then clear it
+          stableId = _sseActiveAssistantBySession[sessionId];
+          delete _sseActiveAssistantBySession[sessionId];
+        }
+      }
+
+      const heading = role === "assistant" ? "Assistant" : (role === "tool" ? "Tool" : "Info");
+      const type = role === "assistant" ? "response" : (role === "tool" ? "tool" : "info");
+      const kvps = { ...meta };
+      setMessage(stableId, type, heading, content, isStreaming, kvps);
     } catch (e) {
       console.warn("SSE parse error:", e);
     }
@@ -91,11 +109,13 @@ function openGatewayStream(sessionId) {
       } catch (_) {}
       window.__sseWarned = true;
     }
+    __sseConnected = false;
   };
 
   es.onopen = () => {
     // Reset warning flag when connection re-establishes
     window.__sseWarned = false;
+    __sseConnected = true;
   };
 }
 
@@ -219,10 +239,12 @@ export async function sendMessage() {
             ? "Uploading attachments..."
             : "User message";
 
-        // Render user message with attachments
+        // Render user message with attachments (optimistic)
         setMessage(messageId, "user", heading, message, false, {
           // attachments: attachmentsWithUrls, // skip here, let the backend properly log them
         });
+        // Track local id so we can rename to server event_id when available
+        window.__lastLocalUserId = messageId;
 
         // sleep one frame to render the message before upload starts - better UX
         sleep(0);
@@ -300,6 +322,20 @@ export async function sendMessage() {
           } catch (e) {
             console.warn("Failed to open Gateway SSE stream:", e);
           }
+          // If we rendered an optimistic user message, rename DOM ids to the server event_id to dedupe with poll
+          try {
+            if (jsonResponse.event_id && window.__lastLocalUserId) {
+              const fromId = `message-${window.__lastLocalUserId}`;
+              const toId = `message-${jsonResponse.event_id}`;
+              const fromGroupId = `message-group-${window.__lastLocalUserId}`;
+              const toGroupId = `message-group-${jsonResponse.event_id}`;
+              const el = document.getElementById(fromId);
+              if (el) el.id = toId;
+              const grp = document.getElementById(fromGroupId);
+              if (grp) grp.id = toGroupId;
+              window.__lastLocalUserId = null;
+            }
+          } catch (_) {}
         } else if (jsonResponse.context) {
           // Local mode legacy path
           setContext(jsonResponse.context);
@@ -594,6 +630,10 @@ async function poll() {
     if (lastLogVersion != response.log_version) {
       updated = true;
       for (const log of response.logs) {
+        // Skip transient streaming entries from poll to avoid duplicate messages with SSE
+        if (log && log.temp) continue;
+        // If SSE is online, skip assistant final responses in poll to avoid double rendering
+        if (__sseConnected && log && log.type === "response") continue;
         const messageId = log.id || log.no; // Use log.id if available
         setMessage(
           messageId,
@@ -734,15 +774,7 @@ async function poll() {
     lastLogVersion = response.log_version;
     lastLogGuid = response.log_guid;
 
-    // UI-side initial greeting: if no messages yet for this context, show a friendly greeting once
-    try {
-      const noMessages = (response.logs?.length || 0) === 0 && chatHistory && chatHistory.children.length === 0;
-      if (context && noMessages && !_greetedContexts.has(context)) {
-        const gid = generateGUID();
-        setMessage(gid, "agent", "Assistant", "Hi! I\'m ready when you are — type a message below to get started.", false, { initial: true });
-        _greetedContexts.add(context);
-      }
-    } catch (_) {}
+    // No synthetic greetings; UI only renders real events from backend
   } catch (error) {
     // Reduce console noise when infra is down; mark offline and back off via scheduler
     try {

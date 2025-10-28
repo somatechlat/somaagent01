@@ -56,7 +56,18 @@ async def send_message(
 	client: GatewayClient = Depends(get_gateway_client),
 ) -> JSONResponse:
 	service = UiMessageService()
-	payload = await service.handle_request(request, client)
+	# Be tolerant to invalid/missing JSON and unexpected content-types
+	try:
+		payload = await service.handle_request(request, client)
+	except Exception as exc:
+		# Try to read raw body as text and fallback to empty message payload
+		try:
+			_ = await request.body()
+		except Exception:
+			pass
+		# Return a consistent 400 for bad requests instead of a 500
+		from fastapi import HTTPException
+		raise HTTPException(status_code=400, detail=f"Invalid request payload: {type(exc).__name__}")
 	return JSONResponse(payload)
 
 
@@ -65,7 +76,13 @@ async def poll(
 	request: Request,
 	client: GatewayClient = Depends(get_gateway_client),
 ) -> JSONResponse:
-	body: Dict[str, Any] = await request.json()
+	# Accept empty bodies and invalid JSON by defaulting to an empty object
+	try:
+		body: Dict[str, Any] = await request.json()
+		if not isinstance(body, dict):
+			body = {}
+	except Exception:
+		body = {}
 	aggregator = PollAggregator(client)
 	payload = await aggregator.poll(body)
 	return JSONResponse(payload)

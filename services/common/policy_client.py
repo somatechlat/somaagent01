@@ -34,7 +34,8 @@ class PolicyClient:
         self.data_path = os.getenv("POLICY_DATA_PATH", "/v1/data/soma/allow")
         self._client = httpx.AsyncClient(timeout=10.0)
         self.cache_ttl = float(os.getenv("POLICY_CACHE_TTL", "2"))
-        self.fail_open_default = os.getenv("POLICY_FAIL_OPEN", "true").lower() == "true"
+        # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored
+        self.fail_open_default = False
         self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}
         self.tenant_config = tenant_config or TenantConfig()
 
@@ -55,7 +56,6 @@ class PolicyClient:
         if cached and (now - cached[1]) < self.cache_ttl:
             return cached[0]
 
-        tenant_fail_open = self.tenant_config.get_fail_open(request.tenant)
         url = f"{self.base_url.rstrip('/')}{self.data_path}"
         try:
             response = await self._client.post(url, json=payload)
@@ -71,10 +71,8 @@ class PolicyClient:
             return decision
         except Exception as exc:
             LOGGER.exception("Policy evaluation failed", extra={"error": str(exc)})
-            if tenant_fail_open or self.fail_open_default:
-                LOGGER.warning("Fail-open active; allowing tool execution by default")
-                return True
-            raise
+            # Fail-closed: deny when policy engine is unavailable or errors
+            return False
 
     async def close(self) -> None:
         await self._client.aclose()
