@@ -91,6 +91,7 @@ from services.common.vault_secrets import load_kv_secret
 from services.common.idempotency import generate_for_memory_payload
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.memory_write_outbox import MemoryWriteOutbox
+from services.common.slm_client import SLMClient, ChatMessage
 
 # Import PyJWT properly - no fallbacks or shims allowed in production
 try:
@@ -1162,7 +1163,8 @@ def _jwt_cookie_flags(request: Request) -> dict[str, Any]:
 async def login_page(request: Request) -> HTMLResponse:
     # If already authenticated, go to main UI
     if _session_claims_from_cookie(request):
-        return RedirectResponse(url="/ui/index.html")
+        # Route authenticated users to the root UI entrypoint
+        return RedirectResponse(url="/")
     enabled = _oidc_enabled()
     provider = _oidc_client().get("provider") or "SSO"
     # Prefer serving the repo's webui/login.html if present
@@ -1315,7 +1317,8 @@ async def auth_callback(request: Request, code: str | None = None, state: str | 
     session_claims.update({"iat": now, "exp": now + token_ttl})
     session_jwt = jwt.encode(session_claims, JWT_SECRET, algorithm=(JWT_ALGORITHMS[0] if JWT_ALGORITHMS else "HS256"))
 
-    resp = RedirectResponse(url="/ui/index.html")
+    # After successful login, send the user to the root UI entrypoint
+    resp = RedirectResponse(url="/")
     flags = _jwt_cookie_flags(request)
     resp.set_cookie(
         key=cookie_name,
@@ -1332,10 +1335,17 @@ async def auth_callback(request: Request, code: str | None = None, state: str | 
 
 @app.get("/")
 async def root_entry(request: Request) -> Response:
-    """Top-level entry point. Redirect to login or UI index depending on auth state."""
+    """Top-level entry: if auth required and missing → /login; else serve UI index at root."""
     need_auth = _oidc_enabled() or REQUIRE_AUTH
     if need_auth and _session_claims_from_cookie(request) is None:
         return RedirectResponse(url="/login")
+    try:
+        ui_dir = (Path(__file__).resolve().parents[2] / "webui").resolve()
+        index_html = ui_dir / "index.html"
+        if index_html.exists():
+            return FileResponse(str(index_html), media_type="text/html")
+    except Exception:
+        LOGGER.debug("Failed to serve root UI index directly; falling back to /ui/index.html", exc_info=True)
     return RedirectResponse(url="/ui/index.html")
 
 
@@ -3265,6 +3275,14 @@ try:
         # Mount the Web UI root under /ui so /ui/index.html and related relative paths work
         app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
 
+        # Serve the UI at root path as the default entrypoint
+        index_html = UI_DIR / "index.html"
+        if index_html.exists():
+            @app.get("/", include_in_schema=False)
+            @app.get("/index.html", include_in_schema=False)
+            async def _root_ui() -> FileResponse:  # type: ignore
+                return FileResponse(str(index_html), media_type="text/html")
+
         # Additionally mount common asset subpaths at the root to satisfy absolute imports
         # used by the UI (e.g., "/js/...", "/public/...", "/components/...").
         for sub in ("js", "css", "components", "public", "vendor"):
@@ -3832,6 +3850,66 @@ class UiSettingsPayload(BaseModel):
     llm_credentials: Optional[Dict[str, Any]] = None
 
 
+def _normalize_llm_base_url(raw: str) -> str:
+    """Normalize an OpenAI-compatible base URL to its root.
+
+    - Trims whitespace
+    - Removes trailing slashes
+    - Removes a single trailing "/v1" and "/chat/completions" if present
+    - In non-DEV, enforces https scheme when a scheme is present
+    """
+    s = (raw or "").strip()
+    if not s:
+        return s
+    try:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(s)
+        scheme = (parsed.scheme or "").lower()
+        netloc = parsed.netloc
+        path = parsed.path or ""
+        # Remove trailing slashes
+        path = path.rstrip("/")
+        # Drop a single trailing /v1 and/or /chat/completions
+        if path.endswith("/chat/completions"):
+            path = path[: -len("/chat/completions")]
+            path = path.rstrip("/")
+        if path.endswith("/v1"):
+            path = path[: -len("/v1")]
+            path = path.rstrip("/")
+        # Enforce https in non-DEV when scheme is present
+        deployment = APP_SETTINGS.deployment_mode.upper()
+        if scheme and deployment != "DEV" and scheme != "https":
+            scheme = "https"
+        # Rebuild URL without query/fragment
+        normalized = urlunparse((scheme, netloc, path, "", "", ""))
+        return normalized or s
+    except Exception:
+        # Best-effort string ops fallback
+        s = s.rstrip("/")
+        if s.endswith("/chat/completions"):
+            s = s[: -len("/chat/completions")]
+            s = s.rstrip("/")
+        if s.endswith("/v1"):
+            s = s[: -len("/v1")]
+            s = s.rstrip("/")
+        return s
+
+def _detect_provider_from_base(base_url: str) -> str:
+    host = ""
+    try:
+        from urllib.parse import urlparse
+        host = (urlparse(base_url).netloc or "").lower()
+    except Exception:
+        host = base_url.lower()
+    if "groq" in host:
+        return "groq"
+    if "openrouter" in host:
+        return "openrouter"
+    if "openai" in host:
+        return "openai"
+    return "other"
+
+
 @app.put("/v1/ui/settings")
 async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
     if payload.agent:
@@ -3850,11 +3928,12 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
                 extra = loaded if isinstance(loaded, dict) else None
             except Exception:
                 extra = None
+        base_url = _normalize_llm_base_url(str(mp.get("base_url", "")))
         to_save = ModelProfile(
             role="dialogue",
             deployment_mode=deployment,
             model=str(mp.get("model", "")),
-            base_url=str(mp.get("base_url", "")),
+            base_url=base_url,
             temperature=float(mp.get("temperature", 0.2)),
             kwargs=extra if isinstance(extra, dict) else None,
         )
@@ -4132,11 +4211,13 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
 
     # Upsert dialogue model profile
     if model_profile:
+        # Normalize base_url before saving
+        normalized_base = _normalize_llm_base_url(str(model_profile.get("base_url", "")))
         mp = ModelProfile(
             role="dialogue",
             deployment_mode=APP_SETTINGS.deployment_mode,
             model=str(model_profile.get("model", "")),
-            base_url=str(model_profile.get("base_url", "")),
+            base_url=normalized_base,
             temperature=float(model_profile.get("temperature", 0.2)),
             kwargs=(model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else None),
         )
@@ -4475,3 +4556,155 @@ async def get_llm_credentials(provider: str, request: Request, store: Annotated[
     if not secret:
         raise HTTPException(status_code=404, detail="not found")
     return {"provider": provider, "secret": secret}
+
+
+# -----------------------------
+# Centralized LLM Invoke (single source of truth)
+# -----------------------------
+
+class LlmInvokeMessage(BaseModel):
+    role: str
+    content: str
+
+
+class LlmInvokeOverrides(BaseModel):
+    model: Optional[str] = None
+    base_url: Optional[str] = None
+    temperature: Optional[float] = None
+    kwargs: Optional[Dict[str, Any]] = None
+
+
+class LlmInvokeRequest(BaseModel):
+    role: str = Field(..., pattern="^(dialogue|escalation)$")
+    session_id: Optional[str] = None
+    persona_id: Optional[str] = None
+    tenant: Optional[str] = None
+    messages: List[LlmInvokeMessage]
+    overrides: Optional[LlmInvokeOverrides] = None
+
+
+def _gateway_slm_client() -> SLMClient:
+    # Create a fresh client per request to avoid credential races; caller closes it.
+    return SLMClient()
+
+
+async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, str, float, dict[str, Any]]:
+    """Return (model, base_url, temperature, extra_kwargs) after applying overrides and normalization.
+
+    Raises HTTPException on config/credentials errors.
+    """
+    # Load profile for role/deployment
+    profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
+    if not profile and not payload.overrides:
+        raise HTTPException(status_code=400, detail="model profile not configured for role")
+
+    model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+    base_url_raw = (payload.overrides.base_url if payload.overrides and payload.overrides.base_url else (profile.base_url if profile else ""))
+    base_url = _normalize_llm_base_url(str(base_url_raw))
+    try:
+        temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+    except Exception:
+        temperature = 0.2
+    extra_kwargs: dict[str, Any] = {}
+    if profile and isinstance(profile.kwargs, dict):
+        extra_kwargs.update(profile.kwargs)
+    if payload.overrides and isinstance(payload.overrides.kwargs, dict):
+        extra_kwargs.update(payload.overrides.kwargs)
+
+    if not model or not base_url:
+        raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
+
+    provider = _detect_provider_from_base(base_url)
+    # Fetch credentials (fail-closed)
+    store = get_llm_credentials_store()
+    secret = await store.get(provider)
+    if not secret:
+        raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+
+    return model, base_url, temperature, {**extra_kwargs, "_provider": provider, "_secret": secret}
+
+
+@app.post("/v1/llm/invoke")
+async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
+    # Only allow internal calls
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    model, base_url, temperature, meta = await _resolve_profile_and_creds(payload)
+
+    # Prepare messages for SLMClient
+    messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
+
+    client = _gateway_slm_client()
+    # Inject credential into this ephemeral client
+    client.api_key = meta["_secret"]
+    try:
+        content, usage = await client.chat(
+            messages,
+            model=model,
+            base_url=base_url,
+            temperature=temperature,
+            **{k: v for k, v in meta.items() if not k.startswith("_")},
+        )
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code if exc.response is not None else 502
+        raise HTTPException(status_code=status, detail=f"provider_error: {exc}") from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=504, detail=f"provider_timeout: {exc}") from exc
+    finally:
+        try:
+            await client.close()
+        except Exception:
+            pass
+
+    return {
+        "content": content,
+        "usage": usage,
+        "model": model,
+        "base_url": base_url,
+    }
+
+
+@app.post("/v1/llm/invoke/stream")
+async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
+    # Only allow internal calls
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    model, base_url, temperature, meta = await _resolve_profile_and_creds(payload)
+    messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
+
+    client = _gateway_slm_client()
+    client.api_key = meta["_secret"]
+
+    async def streamer():
+        try:
+            async for chunk in client.chat_stream(
+                messages,
+                model=model,
+                base_url=base_url,
+                temperature=temperature,
+                **{k: v for k, v in meta.items() if not k.startswith("_")},
+            ):
+                # Re-emit upstream chunk as OpenAI-style SSE data line
+                import json as _json
+                line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
+                yield line.encode("utf-8")
+        except httpx.HTTPStatusError as exc:
+            detail = f"provider_error: {exc}"
+            msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
+            yield msg.encode("utf-8")
+        except httpx.RequestError as exc:
+            detail = f"provider_timeout: {exc}"
+            msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
+            yield msg.encode("utf-8")
+        finally:
+            # Close client and send [DONE]
+            try:
+                await client.close()
+            except Exception:
+                pass
+            yield b"data: [DONE]\n\n"
+
+    headers = {"Content-Type": "text/event-stream"}
+    return StreamingResponse(streamer(), headers=headers)

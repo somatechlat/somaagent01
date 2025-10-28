@@ -54,7 +54,8 @@ function openGatewayStream(sessionId) {
   closeGatewayStream();
 
   // Direct Gateway SSE only (legacy proxy removed)
-  const directUrl = `/v1/session/${encodeURIComponent(sessionId)}/events`;
+  const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
+  const directUrl = `${String(base).replace(/\/$/, "")}/session/${encodeURIComponent(sessionId)}/events`;
   const es = new EventSource(directUrl);
 
   _gatewaySSE = es;
@@ -173,11 +174,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // Prime CSRF/session early to avoid a race on first poll
   try {
-    fetch("/v1/csrf", { credentials: "same-origin" }).catch(() => {});
+    const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
+    fetch(String(base).replace(/\/$/, "") + "/csrf", { credentials: "same-origin" }).catch(() => {});
   } catch (_) {}
   // Kick a quick health probe so connection status becomes available immediately
   try {
-    fetch("/v1/health", { method: "GET", credentials: "same-origin" })
+    const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
+    fetch(String(base).replace(/\/$/, "") + "/health", { method: "GET", credentials: "same-origin" })
       .then(async (resp) => {
         if (!resp || !resp.ok) throw new Error("HTTP " + (resp && resp.status));
         const data = await resp.json().catch(() => ({}));
@@ -789,7 +792,8 @@ async function poll() {
 async function monitorHealth() {
   while (true) {
     try {
-      const response = await fetch("/v1/health", {
+      const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
+      const response = await fetch(String(base).replace(/\/$/, "") + "/health", {
         method: "GET",
         credentials: "same-origin",
       });

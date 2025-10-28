@@ -1,6 +1,6 @@
 // Marketplace UI script – fetches capsules from the registry and renders them.
 
-const API_BASE = "/v1";
+const API_BASE = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
 const LOG_LIMIT = 25;
 const HISTORY_LIMIT = 20;
 const HISTORY_KEY = "capsuleInstallHistory";
@@ -190,7 +190,7 @@ function toggleBusy(button, isBusy) {
 // Capsules are exposed through the gateway proxy (`/v1/capsules`).
 async function fetchCapsules() {
   // Direct fetch using the public API exposed via the gateway proxy.
-  const resp = await fetch(`${API_BASE}/capsules`);
+  const resp = await fetch(`${String(API_BASE).replace(/\/$/, "")}/capsules`);
   if (!resp.ok) throw new Error(`Failed to fetch capsules: ${resp.status}`);
   return await resp.json();
 }
@@ -271,7 +271,7 @@ async function renderMarketplace() {
         try {
           setStatus(statusNode, "Installing capsule…", "info");
           appendLog({ intent: "info", message: "Install started", capsuleName: `${capsuleName} ${capsuleVersion ? `v${capsuleVersion}` : ""}`.trim() });
-          const resp = await fetch(`${API_BASE}/capsules/${id}/install`, { method: "POST" });
+          const resp = await fetch(`${String(API_BASE).replace(/\/$/, "")}/capsules/${id}/install`, { method: "POST" });
           if (!resp.ok) {
             const detail = await resp.text();
             throw new Error(detail || `Install failed: ${resp.status}`);

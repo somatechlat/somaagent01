@@ -34,7 +34,7 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
-from services.common.slm_client import ChatMessage, SLMClient
+from services.common.slm_client import ChatMessage
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
@@ -190,8 +190,7 @@ class ConversationWorker:
         self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
-        self.slm = SLMClient()
-        # Attempt to fetch provider key from Gateway if not supplied via env
+        # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
         self._gateway_base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         self._internal_token = os.getenv("GATEWAY_INTERNAL_TOKEN")
         self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
@@ -212,12 +211,6 @@ class ConversationWorker:
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
-        # Enforce secure credential flow: outside DEV do not honor env SLM_API_KEY
-        try:
-            if self.deployment_mode != "DEV" and getattr(self.slm, "api_key", None):
-                self.slm.api_key = None
-        except Exception:
-            pass
         self.preprocessor = ConversationPreprocessor()
         self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {
             "1",
@@ -373,7 +366,7 @@ class ConversationWorker:
             size = 0
         return size > int(threshold_mb * 1024 * 1024)
 
-    async def _stream_response(
+    async def _stream_response_via_gateway(
         self,
         *,
         session_id: str,
@@ -382,53 +375,83 @@ class ConversationWorker:
         slm_kwargs: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
+        role: str = "dialogue",
     ) -> tuple[str, dict[str, int]]:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
-        async for chunk in self.slm.chat_stream(messages, **slm_kwargs):
-            choices = chunk.get("choices")
-            if not choices:
-                continue
-            choice = choices[0]
-            delta = choice.get("delta", {})
-            content_piece = delta.get("content", "")
-            if content_piece:
-                buffer.append(content_piece)
-                metadata = _compose_outbound_metadata(
-                    base_metadata,
-                    source="slm",
-                    status="streaming",
-                    analysis=analysis_metadata,
-                    extra={"stream_index": len(buffer)},
-                )
-                streaming_event = {
-                    "event_id": str(uuid.uuid4()),
-                    "session_id": session_id,
-                    "persona_id": persona_id,
-                    "role": "assistant",
-                    "message": "".join(buffer),
-                    "metadata": metadata,
-                }
-                await self.publisher.publish(
-                    self.settings["outbound"],
-                    streaming_event,
-                    dedupe_key=streaming_event.get("event_id"),
-                    session_id=session_id,
-                    tenant=(metadata or {}).get("tenant"),
-                )
-            finish_reason = choice.get("finish_reason")
-            chunk_usage = chunk.get("usage")
-            if isinstance(chunk_usage, dict):
-                usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                usage["output_tokens"] = int(
-                    chunk_usage.get("completion_tokens", usage["output_tokens"])
-                )
-            if finish_reason:
-                break
-
+        url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        payload = {
+            "role": role,
+            "session_id": session_id,
+            "persona_id": persona_id,
+            "tenant": (base_metadata or {}).get("tenant"),
+            "messages": [m.__dict__ for m in messages],
+            "overrides": {
+                k: v
+                for k, v in {
+                    "model": slm_kwargs.get("model"),
+                    "base_url": slm_kwargs.get("base_url"),
+                    "temperature": slm_kwargs.get("temperature"),
+                    "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                }.items()
+                if v is not None
+            },
+        }
+        headers = {"X-Internal-Token": self._internal_token or ""}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            async with client.stream("POST", url, json=payload, headers=headers) as resp:
+                if resp.is_error:
+                    # Surface upstream error text for telemetry/debugging
+                    body = await resp.aread()
+                    raise RuntimeError(f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}")
+                async for line in resp.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                    except Exception:
+                        continue
+                    # Pass-through OpenAI-style chunk
+                    choices = chunk.get("choices")
+                    if not choices:
+                        continue
+                    choice = choices[0]
+                    delta = choice.get("delta", {})
+                    content_piece = delta.get("content", "")
+                    if content_piece:
+                        buffer.append(content_piece)
+                        metadata = _compose_outbound_metadata(
+                            base_metadata,
+                            source="slm",
+                            status="streaming",
+                            analysis=analysis_metadata,
+                            extra={"stream_index": len(buffer)},
+                        )
+                        streaming_event = {
+                            "event_id": str(uuid.uuid4()),
+                            "session_id": session_id,
+                            "persona_id": persona_id,
+                            "role": "assistant",
+                            "message": "".join(buffer),
+                            "metadata": metadata,
+                        }
+                        await self.publisher.publish(
+                            self.settings["outbound"],
+                            streaming_event,
+                            dedupe_key=streaming_event.get("event_id"),
+                            session_id=session_id,
+                            tenant=(metadata or {}).get("tenant"),
+                        )
+                    chunk_usage = chunk.get("usage")
+                    if isinstance(chunk_usage, dict):
+                        usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
+                        usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
         text = "".join(buffer)
         if not text:
-            raise RuntimeError("Empty response from streaming SLM")
+            raise RuntimeError("Empty response from streaming Gateway/SLM")
         return text, usage
 
     async def _generate_response(
@@ -441,27 +464,51 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
-        # Hydrate API key on-demand if missing (pull from Gateway using internal token)
-        if not getattr(self.slm, "api_key", None):
-            try:
-                await self._ensure_llm_key()
-            except Exception:
-                LOGGER.debug("On-demand LLM credential fetch failed", exc_info=True)
         try:
-            return await self._stream_response(
+            return await self._stream_response_via_gateway(
                 session_id=session_id,
                 persona_id=persona_id,
                 messages=messages,
                 slm_kwargs=slm_kwargs,
                 analysis_metadata=analysis_metadata,
                 base_metadata=base_metadata,
+                role="dialogue",
             )
         except Exception as exc:
             LOGGER.warning(
-                "Streaming unavailable, falling back to single response",
+                "Streaming unavailable via Gateway, falling back to non-stream invoke",
                 extra={"error": str(exc)},
             )
-            return await self.slm.chat(messages, **slm_kwargs)
+            # Fallback: non-stream invoke
+            url = f"{self._gateway_base}/v1/llm/invoke"
+            body = {
+                "role": "dialogue",
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "tenant": (base_metadata or {}).get("tenant"),
+                "messages": [m.__dict__ for m in messages],
+                "overrides": {
+                    k: v
+                    for k, v in {
+                        "model": slm_kwargs.get("model"),
+                        "base_url": slm_kwargs.get("base_url"),
+                        "temperature": slm_kwargs.get("temperature"),
+                        "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                    }.items()
+                    if v is not None
+                },
+            }
+            headers = {"X-Internal-Token": self._internal_token or ""}
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(url, json=body, headers=headers)
+                if resp.is_error:
+                    raise RuntimeError(f"Gateway invoke error {resp.status_code}: {resp.text[:512]}")
+                data = resp.json()
+                content = data.get("content", "")
+                usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                if not content:
+                    raise RuntimeError("Empty response from Gateway invoke")
+                return content, usage
 
     async def _invoke_escalation_response(
         self,
@@ -471,31 +518,49 @@ class ConversationWorker:
         messages: List[ChatMessage],
         slm_kwargs: Dict[str, Any],
     ) -> tuple[str, dict[str, int], float, str, str | None]:
+        # Prepare overrides from profile + provided kwargs
         profile = await self.profile_store.get("escalation", self.deployment_mode)
-        escalation_kwargs = dict(slm_kwargs)
-        base_url = escalation_kwargs.pop("base_url", None)
-        model = escalation_kwargs.pop("model", None)
-        temperature = escalation_kwargs.pop("temperature", None)
-
+        overrides: Dict[str, Any] = {}
         if profile:
-            base_url = profile.base_url
-            model = profile.model
-            temperature = profile.temperature
-            if profile.kwargs:
-                escalation_kwargs.update(profile.kwargs)
+            overrides.update({
+                "model": profile.model,
+                "base_url": profile.base_url,
+                "temperature": profile.temperature,
+            })
+            if isinstance(profile.kwargs, dict):
+                overrides["kwargs"] = profile.kwargs
+        # Allow explicit slm_kwargs to override profile
+        for k in ("model", "base_url", "temperature", "kwargs", "metadata"):
+            if k in slm_kwargs and slm_kwargs[k] is not None:
+                if k == "metadata" and overrides.get("kwargs") is None:
+                    overrides["kwargs"] = slm_kwargs[k]
+                elif k != "metadata":
+                    overrides[k] = slm_kwargs[k]
 
+        url = f"{self._gateway_base}/v1/llm/invoke"
+        body = {
+            "role": "escalation",
+            "session_id": session_id,
+            "persona_id": persona_id,
+            "tenant": None,
+            "messages": [m.__dict__ for m in messages],
+            "overrides": overrides,
+        }
+        headers = {"X-Internal-Token": self._internal_token or ""}
         start_time = time.time()
-        text, usage = await self.slm.chat(
-            messages,
-            model=model,
-            base_url=base_url,
-            temperature=temperature,
-            **escalation_kwargs,
-        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, json=body, headers=headers)
+            if resp.is_error:
+                raise RuntimeError(f"Gateway escalation invoke error {resp.status_code}: {resp.text[:512]}")
+            data = resp.json()
         latency = time.time() - start_time
+        text = data.get("content", "")
+        usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
+        model_used = data.get("model") or overrides.get("model") or os.getenv("SLM_MODEL", "unknown")
+        base_url_used = data.get("base_url") or overrides.get("base_url")
         if not text:
-            raise RuntimeError("Empty response from escalation LLM")
-        return text, usage, latency, model or self.slm.default_model, base_url
+            raise RuntimeError("Empty response from escalation LLM via Gateway")
+        return text, usage, latency, model_used, base_url_used
 
     async def start(self) -> None:
         await ensure_schema(self.store)
@@ -800,8 +865,7 @@ class ConversationWorker:
                 SESSION_CACHE_SYNC.labels("success").inc()
 
             history = await self.store.list_events(session_id, limit=20)
-            # Ensure SLM API key present (fetch from Gateway when missing)
-            await self._ensure_llm_key()
+            # LLM credentials are managed by Gateway; worker does not fetch or store keys
             messages: list[ChatMessage] = []
             for item in reversed(history):
                 if item.get("type") == "user":
@@ -923,7 +987,7 @@ class ConversationWorker:
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
-            model_used = slm_kwargs.get("model", self.slm.default_model)
+            model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
             path = "slm"
             escalation_metadata: dict[str, Any] | None = None
 
@@ -1011,7 +1075,8 @@ class ConversationWorker:
                     )
                     usage = {"input_tokens": 0, "output_tokens": 0}
                 latency = time.time() - response_start
-                model_used = slm_kwargs.get("model", self.slm.default_model)
+                model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
+                # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
             budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
@@ -1216,37 +1281,6 @@ class ConversationWorker:
                 pass
             LOGGER.exception("Unhandled error while processing conversation event")
 
-    async def _ensure_llm_key(self) -> None:
-        if getattr(self.slm, 'api_key', None):
-            return
-        # Infer provider from base_url
-        host = ''
-        try:
-            host = (self.slm.base_url or '').split('//',1)[-1].split('/',1)[0]
-        except Exception:
-            host = ''
-        provider = 'openai'
-        if 'groq' in host:
-            provider = 'groq'
-        elif 'openrouter' in host:
-            provider = 'openrouter'
-        if not self._internal_token:
-            LOGGER.warning("No GATEWAY_INTERNAL_TOKEN; cannot fetch LLM credentials from Gateway")
-            return
-        url = f"{self._gateway_base}/v1/llm/credentials/{provider}"
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(url, headers={"X-Internal-Token": self._internal_token})
-                if resp.status_code == 200:
-                    body = resp.json()
-                    key = body.get('secret')
-                    if key:
-                        self.slm.api_key = key
-                        LOGGER.info("Fetched LLM credentials from Gateway", extra={"provider": provider})
-                else:
-                    LOGGER.debug("Failed to fetch LLM credentials", extra={"status": resp.status_code})
-        except Exception:
-            LOGGER.debug("Error fetching LLM credentials", exc_info=True)
 
 
 
@@ -1255,7 +1289,6 @@ async def main() -> None:
     try:
         await worker.start()
     finally:
-        await worker.slm.close()
         await worker.soma.close()
         await worker.router.close()
         await worker.policy_client.close()

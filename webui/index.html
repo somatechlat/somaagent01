@@ -177,6 +177,7 @@
     </script>
 
     <!-- Load module scripts first (cache-busted) -->
+    <script type="module" src="js/config.js?v=20251027"></script>
     <script type="module" src="js/scheduler.js?v=20251027"></script>
     <script type="module" src="js/history.js?v=20251027"></script>
 
@@ -290,7 +291,7 @@
                     <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
                     <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
                     <button class="config-button" id="restart" @click="restart()">Restart</button>
-                    <button class="config-button" id="settings" @click="settingsModalProxy.openModal()"><svg
+                        <button class="config-button" id="settings" data-testid="settings-button" @click="settingsModalProxy.openModal()"><svg
                             xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-5.0 -17.0 110.0 135.0"
                             fill="currentColor" width="24" height="24">
                             <path
@@ -477,7 +478,7 @@
             <!--Chat-->
             <div id="time-date-container">
                 <div id="time-date"></div>
-                <div class="status-icon" id="status-indicator" data-status="unknown" title="Health: unknown">
+                <div class="status-icon" id="status-indicator" data-testid="status-indicator" data-status="unknown" title="Health: unknown">
                     <svg viewBox="0 0 30 30">
                         <circle class="connected-circle" cx="15" cy="15" r="8"></circle>
                         <circle class="degraded-circle" cx="15" cy="15" r="10"></circle>
@@ -542,7 +543,7 @@
 
                     <!-- Container for textarea and button -->
                     <div id="chat-input-container" style="position: relative;">
-                        <textarea id="chat-input" placeholder="Type your message here..." rows="1"></textarea>
+                        <textarea id="chat-input" data-testid="chat-input" placeholder="Type your message here..." rows="1"></textarea>
 
                         <!-- Expand button inside the textarea container -->
                         <button id="expand-button" @click="$store.fullScreenInputModal.openModal()"
@@ -557,7 +558,7 @@
                     <div id="chat-buttons-wrapper">
 
                         <!-- Send button -->
-                        <button class="chat-button" id="send-button" aria-label="Send message">
+                        <button class="chat-button" id="send-button" data-testid="send-button" aria-label="Send message">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
                                 <path d="M25 20 L75 50 L25 80" fill="none" stroke="currentColor" stroke-width="15">
                                 </path>
@@ -565,7 +566,7 @@
                         </button>
 
                         <!-- Microphone button -->
-                        <button class="chat-button mic-inactive" id="microphone-button"
+                        <button class="chat-button mic-inactive" id="microphone-button" data-testid="microphone-button"
                             aria-label="Start/Stop recording" @click="$store.speech && $store.speech.handleMicrophoneClick()"
                             x-effect="$store.speech && $store.speech.updateMicrophoneButtonUI()">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18" fill="currentColor">
