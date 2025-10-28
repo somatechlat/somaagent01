@@ -183,15 +183,7 @@
 
     <script type="module" src="index.js?v=20251027"></script>
 
-    <!-- Then load Alpine.js (local-first, CDN fallback) -->
-    <script>
-        globalThis.loadLocalOrCdn(
-            'vendor/alpine/alpine.collapse.min.js',
-            function () { return !!window.Alpine; },
-            'https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js',
-            false
-        );
-    </script>
+    <!-- Initialize framework bootstrap (handles Alpine loading internally) -->
     <script type="module" src="js/initFw.js?v=20251027"></script>
 
     <!-- ACE editor (local-first, CDN fallback) -->

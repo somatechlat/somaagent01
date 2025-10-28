@@ -27,14 +27,14 @@ if (AlpineCandidate) {
 
 // Load alpine collapse plugin (local-first, CDN fallback) after Alpine is present
 (() => {
-  function loadScript(src, fallback) {
+  function loadPlugin(src, cdnSrc) {
     const s = document.createElement('script');
     s.src = src;
     s.defer = true;
     s.onerror = function () {
-      if (fallback) {
+      if (cdnSrc) {
         const f = document.createElement('script');
-        f.src = fallback;
+        f.src = cdnSrc;
         f.defer = true;
         document.head.appendChild(f);
       }
@@ -42,7 +42,11 @@ if (AlpineCandidate) {
     document.head.appendChild(s);
   }
 
-  loadScript('/vendor/alpine/alpine.collapse.min.js', 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js');
+  // Prefer local plugin bundle; fallback to official CDN plugin package
+  loadPlugin(
+    '/vendor/alpine/alpine.collapse.min.js',
+    'https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.3/dist/cdn.min.js'
+  );
 })();
 
 // add x-destroy directive to alpine (safe-guarded)

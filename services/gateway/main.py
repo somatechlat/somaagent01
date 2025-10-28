@@ -2872,6 +2872,8 @@ async def upload_files(
             "session_id": sess,
             "status": "quarantined" if quarantined else "clean",
             "quarantine_reason": quarantine_reason if quarantined else None,
+            # Provide a stable download path usable by the Web UI
+            "path": f"/v1/attachments/{str(att_id)}",
         }
         results.append(descriptor)
         GATEWAY_UPLOADS.labels("ok" if not quarantined else "blocked").inc()
@@ -3433,6 +3435,21 @@ try:
             async def _index_css() -> FileResponse:  # type: ignore
                 return FileResponse(str(index_css), media_type="text/css")
 
+        # Serve a favicon for browsers that automatically request /favicon.ico
+        favicon_svg = UI_DIR / "public" / "favicon.svg"
+        favicon_round_svg = UI_DIR / "public" / "favicon_round.svg"
+        if favicon_svg.exists() or favicon_round_svg.exists():
+            chosen = str(favicon_svg if favicon_svg.exists() else favicon_round_svg)
+
+            @app.get("/favicon.ico", include_in_schema=False)
+            async def _favicon_ico() -> FileResponse:  # type: ignore
+                # Many modern browsers accept SVG as favicon; serve SVG to avoid bundling .ico
+                return FileResponse(chosen, media_type="image/svg+xml")
+
+            @app.get("/favicon.svg", include_in_schema=False)
+            async def _favicon_svg() -> FileResponse:  # type: ignore
+                return FileResponse(chosen, media_type="image/svg+xml")
+
         # Optional: serve common root-level pages and their styles if present
         login_html = UI_DIR / "login.html"
         if login_html.exists():
@@ -3456,6 +3473,39 @@ except Exception:
 # -----------------------------
 # Uploads janitor (TTL cleanup)
 # -----------------------------
+
+# -----------------------------
+# Optional tunnel proxy compatibility
+# -----------------------------
+
+@app.post("/tunnel_proxy")
+async def tunnel_proxy(request: Request) -> JSONResponse:  # type: ignore
+    """Compatibility stub for the UI tunnel feature.
+
+    The UI may call /tunnel_proxy on load to check tunnel status. In this build,
+    we return a 200 with a structured payload instead of 404 to avoid console errors.
+    Supported actions (all no-ops by default): get, create, verify, stop.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    action = str(data.get("action", "get")).lower()
+
+    # Default response indicating tunnel is not configured
+    base = {"success": False, "message": "Tunnel not configured in this deployment"}
+
+    if action == "get":
+        return JSONResponse({**base, "tunnel_url": None})
+    if action == "verify":
+        return JSONResponse({"success": True, "is_valid": False})
+    if action == "create":
+        # In future, wire to actual tunnel provider; for now, return not configured
+        return JSONResponse(base)
+    if action == "stop":
+        return JSONResponse({"success": True})
+
+    return JSONResponse(base)
 
 
 async def _uploads_janitor(stop_event: asyncio.Event) -> None:

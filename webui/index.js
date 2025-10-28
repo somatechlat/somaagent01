@@ -34,6 +34,7 @@ let _gatewaySSE = null;
 let _gatewaySSESession = null;
 let _sseActiveAssistantBySession = {}; // sessionId -> stable in-progress assistant message id
 let __sseConnected = false; // dedupe poll vs SSE when connected
+let __sseDesired = false; // true as soon as we attempt to open SSE; helps dedupe before onopen
 
 function closeGatewayStream() {
   if (_gatewaySSE) {
@@ -45,6 +46,7 @@ function closeGatewayStream() {
     _gatewaySSE = null;
     _gatewaySSESession = null;
   }
+  __sseDesired = false;
 }
 
 function openGatewayStream(sessionId) {
@@ -60,6 +62,7 @@ function openGatewayStream(sessionId) {
 
   _gatewaySSE = es;
   _gatewaySSESession = sessionId;
+  __sseDesired = true; // mark intent to stream immediately for poll dedupe
 
   const _handleSSEMessage = (evt) => {
     if (!evt?.data) return;
@@ -683,8 +686,8 @@ async function poll() {
       for (const log of response.logs) {
         // Skip transient streaming entries from poll to avoid duplicate messages with SSE
         if (log && log.temp) continue;
-        // If SSE is online, skip assistant final responses in poll to avoid double rendering
-        if (__sseConnected && log && log.type === "response") continue;
+        // If SSE is online or being established, skip assistant final responses from poll to avoid double rendering
+        if ((__sseConnected || __sseDesired) && log && log.type === "response") continue;
         const messageId = log.id || log.no; // Use log.id if available
         setMessage(
           messageId,
@@ -948,6 +951,8 @@ globalThis.resetChat = async function (ctxid = null) {
     if (!sid) return;
     const resp = await api.fetchApi(`/v1/sessions/${sid}/reset`, { method: "POST" });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    // Immediately clear local state and history for this session to reflect reset
+    setContext(sid);
     resetCounter++;
     if (ctxid === null) updateAfterScroll();
   } catch (e) {

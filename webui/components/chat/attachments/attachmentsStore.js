@@ -265,10 +265,18 @@ const model = {
 
   // Generate server-side API URL for file (for device sync)
   getServerImgUrl(filename) {
+    // Support Gateway attachments API paths directly
+    const path = String(filename || "");
+    if (path.startsWith("/v1/attachments/")) return path;
+    // Legacy fallback (dev)
     return `/image_get?path=/git/agent-zero/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
   getServerFileUrl(filename) {
+    // Support Gateway attachments API paths directly
+    const path = String(filename || "");
+    if (path.startsWith("/v1/attachments/")) return path;
+    // Legacy fallback (dev)
     return `/git/agent-zero/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
@@ -343,27 +351,44 @@ const model = {
   // Enhanced method to get attachment display info for UI
   getAttachmentDisplayInfo(attachment) {
     if (typeof attachment === "string") {
-      // attachment is filename only (from persistent storage)
-      const filename = attachment;
-      const extension = filename.split(".").pop();
-      const isImage = this.isImageFile(filename);
-      const previewUrl = isImage
-        ? this.getServerImgUrl(filename)
-        : this.getFilePreviewUrl(filename);
+      // attachment is either a Gateway path (/v1/attachments/<id>) or a legacy filename
+      const value = attachment;
+      if (value.startsWith("/v1/attachments/")) {
+        const url = value; // use as-is
+        // We can't know the file type without a HEAD; render a file tile and open on click
+        return {
+          filename: url,
+          extension: "",
+          isImage: false,
+          previewUrl: this.getFilePreviewUrl("document"),
+          clickHandler: () => {
+            // Open in a new tab; browser will render or download based on content-type
+            window.open(url, "_blank");
+          },
+        };
+      } else {
+        // legacy filename in work dir
+        const filename = value;
+        const extension = filename.split(".").pop();
+        const isImage = this.isImageFile(filename);
+        const previewUrl = isImage
+          ? this.getServerImgUrl(filename)
+          : this.getFilePreviewUrl(filename);
 
-      return {
-        filename: filename,
-        extension: extension.toUpperCase(),
-        isImage: isImage,
-        previewUrl: previewUrl,
-        clickHandler: () => {
-          if (this.isImageFile(filename)) {
-            this.openImageModal(this.getServerImgUrl(filename), filename);
-          } else {
-            this.downloadAttachment(filename);
-          }
-        },
-      };
+        return {
+          filename: filename,
+          extension: (extension || "").toUpperCase(),
+          isImage: isImage,
+          previewUrl: previewUrl,
+          clickHandler: () => {
+            if (this.isImageFile(filename)) {
+              this.openImageModal(this.getServerImgUrl(filename), filename);
+            } else {
+              this.downloadAttachment(filename);
+            }
+          },
+        };
+      }
     } else {
       // attachment is object (from current session)
       const isImage = this.isImageFile(attachment.name);
@@ -391,22 +416,27 @@ const model = {
 
   async downloadAttachment(filename) {
     try {
-      const path = this.getServerFileUrl(filename);
-      const response = await fetchApi("/download_work_dir_file?path=" + path);
+      // If filename is already a Gateway attachments path, open directly
+      if (typeof filename === "string" && filename.startsWith("/v1/attachments/")) {
+        window.open(filename, "_blank");
+      } else {
+        const path = this.getServerFileUrl(filename);
+        const response = await fetchApi("/download_work_dir_file?path=" + path);
 
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const blob = await response.blob();
+
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
       }
-
-      const blob = await response.blob();
-
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(link.href);
     } catch (error) {
       window.toastFetchError("Error downloading file", error);
       alert("Error downloading file");

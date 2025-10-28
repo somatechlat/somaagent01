@@ -12,6 +12,10 @@ def test_ui_has_no_console_errors(page):
     console_messages = []
     page.on("console", lambda msg: console_messages.append((msg.type, msg.text)))
     page.on("pageerror", lambda exc: console_messages.append(("pageerror", str(exc))))
+    failed_requests = []
+    page.on("requestfailed", lambda req: failed_requests.append((req.url, req.failure.value if req.failure else "failed")))
+    bad_responses = []
+    page.on("response", lambda resp: bad_responses.append((resp.url, resp.status)) if resp.status >= 400 else None)
 
     # Try to load the UI; skip if not reachable in a reasonable time
     try:
@@ -20,24 +24,26 @@ def test_ui_has_no_console_errors(page):
         pytest.skip(f"UI not reachable at {BASE_URL}; skipping console check")
 
     # Give the page a moment to finish bootstrapping
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(1200)
 
-    # Filter high-severity messages, with a small allowlist for known benign errors
-    allowlist_substrings = [
-        "Cannot redefine property: $nextTick",
-        "Failed to load resource: the server responded with a status of 404",
-    ]
-    def _allowed(msg: str) -> bool:
-        return any(s in msg for s in allowlist_substrings)
-
+    # Fail on any high-severity console error or pageerror
     errors = [
         (t, m)
         for (t, m) in console_messages
-        if t in ("error", "pageerror") and not _allowed(m)
+        if t in ("error", "pageerror")
     ]
 
-    if errors:
+    if errors or failed_requests or any(status >= 400 for _, status in bad_responses):
         print("--- CONSOLE ERRORS ---")
         for t, m in errors:
             print(t, m)
-        pytest.xfail("Console errors detected on UI load (recorded above)")
+        if failed_requests:
+            print("--- REQUEST FAILED ---")
+            for url, reason in failed_requests:
+                print(reason, url)
+        bads = [(u, s) for (u, s) in bad_responses if s >= 400]
+        if bads:
+            print("--- BAD RESPONSES ---")
+            for url, status in bads:
+                print(status, url)
+    assert not errors and not failed_requests and not any(status >= 400 for _, status in bad_responses), "UI console must be clean of errors on load"

@@ -125,4 +125,4 @@ Open a GitHub issue with:
 
 ### Is there a community?
 
-Yes! Join our Discord server and Skool community. Links in [README](../../README.md).
+Yes! Join our Discord server and Skool community. Links in [README](../README.md).
