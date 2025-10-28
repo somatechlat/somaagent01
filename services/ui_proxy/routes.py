@@ -13,20 +13,33 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_gateway_client(request: Request) -> GatewayClient:
-	"""Construct a GatewayClient pointing at this same server's base URL.
+	"""Construct a GatewayClient for intra-gateway calls.
 
-	Fallbacks:
-	- If GATEWAY_BASE_URL is set, GatewayClient will already honor it.
-	- Otherwise, prefer the incoming request's base_url to avoid hardcoded
-	  container DNS names like http://gateway:8010 that aren't resolvable in
-	  single-process or host-local runs.
+	Precedence:
+	1) Respect explicit GATEWAY_BASE_URL if set (works in any environment).
+	2) If UI_PROXY_USE_REQUEST_BASE=true, use the incoming request.base_url.
+	3) Otherwise fall back to the internal default (e.g., http://gateway:8010).
+
+	Rationale: Inside Docker, request.base_url often points at the host‑mapped
+	port (e.g., 127.0.0.1:21016) which is not reachable from within the
+	container. Using the internal service DNS avoids connection errors.
 	"""
-	try:
-		base = str(request.base_url).rstrip("/")
-		return GatewayClient(base_url=base)
-	except Exception:
-		# Final fallback to default behavior
+	import os
+
+	# 1) Explicit override via env
+	if os.getenv("GATEWAY_BASE_URL"):
 		return GatewayClient()
+
+	# 2) Opt-in to using request.base_url (useful for single-process local runs)
+	if os.getenv("UI_PROXY_USE_REQUEST_BASE", "false").lower() in {"true", "1", "yes", "on"}:
+		try:
+			base = str(request.base_url).rstrip("/")
+			return GatewayClient(base_url=base)
+		except Exception:
+			pass
+
+	# 3) Safe default: internal service DNS or default constructed URL
+	return GatewayClient()
 
 
 router = APIRouter()

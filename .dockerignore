@@ -19,6 +19,7 @@
 # memory_service deprecated; do not include in build context
 !services/common/**
 !services/ui/**
+!services/ui_proxy/**
 !services/__init__.py
 !python/**
 !common/**

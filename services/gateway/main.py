@@ -41,7 +41,7 @@ from fastapi.responses import FileResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.utils import secure_filename
 import hashlib
 from pathlib import Path
@@ -136,6 +136,23 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
 
+# Global exception handler to surface unexpected errors (helps during dev)
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:  # pragma: no cover
+    try:
+        LOGGER.error(
+            "Unhandled exception",
+            exc_info=True,
+            extra={
+                "path": str(getattr(request, "url", "")),
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+            },
+        )
+    except Exception:
+        pass
+    return JSONResponse({"detail": "internal error", "error_type": type(exc).__name__}, status_code=500)
+
 # Defer mounting the Web UI to later in the file to ensure explicit routes like
 # /ui/config.json take precedence over the static mount.
 
@@ -214,8 +231,8 @@ if PollAggregator and GatewayClient and not _route_exists("/v1/ui/poll", {"POST"
             body = await request.json()
         except Exception:
             body = {}
-        base = str(request.base_url).rstrip("/")
-        client = GatewayClient(base_url=base)
+        # Use default internal client; avoid request.base_url which may be host-mapped
+        client = GatewayClient()
         aggregator = PollAggregator(client)
         payload = await aggregator.poll(body)
         return JSONResponse(payload)
@@ -224,8 +241,8 @@ if PollAggregator and GatewayClient and not _route_exists("/v1/ui/poll", {"POST"
 
 if UiMessageService and GatewayClient and not _route_exists("/v1/ui/message", {"POST"}):
     async def _ui_message_fallback(request: Request) -> JSONResponse:
-        base = str(request.base_url).rstrip("/")
-        client = GatewayClient(base_url=base)
+        # Use default internal client; avoid request.base_url which may be host-mapped
+        client = GatewayClient()
         service = UiMessageService()
         payload = await service.handle_request(request, client)
         return JSONResponse(payload)
@@ -1351,6 +1368,10 @@ def get_event_bus() -> KafkaEventBus:
 
 
 def get_publisher() -> DurablePublisher:
+    try:
+        LOGGER.info("get_publisher called")
+    except Exception:
+        pass
     # If tests override the event bus, respect that by creating a temporary publisher
     overrides = getattr(app, "dependency_overrides", {})
     get_bus_override = overrides.get(get_event_bus)
@@ -1372,13 +1393,46 @@ def get_publisher() -> DurablePublisher:
     return publisher
 
 
+_SESSION_CACHE: RedisSessionCache | None = None
+
+
 def get_session_cache() -> RedisSessionCache:
-    return RedisSessionCache(url=_redis_url())
+    """Return a process-wide RedisSessionCache singleton.
+
+    Creating a new cache instance per request is wasteful and can contribute
+    to connection churn. Reuse a single instance for the lifetime of the
+    gateway process.
+    """
+    global _SESSION_CACHE
+    if _SESSION_CACHE is None:
+        try:
+            LOGGER.info("initializing session cache", extra={"url": _redis_url()})
+        except Exception:
+            pass
+        _SESSION_CACHE = RedisSessionCache(url=_redis_url())
+    return _SESSION_CACHE
+
+
+_SESSION_STORE: PostgresSessionStore | None = None
 
 
 def get_session_store() -> PostgresSessionStore:
-    dsn = os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
-    return PostgresSessionStore(dsn=dsn)
+    """Return a process-wide PostgresSessionStore singleton.
+
+    Previously, a new PostgresSessionStore (and asyncpg pool) was created on
+    every dependency resolution, quickly exhausting PostgreSQL connections and
+    causing 500s like "sorry, too many clients already". Centralize on a
+    single store instance so only one pool is maintained per process.
+    """
+    global _SESSION_STORE
+    if _SESSION_STORE is None:
+        dsn = os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+        try:
+            LOGGER.info("initializing session store")
+        except Exception:
+            pass
+        _SESSION_STORE = PostgresSessionStore(dsn=dsn)
+    return _SESSION_STORE
 
 
 def get_api_key_store() -> ApiKeyStore:
@@ -1882,7 +1936,21 @@ class MessagePayload(BaseModel):
     persona_id: str | None = Field(default=None, description="Persona guiding this session")
     message: str = Field(..., description="User message")
     attachments: list[str] = Field(default_factory=list)
-    metadata: dict[str, str] = Field(default_factory=dict)
+    # Make metadata optional to avoid edge-cases in request parsing when clients send an explicit empty object
+    metadata: dict[str, str] | None = Field(default=None)
+
+    # Normalize session_id early to avoid downstream UUID assumptions elsewhere in the stack
+    @field_validator("session_id", mode="before")
+    @classmethod
+    def _validate_session_id(cls, v: Any) -> str | None:
+        if not v:
+            return None
+        try:
+            uuid.UUID(str(v))
+            return str(v)
+        except Exception:
+            # Force None so the handler can generate a new UUID
+            return None
 
 
 # -----------------------------
@@ -2451,11 +2519,34 @@ async def enqueue_message(
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
 ) -> JSONResponse:
     """Accept a user message and enqueue it for processing."""
+    try:
+        LOGGER.info(
+            "enqueue_message start",
+            extra={
+                "has_session_id": bool(payload.session_id),
+                "persona_id": payload.persona_id,
+                "msg_len": len(payload.message) if isinstance(payload.message, str) else None,
+            },
+        )
+    except Exception:
+        pass
     auth_metadata = await authorize_request(request, payload.model_dump())
-    base_meta = _apply_auth_metadata(payload.metadata, auth_metadata)
+    base_meta = _apply_auth_metadata(payload.metadata or {}, auth_metadata)
     metadata, persona_hdr = _apply_header_metadata(request, base_meta)
 
     session_id = payload.session_id or str(uuid.uuid4())
+    # Normalize session_id to a UUID string for envelope storage compatibility
+    try:
+        _ = uuid.UUID(str(session_id))
+    except Exception:
+        try:
+            LOGGER.warning(
+                "Invalid session_id provided; generating a new UUID",
+                extra={"provided": str(session_id)},
+            )
+        except Exception:
+            pass
+        session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
@@ -2467,16 +2558,33 @@ async def enqueue_message(
         "role": "user",
     }
 
-    validate_event(event, "conversation_event")
+    try:
+        validate_event(event, "conversation_event")
+        LOGGER.info("validate_event ok", extra={"event_id": event_id})
+    except Exception as exc:
+        LOGGER.error("validate_event failed", exc_info=True, extra={"error": str(exc)})
+        raise
 
-    # Durable publish: try Kafka then fallback to Outbox
-    result = await publisher.publish(
-        "conversation.inbound",
-        event,
-        dedupe_key=event_id,
-        session_id=session_id,
-        tenant=metadata.get("tenant"),
-    )
+    # Durable publish: prefer direct Kafka; avoid outbox fallback here to reduce DB pressure
+    try:
+        result = await publisher.publish(
+            "conversation.inbound",
+            event,
+            dedupe_key=event_id,
+            session_id=session_id,
+            tenant=metadata.get("tenant"),
+            fallback=False,
+        )
+    except Exception as exc:
+        LOGGER.warning(
+            "Inbound publish failed",
+            extra={
+                "error": str(exc),
+                "session_id": session_id,
+                "event_id": event_id,
+            },
+        )
+        raise HTTPException(status_code=502, detail="Unable to enqueue message")
     try:
         LOGGER.info(
             "Published inbound message",
@@ -2492,9 +2600,15 @@ async def enqueue_message(
     if not result.get("published") and not result.get("enqueued"):
         raise HTTPException(status_code=502, detail="Unable to enqueue message")
 
-    # Cache most recent metadata for quick lookup.
-    await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
-    await store.append_event(session_id, {"type": "user", **event})
+    # Cache most recent metadata and append event to session store (best-effort; don't fail request)
+    try:
+        await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
+    except Exception:
+        LOGGER.debug("Session metadata cache write failed", exc_info=True)
+    try:
+        await store.append_event(session_id, {"type": "user", **event})
+    except Exception:
+        LOGGER.debug("Session event append failed", exc_info=True)
 
     # Optional write-through to SomaBrain with WAL emission
     if _write_through_enabled():

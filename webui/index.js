@@ -28,6 +28,8 @@ let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 let healthState = { status: "unknown", components: {} };
+// Track which contexts already received a UI-side greeting
+const _greetedContexts = new Set();
 
 // --- Gateway SSE streaming helpers (Sprint S2) ---
 let _gatewaySSE = null;
@@ -475,6 +477,7 @@ function setConnectionStatus(status, components = null) {
 
   const statusIconEl = document.getElementById("status-indicator");
   const offlineBanner = document.getElementById("offline-banner");
+  const memoryBanner = document.getElementById("memory-banner");
   if (statusIconEl) {
     statusIconEl.dataset.status = indicatorStatus;
     const tooltip = formatHealthTooltip(components, indicatorStatus);
@@ -497,6 +500,43 @@ function setConnectionStatus(status, components = null) {
       // Reset flag when back online
       window.__offlineNotified = false;
     }
+  }
+
+  // Memory-only degradation indicator
+  try {
+    let memoryDegraded = false;
+    if (components && typeof components === 'object') {
+      for (const [name, info] of Object.entries(components)) {
+        const key = String(name || '').toLowerCase();
+        const status = (info && (info.status || info.state)) || '';
+        const s = String(status).toLowerCase();
+        const looksMemory = /memory|somabrain|replicator|wm|sync/.test(key);
+        if (looksMemory && (s === 'down' || s === 'degraded' || s === 'error' || s === 'warning' || s === 'unhealthy')) {
+          memoryDegraded = true;
+          break;
+        }
+      }
+    }
+    if (memoryBanner) {
+      // Show memory banner only when overall is not fully down but memory is degraded
+      if (indicatorStatus !== 'down' && memoryDegraded) {
+        memoryBanner.classList.remove('hidden');
+        if (!window.__memoryNotified) {
+          notificationStore.frontendWarning(
+            'Memories degraded – conversation will continue but long-term memory may be delayed.',
+            'Memories degraded',
+            6,
+            'memory-health'
+          );
+          window.__memoryNotified = true;
+        }
+      } else {
+        memoryBanner.classList.add('hidden');
+        window.__memoryNotified = false;
+      }
+    }
+  } catch (e) {
+    // Non-fatal
   }
 }
 
@@ -693,6 +733,16 @@ async function poll() {
 
     lastLogVersion = response.log_version;
     lastLogGuid = response.log_guid;
+
+    // UI-side initial greeting: if no messages yet for this context, show a friendly greeting once
+    try {
+      const noMessages = (response.logs?.length || 0) === 0 && chatHistory && chatHistory.children.length === 0;
+      if (context && noMessages && !_greetedContexts.has(context)) {
+        const gid = generateGUID();
+        setMessage(gid, "agent", "Assistant", "Hi! I\'m ready when you are — type a message below to get started.", false, { initial: true });
+        _greetedContexts.add(context);
+      }
+    } catch (_) {}
   } catch (error) {
     // Reduce console noise when infra is down; mark offline and back off via scheduler
     try {

@@ -4,19 +4,34 @@ import { importComponent } from "/js/components.js";
 // Modal functionality
 const modalStack = [];
 
-// Create a single backdrop for all modals
-const backdrop = document.createElement("div");
-backdrop.className = "modal-backdrop";
-backdrop.style.display = "none";
-backdrop.style.backdropFilter = "blur(5px)";
+// Backdrop element and safe initializer (in case this module loads before <body>)
+let backdrop = null;
+function ensureBackdrop() {
+  if (backdrop && backdrop.isConnected) return backdrop;
+  backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.style.display = "none";
+  backdrop.style.backdropFilter = "blur(5px)";
 
-// Make sure we only close when clicking directly on the backdrop, not its children
-backdrop.addEventListener("click", (event) => {
-  if (event.target === backdrop) {
-    closeModal();
+  // Make sure we only close when clicking directly on the backdrop, not its children
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) {
+      closeModal();
+    }
+  });
+
+  const attach = () => {
+    if (!document.body) return false;
+    document.body.appendChild(backdrop);
+    return true;
+  };
+  if (!attach()) {
+    document.addEventListener("DOMContentLoaded", attach, { once: true });
   }
-});
-document.body.appendChild(backdrop);
+  return backdrop;
+}
+// try to create immediately if possible
+ensureBackdrop();
 
 // Function to update z-index for all modals and backdrop
 function updateModalZIndexes() {
@@ -31,20 +46,21 @@ function updateModalZIndexes() {
     modal.element.style.zIndex = baseZIndex + index * 20;
   });
 
-  // Always show backdrop
-  backdrop.style.display = "block";
+  // Ensure backdrop exists and is shown
+  const bd = ensureBackdrop();
+  bd.style.display = "block";
 
   if (modalStack.length > 1) {
     // For multiple modals, position backdrop between the top two
     const topModalIndex = modalStack.length - 1;
     const previousModalZIndex = baseZIndex + (topModalIndex - 1) * 20;
-    backdrop.style.zIndex = previousModalZIndex + 10;
+    bd.style.zIndex = previousModalZIndex + 10;
   } else if (modalStack.length === 1) {
     // For single modal, position backdrop below it
-    backdrop.style.zIndex = baseZIndex - 1;
+    bd.style.zIndex = baseZIndex - 1;
   } else {
     // No modals, hide backdrop
-    backdrop.style.display = "none";
+    bd.style.display = "none";
   }
 }
 
@@ -83,6 +99,8 @@ function createModalElement(name) {
 
 
   // Add modal to DOM
+  // Ensure backdrop/body are ready
+  ensureBackdrop();
   document.body.appendChild(newModal);
 
   // Show the modal
@@ -106,7 +124,7 @@ export function openModal(modalPath) {
   return new Promise((resolve) => {
     try {
       // Create new modal instance
-      const modal = createModalElement();
+      const modal = createModalElement(modalPath);
 
       new MutationObserver(
         (_, o) =>
@@ -142,7 +160,6 @@ export function openModal(modalPath) {
         });
 
       // Add modal to stack and show it
-      // Add modal to stack
       modalStack.push(modal);
       modal.element.classList.add("show");
       document.body.style.overflow = "hidden";
@@ -210,7 +227,8 @@ export function closeModal(modalName = null) {
   // Handle backdrop visibility and body overflow
   if (modalStack.length === 0) {
     // Hide backdrop when no modals are left
-    backdrop.style.display = "none";
+    const bd = ensureBackdrop();
+    bd.style.display = "none";
     document.body.style.overflow = "";
   } else {
     // Update modal z-indexes

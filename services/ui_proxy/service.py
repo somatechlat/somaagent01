@@ -111,8 +111,54 @@ class PollAggregator:
         log_from = int(payload.get("log_from", 0) or 0)
 
         logs = [self._event_to_log(idx, event) for idx, event in enumerate(events)]
+        # Optional greeting when no history exists
+        try:
+            greet = os.getenv("UI_GREETING_TEXT", "").strip()
+            if greet and not logs:
+                logs = [
+                    {
+                        "id": "greeting",
+                        "no": 1,
+                        "type": "response",
+                        "heading": "Welcome",
+                        "content": greet,
+                        "temp": False,
+                        "kvps": None,
+                    }
+                ]
+                total = 1
+        except Exception:
+            pass
         logs_delta = logs[log_from:]
-
+        # Optional notifications sourced from gateway health
+        notifications: List[Dict[str, Any]] = []
+        try:
+            if os.getenv("UI_NOTIFICATIONS_ENABLED", "true").lower() in {"1", "true", "yes", "on"}:
+                health = await self.client.get_health()
+                comps = (health or {}).get("components", {}) if isinstance(health, dict) else {}
+                # Memory health
+                mem = comps.get("memory_replicator") or {}
+                if mem.get("status") in {"degraded", "down"}:
+                    notifications.append({
+                        "type": "warning",
+                        "title": "Memory replication degraded",
+                        "message": mem.get("detail") or "Memory replicator lag detected.",
+                    })
+                dlq = comps.get("memory_dlq") or {}
+                if isinstance(dlq.get("detail"), str) and "depth=" in dlq.get("detail"):
+                    try:
+                        depth = int((dlq.get("detail") or "").split("depth=",1)[-1])
+                    except Exception:
+                        depth = 0
+                    if depth > 0:
+                        notifications.append({
+                            "type": "error",
+                            "title": "Memory DLQ backlog",
+                            "message": f"{depth} memory events pending retry",
+                        })
+        except Exception:
+            # Never fail poll due to notifications
+            pass
         return {
             "context": context_id or "",
             "contexts": contexts,
@@ -123,9 +169,9 @@ class PollAggregator:
             "log_progress": None,
             "log_progress_active": False,
             "paused": False,
-            "notifications": [],
+            "notifications": notifications,
             "notifications_guid": "gateway",
-            "notifications_version": 0,
+            "notifications_version": len(notifications),
             "components": None,
         }
 
@@ -164,8 +210,24 @@ class PollAggregator:
         session_id = str(session.get("session_id"))
         metadata = session.get("metadata") or {}
         name = metadata.get("title") or metadata.get("name") or session_id[-8:]
-        created_at = float(session.get("created_at", 0.0) or 0.0)
-        updated_at = float(session.get("updated_at", 0.0) or created_at)
+        def _as_epoch(val: Any) -> float:
+            # Accept numeric epoch, or ISO8601 string (e.g., "2025-10-28T01:20:08.091931Z")
+            try:
+                if isinstance(val, (int, float)):
+                    return float(val)
+                if isinstance(val, str) and val:
+                    s = val.strip()
+                    # Normalize Z suffix for fromisoformat
+                    if s.endswith("Z"):
+                        s = s[:-1] + "+00:00"
+                    from datetime import datetime
+                    return datetime.fromisoformat(s).timestamp()
+            except Exception:
+                pass
+            return 0.0
+
+        created_at = _as_epoch(session.get("created_at", 0.0))
+        updated_at = _as_epoch(session.get("updated_at", created_at)) or created_at
         return {
             "id": session_id,
             "name": name,

@@ -440,6 +440,15 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
+        # DEV-only safety net: optionally generate a mock response when no SLM API key is configured.
+        # This keeps local UI flows and Playwright tests green without external credentials.
+        try:
+            if os.getenv("DEV_FAKE_SLM", "false").lower() in {"1", "true", "yes", "on"} and not getattr(self.slm, "api_key", None):
+                last = messages[-1].content if messages else ""
+                text = f"(mock) Echo: {last[:500]}"
+                return text, {"input_tokens": 0, "output_tokens": len(text.split())}
+        except Exception:
+            pass
         # Hydrate API key on-demand if missing (pull from Gateway using internal token)
         if not getattr(self.slm, "api_key", None):
             try:
@@ -600,12 +609,15 @@ class ConversationWorker:
             tenant = enriched_metadata.get("tenant", "default")
             persona_id = event.get("persona_id")
 
-            allowed = await self.policy_enforcer.check_message_policy(
-                tenant=tenant,
-                persona_id=persona_id,
-                message=event.get("message", ""),
-                metadata=enriched_metadata,
-            )
+            enforce_policy = os.getenv("POLICY_ENFORCE_CONVERSATION", "true").lower() in {"1", "true", "yes", "on"}
+            allowed = True
+            if enforce_policy:
+                allowed = await self.policy_enforcer.check_message_policy(
+                    tenant=tenant,
+                    persona_id=persona_id,
+                    message=event.get("message", ""),
+                    metadata=enriched_metadata,
+                )
             if not allowed:
                 policy_record = {
                     "type": "policy_denied",

@@ -32,3 +32,9 @@ class GatewayClient:
 		resp = await self._client.get(url, params={"limit": str(limit)})
 		resp.raise_for_status()
 		return resp.json()
+
+	async def get_health(self) -> Dict[str, Any]:
+		url = f"{self.base_url}/v1/health"
+		resp = await self._client.get(url)
+		resp.raise_for_status()
+		return resp.json()
