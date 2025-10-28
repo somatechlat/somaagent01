@@ -1335,17 +1335,13 @@ async def auth_callback(request: Request, code: str | None = None, state: str | 
 
 @app.get("/")
 async def root_entry(request: Request) -> Response:
-    """Top-level entry: if auth required and missing → /login; else serve UI index at root."""
+    """Top-level entry: if auth required and missing → /login; else redirect to the UI index.
+
+    Returning a redirect keeps behavior stable for tests and avoids duplicate HTML serving paths.
+    """
     need_auth = _oidc_enabled() or REQUIRE_AUTH
     if need_auth and _session_claims_from_cookie(request) is None:
         return RedirectResponse(url="/login")
-    try:
-        ui_dir = (Path(__file__).resolve().parents[2] / "webui").resolve()
-        index_html = ui_dir / "index.html"
-        if index_html.exists():
-            return FileResponse(str(index_html), media_type="text/html")
-    except Exception:
-        LOGGER.debug("Failed to serve root UI index directly; falling back to /ui/index.html", exc_info=True)
     return RedirectResponse(url="/ui/index.html")
 
 
@@ -1497,14 +1493,6 @@ def get_llm_credentials_store() -> LlmCredentialsStore:
         LOGGER.error("Failed to initialize LLM credentials store", extra={"error": str(exc)})
         raise
     return _LLM_CRED_STORE
-
-
-def get_ui_settings_store() -> UiSettingsStore:
-    global _UI_SETTINGS_STORE
-    if _UI_SETTINGS_STORE is not None:
-        return _UI_SETTINGS_STORE
-    _UI_SETTINGS_STORE = UiSettingsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
-    return _UI_SETTINGS_STORE
 
 
 def get_ui_settings_store() -> UiSettingsStore:
@@ -2054,6 +2042,23 @@ class SessionEventsResponse(BaseModel):
 
 class MemoryBatchPayload(BaseModel):
     items: list[dict[str, Any]] = Field(default_factory=list, description="Memory payloads to persist")
+class ToolRequestPayload(BaseModel):
+    session_id: str = Field(..., description="Target session identifier")
+    tool_name: str = Field(..., description="Registered tool name to execute")
+    args: dict[str, Any] = Field(default_factory=dict, description="Tool input arguments")
+    persona_id: str | None = Field(default=None)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolInfo(BaseModel):
+    name: str
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
+
+
+class ToolsListResponse(BaseModel):
+    tools: list[ToolInfo]
+    count: int
 
 
 QUICK_ACTIONS: dict[str, str] = {
@@ -2551,6 +2556,15 @@ async def enqueue_message(
     auth_metadata = await authorize_request(request, payload.model_dump())
     base_meta = _apply_auth_metadata(payload.metadata or {}, auth_metadata)
     metadata, persona_hdr = _apply_header_metadata(request, base_meta)
+    # Default tenant for unauthenticated/dev requests to align with OPA policy
+    # so conversation.send is allowed in local development without identity.
+    # This only applies when auth is not required and the client did not supply
+    # an explicit tenant in headers or metadata.
+    if not REQUIRE_AUTH and not metadata.get("tenant"):
+        try:
+            metadata["tenant"] = os.getenv("SOMA_TENANT_ID", "public")
+        except Exception:
+            metadata["tenant"] = "public"
 
     session_id = payload.session_id or str(uuid.uuid4())
     # Normalize session_id to a UUID string for envelope storage compatibility
@@ -2591,7 +2605,6 @@ async def enqueue_message(
             dedupe_key=event_id,
             session_id=session_id,
             tenant=metadata.get("tenant"),
-            fallback=False,
         )
     except Exception as exc:
         LOGGER.warning(
@@ -3036,6 +3049,120 @@ async def list_sessions_endpoint(
             )
         )
     return summaries
+@app.delete("/v1/sessions/{session_id}")
+async def delete_session_endpoint(
+    session_id: str,
+    request: Request,
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
+) -> dict[str, Any]:
+    # Authz: reuse request auth to hydrate tenant for auditing
+    auth_metadata = await authorize_request(request, {"session_id": session_id})
+    _ = auth_metadata  # currently unused for decision; can enforce ownership with OpenFGA later
+    result = await store.delete_session(session_id)
+    try:
+        await cache.delete(cache.format_key(session_id))
+    except Exception:
+        LOGGER.debug("Failed to delete session cache key", exc_info=True)
+    return {"status": "deleted", "result": result}
+
+@app.post("/v1/sessions/{session_id}/reset")
+async def reset_session_endpoint(
+    session_id: str,
+    request: Request,
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+) -> dict[str, Any]:
+    auth_metadata = await authorize_request(request, {"session_id": session_id})
+    _ = auth_metadata
+    result = await store.reset_session(session_id)
+    return {"status": "reset", "result": result}
+
+@app.post("/v1/sessions/{session_id}/pause")
+async def pause_session_endpoint(
+    session_id: str,
+    payload: dict[str, Any],
+    request: Request,
+    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
+) -> dict[str, Any]:
+    # payload expects {"paused": true|false}
+    auth_metadata = await authorize_request(request, {"session_id": session_id})
+    _ = auth_metadata
+    paused = bool(payload.get("paused"))
+    try:
+        # Preserve existing persona/metadata if present; otherwise seed
+        existing = await cache.get(cache.format_key(session_id)) or {}
+        persona_id = existing.get("persona_id") or ""
+        md = dict((existing.get("metadata") or {}))
+        md["paused"] = paused
+        await cache.write_context(session_id, persona_id, md)
+    except Exception:
+        LOGGER.debug("Failed to update session paused flag in cache", exc_info=True)
+        raise HTTPException(status_code=500, detail="failed to update pause state")
+    return {"status": "ok", "paused": paused}
+
+@app.post("/v1/tool/request")
+async def request_tool_execution(
+    payload: ToolRequestPayload,
+    request: Request,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+) -> dict[str, Any]:
+    auth_metadata = await authorize_request(request, payload.model_dump())
+    metadata, persona_hdr = _apply_header_metadata(request, {**payload.metadata, **auth_metadata})
+    persona_id = payload.persona_id or persona_hdr
+    event_id = str(uuid.uuid4())
+    event = {
+        "event_id": event_id,
+        "session_id": payload.session_id,
+        "persona_id": persona_id,
+        "tool_name": payload.tool_name,
+        "args": payload.args,
+        "metadata": metadata,
+    }
+    try:
+        validate_event(event, "tool_request")
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid tool request: {exc}") from exc
+
+    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+    await publisher.publish(
+        topic,
+        event,
+        dedupe_key=event_id,
+        session_id=payload.session_id,
+        tenant=metadata.get("tenant"),
+    )
+    return {"status": "enqueued", "event_id": event_id}
+
+
+@app.get("/v1/tools", response_model=ToolsListResponse)
+async def list_tools() -> ToolsListResponse:
+    """List available tools from the in-repo tool registry.
+
+    This reflects the Tool Executor's built-in registry to keep UI/Worker prompts
+    aligned without a separate network hop.
+    """
+    try:
+        from services.tool_executor.tool_registry import ToolRegistry  # type: ignore
+    except Exception as exc:  # pragma: no cover - env dependent
+        raise HTTPException(status_code=503, detail=f"tool registry unavailable: {exc}")
+
+    reg = ToolRegistry()
+    try:
+        await reg.load_all_tools()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"failed to load tools: {exc}")
+
+    tools: list[ToolInfo] = []
+    for t in reg.list():
+        schema = None
+        try:
+            handler = getattr(t, "handler", None)
+            if handler is not None and hasattr(handler, "input_schema"):
+                schema = handler.input_schema()  # type: ignore[assignment]
+        except Exception:
+            schema = None
+        tools.append(ToolInfo(name=t.name, description=getattr(t, "description", None), parameters=schema))
+    return ToolsListResponse(tools=tools, count=len(tools))
 
 
 @app.post("/v1/keys", response_model=ApiKeyCreateResponse)
@@ -3280,8 +3407,9 @@ try:
         if index_html.exists():
             @app.get("/", include_in_schema=False)
             @app.get("/index.html", include_in_schema=False)
-            async def _root_ui() -> FileResponse:  # type: ignore
-                return FileResponse(str(index_html), media_type="text/html")
+            async def _root_ui() -> Response:  # type: ignore
+                # Always redirect to the canonical UI path to avoid duplicate roots
+                return RedirectResponse(url="/ui/index.html")
 
         # Additionally mount common asset subpaths at the root to satisfy absolute imports
         # used by the UI (e.g., "/js/...", "/public/...", "/components/...").
@@ -3297,6 +3425,26 @@ try:
             @app.get("/index.js", include_in_schema=False)
             async def _index_js() -> FileResponse:  # type: ignore
                 return FileResponse(str(index_js), media_type="application/javascript")
+
+        # Serve root-level index.css so the homepage styles load when UI is mounted at root
+        index_css = UI_DIR / "index.css"
+        if index_css.exists():
+            @app.get("/index.css", include_in_schema=False)
+            async def _index_css() -> FileResponse:  # type: ignore
+                return FileResponse(str(index_css), media_type="text/css")
+
+        # Optional: serve common root-level pages and their styles if present
+        login_html = UI_DIR / "login.html"
+        if login_html.exists():
+            @app.get("/login.html", include_in_schema=False)
+            async def _login_html() -> FileResponse:  # type: ignore
+                return FileResponse(str(login_html), media_type="text/html")
+
+        login_css = UI_DIR / "login.css"
+        if login_css.exists():
+            @app.get("/login.css", include_in_schema=False)
+            async def _login_css() -> FileResponse:  # type: ignore
+                return FileResponse(str(login_css), media_type="text/css")
 
         LOGGER.info("Mounted WebUI", extra={"path": str(UI_DIR)})
     else:

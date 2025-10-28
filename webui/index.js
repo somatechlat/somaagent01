@@ -235,6 +235,54 @@ export async function sendMessage() {
       attachmentsStore.clearAttachments();
       adjustTextareaHeight();
 
+      // Fast-path: slash command to trigger a tool request directly.
+      if (!hasAttachments && message.toLowerCase().startsWith("/tool ")) {
+        try {
+          // Format: /tool <tool_name> <json-args>
+          const parts = message.split(/\s+/, 3);
+          const toolName = parts[1];
+          const jsonArgsRaw = parts.length >= 3 ? message.slice(message.indexOf(toolName) + toolName.length).trim() : "{}";
+          let args = {};
+          if (jsonArgsRaw) {
+            try {
+              args = JSON.parse(jsonArgsRaw);
+            } catch (e) {
+              await toastFrontendError(`Invalid JSON for tool args: ${e?.message || e}`);
+              return;
+            }
+          }
+          // Ensure we have a session id to target
+          if (!context) {
+            setContext(generateGUID());
+          }
+          const trResp = await api.fetchApi("/v1/tool/request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: context,
+              tool_name: toolName,
+              args,
+              persona_id: undefined,
+              metadata: {},
+            }),
+          });
+          if (!trResp.ok) {
+            const body = await trResp.text().catch(() => "");
+            throw new Error(`Tool enqueue failed: HTTP ${trResp.status}${body ? ` — ${body}` : ""}`);
+          }
+          // Ensure SSE is connected so we get the tool result event
+          try {
+            openGatewayStream(context);
+          } catch (e) {
+            console.warn("Failed to open Gateway SSE stream:", e);
+          }
+          justToast("Tool request enqueued", "success", 1000, "tool-enqueue");
+          return; // Done handling /tool command
+        } catch (e) {
+          return toastFetchError("Error processing /tool command", e);
+        }
+      }
+
       // Include attachments in the user message
       if (hasAttachments) {
         const heading =
@@ -882,7 +930,13 @@ function updateProgress(progress, active) {
 
 globalThis.pauseAgent = async function (paused) {
   try {
-    const resp = await sendJsonData("/pause", { paused: paused, context });
+    if (!context) return;
+    const resp = await api.fetchApi(`/v1/sessions/${context}/pause`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   } catch (e) {
     globalThis.toastFetchError("Error pausing agent", e);
   }
@@ -890,9 +944,10 @@ globalThis.pauseAgent = async function (paused) {
 
 globalThis.resetChat = async function (ctxid = null) {
   try {
-    const resp = await sendJsonData("/chat_reset", {
-      context: ctxid === null ? context : ctxid,
-    });
+    const sid = ctxid === null ? context : ctxid;
+    if (!sid) return;
+    const resp = await api.fetchApi(`/v1/sessions/${sid}/reset`, { method: "POST" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     resetCounter++;
     if (ctxid === null) updateAfterScroll();
   } catch (e) {
@@ -928,7 +983,8 @@ globalThis.killChat = async function (id) {
     switchFromContext(id);
 
     // Delete the chat on the server
-    await sendJsonData("/chat_remove", { context: id });
+    const del = await api.fetchApi(`/v1/sessions/${id}`, { method: "DELETE" });
+    if (!del.ok) throw new Error(`HTTP ${del.status}`);
 
     // Update the UI manually to ensure the correct chat is removed
     // Deep clone the contexts array to prevent reference issues

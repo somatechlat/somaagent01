@@ -26,6 +26,7 @@ nav:
       - Integrations: technical-manual/integrations.md
       - Security: technical-manual/security.md
       - Data Flow: technical-manual/data-flow.md
+      - Tools, Messages & Memories: technical-manual/tools-messages-memories.md
       - Runbooks: technical-manual/runbooks/index.md
       - Components:
           - Gateway: technical-manual/components/gateway.md

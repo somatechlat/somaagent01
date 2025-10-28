@@ -33,6 +33,12 @@
       "problemMatcher": []
     },
     {
+      "label": "UI: Console Clean (pytest)",
+      "type": "shell",
+      "command": ".venv/bin/python -m pytest -q tests/e2e/test_console_clean.py",
+      "problemMatcher": []
+    },
+    {
       "label": "E2E: Quick (SSE)",
       "type": "shell",
       "command": ".venv/bin/python scripts/e2e_quick.py http://127.0.0.1:21016",
@@ -50,21 +56,21 @@
       "detail": "Requires GROQ_API_KEY in your environment",
       "command": "curl -fsS -X POST http://127.0.0.1:21016/v1/llm/credentials -H 'Content-Type: application/json' -d '{\"provider\":\"groq\",\"secret\":\"'\${GROQ_API_KEY:-}\"}'",
       "problemMatcher": []
+    },
+    {
+      "label": "mkdocs-build",
+      "type": "shell",
+      "command": "mkdocs build",
+      "args": [],
+      "problemMatcher": ["$gcc"],
+      "group": "build"
+    }
+    ,
+    {
+      "label": "E2E: Tool flow (pytest)",
+      "type": "shell",
+      "command": ".venv/bin/python -m pytest -q tests/e2e/test_tool_flow.py",
+      "problemMatcher": []
     }
   ]
-}
-{
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "mkdocs-build",
-			"type": "shell",
-			"command": "mkdocs build",
-			"args": [],
-			"problemMatcher": [
-				"$gcc"
-			],
-			"group": "build"
-		}
-	]
 }

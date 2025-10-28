@@ -38,6 +38,13 @@ class BaseTool:
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         raise NotImplementedError
 
+    def input_schema(self) -> Dict[str, Any] | None:
+        """Optional JSON Schema for tool inputs.
+
+        Returning a schema enables model-led tool calling (e.g., OpenAI tools API).
+        """
+        return None
+
 
 class EchoTool(BaseTool):
     name = "echo"
@@ -47,6 +54,16 @@ class EchoTool(BaseTool):
         if not isinstance(text, str):
             raise ToolExecutionError("echo requires a 'text' field")
         return {"message": text}
+
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Text to echo back"}
+            },
+            "required": ["text"],
+            "additionalProperties": False,
+        }
 
 
 class TimestampTool(BaseTool):
@@ -67,6 +84,18 @@ class TimestampTool(BaseTool):
             )
             now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         return {"message": now}
+
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "string",
+                    "description": "Python datetime format string (default %Y-%m-%dT%H:%M:%SZ)",
+                }
+            },
+            "additionalProperties": False,
+        }
 
 
 class CodeExecutionTool(BaseTool):
@@ -114,6 +143,21 @@ class CodeExecutionTool(BaseTool):
 
         return await asyncio.to_thread(_execute)
 
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "language": {
+                    "type": "string",
+                    "enum": ["python"],
+                    "description": "Only 'python' is supported",
+                },
+                "code": {"type": "string", "description": "Python source code to execute"},
+            },
+            "required": ["code"],
+            "additionalProperties": False,
+        }
+
 
 class FileReadTool(BaseTool):
     name = "file_read"
@@ -130,6 +174,16 @@ class FileReadTool(BaseTool):
             raise ToolExecutionError("File not found")
         content = await asyncio.to_thread(target.read_text)
         return {"path": str(target), "content": content}
+
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Relative path within work_dir"}
+            },
+            "required": ["path"],
+            "additionalProperties": False,
+        }
 
 
 class HttpFetchTool(BaseTool):
@@ -149,6 +203,17 @@ class HttpFetchTool(BaseTool):
                 "headers": dict(response.headers),
                 "text": response.text,
             }
+
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "format": "uri", "description": "URL to fetch"},
+                "timeout": {"type": "number", "minimum": 0, "default": 10.0},
+            },
+            "required": ["url"],
+            "additionalProperties": False,
+        }
 
 
 class CanvasAppendTool(BaseTool):
@@ -180,6 +245,20 @@ class CanvasAppendTool(BaseTool):
             response = await client.post(endpoint, json=payload)
             response.raise_for_status()
         return {"status": "queued", "pane": pane}
+
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "session_id": {"type": "string"},
+                "pane": {"type": "string", "default": "default"},
+                "content": {"description": "Arbitrary content to append"},
+                "metadata": {"type": "object"},
+                "persona_id": {"type": ["string", "null"]},
+            },
+            "required": ["session_id", "content"],
+            "additionalProperties": True,
+        }
 
 
 AVAILABLE_TOOLS = {
@@ -240,6 +319,19 @@ class IngestDocumentTool(BaseTool):
             "path": str(p),
             "mime": mime or "application/octet-stream",
             "text": text[:400_000],
+        }
+
+    def input_schema(self) -> Dict[str, Any] | None:
+        return {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Absolute path to ingest"},
+                "session_id": {"type": ["string", "null"]},
+                "persona_id": {"type": ["string", "null"]},
+                "metadata": {"type": "object"},
+            },
+            "required": ["path"],
+            "additionalProperties": True,
         }
 
 

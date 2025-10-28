@@ -329,6 +329,71 @@ class PostgresSessionStore(SessionStore):
             )
         return events
 
+    async def delete_session(self, session_id: str) -> dict[str, int]:
+        """Delete all timeline events and the session envelope for a session.
+
+        Returns a dict with counts for rows deleted.
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                events_deleted = await conn.execute(
+                    """
+                    DELETE FROM session_events
+                    WHERE session_id = $1
+                    """,
+                    session_id,
+                )
+                # asyncpg returns e.g. 'DELETE 5' → extract the number
+                try:
+                    ev_count = int(str(events_deleted).split(" ")[-1])
+                except Exception:
+                    ev_count = 0
+                env_deleted = await conn.execute(
+                    """
+                    DELETE FROM session_envelopes
+                    WHERE session_id = $1::uuid
+                    """,
+                    session_id,
+                )
+                try:
+                    env_count = int(str(env_deleted).split(" ")[-1])
+                except Exception:
+                    env_count = 0
+        return {"events": ev_count, "envelopes": env_count}
+
+    async def reset_session(self, session_id: str) -> dict[str, int]:
+        """Clear timeline events for a session and keep the envelope.
+
+        The envelope's analysis is cleared; metadata is preserved.
+        Returns a dict with counts for rows affected.
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                events_deleted = await conn.execute(
+                    """
+                    DELETE FROM session_events
+                    WHERE session_id = $1
+                    """,
+                    session_id,
+                )
+                try:
+                    ev_count = int(str(events_deleted).split(" ")[-1])
+                except Exception:
+                    ev_count = 0
+                # Clear analysis JSON and touch updated_at if envelope exists
+                await conn.execute(
+                    """
+                    UPDATE session_envelopes
+                    SET analysis = '{}'::jsonb,
+                        updated_at = NOW()
+                    WHERE session_id = $1::uuid
+                    """,
+                    session_id,
+                )
+        return {"events": ev_count}
+
     async def list_sessions(
         self,
         *,

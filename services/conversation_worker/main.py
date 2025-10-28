@@ -9,6 +9,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List
+import json
 
 from jsonschema import ValidationError
 from prometheus_client import Counter, Histogram, start_http_server
@@ -43,6 +44,7 @@ import httpx
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 import mimetypes
 from pathlib import Path
+from services.tool_executor.tool_registry import ToolRegistry
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -221,6 +223,9 @@ class ConversationWorker:
         self.escalation_fallback_enabled = os.getenv(
             "ESCALATION_FALLBACK_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
+
+        # Tool registry for model-led orchestration (no network hop)
+        self.tool_registry = ToolRegistry()
 
     async def _extract_text_from_path(self, path: str) -> str:
         """Best-effort text extraction for common file types.
@@ -509,6 +514,274 @@ class ConversationWorker:
                 if not content:
                     raise RuntimeError("Empty response from Gateway invoke")
                 return content, usage
+
+    def _tools_openai_schema(self) -> list[dict[str, Any]]:
+        """Build OpenAI-style tools array from local registry."""
+        tools: list[dict[str, Any]] = []
+        try:
+            # Lazy load at first use in case dependencies are heavy
+            if not list(self.tool_registry.list()):
+                # load tools if not already loaded
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # best-effort async call inside running loop
+                    # Use ensure_future to avoid blocking
+                    loop.create_task(self.tool_registry.load_all_tools())
+                else:
+                    # Synchronous wait when not in event loop (unlikely here)
+                    loop.run_until_complete(self.tool_registry.load_all_tools())
+        except Exception:
+            LOGGER.debug("Failed to load tools for schema", exc_info=True)
+        for t in self.tool_registry.list():
+            try:
+                schema = None
+                handler = getattr(t, "handler", None)
+                if handler and hasattr(handler, "input_schema"):
+                    schema = handler.input_schema()
+                tools.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": t.name,
+                            "description": getattr(t, "description", None) or "",
+                            "parameters": schema or {"type": "object"},
+                        },
+                    }
+                )
+            except Exception:
+                continue
+        return tools
+
+    async def _wait_for_tool_result(
+        self,
+        *,
+        session_id: str,
+        request_id: str,
+        timeout_seconds: float = 20.0,
+        poll_interval: float = 0.25,
+    ) -> dict[str, Any] | None:
+        """Poll session events for a matching tool result with the request_id in metadata."""
+        deadline = time.time() + max(0.1, timeout_seconds)
+        while time.time() < deadline:
+            try:
+                events = await self.store.list_events(session_id, limit=100)
+            except Exception:
+                events = []
+            for ev in events:
+                try:
+                    if ev.get("type") != "tool":
+                        continue
+                    meta = ev.get("metadata") or {}
+                    if meta.get("request_id") == request_id:
+                        return ev
+                except Exception:
+                    continue
+            await asyncio.sleep(poll_interval)
+        return None
+
+    async def _generate_with_tools(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        messages: List[ChatMessage],
+        slm_kwargs: Dict[str, Any],
+        analysis_metadata: Dict[str, Any],
+        base_metadata: Dict[str, Any],
+    ) -> tuple[str, dict[str, int]]:
+        """Invoke the LLM with tool schemas; if the model emits tool calls, execute them and continue."""
+        # Ensure tool schemas are provided to the model
+        tool_defs = self._tools_openai_schema()
+        if tool_defs:
+            slm_kwargs = dict(slm_kwargs)
+            extra_kwargs = dict(slm_kwargs.get("kwargs") or slm_kwargs.get("metadata") or {})
+            extra_kwargs["tools"] = tool_defs
+            extra_kwargs["tool_choice"] = "auto"
+            slm_kwargs["metadata"] = extra_kwargs
+
+        # Stream and detect tool calls
+        url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        payload = {
+            "role": "dialogue",
+            "session_id": session_id,
+            "persona_id": persona_id,
+            "tenant": (base_metadata or {}).get("tenant"),
+            "messages": [m.__dict__ for m in messages],
+            "overrides": {
+                k: v
+                for k, v in {
+                    "model": slm_kwargs.get("model"),
+                    "base_url": slm_kwargs.get("base_url"),
+                    "temperature": slm_kwargs.get("temperature"),
+                    "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                }.items()
+                if v is not None
+            },
+        }
+        headers = {"X-Internal-Token": self._internal_token or ""}
+
+        buffer: list[str] = []
+        usage = {"input_tokens": 0, "output_tokens": 0}
+        tool_calls: list[dict[str, Any]] = []
+        tc_args_acc: dict[int, dict[str, Any]] = {}
+        tc_name_acc: dict[int, str] = {}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            async with client.stream("POST", url, json=payload, headers=headers) as resp:
+                if resp.is_error:
+                    body = await resp.aread()
+                    raise RuntimeError(
+                        f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}"
+                    )
+                async for line in resp.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                    except Exception:
+                        continue
+                    choices = chunk.get("choices")
+                    if not choices:
+                        continue
+                    ch0 = choices[0]
+                    delta = ch0.get("delta", {})
+                    # Accumulate content for normal chat
+                    content_piece = delta.get("content")
+                    if content_piece:
+                        buffer.append(content_piece)
+                        metadata = _compose_outbound_metadata(
+                            base_metadata,
+                            source="slm",
+                            status="streaming",
+                            analysis=analysis_metadata,
+                            extra={"stream_index": len(buffer)},
+                        )
+                        streaming_event = {
+                            "event_id": str(uuid.uuid4()),
+                            "session_id": session_id,
+                            "persona_id": persona_id,
+                            "role": "assistant",
+                            "message": "".join(buffer),
+                            "metadata": metadata,
+                        }
+                        await self.publisher.publish(
+                            self.settings["outbound"],
+                            streaming_event,
+                            dedupe_key=streaming_event.get("event_id"),
+                            session_id=session_id,
+                            tenant=(metadata or {}).get("tenant"),
+                        )
+                    # Detect tool call deltas
+                    tc = delta.get("tool_calls")
+                    if isinstance(tc, list) and tc:
+                        for item in tc:
+                            try:
+                                idx = int(item.get("index", 0))
+                            except Exception:
+                                idx = 0
+                            func = (item.get("function") or {})
+                            name_part = func.get("name")
+                            if name_part:
+                                tc_name_acc[idx] = name_part
+                            args_part = func.get("arguments")
+                            if isinstance(args_part, str) and args_part:
+                                prev = tc_args_acc.get(idx, {}).get("_raw", "")
+                                tc_args_acc.setdefault(idx, {})["_raw"] = prev + args_part
+                    # Capture usage if present
+                    chunk_usage = chunk.get("usage")
+                    if isinstance(chunk_usage, dict):
+                        usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
+                        usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                    # If finish_reason indicates tool calls, stop accumulating content and break
+                    if ch0.get("finish_reason") == "tool_calls":
+                        break
+
+        # If we received tool call data, execute tools; otherwise return text
+        if tc_args_acc or tc_name_acc:
+            # Compose final tool_calls list
+            max_index = max(list(tc_name_acc.keys()) + list(tc_args_acc.keys())) if (tc_name_acc or tc_args_acc) else -1
+            for i in range(max_index + 1):
+                name = tc_name_acc.get(i) or ""
+                raw_args = (tc_args_acc.get(i) or {}).get("_raw", "")
+                tool_calls.append({"name": name, "arguments": raw_args})
+
+            # Execute each tool sequentially and append results to the message list
+            for call in tool_calls:
+                tool_name = call.get("name") or ""
+                raw = call.get("arguments") or "{}"
+                try:
+                    args = json.loads(raw)
+                except Exception:
+                    args = {"_raw": raw}
+
+                req_id = str(uuid.uuid4())
+                metadata = {
+                    **dict(base_metadata or {}),
+                    "tenant": (base_metadata or {}).get("tenant", "default"),
+                    "request_id": req_id,
+                    "source": "tool_orchestrator",
+                }
+                event = {
+                    "event_id": req_id,
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "tool_name": tool_name,
+                    "args": args,
+                    "metadata": metadata,
+                }
+                try:
+                    await self.publisher.publish(
+                        os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                        event,
+                        dedupe_key=req_id,
+                        session_id=session_id,
+                        tenant=metadata.get("tenant"),
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to publish tool request", exc_info=True)
+                    continue
+
+                result_event = await self._wait_for_tool_result(
+                    session_id=session_id, request_id=req_id, timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20"))
+                )
+                # Append a summarised tool result back into the message context
+                if result_event:
+                    payload = result_event.get("payload")
+                    try:
+                        tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                    except Exception:
+                        tool_text = str(payload)
+                    messages.append(
+                        ChatMessage(
+                            role="system",
+                            content=f"Tool {tool_name} result: {tool_text[:4000]}",
+                        )
+                    )
+                else:
+                    messages.append(
+                        ChatMessage(
+                            role="system",
+                            content=f"Tool {tool_name} did not return a result in time.",
+                        )
+                    )
+
+            # After injecting tool results, ask the model for the final answer (non-stream)
+            return await self._generate_response(
+                session_id=session_id,
+                persona_id=persona_id,
+                messages=messages,
+                slm_kwargs=slm_kwargs,
+                analysis_metadata=analysis_metadata,
+                base_metadata=base_metadata,
+            )
+        else:
+            text = "".join(buffer)
+            if not text:
+                raise RuntimeError("Empty response from streaming Gateway/SLM")
+            return text, usage
 
     async def _invoke_escalation_response(
         self,
@@ -1053,7 +1326,7 @@ class ConversationWorker:
             if path == "slm":
                 response_start = time.time()
                 try:
-                    response_text, usage = await self._generate_response(
+                    response_text, usage = await self._generate_with_tools(
                         session_id=session_id,
                         persona_id=persona_id,
                         messages=messages,
