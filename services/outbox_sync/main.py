@@ -94,10 +94,8 @@ class OutboxSyncWorker:
             await self._maybe_probe_health()
             effective_batch, effective_interval = self._compute_effective_limits()
             EFFECTIVE_BATCH.set(effective_batch)
-            if self._health_state == "down":
-                # Pause publishes while SomaBrain is down; rely on health probe to recover
-                await asyncio.sleep(max(effective_interval, self._health_interval))
-                continue
+            # Note: Even if SomaBrain is down, continue publishing Kafka outbox messages.
+            # Health only adjusts batch/interval; do not pause publishes entirely.
             msgs = await self.store.claim_batch(limit=effective_batch)
             if not msgs:
                 await asyncio.sleep(effective_interval)
@@ -172,7 +170,16 @@ class OutboxSyncWorker:
         for msg in messages:
             try:
                 with OUTBOX_PUBLISH_LATENCY.time():
-                    await self.bus.publish(msg.topic, msg.payload)
+                    payload = msg.payload
+                    # Ensure payload is a dict; some drivers may return JSONB as text
+                    if isinstance(payload, str):
+                        try:
+                            import json as _json
+                            payload = _json.loads(payload)
+                        except Exception:
+                            # Fall back to wrapping string payload
+                            payload = {"payload": str(msg.payload)}
+                    await self.bus.publish(msg.topic, payload)
             except KafkaError as kerr:
                 await self._handle_failure(msg, kerr)
             except Exception as exc:  # safety net

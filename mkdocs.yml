@@ -29,6 +29,8 @@ nav:
       - Contribution Workflow: development-manual/contribution-workflow.md
       - Coding Standards: development-manual/coding-standards.md
       - Testing Guidelines: development-manual/testing-guidelines.md
+      - UI Troubleshooting: development-manual/ui-troubleshooting.md
+      - Runbook (Local Stack): development-manual/runbook.md
       - API Reference: development-manual/api-reference.md
   - Onboarding Manual:
       - Overview: onboarding-manual/index.md

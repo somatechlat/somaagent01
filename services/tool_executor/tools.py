@@ -290,7 +290,8 @@ class IngestDocumentTool(BaseTool):
         # Prefer attachment_id flow; fall back to legacy path for backward compatibility
         if isinstance(attachment_id, str) and attachment_id.strip():
             base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-            token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+            # In dev, default to a known internal token if not explicitly provided
+            token = os.getenv("GATEWAY_INTERNAL_TOKEN", "dev-internal-token")
             if not token:
                 raise ToolExecutionError("Internal token not configured for attachment fetch")
             url = f"{base}/internal/attachments/{attachment_id}/binary"

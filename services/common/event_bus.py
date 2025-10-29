@@ -74,7 +74,7 @@ class KafkaEventBus:
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
 
-    async def publish(self, topic: str, payload: dict[str, Any]) -> None:
+    async def publish(self, topic: str, payload: Any) -> None:
         producer = await self._ensure_producer()
         with TRACER.start_as_current_span(
             "kafka.publish",
@@ -84,6 +84,18 @@ class KafkaEventBus:
                 "messaging.destination": topic,
             },
         ):
+            # Normalize payload to a dict for trace context injection
+            if not isinstance(payload, dict):
+                try:
+                    if isinstance(payload, (bytes, bytearray)):
+                        payload = json.loads(payload.decode("utf-8"))
+                    elif isinstance(payload, str):
+                        payload = json.loads(payload)
+                    else:
+                        # Best-effort conversion via JSON round-trip
+                        payload = json.loads(json.dumps(payload, ensure_ascii=False, default=str))
+                except Exception:
+                    payload = {"payload": str(payload)}
             inject_trace_context(payload)
             message = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             await producer.send_and_wait(topic, message)

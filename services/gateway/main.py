@@ -3748,6 +3748,257 @@ async def health_check(
 
 
 # -----------------------------
+# Minimal UI/platform endpoints (CSRF, config, SSE, UI JSON)
+# -----------------------------
+
+@app.get("/v1/csrf")
+async def get_csrf() -> JSONResponse:
+    """Return a CSRF token for browser requests.
+
+    In this build, CSRF validation is not enforced server-side; the token is
+    provided to satisfy the UI's fetch wrapper and may be validated by a future
+    middleware. The value is random per-call.
+    """
+    try:
+        token = secrets.token_urlsafe(24)
+    except Exception:
+        token = uuid.uuid4().hex
+    return JSONResponse({"token": token})
+
+
+@app.get("/ui/config.json")
+async def ui_config_json() -> JSONResponse:
+    """Serve a small config shim that the Web UI reads on startup.
+
+    Keys here are merged into window.__SA01_CONFIG__ in the browser.
+    """
+    uploads_cfg = {}
+    try:
+        doc = await get_ui_settings_store().get()
+        if isinstance(doc, dict):
+            uploads_cfg = dict(doc.get("uploads") or {})
+    except Exception:
+        uploads_cfg = {}
+    def _bool(name: str, default: bool) -> bool:
+        try:
+            raw = os.getenv(name)
+            if raw is None:
+                return default
+            return str(raw).lower() in {"true", "1", "yes", "on"}
+        except Exception:
+            return default
+    cfg = {
+        "api_base": "/v1",
+        "deployment_mode": APP_SETTINGS.deployment_mode,
+        "write_through": _bool("GATEWAY_WRITE_THROUGH", True),
+        "uploads_enabled": bool(uploads_cfg.get("uploads_enabled", True)),
+        "version": os.getenv("SA01_VERSION", "dev"),
+    }
+    return JSONResponse(cfg)
+
+
+@app.get("/v1/session/{session_id}/events")
+async def sse_session_events(session_id: str) -> StreamingResponse:
+    """Server-Sent Events stream of outbound conversation events for a session.
+
+    Streams events from the Kafka topic configured as CONVERSATION_OUTBOUND and
+    filters by session_id.
+    """
+    topic = os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound")
+    group_base = f"sse-{session_id}"
+
+    async def event_iter() -> AsyncIterator[bytes]:
+        # Use a unique consumer group per connection to avoid inter-client interference
+        group_id = f"{group_base}-{uuid.uuid4().hex[:8]}"
+        try:
+            async for payload in iterate_topic(topic=topic, group_id=group_id, settings=_kafka_settings()):
+                try:
+                    sid = payload.get("session_id") or (payload.get("payload") or {}).get("session_id")
+                    if sid != session_id:
+                        continue
+                    data = json.dumps(payload, ensure_ascii=False)
+                    yield (f"data: {data}\n\n").encode("utf-8")
+                except Exception:
+                    # Skip malformed payloads
+                    continue
+        except Exception:
+            # Close stream on iterator failure
+            return
+
+    headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(event_iter(), media_type="text/event-stream", headers=headers)
+
+
+@app.post("/memory_dashboard")
+async def ui_memory_dashboard(request: Request) -> JSONResponse:
+    """Compatibility JSON endpoint for the Memory Dashboard UI component.
+
+    Accepts POST with a JSON body: { action: string, ... }. Supported actions:
+      - get_current_memory_subdir
+      - get_memory_subdirs
+      - search
+      - delete
+      - bulk_delete
+      - update
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    action = str(body.get("action") or "").strip().lower()
+
+    # Helper: current and available subdirs derived from UI settings
+    async def _current_subdir() -> str:
+        try:
+            doc = await get_ui_settings_store().get()
+            if isinstance(doc, dict) and isinstance(doc.get("agent_memory_subdir"), str):
+                s = (doc.get("agent_memory_subdir") or "").strip()
+                return s or "default"
+        except Exception:
+            pass
+        return "default"
+
+    async def _list_subdirs() -> list[str]:
+        out = ["default"]
+        try:
+            doc = await get_ui_settings_store().get()
+            if isinstance(doc, dict):
+                for k in ("agent_memory_subdir", "agent_knowledge_subdir"):
+                    v = (doc.get(k) or "").strip() if isinstance(doc.get(k), str) else ""
+                    if v and v not in out:
+                        out.append(v)
+        except Exception:
+            pass
+        return out
+
+    if action == "get_current_memory_subdir":
+        return JSONResponse({"success": True, "memory_subdir": await _current_subdir()})
+
+    if action == "get_memory_subdirs":
+        return JSONResponse({"success": True, "subdirs": await _list_subdirs()})
+
+    if action == "search":
+        # Map dashboard filters to replica queries
+        memory_subdir = str(body.get("memory_subdir") or "default")
+        search = str(body.get("search") or "").strip() or None
+        area = str(body.get("area") or "").strip() or None
+        try:
+            limit = int(body.get("limit") or 1000)
+        except Exception:
+            limit = 1000
+        # Namespace mapping: treat memory_subdir as namespace for replica filter (best-effort)
+        namespace = None if memory_subdir in {"default", ""} else memory_subdir
+        rows = []
+        try:
+            replica = get_replica_store()
+            rows = await replica.list_memories(limit=min(max(limit, 1), 5000), namespace=namespace, q=search)
+        except Exception as exc:
+            return JSONResponse({"success": False, "error": f"search failed: {type(exc).__name__}"}, status_code=200)
+
+        def _area_of(row: Any) -> str:
+            try:
+                md = (row.payload or {}).get("metadata") or {}
+                return str(md.get("area") or "main")
+            except Exception:
+                return "main"
+
+        mems = []
+        for r in rows:
+            if area and _area_of(r) != area:
+                continue
+            payload = r.payload or {}
+            md = payload.get("metadata") or {}
+            mems.append({
+                "id": r.id,
+                "event_id": r.event_id,
+                "area": _area_of(r),
+                "timestamp": (r.created_at.isoformat() if getattr(r, "created_at", None) else "unknown"),
+                "content": payload.get("content") or payload.get("message") or "",
+                "content_full": payload.get("content") or payload.get("message") or "",
+                "tags": md.get("tags") or [],
+                "knowledge_source": bool(md.get("source") == "knowledge"),
+                "source_file": md.get("source_file") or None,
+                "metadata": md,
+            })
+        # Basic counts for UI
+        total = len(mems)
+        knowledge_count = sum(1 for m in mems if m.get("knowledge_source"))
+        conversation_count = total - knowledge_count
+        return JSONResponse({
+            "success": True,
+            "memories": mems,
+            "total_count": total,
+            "total_db_count": total,
+            "knowledge_count": knowledge_count,
+            "conversation_count": conversation_count,
+            "message": None,
+        })
+
+    if action == "delete":
+        try:
+            mem_id = int(body.get("memory_id"))
+        except Exception:
+            return JSONResponse({"success": False, "error": "invalid memory_id"})
+        try:
+            store = get_replica_store()
+            pool = await store._ensure_pool()  # type: ignore[attr-defined]
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM memory_replica WHERE id = $1", mem_id)
+            return JSONResponse({"success": True})
+        except Exception as exc:
+            return JSONResponse({"success": False, "error": str(exc)})
+
+    if action == "bulk_delete":
+        ids = body.get("memory_ids")
+        if not isinstance(ids, list) or not ids:
+            return JSONResponse({"success": False, "error": "memory_ids required"})
+        try:
+            as_ints = [int(i) for i in ids]
+        except Exception:
+            return JSONResponse({"success": False, "error": "invalid ids"})
+        try:
+            store = get_replica_store()
+            pool = await store._ensure_pool()  # type: ignore[attr-defined]
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM memory_replica WHERE id = ANY($1)", as_ints)
+            return JSONResponse({"success": True})
+        except Exception as exc:
+            return JSONResponse({"success": False, "error": str(exc)})
+
+    if action == "update":
+        edited = body.get("edited") or {}
+        try:
+            mem_id = int((edited or {}).get("id") or body.get("memory_id"))
+        except Exception:
+            return JSONResponse({"success": False, "error": "invalid id"})
+        # Update the replica payload's content and metadata fields (best-effort)
+        try:
+            store = get_replica_store()
+            pool = await store._ensure_pool()  # type: ignore[attr-defined]
+            async with pool.acquire() as conn:
+                # Fetch current payload
+                row = await conn.fetchrow("SELECT payload FROM memory_replica WHERE id = $1", mem_id)
+                if not row:
+                    return JSONResponse({"success": False, "error": "not found"})
+                payload = row["payload"] or {}
+                # Apply edits
+                new_payload = dict(payload)
+                if isinstance(edited, dict):
+                    if "content" in edited:
+                        new_payload["content"] = edited["content"]
+                    if "metadata" in edited and isinstance(edited["metadata"], dict):
+                        md = dict(new_payload.get("metadata") or {})
+                        md.update(edited["metadata"])  # type: ignore[arg-type]
+                        new_payload["metadata"] = md
+                await conn.execute("UPDATE memory_replica SET payload = $1::jsonb WHERE id = $2", json.dumps(new_payload, ensure_ascii=False), mem_id)
+            return JSONResponse({"success": True})
+        except Exception as exc:
+            return JSONResponse({"success": False, "error": str(exc)})
+
+    return JSONResponse({"success": False, "error": f"unknown action: {action or 'none'}"}, status_code=200)
+
+
+# -----------------------------
 # DLQ depth refresher (background)
 # -----------------------------
 
