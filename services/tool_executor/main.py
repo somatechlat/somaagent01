@@ -34,6 +34,7 @@ from services.tool_executor.resource_manager import default_limits, ResourceMana
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
+from services.common.audit_store import from_env as audit_store_from_env, AuditStore as _AuditStore
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -164,6 +165,13 @@ class ToolExecutor:
                 "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
             ),
         }
+        self._audit_store: _AuditStore | None = None
+
+    def get_audit_store(self) -> _AuditStore:
+        if self._audit_store is not None:
+            return self._audit_store
+        self._audit_store = audit_store_from_env()
+        return self._audit_store
 
     async def start(self) -> None:
         await self.resources.initialize()
@@ -177,6 +185,11 @@ class ToolExecutor:
             await ensure_mw_outbox_schema(self.mem_outbox)
         except Exception:
             LOGGER.debug("Memory write outbox schema ensure failed", exc_info=True)
+        # Ensure audit schema (best-effort)
+        try:
+            await self.get_audit_store().ensure_schema()
+        except Exception:
+            LOGGER.debug("Audit store schema ensure failed (tool-executor)", exc_info=True)
         await self.bus.consume(
             self.streams["requests"],
             self.streams["group"],
@@ -194,6 +207,38 @@ class ToolExecutor:
             LOGGER.error("Invalid tool request", extra={"event": event})
             TOOL_REQUEST_COUNTER.labels(tool_label, "invalid").inc()
             return
+
+        # Audit start (best-effort)
+        try:
+            from opentelemetry import trace as _trace
+            ctx = _trace.get_current_span().get_span_context()
+            trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+        except Exception:
+            trace_id_hex = None
+        try:
+            arg_keys = []
+            try:
+                arg_keys = sorted(list((event.get("args") or {}).keys()))
+            except Exception:
+                arg_keys = []
+            await self.get_audit_store().log(
+                request_id=None,
+                trace_id=trace_id_hex,
+                session_id=session_id,
+                tenant=tenant,
+                subject=str(persona_id) if persona_id else None,
+                action="tool.execute.start",
+                resource=str(tool_name),
+                target_id=event.get("event_id"),
+                details={
+                    "args_keys": arg_keys,
+                },
+                diff=None,
+                ip=None,
+                user_agent=None,
+            )
+        except Exception:
+            LOGGER.debug("Failed to write audit log for tool.execute.start", exc_info=True)
 
         metadata = dict(event.get("metadata", {}))
         args = dict(event.get("args", {}))
@@ -217,6 +262,24 @@ class ToolExecutor:
                     execution_time=0.0,
                     metadata=metadata,
                 )
+                # Audit finish - policy error
+                try:
+                    await self.get_audit_store().log(
+                        request_id=None,
+                        trace_id=trace_id_hex,
+                        session_id=session_id,
+                        tenant=tenant,
+                        subject=str(persona_id) if persona_id else None,
+                        action="tool.execute.finish",
+                        resource=str(tool_name),
+                        target_id=event.get("event_id"),
+                        details={"status": "error", "reason": "policy_error"},
+                        diff=None,
+                        ip=None,
+                        user_agent=None,
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to write audit log for tool.execute.finish (policy_error)", exc_info=True)
                 return
             decision_label = "allowed" if allow else "denied"
             POLICY_DECISIONS.labels(tool_label, decision_label).inc()
@@ -230,6 +293,23 @@ class ToolExecutor:
                     execution_time=0.0,
                     metadata=metadata,
                 )
+                try:
+                    await self.get_audit_store().log(
+                        request_id=None,
+                        trace_id=trace_id_hex,
+                        session_id=session_id,
+                        tenant=tenant,
+                        subject=str(persona_id) if persona_id else None,
+                        action="tool.execute.finish",
+                        resource=str(tool_name),
+                        target_id=event.get("event_id"),
+                        details={"status": "blocked", "reason": "policy_denied"},
+                        diff=None,
+                        ip=None,
+                        user_agent=None,
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to write audit log for tool.execute.finish (blocked)", exc_info=True)
                 return
 
         tool = self.tool_registry.get(tool_name)
@@ -242,6 +322,23 @@ class ToolExecutor:
                 metadata=metadata,
             )
             TOOL_REQUEST_COUNTER.labels(tool_label, "unknown_tool").inc()
+            try:
+                await self.get_audit_store().log(
+                    request_id=None,
+                    trace_id=trace_id_hex,
+                    session_id=session_id,
+                    tenant=tenant,
+                    subject=str(persona_id) if persona_id else None,
+                    action="tool.execute.finish",
+                    resource=str(tool_name),
+                    target_id=event.get("event_id"),
+                    details={"status": "error", "reason": "unknown_tool"},
+                    diff=None,
+                    ip=None,
+                    user_agent=None,
+                )
+            except Exception:
+                LOGGER.debug("Failed to write audit log for tool.execute.finish (unknown_tool)", exc_info=True)
             return
 
         try:
@@ -258,6 +355,23 @@ class ToolExecutor:
             )
             TOOL_REQUEST_COUNTER.labels(tool_label, "execution_error").inc()
             TOOL_INFLIGHT.labels(tool_label).dec()
+            try:
+                await self.get_audit_store().log(
+                    request_id=None,
+                    trace_id=trace_id_hex,
+                    session_id=session_id,
+                    tenant=tenant,
+                    subject=str(persona_id) if persona_id else None,
+                    action="tool.execute.finish",
+                    resource=str(tool_name),
+                    target_id=event.get("event_id"),
+                    details={"status": "error", "reason": "execution_error"},
+                    diff=None,
+                    ip=None,
+                    user_agent=None,
+                )
+            except Exception:
+                LOGGER.debug("Failed to write audit log for tool.execute.finish (execution_error)", exc_info=True)
             return
         except Exception as exc:
             LOGGER.error(
@@ -277,6 +391,23 @@ class ToolExecutor:
             )
             TOOL_REQUEST_COUNTER.labels(tool_label, "unexpected_error").inc()
             TOOL_INFLIGHT.labels(tool_label).dec()
+            try:
+                await self.get_audit_store().log(
+                    request_id=None,
+                    trace_id=trace_id_hex,
+                    session_id=session_id,
+                    tenant=tenant,
+                    subject=str(persona_id) if persona_id else None,
+                    action="tool.execute.finish",
+                    resource=str(tool_name),
+                    target_id=event.get("event_id"),
+                    details={"status": "error", "reason": "unexpected_error"},
+                    diff=None,
+                    ip=None,
+                    user_agent=None,
+                )
+            except Exception:
+                LOGGER.debug("Failed to write audit log for tool.execute.finish (unexpected_error)", exc_info=True)
             return
         else:
             TOOL_INFLIGHT.labels(tool_label).dec()
@@ -294,6 +425,24 @@ class ToolExecutor:
             execution_time=result.execution_time,
             metadata=result_metadata,
         )
+        # Audit finish success
+        try:
+            await self.get_audit_store().log(
+                request_id=None,
+                trace_id=trace_id_hex,
+                session_id=session_id,
+                tenant=tenant,
+                subject=str(persona_id) if persona_id else None,
+                action="tool.execute.finish",
+                resource=str(tool_name),
+                target_id=event.get("event_id"),
+                details={"status": result.status, "latency_ms": int(result.execution_time * 1000)},
+                diff=None,
+                ip=None,
+                user_agent=None,
+            )
+        except Exception:
+            LOGGER.debug("Failed to write audit log for tool.execute.finish (success)", exc_info=True)
 
     async def _publish_result(
         self,

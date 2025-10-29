@@ -2,6 +2,73 @@ name: CI
 
 on:
   push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run pytest (audit-focused)
+        run: |
+          pytest -q tests/test_gateway_tool_request_audit.py tests/test_audit_export_endpoint.py tests/test_gateway_llm_audit.py tests/test_tool_executor_audit.py
+
+  test-webui-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        working-directory: webui
+        run: |
+          npm init -y > /dev/null 2>&1 || true
+          npm install --no-audit --no-fund --save-dev @playwright/test@^1.48.0
+          npx playwright install --with-deps
+
+      - name: Start static server
+        working-directory: webui
+        run: |
+          python -m http.server 4172 &
+          echo $! > /tmp/http_server_pid
+          sleep 2
+
+      - name: Run Playwright smoke
+        working-directory: webui
+        env:
+          BASE_URL: http://localhost:4172
+        run: |
+          npx playwright test --reporter=dot
+
+      - name: Stop static server
+        if: always()
+        run: |
+          if [ -f /tmp/http_server_pid ]; then kill "$(cat /tmp/http_server_pid)" || true; fi
+name: CI
+
+on:
+  push:
     branches: [ main, V0.1.1 ]
   pull_request:
     branches: [ main, V0.1.1 ]

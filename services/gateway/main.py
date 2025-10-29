@@ -42,6 +42,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
 from pydantic import BaseModel, Field, field_validator
+from jsonschema import ValidationError
 from werkzeug.utils import secure_filename
 import hashlib
 from pathlib import Path
@@ -49,6 +50,7 @@ import subprocess
 import socket
 import contextlib
 from urllib.parse import urlencode
+import copy
 
 SERVICE_NAME = "gateway"
 
@@ -69,6 +71,7 @@ from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.attachments_store import AttachmentsStore
 from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
 from services.common.memory_write_outbox import MemoryWriteOutbox
@@ -779,6 +782,12 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Attachments store schema ensure failed", exc_info=True)
 
+    # Ensure audit schema exists (best-effort)
+    try:
+        await get_audit_store().ensure_schema()
+    except Exception:
+        LOGGER.debug("Audit store schema ensure failed", exc_info=True)
+
     # Ensure session schema exists so SSE/poll can function even before worker runs
     try:
         await ensure_session_schema(get_session_store())
@@ -1400,6 +1409,7 @@ def get_publisher() -> DurablePublisher:
 
 
 _SESSION_CACHE: RedisSessionCache | None = None
+_AUDIT_STORE: _AuditStore | None = None
 
 
 def get_session_cache() -> RedisSessionCache:
@@ -1439,6 +1449,19 @@ def get_session_store() -> PostgresSessionStore:
             pass
         _SESSION_STORE = PostgresSessionStore(dsn=dsn)
     return _SESSION_STORE
+
+
+def get_audit_store() -> _AuditStore:
+    """Process-wide audit store singleton.
+
+    Uses Postgres by default; for tests AUDIT_STORE_MODE=memory provides an
+    in-memory implementation.
+    """
+    global _AUDIT_STORE
+    if _AUDIT_STORE is not None:
+        return _AUDIT_STORE
+    _AUDIT_STORE = audit_store_from_env()
+    return _AUDIT_STORE
 
 
 def get_api_key_store() -> ApiKeyStore:
@@ -2631,6 +2654,37 @@ async def enqueue_message(
     if not result.get("published") and not result.get("enqueued"):
         raise HTTPException(status_code=502, detail="Unable to enqueue message")
 
+    # Audit: message enqueued (best-effort; do not block request)
+    try:
+        from opentelemetry import trace as _trace
+        ctx = _trace.get_current_span().get_span_context()
+        trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+    except Exception:
+        trace_id_hex = None
+    try:
+        req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+        await get_audit_store().log(
+            request_id=req_id,
+            trace_id=trace_id_hex,
+            session_id=session_id,
+            tenant=metadata.get("tenant"),
+            subject=auth_metadata.get("subject"),
+            action="message.enqueue",
+            resource="conversation.message",
+            target_id=event_id,
+            details={
+                "persona_id": event.get("persona_id"),
+                "attachments": len(payload.attachments or []),
+                "published": bool(result.get("published")),
+                "enqueued": bool(result.get("enqueued")),
+            },
+            diff=None,
+            ip=getattr(request.client, "host", None) if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception:
+        LOGGER.debug("Failed to write audit log for message.enqueue", exc_info=True)
+
     # Cache most recent metadata and append event to session store (best-effort; don't fail request)
     try:
         await _cache_session_metadata(cache, session_id, payload.persona_id, metadata)
@@ -3133,6 +3187,36 @@ async def request_tool_execution(
         session_id=payload.session_id,
         tenant=metadata.get("tenant"),
     )
+    # Audit enqueue (best-effort)
+    try:
+        from opentelemetry import trace as _trace
+        ctx = _trace.get_current_span().get_span_context()
+        trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+    except Exception:
+        trace_id_hex = None
+    try:
+        req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+        await get_audit_store().log(
+            request_id=req_id,
+            trace_id=trace_id_hex,
+            session_id=payload.session_id,
+            tenant=metadata.get("tenant"),
+            subject=auth_metadata.get("subject"),
+            action="tool.request.enqueue",
+            resource="tool.request",
+            target_id=event_id,
+            details={
+                "tool_name": payload.tool_name,
+                "args_keys": sorted(list((payload.args or {}).keys())),
+                "metadata_keys": sorted(list((metadata or {}).keys())),
+                "topic": topic,
+            },
+            diff=None,
+            ip=getattr(request.client, "host", None) if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception:
+        LOGGER.debug("Failed to write audit log for tool.request.enqueue", exc_info=True)
     return {"status": "enqueued", "event_id": event_id}
 
 
@@ -4318,7 +4402,7 @@ class UiSectionsPayload(BaseModel):
 
 
 @app.post("/v1/ui/settings/sections")
-async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
+async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[str, Any]:
     """Accept UI 'sections' and persist to Gateway stores.
 
     - Persists agent settings (ui_settings table).
@@ -4333,6 +4417,7 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
     creds: list[tuple[str, str]] = []
     uploads_cfg: Dict[str, Any] = {}
     av_cfg: Dict[str, Any] = {}
+    explicit_provider: str | None = None
 
     def _as_env_kv(text: str) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -4353,6 +4438,8 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
                 continue
             if fid in {"agent_profile", "agent_memory_subdir", "agent_knowledge_subdir"} and val:
                 agent[fid] = val
+            elif fid == "chat_model_provider" and isinstance(val, str):
+                explicit_provider = val.strip().lower() or None
             elif fid == "chat_model_name" and isinstance(val, str):
                 model_profile["model"] = val.strip()
             elif fid == "chat_model_api_base" and isinstance(val, str):
@@ -4395,6 +4482,7 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
     # Persist settings (merge with existing document)
     ui_store = get_ui_settings_store()
     current_doc = await ui_store.get()
+    original_doc = copy.deepcopy(current_doc) if isinstance(current_doc, dict) else {}
     if not isinstance(current_doc, dict):
         current_doc = {}
     # Agent settings are top-level keys
@@ -4407,16 +4495,61 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
         current_doc["antivirus"] = {**dict(current_doc.get("antivirus") or {}), **av_cfg}
     await ui_store.set(current_doc)
 
-    # Upsert dialogue model profile
+    # Prepare audit context now that the new doc is set
+    try:
+        auth_meta = await authorize_request(request, {"action": "settings.update"})
+    except Exception:
+        auth_meta = {}
+
+    # Validate and upsert dialogue model profile
     if model_profile:
-        # Normalize base_url before saving
-        normalized_base = _normalize_llm_base_url(str(model_profile.get("base_url", "")))
+        # Basic field validation
+        model_name = (str(model_profile.get("model")) or "").strip()
+        base_url_raw = (str(model_profile.get("base_url", "")) or "").strip()
+        if not model_name:
+            raise HTTPException(status_code=400, detail="chat_model_name is required")
+        # Normalize base_url before saving (allows empty -> provider default)
+        normalized_base = _normalize_llm_base_url(base_url_raw)
+
+        # Determine provider for credential validation
+        provider = explicit_provider or ""
+        host = normalized_base.lower()
+        if not provider:
+            if "groq" in host:
+                provider = "groq"
+            elif "openrouter" in host:
+                provider = "openrouter"
+            elif "openai" in host:
+                provider = "openai"
+        # If we recognized a provider (or user explicitly selected one), ensure a key exists
+        if provider:
+            try:
+                creds_store = get_llm_credentials_store()
+                have = await creds_store.has(provider)
+            except Exception:
+                have = False
+            if not have and not any(c[0] == provider for c in creds):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing API key for provider '{provider}'. Add it in the API Keys section (field id: api_key_{provider}).",
+                )
+
+        # Clamp temperature if provided via kwargs
+        try:
+            temp = float(model_profile.get("temperature", 0.2))
+            if temp < 0.0:
+                temp = 0.0
+            if temp > 2.0:
+                temp = 2.0
+        except Exception:
+            temp = 0.2
+
         mp = ModelProfile(
             role="dialogue",
             deployment_mode=APP_SETTINGS.deployment_mode,
-            model=str(model_profile.get("model", "")),
+            model=model_name,
             base_url=normalized_base,
-            temperature=float(model_profile.get("temperature", 0.2)),
+            temperature=temp,
             kwargs=(model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else None),
         )
         await PROFILE_STORE.upsert(mp)
@@ -4429,6 +4562,59 @@ async def ui_sections_set(payload: UiSectionsPayload) -> dict[str, Any]:
                 await store.set(provider, secret)
             except Exception as exc:
                 LOGGER.warning("Failed to store LLM credentials", extra={"provider": provider, "error": str(exc)})
+
+    # Emit audit log (masking secrets) – best-effort
+    try:
+        def _mask_value(k: str, v: Any) -> Any:
+            if not isinstance(k, str):
+                return v
+            k_lower = k.lower()
+            if k_lower.startswith("api_key_") or any(s in k_lower for s in ("secret", "password", "token")):
+                return "************"
+            return v
+
+        def _masked(d: dict) -> dict:
+            out: dict[str, Any] = {}
+            for k, v in (d or {}).items():
+                if isinstance(v, dict):
+                    out[k] = _masked(v)
+                else:
+                    out[k] = _mask_value(k, v)
+            return out
+
+        before = _masked(original_doc if isinstance(original_doc, dict) else {})
+        after = _masked(current_doc if isinstance(current_doc, dict) else {})
+        # naive diff: include both before/after for now
+        diff = {"before": before, "after": after}
+
+        # Trace id from current span
+        try:
+            from opentelemetry import trace as _trace
+            ctx = _trace.get_current_span().get_span_context()
+            trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+        except Exception:
+            trace_id_hex = None
+
+        req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+        await get_audit_store().log(
+            request_id=req_id,
+            trace_id=trace_id_hex,
+            session_id=None,
+            tenant=auth_meta.get("tenant"),
+            subject=auth_meta.get("subject"),
+            action="settings.update",
+            resource="ui.settings",
+            target_id=None,
+            details={
+                "providers_updated": [p for p, _ in creds],
+                "explicit_provider": explicit_provider,
+            },
+            diff=diff,
+            ip=getattr(request.client, "host", None) if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception:
+        LOGGER.debug("Failed to write audit log for settings.update", exc_info=True)
 
     # Return refreshed sections
     return await ui_sections_get()
@@ -4760,6 +4946,83 @@ async def get_llm_credentials(provider: str, request: Request, store: Annotated[
 # Centralized LLM Invoke (single source of truth)
 # -----------------------------
 
+# -----------------------------
+# Audit admin endpoints
+# -----------------------------
+
+
+class AuditExportQuery(BaseModel):
+    request_id: Optional[str] = None
+    session_id: Optional[str] = None
+    tenant: Optional[str] = None
+    action: Optional[str] = None
+
+
+@app.get("/v1/admin/audit/export")
+async def audit_export(
+    request: Request,
+    request_id: Optional[str] = Query(None),
+    session_id: Optional[str] = Query(None),
+    tenant: Optional[str] = Query(None),
+    action: Optional[str] = Query(None),
+) -> StreamingResponse:
+    """Export audit events as NDJSON (admin-only).
+
+    Filters are optional; when absent, returns recent events in ascending id order.
+    """
+    await _enforce_admin_rate_limit(request)
+    auth = await authorize_request(request, {
+        "request_id": request_id,
+        "session_id": session_id,
+        "tenant": tenant,
+        "action": action,
+    })
+    _require_admin_scope(auth)
+
+    store = get_audit_store()
+
+    async def _streamer():
+        import json as _json
+        after_id: Optional[int] = None
+        yielded = 0
+        # simple bounded window to avoid infinite streams
+        max_rows = 10000
+        while yielded < max_rows:
+            rows = await store.list(
+                request_id=request_id,
+                session_id=session_id,
+                tenant=tenant,
+                action=action,
+                limit=500,
+                after_id=after_id,
+            )
+            if not rows:
+                break
+            for r in rows:
+                obj = {
+                    "id": r.id,
+                    "ts": r.ts.isoformat() + "Z",
+                    "request_id": r.request_id,
+                    "trace_id": r.trace_id,
+                    "session_id": r.session_id,
+                    "tenant": r.tenant,
+                    "subject": r.subject,
+                    "action": r.action,
+                    "resource": r.resource,
+                    "target_id": r.target_id,
+                    "ip": r.ip,
+                    "user_agent": r.user_agent,
+                    "details": r.details,
+                    "diff": r.diff,
+                }
+                line = _json.dumps(obj, ensure_ascii=False) + "\n"
+                yield line.encode("utf-8")
+                yielded += 1
+                after_id = r.id
+            if len(rows) < 500:
+                break
+    return StreamingResponse(_streamer(), headers={"Content-Type": "application/x-ndjson"})
+
 class LlmInvokeMessage(BaseModel):
     role: str
     content: str
@@ -4836,6 +5099,17 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     client = _gateway_slm_client()
     # Inject credential into this ephemeral client
     client.api_key = meta["_secret"]
+    # Audit/tracing context
+    try:
+        from opentelemetry import trace as _trace
+        ctx = _trace.get_current_span().get_span_context()
+        trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+    except Exception:
+        trace_id_hex = None
+
+    req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+
+    start = time.time()
     try:
         content, usage = await client.chat(
             messages,
@@ -4846,14 +5120,90 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         )
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code if exc.response is not None else 502
+        # Audit error
+        try:
+            await get_audit_store().log(
+                request_id=req_id,
+                trace_id=trace_id_hex,
+                session_id=payload.session_id,
+                tenant=payload.tenant,
+                subject=None,
+                action="llm.invoke",
+                resource="llm.chat",
+                target_id=None,
+                details={
+                    "provider": meta.get("_provider"),
+                    "model": model,
+                    "base_url": base_url,
+                    "status": "error",
+                    "http_status": status,
+                    "error_type": type(exc).__name__,
+                },
+                diff=None,
+                ip=getattr(request.client, "host", None) if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+        except Exception:
+            LOGGER.debug("Failed to write audit log for llm.invoke error", exc_info=True)
         raise HTTPException(status_code=status, detail=f"provider_error: {exc}") from exc
     except httpx.RequestError as exc:
+        # Audit timeout
+        try:
+            await get_audit_store().log(
+                request_id=req_id,
+                trace_id=trace_id_hex,
+                session_id=payload.session_id,
+                tenant=payload.tenant,
+                subject=None,
+                action="llm.invoke",
+                resource="llm.chat",
+                target_id=None,
+                details={
+                    "provider": meta.get("_provider"),
+                    "model": model,
+                    "base_url": base_url,
+                    "status": "timeout",
+                    "error_type": type(exc).__name__,
+                },
+                diff=None,
+                ip=getattr(request.client, "host", None) if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+        except Exception:
+            LOGGER.debug("Failed to write audit log for llm.invoke timeout", exc_info=True)
         raise HTTPException(status_code=504, detail=f"provider_timeout: {exc}") from exc
     finally:
         try:
             await client.close()
         except Exception:
             pass
+
+    # Successful audit
+    try:
+        elapsed = max(0.0, time.time() - start)
+        await get_audit_store().log(
+            request_id=req_id,
+            trace_id=trace_id_hex,
+            session_id=payload.session_id,
+            tenant=payload.tenant,
+            subject=None,
+            action="llm.invoke",
+            resource="llm.chat",
+            target_id=None,
+            details={
+                "provider": meta.get("_provider"),
+                "model": model,
+                "base_url": base_url,
+                "status": "ok",
+                "latency_ms": int(elapsed * 1000),
+                "usage": usage,
+            },
+            diff=None,
+            ip=getattr(request.client, "host", None) if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception:
+        LOGGER.debug("Failed to write audit log for llm.invoke", exc_info=True)
 
     return {
         "content": content,
@@ -4875,6 +5225,16 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
     client = _gateway_slm_client()
     client.api_key = meta["_secret"]
 
+    # Audit/tracing context
+    try:
+        from opentelemetry import trace as _trace
+        ctx = _trace.get_current_span().get_span_context()
+        trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+    except Exception:
+        trace_id_hex = None
+    req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+    start = time.time()
+
     async def streamer():
         try:
             async for chunk in client.chat_stream(
@@ -4890,10 +5250,59 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 yield line.encode("utf-8")
         except httpx.HTTPStatusError as exc:
             detail = f"provider_error: {exc}"
+            # Audit error
+            try:
+                status = exc.response.status_code if exc.response is not None else 502
+                await get_audit_store().log(
+                    request_id=req_id,
+                    trace_id=trace_id_hex,
+                    session_id=payload.session_id,
+                    tenant=payload.tenant,
+                    subject=None,
+                    action="llm.invoke.stream",
+                    resource="llm.chat",
+                    target_id=None,
+                    details={
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "base_url": base_url,
+                        "status": "error",
+                        "http_status": status,
+                        "error_type": type(exc).__name__,
+                    },
+                    diff=None,
+                    ip=getattr(request.client, "host", None) if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
+            except Exception:
+                LOGGER.debug("Failed to write audit log for llm.invoke.stream error", exc_info=True)
             msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
             yield msg.encode("utf-8")
         except httpx.RequestError as exc:
             detail = f"provider_timeout: {exc}"
+            try:
+                await get_audit_store().log(
+                    request_id=req_id,
+                    trace_id=trace_id_hex,
+                    session_id=payload.session_id,
+                    tenant=payload.tenant,
+                    subject=None,
+                    action="llm.invoke.stream",
+                    resource="llm.chat",
+                    target_id=None,
+                    details={
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "base_url": base_url,
+                        "status": "timeout",
+                        "error_type": type(exc).__name__,
+                    },
+                    diff=None,
+                    ip=getattr(request.client, "host", None) if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
+            except Exception:
+                LOGGER.debug("Failed to write audit log for llm.invoke.stream timeout", exc_info=True)
             msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
             yield msg.encode("utf-8")
         finally:
@@ -4902,6 +5311,31 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 await client.close()
             except Exception:
                 pass
+            # Success audit at end of stream
+            try:
+                elapsed = max(0.0, time.time() - start)
+                await get_audit_store().log(
+                    request_id=req_id,
+                    trace_id=trace_id_hex,
+                    session_id=payload.session_id,
+                    tenant=payload.tenant,
+                    subject=None,
+                    action="llm.invoke.stream",
+                    resource="llm.chat",
+                    target_id=None,
+                    details={
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "base_url": base_url,
+                        "status": "ok",
+                        "latency_ms": int(elapsed * 1000),
+                    },
+                    diff=None,
+                    ip=getattr(request.client, "host", None) if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
+            except Exception:
+                LOGGER.debug("Failed to write audit log for llm.invoke.stream", exc_info=True)
             yield b"data: [DONE]\n\n"
 
     headers = {"Content-Type": "text/event-stream"}

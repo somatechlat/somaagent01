@@ -6,6 +6,7 @@ repo_name: somaagent01
 
 nav:
   - Home: README.md
+  - Roadmap: roadmap/canonical-roadmap.md
   - User Manual:
       - Overview: user-manual/index.md
       - Installation: user-manual/installation.md
