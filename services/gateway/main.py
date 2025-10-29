@@ -4704,6 +4704,98 @@ async def download_attachment(att_id: str, request: Request):
     return StreamingResponse(streamer(), headers=headers)
 
 
+def _require_internal_token(request: Request) -> dict[str, str]:
+    """Validate internal service token for internal-only endpoints.
+
+    Returns a dict with optional tenant context derived from headers.
+    """
+    provided = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
+    expected = os.getenv("GATEWAY_INTERNAL_TOKEN", "")
+    if not expected or not provided or provided != expected:
+        raise HTTPException(status_code=403, detail="forbidden (internal)")
+    # Optional tenant scoping header for additional checks
+    tenant = request.headers.get("x-tenant-id") or request.headers.get("X-Tenant-Id")
+    return {"tenant": tenant} if tenant else {}
+
+
+@app.get("/internal/attachments/{att_id}/binary")
+async def internal_download_attachment(att_id: str, request: Request):
+    """Internal service-to-service attachment fetch.
+
+    - Requires X-Internal-Token header matching GATEWAY_INTERNAL_TOKEN.
+    - Optional X-Tenant-Id header to enforce tenant scoping against stored metadata.
+    - Unlike the public endpoint, quarantined attachments are still retrievable for ingestion
+      (status is surfaced via X-Attachment-Status), leaving policy to the caller.
+    """
+    _ctx = _require_internal_token(request)
+    try:
+        att_uuid = uuid.UUID(att_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid attachment id")
+
+    store = get_attachments_store()
+    meta = await store.get_metadata(att_uuid)
+    if not meta:
+        raise HTTPException(status_code=404, detail="not found")
+
+    # If caller supplied a tenant, enforce equality
+    tenant_hdr = _ctx.get("tenant")
+    if tenant_hdr and (meta.tenant or "") != tenant_hdr:
+        raise HTTPException(status_code=403, detail="tenant mismatch")
+
+    content = await store.get_content(att_uuid)
+    if content is None:
+        raise HTTPException(status_code=410, detail="content unavailable")
+
+    headers = {
+        "Content-Type": meta.mime or "application/octet-stream",
+        "Content-Disposition": f"attachment; filename={meta.filename}",
+        "X-Attachment-Status": meta.status,
+        "X-Attachment-Size": str(meta.size),
+    }
+
+    async def streamer():
+        view = memoryview(content)
+        chunk_size = 64 * 1024
+        for i in range(0, len(view), chunk_size):
+            yield bytes(view[i : i + chunk_size])
+
+    return StreamingResponse(streamer(), headers=headers)
+
+
+@app.head("/internal/attachments/{att_id}/binary")
+async def internal_head_attachment(att_id: str, request: Request) -> Response:
+    """Return metadata headers for an attachment without the body (internal-only).
+
+    Mirrors the GET endpoint's header contract to enable size/status checks
+    without transferring content. Requires the same internal token and
+    optional tenant scoping.
+    """
+    _ctx = _require_internal_token(request)
+    try:
+        att_uuid = uuid.UUID(att_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid attachment id")
+
+    store = get_attachments_store()
+    meta = await store.get_metadata(att_uuid)
+    if not meta:
+        raise HTTPException(status_code=404, detail="not found")
+
+    tenant_hdr = _ctx.get("tenant")
+    if tenant_hdr and (meta.tenant or "") != tenant_hdr:
+        raise HTTPException(status_code=403, detail="tenant mismatch")
+
+    headers = {
+        "Content-Type": meta.mime or "application/octet-stream",
+        "Content-Disposition": f"attachment; filename={meta.filename}",
+        "X-Attachment-Status": meta.status,
+        "X-Attachment-Size": str(meta.size),
+    }
+    # No body for HEAD response; just return headers
+    return Response(status_code=200, headers=headers)
+
+
 # -----------------------------
 # Routing endpoint (from router)
 # -----------------------------

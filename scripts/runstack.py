@@ -216,6 +216,13 @@ async def main(argv: List[str]) -> int:
         if finished_name == "signal":
             return 0
         return return_code or 0
+    except Exception as exc:
+        # Ensure we always try to stop any started processes on error
+        try:
+            await _shutdown(processes, f"exception: {exc}")
+        finally:
+            # Re-raise so the caller sees the failure and a non-zero exit code propagates
+            raise
 
 
 if __name__ == "__main__":

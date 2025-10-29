@@ -268,16 +268,16 @@ const model = {
     // Support Gateway attachments API paths directly
     const path = String(filename || "");
     if (path.startsWith("/v1/attachments/")) return path;
-    // Legacy fallback (dev)
-    return `/image_get?path=/git/agent-zero/tmp/uploads/${encodeURIComponent(filename)}`;
+    // No legacy fallback: only Gateway attachments paths are supported
+    return null;
   },
 
   getServerFileUrl(filename) {
     // Support Gateway attachments API paths directly
     const path = String(filename || "");
     if (path.startsWith("/v1/attachments/")) return path;
-    // Legacy fallback (dev)
-    return `/git/agent-zero/tmp/uploads/${encodeURIComponent(filename)}`;
+    // No legacy fallback
+    return null;
   },
 
   // Check if file is an image based on extension
@@ -299,8 +299,8 @@ const model = {
         // For images, use blob URL for current session preview
         return attachment.url || URL.createObjectURL(attachment.file);
       } else {
-        // For non-image files, use server URL to get appropriate icon
-        return this.getServerImgUrl(attachment.name);
+        // For non-image files, we don't have a server URL until upload; use generic icon
+        return this.getFilePreviewUrl("document");
       }
     }
     return null;
@@ -420,22 +420,8 @@ const model = {
       if (typeof filename === "string" && filename.startsWith("/v1/attachments/")) {
         window.open(filename, "_blank");
       } else {
-        const path = this.getServerFileUrl(filename);
-        const response = await fetchApi("/download_work_dir_file?path=" + path);
-
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-
-        const blob = await response.blob();
-
-        const link = document.createElement("a");
-        link.href = window.URL.createObjectURL(blob);
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(link.href);
+        // No legacy fallback available
+        throw new Error("Attachment is not available for download yet.");
       }
     } catch (error) {
       window.toastFetchError("Error downloading file", error);

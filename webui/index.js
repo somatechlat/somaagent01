@@ -90,7 +90,9 @@ function openGatewayStream(sessionId) {
         }
       }
 
-      const heading = role === "assistant" ? "Assistant" : (role === "tool" ? "Tool" : "Info");
+      // Match UI proxy defaults so headings are consistent across SSE and poll
+      // user -> "User message" (not used here), assistant -> "Soma response", tool -> "Tool", else -> "Info"
+      const heading = role === "assistant" ? "Soma response" : (role === "tool" ? "Tool" : "Info");
       const type = role === "assistant" ? "response" : (role === "tool" ? "tool" : "info");
       const kvps = { ...meta };
       setMessage(stableId, type, heading, content, isStreaming, kvps);

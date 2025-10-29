@@ -422,6 +422,190 @@ class ConversationWorker:
             size = 0
         return size > int(threshold_mb * 1024 * 1024)
 
+    def _attachment_id_from_str(self, value: str) -> str | None:
+        try:
+            s = (value or "").strip()
+            if not s:
+                return None
+            import re
+            # Raw UUID
+            if re.fullmatch(r"[0-9a-fA-F-]{36}", s):
+                return s
+            m = re.search(r"/v1/attachments/([0-9a-fA-F-]{36})", s)
+            if m:
+                return m.group(1)
+        except Exception:
+            return None
+        return None
+
+    async def _attachment_head(self, att_id: str, tenant: str) -> dict[str, Any]:
+        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        url = f"{base}/internal/attachments/{att_id}/binary"
+        headers = {"X-Internal-Token": token or ""}
+        if tenant:
+            headers["X-Tenant-Id"] = tenant
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.head(url, headers=headers)
+                if resp.status_code in {404, 405}:
+                    return {}
+                size = int(resp.headers.get("x-attachment-size") or 0)
+                return {"size": size}
+        except Exception:
+            return {}
+
+    def _should_offload_ingest_id(self, size: int | None) -> bool:
+        try:
+            threshold_mb = float(os.getenv("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
+        except ValueError:
+            threshold_mb = 5.0
+        if size is None or size <= 0:
+            return True
+        return size > int(threshold_mb * 1024 * 1024)
+
+    async def _fetch_attachment_bytes(self, *, att_id: str, tenant: str) -> tuple[bytes, str, str]:
+        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        if not token:
+            raise RuntimeError("Internal token not configured")
+        url = f"{base}/internal/attachments/{att_id}/binary"
+        headers = {"X-Internal-Token": token}
+        if tenant:
+            headers["X-Tenant-Id"] = str(tenant)
+        async with httpx.AsyncClient(timeout=float(os.getenv("WORKER_FETCH_TIMEOUT", "10"))) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 404:
+                raise FileNotFoundError("attachment not found")
+            resp.raise_for_status()
+            data = resp.content
+            mime = resp.headers.get("content-type", "application/octet-stream")
+            filename = "attachment"
+            try:
+                cd = resp.headers.get("content-disposition", "")
+                if "filename=" in cd:
+                    filename = cd.split("filename=", 1)[1].strip().strip('"')
+            except Exception:
+                pass
+            return data, mime, filename
+
+    async def _extract_text_from_blob(self, *, data: bytes, mime: str, filename: str) -> str:
+        try:
+            if (mime or "").startswith("text/") or mime in {"application/json", "application/xml"}:
+                try:
+                    return data.decode("utf-8", errors="ignore")[:200_000]
+                except Exception:
+                    return data.decode("latin-1", errors="ignore")[:200_000]
+            if mime == "application/pdf" or (filename or "").lower().endswith(".pdf"):
+                try:
+                    import fitz  # type: ignore
+                    import io as _io
+                    parts: list[str] = []
+                    with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
+                        for page in doc:
+                            parts.append(page.get_text("text"))
+                    return "\n".join(parts)[:400_000]
+                except Exception:
+                    return ""
+            if (mime or "").startswith("image/"):
+                try:
+                    from PIL import Image  # type: ignore
+                    import pytesseract  # type: ignore
+                    import io as _io
+                    img = Image.open(_io.BytesIO(data))
+                    return pytesseract.image_to_string(img)[:200_000]
+                except Exception:
+                    return ""
+            return ""
+        except Exception:
+            return ""
+
+    async def _ingest_attachment_by_id(self, *, att_id: str, session_id: str, persona_id: str | None, tenant: str, metadata: dict[str, Any]) -> None:
+        try:
+            data, mime, filename = await self._fetch_attachment_bytes(att_id=att_id, tenant=tenant)
+            text = await self._extract_text_from_blob(data=data, mime=mime, filename=filename)
+            if not text:
+                return
+            path_ref = f"/v1/attachments/{att_id}"
+            payload = {
+                "id": str(uuid.uuid4()),
+                "type": "attachment_ingest",
+                "role": "user",
+                "content": text,
+                "attachments": [path_ref],
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "metadata": {
+                    **dict(metadata or {}),
+                    "source": "ingest",
+                    "agent_profile_id": (metadata or {}).get("agent_profile_id"),
+                    "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                },
+            }
+            payload["idempotency_key"] = generate_for_memory_payload(payload)
+            allow_memory = False
+            try:
+                allow_memory = await self.policy_client.evaluate(
+                    PolicyRequest(
+                        tenant=tenant,
+                        persona_id=persona_id,
+                        action="memory.write",
+                        resource="somabrain",
+                        context={
+                            "payload_type": payload.get("type"),
+                            "role": payload.get("role"),
+                            "session_id": session_id,
+                            "metadata": payload.get("metadata", {}),
+                        },
+                    )
+                )
+            except Exception:
+                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+            if not allow_memory:
+                return
+            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            try:
+                result = await self.soma.remember(payload)
+            except Exception:
+                try:
+                    await self.mem_outbox.enqueue(
+                        payload=payload,
+                        tenant=tenant,
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        idempotency_key=payload.get("idempotency_key"),
+                        dedupe_key=str(payload.get("id")),
+                    )
+                except Exception:
+                    pass
+                return
+            try:
+                wal_event = {
+                    "type": "memory.write",
+                    "role": "user",
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "tenant": tenant,
+                    "payload": payload,
+                    "result": {
+                        "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                        "trace_id": (result or {}).get("trace_id"),
+                        "request_id": (result or {}).get("request_id"),
+                    },
+                    "timestamp": time.time(),
+                }
+                await self.publisher.publish(
+                    wal_topic,
+                    wal_event,
+                    dedupe_key=str(payload.get("id")),
+                    session_id=session_id,
+                    tenant=tenant,
+                )
+            except Exception:
+                LOGGER.debug("Failed to publish memory WAL (ingest by id)", exc_info=True)
+        except Exception:
+            LOGGER.debug("Attachment ingest by id failed", exc_info=True)
+
     async def _stream_response_via_gateway(
         self,
         *,
@@ -1109,46 +1293,88 @@ class ConversationWorker:
                 # Best-effort: ingest attachments in background (parse → remember)
                 try:
                     attach_list = event.get("attachments") or []
-                    for apath in attach_list:
-                        if not isinstance(apath, str) or not apath.strip():
+                    for a in attach_list:
+                        if not isinstance(a, str) or not a.strip():
                             continue
-                        fullpath = apath.strip()
-                        # Offload large/expensive files to tool-executor, otherwise ingest inline
-                        if self._should_offload_ingest(fullpath):
-                            try:
-                                tool_event = {
-                                    "event_id": str(uuid.uuid4()),
-                                    "session_id": session_id,
-                                    "persona_id": event.get("persona_id"),
-                                    "tool_name": "document_ingest",
-                                    "args": {
-                                        "path": fullpath,
+                        raw = a.strip()
+                        att_id = self._attachment_id_from_str(raw)
+                        if att_id:
+                            # ID-based path
+                            size_info = await self._attachment_head(att_id, tenant)
+                            offload = self._should_offload_ingest_id(size_info.get("size") if isinstance(size_info, dict) else None)
+                            if offload:
+                                try:
+                                    tool_event = {
+                                        "event_id": str(uuid.uuid4()),
                                         "session_id": session_id,
                                         "persona_id": event.get("persona_id"),
-                                        "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
-                                    },
-                                    "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
-                                }
-                                topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
-                                await self.publisher.publish(
-                                    topic,
-                                    tool_event,
-                                    dedupe_key=tool_event.get("event_id"),
-                                    session_id=session_id,
-                                    tenant=tenant,
+                                        "tool_name": "document_ingest",
+                                        "args": {
+                                            "attachment_id": att_id,
+                                            "session_id": session_id,
+                                            "persona_id": event.get("persona_id"),
+                                            "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                        },
+                                        "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                    }
+                                    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    await self.publisher.publish(
+                                        topic,
+                                        tool_event,
+                                        dedupe_key=tool_event.get("event_id"),
+                                        session_id=session_id,
+                                        tenant=tenant,
+                                    )
+                                except Exception:
+                                    LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                            else:
+                                asyncio.create_task(
+                                    self._ingest_attachment_by_id(
+                                        att_id=att_id,
+                                        session_id=session_id,
+                                        persona_id=event.get("persona_id"),
+                                        tenant=tenant,
+                                        metadata=enriched_metadata,
+                                    )
                                 )
-                            except Exception:
-                                LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
                         else:
-                            asyncio.create_task(
-                                self._ingest_attachment(
-                                    path=fullpath,
-                                    session_id=session_id,
-                                    persona_id=event.get("persona_id"),
-                                    tenant=tenant,
-                                    metadata=enriched_metadata,
+                            # Legacy path-based fallback
+                            fullpath = raw
+                            if self._should_offload_ingest(fullpath):
+                                try:
+                                    tool_event = {
+                                        "event_id": str(uuid.uuid4()),
+                                        "session_id": session_id,
+                                        "persona_id": event.get("persona_id"),
+                                        "tool_name": "document_ingest",
+                                        "args": {
+                                            "path": fullpath,
+                                            "session_id": session_id,
+                                            "persona_id": event.get("persona_id"),
+                                            "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                        },
+                                        "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                    }
+                                    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    await self.publisher.publish(
+                                        topic,
+                                        tool_event,
+                                        dedupe_key=tool_event.get("event_id"),
+                                        session_id=session_id,
+                                        tenant=tenant,
+                                    )
+                                except Exception:
+                                    LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                            else:
+                                asyncio.create_task(
+                                    self._ingest_attachment(
+                                        path=fullpath,
+                                        session_id=session_id,
+                                        persona_id=event.get("persona_id"),
+                                        tenant=tenant,
+                                        metadata=enriched_metadata,
+                                    )
                                 )
-                            )
                 except Exception:
                     LOGGER.debug("Scheduling attachment ingest failed", exc_info=True)
                 else:

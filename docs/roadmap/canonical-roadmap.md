@@ -22,7 +22,14 @@ Core services (verified under `services/`):
 
 Foundational infra:
 - Kafka (event backbone), Redis (state/cache), Postgres (durable store), Vault/Env (secrets), OpenFGA (authz), OPA (policy), OpenTelemetry (traces/metrics/logs), Prometheus (metrics), Grafana/Tempo/Loki (observability).
-- SomaBrain reachable at `http://host.docker.internal:9999` via `SOMA_BASE_URL` (Compose).
+- SomaBrain reachable at `http://host.docker.internal:9696` via `SOMA_BASE_URL` (Compose).
+
+Centralized configuration and tools:
+- Gateway hosts a central Tool Catalog and runtime config. It provides:
+	- A single registry of tools, schemas, and per-tenant enable flags and execution profiles (timeouts, concurrency, resource limits).
+	- A UI-safe runtime config projection (`/v1/runtime-config`) and a public tool list (`/v1/tools`) without secrets.
+	- Distribution to services via ETag/TTL-cached internal endpoints. Services fail closed if the catalog is unavailable (strict mode).
+	- Provider secrets centralized in Gateway; services invoke providers through Gateway, not with raw keys.
 
 ## Data and Event Contracts (canonical)
 
@@ -40,6 +47,11 @@ Canonical message envelope (Kafka and internal HTTP JSON):
 Persistence contract:
 - All `message.user` and `message.assistant` events must be persisted in Postgres and written through to SomaBrain; outbox/WAL ensures durability and at-least-once delivery; consumers implement idempotency.
 - Attachments are referenced by stable URIs: `/v1/attachments/{id}`; metadata saved with content hash and MIME.
+
+Attachment ingestion contract:
+- All ingestion paths use `attachment_id` (no filesystem paths). A service-only fetch streams content from Gateway (policy-enforced; tenant-scoped).
+- The `document_ingest` tool accepts `{ attachment_id, tenant_id, content_type?, size_bytes? }` and returns `{ text, metadata }` with extraction details.
+- Large files use external object storage via signed URLs (optional), with metadata retained in Postgres.
 
 SSE/WS streaming contract:
 - Streamed events carry `event` and `data` fields; `data` includes `meta` fields above.
@@ -82,6 +94,10 @@ Acceptance criteria:
 - Recall returns deterministic slices tied to `session_id` or semantic query with stable relevance signals.
 - End-to-end traces for any message include spans across all hops and appear in Tempo/Jaeger.
 
+Strict-mode defaults:
+- Fail-closed policies in dev and prod: when a dependency or authorization check fails, the system surfaces a clear error to the UI and audit log; no silent fallbacks.
+- Dev mirrors prod posture (no mocks); warnings and health banners appear in UI when components degrade.
+
 ## Auditing and Compliance
 
 - Immutable audit log: append-only audit events (`who`, `what`, `when`, `why`, `how`) stored in Postgres and replicated to cold storage.
@@ -98,36 +114,37 @@ Acceptance criteria:
 
 ## Rollout Plan and Milestones
 
-Phase 0 — Hardening (now)
-- Enforce provider credential validation on settings POST; single-model semantics; normalize base URLs.
-- Centralize LLM invocations in Gateway with internal token; Worker shim for legacy tests.
-- Standardize uploads and SSE/WS streaming; fix SPA routing/assets.
+Phase 0 — Correctness and Strictness
+- Align SomaBrain port to 9696 across code/docs/compose; health checks green when SomaBrain is up.
+- Enable strict-mode defaults (fail-closed on policy/dependency failures) and surface banners in UI; remove legacy fallbacks.
 
-Phase 1 — Traceability and Audit
-- Propagate `traceparent` across HTTP and Kafka; include `request_id`, `idempotency_key` headers; add span naming across services.
-- Implement audit event sink and admin export; mask secrets in settings diffs.
+Phase 1 — Attachment Ingestion by ID
+- Add internal service fetch endpoint for attachments by ID and migrate Worker and `document_ingest` to `attachment_id` contracts.
+- Update UI previews/downloads to route via Gateway `/v1/attachments/{id}` and eliminate filesystem path references.
 
-Phase 2 — Memory Guarantees
-- Strengthen outbox idempotency keys and dedupe; DLQ with replay tooling; replica lag health gates.
-- Add recall surfaces and pre-invoke enrichment flow; feedback capture pipeline.
+Phase 2 — Central Tool Catalog and Runtime Config
+- Implement Tool Catalog in Gateway (schemas, execution profiles, per-tenant flags, egress allowlists) with ETag/TTL distribution to services.
+- Centralize provider secrets at Gateway; Workers invoke providers via Gateway.
 
-Phase 3 — Security and Policy
-- Wire OpenFGA checks around sessions/tools; OPA policies for PII/tool egress; add mTLS option.
-- Column-level encryption for sensitive fields; backup/restore drills.
+Phase 3 — Memory Guarantees and Policy
+- Strengthen outbox/WAL/idempotency; expose WAL/outbox lag in health; chaos-test recovery.
+- OPA gates for conversation.send, tool.execute, memory.write; precise user-visible denies and audit.
 
-Phase 4 — SLOs and Cost
-- Define SLOs: availability, latency, memory write p95, recall p95; alerts and on-call runbooks.
-- Token/cost budgets per tenant; rate limits and backpressure.
+Phase 4 — Large Files and External Storage
+- Add S3/MinIO storage for large attachments with signed URL fetch; Gateway AV/quarantine and TTL janitor.
+
+Phase 5 — E2E and CI
+- Playwright suite for chat streaming, uploads, tool flows, delete chat, policy denies; wire to CI.
+- Add docs/versioned schemas; publish acceptance checks per sprint.
 
 ## Concrete Next Steps (Backlog)
 
-1) Add/verify W3C trace context propagation in Gateway, Workers, and HTTP clients; include Kafka header propagation.
-2) Introduce `audit_event` table and producer; add audit on settings changes, tool execution, and message send.
-3) Extend `python/integrations/soma_client.py` with explicit idempotency header and improved retries; expose recall endpoint in Gateway.
-4) Implement `recall` pre-invoke enrichment step in `conversation_worker` controlled by feature flag.
-5) Add Playwright strict network/console checks to CI; E2E memory proof with health gating.
-6) Add structured logging fields everywhere; ensure secrets redaction.
-7) Define and publish message envelope JSONSchema under `schemas/` with versioning and validation.
+1) Update docker-compose and docs to `SOMA_BASE_URL=http://host.docker.internal:9696`; add a test to enforce alignment.
+2) Implement internal attachment fetch-by-ID and migrate Worker and `document_ingest` to use it; adjust UI previews.
+3) Add Tool Catalog tables/APIs in Gateway and service-side ETag/TTL fetch with fail-closed behavior.
+4) Enforce OPA gates across conversation/tool/memory flows with clear deny errors and audits; expose WAL lag in health.
+5) Add Playwright smoke covering uploads/streaming/tool-call and delete chat; wire to CI.
+6) Add structured logging and schema validation (JSONSchema in `schemas/`) on key envelopes.
 
 ## References (in-repo)
 
