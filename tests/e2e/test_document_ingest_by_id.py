@@ -45,6 +45,8 @@ def test_document_ingest_tool_by_id() -> None:
         files = {"files": ("tiny.txt", f"hello {unique}".encode("utf-8"), "text/plain")}
         data = {"session_id": session_id}
         up = client.post(f"{BASE_URL}/v1/uploads", files=files, data=data)
+        if up.status_code == 403 and "Uploads are disabled" in (up.text or ""):
+            pytest.skip("Uploads are disabled by administrator in this environment.")
         assert up.status_code == 200, f"upload failed: HTTP {up.status_code} {up.text}"
         uploaded = up.json()
         assert isinstance(uploaded, list) and uploaded, f"unexpected upload payload: {uploaded}"

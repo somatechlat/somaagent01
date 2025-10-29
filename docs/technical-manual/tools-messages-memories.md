@@ -126,3 +126,41 @@ There are two coordinated paths, and both are implemented:
 
 Tool discovery
 - GET /v1/tools returns the in-repo Tool Registry with name, description, and input parameters (JSON Schema) so prompts and UIs can stay aligned with runtime capabilities.
+
+## Attachments and ingestion
+
+Uploads are handled by the Gateway via `/v1/uploads`, which returns attachment references like `/v1/attachments/{id}`. Services ingest by ID; no filesystem paths are required.
+
+### Internal service-to-service attachments API
+
+To support ingestion without exposing raw bytes publicly, the Gateway provides an internal S2S endpoint secured by an internal token:
+
+- GET `/internal/attachments/{id}/binary`
+  - Headers:
+    - `X-Internal-Token: <token>` (must match `GATEWAY_INTERNAL_TOKEN`)
+    - Optional: `X-Tenant-Id: <tenant>` for tenant scoping
+  - Response headers include:
+    - `Content-Type`
+    - `Content-Disposition` (with filename)
+    - `X-Attachment-Status` (`clean` | `quarantined`)
+    - `X-Attachment-Size` (bytes)
+  - Behavior: Allows retrieval even when status is `quarantined`; callers must enforce policy.
+
+- HEAD `/internal/attachments/{id}/binary`
+  - Same headers as GET; returns only metadata. Use this to decide inline vs offload without transferring bytes.
+
+Public download remains available at GET `/v1/attachments/{id}`, which blocks `quarantined` payloads.
+
+### Ingestion by ID flow
+
+- UI uploads via `/v1/uploads` produce `/v1/attachments/{id}` references.
+- Conversation Worker parses the attachment ID from that path and:
+  - HEADs the internal endpoint to get `X-Attachment-Size`.
+  - Ingests inline for small attachments or enqueues the `document_ingest` tool with `attachment_id` for large ones.
+- The `document_ingest` tool fetches bytes from the internal endpoint using `X-Internal-Token`, extracts text (text/PDF/IMG), and returns the result.
+
+### Ports and environment alignment
+
+- Gateway host port: 21016 (set `GATEWAY_PORT=21016` in Docker Compose)
+- SomaBrain base URL: `http://host.docker.internal:9696` (propagated via `SOMA_BASE_URL`)
+- Internal token: set the same `GATEWAY_INTERNAL_TOKEN` for Gateway and all internal callers (Worker, Tool Executor)
