@@ -1338,7 +1338,13 @@ class ConversationWorker:
                                     )
                                 )
                         else:
-                            # Legacy path-based fallback
+                            # Legacy path-based fallback (DEV only)
+                            if self.deployment_mode != "DEV":
+                                LOGGER.warning(
+                                    "Path-based attachment ingest blocked in non-DEV mode",
+                                    extra={"session_id": session_id},
+                                )
+                                continue
                             fullpath = raw
                             if self._should_offload_ingest(fullpath):
                                 try:

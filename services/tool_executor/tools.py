@@ -287,125 +287,86 @@ class IngestDocumentTool(BaseTool):
         except Exception:
             tenant_header = None
 
-        # Prefer attachment_id flow; fall back to legacy path for backward compatibility
-        if isinstance(attachment_id, str) and attachment_id.strip():
-            base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-            # In dev, default to a known internal token if not explicitly provided
-            token = os.getenv("GATEWAY_INTERNAL_TOKEN", "dev-internal-token")
-            if not token:
-                raise ToolExecutionError("Internal token not configured for attachment fetch")
-            url = f"{base}/internal/attachments/{attachment_id}/binary"
-            headers = {"X-Internal-Token": token}
-            if tenant_header:
-                headers["X-Tenant-Id"] = str(tenant_header)
-            try:
-                async with httpx.AsyncClient(timeout=float(os.getenv("TOOL_FETCH_TIMEOUT", "15"))) as client:
-                    resp = await client.get(url, headers=headers)
-                    if resp.status_code == 404:
-                        raise ToolExecutionError("Attachment not found")
-                    resp.raise_for_status()
-                    data = resp.content
-                    mime = resp.headers.get("content-type", "application/octet-stream")
-                    filename = "attachment"
-                    try:
-                        cd = resp.headers.get("content-disposition", "")
-                        # naive parse of filename
-                        if "filename=" in cd:
-                            filename = cd.split("filename=", 1)[1].strip().strip('"')
-                    except Exception:
-                        pass
-            except Exception as exc:
-                LOGGER.error("Attachment fetch failed", extra={"error": str(exc)})
-                raise ToolExecutionError("Attachment fetch failed")
+        # Strict contract: attachment ingestion must be by ID only
+        if not (isinstance(attachment_id, str) and attachment_id.strip()):
+            raise ToolExecutionError("'attachment_id' is required")
 
-            text = ""
-            try:
-                # Text-like
-                if mime.startswith("text/") or mime in {"application/json", "application/xml"}:
-                    try:
-                        text = data.decode("utf-8", errors="ignore")
-                    except Exception:
-                        text = data.decode("latin-1", errors="ignore")
-                # PDF
-                elif (mime == "application/pdf" or (filename or "").lower().endswith(".pdf")) and fitz is not None:
-                    try:
-                        import io as _io
-                        parts = []
-                        with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
-                            for page in doc:
-                                parts.append(page.get_text("text"))
-                        text = "\n".join(parts)
-                    except Exception as exc:
-                        LOGGER.warning("PyMuPDF extraction failed", extra={"error": str(exc)})
-                # Images via OCR
-                elif mime.startswith("image/") and Image is not None and pytesseract is not None:
-                    try:
-                        import io as _io
-                        img = Image.open(_io.BytesIO(data))
-                        text = pytesseract.image_to_string(img)
-                    except Exception as exc:
-                        LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
-                # Fallback: treat common text extensions as text even if MIME is octet-stream
-                if not text:
-                    try:
-                        fname = (filename or "").lower()
-                        text_exts = (
-                            ".md", ".txt", ".csv", ".tsv", ".yaml", ".yml", ".toml", ".ini", ".log",
-                            ".py", ".json", ".xml", ".html", ".htm", ".css", ".js"
-                        )
-                        if (not mime or mime == "application/octet-stream") and any(
-                            fname.endswith(ext) for ext in text_exts
-                        ):
-                            try:
-                                text = data.decode("utf-8", errors="ignore")
-                            except Exception:
-                                text = data.decode("latin-1", errors="ignore")
-                    except Exception:
-                        pass
-            except Exception as exc:
-                LOGGER.error("Ingestion failed", extra={"error": str(exc)})
-                raise ToolExecutionError("Ingestion error")
+        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        # In dev, default to a known internal token if not explicitly provided
+        token = os.getenv("GATEWAY_INTERNAL_TOKEN", "dev-internal-token")
+        if not token:
+            raise ToolExecutionError("Internal token not configured for attachment fetch")
+        url = f"{base}/internal/attachments/{attachment_id}/binary"
+        headers = {"X-Internal-Token": token}
+        if tenant_header:
+            headers["X-Tenant-Id"] = str(tenant_header)
+        try:
+            async with httpx.AsyncClient(timeout=float(os.getenv("TOOL_FETCH_TIMEOUT", "15"))) as client:
+                resp = await client.get(url, headers=headers)
+                if resp.status_code == 404:
+                    raise ToolExecutionError("Attachment not found")
+                resp.raise_for_status()
+                data = resp.content
+                mime = resp.headers.get("content-type", "application/octet-stream")
+                filename = "attachment"
+                try:
+                    cd = resp.headers.get("content-disposition", "")
+                    # naive parse of filename
+                    if "filename=" in cd:
+                        filename = cd.split("filename=", 1)[1].strip().strip('"')
+                except Exception:
+                    pass
+        except Exception as exc:
+            if isinstance(exc, ToolExecutionError):
+                # Preserve explicit tool error semantics (e.g., 404 not found)
+                raise
+            LOGGER.error("Attachment fetch failed", extra={"error": str(exc)})
+            raise ToolExecutionError("Attachment fetch failed")
 
-            if not text:
-                raise ToolExecutionError("No text could be extracted")
-
-            return {
-                "attachment_id": attachment_id,
-                "filename": filename,
-                "mime": mime or "application/octet-stream",
-                "text": text[:400_000],
-            }
-
-        # Legacy path-based ingestion (deprecated)
-        path = args.get("path")
-        if not isinstance(path, str) or not path.strip():
-            raise ToolExecutionError("'attachment_id' or 'path' is required")
-        p = Path(path)
-        if not p.exists() or not p.is_file():
-            raise ToolExecutionError("File not found for ingestion")
-        mime, _ = mimetypes.guess_type(str(p))
         text = ""
         try:
-            if (mime or "").startswith("text/") or mime in {"application/json", "application/xml"}:
+            # Text-like
+            if mime.startswith("text/") or mime in {"application/json", "application/xml"}:
                 try:
-                    text = p.read_text(errors="ignore")
+                    text = data.decode("utf-8", errors="ignore")
                 except Exception:
-                    text = p.read_bytes().decode("utf-8", errors="ignore")
-            elif (mime == "application/pdf" or p.suffix.lower() == ".pdf") and fitz is not None:
+                    text = data.decode("latin-1", errors="ignore")
+            # PDF
+            elif (mime == "application/pdf" or (filename or "").lower().endswith(".pdf")) and fitz is not None:
                 try:
+                    import io as _io
                     parts = []
-                    with fitz.open(str(p)) as doc:
+                    with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
                         for page in doc:
                             parts.append(page.get_text("text"))
                     text = "\n".join(parts)
                 except Exception as exc:
                     LOGGER.warning("PyMuPDF extraction failed", extra={"error": str(exc)})
-            elif mime and mime.startswith("image/") and Image is not None and pytesseract is not None:
+            # Images via OCR
+            elif mime.startswith("image/") and Image is not None and pytesseract is not None:
                 try:
-                    img = Image.open(str(p))
+                    import io as _io
+                    img = Image.open(_io.BytesIO(data))
                     text = pytesseract.image_to_string(img)
                 except Exception as exc:
                     LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
+            # Fallback: treat common text extensions as text even if MIME is octet-stream
+            if not text:
+                try:
+                    fname = (filename or "").lower()
+                    text_exts = (
+                        ".md", ".txt", ".csv", ".tsv", ".yaml", ".yml", ".toml", ".ini", ".log",
+                        ".py", ".json", ".xml", ".html", ".htm", ".css", ".js"
+                    )
+                    if (not mime or mime == "application/octet-stream") and any(
+                        fname.endswith(ext) for ext in text_exts
+                    ):
+                        try:
+                            text = data.decode("utf-8", errors="ignore")
+                        except Exception:
+                            text = data.decode("latin-1", errors="ignore")
+                except Exception:
+                    pass
         except Exception as exc:
             LOGGER.error("Ingestion failed", extra={"error": str(exc)})
             raise ToolExecutionError("Ingestion error")
@@ -414,7 +375,8 @@ class IngestDocumentTool(BaseTool):
             raise ToolExecutionError("No text could be extracted")
 
         return {
-            "path": str(p),
+            "attachment_id": attachment_id,
+            "filename": filename,
             "mime": mime or "application/octet-stream",
             "text": text[:400_000],
         }
@@ -423,13 +385,12 @@ class IngestDocumentTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "attachment_id": {"type": "string", "description": "Attachment UUID to ingest (preferred)"},
-                "path": {"type": "string", "description": "Absolute path to ingest (deprecated)"},
+                "attachment_id": {"type": "string", "description": "Attachment UUID to ingest"},
                 "session_id": {"type": ["string", "null"]},
                 "persona_id": {"type": ["string", "null"]},
                 "metadata": {"type": "object"},
             },
-            "required": [],
+            "required": ["attachment_id"],
             "additionalProperties": True,
         }
 

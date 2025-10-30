@@ -77,6 +77,7 @@ from services.common.memory_replica_store import ensure_schema as ensure_replica
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 from services.common.model_profiles import ModelProfile, ModelProfileStore
+from services.common.tool_catalog import ToolCatalogStore, ToolCatalogEntry
 from services.common.ui_settings_store import UiSettingsStore
 from services.common.ui_settings_store import UiSettingsStore
 from services.common.openfga_client import OpenFGAClient
@@ -114,6 +115,7 @@ tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
 
 # --- Consolidated service stores (moved in-process to the gateway) ---
 PROFILE_STORE = ModelProfileStore.from_settings(APP_SETTINGS)
+CATALOG_STORE = ToolCatalogStore.from_settings(APP_SETTINGS)
 TELEMETRY_STORE = TelemetryStore.from_settings(APP_SETTINGS)
 REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
 
@@ -889,6 +891,12 @@ def _start_metrics_server() -> None:
         except Exception:
             LOGGER.debug("Telemetry store initialisation failed", exc_info=True)
 
+        # Ensure tool catalog schema exists
+        try:
+            await CATALOG_STORE.ensure_schema()
+        except Exception:
+            LOGGER.debug("Tool catalog initialisation failed", exc_info=True)
+
     asyncio.create_task(_ensure_aux_services())
 
 
@@ -921,6 +929,14 @@ def _file_saving_disabled() -> bool:
     )
 
 
+def _sse_disabled() -> bool:
+    """Whether to disable SSE endpoint intentionally.
+
+    Controlled via GATEWAY_DISABLE_SSE (truthy disables SSE). Default False.
+    """
+    return _flag_truthy(os.getenv("GATEWAY_DISABLE_SSE"), False)
+
+
 # -----------------------------
 # Attachments store accessor
 # -----------------------------
@@ -933,6 +949,74 @@ def get_attachments_store() -> AttachmentsStore:
     if _ATTACHMENTS_STORE is None:
         _ATTACHMENTS_STORE = AttachmentsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
     return _ATTACHMENTS_STORE
+
+
+# -----------------------------
+# Runtime configuration surface for UI
+# -----------------------------
+
+
+@app.get("/v1/runtime-config")
+async def get_runtime_config() -> dict[str, Any]:
+    """Return a UI-safe snapshot of runtime config flags and env-derived state.
+
+    This helps the SPA adapt behavior (e.g., SSE switched off, auth required, tool counts)
+    without exposing secrets.
+    """
+    # Auth flags
+    auth_cfg = {
+        "require_auth": REQUIRE_AUTH,
+        "opa_configured": bool(OPA_URL),
+    }
+
+    # SSE flag
+    sse_cfg = {"enabled": not _sse_disabled()}
+
+    # Uploads basics (merge with defaults)
+    uploads_defaults = {
+        "uploads_enabled": True,
+        "uploads_max_mb": 25,
+        "uploads_max_files": 10,
+    }
+    try:
+        ui_doc = await get_ui_settings_store().get()
+        uploads_cfg = dict((ui_doc.get("uploads") or {})) if isinstance(ui_doc, dict) else {}
+    except Exception:
+        uploads_cfg = {}
+    uploads = dict(uploads_defaults)
+    uploads.update({k: v for k, v in uploads_cfg.items() if k in uploads})
+
+    # SomaBrain info
+    try:
+        soma = SomaBrainClient.get()
+        somabrain = {"base_url": soma.base_url}
+    except Exception:
+        somabrain = {"base_url": os.getenv("SOMA_BASE_URL", "http://localhost:9696")}
+
+    # Tools: enabled count
+    tool_count = 0
+    try:
+        from services.tool_executor.tool_registry import ToolRegistry  # lazy import
+
+        reg = ToolRegistry()
+        await reg.load_all_tools()
+        for t in reg.list():
+            try:
+                if await CATALOG_STORE.is_enabled(t.name):
+                    tool_count += 1
+            except Exception:
+                tool_count += 1  # default enabled
+    except Exception:
+        pass
+
+    return {
+        "deployment_mode": APP_SETTINGS.deployment_mode,
+        "auth": auth_cfg,
+        "sse": sse_cfg,
+        "uploads": uploads,
+        "somabrain": somabrain,
+        "tools": {"enabled_count": tool_count},
+    }
 
 
 # -----------------------------
@@ -3191,6 +3275,40 @@ async def request_tool_execution(
     auth_metadata = await authorize_request(request, payload.model_dump())
     metadata, persona_hdr = _apply_header_metadata(request, {**payload.metadata, **auth_metadata})
     persona_id = payload.persona_id or persona_hdr
+    # Enforce tool catalog: deny execution if disabled
+    try:
+        await CATALOG_STORE.ensure_schema()
+        enabled = await CATALOG_STORE.is_enabled(payload.tool_name)
+    except Exception as exc:
+        # Fail-closed posture for catalog errors
+        raise HTTPException(status_code=503, detail=f"tool catalog unavailable: {exc}")
+    if not enabled:
+        # Audit denial best-effort
+        try:
+            from opentelemetry import trace as _trace
+            ctx = _trace.get_current_span().get_span_context()
+            trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+        except Exception:
+            trace_id_hex = None
+        try:
+            req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+            await get_audit_store().log(
+                request_id=req_id,
+                trace_id=trace_id_hex,
+                session_id=payload.session_id,
+                tenant=metadata.get("tenant"),
+                subject=auth_metadata.get("subject"),
+                action="tool.request.denied",
+                resource="tool.request",
+                target_id=None,
+                details={"tool_name": payload.tool_name, "reason": "disabled in catalog"},
+                diff=None,
+                ip=getattr(request.client, "host", None) if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+        except Exception:
+            LOGGER.debug("Failed to write audit log for tool.request.denied", exc_info=True)
+        raise HTTPException(status_code=403, detail=f"tool '{payload.tool_name}' is disabled")
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
@@ -3265,6 +3383,13 @@ async def list_tools() -> ToolsListResponse:
         raise HTTPException(status_code=500, detail=f"failed to load tools: {exc}")
 
     tools: list[ToolInfo] = []
+    # Filter by catalog enablement (absent => enabled)
+    enabled_names: set[str] = set()
+    try:
+        await CATALOG_STORE.ensure_schema()
+        # If catalog is empty, assume all enabled
+    except Exception:
+        LOGGER.debug("Tool catalog check failed; defaulting to all tools enabled", exc_info=True)
     for t in reg.list():
         schema = None
         try:
@@ -3273,8 +3398,76 @@ async def list_tools() -> ToolsListResponse:
                 schema = handler.input_schema()  # type: ignore[assignment]
         except Exception:
             schema = None
-        tools.append(ToolInfo(name=t.name, description=getattr(t, "description", None), parameters=schema))
+        allowed = True
+        try:
+            allowed = await CATALOG_STORE.is_enabled(t.name)
+        except Exception:
+            allowed = True
+        if allowed:
+            tools.append(ToolInfo(name=t.name, description=getattr(t, "description", None), parameters=schema))
     return ToolsListResponse(tools=tools, count=len(tools))
+
+
+# -----------------------------
+# Tool Catalog admin/runtime endpoints (minimal)
+# -----------------------------
+
+class ToolCatalogItem(BaseModel):
+    name: str
+    enabled: bool = True
+    description: str | None = None
+    params: dict[str, Any] | None = None
+
+
+class ToolCatalogListResponse(BaseModel):
+    items: list[ToolCatalogItem]
+    count: int
+
+
+@app.get("/v1/tool-catalog", response_model=ToolCatalogListResponse)
+async def get_tool_catalog() -> ToolCatalogListResponse:
+    # Return current catalog entries; note that tools absent in catalog are implicitly enabled
+    try:
+        await CATALOG_STORE.ensure_schema()
+        entries = await CATALOG_STORE.list_all()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"tool catalog unavailable: {exc}")
+    items = [
+        ToolCatalogItem(name=e.name, enabled=e.enabled, description=e.description, params=e.params or {})
+        for e in entries
+    ]
+    return ToolCatalogListResponse(items=items, count=len(items))
+
+
+class ToolCatalogUpsertPayload(BaseModel):
+    enabled: bool
+    description: str | None = None
+    params: dict[str, Any] | None = None
+
+
+@app.put("/v1/tool-catalog/{name}")
+async def upsert_tool_catalog_item(name: str, payload: ToolCatalogUpsertPayload, request: Request) -> dict[str, Any]:
+    # Enforce policy; treat as admin-level change via OPA
+    try:
+        tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
+        await _evaluate_opa(
+            request,
+            {"action": "tool.catalog.update", "resource": "tool.catalog", "tenant": tenant, "name": name},
+            {},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if OPA_URL:
+            raise HTTPException(status_code=502, detail=f"policy evaluation failed: {exc}")
+
+    try:
+        await CATALOG_STORE.ensure_schema()
+        entry = ToolCatalogEntry(name=name, enabled=bool(payload.enabled), description=payload.description, params=payload.params)
+        await CATALOG_STORE.upsert(entry)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"failed to update tool catalog: {exc}")
+    return {"ok": True, "name": name, "enabled": payload.enabled}
 
 
 @app.post("/v1/keys", response_model=ApiKeyCreateResponse)
@@ -3372,6 +3565,9 @@ async def sse_stream(session_id: str) -> AsyncIterator[str]:
 
 @app.get("/v1/session/{session_id}/events")
 async def sse_endpoint(session_id: str, request: Request) -> StreamingResponse:
+    # Fail-closed: allow intentional disable of SSE to exercise real poll fallback
+    if _sse_disabled():
+        raise HTTPException(status_code=503, detail="SSE disabled")
     async def event_generator() -> AsyncIterator[str]:
         try:
             async for chunk in sse_stream(session_id):
@@ -3495,6 +3691,7 @@ async def ui_runtime_config() -> JSONResponse:
             "write_through": _write_through_enabled(),
             "write_through_async": _write_through_async(),
             "require_auth": REQUIRE_AUTH,
+            "sse_enabled": not _sse_disabled(),
         },
     }
     return JSONResponse(payload)
@@ -3830,6 +4027,8 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
     Streams events from the Kafka topic configured as CONVERSATION_OUTBOUND and
     filters by session_id.
     """
+    if _sse_disabled():
+        raise HTTPException(status_code=503, detail="SSE disabled")
     topic = os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound")
     group_base = f"sse-{session_id}"
 
@@ -4687,6 +4886,20 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
     - Stores any provider credentials embedded in fields (keys starting with 'api_key_').
     Returns refreshed UI sections.
     """
+    # Enforce policy for settings updates (fail-closed when OPA is configured)
+    # Derive tenant from header (if present) or default to public in local/dev
+    try:
+        tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
+        await _evaluate_opa(request, {"action": "settings.update", "resource": "ui.settings", "tenant": tenant}, {})
+    except HTTPException:
+        # Bubble up policy decision (403/5xx)
+        raise
+    except Exception as exc:
+        # If OPA is misconfigured and OPA_URL is set, propagate as 502 to fail-closed
+        if OPA_URL:
+            raise HTTPException(status_code=502, detail=f"policy evaluation failed: {exc}")
+        # Otherwise, continue best-effort in local/dev
+
     sections = payload.sections or []
     # Extract top-level agent settings and new nested groups
     agent: Dict[str, Any] = {}

@@ -36,3 +36,15 @@ allow {
   input.action == "memory.write"
   input.resource == "somabrain"
 }
+
+# Allow UI settings updates for the public tenant in DEV
+allow {
+  input.action == "settings.update"
+  input.tenant == "public"
+}
+
+# Allow tool catalog updates for the public tenant in DEV
+allow {
+  input.action == "tool.catalog.update"
+  input.tenant == "public"
+}
