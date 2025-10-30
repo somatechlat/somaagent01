@@ -65,12 +65,12 @@ class LlmCredentialsStore:
             return []
         return [str(p) for p in items]
 
-    async def list_providers(self) -> list[str]:
+    async def has(self, provider: str) -> bool:
+        """Return True if a credential exists for the provider."""
         try:
-            items = await self._r.hkeys(self._ns)
+            return (await self.get(provider)) is not None
         except Exception:
-            return []
-        return [str(p) for p in items]
+            return False
 
 
 def _looks_base64(s: str) -> bool:

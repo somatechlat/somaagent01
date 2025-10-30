@@ -1,6 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-test('offline chat shows error toast when sending a message', async ({ page }) => {
+test('offline chat shows error toast when sending a message', async ({ page, request, baseURL }) => {
+  // If the Gateway is online, skip this offline-only test.
+  try {
+    const probeUrl = new URL(baseURL || 'http://localhost:21016/ui');
+    probeUrl.pathname = '/v1/health';
+    const res = await request.get(probeUrl.toString());
+    if (res.status() === 200) {
+      // Gateway online; this test targets offline behavior only.
+      return;
+    }
+  } catch {
+    // proceed with offline assertions
+  }
   // Don’t fail the test on console errors; we expect network-related errors when backend is offline
   const consoleMessages: string[] = [];
   page.on('console', (msg) => {

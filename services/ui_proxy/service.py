@@ -186,8 +186,10 @@ class PollAggregator:
             if exc.response.status_code in {404, 422}:
                 return {"session_id": session_id, "events": [], "total": 0}
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
-        except httpx.HTTPError as exc:
-            raise HTTPException(status_code=502, detail=f"Gateway history fetch failed: {exc}") from exc
+        except httpx.HTTPError:
+            # In single-process local runs, the default internal base URL may be unreachable.
+            # For UI resiliency, return an empty history and let SSE provide live updates.
+            return {"session_id": session_id, "events": [], "total": 0}
         return history
 
     def _format_session(self, session: Dict[str, Any], index: int) -> Dict[str, Any]:

@@ -23,6 +23,27 @@ Acceptance tests:
 Exit criteria:
 - All acceptance tests green; feature flags documented; no references to 9999 remain.
 
+### Sprint 1A — Agent Zero Web UI Integration and Real Chat (priority, 1 week)
+Scope:
+- Integrate Agent Zero Web UI into `webui/` and adapt all network calls to our Gateway `/v1` endpoints.
+- Remove any UI polling or filesystem path usage; rely on SSE for streaming and `/v1/uploads` for attachments.
+- Remove Gateway inline dialogue fallback; require Conversation Worker and real provider credentials.
+- Ensure existing sessions render and new messages stream end-to-end via Kafka and Worker.
+
+Deliverables:
+- UI: chat send via POST `/v1/session/message`, SSE wired to `/v1/session/{session_id}/events`, uploads wired to `/v1/uploads` returning `attachment_id`.
+- Session list/history/delete/reset routes integrated; delete closes SSE and clears history.
+- Gateway: inline dialogue block removed; strict fail-closed errors surface to UI with user-friendly copy.
+
+Acceptance tests:
+- tests/playwright/test_ui_chat_stream.py: send → observe `llm.delta` then `llm.complete` over SSE; no polling.
+- tests/playwright/test_ui_upload_and_tool.py: upload → message with attachment → tool call and result displayed.
+- tests/playwright/test_ui_delete_chat.py: delete chat closes stream and clears messages; new chat works.
+
+Exit criteria:
+- Streaming chat works end-to-end with real LLM credentials (OpenAI-compatible provider); no dev fallback paths.
+- UI has no references to legacy polling endpoints or filesystem paths.
+
 ### Sprint 1 — Attachment Ingestion by ID (1–2 weeks)
 Scope:
 - Add internal service fetch of attachments by ID; migrate Worker and `document_ingest` tool to `attachment_id` contract.

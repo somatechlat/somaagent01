@@ -19,6 +19,13 @@ allow {
   input.context.args.format != "DENY"
 }
 
+# Permit document ingestion tool for public tenant in DEV
+allow {
+  input.action == "tool.execute"
+  input.resource == "document_ingest"
+  input.tenant == "public"
+}
+
 allow {
   input.action == "memory.write"
   input.resource == "conversation_memory"

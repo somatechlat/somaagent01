@@ -112,11 +112,39 @@ Strict-mode defaults:
 - Security tests: CSRF, CORS, authZ policies, redaction; secrets not present in logs.
 - CI gates: build, lint/typecheck, unit, integration, E2E (smoke) required; full E2E nightly.
 
+## Web UI Integration (Agent Zero behavior)
+
+Goal: adopt Agent Zero’s proven Web UI interaction model while preserving our architecture and contracts. No mocks, no inline fallbacks; UI must operate against real services via Gateway only.
+
+What to copy/adapt from Agent Zero UI:
+- Chat transport: strictly SSE for streaming via `/v1/session/{session_id}/events` with event types `llm.delta`, `llm.complete`, `tool.call`, `tool.result`, `error`, `heartbeat`.
+- Message send: POST `/v1/session/message` with `{ message, session_id?, persona_id?, attachments? }`; UI must not poll legacy endpoints; it awaits SSE for responses.
+- Attachments: uploads via POST `/v1/uploads` returning descriptors `{ id, sha256, content_type, size_bytes, url }`; messages reference `attachments: [{ id }]` (no filesystem paths).
+- Session management: list/history/delete/reset through Gateway routes; delete chat removes session history and closes streams.
+- Tools: request via POST `/v1/tool/request`; UI shows tool call and result events inline, matching the SSE contract.
+- Profiles and runtime config: UI fetches `/v1/tools` and `/v1/runtime-config` for model profiles, allowed tools, limits, and flags; secrets never exposed.
+
+What we will not keep:
+- Any legacy UI polling or proxy fallbacks.
+- Any inline dialogue fallback in Gateway; replies must originate from Conversation Worker and real LLM providers.
+
+Acceptance criteria for UI integration:
+- Sending a message from the UI produces streamed assistant deltas over SSE within p50 < 1s under local dev.
+- Uploading a file yields an attachment_id; subsequent message referencing it triggers tool ingestion and assistant usage of extracted text.
+- Deleting a chat closes the current SSE stream and removes history; a new chat starts clean.
+- UI reflects Tool Catalog enable/disable and execution profile limits within configured TTL.
+
 ## Rollout Plan and Milestones
 
 Phase 0 — Correctness and Strictness
 - Align SomaBrain port to 9696 across code/docs/compose; health checks green when SomaBrain is up.
 - Enable strict-mode defaults (fail-closed on policy/dependency failures) and surface banners in UI; remove legacy fallbacks.
+
+Phase 0.5 — Agent Zero Web UI Integration and Real Chat (priority)
+- Integrate Agent Zero UI into `webui/` with adapters to our `/v1` endpoints.
+- Remove any UI-side polling or file path usage; wire SSE, uploads, and session controls.
+- Remove Gateway inline dialogue fallback; require Conversation Worker running and real provider credentials.
+- Playwright parity smoke: chat send/stream, upload+tool, delete chat.
 
 Phase 1 — Attachment Ingestion by ID
 - Add internal service fetch endpoint for attachments by ID and migrate Worker and `document_ingest` to `attachment_id` contracts.
@@ -145,6 +173,8 @@ Phase 5 — E2E and CI
 4) Enforce OPA gates across conversation/tool/memory flows with clear deny errors and audits; expose WAL lag in health.
 5) Add Playwright smoke covering uploads/streaming/tool-call and delete chat; wire to CI.
 6) Add structured logging and schema validation (JSONSchema in `schemas/`) on key envelopes.
+7) Integrate Agent Zero UI and adapters; remove Gateway inline dialogue fallback; ensure SSE-only streaming path; document required env vars for real LLM.
+8) Verify conversation history continuity: existing sessions render in UI; SSE resumes on refresh; delete/reset behave correctly.
 
 ## References (in-repo)
 

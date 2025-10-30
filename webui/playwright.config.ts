@@ -1,6 +1,7 @@
 import type { PlaywrightTestConfig } from '@playwright/test';
 
-const baseURL = process.env.BASE_URL || 'http://localhost:4172';
+// Prefer Gateway-served UI under /ui. Allow overrides via WEB_UI_BASE_URL or BASE_URL.
+const baseURL = process.env.WEB_UI_BASE_URL || process.env.BASE_URL || 'http://localhost:21016/ui';
 
 const config: PlaywrightTestConfig = {
   timeout: 30_000,

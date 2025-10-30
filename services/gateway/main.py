@@ -209,7 +209,9 @@ except Exception as _e:  # pragma: no cover - optional wiring for local/dev
     # If UI proxy is not available at import time, log and fall back to inline endpoints below.
     logging.getLogger(__name__).warning("UI proxy router import failed, will install inline fallback endpoints: %s", _e)
 
-# Install inline fallback implementations for /v1/ui/poll and /v1/ui/message if not already registered
+# Install inline fallback implementations for /v1/ui/poll and /v1/ui/message if explicitly enabled.
+# By default, we avoid registering any alternate handlers so that all UI compatibility
+# behavior is centralized in services.ui_proxy.service (single point of truth).
 def _route_exists(path: str, methods: set[str]) -> bool:
     try:
         for r in getattr(app, "routes", []):
@@ -221,37 +223,39 @@ def _route_exists(path: str, methods: set[str]) -> bool:
         pass
     return False
 
-try:
-    from services.ui_proxy.service import PollAggregator, UiMessageService  # type: ignore
-    from services.ui_proxy.client import GatewayClient  # type: ignore
-except Exception:
-    PollAggregator = None  # type: ignore
-    UiMessageService = None  # type: ignore
-    GatewayClient = None  # type: ignore
+_enable_ui_proxy_fallback = os.getenv("GATEWAY_UI_PROXY_FALLBACK", "false").lower() in {"true", "1", "yes", "on"}
+if _enable_ui_proxy_fallback:
+    try:
+        from services.ui_proxy.service import PollAggregator, UiMessageService  # type: ignore
+        from services.ui_proxy.client import GatewayClient  # type: ignore
+    except Exception:
+        PollAggregator = None  # type: ignore
+        UiMessageService = None  # type: ignore
+        GatewayClient = None  # type: ignore
 
-if PollAggregator and GatewayClient and not _route_exists("/v1/ui/poll", {"POST"}):
-    async def _ui_poll_fallback(request: Request) -> JSONResponse:
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-        # Use default internal client; avoid request.base_url which may be host-mapped
-        client = GatewayClient()
-        aggregator = PollAggregator(client)
-        payload = await aggregator.poll(body)
-        return JSONResponse(payload)
+    # Only install fallbacks when explicitly requested and routes are not already present
+    if PollAggregator and GatewayClient and not _route_exists("/v1/ui/poll", {"POST"}):
+        async def _ui_poll_fallback(request: Request) -> JSONResponse:
+            try:
+                body = await request.json()
+            except Exception:
+                body = {}
+            # Delegate to PollAggregator (single source of truth)
+            client = GatewayClient()
+            aggregator = PollAggregator(client)
+            payload = await aggregator.poll(body)
+            return JSONResponse(payload)
 
-    app.add_api_route("/v1/ui/poll", _ui_poll_fallback, methods=["POST"])
+        app.add_api_route("/v1/ui/poll", _ui_poll_fallback, methods=["POST"])
 
-if UiMessageService and GatewayClient and not _route_exists("/v1/ui/message", {"POST"}):
-    async def _ui_message_fallback(request: Request) -> JSONResponse:
-        # Use default internal client; avoid request.base_url which may be host-mapped
-        client = GatewayClient()
-        service = UiMessageService()
-        payload = await service.handle_request(request, client)
-        return JSONResponse(payload)
+    if UiMessageService and GatewayClient and not _route_exists("/v1/ui/message", {"POST"}):
+        async def _ui_message_fallback(request: Request) -> JSONResponse:
+            client = GatewayClient()
+            service = UiMessageService()
+            payload = await service.handle_request(request, client)
+            return JSONResponse(payload)
 
-    app.add_api_route("/v1/ui/message", _ui_message_fallback, methods=["POST"])
+        app.add_api_route("/v1/ui/message", _ui_message_fallback, methods=["POST"])
 
 def _get_or_create_counter(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Counter:
     try:
@@ -1595,23 +1599,34 @@ async def list_admin_memory(
         max_ts=max_ts,
         q=q,
     )
-    items = [
-        AdminMemoryItem(
-            id=r.id,
-            event_id=r.event_id,
-            session_id=r.session_id,
-            persona_id=r.persona_id,
-            tenant=r.tenant,
-            role=r.role,
-            coord=r.coord,
-            request_id=r.request_id,
-            trace_id=r.trace_id,
-            payload=r.payload,
-            wal_timestamp=r.wal_timestamp,
-            created_at=r.created_at,
+    # Be defensive: asyncpg can return JSONB as str in some environments. Coerce to dict.
+    items = []
+    for r in rows:
+        payload_obj = r.payload
+        if isinstance(payload_obj, str):
+            try:
+                payload_obj = json.loads(payload_obj)
+            except Exception:
+                payload_obj = {}
+        elif not isinstance(payload_obj, dict):
+            # Avoid pydantic validation errors by normalizing to a dict
+            payload_obj = {}
+        items.append(
+            AdminMemoryItem(
+                id=r.id,
+                event_id=r.event_id,
+                session_id=r.session_id,
+                persona_id=r.persona_id,
+                tenant=r.tenant,
+                role=r.role,
+                coord=r.coord,
+                request_id=r.request_id,
+                trace_id=r.trace_id,
+                payload=payload_obj,  # type: ignore[arg-type]
+                wal_timestamp=r.wal_timestamp,
+                created_at=r.created_at,
+            )
         )
-        for r in rows
-    ]
     next_cursor = items[-1].id if items else None
     return AdminMemoryListResponse(items=items, next_cursor=next_cursor)
 
@@ -1629,6 +1644,14 @@ async def get_admin_memory_item(
     row = await store.get_by_event_id(event_id)
     if not row:
         raise HTTPException(status_code=404, detail="memory event not found")
+    payload_obj = row.payload
+    if isinstance(payload_obj, str):
+        try:
+            payload_obj = json.loads(payload_obj)
+        except Exception:
+            payload_obj = {}
+    elif not isinstance(payload_obj, dict):
+        payload_obj = {}
     return AdminMemoryItem(
         id=row.id,
         event_id=row.event_id,
@@ -1639,7 +1662,7 @@ async def get_admin_memory_item(
         coord=row.coord,
         request_id=row.request_id,
         trace_id=row.trace_id,
-        payload=row.payload,
+        payload=payload_obj,  # type: ignore[arg-type]
         wal_timestamp=row.wal_timestamp,
         created_at=row.created_at,
     )
@@ -2774,6 +2797,9 @@ async def enqueue_message(
             asyncio.create_task(_write_through())
         else:
             await _write_through()
+
+    # Inline dialogue fallback removed: Gateway never generates assistant replies directly.
+    # Replies must be produced by Conversation Worker and streamed via SSE.
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 

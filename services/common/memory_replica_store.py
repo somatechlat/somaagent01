@@ -48,7 +48,39 @@ class MemoryReplicaStore:
         if self._pool is None:
             min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
             max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+
+            async def _init_conn(conn: asyncpg.Connection) -> None:  # type: ignore[name-defined]
+                """Ensure JSON/JSONB are decoded to Python objects.
+
+                Using text format keeps compatibility across asyncpg versions.
+                """
+                try:
+                    await conn.set_type_codec(
+                        "json",
+                        schema="pg_catalog",
+                        encoder=json.dumps,
+                        decoder=json.loads,
+                        format="text",
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to set json codec", exc_info=True)
+                try:
+                    await conn.set_type_codec(
+                        "jsonb",
+                        schema="pg_catalog",
+                        encoder=json.dumps,
+                        decoder=json.loads,
+                        format="text",
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to set jsonb codec", exc_info=True)
+
+            self._pool = await asyncpg.create_pool(
+                self.dsn,
+                min_size=max(0, min_size),
+                max_size=max(1, max_size),
+                init=_init_conn,
+            )
         return self._pool
 
     async def close(self) -> None:

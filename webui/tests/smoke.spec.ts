@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-// Strict smoke: load a static page that doesn't call backend APIs on load,
-// fail on console errors and on any >=400 responses for static assets.
-test('login page loads without console errors and static assets succeed', async ({ page }) => {
+// Strict smoke for Gateway-served UI: load /index.html under baseURL (/ui),
+// fail on console errors and on any >=400 responses for local static assets.
+test('UI index loads without console errors and static assets succeed', async ({ page }) => {
   const errors: string[] = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
@@ -24,11 +24,11 @@ test('login page loads without console errors and static assets succeed', async 
     }
   });
 
-  await page.goto('/login.html', { waitUntil: 'domcontentloaded' });
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
 
-  // Basic presence checks
-  await expect(page.locator('text=Agent Zero')).toBeVisible();
-  await expect(page.locator('form.login-form')).toBeVisible();
+  // Basic presence checks for chat UI
+  await expect(page.locator('#chat-input')).toBeVisible();
+  await expect(page.locator('#send-button')).toBeVisible();
 
   // Ensure CSS and favicon requested are OK
   const linkHrefs = await page.$$eval('link[rel="stylesheet"], link[rel="icon"]', els => els.map(e => (e as HTMLLinkElement).href));

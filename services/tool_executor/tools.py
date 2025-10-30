@@ -345,6 +345,23 @@ class IngestDocumentTool(BaseTool):
                         text = pytesseract.image_to_string(img)
                     except Exception as exc:
                         LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
+                # Fallback: treat common text extensions as text even if MIME is octet-stream
+                if not text:
+                    try:
+                        fname = (filename or "").lower()
+                        text_exts = (
+                            ".md", ".txt", ".csv", ".tsv", ".yaml", ".yml", ".toml", ".ini", ".log",
+                            ".py", ".json", ".xml", ".html", ".htm", ".css", ".js"
+                        )
+                        if (not mime or mime == "application/octet-stream") and any(
+                            fname.endswith(ext) for ext in text_exts
+                        ):
+                            try:
+                                text = data.decode("utf-8", errors="ignore")
+                            except Exception:
+                                text = data.decode("latin-1", errors="ignore")
+                    except Exception:
+                        pass
             except Exception as exc:
                 LOGGER.error("Ingestion failed", extra={"error": str(exc)})
                 raise ToolExecutionError("Ingestion error")
