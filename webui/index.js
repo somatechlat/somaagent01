@@ -177,11 +177,6 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleSidebar(false);
     }
   });
-  // Prime CSRF/session early to avoid a race on first poll
-  try {
-    const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
-    fetch(String(base).replace(/\/$/, "") + "/csrf", { credentials: "same-origin" }).catch(() => {});
-  } catch (_) {}
   // Kick a quick health probe so connection status becomes available immediately
   try {
     const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
@@ -651,196 +646,8 @@ let lastLogVersion = 0;
 let lastLogGuid = "";
 let lastSpokenNo = 0;
 
-async function poll() {
-  let updated = false;
-  try {
-    // Get timezone from navigator
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const log_from = lastLogVersion;
-    const response = await sendJsonData("/v1/ui/poll", {
-      log_from: log_from,
-      notifications_from: notificationStore.lastNotificationVersion || 0,
-      context: context || null,
-      timezone: timezone,
-    });
-
-    // Check if the response is valid
-    if (!response) {
-      console.error("Invalid response from poll endpoint");
-      return false;
-    }
-
-    if (!context) setContext(response.context);
-    if (response.context != context) return; //skip late polls after context change
-
-    // if the chat has been reset, restart this poll as it may have been called with incorrect log_from
-    if (lastLogGuid != response.log_guid) {
-      chatHistory.innerHTML = "";
-      lastLogVersion = 0;
-      lastLogGuid = response.log_guid;
-      await poll();
-      return;
-    }
-
-    if (lastLogVersion != response.log_version) {
-      updated = true;
-      for (const log of response.logs) {
-        // Skip transient streaming entries from poll to avoid duplicate messages with SSE
-        if (log && log.temp) continue;
-        // If SSE is online or being established, skip assistant final responses from poll to avoid double rendering
-        if ((__sseConnected || __sseDesired) && log && log.type === "response") continue;
-        const messageId = log.id || log.no; // Use log.id if available
-        setMessage(
-          messageId,
-          log.type,
-          log.heading,
-          log.content,
-          log.temp,
-          log.kvps
-        );
-      }
-      afterMessagesUpdate(response.logs);
-    }
-
-    lastLogVersion = response.log_version;
-    lastLogGuid = response.log_guid;
-
-    updateProgress(response.log_progress, response.log_progress_active);
-
-    // Update notifications from response
-    notificationStore.updateFromPoll(response);
-
-    //set ui model vars from backend
-    if (globalThis.Alpine && inputSection) {
-      const inputAD = Alpine.$data(inputSection);
-      if (inputAD) {
-        inputAD.paused = response.paused;
-      }
-    }
-
-    // Update status icon state
-    setConnectionStatus("ok");
-
-    // Update chats list and sort by created_at time (newer first)
-    let chatsAD = null;
-    let contexts = response.contexts || [];
-    if (globalThis.Alpine && chatsSection) {
-      chatsAD = Alpine.$data(chatsSection);
-      if (chatsAD) {
-        chatsAD.contexts = contexts.sort(
-          (a, b) => (b.created_at || 0) - (a.created_at || 0)
-        );
-      }
-    }
-
-    // Update tasks list and sort by creation time (newer first)
-    const tasksSection = document.getElementById("tasks-section");
-    if (globalThis.Alpine && tasksSection) {
-      const tasksAD = Alpine.$data(tasksSection);
-      if (tasksAD) {
-        let tasks = response.tasks || [];
-
-        // Always update tasks to ensure state changes are reflected
-        if (tasks.length > 0) {
-          // Sort the tasks by creation time
-          const sortedTasks = [...tasks].sort(
-            (a, b) => (b.created_at || 0) - (a.created_at || 0)
-          );
-
-          // Assign the sorted tasks to the Alpine data
-          tasksAD.tasks = sortedTasks;
-        } else {
-          // Make sure to use a new empty array instance
-          tasksAD.tasks = [];
-        }
-      }
-    }
-
-    // Make sure the active context is properly selected in both lists
-    if (context) {
-      // Update selection in the active tab
-      const activeTab = localStorage.getItem("activeTab") || "chats";
-
-      if (activeTab === "chats" && chatsAD) {
-        chatsAD.selected = context;
-        localStorage.setItem("lastSelectedChat", context);
-
-        // Check if this context exists in the chats list
-        const contextExists = contexts.some((ctx) => ctx.id === context);
-
-        // If it doesn't exist in the chats list but we're in chats tab, try to select the first chat
-        if (!contextExists && contexts.length > 0) {
-          // Check if the current context is empty before creating a new one
-          // If there's already a current context and we're just updating UI, don't automatically
-          // create a new context by calling setContext
-          const firstChatId = contexts[0].id;
-
-          // Only create a new context if we're not currently in an existing context
-          // This helps prevent duplicate contexts when switching tabs
-          setContext(firstChatId);
-          chatsAD.selected = firstChatId;
-          localStorage.setItem("lastSelectedChat", firstChatId);
-        }
-      } else if (activeTab === "tasks" && tasksSection) {
-        const tasksAD = Alpine.$data(tasksSection);
-        tasksAD.selected = context;
-        localStorage.setItem("lastSelectedTask", context);
-
-        // Check if this context exists in the tasks list
-        const taskExists = response.tasks?.some((task) => task.id === context);
-
-        // If it doesn't exist in the tasks list but we're in tasks tab, try to select the first task
-        if (!taskExists && response.tasks?.length > 0) {
-          const firstTaskId = response.tasks[0].id;
-          setContext(firstTaskId);
-          tasksAD.selected = firstTaskId;
-          localStorage.setItem("lastSelectedTask", firstTaskId);
-        }
-      }
-    } else if (
-      response.tasks &&
-      response.tasks.length > 0 &&
-      localStorage.getItem("activeTab") === "tasks"
-    ) {
-      // If we're in tasks tab with no selection but have tasks, select the first one
-      const firstTaskId = response.tasks[0].id;
-      setContext(firstTaskId);
-      if (tasksSection) {
-        const tasksAD = Alpine.$data(tasksSection);
-        tasksAD.selected = firstTaskId;
-        localStorage.setItem("lastSelectedTask", firstTaskId);
-      }
-    } else if (
-      contexts.length > 0 &&
-      localStorage.getItem("activeTab") === "chats" &&
-      chatsAD
-    ) {
-      // If we're in chats tab with no selection but have chats, select the first one
-      const firstChatId = contexts[0].id;
-
-      // Only set context if we don't already have one to avoid duplicates
-      if (!context) {
-        setContext(firstChatId);
-        chatsAD.selected = firstChatId;
-        localStorage.setItem("lastSelectedChat", firstChatId);
-      }
-    }
-
-    lastLogVersion = response.log_version;
-    lastLogGuid = response.log_guid;
-
-    // No synthetic greetings; UI only renders real events from backend
-  } catch (error) {
-    // Reduce console noise when infra is down; mark offline and back off via scheduler
-    try {
-      console.debug("poll failed:", (error && (error.message || String(error))) || error);
-    } catch (_) {}
-    setConnectionStatus("down");
-  }
-
-  return updated;
-}
+// Legacy poll removed: SSE is the sole transport for messages/events
+async function poll() { return false; }
 
 async function monitorHealth() {
   while (true) {
@@ -1438,39 +1245,7 @@ chatHistory.addEventListener("scroll", updateAfterScroll);
 
 chatInput.addEventListener("input", adjustTextareaHeight);
 
-// setInterval(poll, 250);
-
-async function startPolling() {
-  const shortInterval = 25;
-  const longInterval = 250;
-  const shortIntervalPeriod = 100;
-  let shortIntervalCount = 0;
-
-  async function _doPoll() {
-    let nextInterval = longInterval;
-
-    try {
-      // If the backend appears down, avoid hammering /v1/ui/poll and back off
-      if (getConnectionStatus() === false || typeof getConnectionStatus() === 'undefined') {
-        nextInterval = 2000; // gentle backoff while offline
-      } else {
-        const result = await poll();
-        if (result) shortIntervalCount = shortIntervalPeriod; // Reset the counter when the result is true
-        if (shortIntervalCount > 0) shortIntervalCount--; // Decrease the counter on each call
-        nextInterval = shortIntervalCount > 0 ? shortInterval : longInterval;
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    }
-
-    // Call the function again after the selected interval
-    setTimeout(_doPoll.bind(this), nextInterval);
-  }
-
-  _doPoll();
-}
-
-document.addEventListener("DOMContentLoaded", startPolling);
+// Polling scheduler removed
 
 // Setup event handlers once the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function () {
@@ -1573,8 +1348,7 @@ function activateTab(tabName) {
     }
   }
 
-  // Request a poll update
-  poll();
+  // SSE provides live updates; no legacy poll
 }
 
 // Add function to initialize active tab and selections from localStorage

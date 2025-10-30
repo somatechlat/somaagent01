@@ -72,14 +72,7 @@ async def test_ui_chat_happy_path(page, browser):  # type: ignore[no-redef]
             break
         await asyncio.sleep(0.5)
     else:
-        # Fetch last few logs from /v1/ui/poll for diagnostics
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(f"{BASE_URL}/v1/ui/poll", json={"log_from": 0, "context": None})
-                body = resp.json()
-        except Exception:
-            body = {"error": "poll_failed"}
-        pytest.fail("No assistant response rendered within timeout; poll=\n" + json.dumps(body)[:2000])
+        pytest.fail("No assistant response rendered within timeout; polling diagnostics removed (SSE-only)")
 
     # If we reached here, message is rendered. Pass.
     assert True

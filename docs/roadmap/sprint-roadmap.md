@@ -6,43 +6,44 @@ Conventions:
 - Definition of Done (DoD): code merged, docs updated, tests passing (unit+integration), CI green, and dashboards updated if applicable.
 - Acceptance: explicit checks listed per sprint; failing any check means the sprint goal is not met.
 
-### Sprint 0 — Correctness and Strictness (1 week)
+### Sprint 0 — Priority 0: Live Chat (SSE) E2E (1 week)
+Goal:
+- Restore end-to-end chatting via the LLM and the full agent infra using the canonical SSE path.
+
 Scope:
-- Align SomaBrain base URL to 9696 everywhere; fix docs and compose.
-- Enable strict-mode defaults: fail-closed on policy/dependency failures; remove legacy fallbacks.
+- Verify and harden the minimum chat path: POST `/v1/session/message` → Kafka/Worker → SSE `GET /v1/session/{id}/events`.
+- Ensure uploads → attachment_id round-trip and chat with attachments works minimally.
+- Ensure health surfaces dependency states; UI shows banners but allows sending when overall health is not fully down.
 
 Deliverables:
-- docker-compose.yaml updated to `SOMA_BASE_URL=http://host.docker.internal:9696`.
-- Gateway health and UI banner logic for degraded dependencies.
-- Canonical roadmap updated (this doc and canonical).
+- Functional SSE chat path observed locally; assistant events visible over SSE.
+- UI uses `/v1/session/message`, `/v1/uploads`, and opens SSE for the current session.
+- E2E quick script and UI smoke pass in dev; document how to set provider credentials.
 
 Acceptance tests:
-- tests/docs/test_port_alignment.py: asserts 9696 in compose/docs.
-- Manual: Gateway /health shows `somabrain_http=up` when SomaBrain at 9696.
+- Task: E2E Quick (SSE) — passes and prints an assistant event.
+- Task: UI Smoke (Playwright) — loads UI and basic flows without console errors.
+- Optional: If provider credentials are present, assistant emits non-error content; else a clear error message appears over SSE (still acceptable for S0).
 
 Exit criteria:
-- All acceptance tests green; feature flags documented; no references to 9999 remain.
+- A send operation produces an assistant SSE event in local dev.
+- Basic upload+send works without 5xx.
 
-### Sprint 1A — Agent Zero Web UI Integration and Real Chat (priority, 1 week)
+### Sprint 0.5 — Strictness and No-Legacy Enablement (0.5–1 week)
 Scope:
-- Integrate Agent Zero Web UI into `webui/` and adapt all network calls to our Gateway `/v1` endpoints.
-- Remove any UI polling or filesystem path usage; rely on SSE for streaming and `/v1/uploads` for attachments.
-- Remove Gateway inline dialogue fallback; require Conversation Worker and real provider credentials.
-- Ensure existing sessions render and new messages stream end-to-end via Kafka and Worker.
+- Disable legacy UI polling (`/v1/ui/poll`) code paths and remove custom CSRF fetch logic in the UI; keep same-origin or header auth.
+- Remove duplicate SSE route registrations and inline dialogue fallbacks in Gateway.
+- Keep behavior identical for users; add Playwright test to assert no `/poll`/`memory_dashboard` calls; UI must not fetch `/csrf_token`.
 
 Deliverables:
-- UI: chat send via POST `/v1/session/message`, SSE wired to `/v1/session/{session_id}/events`, uploads wired to `/v1/uploads` returning `attachment_id`.
-- Session list/history/delete/reset routes integrated; delete closes SSE and clears history.
-- Gateway: inline dialogue block removed; strict fail-closed errors surface to UI with user-friendly copy.
+- UI free of polling and bespoke CSRF; SSE-only for streaming.
+- Gateway has a single SSE route implementation.
 
 Acceptance tests:
-- tests/playwright/test_ui_chat_stream.py: send → observe `llm.delta` then `llm.complete` over SSE; no polling.
-- tests/playwright/test_ui_upload_and_tool.py: upload → message with attachment → tool call and result displayed.
-- tests/playwright/test_ui_delete_chat.py: delete chat closes stream and clears messages; new chat works.
+- tests/webui/test_no_legacy_network.spec.ts: asserts no calls to legacy endpoints during chat flows.
 
 Exit criteria:
-- Streaming chat works end-to-end with real LLM credentials (OpenAI-compatible provider); no dev fallback paths.
-- UI has no references to legacy polling endpoints or filesystem paths.
+- All SSE tests green; no legacy network calls observed in Playwright traces.
 
 ### Sprint 1 — Attachment Ingestion by ID (1–2 weeks)
 Scope:

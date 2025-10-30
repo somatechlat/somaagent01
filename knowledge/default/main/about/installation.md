@@ -520,7 +520,7 @@ Run the Agent Zero UI via the Gateway (recommended):
 http://localhost:${GATEWAY_PORT:-21016}/ui
 ```
 
-If you prefer to serve a static local UI for development, host the `webui/` files behind a static server and point your browser to that local server. For production and proper CSRF/cookie semantics, always prefer the Gateway-served UI.
+If you prefer to serve a static local UI for development, host the `webui/` files behind a static server and point your browser to that local server. For production and proper cookie/session semantics, always prefer the Gateway-served UI. No custom CSRF endpoint is required.
 
 ## 6. Configure Agent Zero
 Now we can configure Agent Zero - select models, settings, API Keys etc. Refer to the [Usage](usage.md#agent-configuration) guide for a full guide on how to configure Agent Zero.

@@ -40,6 +40,7 @@ class SLMClient:
         *,
         model: Optional[str] = None,
         base_url: Optional[str] = None,
+        api_path: Optional[str] = None,
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> Tuple[str, dict[str, int]]:
@@ -50,7 +51,8 @@ class SLMClient:
             # Some providers allow no key; most require it. Enforce presence to avoid silent failures.
             raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
-        url = f"{(base_url or self.base_url).rstrip('/')}/v1/chat/completions"
+        path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
+        url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
@@ -75,6 +77,7 @@ class SLMClient:
             except Exception:
                 pass
             response.raise_for_status()
+
         data: dict[str, Any] = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
@@ -94,6 +97,7 @@ class SLMClient:
         *,
         model: Optional[str] = None,
         base_url: Optional[str] = None,
+        api_path: Optional[str] = None,
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> AsyncIterator[Dict[str, Any]]:
@@ -102,7 +106,8 @@ class SLMClient:
         if not self.api_key:
             raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
-        url = f"{(base_url or self.base_url).rstrip('/')}/v1/chat/completions"
+        path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
+        url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],

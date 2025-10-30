@@ -22,6 +22,7 @@ class ModelProfile:
     deployment_mode: str
     model: str
     base_url: str
+    api_path: str | None = None
     temperature: float = 0.2
     kwargs: dict[str, Any] | None = None
 
@@ -62,6 +63,7 @@ class ModelProfileStore:
                     deployment_mode TEXT NOT NULL,
                     model TEXT NOT NULL,
                     base_url TEXT NOT NULL,
+                    api_path TEXT,
                     temperature DOUBLE PRECISION NOT NULL DEFAULT 0.2,
                     extra JSONB NOT NULL DEFAULT '{}'::jsonb,
                     UNIQUE(role, deployment_mode)
@@ -74,11 +76,12 @@ class ModelProfileStore:
         async with pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO model_profiles (role, deployment_mode, model, base_url, temperature, extra)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO model_profiles (role, deployment_mode, model, base_url, api_path, temperature, extra)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (role, deployment_mode)
                 DO UPDATE SET model = EXCLUDED.model,
                               base_url = EXCLUDED.base_url,
+                              api_path = EXCLUDED.api_path,
                               temperature = EXCLUDED.temperature,
                               extra = EXCLUDED.extra;
                 """,
@@ -86,6 +89,7 @@ class ModelProfileStore:
                 profile.deployment_mode,
                 profile.model,
                 profile.base_url,
+                profile.api_path,
                 profile.temperature,
                 json.dumps(profile.kwargs or {}, ensure_ascii=False),
             )
@@ -134,7 +138,7 @@ class ModelProfileStore:
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT role, deployment_mode, model, base_url, temperature, extra
+                SELECT role, deployment_mode, model, base_url, api_path, temperature, extra
                 FROM model_profiles
                 WHERE role = $1 AND deployment_mode = $2
                 """,
@@ -148,6 +152,7 @@ class ModelProfileStore:
             deployment_mode=row["deployment_mode"],
             model=row["model"],
             base_url=row["base_url"],
+            api_path=row["api_path"],
             temperature=row["temperature"],
             kwargs=row["extra"],
         )
@@ -157,12 +162,12 @@ class ModelProfileStore:
         async with pool.acquire() as conn:
             if deployment_mode:
                 rows = await conn.fetch(
-                    "SELECT role, deployment_mode, model, base_url, temperature, extra FROM model_profiles WHERE deployment_mode = $1",
+                    "SELECT role, deployment_mode, model, base_url, api_path, temperature, extra FROM model_profiles WHERE deployment_mode = $1",
                     deployment_mode,
                 )
             else:
                 rows = await conn.fetch(
-                    "SELECT role, deployment_mode, model, base_url, temperature, extra FROM model_profiles",
+                    "SELECT role, deployment_mode, model, base_url, api_path, temperature, extra FROM model_profiles",
                 )
         return [
             ModelProfile(
@@ -170,6 +175,7 @@ class ModelProfileStore:
                 deployment_mode=row["deployment_mode"],
                 model=row["model"],
                 base_url=row["base_url"],
+                api_path=row["api_path"],
                 temperature=row["temperature"],
                 kwargs=row["extra"],
             )

@@ -6,12 +6,12 @@ Last updated: 2025-10-30
 This document is the canonical roadmap for the somaAgent01 project. It consolidates the project's vision, the implemented components, the gaps vs the canonical vision, and the prioritized tasks to reach parity with the Agent Zero UI and the canonical streaming transport.
 
 Summary
-- Vision: a developer-first, production-ready multi-service agent platform exposing a single, predictable Gateway surface for UI and integrators. The Gateway provides secure same-origin UI serving, CSRF and cookie semantics, SSE streaming for real-time message updates, uploads, tool invocation endpoints, and credential management. Workers (Conversation Worker, Tool Executor) are event-driven and consume/publish to the message backbone.
+- Vision: a developer-first, production-ready multi-service agent platform exposing a single, predictable Gateway surface for UI and integrators. The Gateway provides secure same-origin UI serving, cookie/session or header-token auth, SSE streaming for real-time message updates, uploads, tool invocation endpoints, and credential management. Workers (Conversation Worker, Tool Executor) are event-driven and consume/publish to the message backbone.
 - Canonical transport: Server-Sent Events (SSE) via GET /v1/session/{id}/events from the Gateway. Polling is deprecated and only supported for legacy clients via an adapter layer. Websockets are optional as a later enhancement.
 
 Core Components (current state)
 - Gateway (edge API)
-  - Responsibilities: HTTP surface for clients, session creation, message ingress, SSE streaming endpoint (/v1/session/{id}/events), upload endpoint, tool request endpoint, CSRF and credential endpoints.
+  - Responsibilities: HTTP surface for clients, session creation, message ingress, SSE streaming endpoint (/v1/session/{id}/events), upload endpoint, tool request endpoint, and credential endpoints.
   - State: Implemented. Health endpoint validated (local probe returned 200 during analysis).
 
 - Conversation Worker
@@ -36,7 +36,7 @@ Core Components (current state)
 
 Canonical Decisions
 - Use Gateway SSE (/v1/session/{id}/events) as the single production transport.
-- Serve the Web UI from the Gateway (same-origin) to preserve cookie and CSRF semantics—do not run a standalone `run_ui.py` server in production.
+- Serve the Web UI from the Gateway (same-origin) to preserve cookie/session semantics—do not run a standalone `run_ui.py` server in production.
 - Provide small adapter endpoints for legacy/polling UI copies while migrating clients to SSE.
 - Tool catalog lives in Postgres and is exposed via Gateway endpoints; tool invocation uses POST /v1/tool/request and emits results via SSE events tied to sessions.
 
@@ -220,7 +220,7 @@ Logs:
 
 ## Security Model
 
-- AuthN: session cookies or OIDC; CSRF enforced for browser calls.
+- AuthN: session cookies or OIDC; browser calls use same-origin cookies or header/bearer tokens. No custom CSRF endpoint.
 - AuthZ: OpenFGA for resource relations; OPA for policy gates (e.g., tool allowlist, PII egress checks).
 - Secrets: provider API keys stored centrally; never logged; access via internal credentials endpoint with internal token.
 - Transport: HTTPS/TLS; internal mTLS optional; WAF headers and strict CORS for UI.
@@ -253,7 +253,7 @@ Strict-mode defaults:
 - Unit: schema validation for envelopes; idempotency tests; provider credential fetch tests.
 - Integration: write-through tests (Gateway ↔ Worker ↔ SomaBrain); tool orchestration; SSE stream integrity.
 - E2E/Playwright: console/network-clean smoke; chat send/stream; tool flow; memory proof (health-gated for replica lag).
-- Security tests: CSRF, CORS, authZ policies, redaction; secrets not present in logs.
+- Security tests: CORS, authZ policies, redaction; secrets not present in logs.
 - CI gates: build, lint/typecheck, unit, integration, E2E (smoke) required; full E2E nightly.
 
 ## Web UI Integration (Agent Zero behavior)
@@ -268,6 +268,47 @@ What to copy/adapt from Agent Zero UI:
 - Tools: request via POST `/v1/tool/request`; UI shows tool call and result events inline, matching the SSE contract.
 - Profiles and runtime config: UI fetches `/v1/tools` and `/v1/runtime-config` for model profiles, allowed tools, limits, and flags; secrets never exposed.
 
+Agent Zero → Canonical endpoint mapping (parity plan)
+- Chat send
+  - A0: POST `/message_async` with either JSON `{ text, context, message_id }` or multipart FormData `{ text, context, message_id, attachments[] }`
+  - Canonical: POST `/v1/session/message` with `{ session_id, message: { role: "user", content }, attachments?: [{ id }] }`
+  - Migration: When attachments are present, UI first POSTs to `/v1/uploads` for each file, receives `{ id, sha256, content_type, size_bytes }`, then references these IDs in the message body.
+
+- Streaming updates
+  - A0: Client polls `/poll` at 25–250ms intervals using `log_version` and `log_guid`; UI renders deltas and progress
+  - Canonical: UI subscribes to SSE `GET /v1/session/{session_id}/events`; render `llm.delta` as they arrive; show `llm.complete` and tool events; no polling
+  - Migration: Remove all polling/time-slicing logic; implement SSE reconnect with backoff and Last-Event-Id
+
+- CSRF and auth
+  - A0: Fetch `/csrf_token` then send `X-CSRF-Token` header on all requests; uses same-origin cookies
+  - Canonical: Same-origin UI served by Gateway; prefer header/bearer or session cookie; no custom CSRF fetch endpoint; rely on stateless header auth or framework defaults as applicable
+  - Migration: Delete custom `/csrf_token` usage in UI and any CSRF adapter routes; keep same-origin cookies or header token
+
+- Memory Dashboard
+  - A0: JSON POST to `memory_dashboard` with `action: get_current_memory_subdir|get_memory_subdirs|search|delete|bulk_delete|update`; UI polls every ~2–3s for freshness
+  - Canonical: New read-only, SomaBrain-backed endpoints:
+    - GET `/v1/memories/subdirs`
+    - GET `/v1/memories/current-subdir?session_id=...`
+    - GET `/v1/memories?subdir=...&area=...&q=...&limit=&threshold=` (search/list)
+    - DELETE `/v1/memories/{memory_id}` (policy-gated; optional)
+  - Migration: Replace `memory_dashboard` calls with the above; remove polling and use manual refresh or SSE-based cache invalidations later
+
+- Knowledge import
+  - A0: POST `/import_knowledge` with `files[]` and `ctxid`
+  - Canonical: POST `/v1/uploads` then trigger a `document_ingest` tool call referencing `attachment_id`; show tool events in-stream
+
+- Session controls
+  - A0: `/chat_reset`, `/chat_remove`, `/chat_load`, `/chat_export`, `/pause`, `/nudge`, `/restart`, `/health`
+  - Canonical: `/v1/session/reset`, `/v1/session/{id}` DELETE, `/v1/session/import`, `/v1/session/export`, `/v1/session/pause`, `/v1/session/nudge`, `/v1/health`
+  - Migration: Wire UI to canonical paths; any missing canonical route will be added under `/v1/session/*` namespace
+
+UI behavior requirements (copy exactly from A0, implemented via canonical endpoints)
+- Progressive streaming token render with smooth autoscroll and speech synthesis hooks
+- Attachments UX: drag/drop, multi-file upload, progress bar, preview; map to upload→attachment_id flow
+- Session list and tasks switching preserved; selection persisted in localStorage; delete closes SSE and clears view
+- Notifications and error handling: frontend toasts on fetch failures; backend disconnected banner; strict error copies
+- Settings modal: memory dashboard, scheduler/tasks, tool visibility driven by `/v1/tools` and `/v1/runtime-config`
+
 What we will not keep:
 - Any legacy UI polling or proxy fallbacks.
 - Any inline dialogue fallback in Gateway; replies must originate from Conversation Worker and real LLM providers.
@@ -277,6 +318,19 @@ Acceptance criteria for UI integration:
 - Uploading a file yields an attachment_id; subsequent message referencing it triggers tool ingestion and assistant usage of extracted text.
 - Deleting a chat closes the current SSE stream and removes history; a new chat starts clean.
 - UI reflects Tool Catalog enable/disable and execution profile limits within configured TTL.
+
+NO LEGACY enforcement (applies to both UI and Gateway)
+- Remove UI polling (`/poll`) and related short/long interval logic; replace with SSE subscribe + reconnect/backoff
+- Remove CSRF fetch flow (`/csrf_token`) and X-CSRF-Token wiring; rely on same-origin + cookie or header token per environment
+- Remove Gateway inline dialogue fallbacks and any duplicate SSE routes; keep a single canonical SSE path
+- Remove `memory_dashboard` shim and UI polling; wire to SomaBrain-backed read-only endpoints; optionally keep delete under policy
+
+Test plan additions (Playwright + pytest)
+- test_ui_chat_stream_sse: open SSE, send message, assert llm.delta then llm.complete without any `/poll` network calls
+- test_ui_upload_ingest_tool: upload file(s), send message referencing attachments, assert `tool.call` and `tool.result` events and assistant utilization of extracted text
+- test_ui_memory_dashboard_readonly: load subdirs, search memories, view detail, no polling; optional delete guarded by policy flag
+- test_api_session_controls: reset/delete/export/import/nudge/pause endpoints round-trip without legacy routes
+- test_no_legacy_network: assert no network calls to `/poll` or `memory_dashboard`; no `/csrf_token` fetches from UI
 
 ## Rollout Plan and Milestones
 

@@ -93,4 +93,4 @@ docker compose down -v
 ## Notes
 
 - All infra images are official upstream. The application image is built from source with `python:3.11-slim` base.
-- For production, pin image digests and configure mTLS, OIDC, and strict CSRF.
+- For production, pin image digests and configure mTLS, OIDC, and appropriate browser auth (same-origin cookies or header tokens). No custom CSRF endpoints are used.

@@ -30,13 +30,9 @@ BASE = (
 
 async def main() -> int:
     async with httpx.AsyncClient(timeout=10.0) as client:
-        r = await client.get(BASE + "/v1/csrf")
-        r.raise_for_status()
-        token = r.json().get("token", "")
-        headers = {"X-CSRF-Token": token, "Content-Type": "application/json"}
         r = await client.post(
             BASE + "/v1/session/message",
-            headers=headers,
+            headers={"Content-Type": "application/json"},
             json={"message": "hello from e2e_quick.py"},
         )
         if not r.is_success:

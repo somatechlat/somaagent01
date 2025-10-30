@@ -200,64 +200,8 @@ def _setup_cors() -> None:
 
 _setup_cors()
 
-# Include UI proxy routes to provide legacy-compatible UI endpoints like /v1/ui/poll
-# This allows the Web UI to aggregate sessions and events via the gateway process.
-# If the router import fails (older image/build), we install a safe fallback below.
-try:
-    from services.ui_proxy.routes import router as ui_proxy_router  # type: ignore
-
-    app.include_router(ui_proxy_router)
-except Exception as _e:  # pragma: no cover - optional wiring for local/dev
-    # If UI proxy is not available at import time, log and fall back to inline endpoints below.
-    logging.getLogger(__name__).warning("UI proxy router import failed, will install inline fallback endpoints: %s", _e)
-
-# Install inline fallback implementations for /v1/ui/poll and /v1/ui/message if explicitly enabled.
-# By default, we avoid registering any alternate handlers so that all UI compatibility
-# behavior is centralized in services.ui_proxy.service (single point of truth).
-def _route_exists(path: str, methods: set[str]) -> bool:
-    try:
-        for r in getattr(app, "routes", []):
-            r_path = getattr(r, "path", None)
-            r_methods = set(getattr(r, "methods", set()) or set())
-            if r_path == path and methods.issubset(r_methods):
-                return True
-    except Exception:
-        pass
-    return False
-
-_enable_ui_proxy_fallback = os.getenv("GATEWAY_UI_PROXY_FALLBACK", "false").lower() in {"true", "1", "yes", "on"}
-if _enable_ui_proxy_fallback:
-    try:
-        from services.ui_proxy.service import PollAggregator, UiMessageService  # type: ignore
-        from services.ui_proxy.client import GatewayClient  # type: ignore
-    except Exception:
-        PollAggregator = None  # type: ignore
-        UiMessageService = None  # type: ignore
-        GatewayClient = None  # type: ignore
-
-    # Only install fallbacks when explicitly requested and routes are not already present
-    if PollAggregator and GatewayClient and not _route_exists("/v1/ui/poll", {"POST"}):
-        async def _ui_poll_fallback(request: Request) -> JSONResponse:
-            try:
-                body = await request.json()
-            except Exception:
-                body = {}
-            # Delegate to PollAggregator (single source of truth)
-            client = GatewayClient()
-            aggregator = PollAggregator(client)
-            payload = await aggregator.poll(body)
-            return JSONResponse(payload)
-
-        app.add_api_route("/v1/ui/poll", _ui_poll_fallback, methods=["POST"])
-
-    if UiMessageService and GatewayClient and not _route_exists("/v1/ui/message", {"POST"}):
-        async def _ui_message_fallback(request: Request) -> JSONResponse:
-            client = GatewayClient()
-            service = UiMessageService()
-            payload = await service.handle_request(request, client)
-            return JSONResponse(payload)
-
-        app.add_api_route("/v1/ui/message", _ui_message_fallback, methods=["POST"])
+# Legacy UI proxy router is intentionally not included here to enforce SSE-only UI paths.
+# The Web UI must use canonical /v1 endpoints directly; polling shims are removed.
 
 def _get_or_create_counter(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Counter:
     try:
@@ -1019,41 +963,7 @@ async def get_runtime_config() -> dict[str, Any]:
     }
 
 
-# -----------------------------
-# Central CSRF token issuance (browser flow)
-# -----------------------------
-
-
-@app.get("/v1/csrf")
-async def issue_csrf_token(request: Request) -> JSONResponse:
-    """Issue a CSRF token and set the matching cookie for double‑submit validation.
-
-    - Returns JSON: {"token": <token>} for the SPA to attach in X-CSRF-Token.
-    - Sets cookie named by GATEWAY_CSRF_COOKIE_NAME (default: csrf_token).
-    - Cookie attributes: SameSite=Lax, Secure when HTTPS or GATEWAY_COOKIE_SECURE=true.
-
-    Gateway middleware enforces CSRF only when enabled via GATEWAY_CSRF_ENABLED
-    and primarily for cookie-authenticated browser flows.
-    """
-    token = secrets.token_urlsafe(32)
-    cookie_name = os.getenv("GATEWAY_CSRF_COOKIE_NAME", "csrf_token")
-    same_site = os.getenv("GATEWAY_CSRF_COOKIE_SAMESITE", "Lax")
-    # Treat forwarded https as secure in typical reverse-proxy deployments
-    forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
-    secure_env = os.getenv("GATEWAY_COOKIE_SECURE", "false").lower() in {"true", "1", "yes", "on"}
-    secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
-
-    resp = JSONResponse({"token": token})
-    http_only_env = os.getenv("GATEWAY_CSRF_COOKIE_HTTPONLY", "true").lower() in {"true", "1", "yes", "on"}
-    resp.set_cookie(
-        key=cookie_name,
-        value=token,
-        httponly=http_only_env,  # SPA reads token from JSON body; cookie can be HttpOnly in hardened setups
-        secure=secure,
-        samesite=same_site,
-        path="/",
-    )
-    return resp
+# (CSRF issuance endpoint removed; SSE-only UI with same-origin and token-based auth is used.)
 
 _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
@@ -1109,36 +1019,7 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-# -----------------------------
-# Optional CSRF protection (for cookie-based sessions)
-# -----------------------------
-
-def _csrf_enabled() -> bool:
-    return os.getenv("GATEWAY_CSRF_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
-
-
-def _csrf_enforce_for_bearer() -> bool:
-    return os.getenv("GATEWAY_CSRF_ENFORCE_FOR_BEARER", "false").lower() in {"true", "1", "yes", "on"}
-
-
-@app.middleware("http")
-async def csrf_protect(request: Request, call_next):
-    if not _csrf_enabled():
-        return await call_next(request)
-
-    if request.method in {"GET", "HEAD", "OPTIONS"}:
-        return await call_next(request)
-
-    # If using bearer tokens and not enforcing CSRF for Authorization flows, skip
-    if (not _csrf_enforce_for_bearer()) and request.headers.get("authorization"):
-        return await call_next(request)
-
-    cookie_name = os.getenv("GATEWAY_CSRF_COOKIE_NAME", "csrf_token")
-    expected = request.cookies.get(cookie_name)
-    header = request.headers.get("x-csrf-token")
-    if not expected or not header or header != expected:
-        return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
-    return await call_next(request)
+# (CSRF middleware removed.)
 
 
 def _session_claims_from_cookie(request: Request) -> dict[str, Any] | None:
@@ -1180,7 +1061,7 @@ async def ui_auth_guard(request: Request, call_next):
       redirect to /login if no valid session cookie is present.
     """
     path = request.url.path
-    if path.startswith("/v1/auth") or path.startswith("/v1/csrf") or path.startswith("/openapi") or path.startswith("/docs"):
+    if path.startswith("/v1/auth") or path.startswith("/openapi") or path.startswith("/docs"):
         return await call_next(request)
 
     need_auth = _oidc_enabled() or REQUIRE_AUTH
@@ -3971,22 +3852,8 @@ async def health_check(
 
 
 # -----------------------------
-# Minimal UI/platform endpoints (CSRF, config, SSE, UI JSON)
+# Minimal UI/platform endpoints (config, SSE, UI JSON)
 # -----------------------------
-
-@app.get("/v1/csrf")
-async def get_csrf() -> JSONResponse:
-    """Return a CSRF token for browser requests.
-
-    In this build, CSRF validation is not enforced server-side; the token is
-    provided to satisfy the UI's fetch wrapper and may be validated by a future
-    middleware. The value is random per-call.
-    """
-    try:
-        token = secrets.token_urlsafe(24)
-    except Exception:
-        token = uuid.uuid4().hex
-    return JSONResponse({"token": token})
 
 
 @app.get("/ui/config.json")
@@ -4687,11 +4554,13 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
             except Exception:
                 extra = None
         base_url = _normalize_llm_base_url(str(mp.get("base_url", "")))
+        api_path = str(mp.get("api_path")) if mp.get("api_path") else None
         to_save = ModelProfile(
             role="dialogue",
             deployment_mode=deployment,
             model=str(mp.get("model", "")),
             base_url=base_url,
+            api_path=api_path,
             temperature=float(mp.get("temperature", 0.2)),
             kwargs=extra if isinstance(extra, dict) else None,
         )
@@ -4757,6 +4626,8 @@ async def ui_sections_get() -> dict[str, Any]:
                         fld["value"] = profile.model
                     elif fid == "chat_model_api_base" and profile.base_url:
                         fld["value"] = profile.base_url
+                    elif fid == "chat_model_api_path" and profile.api_path:
+                        fld["value"] = profile.api_path
                     elif fid == "chat_model_kwargs" and profile.kwargs:
                         kv = profile.kwargs or {}
                         try:
@@ -4934,6 +4805,8 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
                 model_profile["model"] = val.strip()
             elif fid == "chat_model_api_base" and isinstance(val, str):
                 model_profile["base_url"] = val.strip()
+            elif fid == "chat_model_api_path" and isinstance(val, str):
+                model_profile["api_path"] = val.strip()
             elif fid == "chat_model_kwargs" and isinstance(val, str):
                 kv = _as_env_kv(val)
                 model_profile["kwargs"] = kv
@@ -5039,6 +4912,7 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
             deployment_mode=APP_SETTINGS.deployment_mode,
             model=model_name,
             base_url=normalized_base,
+            api_path=str(model_profile.get("api_path", "")) or None,
             temperature=temp,
             kwargs=(model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else None),
         )
@@ -5690,8 +5564,8 @@ def _gateway_slm_client() -> SLMClient:
     return SLMClient()
 
 
-async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, str, float, dict[str, Any]]:
-    """Return (model, base_url, temperature, extra_kwargs) after applying overrides and normalization.
+async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, str, str | None, float, dict[str, Any]]:
+    """Return (model, base_url, api_path, temperature, extra_kwargs) after applying overrides and normalization.
 
     Raises HTTPException on config/credentials errors.
     """
@@ -5754,7 +5628,8 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
     meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
     if gw_lock_warning:
         meta["_gateway_model_lock_warning"] = True
-    return model, base_url, temperature, meta
+    api_path = profile.api_path if profile else None
+    return model, base_url, api_path, temperature, meta
 
 
 @app.post("/v1/llm/invoke")
@@ -5763,7 +5638,8 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
 
-    model, base_url, temperature, meta = await _resolve_profile_and_creds(payload)
+    # Resolve profile including api_path and credentials
+    model, base_url, api_path, temperature, meta = await _resolve_profile_and_creds(payload)
 
     # Prepare messages for SLMClient
     messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
@@ -5787,6 +5663,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             messages,
             model=model,
             base_url=base_url,
+            api_path=api_path,
             temperature=temperature,
             **{k: v for k, v in meta.items() if not k.startswith("_")},
         )
@@ -5894,7 +5771,8 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
 
-    model, base_url, temperature, meta = await _resolve_profile_and_creds(payload)
+    # Resolve profile including api_path and credentials
+    model, base_url, api_path, temperature, meta = await _resolve_profile_and_creds(payload)
     messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
 
     client = _gateway_slm_client()
@@ -5916,6 +5794,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 messages,
                 model=model,
                 base_url=base_url,
+                api_path=api_path,
                 temperature=temperature,
                 **{k: v for k, v in meta.items() if not k.startswith("_")},
             ):

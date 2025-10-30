@@ -24,8 +24,8 @@ export async function callJsonApi(endpoint, data) {
 }
 
 /**
- * Fetch wrapper for A0 APIs that ensures token exchange
- * Automatically adds CSRF token to request headers
+ * Fetch wrapper for A0 APIs that ensures URL base resolution.
+ * No CSRF token dance; relies on same-origin credentials or header auth per environment.
  * @param {string} url - The URL to fetch
  * @param {Object} [request] - The fetch request options
  * @returns {Promise<Response>} The fetch response
@@ -46,72 +46,19 @@ export async function fetchApi(url, request) {
       return url;
     }
   }
-
-  async function _wrap(retry) {
-    // get the CSRF token
-    const token = await getCsrfToken();
-
-    // create a new request object if none was provided
-    const finalRequest = request || {};
-
-    // ensure headers object exists
-    finalRequest.headers = finalRequest.headers || {};
-
-    // add the CSRF token to the headers
-    finalRequest.headers["X-CSRF-Token"] = token;
-
-    // perform the fetch with the updated request
-    const finalUrl = resolveUrl(url);
-    const response = await fetch(finalUrl, finalRequest);
-
-    // check if there was an CSRF error
-    if (response.status === 403 && retry) {
-      // retry the request with new token
-      invalidateCsrfToken();
-      return await _wrap(false);
-    }else if(response.redirected && response.url.endsWith("/login")){
-      // redirect to login
-      window.location.href = response.url;
-      return;
-    }
-
-    // return the response
+  // Create a new request object if none was provided
+  const finalRequest = { ...(request || {}) };
+  // Ensure same-origin credentials for cookies/session when applicable
+  if (typeof finalRequest.credentials === "undefined") {
+    finalRequest.credentials = "same-origin";
+  }
+  // Perform the fetch
+  const finalUrl = resolveUrl(url);
+  const response = await fetch(finalUrl, finalRequest);
+  // Handle auth redirects gracefully
+  if (response && response.redirected && response.url.endsWith("/login")) {
+    window.location.href = response.url;
     return response;
   }
-
-  // perform the request
-  const response = await _wrap(true);
-
-  // return the response
   return response;
-}
-
-let csrfToken = null;
-let csrfTokenPromise = null;
-
-function invalidateCsrfToken() {
-  csrfToken = null;
-}
-
-async function getCsrfToken() {
-  if (csrfToken) return csrfToken;
-  if (!csrfTokenPromise) {
-    csrfTokenPromise = (async () => {
-      // Respect dynamic api_base for CSRF too
-      const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
-      const gw = await fetch(String(base).replace(/\/$/, "") + "/csrf", { credentials: "include" });
-      if (!gw.ok) throw new Error("Failed to fetch CSRF token");
-      const json = await gw.json();
-      csrfToken = json.token || "";
-      return csrfToken;
-    })()
-      .catch((error) => {
-        csrfTokenPromise = null;
-        throw error;
-      })
-      .finally(() => {
-        csrfTokenPromise = null;
-      });
-  }
-  return csrfTokenPromise;
 }

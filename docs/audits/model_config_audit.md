@@ -9,7 +9,7 @@ Summary
 
 High-level findings
 - Model profiles are seeded via `conf/model_profiles.yaml` and backed by `services/common/model_profiles.py` (Postgres table `model_profiles`). The code uses `MODEL_PROFILES_PATH` env override.
-- Multiple services (Gateway, Conversation Worker, Tool Executor, UI proxy) reference gateway/base URLs and model settings via env vars and fallbacks. There are many hard-coded fallbacks throughout tests and scripts.
+- Multiple services (Gateway, Conversation Worker, Tool Executor) reference gateway/base URLs and model settings via env vars and fallbacks. There are many hard-coded fallbacks throughout tests and scripts.
 - Workers currently read `SLM_MODEL` and sometimes include `base_url` in overrides (conversation_worker, tools). Gateway exposes `/v1/llm/invoke` and `/v1/llm/invoke/stream` and contains normalization logic (`_normalize_llm_base_url`).
 - Several legacy UI artifacts exist (`run_ui.py`, `tmp/webui/`, `deploy-optimized.sh`) and already archived copies are present in `archive/`.
 
@@ -28,8 +28,7 @@ Key files & excerpts (representative)
   - Worker uses `WORKER_GATEWAY_BASE` env var and calls Gateway invoke endpoints. Multiple locations form URLs like `{self._gateway_base}/v1/llm/invoke/stream`.
   - Worker reads `SLM_MODEL` fallback and sometimes constructs slm_kwargs including `model` and `base_url`.
 
-- `services/ui_proxy/client.py` and `services/ui_proxy/routes.py`
-  - Honor `GATEWAY_BASE_URL` and have sensible fallbacks. `ui_proxy` uses request.base_url optionally.
+  
 
 - `webui/` and `webui/playwright.config.ts` and tests
   - Many tests and Playwright configs read `WEB_UI_BASE_URL`, `BASE_URL`, or derive from `GATEWAY_PORT`.
@@ -41,7 +40,7 @@ Key files & excerpts (representative)
   - Sets `WORKER_GATEWAY_BASE` to `http://host.docker.internal:${GATEWAY_PORT:-20016}` and `SLM_MODEL` environment mapping.
 
 Concrete search hits (representative; not exhaustive)
-- `GATEWAY_BASE_URL` referenced in: `docs/roadmap/canonical-roadmap.md`, `services/ui_proxy/client.py`, `services/ui_proxy/routes.py`, `.env.example`, `scripts/e2e_quick.py`, `docs/user-manual/quick-start-tutorial.md`, tests under `tests/e2e` and `tests/playwright`.
+- `GATEWAY_BASE_URL` referenced in: `docs/roadmap/canonical-roadmap.md`, `.env.example`, `scripts/e2e_quick.py`, `docs/user-manual/quick-start-tutorial.md`, tests under `tests/e2e` and `tests/playwright`.
 - `WEB_UI_BASE_URL` referenced in: `.env.example`, `webui/playwright.config.ts`, `scripts/ui-smoke.sh`, many tests.
 - `WORKER_GATEWAY_BASE` referenced in: `services/conversation_worker/main.py`, `services/tool_executor/tools.py`, `docker-compose.yaml`, tests that monkeypatch it.
 - `MODEL_PROFILES_PATH` appears in `services/common/settings_sa01.py` and `services/common/settings_base.py`.

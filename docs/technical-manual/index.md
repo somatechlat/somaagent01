@@ -54,7 +54,7 @@ User → Gateway → conversation.inbound → Conversation Worker → SLM → co
 - **Authentication**: JWT (HS256/RS256) or API keys
 - **Authorization**: OPA policy evaluation, OpenFGA (optional)
 - **Encryption**: TLS termination at reverse proxy, Fernet for stored secrets
-- **CSRF**: Double-submit cookie pattern (optional)
+- **Browser auth**: Same-origin cookies or header/bearer tokens (no custom CSRF endpoint)
 
 ## Standards Compliance
 

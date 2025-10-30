@@ -10,7 +10,6 @@ import httpx
 @pytest.mark.asyncio
 async def test_sse_api_contract_smoke():
     """API contract smoke:
-    - GET /v1/csrf to get token
     - POST /v1/session/message to create/queue a message
     - Open SSE /v1/session/{id}/events and assert we observe an assistant event
 
@@ -22,15 +21,9 @@ async def test_sse_api_contract_smoke():
     BASE = os.environ.get("BASE_URL") or os.environ.get("WEB_UI_BASE_URL") or "http://127.0.0.1:21016"
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        # CSRF token (Gateway provides same-origin safety)
-        r = await client.get(f"{BASE}/v1/csrf")
-        assert r.status_code == 200, f"CSRF endpoint failed: {r.status_code}"
-        token = r.json().get("token", "")
-        headers = {"X-CSRF-Token": token, "Content-Type": "application/json"}
-
         # Post a message (use the lightweight message shape used by scripts/e2e_quick.py)
         payload = {"message": "smoke-test: hello from pytest"}
-        r = await client.post(f"{BASE}/v1/session/message", headers=headers, json=payload)
+        r = await client.post(f"{BASE}/v1/session/message", headers={"Content-Type": "application/json"}, json=payload)
         assert r.status_code in (200, 201, 202), f"POST /v1/session/message failed: {r.status_code} {r.text[:200]}"
         data = {}
         try:
