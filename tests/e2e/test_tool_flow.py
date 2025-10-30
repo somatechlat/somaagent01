@@ -8,7 +8,7 @@ import pytest
 import httpx
 
 
-BASE_URL = os.getenv("GATEWAY_BASE_URL", os.getenv("BASE_URL", "http://localhost:21016"))
+BASE_URL = os.getenv("GATEWAY_BASE_URL") or os.getenv("BASE_URL") or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
 TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
 POLL_TIMEOUT = float(os.getenv("E2E_POLL_TIMEOUT", "20"))
 POLL_INTERVAL = float(os.getenv("E2E_POLL_INTERVAL", "0.5"))

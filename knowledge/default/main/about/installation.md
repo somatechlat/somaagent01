@@ -289,8 +289,8 @@ Agent Zero's Web UI is accessible from any device on your network through the Do
 > - The port is automatically assigned by Docker unless you specify one
 
 > [!NOTE]
-> If you're running Agent Zero directly on your system (legacy approach) instead of 
-> using Docker, you'll need to configure the host manually in `run_ui.py` to run on all interfaces using `host="0.0.0.0"`.
+> If you're serving the UI directly (legacy approach) instead of via the Gateway,
+> ensure your static server or UI host binds to all interfaces using `host="0.0.0.0"`.
 
 For developers or users who need to run Agent Zero directly on their system,see the [In-Depth Guide for Full Binaries Installation](#in-depth-guide-for-full-binaries-installation).
 
@@ -511,15 +511,16 @@ You can refer to the [installation instructions above](#windows-macos-and-linux-
 - Run the Docker container following the instructions.
 
 ## 5. Run the local Agent Zero instance
-Run the Agent Zero with Web UI:
-~~~
-python run_ui.py
-~~~
+Run the Agent Zero UI via the Gateway (recommended):
 
-<img src="res/setup/image-21.png" alt="run ui" height="110"/>
-<br><br>
+1. Start the Gateway and services (see README or `make stack-up`).
+2. Open the UI in your browser at:
 
-- Open the URL shown in terminal in your web browser. You should see the Agent Zero interface.
+```
+http://localhost:${GATEWAY_PORT:-21016}/ui
+```
+
+If you prefer to serve a static local UI for development, host the `webui/` files behind a static server and point your browser to that local server. For production and proper CSRF/cookie semantics, always prefer the Gateway-served UI.
 
 ## 6. Configure Agent Zero
 Now we can configure Agent Zero - select models, settings, API Keys etc. Refer to the [Usage](usage.md#agent-configuration) guide for a full guide on how to configure Agent Zero.

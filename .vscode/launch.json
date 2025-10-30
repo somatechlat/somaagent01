@@ -2,15 +2,10 @@
   "version": "0.2.0",
   "configurations": [
 
-    {
-      "name": "Debug run_ui.py",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "./run_ui.py",
-      "console": "integratedTerminal",
-      "justMyCode": false,
-      "args": ["--development=true", "-Xfrozen_modules=off"]
-    },
+    // Debug configuration for individual files (Gateway/UI served from Gateway)
+    // Removed legacy `run_ui.py` debug config - UI is served from the Gateway at
+    // http://localhost:${GATEWAY_PORT:-21016}/ui and should be exercised via
+    // the Gateway service in dev mode.
     {
       "name": "Debug current file",
       "type": "debugpy",

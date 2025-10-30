@@ -31,7 +31,7 @@
 !models.py
 !preload.py
 !prepare.py
-!run_ui.py
+# run_ui.py removed; UI served from Gateway
 !run_tunnel.py
 !agent.py
 !initialize.py

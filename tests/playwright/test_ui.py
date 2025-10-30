@@ -1,7 +1,7 @@
 import os
 import re
 
-UI_BASE_URL = os.getenv("WEB_UI_BASE_URL", "http://127.0.0.1:21016/")
+UI_BASE_URL = os.getenv("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}/ui"
 
 
 def test_basic_chat_flow(page):

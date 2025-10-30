@@ -620,22 +620,27 @@ class ConversationWorker:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        # Build overrides but omit empty strings (e.g. base_url="") while allowing 0/0.0
+        ov: dict[str, Any] = {}
+        for k, v in {
+            "model": slm_kwargs.get("model"),
+            "base_url": slm_kwargs.get("base_url"),
+            "temperature": slm_kwargs.get("temperature"),
+            "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+        }.items():
+            if v is None:
+                continue
+            if isinstance(v, str) and v.strip() == "":
+                continue
+            ov[k] = v
+
         payload = {
             "role": role,
             "session_id": session_id,
             "persona_id": persona_id,
             "tenant": (base_metadata or {}).get("tenant"),
             "messages": [m.__dict__ for m in messages],
-            "overrides": {
-                k: v
-                for k, v in {
-                    "model": slm_kwargs.get("model"),
-                    "base_url": slm_kwargs.get("base_url"),
-                    "temperature": slm_kwargs.get("temperature"),
-                    "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
-                }.items()
-                if v is not None
-            },
+            "overrides": ov,
         }
         headers = {"X-Internal-Token": self._internal_token or ""}
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -721,22 +726,27 @@ class ConversationWorker:
             )
             # Fallback: non-stream invoke
             url = f"{self._gateway_base}/v1/llm/invoke"
+            # Build non-stream overrides similarly to streaming path (omit empty strings)
+            ov: dict[str, Any] = {}
+            for k, v in {
+                "model": slm_kwargs.get("model"),
+                "base_url": slm_kwargs.get("base_url"),
+                "temperature": slm_kwargs.get("temperature"),
+                "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+            }.items():
+                if v is None:
+                    continue
+                if isinstance(v, str) and v.strip() == "":
+                    continue
+                ov[k] = v
+
             body = {
                 "role": "dialogue",
                 "session_id": session_id,
                 "persona_id": persona_id,
                 "tenant": (base_metadata or {}).get("tenant"),
                 "messages": [m.__dict__ for m in messages],
-                "overrides": {
-                    k: v
-                    for k, v in {
-                        "model": slm_kwargs.get("model"),
-                        "base_url": slm_kwargs.get("base_url"),
-                        "temperature": slm_kwargs.get("temperature"),
-                        "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
-                    }.items()
-                    if v is not None
-                },
+                "overrides": ov,
             }
             headers = {"X-Internal-Token": self._internal_token or ""}
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -836,22 +846,27 @@ class ConversationWorker:
 
         # Stream and detect tool calls
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        # Build overrides and omit empty-string values (esp. base_url="")
+        ov: dict[str, Any] = {}
+        for k, v in {
+            "model": slm_kwargs.get("model"),
+            "base_url": slm_kwargs.get("base_url"),
+            "temperature": slm_kwargs.get("temperature"),
+            "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+        }.items():
+            if v is None:
+                continue
+            if isinstance(v, str) and v.strip() == "":
+                continue
+            ov[k] = v
+
         payload = {
             "role": "dialogue",
             "session_id": session_id,
             "persona_id": persona_id,
             "tenant": (base_metadata or {}).get("tenant"),
             "messages": [m.__dict__ for m in messages],
-            "overrides": {
-                k: v
-                for k, v in {
-                    "model": slm_kwargs.get("model"),
-                    "base_url": slm_kwargs.get("base_url"),
-                    "temperature": slm_kwargs.get("temperature"),
-                    "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
-                }.items()
-                if v is not None
-            },
+            "overrides": ov,
         }
         headers = {"X-Internal-Token": self._internal_token or ""}
 
@@ -1030,11 +1045,13 @@ class ConversationWorker:
         profile = await self.profile_store.get("escalation", self.deployment_mode)
         overrides: Dict[str, Any] = {}
         if profile:
+            # Only include base_url when non-empty to avoid sending an empty string
             overrides.update({
                 "model": profile.model,
-                "base_url": profile.base_url,
                 "temperature": profile.temperature,
             })
+            if isinstance(profile.base_url, str) and profile.base_url.strip():
+                overrides["base_url"] = profile.base_url
             if isinstance(profile.kwargs, dict):
                 overrides["kwargs"] = profile.kwargs
         # Allow explicit slm_kwargs to override profile

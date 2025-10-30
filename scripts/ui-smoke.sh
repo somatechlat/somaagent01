@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: ./scripts/ui-smoke.sh [BASE_URL]
 # Example: ./scripts/ui-smoke.sh http://127.0.0.1:21016/
 
-BASE_URL="${1:-${WEB_UI_BASE_URL:-http://127.0.0.1:21016/}}"
+BASE_URL="${1:-${WEB_UI_BASE_URL:-http://localhost:${GATEWAY_PORT:-21016}/ui}}"
 
 if [ ! -x ".venv/bin/python" ]; then
   echo "Creating Python venv (.venv) ..."

@@ -12,13 +12,20 @@ Defaults to http://127.0.0.1:21016
 
 import asyncio
 import json
+import os
 import sys
 from typing import Optional
 
 import httpx
 
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:21016"
+# Resolve canonical base from environment when available (VIBE: prefer existing env vars)
+BASE = (
+    sys.argv[1]
+    if len(sys.argv) > 1
+    else os.environ.get("GATEWAY_BASE_URL")
+    or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT', '21016')}"
+)
 
 
 async def main() -> int:

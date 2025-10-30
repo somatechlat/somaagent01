@@ -5524,6 +5524,65 @@ async def get_llm_credentials(provider: str, request: Request, store: Annotated[
     return {"provider": provider, "secret": secret}
 
 
+class LlmTestRequest(BaseModel):
+    role: str = Field(..., pattern="^(dialogue|escalation)$")
+
+
+@app.post("/v1/llm/test")
+async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
+    """Admin/test endpoint: validate profile resolution, credentials presence, and perform a lightweight connectivity check.
+
+    Requires X-Internal-Token (internal) to avoid exposing secrets publicly.
+    """
+    # Internal-only
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    # Fetch profile
+    deployment = APP_SETTINGS.deployment_mode
+    profile = await PROFILE_STORE.get(payload.role, deployment)
+    if not profile:
+        raise HTTPException(status_code=404, detail="model profile not found")
+
+    normalized = _normalize_llm_base_url(str(profile.base_url or ""))
+    provider = _detect_provider_from_base(normalized)
+    creds_store = get_llm_credentials_store()
+    try:
+        secret = await creds_store.get(provider)
+        creds_present = bool(secret)
+    except Exception:
+        secret = None
+        creds_present = False
+
+    reachable = False
+    status_code: int | None = None
+    detail: str | None = None
+    if normalized:
+        # Attempt a HEAD request to the normalized base to validate connectivity.
+        try:
+            headers = {}
+            if secret:
+                headers["Authorization"] = f"Bearer {secret}"
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.head(normalized)
+                status_code = resp.status_code
+                reachable = True
+        except Exception as exc:
+            reachable = False
+            detail = str(exc)
+
+    return {
+        "ok": True,
+        "role": payload.role,
+        "base_url": normalized,
+        "provider": provider,
+        "credentials_present": creds_present,
+        "reachable": reachable,
+        "status_code": status_code,
+        "detail": detail,
+    }
+
+
 # -----------------------------
 # Centralized LLM Invoke (single source of truth)
 # -----------------------------
@@ -5642,7 +5701,35 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
         raise HTTPException(status_code=400, detail="model profile not configured for role")
 
     model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
-    base_url_raw = (payload.overrides.base_url if payload.overrides and payload.overrides.base_url else (profile.base_url if profile else ""))
+
+    # Determine base_url with respect to Gateway lock policy.
+    # Behavior:
+    #  - If an override.base_url is provided and non-empty:
+    #      * GATEWAY_MODEL_LOCK=enforce -> reject (400)
+    #      * GATEWAY_MODEL_LOCK=warn -> ignore override, warn via returned meta
+    #      * GATEWAY_MODEL_LOCK=off -> accept override
+    override_base_raw = None
+    if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
+        # Accept explicit empty-string as "provided but empty" (we'll normalize later)
+        override_base_raw = str(payload.overrides.base_url)
+
+    gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
+    gw_lock_warning = False
+
+    if override_base_raw is not None and override_base_raw.strip() != "":
+        # explicit non-empty override provided
+        if gw_lock == "enforce":
+            raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
+        if gw_lock == "warn":
+            # Ignore override but signal a warning in returned meta
+            gw_lock_warning = True
+            base_url_raw = profile.base_url if profile else ""
+        else:
+            base_url_raw = override_base_raw
+    else:
+        # No meaningful override provided -> use profile
+        base_url_raw = profile.base_url if profile else ""
+
     base_url = _normalize_llm_base_url(str(base_url_raw))
     try:
         temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
@@ -5664,7 +5751,10 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
     if not secret:
         raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
 
-    return model, base_url, temperature, {**extra_kwargs, "_provider": provider, "_secret": secret}
+    meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
+    if gw_lock_warning:
+        meta["_gateway_model_lock_warning"] = True
+    return model, base_url, temperature, meta
 
 
 @app.post("/v1/llm/invoke")
@@ -5787,12 +5877,15 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     except Exception:
         LOGGER.debug("Failed to write audit log for llm.invoke", exc_info=True)
 
-    return {
-        "content": content,
-        "usage": usage,
-        "model": model,
-        "base_url": base_url,
-    }
+    # Include a warning header when Gateway is in warn-mode and an override was ignored
+    headers_out: dict[str, str] = {}
+    if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
+        headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
+
+    return JSONResponse(
+        {"content": content, "usage": usage, "model": model, "base_url": base_url},
+        headers=headers_out,
+    )
 
 
 @app.post("/v1/llm/invoke/stream")
@@ -5921,4 +6014,6 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
             yield b"data: [DONE]\n\n"
 
     headers = {"Content-Type": "text/event-stream"}
+    if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
+        headers["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
     return StreamingResponse(streamer(), headers=headers)

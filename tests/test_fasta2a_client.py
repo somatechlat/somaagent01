@@ -92,7 +92,7 @@ def print_troubleshooting():
     print("=" * 40)
     print()
     print("1. Server not running:")
-    print("   - Make sure Agent Zero is running: python run_ui.py")
+    print("   - Make sure the Gateway is running. Set GATEWAY_BASE_URL and start the dev stack (make stack-up).")
     print("   - Check the correct port (default: 50101)")
     print()
 
@@ -161,8 +161,8 @@ async def test_server_connectivity():
                 print("✅ Agent Zero server is running")
                 return True
             except httpx.ConnectError:
-                print("❌ Cannot connect to Agent Zero server")
-                print("   Make sure the server is running: python run_ui.py")
+                print("❌ Cannot connect to expected server (Agent services)")
+                print("   Ensure the Gateway and services are running (make stack-up) and GATEWAY_BASE_URL is set.")
                 return False
             except Exception as e:
                 print(f"❌ Server connectivity error: {e}")

@@ -186,7 +186,8 @@ stack-down:
 
 ui:
 	@echo "Starting Agent UI locally on http://127.0.0.1:3000 (Ctrl+C to stop)..."
-	python run_ui.py --host 127.0.0.1 --port 3000
+	@echo "UI is served from the Gateway at http://127.0.0.1:${GATEWAY_PORT:-21016}/ui"
+	@echo "To run the full stack locally: make stack-up (or see README)."
 
 .PHONY: dev-build dev-up-services dev-restart-services dev-logs-svc dev-ps
 

@@ -26,7 +26,7 @@
       "type": "shell",
       "options": {
         "env": {
-          "WEB_UI_BASE_URL": "http://127.0.0.1:21016/"
+          "WEB_UI_BASE_URL": "http://localhost:21016/ui"
         }
       },
       "command": "./scripts/ui-smoke.sh",

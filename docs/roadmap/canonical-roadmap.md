@@ -1,3 +1,147 @@
+<!-- Canonical roadmap for somaAgent01 — generated/updated 2025-10-30 by GitHub Copilot -->
+# SomaAgent01 Canonical Roadmap (Canonical)
+
+Last updated: 2025-10-30
+
+This document is the canonical roadmap for the somaAgent01 project. It consolidates the project's vision, the implemented components, the gaps vs the canonical vision, and the prioritized tasks to reach parity with the Agent Zero UI and the canonical streaming transport.
+
+Summary
+- Vision: a developer-first, production-ready multi-service agent platform exposing a single, predictable Gateway surface for UI and integrators. The Gateway provides secure same-origin UI serving, CSRF and cookie semantics, SSE streaming for real-time message updates, uploads, tool invocation endpoints, and credential management. Workers (Conversation Worker, Tool Executor) are event-driven and consume/publish to the message backbone.
+- Canonical transport: Server-Sent Events (SSE) via GET /v1/session/{id}/events from the Gateway. Polling is deprecated and only supported for legacy clients via an adapter layer. Websockets are optional as a later enhancement.
+
+Core Components (current state)
+- Gateway (edge API)
+  - Responsibilities: HTTP surface for clients, session creation, message ingress, SSE streaming endpoint (/v1/session/{id}/events), upload endpoint, tool request endpoint, CSRF and credential endpoints.
+  - State: Implemented. Health endpoint validated (local probe returned 200 during analysis).
+
+- Conversation Worker
+  - Responsibilities: consume conversation.inbound, orchestrate LLM calls, detect tools, emit tool.requests, write memory WALs to SomaBrain or memory store, publish session events.
+  - State: Implemented and present.
+
+- Tool Executor
+  - Responsibilities: consume tool.requests, run tools in a sandbox, enforce policy (OPA), publish tool.results, and emit structured outputs for memory capture.
+  - State: Implemented and present.
+
+- Session Repository
+  - Responsibilities: durable session event store (Postgres-backed), migration SQL present.
+  - State: Implemented.
+
+- LLM Credentials Store
+  - Responsibilities: store LLM provider credentials (Redis + Fernet encryption) and supply them to Gateway/Workers.
+  - State: Implemented; GATEWAY_ENC_KEY required by deployments.
+
+- Web UI
+  - `webui/` in-repo: modernized SSE-first UI that maps to the Gateway SSE contract.
+  - `tmp/webui/` (Agent Zero copy): provided by user; used as UX reference. It contains some legacy polling code and vendor bundles.
+
+Canonical Decisions
+- Use Gateway SSE (/v1/session/{id}/events) as the single production transport.
+- Serve the Web UI from the Gateway (same-origin) to preserve cookie and CSRF semantics—do not run a standalone `run_ui.py` server in production.
+- Provide small adapter endpoints for legacy/polling UI copies while migrating clients to SSE.
+- Tool catalog lives in Postgres and is exposed via Gateway endpoints; tool invocation uses POST /v1/tool/request and emits results via SSE events tied to sessions.
+
+Gaps vs Roadmap (prioritized)
+1. Acceptance testing and API contract tests (HIGH)
+   - Missing: automated Playwright smoke tests and API contract probes for: SSE subscribe & receive, message send (POST /v1/session/{id}/message), file upload round-trip, tool request -> tool result flow, and credential flows.
+   - Action: add Playwright smoke tests, pytest API contract tests, and CI workflows to run them.
+
+2. Optimized deploy manifest (HIGH)
+   - Missing: `docker-compose.optimized.yaml` referenced by `deploy-optimized.sh` is absent.
+   - Action: produce an optimized compose file (lean 7-container stack) or update the deploy script to use existing `docker-compose.yaml` with tuned profiles and resource limits.
+
+3. Documentation references and stale scripts (MEDIUM)
+   - Issues: `run_ui.py` is deprecated but referenced in Makefile, docs, .vscode/launch.json, and tests. `deploy-optimized.sh` references a missing compose manifest. `tmp/webui` is a redundant copy of the Agent Zero UI.
+   - Action: archive or remove deprecated files and update references; update docs to point to Gateway serving for the UI.
+
+4. UI parity tasks (MEDIUM)
+   - Items: port progressive token rendering, tool-panel UX, upload-progress UI, reconnect/backoff for SSE, and UX polish from Agent Zero (error handling and offline UX).
+   - Action: migrate selective components from `tmp/webui` into `webui/` and add Playwright tests for UX behaviors.
+
+5. Adapter endpoints for legacy clients (LOW)
+   - Action: small Gateway adapter layer to accept legacy poll shapes and transform them to canonical flows; mark deprecated and remove after clients migrate.
+
+Acceptance Criteria (per feature)
+- SSE streaming: UI subscribes to `GET /v1/session/{id}/events` and receives event types: session.open, message.chunk, message.complete, tool.requested, tool.result, memory.write, and session.close. SSE reconnects must resume from last event id where supported.
+- Message send: `POST /v1/session/{id}/message` returns 202 with the session/event envelope; message appears via SSE within acceptable latency (configurable threshold, default 5s in dev).
+- Tool invocation: `POST /v1/tool/request` accepts structured tool payloads, publishes to Kafka, Tool Executor consumes and emits `tool.result` events visible to the subscribing client via SSE.
+- Uploads: client uploads to `POST /v1/uploads` which returns a resource URL; uploaded content must be available to workers for tool processing and memory ingestion.
+
+Roadmap: Next 3 sprints (high level)
+- Sprint 1 (2 weeks): API contract tests + CI; create `docker-compose.optimized.yaml` (or fix deploy script); archive deprecated files (`run_ui.py`, `tmp/webui`) and update docs; add basic Playwright smoke test for UI SSE subscribe health.
+- Sprint 2 (2 weeks): Migrate key UX from `tmp/webui` into `webui/`: streaming token rendering, tool panel, upload progress. Add Playwright tests for UX flows. Implement small Gateway adapter for legacy poll endpoints (backwards compatibility) — mark deprecated.
+- Sprint 3 (2 weeks): Harden deployments (resource tuning), add OPA policy verification in CI, end-to-end tests for tool executor and memory WAL capture, finalize removal of legacy adapters post migration.
+
+Appendix: Quick API contract samples
+- SSE subscribe
+  - GET /v1/session/{id}/events
+  - Events: id:<event-id>\n event:message.chunk\n data: {"session_id":"...","chunk":"...","cursor":42}\n
+- Send message
+  - POST /v1/session/{id}/message
+  - Body: {"role":"user","content":"Hello"}
+  - Response: 202 Accepted {"envelope_id":"...","status":"queued"}
+
+- Tool request
+  - POST /v1/tool/request
+  - Body: {"session_id":"...","tool_id":"calculator","inputs":{...}}
+
+Verification & Quality gates
+- Build: ensure `docker-compose.yaml` and `Dockerfile` build locally. If an optimized compose is added, validate composition via `docker compose -f docker-compose.optimized.yaml ps`.
+- Lint/Typecheck: run project linters and Python type checks if configured (e.g., mypy, flake8); add minimal pre-commit hooks if absent.
+- Tests: run newly added Playwright smoke and pytest API contract tests in CI; pass locally in dev before merging.
+
+Notes and assumptions
+- Assumed that Gateway SSE contract is the single canonical streaming transport; websockets may be added later for higher-throughput clients.
+- Assumed Postgres, Kafka, Redis are available in dev (docker compose). The deploy script references ports different from dev defaults; confirm during deploy manifest creation.
+- All destructive repo edits should be performed on a backup branch; archival is preferred to immediate deletion.
+
+If you accept this canonical roadmap I will also create the sprinted roadmap file with sprint-level tickets and specific test tasks.
+
+========================
+Centralize Gateway / UI URLs (Immediate action)
+========================
+
+Decision (explicit)
+- Canonical Gateway host port: 21016 (the UI must be reachable at http://localhost:21016/ui/index.html).
+- Canonical environment variables (reuse existing names):
+  - `GATEWAY_PORT` (numeric, default 21016)
+  - `GATEWAY_BASE_URL` (full URL, e.g. http://localhost:21016)
+  - `WEB_UI_BASE_URL` (UI entry, e.g. http://localhost:21016/ui)
+
+Rationale
+- Many tests, scripts and docs contained hard-coded values (21016, 20016, 8010, and literal http://127.0.0.1 URLs). This causes runtime confusion. The project already uses `GATEWAY_PORT` and `GATEWAY_BASE_URL` in places; we will standardize on them and prefer `WEB_UI_BASE_URL` for UI consumers.
+
+Immediate plan (no new systems, minimal edits)
+1. Ensure `.env` / `.env.example` contains the canonical variables (set `GATEWAY_PORT=21016`, `GATEWAY_BASE_URL=http://localhost:21016`, `WEB_UI_BASE_URL=http://localhost:21016/ui`).
+2. Replace hard-coded URL fallbacks in tests, scripts, and webui test configs to prefer `WEB_UI_BASE_URL` → `GATEWAY_BASE_URL` → derived `http://localhost:${GATEWAY_PORT}`. Exact files to update include (representative):
+   - `tests/e2e/*.py`, `tests/playwright/*.py`, `tests/ui/*`
+   - `webui/playwright.config.ts` and `webui/tests/*.spec.ts`
+   - `scripts/e2e_quick.py`, `scripts/ui-smoke.sh`, `scripts/check_stack.sh`
+   - `python/api/*` modules that fallback to `http://localhost:20016` or `http://127.0.0.1:21016`
+   - `.vscode/tasks.json` and Makefile examples
+   - docs under `docs/*` and generated `site/*` that embed http://localhost:21016 or other literal ports
+3. Archive (do not permanently delete without record) clearly broken / redundant artifacts that confuse developers:
+   - `run_ui.py` (deprecated stub)
+   - `tmp/webui/` (redundant Agent Zero UI copy)
+   - `deploy-optimized.sh` (references missing compose file)
+   Archive location: `archive/` at repo root, with timestamped names (e.g. `archive/run_ui-20251030.py`, `archive/tmp-webui-20251030.tar.gz`, `archive/deploy-optimized-20251030.sh`).
+4. Verify by running the dev stack and smoke tests (see "Verification" below).
+
+Safety & VIBE constraints
+- No new configuration systems or helper files will be introduced. Edits reuse existing env variables and the repo's helpers.
+- Files will be archived before removal so the operation is reversible.
+- Changes will be committed directly to the working branch per your instruction (no extra branches), with a single clear commit and changelog.
+
+Verification
+- Bring up the dev stack (with `GATEWAY_PORT=21016`) and confirm:
+  - The UI is reachable at `http://localhost:21016/ui/index.html`.
+  - `curl -s http://localhost:21016/v1/health` returns 200 and expected JSON status.
+  - Run `pytest -q tests/e2e/test_api_contract_smoke.py` — passes or at least successfully performs the POST and opens SSE.
+  - Run the Playwright UI smoke `./scripts/ui-smoke.sh ${WEB_UI_BASE_URL}` to validate UI load and network behavior.
+
+Post-conditions
+- All literal host:port occurrences for Gateway/UI should be removed except in docs examples that explicitly show how to set the env variables (those will show variables not raw URLs).
+- `archive/` will contain the moved/archived files for safe undo.
+
 ## Canonical Roadmap — Auditability, Observability, and Perfect Memory
 
 This is the living, canonical roadmap for building SomaAgent01 into an auditable, observable, and traceable agentic platform with perfect message persistence and recall via SomaBrain. It is grounded in the current infrastructure and codebase.
@@ -183,3 +327,33 @@ Phase 5 — E2E and CI
 - Docs: `docs/technical-manual/architecture.md`, `docs/technical-manual/tools-messages-memories.md`.
 
 This roadmap is canonical. Proposed changes should be added here first, then implemented with tests and observability.
+
+
+## Centralize LLM model/profile management (priority)
+
+Goal
+- Make the Gateway the single source of truth for all model profiles, provider credentials, base_url normalization, and runtime model resolution. All services must invoke LLMs through the Gateway endpoints (`/v1/llm/invoke` and `/v1/llm/invoke/stream`) and must not propagate raw `base_url` values between services.
+
+Why this is needed
+- During audits we found model/profile information and base_url normalization logic duplicated across services (workers, Gateway, local config files). This causes validation errors (eg. "invalid model/base_url after normalization"), runtime surprises, and operational friction. Centralization reduces surface area for mistakes, makes credential management secure, and simplifies rollout of provider changes.
+
+Design decisions (summary)
+- Gateway owns: ModelProfileStore reads/writes, `_normalize_llm_base_url` rules, provider detection, and credential lookup. It exposes a CRUD API for profiles and a secure credentials endpoint. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send `base_url`.
+- Gateway exposes `/v1/model-profiles` (CRUD), `/v1/llm/credentials/{provider}` (internal credential access), and an admin `/v1/llm/test` to validate profile connectivity.
+- Compatibility modes: `GATEWAY_MODEL_LOCK` config with values `off|warn|enforce` to aid migration: warn when workers send `base_url`, then block when enforce is set.
+
+Acceptance criteria
+- Worker->Gateway->Provider flow succeeds end-to-end: POST to Gateway invoke returns stream or non-stream content and the UI receives assistant events via SSE.
+- No service outside Gateway performs normalization logic that changes `base_url` semantics.
+- Gateway audit logs record provider and normalized base_url for every LLM invoke.
+
+Migration strategy (high level)
+1. Audit all usages of model/profile and `base_url` (scripts, conf, services). Document and back up existing profiles.
+2. Implement Gateway CRUD/API and `GATEWAY_MODEL_LOCK=warn` to detect incoming `base_url` overrides and log warnings.
+3. Update workers to stop sending `base_url` and to rely on Gateway resolution of model->provider->base_url.
+4. Flip `GATEWAY_MODEL_LOCK=enforce` after canary testing and complete removal of duplicated config.
+
+Risks & mitigations
+- Risk: Missing credentials after migration. Mitigation: use `/v1/llm/test` and a migration script to copy secrets into Gateway store, validate, and only then enforce lock.
+- Risk: Legacy clients sending `base_url`. Mitigation: `warn` mode that logs and surfaces in UI and builds a one-click migration map.
+

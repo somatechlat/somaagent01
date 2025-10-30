@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright, TimeoutError as PlaywrightTim
 
 async def run_test():
     # Single-origin rule: always target the Gateway (serves UI + /v1 APIs)
-    url = os.environ.get('WEB_UI_BASE_URL', 'http://127.0.0.1:21016/')
+    url = os.environ.get('WEB_UI_BASE_URL') or os.environ.get('BASE_URL') or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}/ui"
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()

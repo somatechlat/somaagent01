@@ -2,9 +2,9 @@ import os
 import pytest
 
 def test_settings_modal_opens_and_loads_sections(page):
-    base_url = os.getenv("SA01_BASE_URL", "http://localhost:21016")  # override for local runs
+    base_url = os.getenv("WEB_UI_BASE_URL") or os.getenv("SA01_BASE_URL") or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}/ui"
     # Load UI
-    page.goto(f"{base_url}/ui/index.html", wait_until="domcontentloaded")
+    page.goto(base_url, wait_until="domcontentloaded")
 
     # Log console errors for debugging
     page.on("console", lambda msg: print(f"BROWSER[{msg.type}]:", msg.text))

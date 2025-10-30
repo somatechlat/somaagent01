@@ -1,13 +1,13 @@
-"""DEPRECATED: Standalone UI server has been removed.
+"""
+NEUTRALIZED: legacy UI entrypoint removed.
 
-This project serves the Web UI from the Gateway (same origin) to ensure
-correct CSRF/cookie semantics and to simplify configuration. Use the Gateway
-service at http://127.0.0.1:${GATEWAY_PORT:-20016}/.
+This file has been neutralized as part of the legacy purge — the Web UI is
+served by the Gateway at: http://localhost:${GATEWAY_PORT:-21016}/ui
 
-Keeping this stub prevents accidental entrypoints from being used; importing
-or executing this file will fail fast with a clear message.
+Do not execute this file. Use the Gateway service instead.
 """
 
-raise RuntimeError(
-    "run_ui.py removed. Serve the UI from the Gateway only (http://127.0.0.1:${GATEWAY_PORT:-20016}/)."
-)
+import sys
+
+print("run_ui.py has been removed. Use the Gateway-served UI at http://localhost:${GATEWAY_PORT:-21016}/ui")
+sys.exit(0)

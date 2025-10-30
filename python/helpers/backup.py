@@ -79,7 +79,7 @@ class BackupService:
     def _get_agent_zero_version(self) -> str:
         """Get current Agent Zero version"""
         try:
-            # Get version from git info (same as run_ui.py)
+            # Get version from git info (same as Gateway/service metadata)
             gitinfo = git.get_git_info()
             return gitinfo.get("version", "development")
         except Exception:

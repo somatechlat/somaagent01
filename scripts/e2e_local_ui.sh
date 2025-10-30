@@ -35,13 +35,8 @@ source .uv-venv/bin/activate
 pip install -U pip wheel setuptools >/dev/null
 pip install -r requirements.txt websockets aiohttp pathspec python-crontab numpy >/dev/null
 
-echo "[5/7] Start UI on http://127.0.0.1:${UI_PORT} (Gateway: $GW_URL) ..."
-export UI_USE_GATEWAY=true
-export UI_GATEWAY_BASE="$GW_URL"
-export UI_ENABLE_MCP=false
-export UI_ENABLE_A2A=false
-export UI_ENABLE_JOB_LOOP=false
-python -u run_ui.py --host=127.0.0.1 --port="${UI_PORT}"
-
-echo "UI stopped."
+echo "[5/7] UI is served from the Gateway at http://127.0.0.1:${GW_PORT}/ui (Gateway: $GW_URL)"
+echo "The legacy local UI runner (run_ui.py) has been removed."
+echo "Start the Gateway and open the UI at: ${GW_URL}/ui"
+echo "If you need a local static UI for development, use the files under webui/ and serve them via the Gateway UI proxy or a static file server."
 
