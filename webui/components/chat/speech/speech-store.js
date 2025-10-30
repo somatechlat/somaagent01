@@ -1165,7 +1165,7 @@ export const store = createStore("speech", model);
 
 // Event listeners
 document.addEventListener("settings-updated", () => store.loadSettings());
-// Auto-init on load to hydrate TTS/Realtime flags; defer slightly to allow CSRF priming
+// Auto-init on load to hydrate TTS/Realtime flags; slight defer for DOM readiness (no CSRF required)
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
     try { store.init(); } catch (_) { /* non-fatal */ }

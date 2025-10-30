@@ -756,6 +756,96 @@ class ConversationWorker:
                 data = resp.json()
                 content = data.get("content", "")
                 usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                # If provider returned tool_calls (via Gateway pass-through), execute tools then re-ask once.
+                tool_calls = data.get("tool_calls")
+                if (not content) and isinstance(tool_calls, list) and tool_calls:
+                    # Execute declared tool calls using local tool executor
+                    for call in tool_calls:
+                        try:
+                            fn = (call or {}).get("function") or {}
+                            tool_name = fn.get("name") or (call.get("name") if isinstance(call, dict) else "")
+                            raw_args = fn.get("arguments") if fn else (call.get("arguments") if isinstance(call, dict) else "")
+                        except Exception:
+                            tool_name = ""
+                            raw_args = ""
+                        if not tool_name:
+                            continue
+                        try:
+                            args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+                        except Exception:
+                            args = {"_raw": raw_args}
+
+                        req_id = str(uuid.uuid4())
+                        metadata = {
+                            **dict(base_metadata or {}),
+                            "tenant": (base_metadata or {}).get("tenant", "default"),
+                            "request_id": req_id,
+                            "source": "tool_orchestrator",
+                        }
+                        event = {
+                            "event_id": req_id,
+                            "session_id": session_id,
+                            "persona_id": persona_id,
+                            "tool_name": tool_name,
+                            "args": args,
+                            "metadata": metadata,
+                        }
+                        try:
+                            await self.publisher.publish(
+                                os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                                event,
+                                dedupe_key=req_id,
+                                session_id=session_id,
+                                tenant=metadata.get("tenant"),
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to publish tool request (non-stream)", exc_info=True)
+                            continue
+
+                        result_event = await self._wait_for_tool_result(
+                            session_id=session_id,
+                            request_id=req_id,
+                            timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20")),
+                        )
+                        # Append a summarised tool result back into the message context
+                        if result_event:
+                            payload = result_event.get("payload")
+                            try:
+                                tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                            except Exception:
+                                tool_text = str(payload)
+                            messages.append(
+                                ChatMessage(
+                                    role="system",
+                                    content=f"Tool {tool_name} result: {tool_text[:4000]}",
+                                )
+                            )
+                        else:
+                            messages.append(
+                                ChatMessage(
+                                    role="system",
+                                    content=f"Tool {tool_name} did not return a result in time.",
+                                )
+                            )
+
+                    # After executing tools, ask once more via non-stream for a natural-language answer
+                    body2 = {
+                        "role": "dialogue",
+                        "session_id": session_id,
+                        "persona_id": persona_id,
+                        "tenant": (base_metadata or {}).get("tenant"),
+                        "messages": [m.__dict__ for m in messages],
+                        "overrides": ov,
+                    }
+                    resp2 = await client.post(url, json=body2, headers=headers)
+                    if resp2.is_error:
+                        raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                    data2 = resp2.json()
+                    content2 = data2.get("content", "")
+                    usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                    if not content2:
+                        raise RuntimeError("Empty response from Gateway invoke after tools")
+                    return content2, usage2
                 if not content:
                     raise RuntimeError("Empty response from Gateway invoke")
                 return content, usage

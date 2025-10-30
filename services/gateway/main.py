@@ -3438,28 +3438,9 @@ async def websocket_stream(
             await websocket.close()
 
 
-async def sse_stream(session_id: str) -> AsyncIterator[str]:
-    async for event in stream_events(session_id):
-        data = json.dumps(event)
-        yield f"data: {data}\n\n"
-
-
-@app.get("/v1/session/{session_id}/events")
-async def sse_endpoint(session_id: str, request: Request) -> StreamingResponse:
-    # Fail-closed: allow intentional disable of SSE to exercise real poll fallback
-    if _sse_disabled():
-        raise HTTPException(status_code=503, detail="SSE disabled")
-    async def event_generator() -> AsyncIterator[str]:
-        try:
-            async for chunk in sse_stream(session_id):
-                yield chunk
-                if await request.is_disconnected():
-                    break
-        except asyncio.CancelledError:
-            LOGGER.debug("SSE stream cancelled", extra={"session_id": session_id})
-
-    headers = {"Cache-Control": "no-cache", "Content-Type": "text/event-stream"}
-    return StreamingResponse(event_generator(), headers=headers)
+# Note: SSE endpoint is defined later with a per-connection consumer group to avoid
+# inter-client interference. This legacy implementation is removed to prevent
+# duplicate route registration and shared group_ids across clients.
 
 
 @app.get("/v1/sessions/{session_id}/events", response_model=SessionEventsResponse)
@@ -5632,17 +5613,67 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
     return model, base_url, api_path, temperature, meta
 
 
+## Note: legacy tuple-to-dict resolver helper removed; handlers now resolve profiles inline
+
+
 @app.post("/v1/llm/invoke")
 async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     # Only allow internal calls
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
 
-    # Resolve profile including api_path and credentials
-    model, base_url, api_path, temperature, meta = await _resolve_profile_and_creds(payload)
+    # Resolve profile and credentials inline to avoid tuple-unpack pitfalls
+    try:
+        profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
+        if not profile and not payload.overrides:
+            raise HTTPException(status_code=400, detail="model profile not configured for role")
+        model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+        # GATEWAY_MODEL_LOCK handling
+        override_base_raw = None
+        if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
+            override_base_raw = str(payload.overrides.base_url)
+        gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
+        gw_lock_warning = False
+        if override_base_raw is not None and override_base_raw.strip() != "":
+            if gw_lock == "enforce":
+                raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
+            if gw_lock == "warn":
+                gw_lock_warning = True
+                base_url_raw = profile.base_url if profile else ""
+            else:
+                base_url_raw = override_base_raw
+        else:
+            base_url_raw = profile.base_url if profile else ""
+        base_url = _normalize_llm_base_url(str(base_url_raw))
+        try:
+            temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+        except Exception:
+            temperature = 0.2
+        extra_kwargs: dict[str, Any] = {}
+        if profile and isinstance(profile.kwargs, dict):
+            extra_kwargs.update(profile.kwargs)
+        if payload.overrides and isinstance(payload.overrides.kwargs, dict):
+            extra_kwargs.update(payload.overrides.kwargs)
+        if not model or not base_url:
+            raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
+        provider = _detect_provider_from_base(base_url)
+        secret = await get_llm_credentials_store().get(provider)
+        if not secret:
+            raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+        meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
+        if gw_lock_warning:
+            meta["_gateway_model_lock_warning"] = True
+        api_path = profile.api_path if profile else None
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=f"debug:resolve {exc}")
+    except Exception:
+        raise
 
     # Prepare messages for SLMClient
-    messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
+    try:
+        messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=f"debug:messages {exc}")
 
     client = _gateway_slm_client()
     # Inject credential into this ephemeral client
@@ -5667,6 +5698,167 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             temperature=temperature,
             **{k: v for k, v in meta.items() if not k.startswith("_")},
         )
+    except ValueError as exc:
+        # Early debug of unexpected tuple-unpack errors or similar
+        raise HTTPException(status_code=500, detail=f"debug:chat {exc}")
+    except RuntimeError as exc:
+        # Some providers return tool_calls without message.content for non-stream requests.
+        # Attempt a direct fetch and return tool_calls so the worker can orchestrate tools.
+        try:
+            import httpx as _httpx
+            payload_json = {
+                "model": model,
+                "messages": [m.__dict__ for m in messages],
+                "temperature": temperature,
+                "stream": False,
+                **{k: v for k, v in meta.items() if not k.startswith("_")},
+            }
+            _headers = {"Content-Type": "application/json", "Authorization": f"Bearer {meta.get('_secret','')}"}
+            _path = api_path or "/v1/chat/completions"
+            _url = f"{base_url.rstrip('/')}{_path}"
+            async with _httpx.AsyncClient(timeout=30.0) as _client:
+                _resp = await _client.post(_url, json=payload_json, headers=_headers)
+                if _resp.is_error:
+                    _resp.raise_for_status()
+                _data = _resp.json()
+                try:
+                    _choice0 = (_data.get("choices") or [])[0]
+                    _msg = (_choice0 or {}).get("message") or {}
+                    _tc = _msg.get("tool_calls")
+                    if isinstance(_tc, list) and _tc:
+                        # Attempt a second non-stream call without tools to get a natural-language answer
+                        _payload2 = dict(payload_json)
+                        try:
+                            # Remove tools/tool_choice if present under kwargs
+                            for key in ("tools", "tool_choice"):
+                                if isinstance(_payload2, dict) and key in _payload2:
+                                    # Some providers accept tools at top-level (rare)
+                                    _payload2.pop(key, None)
+                            _kw = _payload2.get("kwargs") if isinstance(_payload2, dict) else None
+                            if isinstance(_kw, dict):
+                                _kw.pop("tools", None)
+                                _kw.pop("tool_choice", None)
+                        except Exception:
+                            pass
+                        _payload2["stream"] = False
+                        _resp2 = await _client.post(_url, json=_payload2, headers=_headers)
+                        if not _resp2.is_error:
+                            _data2 = _resp2.json()
+                            try:
+                                _content2 = (_data2.get("choices") or [{}])[0].get("message", {}).get("content")
+                            except Exception:
+                                _content2 = None
+                            if _content2:
+                                _usage2 = _data2.get("usage", {})
+                                usage = {
+                                    "input_tokens": int(_usage2.get("prompt_tokens", 0)),
+                                    "output_tokens": int(_usage2.get("completion_tokens", 0)),
+                                }
+                                headers_out: dict[str, str] = {}
+                                if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
+                                    headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
+                                # Audit as ok
+                                try:
+                                    elapsed = max(0.0, time.time() - start)
+                                    await get_audit_store().log(
+                                        request_id=req_id,
+                                        trace_id=trace_id_hex,
+                                        session_id=payload.session_id,
+                                        tenant=payload.tenant,
+                                        subject=None,
+                                        action="llm.invoke",
+                                        resource="llm.chat",
+                                        target_id=None,
+                                        details={
+                                            "provider": meta.get("_provider"),
+                                            "model": model,
+                                            "base_url": base_url,
+                                            "status": "ok",
+                                            "latency_ms": int(elapsed * 1000),
+                                            "usage": usage,
+                                            "response_kind": "content_after_tools_stripped",
+                                        },
+                                        diff=None,
+                                        ip=getattr(request.client, "host", None) if request.client else None,
+                                        user_agent=request.headers.get("user-agent"),
+                                    )
+                                except Exception:
+                                    LOGGER.debug("Failed to write audit log for llm.invoke content after tools stripped", exc_info=True)
+                                return JSONResponse(
+                                    {"content": _content2, "usage": usage, "model": model, "base_url": base_url},
+                                    headers=headers_out,
+                                )
+                        # Fallback: return tool_calls to let worker orchestrate if available
+                        _usage = _data.get("usage", {})
+                        usage = {
+                            "input_tokens": int(_usage.get("prompt_tokens", 0)),
+                            "output_tokens": int(_usage.get("completion_tokens", 0)),
+                        }
+                        try:
+                            elapsed = max(0.0, time.time() - start)
+                            await get_audit_store().log(
+                                request_id=req_id,
+                                trace_id=trace_id_hex,
+                                session_id=payload.session_id,
+                                tenant=payload.tenant,
+                                subject=None,
+                                action="llm.invoke",
+                                resource="llm.chat",
+                                target_id=None,
+                                details={
+                                    "provider": meta.get("_provider"),
+                                    "model": model,
+                                    "base_url": base_url,
+                                    "status": "ok",
+                                    "latency_ms": int(elapsed * 1000),
+                                    "usage": usage,
+                                    "response_kind": "tool_calls",
+                                },
+                                diff=None,
+                                ip=getattr(request.client, "host", None) if request.client else None,
+                                user_agent=request.headers.get("user-agent"),
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to write audit log for llm.invoke tool_calls", exc_info=True)
+
+                        headers_out: dict[str, str] = {}
+                        if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
+                            headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
+                        return JSONResponse(
+                            {"tool_calls": _tc, "usage": usage, "model": model, "base_url": base_url},
+                            headers=headers_out,
+                        )
+                except Exception:
+                    pass
+        except Exception:
+            # Fall through to provider_error
+            LOGGER.debug("Direct tool_calls fetch failed", exc_info=True)
+        # Surface provider schema issues (e.g., tool_call-only responses) as provider errors
+        try:
+            await get_audit_store().log(
+                request_id=req_id,
+                trace_id=trace_id_hex,
+                session_id=payload.session_id,
+                tenant=payload.tenant,
+                subject=None,
+                action="llm.invoke",
+                resource="llm.chat",
+                target_id=None,
+                details={
+                    "provider": meta.get("_provider"),
+                    "model": model,
+                    "base_url": base_url,
+                    "status": "error",
+                    "http_status": 502,
+                    "error_type": type(exc).__name__,
+                },
+                diff=None,
+                ip=getattr(request.client, "host", None) if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+        except Exception:
+            LOGGER.debug("Failed to write audit log for llm.invoke runtime error", exc_info=True)
+        raise HTTPException(status_code=502, detail=f"provider_error: {exc}")
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code if exc.response is not None else 502
         # Audit error
@@ -5765,14 +5957,136 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     )
 
 
+@app.post("/v1/llm/invoke.debug")
+async def llm_invoke_debug(payload: Dict[str, Any], request: Request) -> dict:  # type: ignore[type-arg]
+    """Lightweight debug endpoint to validate routing and request parsing.
+
+    Accepts an untyped JSON body to bypass Pydantic model parsing and helps isolate
+    pre-handler errors (e.g., validation issues). Internal-token gated.
+    """
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+    try:
+        keys = sorted(list((payload or {}).keys()))
+    except Exception:
+        keys = []
+    return {"ok": True, "received_keys": keys}
+
+
+@app.post("/v1/llm/invoke2")
+async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
+    # This endpoint mirrors llm_invoke but exists to bypass any stale route registration issues during debugging.
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    # Inline resolution
+    profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
+    if not profile and not payload.overrides:
+        raise HTTPException(status_code=400, detail="model profile not configured for role")
+    model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+    override_base_raw = None
+    if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
+        override_base_raw = str(payload.overrides.base_url)
+    gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
+    gw_lock_warning = False
+    if override_base_raw is not None and override_base_raw.strip() != "":
+        if gw_lock == "enforce":
+            raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
+        if gw_lock == "warn":
+            gw_lock_warning = True
+            base_url_raw = profile.base_url if profile else ""
+        else:
+            base_url_raw = override_base_raw
+    else:
+        base_url_raw = profile.base_url if profile else ""
+    base_url = _normalize_llm_base_url(str(base_url_raw))
+    try:
+        temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+    except Exception:
+        temperature = 0.2
+    extra_kwargs: dict[str, Any] = {}
+    if profile and isinstance(profile.kwargs, dict):
+        extra_kwargs.update(profile.kwargs)
+    if payload.overrides and isinstance(payload.overrides.kwargs, dict):
+        extra_kwargs.update(payload.overrides.kwargs)
+    if not model or not base_url:
+        raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
+    provider = _detect_provider_from_base(base_url)
+    secret = await get_llm_credentials_store().get(provider)
+    if not secret:
+        raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+    meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
+    if gw_lock_warning:
+        meta["_gateway_model_lock_warning"] = True
+    api_path = profile.api_path if profile else None
+
+    messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
+    client = _gateway_slm_client()
+    client.api_key = meta["_secret"]
+    content, usage = await client.chat(
+        messages,
+        model=model,
+        base_url=base_url,
+        api_path=api_path,
+        temperature=temperature,
+        **{k: v for k, v in meta.items() if not k.startswith("_")},
+    )
+    try:
+        await client.close()
+    except Exception:
+        pass
+    return {"content": content, "usage": usage, "model": model, "base_url": base_url}
+
+
 @app.post("/v1/llm/invoke/stream")
 async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
     # Only allow internal calls
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
 
-    # Resolve profile including api_path and credentials
-    model, base_url, api_path, temperature, meta = await _resolve_profile_and_creds(payload)
+    # Resolve profile and credentials inline for stream as well
+    try:
+        profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
+        if not profile and not payload.overrides:
+            raise HTTPException(status_code=400, detail="model profile not configured for role")
+        model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+        override_base_raw = None
+        if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
+            override_base_raw = str(payload.overrides.base_url)
+        gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
+        gw_lock_warning = False
+        if override_base_raw is not None and override_base_raw.strip() != "":
+            if gw_lock == "enforce":
+                raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
+            if gw_lock == "warn":
+                gw_lock_warning = True
+                base_url_raw = profile.base_url if profile else ""
+            else:
+                base_url_raw = override_base_raw
+        else:
+            base_url_raw = profile.base_url if profile else ""
+        base_url = _normalize_llm_base_url(str(base_url_raw))
+        try:
+            temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+        except Exception:
+            temperature = 0.2
+        extra_kwargs: dict[str, Any] = {}
+        if profile and isinstance(profile.kwargs, dict):
+            extra_kwargs.update(profile.kwargs)
+        if payload.overrides and isinstance(payload.overrides.kwargs, dict):
+            extra_kwargs.update(payload.overrides.kwargs)
+        if not model or not base_url:
+            raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
+        provider = _detect_provider_from_base(base_url)
+        secret = await get_llm_credentials_store().get(provider)
+        if not secret:
+            raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+        meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
+        if gw_lock_warning:
+            meta["_gateway_model_lock_warning"] = True
+        api_path = profile.api_path if profile else None
+    except Exception:
+        raise
     messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
 
     client = _gateway_slm_client()
@@ -5790,18 +6104,43 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
 
     async def streamer():
         try:
-            async for chunk in client.chat_stream(
-                messages,
-                model=model,
-                base_url=base_url,
-                api_path=api_path,
-                temperature=temperature,
-                **{k: v for k, v in meta.items() if not k.startswith("_")},
-            ):
-                # Re-emit upstream chunk as OpenAI-style SSE data line
-                import json as _json
-                line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
-                yield line.encode("utf-8")
+            try:
+                async for chunk in client.chat_stream(
+                    messages,
+                    model=model,
+                    base_url=base_url,
+                    api_path=api_path,
+                    temperature=temperature,
+                    **{k: v for k, v in meta.items() if not k.startswith("_")},
+                ):
+                    # Re-emit upstream chunk as OpenAI-style SSE data line
+                    import json as _json
+                    try:
+                        # Best-effort debug trace for streaming shape issues
+                        _choices = chunk.get("choices") if isinstance(chunk, dict) else None
+                        if _choices and isinstance(_choices, list) and _choices:
+                            _delta = (_choices[0] or {}).get("delta", {})
+                            _has_content = bool(_delta.get("content"))
+                            _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(_delta.get("tool_calls"))
+                            LOGGER.debug(
+                                "LLM stream chunk",
+                                extra={
+                                    "model": model,
+                                    "has_content": _has_content,
+                                    "has_tool_calls": _has_tool_calls,
+                                    "finish_reason": (_choices[0] or {}).get("finish_reason"),
+                                },
+                            )
+                        else:
+                            LOGGER.debug("LLM stream non-choice chunk", extra={"model": model, "keys": list(chunk.keys()) if isinstance(chunk, dict) else type(chunk).__name__})
+                    except Exception:
+                        pass
+                    line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
+                    yield line.encode("utf-8")
+            except ValueError as exc:
+                msg = "data: " + "{\"error\": \"debug:stream " + str(exc).replace("\n", " ") + "\"}" + "\n\n"
+                yield msg.encode("utf-8")
+                return
         except httpx.HTTPStatusError as exc:
             detail = f"provider_error: {exc}"
             # Audit error

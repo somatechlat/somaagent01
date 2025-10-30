@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 tests/sse-happy.spec.ts:7:7 › SSE streaming (happy path, real Gateway) › connects EventSource and shows assistant response (5.2s)
+
+  1 passed (6.2s)
