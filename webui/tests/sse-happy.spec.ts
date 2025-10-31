@@ -51,7 +51,9 @@ test.describe('SSE streaming (happy path, real Gateway)', () => {
     await page.fill('#chat-input', `hello ${unique}`);
     await page.click('#send-button');
 
-    // Expect at least one assistant message to appear
+    // Expect assistant.thinking to show first
+    await expect(page.locator('#chat-history .message-agent')).toContainText(/Thinking…/i, { timeout: 10000 });
+    // Then expect the final assistant response
     await expect(page.locator('#chat-history .message-agent-response')).toHaveCount(1, { timeout: 20000 });
 
     // Expect an SSE connection attempt succeeded

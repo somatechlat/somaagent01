@@ -2774,6 +2774,7 @@ async def upload_files(
     request: Request,
     files: List[UploadFile] = File(...),
     session_id: str | None = Form(default=None),
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)] = None,
 ) -> JSONResponse:
     """Upload one or more files and return normalized descriptors.
 
@@ -2802,7 +2803,7 @@ async def upload_files(
 
     results: list[dict[str, Any]] = []
 
-    for upl in files:
+    for idx, upl in enumerate(files):
         fname = upl.filename or "file"
         safe_name = secure_filename(fname) or "file"
         mime = upl.content_type or "application/octet-stream"
@@ -2825,6 +2826,36 @@ async def upload_files(
                     raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes} bytes)")
                 sha.update(chunk)
                 chunks.append(chunk)
+                # Emit progress event to outbound stream (best-effort)
+                try:
+                    if publisher and sess and isinstance(sess, str):
+                        progress_event = {
+                            "event_id": str(uuid.uuid4()),
+                            "session_id": str(sess),
+                            "persona_id": auth_meta.get("persona_id"),
+                            "role": "system",
+                            "message": "",
+                            "metadata": {
+                                "status": "uploading",
+                                "source": "gateway",
+                                "tenant": tenant,
+                                "filename": safe_name,
+                                "mime": mime,
+                                "file_index": idx,
+                                "bytes_uploaded": size,
+                            },
+                            "version": "sa01-v1",
+                            "type": "uploads.progress",
+                        }
+                        await publisher.publish(
+                            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                            progress_event,
+                            dedupe_key=progress_event.get("event_id"),
+                            session_id=str(sess),
+                            tenant=tenant,
+                        )
+                except Exception:
+                    LOGGER.debug("Failed to publish uploads.progress (chunk)", exc_info=True)
         except HTTPException:
             raise
         except Exception as exc:
@@ -2922,6 +2953,39 @@ async def upload_files(
         }
         results.append(descriptor)
         GATEWAY_UPLOADS.labels("ok" if not quarantined else "blocked").inc()
+
+        # Emit final per-file progress event (best-effort)
+        try:
+            if publisher and sess and isinstance(sess, str):
+                final_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": str(sess),
+                    "persona_id": auth_meta.get("persona_id"),
+                    "role": "system",
+                    "message": "",
+                    "metadata": {
+                        "status": "uploaded",
+                        "source": "gateway",
+                        "tenant": tenant,
+                        "filename": safe_name,
+                        "mime": mime,
+                        "file_index": idx,
+                        "bytes_uploaded": size,
+                        "bytes_total": size,
+                        "attachment_id": str(att_id),
+                    },
+                    "version": "sa01-v1",
+                    "type": "uploads.progress",
+                }
+                await publisher.publish(
+                    os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                    final_event,
+                    dedupe_key=final_event.get("event_id"),
+                    session_id=str(sess),
+                    tenant=tenant,
+                )
+        except Exception:
+            LOGGER.debug("Failed to publish uploads.progress (final)", exc_info=True)
 
     GATEWAY_UPLOAD_SECONDS.observe(time.perf_counter() - start)
     return JSONResponse(results)

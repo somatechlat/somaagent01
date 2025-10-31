@@ -341,6 +341,38 @@ class ToolExecutor:
                 LOGGER.debug("Failed to write audit log for tool.execute.finish (unknown_tool)", exc_info=True)
             return
 
+        # Publish a UI-friendly tool.start event so the Web UI can show lifecycle
+        try:
+            ui_meta = dict(metadata or {})
+            ui_meta.update({
+                "status": "start",
+                "source": "tool_executor",
+                "tool_name": tool_name,
+            })
+            # Preserve stable request_id for UI message dedupe if available
+            req_id = (metadata or {}).get("request_id") or event.get("event_id")
+            if req_id:
+                ui_meta["request_id"] = req_id
+            start_event = {
+                "event_id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "role": "tool",
+                "message": "",
+                "metadata": ui_meta,
+                "version": "sa01-v1",
+                "type": "tool.start",
+            }
+            await self.publisher.publish(
+                os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                start_event,
+                dedupe_key=start_event.get("event_id"),
+                session_id=str(session_id),
+                tenant=(ui_meta or {}).get("tenant"),
+            )
+        except Exception:
+            LOGGER.debug("Failed to publish tool.start to conversation.outbound", exc_info=True)
+
         try:
             TOOL_INFLIGHT.labels(tool_label).inc()
             result = await self.execution_engine.execute(tool, args, default_limits())
@@ -483,6 +515,46 @@ class ToolExecutor:
             session_id=result_event.get("session_id"),
             tenant=(result_event.get("metadata") or {}).get("tenant"),
         )
+
+        # Also publish a UI-friendly outbound event so the Web UI can render tool results via SSE
+        try:
+            # Convert payload to a concise string for the chat stream
+            if isinstance(payload, str):
+                tool_text = payload
+            else:
+                try:
+                    tool_text = json.dumps(payload, ensure_ascii=False)
+                except Exception:
+                    tool_text = str(payload)
+
+            # Build metadata with helpful fields for the UI
+            ui_meta = dict(result_event.get("metadata") or {})
+            ui_meta.update({
+                "status": status,
+                "source": "tool_executor",
+                "tool_name": result_event.get("tool_name"),
+                "execution_time": execution_time,
+            })
+            outbound_event = {
+                "event_id": str(uuid.uuid4()),
+                "session_id": result_event.get("session_id"),
+                "persona_id": result_event.get("persona_id"),
+                "role": "tool",
+                "message": tool_text,
+                "metadata": ui_meta,
+                "version": "sa01-v1",
+                "type": "tool.result",
+            }
+            await self.publisher.publish(
+                os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                outbound_event,
+                dedupe_key=outbound_event.get("event_id"),
+                session_id=str(result_event.get("session_id")),
+                tenant=(ui_meta or {}).get("tenant"),
+            )
+        except Exception:
+            # Non-fatal: UI will still see the tool result in session events and tool.results
+            LOGGER.debug("Failed to publish tool result to conversation.outbound", exc_info=True)
 
         tenant_meta = result_event.get("metadata", {})
         tenant = tenant_meta.get("tenant", "default")

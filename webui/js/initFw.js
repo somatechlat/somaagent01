@@ -22,32 +22,32 @@ try {
 const AlpineCandidate = (AlpineModule && (AlpineModule.default || AlpineModule.Alpine)) || window.Alpine;
 if (AlpineCandidate) {
   window.Alpine = AlpineCandidate;
-  try { if (window.Alpine.start) window.Alpine.start(); } catch (e) { /* ignore */ }
 }
 
-// Load alpine collapse plugin (local-first, CDN fallback) after Alpine is present
-(() => {
-  function loadPlugin(src, cdnSrc) {
-    const s = document.createElement('script');
-    s.src = src;
-    s.defer = true;
-    s.onerror = function () {
-      if (cdnSrc) {
-        const f = document.createElement('script');
-        f.src = cdnSrc;
-        f.defer = true;
-        document.head.appendChild(f);
-      }
-    };
-    document.head.appendChild(s);
+// Load alpine collapse plugin (local-first, CDN fallback) BEFORE starting Alpine to avoid x-collapse warnings
+async function loadAlpineCollapsePlugin() {
+  function inject(src) {
+    return new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.defer = true;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
   }
+  const okLocal = await inject('/vendor/alpine/alpine.collapse.min.js');
+  if (!okLocal) {
+    await inject('https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.3/dist/cdn.min.js');
+  }
+}
 
-  // Prefer local plugin bundle; fallback to official CDN plugin package
-  loadPlugin(
-    '/vendor/alpine/alpine.collapse.min.js',
-    'https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.3/dist/cdn.min.js'
-  );
-})();
+await loadAlpineCollapsePlugin();
+
+// Start Alpine after plugins are present
+if (window.Alpine && window.Alpine.start) {
+  try { window.Alpine.start(); } catch (e) { /* ignore */ }
+}
 
 // add x-destroy directive to alpine (safe-guarded)
 if (window.Alpine) {

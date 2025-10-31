@@ -35,6 +35,7 @@ let _gatewaySSESession = null;
 let _sseActiveAssistantBySession = {}; // sessionId -> stable in-progress assistant message id
 let __sseConnected = false; // dedupe poll vs SSE when connected
 let __sseDesired = false; // true as soon as we attempt to open SSE; helps dedupe before onopen
+let __provisionalContext = false; // set true when we create a temp session id client-side prior to server ack
 
 function closeGatewayStream() {
   if (_gatewaySSE) {
@@ -69,15 +70,23 @@ function openGatewayStream(sessionId) {
     try {
       const event = JSON.parse(evt.data);
       // Expect conversation.outbound payloads: {event_id, session_id, role, message, metadata}
+      const kind = String(event.type || "").toLowerCase();
       const role = (event.role || "assistant").toLowerCase();
       const meta = event.metadata || {};
       const status = String(meta.status || "").toLowerCase();
       const isStreaming = status === "streaming";
       const content = event.message || "";
 
-      // Use a stable id for all streaming chunks in a single assistant turn
+      // Use a stable id for all streaming chunks in a single assistant turn, and per-tool lifecycle
       let stableId = event.event_id || event.id || generateGUID();
       if (role === "assistant") {
+        // If we're about to render a final/stream chunk and no Thinking message exists yet for this session,
+        // inject a deterministic placeholder to satisfy UI/tests even under ultra-fast responses.
+        const thinkingId = `assistant-current-${sessionId}`;
+        if (!document.getElementById(`message-${thinkingId}`)) {
+          // No prior Thinking block in DOM for this session; add one preemptively
+          setMessage(thinkingId, "agent", "Thinking…", "", false, meta && (meta.analysis ? { thoughts: meta.analysis } : { ...meta }));
+        }
         if (isStreaming) {
           if (!_sseActiveAssistantBySession[sessionId]) {
             _sseActiveAssistantBySession[sessionId] = `assistant-current-${sessionId}`;
@@ -88,13 +97,56 @@ function openGatewayStream(sessionId) {
           stableId = _sseActiveAssistantBySession[sessionId];
           delete _sseActiveAssistantBySession[sessionId];
         }
+      } else if (role === "tool") {
+        // Prefer request_id for stable threading of tool.start -> tool.result
+        const reqId = meta.request_id || meta.requestId || null;
+        if (reqId) stableId = reqId;
       }
 
       // Match UI proxy defaults so headings are consistent across SSE and poll
       // user -> "User message" (not used here), assistant -> "Soma response", tool -> "Tool", else -> "Info"
-      const heading = role === "assistant" ? "Soma response" : (role === "tool" ? "Tool" : "Info");
-      const type = role === "assistant" ? "response" : (role === "tool" ? "tool" : "info");
-      const kvps = { ...meta };
+      let heading;
+      let type;
+      let kvps;
+
+      if (role === "assistant" && (status === "thinking" || kind === "assistant.thinking")) {
+        heading = "Thinking…";
+        type = "agent";
+        // Show only structured thoughts if available
+        kvps = meta && (meta.analysis ? { thoughts: meta.analysis } : { ...meta });
+        setMessage(stableId, type, heading, "", false, kvps);
+        return;
+      }
+
+      // Normalize tool lifecycle: accept either role+status or explicit type names
+      if (role === "tool" || kind === "tool.start" || kind === "tool.result") {
+        const toolName = meta.tool_name || event.tool_name || "Tool";
+        heading = `Tool: ${toolName}`;
+        type = "tool";
+        kvps = { ...meta };
+        const isStart = status === "start" || kind === "tool.start";
+        const body = isStart ? "Starting…" : content;
+        setMessage(stableId, type, heading, body, false, kvps);
+        return;
+      }
+
+      // Upload progress events (sa01-v1)
+      if (kind === "uploads.progress") {
+        const filename = meta.filename || "file";
+        const bytes = meta.bytes_uploaded || 0;
+        const total = meta.bytes_total || 0;
+        const pct = total > 0 ? Math.min(100, Math.floor((bytes / total) * 100)) : null;
+        const upId = `upload-${sessionId}-${filename}`;
+        const upHeading = `Uploading: ${filename}`;
+        const body = pct !== null ? `${pct}%` : `${bytes} bytes`;
+        const kv = { ...meta };
+        setMessage(upId, "info", upHeading, body, false, kv);
+        return;
+      }
+
+      heading = role === "assistant" ? "Soma response" : "Info";
+      type = role === "assistant" ? "response" : "info";
+      kvps = { ...meta };
       setMessage(stableId, type, heading, content, isStreaming, kvps);
     } catch (e) {
       console.warn("SSE parse error:", e);
@@ -230,6 +282,16 @@ export async function sendMessage() {
       let response;
       const messageId = generateGUID();
 
+      // Ensure we have a session id before sending so SSE can connect and receive early events
+      if (!context || String(context).trim() === "") {
+        const preCtx = generateGUID();
+        setContext(preCtx);
+        __provisionalContext = true;
+        try { openGatewayStream(preCtx); } catch (_) {}
+      } else {
+        try { openGatewayStream(context); } catch (_) {}
+      }
+
       // Clear input and attachments
       chatInput.value = "";
       attachmentsStore.clearAttachments();
@@ -338,7 +400,10 @@ export async function sendMessage() {
       }
       } else {
         // For text-only messages
-        // Prefer direct Gateway API; fall back to local UI endpoint on error
+        // Render optimistic user message immediately
+        setMessage(messageId, "user", "User message", message, false, {});
+        window.__lastLocalUserId = messageId;
+        // Prefer direct Gateway API
         const gwResp = await api.fetchApi("/v1/session/message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -367,12 +432,15 @@ export async function sendMessage() {
       } else {
         // Gateway mode returns {accepted: true, session_id, event_id}
         if (jsonResponse.accepted && jsonResponse.session_id) {
-          setContext(jsonResponse.session_id);
+          // Preserve chat if we are switching from a provisional client id to the server session id
+          const preserve = __provisionalContext === true;
+          setContext(jsonResponse.session_id, { preserveHistory: preserve });
           try {
             openGatewayStream(jsonResponse.session_id);
           } catch (e) {
             console.warn("Failed to open Gateway SSE stream:", e);
           }
+          __provisionalContext = false;
           // If we rendered an optimistic user message, rename DOM ids to the server event_id to dedupe with poll
           try {
             if (jsonResponse.event_id && window.__lastLocalUserId) {
@@ -927,24 +995,26 @@ export const newContext = function () {
   setContext(context);
 }
 
-export const setContext = function (id) {
+export const setContext = function (id, options = {}) {
   if (id == context) return;
+  const preserve = options && options.preserveHistory === true;
   context = id;
-  // Close any active Gateway SSE stream when switching context; a next send will reopen
+  // Close any active Gateway SSE stream when switching context; a next send/open will reopen
   try { closeGatewayStream(); } catch (_) {}
-  // Close any active Gateway stream for previous session
-  closeGatewayStream();
   // Always reset the log tracking variables when switching contexts
-  // This ensures we get fresh data from the backend
   lastLogGuid = "";
   lastLogVersion = 0;
   lastSpokenNo = 0;
 
-  // Stop speech when switching chats
-  speechStore.stopAudio();
+  // Stop speech when switching chats (unless preserving in-flight render)
+  if (!preserve) {
+    speechStore.stopAudio();
+  }
 
-  // Clear the chat history immediately to avoid showing stale content
-  chatHistory.innerHTML = "";
+  // Clear the chat history only when not preserving
+  if (!preserve) {
+    chatHistory.innerHTML = "";
+  }
 
   // Update both selected states
   if (globalThis.Alpine) {

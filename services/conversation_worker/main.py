@@ -682,6 +682,8 @@ class ConversationWorker:
                             "role": "assistant",
                             "message": "".join(buffer),
                             "metadata": metadata,
+                            "version": "sa01-v1",
+                            "type": "assistant.stream",
                         }
                         await self.publisher.publish(
                             self.settings["outbound"],
@@ -1006,6 +1008,8 @@ class ConversationWorker:
                             "role": "assistant",
                             "message": "".join(buffer),
                             "metadata": metadata,
+                            "version": "sa01-v1",
+                            "type": "assistant.stream",
                         }
                         await self.publisher.publish(
                             self.settings["outbound"],
@@ -1622,6 +1626,8 @@ class ConversationWorker:
                     "role": "assistant",
                     "message": "Token budget exceeded for this persona/tenant.",
                     "metadata": {"source": "budget"},
+                    "version": "sa01-v1",
+                    "type": "assistant.final",
                 }
                 await self.telemetry.emit_budget(
                     tenant=tenant,
@@ -1645,6 +1651,35 @@ class ConversationWorker:
                 )
                 record_metrics("budget_limit", "budget")
                 return
+
+            # Emit a versioned thinking event before generation so the UI can render planning state
+            try:
+                thinking_meta = _compose_outbound_metadata(
+                    session_metadata,
+                    source="worker",
+                    status="thinking",
+                    analysis=analysis_dict,
+                )
+                thinking_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "role": "assistant",
+                    "message": "",
+                    "metadata": thinking_meta,
+                    "version": "sa01-v1",
+                    "type": "assistant.thinking",
+                }
+                validate_event(thinking_event, "conversation_event")
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    thinking_event,
+                    dedupe_key=thinking_event.get("event_id"),
+                    session_id=session_id,
+                    tenant=(thinking_event.get("metadata") or {}).get("tenant"),
+                )
+            except Exception:
+                LOGGER.debug("Failed to publish assistant.thinking event", exc_info=True)
 
             # Continue normal processing when budget not exceeded
             response_text = ""
@@ -1822,6 +1857,8 @@ class ConversationWorker:
                 "role": "assistant",
                 "message": response_text,
                 "metadata": response_metadata,
+                "version": "sa01-v1",
+                "type": "assistant.final",
             }
 
             validate_event(response_event, "conversation_event")

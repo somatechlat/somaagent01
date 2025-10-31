@@ -29,8 +29,8 @@ export async function importComponent(path, targetElement) {
     // Show loading indicator
     targetElement.innerHTML = '<div class="loading"></div>';
 
-    // full component url
-    const componentUrl = "components/" + path;
+    // full component url (absolute so it works when app is served under /ui)
+    const componentUrl = "/components/" + path;
 
     // get html from cache or fetch it
     let html;

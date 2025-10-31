@@ -1,6 +1,11 @@
 // message actions and components
 import { openImageModal } from "./image_modal.js";
 import { marked } from "../vendor/marked/marked.esm.js";
+// Silence marked v5 deprecations by disabling defaults that warn
+try {
+  // Safe no-op if already configured by vendor
+  marked.use({ mangle: false, headerIds: false });
+} catch (_) { /* ignore */ }
 import { store as _messageResizeStore } from "/components/messages/resize/message-resize-store.js"; // keep here, required in html
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { addActionButtonsToElement } from "/components/messages/action-buttons/simple-action-buttons.js";
