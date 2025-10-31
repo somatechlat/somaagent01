@@ -247,22 +247,26 @@ window.fileBrowserModalProxy = fileBrowserModalProxy;
 
 openFileLink = async function (path) {
   try {
-    const resp = await window.sendJsonData("/file_info", { path });
-    if (!resp.exists) {
-      window.toastFrontendError("File does not exist.", "File Error");
+    // First, try to treat path as a directory by listing it
+    const listResp = await fetchApi(`/v1/workdir/list?path=${encodeURIComponent(path)}`, { method: "GET" });
+    if (listResp && listResp.ok) {
+      fileBrowserModalProxy.openModal(path);
       return;
     }
+  } catch (_) { /* ignore */ }
 
-    if (resp.is_dir) {
-      fileBrowserModalProxy.openModal(resp.abs_path);
-    } else {
+  try {
+    // If listing failed, try to HEAD the download endpoint to see if it's a file
+    const headResp = await fetchApi(`/v1/workdir/download?path=${encodeURIComponent(path)}`, { method: "HEAD" });
+    if (headResp && headResp.ok) {
       fileBrowserModalProxy.downloadFile({
-        path: resp.abs_path,
-        name: resp.file_name,
+        path,
+        name: path.split("/").pop() || "download.bin",
       });
+      return;
     }
-  } catch (e) {
-    window.toastFrontendError("Error opening file: " + e.message, "File Open Error");
-  }
+  } catch (_) { /* ignore */ }
+
+  window.toastFrontendError("File or folder not found.", "File Error");
 };
 window.openFileLink = openFileLink;

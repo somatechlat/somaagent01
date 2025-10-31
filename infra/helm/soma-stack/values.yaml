@@ -139,7 +139,7 @@ services:
       maxReplicas: 5
       targetCPUUtilizationPercentage: 70
   ui:
-    enabled: true
+    enabled: false
     replicas: 1
     port: 8080
     hpa:
@@ -154,19 +154,4 @@ services:
       path: "/"
       annotations: {}
       tls: []
-  uiProxy:
-    enabled: true
-    replicas: 1
-    port: 8081
-    hpa:
-      enabled: false
-      minReplicas: 1
-      maxReplicas: 5
-      targetCPUUtilizationPercentage: 70
-    ingress:
-      enabled: false
-      className: ""
-      host: ""
-      path: "/"
-      annotations: {}
-      tls: []
+  # uiProxy removed: Gateway serves UI directly; SSE-only.

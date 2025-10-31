@@ -133,7 +133,12 @@ function renderGatewayEvent(sessionId, event) {
       const toolName = meta.tool_name || event.tool_name || "Tool";
       const heading = `Tool: ${toolName}`;
       const isStart = status === "start" || kind === "tool.start";
-      const body = isStart ? "Starting…" : content;
+      // Use a stable id per tool lifecycle. Prefer request_id; otherwise, fall back to a deterministic id.
+      const reqId = meta.request_id || meta.requestId || null;
+      const fallbackId = `tool-${sessionId}-${toolName}`;
+      stableId = reqId ? reqId : fallbackId;
+      // Keep a visible "Starting…" body for lifecycle parity; show details via kvps/meta on result.
+      const body = "Starting…";
       // Dedupe any prior optimistic start for same tool name
       try {
         const optId = _optimisticToolStarts.get(toolName);
@@ -141,6 +146,22 @@ function renderGatewayEvent(sessionId, event) {
           removeMessageById(optId);
           _optimisticToolStarts.delete(toolName);
         }
+        // If backend emits request_id only on result, remove any prior fallback-id message
+        if (reqId && fallbackId !== reqId) {
+          removeMessageById(fallbackId);
+        }
+        // Additional UI dedupe: ensure only one "Tool: <name>" heading exists
+        try {
+          const headings = Array.from(document.querySelectorAll('#chat-history .message-tool .msg-heading h4'));
+          for (const h of headings) {
+            if (String(h.textContent || '').trim().toLowerCase() === heading.toLowerCase()) {
+              const container = h.closest('.message-container');
+              if (container && container.id !== `message-${stableId}`) {
+                container.remove();
+              }
+            }
+          }
+        } catch (_) {}
       } catch (_) {}
       setMessage(stableId, "tool", heading, body, false, { ...meta });
       return;
@@ -292,6 +313,8 @@ globalThis.addEventListener("load", handleResize);
 globalThis.addEventListener("resize", handleResize);
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.__overlayInitDone) return;
+  window.__overlayInitDone = true;
   const overlay = document.getElementById("sidebar-overlay");
   overlay.addEventListener("click", () => {
     if (isMobile()) {
@@ -342,7 +365,7 @@ function setupSidebarToggle() {
     setTimeout(setupSidebarToggle, 100);
   }
 }
-document.addEventListener("DOMContentLoaded", setupSidebarToggle);
+// Avoid duplicate registrations; main UI init will call this once
 
 export async function sendMessage() {
   if (__sendInFlight) return;
@@ -446,16 +469,7 @@ export async function sendMessage() {
             const body = await trResp.text().catch(() => "");
             throw new Error(`Tool enqueue failed: HTTP ${trResp.status}${body ? ` — ${body}` : ""}`);
           }
-          // Optimistically render a tool.start block so the UI and tests see lifecycle immediately
-          try {
-            const existing = Array.from(document.querySelectorAll('#chat-history .message-tool .msg-heading h4'))
-              .some(h => String(h.textContent || '').trim().toLowerCase() === `tool: ${toolName}`.toLowerCase());
-            if (!_optimisticToolStarts.has(toolName) && !existing) {
-              const optimisticId = `tool-${toolName}-start-${Date.now()}`;
-              setMessage(optimisticId, "tool", `Tool: ${toolName}`, "Starting…", false, { tool_name: toolName, status: "start", source: "optimistic" });
-              _optimisticToolStarts.set(toolName, optimisticId);
-            }
-          } catch (_) {}
+          // Rely on SSE tool.start/result lifecycle to avoid duplicate headings
           // Ensure SSE is connected so we get the tool result event
           try {
             openGatewayStream(context);
@@ -486,23 +500,7 @@ export async function sendMessage() {
         // sleep one frame to render the message before upload starts - better UX
         sleep(0);
 
-        // Render optimistic upload progress blocks so UI shows immediately; SSE will update them
-        try {
-          const currentSid = context || (typeof getContext === 'function' ? getContext() : null) || 'pending';
-          for (let i = 0; i < attachmentsWithUrls.length; i++) {
-            const f = attachmentsWithUrls[i].file;
-            const upId = `upload-${currentSid}-${f.name}`;
-            if (!document.getElementById(`message-${upId}`)) {
-              setMessage(upId, "upload", `Uploading: ${f.name}`, "", false, { percent: 0, filename: f.name });
-            }
-            // Double-check shortly after in case of rapid DOM churn
-            setTimeout(() => {
-              if (!document.getElementById(`message-${upId}`)) {
-                try { setMessage(upId, "upload", `Uploading: ${f.name}`, "", false, { percent: 0, filename: f.name }); } catch(_) {}
-              }
-            }, 200);
-          }
-        } catch (_) {}
+        // Do not render optimistic upload blocks; rely on uploads.progress SSE events
 
         // Gateway-first two-step: 1) upload files, 2) post message with attachment paths.
         let gatewaySucceeded = false;
@@ -638,6 +636,39 @@ chatInput.addEventListener("keydown", (e) => {
 });
 
 sendButton.addEventListener("click", sendMessage);
+
+// Global shortcuts for parity and productivity
+// - Ctrl/Cmd+Enter: send message
+// - Ctrl/Cmd+N: new chat
+// - Ctrl/Cmd+Shift+D: delete current chat
+document.addEventListener("keydown", (e) => {
+  try {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+    if (!ctrlOrCmd) return;
+
+    // Send message: Ctrl/Cmd+Enter
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+      return;
+    }
+
+    // New chat: Ctrl/Cmd+N
+    if ((e.key === "n" || e.key === "N") && !e.shiftKey) {
+      e.preventDefault();
+      try { newChat(); } catch (_) {}
+      return;
+    }
+
+    // Delete current chat: Ctrl/Cmd+Shift+D
+    if ((e.key === "d" || e.key === "D") && e.shiftKey) {
+      e.preventDefault();
+      try { if (typeof killChat === 'function' && getContext()) killChat(getContext()); } catch(_) {}
+      return;
+    }
+  } catch (_) {}
+});
 
 export function updateChatInput(text) {
   console.log("updateChatInput called with:", text);
@@ -860,7 +891,7 @@ let lastLogGuid = "";
 let lastSpokenNo = 0;
 
 // Legacy poll removed: SSE is the sole transport for messages/events
-async function poll() { return false; }
+// (poll() removed)
 
 // Fetch recent events for a session and render them into the chat history
 async function loadSessionHistory(sessionId) {
@@ -1137,8 +1168,7 @@ globalThis.selectChat = async function (id) {
       localStorage.setItem("lastSelectedTask", id);
     }
 
-    // Trigger an immediate poll to fetch content
-    poll();
+    // No poll; setContext() handles history preload and SSE attach
   }
 
   updateAfterScroll();
@@ -1293,57 +1323,7 @@ globalThis.nudge = async function () {
   }
 };
 
-globalThis.restart = async function () {
-  try {
-    if (!getConnectionStatus()) {
-      await toastFrontendError(
-        "Backend disconnected, cannot restart.",
-        "Restart Error"
-      );
-      return;
-    }
-    // First try to initiate restart (legacy endpoint may be disabled)
-    try {
-      await sendJsonData("/restart", {});
-    } catch (err) {
-      const msg = String(err?.message || err || "");
-      if (msg.includes("Legacy UI action is disabled")) {
-        await toastFrontendError("Restart is not available in this deployment.", "Restart Unavailable", 6, "restart");
-        return;
-      }
-      throw err;
-    }
-  } catch (e) {
-    // Show restarting message with no timeout and restart group
-    await toastFrontendInfo("Restarting...", "System Restart", 9999, "restart");
-
-    let retries = 0;
-    const maxRetries = 240; // Maximum number of retries (60 seconds with 250ms interval)
-
-    while (retries < maxRetries) {
-      try {
-        const resp = await fetch("/v1/health", { method: "GET", credentials: "same-origin" });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        // Server is back up, show success message that replaces the restarting message
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        await toastFrontendSuccess("Restarted", "System Restart", 5, "restart");
-        return;
-      } catch (e) {
-        // Server still down, keep waiting
-        retries++;
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-    }
-
-    // If we get here, restart failed or took too long
-    await toastFrontendError(
-      "Restart timed out or failed",
-      "Restart Error",
-      8,
-      "restart"
-    );
-  }
-};
+// Restart action removed: feature not available in canonical Gateway UI.
 
 // Modify this part
 document.addEventListener("DOMContentLoaded", () => {
@@ -1563,6 +1543,8 @@ chatInput.addEventListener("input", adjustTextareaHeight);
 
 // Setup event handlers once the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function () {
+  if (window.__mainUiInitDone) return;
+  window.__mainUiInitDone = true;
   setupSidebarToggle();
   setupTabs();
   initializeActiveTab();

@@ -1,0 +1,658 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic:
+      - button "Toggle Sidebar" [ref=e3] [cursor=pointer]:
+        - img [ref=e5]
+      - link "a0" [ref=e8] [cursor=pointer]:
+        - /url: https://github.com/agent0ai/agent-zero
+        - img "a0" [ref=e9]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - button "Reset Chat" [ref=e13] [cursor=pointer]
+          - button "New Chat" [ref=e14] [cursor=pointer]
+          - button "Load Chat" [ref=e15] [cursor=pointer]
+          - button "Save Chat" [ref=e16] [cursor=pointer]
+          - button "Restart" [ref=e17] [cursor=pointer]
+          - button "Settings" [active] [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+            - text: Settings
+          - button "Memory" [ref=e20] [cursor=pointer]
+        - generic [ref=e22]:
+          - generic [ref=e23] [cursor=pointer]: Chats
+          - generic [ref=e24] [cursor=pointer]: Tasks
+        - list [ref=e27]:
+          - listitem [ref=e28]:
+            - 'generic "Chat #1" [ref=e30] [cursor=pointer]'
+            - button "X" [ref=e31] [cursor=pointer]
+          - listitem [ref=e32]:
+            - 'generic "Chat #2" [ref=e34] [cursor=pointer]'
+            - button "X" [ref=e35] [cursor=pointer]
+          - listitem [ref=e36]:
+            - 'generic "Chat #3" [ref=e38] [cursor=pointer]'
+            - button "X" [ref=e39] [cursor=pointer]
+          - listitem [ref=e40]:
+            - 'generic "Chat #4" [ref=e42] [cursor=pointer]'
+            - button "X" [ref=e43] [cursor=pointer]
+          - listitem [ref=e44]:
+            - 'generic "Chat #5" [ref=e46] [cursor=pointer]'
+            - button "X" [ref=e47] [cursor=pointer]
+      - generic [ref=e48]:
+        - generic [ref=e50]:
+          - heading "Preferences" [level=3] [ref=e51] [cursor=pointer]:
+            - text: Preferences
+            - img [ref=e52]
+          - list [ref=e54]:
+            - listitem [ref=e55]:
+              - generic [ref=e56]: Autoscroll
+              - generic [ref=e57]:
+                - checkbox [checked]
+            - listitem [ref=e59]:
+              - generic [ref=e60]: Dark mode
+              - generic [ref=e61]:
+                - checkbox [checked]
+            - listitem [ref=e63]:
+              - generic [ref=e64]: Speech
+              - generic [ref=e65]:
+                - checkbox
+            - listitem [ref=e67]:
+              - generic [ref=e68]: Show thoughts
+              - generic [ref=e69]:
+                - checkbox [checked]
+            - listitem [ref=e71]:
+              - generic [ref=e72]: Show JSON
+              - generic [ref=e73]:
+                - checkbox
+            - listitem [ref=e75]:
+              - generic [ref=e76]: Show utility messages
+              - generic [ref=e77]:
+                - checkbox
+        - generic [ref=e79]: "Version {{version_no}} {{version_time}}"
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - text: 10:00:56 am
+          - text: Oct 31, 2025
+        - img [ref=e84]
+        - generic [ref=e87]:
+          - generic "View Notifications" [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]: notifications
+          - generic "View Notifications" [ref=e93] [cursor=pointer]:
+            - generic [ref=e95]: notifications
+      - generic [ref=e96]:
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - heading "Info" [level=4] [ref=e101]
+            - generic [ref=e102]:
+              - link "minimize" [ref=e103] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e104]: minimize
+              - link "expand_all" [ref=e105] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e106]: expand_all
+          - generic [ref=e107]:
+            - table [ref=e108]:
+              - rowgroup [ref=e109]:
+                - row "Tenant public" [ref=e110]:
+                  - cell "Tenant" [ref=e111]
+                  - cell "public" [ref=e112]:
+                    - generic [ref=e114]: public
+                - 'row "Analysis { \"tags\": [ \"testing\" ], \"intent\": \"statement\", \"sentiment\": \"neutral\" }" [ref=e115]':
+                  - cell "Analysis" [ref=e116]
+                  - 'cell "{ \"tags\": [ \"testing\" ], \"intent\": \"statement\", \"sentiment\": \"neutral\" }" [ref=e117]':
+                    - generic [ref=e119]: "{ \"tags\": [ \"testing\" ], \"intent\": \"statement\", \"sentiment\": \"neutral\" }"
+            - generic [ref=e120]: file test
+        - generic [ref=e124]:
+          - heading "Soma response" [level=4] [ref=e125]
+          - generic [ref=e126]:
+            - link "minimize" [ref=e127] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e128]: minimize
+            - link "expand" [ref=e129] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e130]: expand
+      - heading "|>" [level=4] [ref=e132]:
+        - generic [ref=e133]: "|>"
+      - generic [ref=e134]:
+        - generic [ref=e135]:
+          - img [ref=e138] [cursor=pointer]
+          - generic [ref=e140]:
+            - textbox "Type your message here..." [ref=e141]
+            - button "Expand input" [ref=e142] [cursor=pointer]:
+              - img [ref=e143]
+          - generic [ref=e145]:
+            - button "Send message" [ref=e146] [cursor=pointer]:
+              - img [ref=e147]
+            - button "Start/Stop recording" [ref=e148] [cursor=pointer]:
+              - img [ref=e149]
+        - generic [ref=e151]:
+          - button "Pause Agent" [ref=e152] [cursor=pointer]:
+            - img [ref=e153]
+            - generic [ref=e155]: Pause Agent
+          - button "Import knowledge" [ref=e156] [cursor=pointer]:
+            - img [ref=e157]
+            - paragraph [ref=e158]: Import knowledge
+          - button "Files" [ref=e159] [cursor=pointer]:
+            - img [ref=e160]
+            - paragraph [ref=e163]: Files
+          - button "History" [ref=e164] [cursor=pointer]:
+            - img [ref=e165]
+            - paragraph [ref=e166]: History
+          - button "Context" [ref=e167] [cursor=pointer]:
+            - img [ref=e168]
+            - paragraph [ref=e169]: Context
+          - button "Nudge" [ref=e170] [cursor=pointer]:
+            - img [ref=e171]
+            - paragraph [ref=e174]: Nudge
+  - generic [ref=e176]:
+    - generic [ref=e177]:
+      - heading "Settings" [level=2] [ref=e178]
+      - button "×" [ref=e179] [cursor=pointer]
+    - generic [ref=e180]:
+      - generic [ref=e182]:
+        - generic "Agent Settings" [ref=e183] [cursor=pointer]
+        - generic "External Services" [ref=e184] [cursor=pointer]
+        - generic "MCP" [ref=e185] [cursor=pointer]: MCP/A2A
+        - generic "Developer" [ref=e186] [cursor=pointer]
+        - generic "Task Scheduler" [ref=e187] [cursor=pointer]
+        - generic "Backup & Restore" [ref=e188] [cursor=pointer]
+      - generic [ref=e189]:
+        - navigation [ref=e190]:
+          - list [ref=e191]:
+            - listitem [ref=e192]:
+              - link "Agent Config Agent Config" [ref=e193] [cursor=pointer]:
+                - /url: "#section1"
+                - img "Agent Config" [ref=e194]
+                - generic [ref=e195]: Agent Config
+            - listitem [ref=e196]:
+              - link "Chat Model Chat Model" [ref=e197] [cursor=pointer]:
+                - /url: "#section2"
+                - img "Chat Model" [ref=e198]
+                - generic [ref=e199]: Chat Model
+            - listitem [ref=e200]:
+              - link "Utility model Utility model" [ref=e201] [cursor=pointer]:
+                - /url: "#section3"
+                - img "Utility model" [ref=e202]
+                - generic [ref=e203]: Utility model
+            - listitem [ref=e204]:
+              - link "Web Browser Model Web Browser Model" [ref=e205] [cursor=pointer]:
+                - /url: "#section4"
+                - img "Web Browser Model" [ref=e206]
+                - generic [ref=e207]: Web Browser Model
+            - listitem [ref=e208]:
+              - link "Embedding Model Embedding Model" [ref=e209] [cursor=pointer]:
+                - /url: "#section5"
+                - img "Embedding Model" [ref=e210]
+                - generic [ref=e211]: Embedding Model
+            - listitem [ref=e212]:
+              - link "SomaBrain SomaBrain" [ref=e213] [cursor=pointer]:
+                - /url: "#section6"
+                - img "SomaBrain" [ref=e214]
+                - generic [ref=e215]: SomaBrain
+            - listitem [ref=e216]:
+              - link "Speech Speech" [ref=e217] [cursor=pointer]:
+                - /url: "#section7"
+                - img "Speech" [ref=e218]
+                - generic [ref=e219]: Speech
+            - listitem [ref=e220]:
+              - link "Uploads Uploads" [ref=e221] [cursor=pointer]:
+                - /url: "#section8"
+                - img "Uploads" [ref=e222]
+                - generic [ref=e223]: Uploads
+            - listitem [ref=e224]:
+              - link "Antivirus Antivirus" [ref=e225] [cursor=pointer]:
+                - /url: "#section9"
+                - img "Antivirus" [ref=e226]
+                - generic [ref=e227]: Antivirus
+        - generic [ref=e228]:
+          - generic [ref=e229]: Agent Config
+          - generic [ref=e230]: Agent parameters.
+          - generic [ref=e231]:
+            - generic [ref=e232]:
+              - generic [ref=e233]: Default agent profile
+              - generic [ref=e234]: Subdirectory of /agents folder to be used by default agent no. 0. Subordinate agents can be spawned with other profiles, that is on their superior agent to decide. This setting affects the behaviour of the top level agent you communicate with.
+            - combobox [ref=e236] [cursor=pointer]:
+              - option "agent0" [selected]
+          - generic [ref=e237]:
+            - generic [ref=e238]:
+              - generic [ref=e239]: Knowledge subdirectory
+              - generic [ref=e240]: Subdirectory of /knowledge folder to use for agent knowledge import. 'default' subfolder is always imported and contains framework knowledge.
+            - combobox [ref=e242] [cursor=pointer]:
+              - option "custom" [selected]
+        - generic [ref=e243]:
+          - generic [ref=e244]: Chat Model
+          - generic [ref=e245]: Selection and settings for main chat model used by Agent Zero
+          - generic [ref=e246]:
+            - generic [ref=e247]:
+              - generic [ref=e248]: Chat model provider
+              - generic [ref=e249]: Select provider for main chat model used by Agent Zero
+            - combobox [ref=e251] [cursor=pointer]
+          - generic [ref=e252]:
+            - generic [ref=e253]:
+              - generic [ref=e254]: Chat model name
+              - generic [ref=e255]: Exact name of model from selected provider
+            - textbox [ref=e257]: openai/gpt-oss-120b
+          - generic [ref=e258]:
+            - generic [ref=e259]:
+              - generic [ref=e260]: Chat model API base URL
+              - generic [ref=e261]: API base URL for main chat model. Leave empty for default. Only relevant for Azure, local and custom (other) providers.
+            - textbox [ref=e263]: https://api.groq.com
+          - generic [ref=e264]:
+            - generic [ref=e265]:
+              - generic [ref=e266]: Chat model context length
+              - generic [ref=e267]: Maximum number of tokens in the context window for LLM. System prompt, chat history, RAG and response all count towards this limit.
+            - spinbutton [ref=e269]: "100000"
+          - generic [ref=e270]:
+            - generic [ref=e271]:
+              - generic [ref=e272]: Context window space for chat history
+              - generic [ref=e273]: Portion of context window dedicated to chat history visible to the agent. Chat history will automatically be optimized to fit. Smaller size will result in shorter and more summarized history. The remaining space will be used for system prompt, RAG and response.
+            - generic [ref=e275]:
+              - slider [ref=e276] [cursor=pointer]: "0.7"
+              - generic [ref=e277]: "0.7"
+          - generic [ref=e278]:
+            - generic [ref=e279]:
+              - generic [ref=e280]: Supports Vision
+              - generic [ref=e281]: Models capable of Vision can for example natively see the content of image attachments.
+            - generic [ref=e283]:
+              - checkbox [checked]
+          - generic [ref=e285]:
+            - generic [ref=e286]:
+              - generic [ref=e287]: Requests per minute limit
+              - generic [ref=e288]: Limits the number of requests per minute to the chat model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e290]: "0"
+          - generic [ref=e291]:
+            - generic [ref=e292]:
+              - generic [ref=e293]: Input tokens per minute limit
+              - generic [ref=e294]: Limits the number of input tokens per minute to the chat model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e296]: "0"
+          - generic [ref=e297]:
+            - generic [ref=e298]:
+              - generic [ref=e299]: Output tokens per minute limit
+              - generic [ref=e300]: Limits the number of output tokens per minute to the chat model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e302]: "0"
+          - generic [ref=e303]:
+            - generic [ref=e304]:
+              - generic [ref=e305]: Chat model additional parameters
+              - generic [ref=e306]:
+                - text: Any other parameters supported by
+                - link "LiteLLM" [ref=e307] [cursor=pointer]:
+                  - /url: https://docs.litellm.ai/docs/set_keys
+                - text: . Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.
+            - textbox [ref=e309]: "{}"
+        - generic [ref=e310]:
+          - generic [ref=e311]: Utility model
+          - generic [ref=e312]: Smaller, cheaper, faster model for handling utility tasks like organizing memory, preparing prompts, summarizing.
+          - generic [ref=e313]:
+            - generic [ref=e314]:
+              - generic [ref=e315]: Utility model provider
+              - generic [ref=e316]: Select provider for utility model used by the framework
+            - combobox [ref=e318] [cursor=pointer]
+          - generic [ref=e319]:
+            - generic [ref=e320]:
+              - generic [ref=e321]: Utility model name
+              - generic [ref=e322]: Exact name of model from selected provider
+            - textbox [ref=e324]: openai/gpt-4.1-mini
+          - generic [ref=e325]:
+            - generic [ref=e326]:
+              - generic [ref=e327]: Utility model API base URL
+              - generic [ref=e328]: API base URL for utility model. Leave empty for default. Only relevant for Azure, local and custom (other) providers.
+            - textbox [ref=e330]
+          - generic [ref=e331]:
+            - generic [ref=e332]:
+              - generic [ref=e333]: Requests per minute limit
+              - generic [ref=e334]: Limits the number of requests per minute to the utility model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e336]: "0"
+          - generic [ref=e337]:
+            - generic [ref=e338]:
+              - generic [ref=e339]: Input tokens per minute limit
+              - generic [ref=e340]: Limits the number of input tokens per minute to the utility model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e342]: "0"
+          - generic [ref=e343]:
+            - generic [ref=e344]:
+              - generic [ref=e345]: Output tokens per minute limit
+              - generic [ref=e346]: Limits the number of output tokens per minute to the utility model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e348]: "0"
+          - generic [ref=e349]:
+            - generic [ref=e350]:
+              - generic [ref=e351]: Utility model additional parameters
+              - generic [ref=e352]:
+                - text: Any other parameters supported by
+                - link "LiteLLM" [ref=e353] [cursor=pointer]:
+                  - /url: https://docs.litellm.ai/docs/set_keys
+                - text: . Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.
+            - textbox [ref=e355]: temperature="0"
+        - generic [ref=e356]:
+          - generic [ref=e357]: Web Browser Model
+          - generic [ref=e358]:
+            - text: Settings for the web browser model. Agent Zero uses
+            - link "browser-use" [ref=e359] [cursor=pointer]:
+              - /url: https://github.com/browser-use/browser-use
+            - text: agentic framework to handle web interactions.
+          - generic [ref=e360]:
+            - generic [ref=e361]:
+              - generic [ref=e362]: Web Browser model provider
+              - generic [ref=e363]:
+                - text: Select provider for web browser model used by
+                - link "browser-use" [ref=e364] [cursor=pointer]:
+                  - /url: https://github.com/browser-use/browser-use
+                - text: framework
+            - combobox [ref=e366] [cursor=pointer]
+          - generic [ref=e367]:
+            - generic [ref=e368]:
+              - generic [ref=e369]: Web Browser model name
+              - generic [ref=e370]: Exact name of model from selected provider
+            - textbox [ref=e372]: openai/gpt-4.1
+          - generic [ref=e373]:
+            - generic [ref=e374]:
+              - generic [ref=e375]: Web Browser model API base URL
+              - generic [ref=e376]: API base URL for web browser model. Leave empty for default. Only relevant for Azure, local and custom (other) providers.
+            - textbox [ref=e378]
+          - generic [ref=e379]:
+            - generic [ref=e380]:
+              - generic [ref=e381]: Use Vision
+              - generic [ref=e382]: Models capable of Vision can use it to analyze web pages from screenshots. Increases quality but also token usage.
+            - generic [ref=e384]:
+              - checkbox [checked]
+          - generic [ref=e386]:
+            - generic [ref=e387]:
+              - generic [ref=e388]: Web Browser model rate limit requests
+              - generic [ref=e389]: Rate limit requests for web browser model.
+            - spinbutton [ref=e391]: "0"
+          - generic [ref=e392]:
+            - generic [ref=e393]:
+              - generic [ref=e394]: Web Browser model rate limit input
+              - generic [ref=e395]: Rate limit input for web browser model.
+            - spinbutton [ref=e397]: "0"
+          - generic [ref=e398]:
+            - generic [ref=e399]:
+              - generic [ref=e400]: Web Browser model rate limit output
+              - generic [ref=e401]: Rate limit output for web browser model.
+            - spinbutton [ref=e403]: "0"
+          - generic [ref=e404]:
+            - generic [ref=e405]:
+              - generic [ref=e406]: Web Browser model additional parameters
+              - generic [ref=e407]:
+                - text: Any other parameters supported by
+                - link "LiteLLM" [ref=e408] [cursor=pointer]:
+                  - /url: https://docs.litellm.ai/docs/set_keys
+                - text: . Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.
+            - textbox [ref=e410]: temperature="0"
+          - generic [ref=e411]:
+            - generic [ref=e412]:
+              - generic [ref=e413]: HTTP Headers
+              - generic [ref=e414]: "HTTP headers to include with all browser requests. Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string. Example: Authorization=Bearer token123"
+            - textbox [ref=e416]
+        - generic [ref=e417]:
+          - generic [ref=e418]: Embedding Model
+          - generic [ref=e419]:
+            - text: Settings for the embedding model used by Agent Zero.
+            - heading "⚠️ No need to change" [level=4] [ref=e420]
+            - text: The default HuggingFace model sentence-transformers/all-MiniLM-L6-v2 is preloaded and runs locally within the docker container and there's no need to change it unless you have a specific requirements for embedding.
+          - generic [ref=e421]:
+            - generic [ref=e422]:
+              - generic [ref=e423]: Embedding model provider
+              - generic [ref=e424]: Select provider for embedding model used by the framework
+            - combobox [ref=e426] [cursor=pointer]
+          - generic [ref=e427]:
+            - generic [ref=e428]:
+              - generic [ref=e429]: Embedding model name
+              - generic [ref=e430]: Exact name of model from selected provider
+            - textbox [ref=e432]: sentence-transformers/all-MiniLM-L6-v2
+          - generic [ref=e433]:
+            - generic [ref=e434]:
+              - generic [ref=e435]: Embedding model API base URL
+              - generic [ref=e436]: API base URL for embedding model. Leave empty for default. Only relevant for Azure, local and custom (other) providers.
+            - textbox [ref=e438]
+          - generic [ref=e439]:
+            - generic [ref=e440]:
+              - generic [ref=e441]: Requests per minute limit
+              - generic [ref=e442]: Limits the number of requests per minute to the embedding model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e444]: "0"
+          - generic [ref=e445]:
+            - generic [ref=e446]:
+              - generic [ref=e447]: Input tokens per minute limit
+              - generic [ref=e448]: Limits the number of input tokens per minute to the embedding model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.
+            - spinbutton [ref=e450]: "0"
+          - generic [ref=e451]:
+            - generic [ref=e452]:
+              - generic [ref=e453]: Embedding model additional parameters
+              - generic [ref=e454]:
+                - text: Any other parameters supported by
+                - link "LiteLLM" [ref=e455] [cursor=pointer]:
+                  - /url: https://docs.litellm.ai/docs/set_keys
+                - text: . Format is KEY=VALUE on individual lines, like .env file. Value can also contain JSON objects - when unquoted, it is treated as object, number etc., when quoted, it is treated as string.
+            - textbox [ref=e457]
+        - generic [ref=e458]:
+          - generic [ref=e459]: SomaBrain
+          - generic [ref=e460]: Configuration of A0's memory system. A0 memorizes and recalls memories automatically to help it's context awareness.
+          - generic [ref=e461]:
+            - generic [ref=e462]:
+              - generic [ref=e463]: Memory Subdirectory
+              - generic [ref=e464]: Subdirectory of /memory folder to use for agent memory storage. Used to separate memory storage between different instances.
+            - textbox [ref=e466]: default
+          - generic [ref=e467]:
+            - generic [ref=e468]:
+              - generic [ref=e469]: Memory Dashboard
+              - generic [ref=e470]: View and explore all stored memories in a table format with filtering and search capabilities.
+            - button "Open Dashboard" [ref=e472] [cursor=pointer]
+          - generic [ref=e473]:
+            - generic [ref=e474]:
+              - generic [ref=e475]: Memory auto-recall enabled
+              - generic [ref=e476]: Agent Zero will automatically recall memories based on convesation context.
+            - generic [ref=e478]:
+              - checkbox [checked]
+          - generic [ref=e480]:
+            - generic [ref=e481]:
+              - generic [ref=e482]: Memory auto-recall delayed
+              - generic [ref=e483]: The agent will not wait for auto memory recall. Memories will be delivered one message later. This speeds up agent's response time but may result in less relevant first step.
+            - generic [ref=e485]:
+              - checkbox
+          - generic [ref=e487]:
+            - generic [ref=e488]:
+              - generic [ref=e489]: Auto-recall AI query preparation
+              - generic [ref=e490]: Enables vector DB query preparation from conversation context by utility LLM for auto-recall. Improves search quality, adds 1 utility LLM call per auto-recall.
+            - generic [ref=e492]:
+              - checkbox [checked]
+          - generic [ref=e494]:
+            - generic [ref=e495]:
+              - generic [ref=e496]: Auto-recall AI post-filtering
+              - generic [ref=e497]: Enables memory relevance filtering by utility LLM for auto-recall. Improves search quality, adds 1 utility LLM call per auto-recall.
+            - generic [ref=e499]:
+              - checkbox [checked]
+          - generic [ref=e501]:
+            - generic [ref=e502]:
+              - generic [ref=e503]: Memory auto-recall interval
+              - generic [ref=e504]: Memories are recalled after every user or superior agent message. During agent's monologue, memories are recalled every X turns based on this parameter.
+            - generic [ref=e506]:
+              - slider [ref=e507] [cursor=pointer]: "3"
+              - generic [ref=e508]: "3"
+          - generic [ref=e509]:
+            - generic [ref=e510]:
+              - generic [ref=e511]: Memory auto-recall history length
+              - generic [ref=e512]: The length of conversation history passed to memory recall LLM for context (in characters).
+            - spinbutton [ref=e514]: "10000"
+          - generic [ref=e515]:
+            - generic [ref=e516]:
+              - generic [ref=e517]: Memory auto-recall similarity threshold
+              - generic [ref=e518]: The threshold for similarity search in memory recall (0 = no similarity, 1 = exact match).
+            - generic [ref=e520]:
+              - slider [ref=e521] [cursor=pointer]: "0.7"
+              - generic [ref=e522]: "0.7"
+          - generic [ref=e523]:
+            - generic [ref=e524]:
+              - generic [ref=e525]: Memory auto-recall max memories to search
+              - generic [ref=e526]: The maximum number of memories returned by vector DB for further processing.
+            - spinbutton [ref=e528]: "12"
+          - generic [ref=e529]:
+            - generic [ref=e530]:
+              - generic [ref=e531]: Memory auto-recall max memories to use
+              - generic [ref=e532]: The maximum number of memories to inject into A0's context window.
+            - spinbutton [ref=e534]: "5"
+          - generic [ref=e535]:
+            - generic [ref=e536]:
+              - generic [ref=e537]: Memory auto-recall max solutions to search
+              - generic [ref=e538]: The maximum number of solutions returned by vector DB for further processing.
+            - spinbutton [ref=e540]: "8"
+          - generic [ref=e541]:
+            - generic [ref=e542]:
+              - generic [ref=e543]: Memory auto-recall max solutions to use
+              - generic [ref=e544]: The maximum number of solutions to inject into A0's context window.
+            - spinbutton [ref=e546]: "3"
+          - generic [ref=e547]:
+            - generic [ref=e548]:
+              - generic [ref=e549]: Auto-memorize enabled
+              - generic [ref=e550]: A0 will automatically memorize facts and solutions from conversation history.
+            - generic [ref=e552]:
+              - checkbox [checked]
+          - generic [ref=e554]:
+            - generic [ref=e555]:
+              - generic [ref=e556]: Auto-memorize AI consolidation
+              - generic [ref=e557]: A0 will automatically consolidate similar memories using utility LLM. Improves memory quality over time, adds 2 utility LLM calls per memory.
+            - generic [ref=e559]:
+              - checkbox [checked]
+          - generic [ref=e561]:
+            - generic [ref=e562]:
+              - generic [ref=e563]: Auto-memorize replacement threshold
+              - generic [ref=e564]: Only applies when AI consolidation is disabled. Replaces previous similar memories with new ones based on this threshold. 0 = replace even if not similar at all, 1 = replace only if exact match.
+            - generic [ref=e566]:
+              - slider [ref=e567] [cursor=pointer]: "0.9"
+              - generic [ref=e568]: "0.9"
+        - generic [ref=e569]:
+          - generic [ref=e570]: Speech
+          - generic [ref=e571]: Voice transcription and speech synthesis settings.
+          - generic [ref=e572]:
+            - generic [ref=e573]:
+              - generic [ref=e574]: Speech provider
+              - generic [ref=e575]: Select which speech stack Agent Zero should use for voice playback.
+            - combobox [ref=e577] [cursor=pointer]:
+              - option "Browser (built-in)"
+              - option "Kokoro (server)"
+              - option "OpenAI Realtime" [selected]
+          - generic [ref=e578]:
+            - generic [ref=e579]:
+              - generic [ref=e580]: Ingestion Offload Threshold (MB)
+              - generic [ref=e581]: "Files larger than this threshold will be offloaded to background ingestion jobs. Default: 5 MB."
+            - spinbutton [ref=e583]: "5"
+          - generic [ref=e584]:
+            - generic [ref=e585]:
+              - generic [ref=e586]: Speech-to-text model size
+              - generic [ref=e587]: Select the speech-to-text model size
+            - combobox [ref=e589] [cursor=pointer]:
+              - option "Tiny (39M, English)"
+              - option "Base (74M, English)" [selected]
+              - option "Small (244M, English)"
+              - option "Medium (769M, English)"
+              - option "Large (1.5B, Multilingual)"
+              - option "Turbo (Multilingual)"
+          - generic [ref=e590]:
+            - generic [ref=e591]:
+              - generic [ref=e592]: Speech-to-text language code
+              - generic [ref=e593]: Language code (e.g. en, fr, it)
+            - textbox [ref=e595]: en
+          - generic [ref=e596]:
+            - generic [ref=e597]:
+              - generic [ref=e598]: Microphone silence threshold
+              - generic [ref=e599]: Silence detection threshold. Lower values are more sensitive to noise.
+            - generic [ref=e601]:
+              - slider [ref=e602] [cursor=pointer]: "0.3"
+              - generic [ref=e603]: "0.3"
+          - generic [ref=e604]:
+            - generic [ref=e605]:
+              - generic [ref=e606]: Microphone silence duration (ms)
+              - generic [ref=e607]: Duration of silence before the system considers speaking to have ended.
+            - textbox [ref=e609]: "1000"
+          - generic [ref=e610]:
+            - generic [ref=e611]:
+              - generic [ref=e612]: Microphone waiting timeout (ms)
+              - generic [ref=e613]: Duration of silence before the system closes the microphone.
+            - textbox [ref=e615]: "2000"
+          - generic [ref=e616]:
+            - generic [ref=e617]:
+              - generic [ref=e618]: Realtime model
+              - generic [ref=e619]: OpenAI realtime model to request (for example gpt-4o-realtime-preview).
+            - textbox [ref=e621]: gpt-4o-realtime-preview
+          - generic [ref=e622]:
+            - generic [ref=e623]:
+              - generic [ref=e624]: Realtime voice
+              - generic [ref=e625]: Voice profile passed to OpenAI realtime sessions.
+            - textbox [ref=e627]: verse
+          - generic [ref=e628]:
+            - generic [ref=e629]:
+              - generic [ref=e630]: Realtime session endpoint
+              - generic [ref=e631]: Override the default OpenAI realtime session endpoint if required.
+            - textbox [ref=e633]: https://api.openai.com/v1/realtime/sessions
+        - generic [ref=e634]:
+          - generic [ref=e635]: Uploads
+          - generic [ref=e636]: Configure file upload behavior and limits.
+          - generic [ref=e637]:
+            - generic [ref=e639]: Enable Uploads
+            - generic [ref=e641]:
+              - checkbox [checked]
+          - generic [ref=e643]:
+            - generic [ref=e645]: Max File Size (MB)
+            - spinbutton [ref=e647]: "25"
+          - generic [ref=e648]:
+            - generic [ref=e650]: Max Files Per Message
+            - spinbutton [ref=e652]: "10"
+          - generic [ref=e653]:
+            - generic [ref=e655]: Allowed MIME Types (CSV/lines)
+            - textbox [ref=e657]
+          - generic [ref=e658]:
+            - generic [ref=e660]: Denied MIME Types (CSV/lines)
+            - textbox [ref=e662]
+          - generic [ref=e663]:
+            - generic [ref=e665]: Storage Backend
+            - textbox [ref=e667]: postgres
+          - generic [ref=e668]:
+            - generic [ref=e670]: Retention TTL (days)
+            - spinbutton [ref=e672]: "7"
+          - generic [ref=e673]:
+            - generic [ref=e675]: Janitor Interval (seconds)
+            - spinbutton [ref=e677]: "3600"
+          - generic [ref=e678]:
+            - generic [ref=e680]: Inline Cap (MB)
+            - spinbutton [ref=e682]: "16"
+          - generic [ref=e683]:
+            - generic [ref=e685]: Allow External References (URLs)
+            - generic [ref=e687]:
+              - checkbox
+          - generic [ref=e689]:
+            - generic [ref=e691]: External URL Allowlist (CSV domains)
+            - textbox [ref=e693]
+          - generic [ref=e694]:
+            - generic [ref=e696]: Enable SHA256 Dedup (per tenant)
+            - generic [ref=e698]:
+              - checkbox
+          - generic [ref=e700]:
+            - generic [ref=e702]: Quarantine Policy
+            - combobox [ref=e704] [cursor=pointer]
+          - generic [ref=e705]:
+            - generic [ref=e707]: Signed Download Token TTL (seconds)
+            - spinbutton [ref=e709]: "0"
+        - generic [ref=e710]:
+          - generic [ref=e711]: Antivirus
+          - generic [ref=e712]: Scan uploaded files with ClamAV (disabled by default).
+          - generic [ref=e713]:
+            - generic [ref=e715]: Enable Antivirus
+            - generic [ref=e717]:
+              - checkbox
+          - generic [ref=e719]:
+            - generic [ref=e721]: Strict Mode (block on AV error)
+            - generic [ref=e723]:
+              - checkbox
+          - generic [ref=e725]:
+            - generic [ref=e727]: ClamAV Host
+            - textbox [ref=e729]: clamav
+          - generic [ref=e730]:
+            - generic [ref=e732]: ClamAV Port
+            - spinbutton [ref=e734]: "3310"
+          - generic [ref=e735]:
+            - generic [ref=e737]: Test Scan
+            - button "Test Scan" [ref=e739] [cursor=pointer]
+    - generic [ref=e741]:
+      - button "Save" [ref=e742] [cursor=pointer]
+      - button "Cancel" [ref=e743] [cursor=pointer]
+```

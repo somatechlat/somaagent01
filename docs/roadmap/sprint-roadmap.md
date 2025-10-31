@@ -29,15 +29,13 @@ Exit criteria:
 - A send operation produces an assistant SSE event in local dev.
 - Basic upload+send works without 5xx.
 
-### Sprint 0.5 — Strictness and No-Legacy Enablement (0.5–1 week)
+### Sprint 0.5 — Strictness and No-Legacy Enablement (completed)
 Scope:
-- Disable legacy UI polling (`/v1/ui/poll`) code paths and remove custom CSRF fetch logic in the UI; keep same-origin or header auth.
-- Remove duplicate SSE route registrations and inline dialogue fallbacks in Gateway.
-- Keep behavior identical for users; add Playwright test to assert no `/poll`/`memory_dashboard` calls; UI must not fetch `/csrf_token`.
+- Enforced SSE-only; removed UI proxy/poll and bespoke CSRF paths. Added tests to assert no `/v1/ui/poll` or `/v1/csrf` calls.
 
 Deliverables:
 - UI free of polling and bespoke CSRF; SSE-only for streaming.
-- Gateway has a single SSE route implementation.
+- Gateway exposes a single SSE route implementation.
 
 Acceptance tests:
 - tests/webui/test_no_legacy_network.spec.ts: asserts no calls to legacy endpoints during chat flows.

@@ -54,7 +54,7 @@ Tasks
 2) History/context endpoints and UI wiring
   - Backend: GET `/v1/sessions/{id}/history` → { history, tokens }.
   - Backend: GET `/v1/sessions/{id}/context-window` → { content, tokens }.
-  - UI: `webui/js/history.js` to call these routes; remove legacy `/history_get` and `/ctx_window_get`.
+  - UI: `webui/js/history.js` calls these routes; SSE-only, no polling.
 
 3) Files modal to /v1
   - Backend: `/v1/workdir/list|upload|delete|download` minimal FS adapter under a sandboxed base dir.

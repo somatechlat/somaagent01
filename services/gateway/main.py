@@ -738,7 +738,7 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Audit store schema ensure failed", exc_info=True)
 
-    # Ensure session schema exists so SSE/poll can function even before worker runs
+    # Ensure session schema exists so SSE can function even before worker runs
     try:
         await ensure_session_schema(get_session_store())
     except Exception:
@@ -3688,7 +3688,7 @@ async def list_session_events(
 async def get_session_history(
     session_id: str,
     limit: int = Query(500, ge=1, le=2000),
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)] = Depends(),
+    store: PostgresSessionStore = Depends(get_session_store),
 ) -> JSONResponse:
     """Return a simple, human-readable conversation history for the session.
 
@@ -3729,7 +3729,7 @@ async def get_session_history(
 async def get_session_context_window(
     session_id: str,
     limit: int = Query(300, ge=1, le=2000),
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)] = Depends(),
+    store: PostgresSessionStore = Depends(get_session_store),
 ) -> JSONResponse:
     """Return an approximate context window projection used for the last interaction.
 
@@ -3975,27 +3975,50 @@ app.add_api_route(
 
 
 # -----------------------------
-# UI runtime config endpoint
+# UI runtime config endpoint (must be defined BEFORE mounting /ui StaticFiles)
 # -----------------------------
 
 @app.get("/ui/config.json")
-async def ui_runtime_config() -> JSONResponse:
-    """Serve minimal runtime configuration for the Web UI.
+async def ui_config_json() -> JSONResponse:
+    """Serve runtime configuration for the Web UI (single, consolidated endpoint).
 
-    Contains safe, non-secret values the UI can use for wiring.
+    Declared before the /ui StaticFiles mount so it takes precedence.
     """
-    payload = {
-        "api_base": f"/{API_VERSION}",
-        "universe_default": os.getenv("SOMA_NAMESPACE"),
-        "namespace_default": os.getenv("SOMA_MEMORY_NAMESPACE", "wm"),
+    uploads_cfg: dict[str, Any] = {}
+    try:
+        doc = await get_ui_settings_store().get()
+        if isinstance(doc, dict):
+            uploads_cfg = dict(doc.get("uploads") or {})
+    except Exception:
+        uploads_cfg = {}
+
+    def _bool(name: str, default: bool) -> bool:
+        try:
+            raw = os.getenv(name)
+            if raw is None:
+                return default
+            return str(raw).lower() in {"true", "1", "yes", "on"}
+        except Exception:
+            return default
+
+    cfg = {
+        "api_base": "/v1",
+        "deployment_mode": APP_SETTINGS.deployment_mode,
+        "version": os.getenv("SA01_VERSION", "dev"),
+        # feature flags
         "features": {
-            "write_through": _write_through_enabled(),
+            "write_through": _bool("GATEWAY_WRITE_THROUGH", True),
             "write_through_async": _write_through_async(),
             "require_auth": REQUIRE_AUTH,
             "sse_enabled": not _sse_disabled(),
         },
+        # uploads overlay booleans commonly used by UI
+        "uploads_enabled": bool(uploads_cfg.get("uploads_enabled", True)),
+        # optional hints carried over for compatibility
+        "universe_default": os.getenv("SOMA_NAMESPACE"),
+        "namespace_default": os.getenv("SOMA_MEMORY_NAMESPACE", "wm"),
     }
-    return JSONResponse(payload)
+    return JSONResponse(cfg)
 
 
 # -----------------------------
@@ -4276,35 +4299,36 @@ async def health_check(
 # -----------------------------
 
 
-@app.get("/ui/config.json")
-async def ui_config_json() -> JSONResponse:
-    """Serve a small config shim that the Web UI reads on startup.
+# (moved earlier above the StaticFiles mount)
 
-    Keys here are merged into window.__SA01_CONFIG__ in the browser.
+@app.get("/v1/av/test")
+async def av_test() -> JSONResponse:
+    """Lightweight connectivity test for ClamAV.
+
+    Returns status ok if a TCP connection to the configured host/port succeeds.
+    When antivirus is disabled via settings/env, returns status disabled.
     """
-    uploads_cfg = {}
+    # Resolve from UI settings overlay first, then env
+    cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
+    host = str(cfg.get("av_host") or os.getenv("CLAMAV_HOST", "clamav"))
     try:
-        doc = await get_ui_settings_store().get()
-        if isinstance(doc, dict):
-            uploads_cfg = dict(doc.get("uploads") or {})
+        port = int(cfg.get("av_port") or int(os.getenv("CLAMAV_PORT", "3310")))
     except Exception:
-        uploads_cfg = {}
-    def _bool(name: str, default: bool) -> bool:
+        port = 3310
+
+    if not _clamav_enabled():
+        return JSONResponse({"status": "disabled", "host": host, "port": port})
+    try:
+        reader, writer = await asyncio.open_connection(host, port)
         try:
-            raw = os.getenv(name)
-            if raw is None:
-                return default
-            return str(raw).lower() in {"true", "1", "yes", "on"}
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
         except Exception:
-            return default
-    cfg = {
-        "api_base": "/v1",
-        "deployment_mode": APP_SETTINGS.deployment_mode,
-        "write_through": _bool("GATEWAY_WRITE_THROUGH", True),
-        "uploads_enabled": bool(uploads_cfg.get("uploads_enabled", True)),
-        "version": os.getenv("SA01_VERSION", "dev"),
-    }
-    return JSONResponse(cfg)
+            pass
+        return JSONResponse({"status": "ok", "host": host, "port": port})
+    except Exception as exc:
+        return JSONResponse({"status": "error", "detail": str(exc), "host": host, "port": port})
 
 
 @app.get("/v1/session/{session_id}/events")
