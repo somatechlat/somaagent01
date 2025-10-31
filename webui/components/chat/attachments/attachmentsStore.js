@@ -6,6 +6,7 @@ const model = {
   attachments: [],
   hasAttachments: false,
   dragDropOverlayVisible: false,
+  _seenKeys: new Set(),
 
   // Image modal properties
   currentImageUrl: null,
@@ -29,34 +30,54 @@ const model = {
   // Basic attachment management methods
   addAttachment(attachment) {
     // Validate for duplicates
-    if (this.validateDuplicates(attachment)) {
+    const key = this._makeKey(attachment);
+    if (this.validateDuplicates(attachment) && !this._seenKeys.has(key)) {
       this.attachments.push(attachment);
+      this._seenKeys.add(key);
       this.updateAttachmentState();
     }
   },
 
   removeAttachment(index) {
     if (index >= 0 && index < this.attachments.length) {
+      const att = this.attachments[index];
+      const key = this._makeKey(att);
       this.attachments.splice(index, 1);
+      if (key) this._seenKeys.delete(key);
       this.updateAttachmentState();
     }
   },
 
   clearAttachments() {
     this.attachments = [];
+    this._seenKeys.clear();
     this.updateAttachmentState();
   },
 
   validateDuplicates(newAttachment) {
     // Check if attachment already exists based on name and size
-    const isDuplicate = this.attachments.some(
-      (existing) =>
-        existing.name === newAttachment.name &&
-        existing.file &&
-        newAttachment.file &&
-        existing.file.size === newAttachment.file.size
-    );
+    const isDuplicate = this.attachments.some((existing) => {
+      if (existing.name !== newAttachment.name) return false;
+      if (existing.file && newAttachment.file) {
+        if (existing.file.size === newAttachment.file.size) return true;
+        // Also consider lastModified when available
+        if (existing.file.lastModified && newAttachment.file.lastModified && existing.file.lastModified === newAttachment.file.lastModified) return true;
+      }
+      // For images pasted vs selected where file objects differ, compare preview/url if present
+      if (existing.type === 'image' && newAttachment.type === 'image' && existing.url && newAttachment.url) {
+        return existing.url === newAttachment.url;
+      }
+      return false;
+    });
     return !isDuplicate;
+  },
+
+  _makeKey(att) {
+    try {
+      const size = att?.file?.size || 0;
+      const lm = att?.file?.lastModified || 0;
+      return `${att?.name || ''}|${size}|${lm}`;
+    } catch { return att?.name || ''; }
   },
 
   updateAttachmentState() {

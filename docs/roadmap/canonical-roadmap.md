@@ -96,6 +96,31 @@ Notes and assumptions
 
 If you accept this canonical roadmap I will also create the sprinted roadmap file with sprint-level tickets and specific test tasks.
 
+---
+
+Delta update — 2025-10-31
+
+Scope: finalize Agent Zero Web UI parity using SSE-only transport, wire any remaining legacy UI actions to canonical /v1 endpoints, add import/export and nudge routes (done), and stop accidental “auto new chat” creation.
+
+What changed today
+- UI: SSE-only path enforced; unified renderer used for history and live events; session history loads before SSE to avoid races; default selection stabilized; restart UX corrected.
+- UI actions wired to canonical endpoints: nudge (/v1/session/action), sessions import/export (POST /v1/sessions/import, POST /v1/sessions/export).
+- Error surfacing: red toasts and offline/memory-degraded banners added; subpath (/ui) import-map fixed.
+- Pending items converted into explicit tasks for the next sprint (see sprinted roadmap):
+  - Stop auto new chat creation by making default selection idempotent and not creating provisional chats on empty list.
+  - Add history/context-window endpoints under /v1 and rewire the UI modal buttons.
+  - Add /v1/workdir/* endpoints and rewire the Files modal.
+  - Expand Playwright parity tests (thinking/tool lifecycle, uploads progress, history/context/files) and stabilize timeouts.
+
+Acceptance gates targeted
+- Build: PASS
+- Lint/Typecheck: PASS
+- Tests: Gateway health, E2E tool flow, and UI smoke PASS; new Playwright parity specs to be added next.
+
+Notes
+- “No legacy” principle reaffirmed: any non-/v1 calls in the UI are considered regressions and must be migrated or disabled.
+
+
 ========================
 Centralize Gateway / UI URLs (Immediate action)
 ========================

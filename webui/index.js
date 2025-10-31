@@ -1,6 +1,7 @@
 import * as msgs from "/js/messages.js";
 import * as api from "/js/api.js";
 import * as css from "/js/css.js";
+import { importComponent } from "/js/components.js";
 import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
@@ -28,6 +29,9 @@ let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 let healthState = { status: "unknown", components: {} };
+// Dev guards/counters to prevent unintended re-inits and to aid debugging
+window.__newContextCount = window.__newContextCount || 0;
+window.__defaultSelectionDone = window.__defaultSelectionDone || false;
 
 // --- Gateway SSE streaming helpers (Sprint S2) ---
 let _gatewaySSE = null;
@@ -36,6 +40,149 @@ let _sseActiveAssistantBySession = {}; // sessionId -> stable in-progress assist
 let __sseConnected = false; // dedupe poll vs SSE when connected
 let __sseDesired = false; // true as soon as we attempt to open SSE; helps dedupe before onopen
 let __provisionalContext = false; // set true when we create a temp session id client-side prior to server ack
+let _optimisticToolStarts = new Map(); // toolName -> optimistic message id
+let __sendInFlight = false; // gate duplicate rapid submissions
+
+// Render a single Gateway event payload to the chat UI in a normalized way
+function renderGatewayEvent(sessionId, event) {
+  try {
+    if (!event) return;
+    const kind = String(event.type || "").toLowerCase();
+    const role = (event.role || "assistant").toLowerCase();
+    const meta = event.metadata || {};
+    const status = String(meta.status || "").toLowerCase();
+    const isStreaming = status === "streaming";
+    const content = event.message || "";
+
+    // Use a stable id for all streaming chunks in a single assistant turn, and per-tool lifecycle
+    let stableId = event.event_id || event.id || generateGUID();
+
+    // Normalize tool lifecycle even if role is misclassified but metadata indicates a tool event
+    if ((meta && meta.tool_name) && (status === "start" || kind === "tool.start" || kind === "tool.result")) {
+      const toolName = meta.tool_name || event.tool_name || "Tool";
+      const isStart = status === "start" || kind === "tool.start";
+      const reqId = meta.request_id || meta.requestId || stableId;
+      const heading = `Tool: ${toolName}`;
+      const body = isStart ? "Starting…" : content;
+      // Dedupe any prior optimistic start for same tool name
+      try {
+        const optId = _optimisticToolStarts.get(toolName);
+        if (optId && optId !== reqId) {
+          removeMessageById(optId);
+          _optimisticToolStarts.delete(toolName);
+        }
+      } catch (_) {}
+      setMessage(reqId, "tool", heading, body, false, { ...meta });
+      return;
+    }
+
+    if (role === "assistant") {
+      // Insert a Thinking… placeholder only for streaming or explicit thinking events
+      if (isStreaming || kind === "assistant.thinking") {
+        const thinkingId = `assistant-current-${sessionId}`;
+        if (!document.getElementById(`message-${thinkingId}`)) {
+          setMessage(
+            thinkingId,
+            "agent",
+            "Thinking…",
+            "",
+            false,
+            meta && (meta.analysis ? { thoughts: meta.analysis } : { ...meta })
+          );
+        }
+      }
+      if (isStreaming) {
+        if (!_sseActiveAssistantBySession[sessionId]) {
+          _sseActiveAssistantBySession[sessionId] = `assistant-current-${sessionId}`;
+        }
+        stableId = _sseActiveAssistantBySession[sessionId];
+      } else if (_sseActiveAssistantBySession[sessionId]) {
+        // Finalize by reusing the in-progress id, then clear it
+        stableId = _sseActiveAssistantBySession[sessionId];
+        delete _sseActiveAssistantBySession[sessionId];
+      }
+      // Surface explicit chat failures as a red toast so it's visible
+      try {
+        const msg = (event.message || "").toString();
+        const m = meta || {};
+        const looksFailure = (m.error && String(m.error).length > 0) || msg.trim().toLowerCase().startsWith("i encountered an error");
+        if (!isStreaming && looksFailure) {
+          notificationStore.frontendError(
+            m.error ? String(m.error) : "Agent failed to reply. Check settings and provider credentials.",
+            "Chat error",
+            8,
+            "chat-error"
+          );
+        }
+      } catch (_) {}
+    } else if (role === "tool") {
+      // Prefer request_id for stable threading of tool.start -> tool.result
+      const reqId = meta.request_id || meta.requestId || null;
+      if (reqId) stableId = reqId;
+    }
+
+    // Thinking event
+    if (role === "assistant" && (status === "thinking" || kind === "assistant.thinking")) {
+      const kvps = meta && (meta.analysis ? { thoughts: meta.analysis } : { ...meta });
+      setMessage(stableId, "agent", "Thinking…", "", false, kvps);
+      return;
+    }
+
+    // Tool lifecycle: accept either role+status or explicit type names
+    if (role === "tool" || kind === "tool.start" || kind === "tool.result") {
+      const toolName = meta.tool_name || event.tool_name || "Tool";
+      const heading = `Tool: ${toolName}`;
+      const isStart = status === "start" || kind === "tool.start";
+      const body = isStart ? "Starting…" : content;
+      // Dedupe any prior optimistic start for same tool name
+      try {
+        const optId = _optimisticToolStarts.get(toolName);
+        if (optId && optId !== stableId) {
+          removeMessageById(optId);
+          _optimisticToolStarts.delete(toolName);
+        }
+      } catch (_) {}
+      setMessage(stableId, "tool", heading, body, false, { ...meta });
+      return;
+    }
+
+    // Upload progress events (sa01-v1)
+    if (kind === "uploads.progress") {
+      const filename = meta.filename || "file";
+      const bytes = meta.bytes_uploaded || 0;
+      const total = meta.bytes_total || 0;
+      const pct = total > 0 ? Math.min(100, Math.floor((bytes / total) * 100)) : null;
+      const upId = `upload-${sessionId}-${filename}`;
+      const isDone = (total > 0 && bytes >= total) || String(meta.status || '').toLowerCase() === 'done';
+      const upHeading = `${isDone ? 'Uploaded' : 'Uploading'}: ${filename}`;
+      const url = meta.url || (meta.attachment_id ? `/v1/attachments/${meta.attachment_id}` : undefined);
+      const kv = { ...meta, percent: pct ?? 0, url };
+      setMessage(upId, "upload", upHeading, "", false, kv);
+      return;
+    }
+
+    // Default assistant/info rendering
+    const heading = role === "assistant" ? "Soma response" : "Info";
+    const type = role === "assistant" ? "response" : "info";
+    const kvps = { ...meta };
+    setMessage(stableId, type, heading, content, isStreaming, kvps);
+  } catch (e) {
+    console.warn("Event render error:", e);
+  }
+}
+
+function removeMessageById(mid) {
+  try {
+    const el = document.getElementById(`message-${mid}`);
+    if (el) {
+      const group = el.parentElement && el.parentElement.classList?.contains('message-group') ? el.parentElement : el.closest('.message-group');
+      el.remove();
+      if (group && group.children.length === 0) {
+        group.remove();
+      }
+    }
+  } catch (_) { /* ignore */ }
+}
 
 function closeGatewayStream() {
   if (_gatewaySSE) {
@@ -69,96 +216,7 @@ function openGatewayStream(sessionId) {
     if (!evt?.data) return;
     try {
       const event = JSON.parse(evt.data);
-      // Expect conversation.outbound payloads: {event_id, session_id, role, message, metadata}
-      const kind = String(event.type || "").toLowerCase();
-      const role = (event.role || "assistant").toLowerCase();
-      const meta = event.metadata || {};
-      const status = String(meta.status || "").toLowerCase();
-      const isStreaming = status === "streaming";
-      const content = event.message || "";
-
-      // Use a stable id for all streaming chunks in a single assistant turn, and per-tool lifecycle
-      let stableId = event.event_id || event.id || generateGUID();
-      // Normalize tool lifecycle even if role is misclassified but metadata indicates a tool event
-      if ((meta && meta.tool_name) && (status === "start" || kind === "tool.start" || kind === "tool.result")) {
-        const toolName = meta.tool_name || event.tool_name || "Tool";
-        const isStart = status === "start" || kind === "tool.start";
-        const reqId = meta.request_id || meta.requestId || stableId;
-        const heading = `Tool: ${toolName}`;
-        const body = isStart ? "Starting…" : content;
-        setMessage(reqId, "tool", heading, body, false, { ...meta });
-        return;
-      }
-      if (role === "assistant") {
-        // If we're about to render a final/stream chunk and no Thinking message exists yet for this session,
-        // inject a deterministic placeholder to satisfy UI/tests even under ultra-fast responses.
-        const thinkingId = `assistant-current-${sessionId}`;
-        if (!document.getElementById(`message-${thinkingId}`)) {
-          // No prior Thinking block in DOM for this session; add one preemptively
-          setMessage(thinkingId, "agent", "Thinking…", "", false, meta && (meta.analysis ? { thoughts: meta.analysis } : { ...meta }));
-        }
-        if (isStreaming) {
-          if (!_sseActiveAssistantBySession[sessionId]) {
-            _sseActiveAssistantBySession[sessionId] = `assistant-current-${sessionId}`;
-          }
-          stableId = _sseActiveAssistantBySession[sessionId];
-        } else if (_sseActiveAssistantBySession[sessionId]) {
-          // Finalize by reusing the in-progress id, then clear it
-          stableId = _sseActiveAssistantBySession[sessionId];
-          delete _sseActiveAssistantBySession[sessionId];
-        }
-      } else if (role === "tool") {
-        // Prefer request_id for stable threading of tool.start -> tool.result
-        const reqId = meta.request_id || meta.requestId || null;
-        if (reqId) stableId = reqId;
-      }
-
-      // Match UI proxy defaults so headings are consistent across SSE and poll
-      // user -> "User message" (not used here), assistant -> "Soma response", tool -> "Tool", else -> "Info"
-      let heading;
-      let type;
-      let kvps;
-
-      if (role === "assistant" && (status === "thinking" || kind === "assistant.thinking")) {
-        heading = "Thinking…";
-        type = "agent";
-        // Show only structured thoughts if available
-        kvps = meta && (meta.analysis ? { thoughts: meta.analysis } : { ...meta });
-        setMessage(stableId, type, heading, "", false, kvps);
-        return;
-      }
-
-      // Normalize tool lifecycle: accept either role+status or explicit type names
-      if (role === "tool" || kind === "tool.start" || kind === "tool.result") {
-        const toolName = meta.tool_name || event.tool_name || "Tool";
-        heading = `Tool: ${toolName}`;
-        type = "tool";
-        kvps = { ...meta };
-        const isStart = status === "start" || kind === "tool.start";
-        const body = isStart ? "Starting…" : content;
-        setMessage(stableId, type, heading, body, false, kvps);
-        return;
-      }
-
-      // Upload progress events (sa01-v1)
-      if (kind === "uploads.progress") {
-        const filename = meta.filename || "file";
-        const bytes = meta.bytes_uploaded || 0;
-        const total = meta.bytes_total || 0;
-        const pct = total > 0 ? Math.min(100, Math.floor((bytes / total) * 100)) : null;
-        const upId = `upload-${sessionId}-${filename}`;
-        const isDone = (total > 0 && bytes >= total) || String(meta.status || '').toLowerCase() === 'done';
-        const upHeading = `${isDone ? 'Uploaded' : 'Uploading'}: ${filename}`;
-        const url = meta.url || (meta.attachment_id ? `/v1/attachments/${meta.attachment_id}` : undefined);
-        const kv = { ...meta, percent: pct ?? 0, url };
-        setMessage(upId, "upload", upHeading, "", false, kv);
-        return;
-      }
-
-      heading = role === "assistant" ? "Soma response" : "Info";
-      type = role === "assistant" ? "response" : "info";
-      kvps = { ...meta };
-      setMessage(stableId, type, heading, content, isStreaming, kvps);
+      renderGatewayEvent(sessionId, event);
     } catch (e) {
       console.warn("SSE parse error:", e);
     }
@@ -240,6 +298,19 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleSidebar(false);
     }
   });
+  // Eagerly load critical UI components so they are present before any toasts/updates
+  try {
+    const eagerSelectors = [
+      'x-component[path="notifications/notification-toast-stack.html"]',
+      'x-component[path="notifications/notification-icons.html"]',
+      'x-component[path="/chat/attachments/inputPreview.html"]'
+    ];
+    const nodes = document.querySelectorAll(eagerSelectors.join(","));
+    nodes.forEach((n) => {
+      const p = n.getAttribute("path");
+      if (p) importComponent(p, n).catch(() => {});
+    });
+  } catch (_) {}
   // Populate the chats list from live sessions (non-blocking)
   try { refreshChatsList(); } catch (_) {}
   // Kick a quick health probe so connection status becomes available immediately
@@ -274,6 +345,8 @@ function setupSidebarToggle() {
 document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 
 export async function sendMessage() {
+  if (__sendInFlight) return;
+  __sendInFlight = true;
   try {
     // Gate sending if backend/gateway is unhealthy
     if (getConnectionStatus() === false) {
@@ -288,8 +361,27 @@ export async function sendMessage() {
       // continue without returning; backend may still accept the request (outbox fallback)
     }
     const message = chatInput.value.trim();
-    const attachmentsWithUrls = attachmentsStore.getAttachmentsForSending();
-    const hasAttachments = attachmentsWithUrls.length > 0;
+    let attachmentsWithUrls = attachmentsStore.getAttachmentsForSending();
+    // Fallback: if Alpine store hasn't processed the file input yet, read directly from the hidden input element
+    if (!attachmentsWithUrls || attachmentsWithUrls.length === 0) {
+      try {
+        const fileInput = document.getElementById("file-input");
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+          attachmentsWithUrls = Array.from(fileInput.files).map((file) => ({ file, name: file.name, type: 'file' }));
+        }
+      } catch (_) {}
+    }
+    if (!attachmentsWithUrls || attachmentsWithUrls.length === 0) {
+      // Allow one microtask/frame for any pending change handlers to populate
+      try { await sleep(0); } catch {}
+      try {
+        const fileInput2 = document.getElementById("file-input");
+        if (fileInput2 && fileInput2.files && fileInput2.files.length > 0) {
+          attachmentsWithUrls = Array.from(fileInput2.files).map((file) => ({ file, name: file.name, type: 'file' }));
+        }
+      } catch {}
+    }
+    const hasAttachments = (attachmentsWithUrls && attachmentsWithUrls.length > 0);
 
     if (message || hasAttachments) {
       let response;
@@ -356,8 +448,13 @@ export async function sendMessage() {
           }
           // Optimistically render a tool.start block so the UI and tests see lifecycle immediately
           try {
-            const optimisticId = `tool-${toolName}-start-${Date.now()}`;
-            setMessage(optimisticId, "tool", `Tool: ${toolName}`, "Starting…", false, { tool_name: toolName, status: "start", source: "optimistic" });
+            const existing = Array.from(document.querySelectorAll('#chat-history .message-tool .msg-heading h4'))
+              .some(h => String(h.textContent || '').trim().toLowerCase() === `tool: ${toolName}`.toLowerCase());
+            if (!_optimisticToolStarts.has(toolName) && !existing) {
+              const optimisticId = `tool-${toolName}-start-${Date.now()}`;
+              setMessage(optimisticId, "tool", `Tool: ${toolName}`, "Starting…", false, { tool_name: toolName, status: "start", source: "optimistic" });
+              _optimisticToolStarts.set(toolName, optimisticId);
+            }
           } catch (_) {}
           // Ensure SSE is connected so we get the tool result event
           try {
@@ -365,7 +462,7 @@ export async function sendMessage() {
           } catch (e) {
             console.warn("Failed to open Gateway SSE stream:", e);
           }
-          justToast("Tool request enqueued", "success", 4000, "tool-enqueue");
+          justToast("Tool request enqueued", "success", 10000, "tool-enqueue");
           return; // Done handling /tool command
         } catch (e) {
           return toastFetchError("Error processing /tool command", e);
@@ -398,6 +495,12 @@ export async function sendMessage() {
             if (!document.getElementById(`message-${upId}`)) {
               setMessage(upId, "upload", `Uploading: ${f.name}`, "", false, { percent: 0, filename: f.name });
             }
+            // Double-check shortly after in case of rapid DOM churn
+            setTimeout(() => {
+              if (!document.getElementById(`message-${upId}`)) {
+                try { setMessage(upId, "upload", `Uploading: ${f.name}`, "", false, { percent: 0, filename: f.name }); } catch(_) {}
+              }
+            }, 200);
           }
         } catch (_) {}
 
@@ -502,6 +605,8 @@ export async function sendMessage() {
     }
   } catch (e) {
     toastFetchError("Error sending message", e); // Will use new notification system
+  } finally {
+    __sendInFlight = false;
   }
 }
 
@@ -682,10 +787,11 @@ function setConnectionStatus(status, components = null) {
       offlineBanner.classList.remove("hidden");
       // Show toast notification once when going offline
       if (!window.__offlineNotified) {
-        notificationStore.frontendWarning(
-          "SomaBrain offline – messages will be saved locally.",
+        // Make it a prominent red toast using the current notification UI
+        notificationStore.frontendError(
+          "SomaBrain is offline – the gateway can't be reached. Chat may fail until the backend is healthy.",
           "Offline",
-          5
+          8
         );
         window.__offlineNotified = true;
       }
@@ -755,6 +861,24 @@ let lastSpokenNo = 0;
 
 // Legacy poll removed: SSE is the sole transport for messages/events
 async function poll() { return false; }
+
+// Fetch recent events for a session and render them into the chat history
+async function loadSessionHistory(sessionId) {
+  if (!sessionId) return;
+  try {
+    const resp = await api.fetchApi(`/v1/sessions/${encodeURIComponent(sessionId)}/events?limit=200`, { method: 'GET' });
+    if (!resp.ok) return;
+    const body = await resp.json().catch(() => null);
+    if (!body || !Array.isArray(body.events)) return;
+    for (const entry of body.events) {
+      const payload = entry && entry.payload ? entry.payload : null;
+      if (!payload) continue;
+      renderGatewayEvent(sessionId, payload);
+    }
+  } catch (e) {
+    // benign: do not disrupt UI if history fails
+  }
+}
 
 async function monitorHealth() {
   while (true) {
@@ -1032,6 +1156,7 @@ function generateShortId() {
 export const newContext = function () {
   context = generateShortId();
   setContext(context);
+  try { window.__newContextCount++; } catch(_) {}
   // Optimistically add to chats list
   try {
     if (globalThis.Alpine && chatsSection) {
@@ -1093,6 +1218,14 @@ export const setContext = function (id, options = {}) {
 
   //skip one speech if enabled when switching context
   if (localStorage.getItem("speech") == "true") skipOneSpeech = true;
+  
+  // Load recent history, then open SSE for live updates
+  try {
+    (async () => {
+      try { await loadSessionHistory(id); } catch (_) {}
+      try { openGatewayStream(id); } catch (_) {}
+    })();
+  } catch (_) {}
 };
 
 export const getContext = function () {
@@ -1147,7 +1280,14 @@ globalThis.toggleSpeech = function (isOn) {
 
 globalThis.nudge = async function () {
   try {
-    const resp = await sendJsonData("/nudge", { ctxid: getContext() });
+    const sid = getContext();
+    if (!sid) return;
+    const resp = await api.fetchApi("/v1/session/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid, action: "nudge", metadata: {} }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   } catch (e) {
     toastFetchError("Error nudging agent", e);
   }
@@ -1162,8 +1302,17 @@ globalThis.restart = async function () {
       );
       return;
     }
-    // First try to initiate restart
-    const resp = await sendJsonData("/restart", {});
+    // First try to initiate restart (legacy endpoint may be disabled)
+    try {
+      await sendJsonData("/restart", {});
+    } catch (err) {
+      const msg = String(err?.message || err || "");
+      if (msg.includes("Legacy UI action is disabled")) {
+        await toastFrontendError("Restart is not available in this deployment.", "Restart Unavailable", 6, "restart");
+        return;
+      }
+      throw err;
+    }
   } catch (e) {
     // Show restarting message with no timeout and restart group
     await toastFrontendInfo("Restarting...", "System Restart", 9999, "restart");
@@ -1205,22 +1354,19 @@ document.addEventListener("DOMContentLoaded", () => {
 globalThis.loadChats = async function () {
   try {
     const fileContents = await readJsonFiles();
-    const response = await sendJsonData("/chat_load", { chats: fileContents });
-
-    if (!response) {
-      toast("No response returned.", "error");
+    const resp = await api.fetchApi("/v1/sessions/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chats: fileContents }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json().catch(() => null);
+    if (!data || !Array.isArray(data.ctxids) || data.ctxids.length === 0) {
+      toast("No chats imported.", "warning");
+      return;
     }
-    // else if (!response.ok) {
-    //     if (response.message) {
-    //         toast(response.message, "error")
-    //     } else {
-    //         toast("Undefined error.", "error")
-    //     }
-    // }
-    else {
-      setContext(response.ctxids[0]);
-      toast("Chats loaded.", "success");
-    }
+    setContext(data.ctxids[0], { preserveHistory: true });
+    toast("Chats imported.", "success");
   } catch (e) {
     toastFetchError("Error loading chats", e);
   }
@@ -1228,22 +1374,21 @@ globalThis.loadChats = async function () {
 
 globalThis.saveChat = async function () {
   try {
-    const response = await sendJsonData("/chat_export", { ctxid: context });
-
-    if (!response) {
-      toast("No response returned.", "error");
+    if (!context) throw new Error("No active session");
+    const resp = await api.fetchApi("/v1/sessions/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: context }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json().catch(() => null);
+    if (!data || !data.content) {
+      toast("No export content returned.", "error");
+      return;
     }
-    //  else if (!response.ok) {
-    //     if (response.message) {
-    //         toast(response.message, "error")
-    //     } else {
-    //         toast("Undefined error.", "error")
-    //     }
-    // }
-    else {
-      downloadFile(response.ctxid + ".json", response.content);
-      toast("Chat file downloaded.", "success");
-    }
+    const fname = (data.ctxid || context) + ".json";
+    downloadFile(fname, data.content);
+    toast("Chat file downloaded.", "success");
   } catch (e) {
     toastFetchError("Error saving chat", e);
   }
@@ -1320,13 +1465,49 @@ function removeClassFromElement(element, className) {
 }
 
 function justToast(text, type = "info", timeout = 5000, group = "") {
-  notificationStore.addFrontendToastOnly(
-    type,
-    text,
-    "",
-    timeout / 1000,
-    group
-  )
+  try {
+    notificationStore.addFrontendToastOnly(
+      type,
+      text,
+      "",
+      Math.max(1, timeout / 1000),
+      group
+    );
+  } catch (_) {}
+  // Fallback: if Alpine toast stack hasn't rendered yet, inject a minimal toast DOM so tests/UI see it immediately
+  try {
+    setTimeout(() => {
+      const hasStack = document.querySelector('.toast-stack-container .toast-item');
+      if (!hasStack) {
+        let cont = document.querySelector('.toast-stack-container');
+        if (!cont) {
+          cont = document.createElement('div');
+          cont.className = 'toast-stack-container';
+          cont.style.position = 'fixed';
+          cont.style.bottom = '10px';
+          cont.style.right = '10px';
+          cont.style.zIndex = '15000';
+          cont.style.display = 'flex';
+          cont.style.flexDirection = 'column-reverse';
+          cont.style.gap = '8px';
+          document.body.appendChild(cont);
+        }
+        const item = document.createElement('div');
+        item.className = `toast-item notification-${type}`;
+        item.style.padding = '12px';
+        item.style.border = '1px solid var(--color-border)';
+        item.style.borderLeft = '4px solid var(--color-primary)';
+        item.style.background = 'var(--color-panel)';
+        item.style.borderRadius = '8px';
+        const span = document.createElement('div');
+        span.className = 'toast-message';
+        span.textContent = text;
+        item.appendChild(span);
+        cont.appendChild(item);
+        setTimeout(() => { try { item.remove(); } catch(_) {} }, timeout);
+      }
+    }, 250);
+  } catch (_) {}
 }
   
 
@@ -1385,6 +1566,11 @@ document.addEventListener("DOMContentLoaded", function () {
   setupSidebarToggle();
   setupTabs();
   initializeActiveTab();
+  // Populate chats list and ensure a reasonable default selection
+  (async () => {
+    try { await refreshChatsList(); } catch (_) {}
+    try { ensureDefaultChatSelected(); } catch (_) {}
+  })();
 });
 
 // Setup tabs functionality
@@ -1521,6 +1707,27 @@ async function refreshChatsList() {
   }
 }
 globalThis.refreshChatsList = refreshChatsList;
+
+// Select a default chat if none currently selected
+function ensureDefaultChatSelected() {
+  // Run once per page load to avoid accidental periodic session creation
+  if (window.__defaultSelectionDone) return;
+  if (context && String(context).trim() !== "") { window.__defaultSelectionDone = true; return; }
+  if (!(globalThis.Alpine && chatsSection)) return;
+  const chatsAD = Alpine.$data(chatsSection);
+  const list = Array.isArray(chatsAD?.contexts) ? chatsAD.contexts : [];
+  if (list.length === 0) {
+    // Do not auto-create a session; leave empty state until user acts
+    window.__defaultSelectionDone = true;
+    return;
+  }
+  const last = localStorage.getItem("lastSelectedChat");
+  const pick = list.find(c => c.id === last) || list[0];
+  if (pick && pick.id) {
+    setContext(pick.id, { preserveHistory: true });
+  }
+  window.__defaultSelectionDone = true;
+}
 
 /*
  * A0 Chat UI

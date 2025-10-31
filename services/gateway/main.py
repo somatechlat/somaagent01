@@ -2072,10 +2072,32 @@ class ToolsListResponse(BaseModel):
     count: int
 
 
+# -----------------------------
+# Sessions import/export models
+# -----------------------------
+
+class SessionsImportPayload(BaseModel):
+    chats: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SessionsImportResponse(BaseModel):
+    ctxids: list[str]
+
+
+class SessionExportPayload(BaseModel):
+    session_id: str
+
+
+class SessionExportResponse(BaseModel):
+    ctxid: str
+    content: str
+
+
 QUICK_ACTIONS: dict[str, str] = {
     "summarize": "Summarize the recent conversation for the operator.",
     "next_steps": "Suggest the next three actionable steps.",
     "status_report": "Provide a short status report of current progress.",
+    "nudge": "Please continue from where you left off.",
 }
 
 REQUIRE_AUTH = os.getenv("GATEWAY_REQUIRE_AUTH", "false").lower() in {
@@ -3160,6 +3182,141 @@ async def list_sessions_endpoint(
             )
         )
     return summaries
+
+
+@app.post("/v1/sessions/import", response_model=SessionsImportResponse)
+async def import_sessions_endpoint(
+    payload: SessionsImportPayload,
+    request: Request,
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+) -> SessionsImportResponse:
+    # Auth hint for auditing/tenant context; not currently restricting
+    _ = await authorize_request(request, {"count": len(payload.chats)})
+
+    def _parse_dt(value: Any) -> datetime | None:
+        try:
+            if value is None:
+                return None
+            if isinstance(value, (int, float)):
+                from datetime import datetime as _dt
+                return _dt.fromtimestamp(float(value))
+            if isinstance(value, str):
+                from datetime import datetime as _dt
+                try:
+                    return _dt.fromisoformat(value)
+                except Exception:
+                    try:
+                        return _dt.fromtimestamp(float(value))
+                    except Exception:
+                        return None
+        except Exception:
+            return None
+        return None
+
+    imported_ids: list[str] = []
+    for item in payload.chats:
+        obj: dict[str, Any] | None = None
+        if isinstance(item, dict) and isinstance(item.get("content"), str):
+            try:
+                obj = json.loads(item["content"])  # exported blob
+            except Exception:
+                obj = None
+        if obj is None and isinstance(item, dict):
+            obj = item
+        if not isinstance(obj, dict):
+            continue
+
+        session_blob = obj.get("session") or obj.get("envelope") or {}
+        events = obj.get("events") or obj.get("timeline") or []
+
+        new_sid = str(uuid.uuid4())
+
+        # Backfill minimal envelope (best-effort)
+        try:
+            await store.backfill_envelope(
+                new_sid,
+                persona_id=session_blob.get("persona_id"),
+                tenant=session_blob.get("tenant"),
+                subject=session_blob.get("subject"),
+                issuer=session_blob.get("issuer"),
+                scope=session_blob.get("scope"),
+                metadata=dict(session_blob.get("metadata") or {}),
+                analysis=dict(session_blob.get("analysis") or {}),
+                created_at=_parse_dt(session_blob.get("created_at")),
+                updated_at=_parse_dt(session_blob.get("updated_at")),
+            )
+        except Exception:
+            LOGGER.debug("Failed to backfill session envelope during import", exc_info=True)
+
+        # Append timeline events
+        if isinstance(events, list):
+            for ev in events:
+                try:
+                    if not isinstance(ev, dict):
+                        continue
+                    merged = dict(ev)
+                    merged["session_id"] = new_sid
+                    md = merged.get("metadata")
+                    if not isinstance(md, dict):
+                        merged["metadata"] = {}
+                    await store.append_event(new_sid, merged)
+                except Exception:
+                    LOGGER.debug("Failed to append imported event", exc_info=True)
+
+        imported_ids.append(new_sid)
+
+    return SessionsImportResponse(ctxids=imported_ids)
+
+
+@app.post("/v1/sessions/export", response_model=SessionExportResponse)
+async def export_session_endpoint(
+    payload: SessionExportPayload,
+    request: Request,
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
+) -> SessionExportResponse:
+    _ = await authorize_request(request, {"session_id": payload.session_id})
+
+    # Gather envelope
+    envelope = await store.get_envelope(payload.session_id)
+    env_obj: dict[str, Any] | None = None
+    if envelope:
+        env_obj = {
+            "session_id": str(envelope.session_id),
+            "persona_id": envelope.persona_id,
+            "tenant": envelope.tenant,
+            "subject": envelope.subject,
+            "issuer": envelope.issuer,
+            "scope": envelope.scope,
+            "metadata": envelope.metadata or {},
+            "analysis": envelope.analysis or {},
+            "created_at": envelope.created_at.isoformat() if envelope.created_at else None,
+            "updated_at": envelope.updated_at.isoformat() if envelope.updated_at else None,
+        }
+
+    # Gather events in ascending id order
+    timeline_payloads: list[dict[str, Any]] = []
+    try:
+        # Fetch a large chunk; adjust if needed
+        events = await store.list_events_after(payload.session_id, after_id=None, limit=5000)
+        for row in events:
+            payload_obj = row.get("payload") or {}
+            if isinstance(payload_obj, dict):
+                timeline_payloads.append(payload_obj)
+    except Exception:
+        LOGGER.debug("Failed to list events for export", exc_info=True)
+
+    export_blob = {
+        "version": "sa01-v1",
+        "exported_at": time.time(),
+        "session": env_obj or {"session_id": payload.session_id},
+        "events": timeline_payloads,
+    }
+    try:
+        content = json.dumps(export_blob, ensure_ascii=False)
+    except Exception:
+        # Fallback minimal content
+        content = json.dumps({"session_id": payload.session_id, "events": timeline_payloads})
+    return SessionExportResponse(ctxid=payload.session_id, content=content)
 @app.delete("/v1/sessions/{session_id}")
 async def delete_session_endpoint(
     session_id: str,
@@ -3521,6 +3678,224 @@ async def list_session_events(
     ]
     next_cursor = payload[-1].id if payload else after
     return SessionEventsResponse(session_id=session_id, events=payload, next_cursor=next_cursor)
+
+
+# -----------------------------
+# Session history and context-window (UI helpers)
+# -----------------------------
+
+@app.get("/v1/sessions/{session_id}/history")
+async def get_session_history(
+    session_id: str,
+    limit: int = Query(500, ge=1, le=2000),
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)] = Depends(),
+) -> JSONResponse:
+    """Return a simple, human-readable conversation history for the session.
+
+    The UI displays this in a read-only modal. Token count is an estimate.
+    """
+    try:
+        events = await store.list_events(session_id, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"failed to load history: {type(exc).__name__}: {exc}")
+
+    # list_events returns newest-first; reverse to chronological
+    events = list(reversed(events))
+    lines: list[str] = []
+    for ev in events:
+        role = str((ev or {}).get("role") or (ev or {}).get("type") or "").lower()
+        msg = (ev or {}).get("message") or ""
+        if not isinstance(msg, str):
+            try:
+                msg = json.dumps(msg, ensure_ascii=False)
+            except Exception:
+                msg = str(msg)
+        if role in {"user", "assistant"}:
+            prefix = "User" if role == "user" else "Assistant"
+            lines.append(f"### {prefix}\n\n{msg}\n")
+        elif role == "tool":
+            tool = ((ev or {}).get("metadata") or {}).get("tool_name") or "tool"
+            lines.append(f"### Tool: {tool}\n\n{msg}\n")
+        else:
+            # Ignore utility events
+            continue
+
+    history_md = "\n".join(lines).strip()
+    token_estimate = int(max(1, round(len(history_md) / 4)))
+    return JSONResponse({"history": history_md, "tokens": token_estimate})
+
+
+@app.get("/v1/sessions/{session_id}/context-window")
+async def get_session_context_window(
+    session_id: str,
+    limit: int = Query(300, ge=1, le=2000),
+    store: Annotated[PostgresSessionStore, Depends(get_session_store)] = Depends(),
+) -> JSONResponse:
+    """Return an approximate context window projection used for the last interaction.
+
+    This is a best-effort concatenation of envelope metadata and recent messages.
+    """
+    try:
+        env = await store.get_envelope(session_id)
+    except Exception:
+        env = None
+    try:
+        events = await store.list_events(session_id, limit=limit)
+    except Exception:
+        events = []
+
+    events = list(reversed(events))
+    meta_lines: list[str] = []
+    if env is not None:
+        try:
+            meta_lines.append("## Envelope metadata\n")
+            meta_lines.append(json.dumps({
+                "session_id": str(env.session_id),
+                "persona_id": env.persona_id,
+                "tenant": env.tenant,
+                "subject": env.subject,
+                "issuer": env.issuer,
+                "scope": env.scope,
+                "metadata": env.metadata,
+            }, ensure_ascii=False, indent=2))
+            if env.analysis:
+                meta_lines.append("\n\n## Analysis\n")
+                meta_lines.append(json.dumps(env.analysis, ensure_ascii=False, indent=2))
+        except Exception:
+            pass
+
+    msg_lines: list[str] = ["\n\n## Recent messages\n"]
+    for ev in events[-50:]:  # last ~50 for display brevity
+        role = str((ev or {}).get("role") or (ev or {}).get("type") or "").lower()
+        msg = (ev or {}).get("message") or ""
+        if not isinstance(msg, str):
+            try:
+                msg = json.dumps(msg, ensure_ascii=False)
+            except Exception:
+                msg = str(msg)
+        if role in {"user", "assistant"}:
+            prefix = "User" if role == "user" else "Assistant"
+            msg_lines.append(f"### {prefix}\n\n{msg}\n")
+
+    content = ("\n".join(meta_lines + msg_lines)).strip()
+    token_estimate = int(max(1, round(len(content) / 4)))
+    return JSONResponse({"content": content, "tokens": token_estimate})
+
+
+# -----------------------------
+# Workdir endpoints (UI Files modal)
+# -----------------------------
+
+def _workdir_base() -> Path:
+    base = os.getenv("TOOL_WORK_DIR", "work_dir")
+    return Path(base).expanduser().resolve()
+
+def _resolve_workdir(path_str: str | None) -> Path:
+    base = _workdir_base()
+    if not path_str or path_str in ("$WORK_DIR", "/", "."):
+        return base
+    candidate = (base / path_str.lstrip("/"))
+    resolved = candidate.resolve()
+    if str(resolved).startswith(str(base)):
+        return resolved
+    raise HTTPException(status_code=400, detail="invalid path")
+
+def _entry_type(name: str, is_dir: bool) -> str:
+    if is_dir:
+        return "dir"
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext in {"zip","tar","gz","rar","7z"}:
+        return "archive"
+    return "file" if ext else "unknown"
+
+def _list_dir_payload(cur: Path) -> dict:
+    entries = []
+    try:
+        for entry in os.scandir(cur):
+            try:
+                stat = entry.stat()
+                entries.append({
+                    "name": entry.name,
+                    "path": str(Path(entry.path).resolve()),
+                    "is_dir": entry.is_dir(),
+                    "size": 0 if entry.is_dir() else int(stat.st_size),
+                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "type": _entry_type(entry.name, entry.is_dir()),
+                })
+            except Exception:
+                continue
+    except FileNotFoundError:
+        entries = []
+    parent = str(cur.parent) if cur != _workdir_base() else ""
+    return {
+        "data": {
+            "entries": entries,
+            "current_path": str(cur),
+            "parent_path": parent,
+        }
+    }
+
+
+@app.get("/v1/workdir/list")
+async def workdir_list(path: str | None = None) -> JSONResponse:
+    cur = _resolve_workdir(path)
+    return JSONResponse(_list_dir_payload(cur))
+
+
+@app.post("/v1/workdir/delete")
+async def workdir_delete(request: Request) -> JSONResponse:
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    target_path = str(data.get("path") or "")
+    cur = _resolve_workdir(data.get("currentPath") or None)
+    target = Path(target_path).expanduser().resolve()
+    base = _workdir_base()
+    if not str(target).startswith(str(base)):
+        raise HTTPException(status_code=400, detail="invalid path")
+    if target.is_file():
+        try:
+            target.unlink()
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"delete failed: {type(exc).__name__}: {exc}")
+    return JSONResponse(_list_dir_payload(cur))
+
+
+@app.post("/v1/workdir/upload")
+async def workdir_upload(request: Request) -> JSONResponse:
+    form = await request.form()
+    path = form.get("path")
+    cur = _resolve_workdir(str(path) if path else None)
+    failed: list[dict[str,str]] = []
+    os.makedirs(cur, exist_ok=True)
+    for key, file in form.items():
+        if key != "files[]":
+            continue
+        try:
+            filename = getattr(file, "filename", None) or "upload.bin"
+            dest = (cur / filename).resolve()
+            # ensure inside base
+            base = _workdir_base()
+            if not str(dest).startswith(str(base)):
+                failed.append({"name": filename, "error": "invalid path"})
+                continue
+            contents = await file.read()  # type: ignore[attr-defined]
+            with open(dest, "wb") as fh:
+                fh.write(contents)
+        except Exception as exc:
+            failed.append({"name": getattr(file, "filename", "unknown"), "error": str(exc)})
+    payload = _list_dir_payload(cur)
+    payload.update({"failed": failed})
+    return JSONResponse(payload)
+
+
+@app.get("/v1/workdir/download")
+async def workdir_download(path: str) -> FileResponse:
+    target = _resolve_workdir(path)
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+    return FileResponse(str(target), filename=target.name)
 
 
 def _capsule_registry_url(path: str) -> str:

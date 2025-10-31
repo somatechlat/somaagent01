@@ -1,7 +1,7 @@
 <!-- Sprinted roadmap derived from canonical roadmap — generated 2025-10-30 -->
 # SomaAgent01 Roadmap (Sprinted)
 
-Last updated: 2025-10-30
+Last updated: 2025-10-31
 Branch: INTEGRATION-ZERO
 
 Overview
@@ -36,6 +36,37 @@ Sprint B (1–2 weeks) — Gateway authority & worker migration
 
 Notes
 - These centralization sprints take precedence over other UI migration work until assistant reply flow is stable.
+
+
+## Sprint — UI Parity & No‑Legacy Completion (2025‑10‑31 → +1 week)
+
+Goals
+- Make the Web UI identical in behavior to Agent Zero while fully wired to our backend.
+- Eliminate the “auto new chat” symptom and ensure default selection is idempotent.
+- Replace remaining legacy UI actions (history, context, files) with canonical /v1 routes.
+
+Tasks
+1) Stop auto new chat creation
+  - Add a one-time init guard for default selection.
+  - Do not auto-create a session when no sessions exist; show empty state and wait for explicit action.
+  - Consolidate duplicate DOMContentLoaded handlers that cause re-inits; add a dev-only counter for newContext calls.
+
+2) History/context endpoints and UI wiring
+  - Backend: GET `/v1/sessions/{id}/history` → { history, tokens }.
+  - Backend: GET `/v1/sessions/{id}/context-window` → { content, tokens }.
+  - UI: `webui/js/history.js` to call these routes; remove legacy `/history_get` and `/ctx_window_get`.
+
+3) Files modal to /v1
+  - Backend: `/v1/workdir/list|upload|delete|download` minimal FS adapter under a sandboxed base dir.
+  - UI: `webui/js/file_browser.js` to use `/v1/workdir/*` with current response mapping.
+
+4) Playwright parity tests
+  - Startup default selection without auto-create; thinking placeholder + tool.start lifecycle; uploads progress; history/context display; files modal list/upload/delete/download.
+
+Acceptance
+- No phantom sessions created over 10+ minutes idle.
+- History/Context and Files actions work via /v1; no legacy calls observed in network logs.
+- UI smoke and tool e2e pass; new Playwright parity specs added and green locally.
 
 
 Sprint 1 — Foundation & Tests (2 weeks)

@@ -59,48 +59,61 @@
     - generic [ref=e61]:
       - generic [ref=e62]:
         - generic [ref=e63]:
-          - text: 9:07:38 pm
+          - text: 9:07:37 pm
           - text: Oct 30, 2025
-        - 'generic "Health: ok postgres: ok redis: ok kafka: ok memory_replicator: ok (lag_seconds=0.697) memory_dlq: ok (depth=0)" [ref=e64]':
+        - 'generic "Health: ok postgres: ok redis: ok kafka: ok memory_replicator: ok (lag_seconds=0.717) memory_dlq: ok (depth=0)" [ref=e64]':
           - img [ref=e65]
         - generic [ref=e69]:
           - generic "View Notifications" [ref=e71] [cursor=pointer]:
             - generic [ref=e73]: notifications
           - generic "View Notifications" [ref=e75] [cursor=pointer]:
             - generic [ref=e77]: notifications
-      - heading "|>" [level=4] [ref=e80]:
-        - generic [ref=e81]: "|>"
-      - generic [ref=e82]:
-        - generic [ref=e83]:
-          - img [ref=e86] [cursor=pointer]
-          - generic [ref=e88]:
-            - textbox "Type your message here..." [ref=e89]: file test
-            - button "Expand input" [ref=e90] [cursor=pointer]:
-              - img [ref=e91]
-          - generic [ref=e93]:
-            - button "Send message" [active] [ref=e94] [cursor=pointer]:
-              - img [ref=e95]
-            - button "Start/Stop recording" [ref=e96] [cursor=pointer]:
-              - img [ref=e97]
-        - generic [ref=e99]:
-          - button "Pause Agent" [ref=e100] [cursor=pointer]:
-            - img [ref=e101]
-            - generic [ref=e103]: Pause Agent
-          - button "Import knowledge" [ref=e104] [cursor=pointer]:
-            - img [ref=e105]
-            - paragraph [ref=e106]: Import knowledge
-          - button "Files" [ref=e107] [cursor=pointer]:
-            - img [ref=e108]
-            - paragraph [ref=e111]: Files
-          - button "History" [ref=e112] [cursor=pointer]:
-            - img [ref=e113]
-            - paragraph [ref=e114]: History
-          - button "Context" [ref=e115] [cursor=pointer]:
-            - img [ref=e116]
-            - paragraph [ref=e117]: Context
-          - button "Nudge" [ref=e118] [cursor=pointer]:
-            - img [ref=e119]
-            - paragraph [ref=e122]: Nudge
-  - generic [ref=e123]: ⚠️ SomaBrain offline – messages are being saved locally until connection restores.
-  - generic [ref=e124]: ℹ️ Memories degraded – conversation will continue but long-term memory may be delayed.
+      - generic [ref=e78]:
+        - generic [ref=e82]:
+          - heading "Thinking…" [level=4] [ref=e83]
+          - generic [ref=e84]:
+            - link:
+              - /url: "#"
+            - link:
+              - /url: "#"
+        - generic [ref=e87]:
+          - heading "User message person" [level=4] [ref=e88]:
+            - text: User message
+            - generic [ref=e89]: person
+          - generic [ref=e91]: hello sse-ok-1761876437568
+      - heading "|>" [level=4] [ref=e93]:
+        - generic [ref=e94]: "|>"
+      - generic [ref=e95]:
+        - generic [ref=e96]:
+          - img [ref=e99] [cursor=pointer]
+          - generic [ref=e101]:
+            - textbox "Type your message here..." [ref=e102]
+            - button "Expand input" [ref=e103] [cursor=pointer]:
+              - img [ref=e104]
+          - generic [ref=e106]:
+            - button "Send message" [active] [ref=e107] [cursor=pointer]:
+              - img [ref=e108]
+            - button "Start/Stop recording" [ref=e109] [cursor=pointer]:
+              - img [ref=e110]
+        - generic [ref=e112]:
+          - button "Pause Agent" [ref=e113] [cursor=pointer]:
+            - img [ref=e114]
+            - generic [ref=e116]: Pause Agent
+          - button "Import knowledge" [ref=e117] [cursor=pointer]:
+            - img [ref=e118]
+            - paragraph [ref=e119]: Import knowledge
+          - button "Files" [ref=e120] [cursor=pointer]:
+            - img [ref=e121]
+            - paragraph [ref=e124]: Files
+          - button "History" [ref=e125] [cursor=pointer]:
+            - img [ref=e126]
+            - paragraph [ref=e127]: History
+          - button "Context" [ref=e128] [cursor=pointer]:
+            - img [ref=e129]
+            - paragraph [ref=e130]: Context
+          - button "Nudge" [ref=e131] [cursor=pointer]:
+            - img [ref=e132]
+            - paragraph [ref=e135]: Nudge
+  - generic [ref=e136]: ⚠️ SomaBrain offline – messages are being saved locally until connection restores.
+  - generic [ref=e137]: ℹ️ Memories degraded – conversation will continue but long-term memory may be delayed.
 ```

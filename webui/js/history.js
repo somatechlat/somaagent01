@@ -2,26 +2,33 @@ import { getContext } from "../index.js";
 
 export async function openHistoryModal() {
     try {
-        const hist = await window.sendJsonData("/history_get", { context: getContext() });
-        // const data = JSON.stringify(hist.history, null, 4);
-        const data = hist.history
-        const size = hist.tokens
+        const ctx = getContext();
+        if (!ctx) throw new Error("No active session");
+        const response = await fetchApi(`/v1/sessions/${encodeURIComponent(ctx)}/history`, { method: "GET" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const hist = await response.json();
+        const data = hist.history || "";
+        const size = hist.tokens ?? Math.round((data.length || 0) / 4);
         await showEditorModal(data, "markdown", `History ~${size} tokens`, "Conversation history visible to the LLM. History is compressed to fit into the context window over time.");
     } catch (e) {
         window.toastFrontendError("Error fetching history: " + e.message, "Chat History Error");
-        return
+        return;
     }
 }
 
 export async function openCtxWindowModal() {
     try {
-        const win = await window.sendJsonData("/ctx_window_get", { context: getContext() });
-        const data = win.content
-        const size = win.tokens
+        const ctx = getContext();
+        if (!ctx) throw new Error("No active session");
+        const response = await fetchApi(`/v1/sessions/${encodeURIComponent(ctx)}/context-window`, { method: "GET" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const win = await response.json();
+        const data = win.content || "";
+        const size = win.tokens ?? Math.round((data.length || 0) / 4);
         await showEditorModal(data, "markdown", `Context window ~${size} tokens`, "Data passed to the LLM during last interaction. Contains system message, conversation history and RAG.");
     } catch (e) {
         window.toastFrontendError("Error fetching context: " + e.message, "Context Error");
-        return
+        return;
     }
 }
 

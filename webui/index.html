@@ -109,6 +109,17 @@
         }
     </script>
 
+        <!-- Import map to make absolute-like specifiers work when UI is served under a subpath (e.g., /ui) -->
+        <script type="importmap">
+            {
+                "imports": {
+                    "/js/": "./js/",
+                    "/components/": "./components/",
+                    "/index.js": "./index.js"
+                }
+            }
+        </script>
+
     <!-- Pre-initialize schedulerSettings to ensure Alpine doesn't miss it -->
     <script>
         // Pre-define schedulerSettings skeleton to ensure it's available to Alpine
