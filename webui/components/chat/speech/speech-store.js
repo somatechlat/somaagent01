@@ -1,7 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import { updateChatInput, sendMessage } from "/index.js";
 import { sleep } from "/js/sleep.js";
-import { fetchApi } from "/js/api.js";
 import { store as microphoneSettingStore } from "/components/settings/speech/microphone-setting-store.js";
 
 const Status = {
@@ -22,12 +21,6 @@ const model = {
   stt_silence_duration: 1000,
   stt_waiting_timeout: 2000,
 
-  // Speech provider configuration
-  speech_provider: "openai_realtime",
-  speech_realtime_model: "gpt-4o-realtime-preview",
-  speech_realtime_voice: "verse",
-  speech_realtime_endpoint: "https://api.openai.com/v1/realtime/sessions",
-
   // TTS Settings
   tts_kokoro: false,
 
@@ -41,18 +34,6 @@ const model = {
   userHasInteracted: false,
   stopSpeechChain: false,
   ttsStream: null,
-
-  // Realtime session state
-  realtime: {
-    peerConnection: null,
-    dataChannel: null,
-    clientSecret: "",
-    session: null,
-    remoteAudioEl: null,
-    pendingMessages: [],
-    model: "",
-  },
-  realtimeConnectPromise: null,
 
   // STT State
   microphoneInput: null,
@@ -116,23 +97,22 @@ const model = {
   // Load settings from server
   async loadSettings() {
     try {
-      const resp = await fetchApi('/v1/ui/settings/sections', { method: 'GET' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const sections = (data && data.settings && Array.isArray(data.settings.sections)) ? data.settings.sections : [];
-      const speechSection = sections.find((s) => s.id === 'speech' || s.title === 'Speech');
-      if (speechSection && Array.isArray(speechSection.fields)) {
+      const response = await fetchApi("/settings_get", { method: "POST" });
+      const data = await response.json();
+      const speechSection = data.settings.sections.find(
+        (s) => s.title === "Speech"
+      );
+
+      if (speechSection) {
         speechSection.fields.forEach((field) => {
-          if (Object.prototype.hasOwnProperty.call(this, field.id)) {
+          if (this.hasOwnProperty(field.id)) {
             this[field.id] = field.value;
           }
         });
-        this.onSpeechProviderChange();
       }
     } catch (error) {
-      // Speech settings are optional; avoid noisy toasts on transient failures or during offline/dev.
-      // Log for diagnostics, but don't interrupt UX with a toast.
-      console.warn("Speech settings fetch skipped/failed:", error?.message || error);
+      window.toastFetchError("Failed to load speech settings", error);
+      console.error("Failed to load speech settings:", error);
     }
   },
 
@@ -168,179 +148,6 @@ const model = {
         passive: true,
       });
     });
-  },
-
-  onSpeechProviderChange() {
-    if (this.speech_provider !== "openai_realtime") {
-      this.stopRealtimePlayback();
-      this.closeRealtimeConnection();
-    }
-
-    if (this.speech_provider !== "kokoro") {
-      this.tts_kokoro = false;
-    }
-  },
-
-  async ensureRealtimeConnection() {
-    if (this.speech_provider !== "openai_realtime") return null;
-
-    if (
-      this.realtime.peerConnection &&
-      ["connected", "connecting"].includes(
-        this.realtime.peerConnection.connectionState
-      )
-    ) {
-      return this.realtime.peerConnection;
-    }
-
-    if (this.realtimeConnectPromise) {
-      return this.realtimeConnectPromise;
-    }
-
-    this.realtimeConnectPromise = this._createRealtimeConnection();
-    try {
-      await this.realtimeConnectPromise;
-    } finally {
-      this.realtimeConnectPromise = null;
-    }
-
-    return this.realtime.peerConnection;
-  },
-
-  async _createRealtimeConnection() {
-    // Realtime session backend not yet exposed under /v1; gracefully disable and fallback
-    const err = new Error("Realtime speech not available in this build");
-    window.toastFrontendWarning?.(
-      "Realtime speech is not available yet. Falling back to browser TTS.",
-      "Speech"
-    );
-    this.closeRealtimeConnection();
-    throw err;
-  },
-
-  async waitForRealtimeChannel(timeoutMs = 8000) {
-    const channel = this.realtime.dataChannel;
-    if (channel && channel.readyState === "open") return true;
-
-    return await new Promise((resolve, reject) => {
-      if (!channel) {
-        reject(new Error("Realtime data channel missing"));
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        channel.removeEventListener("open", onOpen);
-        reject(new Error("Realtime data channel timeout"));
-      }, timeoutMs);
-
-      const onOpen = () => {
-        clearTimeout(timeout);
-        resolve(true);
-      };
-
-      channel.addEventListener("open", onOpen, { once: true });
-    });
-  },
-
-  handleRealtimeMessage(event) {
-    try {
-      const payload = JSON.parse(event.data);
-      if (payload.type === "error") {
-        console.error("Realtime error", payload);
-        window.toastFetchError?.("Realtime speech error", payload.error);
-      }
-    } catch (err) {
-      console.warn("Failed to parse realtime message", event.data);
-    }
-  },
-
-  handleRealtimeTrack(event) {
-    if (!event.streams || !event.streams.length) return;
-    const stream = event.streams[0];
-    const audioEl = this.createRealtimeAudioElement();
-    if (audioEl.srcObject === stream) return;
-    audioEl.srcObject = stream;
-    audioEl.play().catch((error) => {
-      console.error("Failed to play realtime audio", error);
-      this.userHasInteracted = false;
-      this.showAudioPermissionPrompt();
-    });
-  },
-
-  createRealtimeAudioElement() {
-    if (this.realtime.remoteAudioEl) return this.realtime.remoteAudioEl;
-    const audio = new Audio();
-    audio.autoplay = true;
-    audio.dataset.role = "realtime-voice";
-    audio.style.display = "none";
-    audio.addEventListener("play", () => {
-      this.isSpeaking = true;
-    });
-    audio.addEventListener("pause", () => {
-      this.isSpeaking = false;
-    });
-    audio.addEventListener("ended", () => {
-      this.isSpeaking = false;
-    });
-    document.body.appendChild(audio);
-    this.realtime.remoteAudioEl = audio;
-    return audio;
-  },
-
-  closeRealtimeConnection() {
-    const { peerConnection, dataChannel, remoteAudioEl } = this.realtime;
-
-    if (dataChannel) {
-      try {
-        dataChannel.close();
-      } catch (err) {}
-    }
-
-    if (peerConnection) {
-      try {
-        peerConnection.close();
-      } catch (err) {}
-    }
-
-    if (remoteAudioEl) {
-      try {
-        remoteAudioEl.pause();
-        remoteAudioEl.srcObject = null;
-        remoteAudioEl.remove();
-      } catch (err) {}
-    }
-
-    this.realtime.peerConnection = null;
-    this.realtime.dataChannel = null;
-    this.realtime.remoteAudioEl = null;
-    this.realtime.clientSecret = "";
-    this.realtime.session = null;
-    this.realtime.pendingMessages = [];
-    this.isSpeaking = false;
-  },
-
-  stopRealtimePlayback() {
-    const channel = this.realtime.dataChannel;
-    if (channel && channel.readyState === "open") {
-      try {
-        channel.send(
-          JSON.stringify({
-            type: "response.cancel",
-          })
-        );
-      } catch (err) {
-        console.warn("Failed to cancel realtime response", err);
-      }
-    }
-
-    if (this.realtime.remoteAudioEl) {
-      try {
-        this.realtime.remoteAudioEl.pause();
-        this.realtime.remoteAudioEl.currentTime = 0;
-      } catch (err) {}
-    }
-
-    this.isSpeaking = false;
   },
 
   // main speak function, allows to speak a stream of text that is generated piece by piece
@@ -424,24 +231,13 @@ const model = {
 
   // speak wrapper
   async _speak(text, waitForPrevious, terminator) {
-    if (this.speech_provider === "openai_realtime") {
-      try {
-        return await this.speakWithRealtime(text, waitForPrevious, terminator);
-      } catch (error) {
-        console.error("Realtime speech fallback to browser", error);
-        // fall through to browser speech as ultimate fallback
-      }
-    }
-
-    const useKokoro =
-      this.speech_provider === "kokoro" || this.tts_kokoro === true;
-
-    if (!useKokoro) {
+    // default browser speech
+    if (!this.tts_kokoro)
       return await this.speakWithBrowser(text, waitForPrevious, terminator);
-    }
 
+    // kokoro tts
     try {
-      await this.speakWithKokoro(text, waitForPrevious, terminator);
+      await await this.speakWithKokoro(text, waitForPrevious, terminator);
     } catch (error) {
       console.error(error);
       return await this.speakWithBrowser(text, waitForPrevious, terminator);
@@ -570,47 +366,6 @@ const model = {
   },
 
   // Browser TTS
-  async speakWithRealtime(text, waitForPrevious = false, terminator = null) {
-    await this.ensureRealtimeConnection();
-    const channel = this.realtime.dataChannel;
-    if (!channel) {
-      throw new Error("Realtime data channel unavailable");
-    }
-
-    if (waitForPrevious) {
-      // Wait until previous playback completes
-      while (this.isSpeaking) {
-        await sleep(50);
-      }
-    }
-
-    if (terminator && terminator()) return;
-
-    const payload = JSON.stringify({
-      type: "response.create",
-      response: {
-        modalities: ["audio"],
-        instructions: text,
-        audio: {
-          voice: this.speech_realtime_voice || "verse",
-        },
-      },
-    });
-
-    let queued = false;
-    if (channel.readyState !== "open") {
-      this.realtime.pendingMessages.push(payload);
-      queued = true;
-      await this.waitForRealtimeChannel();
-      if (terminator && terminator()) return;
-    }
-
-    if (!queued) {
-      channel.send(payload);
-    }
-    this.isSpeaking = true;
-  },
-
   async speakWithBrowser(text, waitForPrevious = false, terminator = null) {
     // wait for previous to finish if requested
     while (waitForPrevious && this.isSpeaking) await sleep(25);
@@ -632,9 +387,35 @@ const model = {
 
   // Kokoro TTS
   async speakWithKokoro(text, waitForPrevious = false, terminator = null) {
-    // Backend synthesize endpoint not available; fallback to browser
-    window.toastFrontendInfo?.("Kokoro TTS is not configured; using browser TTS.", "Speech", 4);
-    return this.speakWithBrowser(text, waitForPrevious, terminator);
+    try {
+      // synthesize on the backend
+      const response = await sendJsonData("/synthesize", { text });
+
+      // wait for previous to finish if requested
+      while (waitForPrevious && this.isSpeaking) await sleep(25);
+      if (terminator && terminator()) return;
+
+      // stop previous if any
+      this.stopAudio();
+
+      if (response.success) {
+        if (response.audio_parts) {
+          // Multiple chunks - play sequentially
+          for (const audioPart of response.audio_parts) {
+            if (terminator && terminator()) return;
+            await this.playAudio(audioPart);
+            await sleep(100); // Brief pause
+          }
+        } else if (response.audio) {
+          // Single audio
+          this.playAudio(response.audio);
+        }
+      } else {
+        throw new Error("Kokoro TTS error:", response.error);
+      }
+    } catch (error) {
+      throw new Error("Kokoro TTS error:", error);
+    }
   },
 
   // Play base64 audio
@@ -684,10 +465,6 @@ const model = {
 
   // Stop current speech audio
   stopAudio() {
-    if (this.speech_provider === "openai_realtime") {
-      this.stopRealtimePlayback();
-    }
-
     if (this.synth?.speaking) {
       this.synth.cancel();
     }
@@ -1090,17 +867,24 @@ class MicrophoneInput {
       return;
     }
 
-    // STT backend is not wired; skip processing and gently inform once
-    if (!this._sttWarned) {
-      window.toastFrontendWarning?.(
-        "Speech-to-text is not available in this build.",
-        "Speech",
-        5
-      );
-      this._sttWarned = true;
+    const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
+    const base64 = await this.convertBlobToBase64Wav(audioBlob);
+
+    try {
+      const result = await sendJsonData("/transcribe", { audio: base64 });
+      const text = this.filterResult(result.text || "");
+
+      if (text) {
+        console.log("Transcription:", result.text);
+        await this.updateCallback(result.text, true);
+      }
+    } catch (error) {
+      window.toastFetchError("Transcription error", error);
+      console.error("Transcription error:", error);
+    } finally {
+      this.audioChunks = [];
+      this.status = Status.LISTENING;
     }
-    this.audioChunks = [];
-    this.status = Status.LISTENING;
   }
 
   convertBlobToBase64Wav(audioBlob) {
@@ -1165,9 +949,4 @@ export const store = createStore("speech", model);
 
 // Event listeners
 document.addEventListener("settings-updated", () => store.loadSettings());
-// Auto-init on load to hydrate TTS/Realtime flags; slight defer for DOM readiness (no CSRF required)
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    try { store.init(); } catch (_) { /* non-fatal */ }
-  }, 150);
-});
+// document.addEventListener("DOMContentLoaded", () => speechStore.init());

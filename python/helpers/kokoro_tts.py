@@ -4,6 +4,7 @@ import asyncio
 import base64
 import io
 import warnings
+from typing import List
 
 try:
     import soundfile as sf
@@ -18,6 +19,7 @@ from python.helpers.notification import (
     NotificationType,
 )
 from python.helpers.print_style import PrintStyle
+import numpy as np
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -116,26 +118,31 @@ async def synthesize_sentences(sentences: list[str]):
 async def _synthesize_sentences(sentences: list[str]):
     await _preload()
 
-    combined_audio = []
+    chunks: List[np.ndarray] = []
 
     try:
         for sentence in sentences:
             if sentence.strip():
                 segments = _pipeline(sentence.strip(), voice=_voice, speed=_speed)  # type: ignore
-                segment_list = list(segments)
-
-                for segment in segment_list:
+                for segment in list(segments):
                     audio_tensor = segment.audio
                     audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
-                    combined_audio.extend(audio_numpy)
+                    # Force mono: flatten to 1-D float32 to avoid shape/channel issues with writers
+                    arr = np.asarray(audio_numpy, dtype=np.float32).reshape(-1)
+                    chunks.append(arr)
 
-        # Convert combined audio to bytes
+        # Concatenate and convert to bytes
         if not _SOUNDFILE_AVAILABLE:
             raise RuntimeError(
                 "soundfile is not available in the runtime. Enable audio features or install 'soundfile' and libsndfile."
             )
+        if not chunks:
+            # Return a short silence (0.2s) to avoid empty file edge cases
+            arr = np.zeros(int(0.2 * 24000), dtype=np.float32)
+        else:
+            arr = np.concatenate(chunks, axis=0)
         buffer = io.BytesIO()
-        sf.write(buffer, combined_audio, 24000, format="WAV")
+        sf.write(buffer, arr, 24000, format="WAV")
         audio_bytes = buffer.getvalue()
 
         # Return base64 encoded audio

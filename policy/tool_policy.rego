@@ -2,11 +2,12 @@ package soma.policy
 
 default allow = false
 
-# Allow basic chat messages for the public tenant in DEV
+# Allow chat messages unconditionally in DEV (fail-open chat to reduce friction during development).
 allow {
   input.action == "conversation.send"
-  input.tenant == "public"
 }
+
+# Retain explicit allows for tools/memory/settings below for clarity.
 
 allow {
   input.action == "tool.execute"

@@ -885,7 +885,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "options": [
                 {"value": "browser", "label": "Browser (built-in)"},
                 {"value": "kokoro", "label": "Kokoro (server)"},
-                {"value": "openai_realtime", "label": "OpenAI Realtime"},
+                {"value": "openai_realtime", "label": "Realtime (server)"},
             ],
         }
     )
@@ -967,6 +967,17 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     # TTS fields
     realtime_fields: list[SettingsField] = []
+
+    realtime_fields.append(
+        {
+            "id": "speech_realtime_enabled",
+            "title": "Enable realtime speech",
+            "description": "Enable server-side realtime speech pipeline (ASR→LLM→TTS) via Gateway WS.",
+            "type": "switch",
+            "value": settings["speech_realtime_enabled"],
+            "hidden": selected_speech_provider != "openai_realtime",
+        }
+    )
 
     realtime_fields.append(
         {
@@ -1506,11 +1517,12 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=0.3,
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
-        speech_provider="openai_realtime",
+        speech_provider="browser",
+        speech_realtime_enabled=False,
         speech_realtime_model="gpt-4o-realtime-preview",
         speech_realtime_voice="verse",
         speech_realtime_endpoint="https://api.openai.com/v1/realtime/sessions",
-        tts_kokoro=True,
+        tts_kokoro=False,
         mcp_servers='{\n    "mcpServers": {}\n}',
         mcp_client_init_timeout=10,
         mcp_client_tool_timeout=120,

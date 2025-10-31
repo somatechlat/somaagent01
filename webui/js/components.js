@@ -26,16 +26,11 @@ export async function importComponent(path, targetElement) {
       throw new Error("Target element is required");
     }
 
-    // Prevent duplicate imports on the same element if already loaded
-    if (targetElement.getAttribute('data-component-loaded') === '1') {
-      return;
-    }
-
     // Show loading indicator
     targetElement.innerHTML = '<div class="loading"></div>';
 
-    // Build component URL relative to the current document base so it works under / or /ui
-    const componentUrl = new URL(("components/" + path).replace(/^\/+/, ''), document.baseURI).href;
+    // full component url
+    const componentUrl = "components/" + path;
 
     // get html from cache or fetch it
     let html;
@@ -91,28 +86,19 @@ export async function importComponent(path, targetElement) {
 
             // For inline module scripts, use cache or create blob
             if (!componentCache[virtualUrl]) {
-              // Transform inline module relative import paths so they resolve under /ui as well.
-              // - Keep root-absolute imports ("/js/...", "/components/...") intact for importmap to remap.
-              // - For relative imports ("./x", "../x"), resolve against the document base, not origin root.
+              // Transform relative import paths to absolute URLs
               let content = node.textContent.replace(
-                /import\s+([^'\"]+)\s+from\s+["']([^"']+)["']/g,
+                /import\s+([^'"]+)\s+from\s+["']([^"']+)["']/g,
                 (match, bindings, importPath) => {
-                  // Leave full URLs untouched
-                  if (/^https?:\/\//.test(importPath)) {
-                    return match;
+                  // Convert relative OR root-based (e.g. /src/...) to absolute URLs
+                  if (!/^https?:\/\//.test(importPath)) {
+                    const absoluteUrl = new URL(
+                      importPath,
+                      globalThis.location.origin
+                    ).href;
+                    return `import ${bindings} from "${absoluteUrl}"`;
                   }
-
-                  // For root-absolute specifiers ("/x"), rewrite to be relative to the current document base.
-                  // This ensures components work when the UI is mounted under a subpath like /ui/.
-                  if (importPath.startsWith('/')) {
-                    const withoutLeadingSlash = importPath.replace(/^\/+/, '');
-                    const absoluteFromBase = new URL(withoutLeadingSlash, document.baseURI).href;
-                    return `import ${bindings} from "${absoluteFromBase}"`;
-                  }
-
-                  // For relative specifiers ("./x", "../x"), also resolve against the current document base.
-                  const absoluteUrl = new URL(importPath, document.baseURI).href;
-                  return `import ${bindings} from "${absoluteUrl}"`;
+                  return match;
                 }
               );
 
@@ -184,9 +170,6 @@ export async function importComponent(path, targetElement) {
       targetElement.removeChild(loadingEl);
     }
 
-    // Mark as loaded to avoid duplicate renderings
-    targetElement.setAttribute('data-component-loaded', '1');
-
     // // Load any nested components
     // await loadComponents([targetElement]);
 
@@ -209,7 +192,7 @@ export async function loadComponents(roots = [document.documentElement]) {
 
     // Find all top-level components and load them in parallel
     const components = rootElements.flatMap((root) =>
-      Array.from(root.querySelectorAll("x-component")).filter((el) => el.getAttribute('data-component-loaded') !== '1')
+      Array.from(root.querySelectorAll("x-component"))
     );
 
     if (components.length === 0) return;
@@ -269,9 +252,7 @@ const observer = new MutationObserver((mutations) => {
         // ELEMENT_NODE
         // Check if this node or its descendants contain x-component(s)
         if (node.matches?.("x-component")) {
-          if (node.getAttribute('data-component-loaded') !== '1') {
-            importComponent(node.getAttribute("path"), node);
-          }
+          importComponent(node.getAttribute("path"), node);
         } else if (node.querySelectorAll) {
           loadComponents([node]);
         }

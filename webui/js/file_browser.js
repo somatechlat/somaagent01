@@ -40,7 +40,7 @@ const fileBrowserModalProxy = {
     this.isLoading = true;
     try {
       const response = await fetchApi(
-        `/v1/workdir/list?path=${encodeURIComponent(path)}`
+        `/get_work_dir_files?path=${encodeURIComponent(path)}`
       );
 
       if (response.ok) {
@@ -113,7 +113,7 @@ const fileBrowserModalProxy = {
     }
 
     try {
-      const response = await fetchApi("/v1/workdir/delete", {
+      const response = await fetchApi("/delete_work_dir_file", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -162,7 +162,7 @@ const fileBrowserModalProxy = {
       }
 
       // Proceed with upload after validation
-      const response = await fetchApi("/v1/workdir/upload", {
+      const response = await fetchApi("/upload_work_dir_files", {
         method: "POST",
         body: formData,
       });
@@ -195,7 +195,7 @@ const fileBrowserModalProxy = {
 
   downloadFile(file) {
     const link = document.createElement("a");
-    link.href = `/v1/workdir/download?path=${encodeURIComponent(file.path)}`;
+    link.href = `/download_work_dir_file?path=${encodeURIComponent(file.path)}`;
     link.download = file.name;
     document.body.appendChild(link);
     link.click();
@@ -247,26 +247,22 @@ window.fileBrowserModalProxy = fileBrowserModalProxy;
 
 openFileLink = async function (path) {
   try {
-    // First, try to treat path as a directory by listing it
-    const listResp = await fetchApi(`/v1/workdir/list?path=${encodeURIComponent(path)}`, { method: "GET" });
-    if (listResp && listResp.ok) {
-      fileBrowserModalProxy.openModal(path);
+    const resp = await window.sendJsonData("/file_info", { path });
+    if (!resp.exists) {
+      window.toastFrontendError("File does not exist.", "File Error");
       return;
     }
-  } catch (_) { /* ignore */ }
 
-  try {
-    // If listing failed, try to HEAD the download endpoint to see if it's a file
-    const headResp = await fetchApi(`/v1/workdir/download?path=${encodeURIComponent(path)}`, { method: "HEAD" });
-    if (headResp && headResp.ok) {
+    if (resp.is_dir) {
+      fileBrowserModalProxy.openModal(resp.abs_path);
+    } else {
       fileBrowserModalProxy.downloadFile({
-        path,
-        name: path.split("/").pop() || "download.bin",
+        path: resp.abs_path,
+        name: resp.file_name,
       });
-      return;
     }
-  } catch (_) { /* ignore */ }
-
-  window.toastFrontendError("File or folder not found.", "File Error");
+  } catch (e) {
+    window.toastFrontendError("Error opening file: " + e.message, "File Open Error");
+  }
 };
 window.openFileLink = openFileLink;

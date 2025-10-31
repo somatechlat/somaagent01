@@ -1583,8 +1583,8 @@ class ConversationWorker:
             analysis_prompt = ChatMessage(
                 role="system",
                 content=(
-                    "Conversation analysis: intent={intent}; sentiment={sentiment}; tags={tags}. "
-                    "Use this context to tailor the response."
+                    "The following classification is for internal guidance only. Do not repeat or mention it in your reply. "
+                    "Use it silently to tailor your response. Classification: intent={intent}; sentiment={sentiment}; tags={tags}."
                 ).format(
                     intent=analysis_dict["intent"],
                     sentiment=analysis_dict["sentiment"],
@@ -1797,7 +1797,7 @@ class ConversationWorker:
                     )
                 except Exception as exc:
                     LOGGER.exception("SLM request failed")
-                    response_text = "I encountered an error while generating a reply."
+                    # Attempt a non-streaming fallback via Gateway once more before giving up
                     result_label = "generation_error"
                     await self.store.append_event(
                         session_id,
@@ -1807,7 +1807,43 @@ class ConversationWorker:
                             "details": str(exc),
                         },
                     )
-                    usage = {"input_tokens": 0, "output_tokens": 0}
+                    try:
+                        url_ns = f"{self._gateway_base}/v1/llm/invoke"
+                        ov2: dict[str, Any] = {}
+                        for k, v in {
+                            "model": slm_kwargs.get("model"),
+                            "base_url": slm_kwargs.get("base_url"),
+                            "temperature": slm_kwargs.get("temperature"),
+                            "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                        }.items():
+                            if v is None:
+                                continue
+                            if isinstance(v, str) and v.strip() == "":
+                                continue
+                            ov2[k] = v
+                        body_ns = {
+                            "role": "dialogue",
+                            "session_id": session_id,
+                            "persona_id": persona_id,
+                            "tenant": (session_metadata or {}).get("tenant"),
+                            "messages": [m.__dict__ for m in messages],
+                            "overrides": ov2,
+                        }
+                        headers_ns = {"X-Internal-Token": self._internal_token or ""}
+                        async with httpx.AsyncClient(timeout=20.0) as client:
+                            resp_ns = await client.post(url_ns, json=body_ns, headers=headers_ns)
+                            if not resp_ns.is_error:
+                                data_ns = resp_ns.json()
+                                fallback_text = data_ns.get("content", "")
+                                usage = data_ns.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                                if fallback_text:
+                                    response_text = fallback_text
+                                else:
+                                    response_text = "I encountered an error while generating a reply."
+                            else:
+                                response_text = "I encountered an error while generating a reply."
+                    except Exception:
+                        response_text = "I encountered an error while generating a reply."
                 latency = time.time() - response_start
                 model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate

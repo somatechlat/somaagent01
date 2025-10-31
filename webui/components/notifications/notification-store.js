@@ -1,4 +1,5 @@
 import { createStore } from "/js/AlpineStore.js";
+import * as API from "/js/api.js";
 import { openModal } from "/js/modals.js";
 
 export const NotificationType = {
@@ -48,8 +49,45 @@ const model = {
     // }, 5 * 60 * 1000); // Every 5 minutes
   },
 
-  // SSE-only build: no polling path used. Keep a no-op for compatibility.
-  updateFromPoll(_pollData) { /* no-op in SSE-only UI */ },
+  // Update notifications from polling data
+  updateFromPoll(pollData) {
+    if (!pollData) return;
+
+    // Check if GUID changed (system restart)
+    if (pollData.notifications_guid !== this.lastNotificationGuid) {
+      this.lastNotificationVersion = 0;
+      this.notifications = [];
+      this.toastStack = []; // Clear toast stack on restart
+      this.lastNotificationGuid = pollData.notifications_guid || "";
+    }
+
+    // Process new notifications and add to toast stack
+    if (pollData.notifications && pollData.notifications.length > 0) {
+      pollData.notifications.forEach((notification) => {
+        // should we toast the notification?
+        const shouldToast = !notification.read;
+
+        // adjust notification data before adding
+        this.adjustNotificationData(notification);
+
+        const isNew = !this.notifications.find((n) => n.id === notification.id);
+        this.addOrUpdateNotification(notification);
+
+        // Add new unread notifications to toast stack
+        if (isNew && shouldToast) {
+          this.addToToastStack(notification);
+        }
+      });
+    }
+
+    // Update version tracking
+    this.lastNotificationVersion = pollData.notifications_version || 0;
+    this.lastNotificationGuid = pollData.notifications_guid || "";
+
+    // Update UI state
+    this.updateUnreadCount();
+    // this.removeOldNotifications();
+  },
 
   adjustNotificationData(notification) {
     // set default priority if not set
@@ -191,7 +229,16 @@ const model = {
     if (notification && !notification.read) {
       notification.read = true;
       this.updateUnreadCount();
-      // Frontend-only: no backend sync
+
+      // Sync with backend (non-blocking)
+      try {
+        await API.callJsonApi("notifications_mark_read", {
+          notification_ids: [notificationId],
+        });
+      } catch (error) {
+        console.error("Failed to sync notification read status:", error);
+        // Don't revert the UI change - user experience should not be affected
+      }
     }
   },
 
@@ -209,7 +256,14 @@ const model = {
     // Clear toast stack when marking all as read
     this.clearToastStack(false);
 
-    // Frontend-only: no backend sync
+    // Sync with backend (non-blocking)
+    try {
+      await API.callJsonApi("notifications_mark_read", {
+        mark_all: true,
+      });
+    } catch (error) {
+      console.error("Failed to sync mark all as read:", error);
+    }
   },
 
   // Clear all notifications
@@ -221,7 +275,11 @@ const model = {
   },
 
   async clearBackendNotifications() {
-    // Frontend-only: no backend sync
+    try {
+      await API.callJsonApi("notifications_clear", null);
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+    }
   },
 
   // Get notifications by type
@@ -318,7 +376,7 @@ const model = {
     return `<span class="material-symbols-outlined">${iconName}</span>`;
   },
 
-  // Create a frontend notification: log in list AND show toast
+  // Create notification via backend (will appear via polling)
   async createNotification(
     type,
     message,
@@ -328,28 +386,27 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    const timestamp = new Date().toISOString();
-    const notification = {
-      id: `frontend-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      type,
-      title,
-      message,
-      detail,
-      timestamp,
-      display_time,
-      read: false,
-      frontend: true,
-      group,
-      priority,
-    };
-    // Normalize
-    this.adjustNotificationData(notification);
-    // Add to list and update counters
-    this.addOrUpdateNotification(notification);
-    this.updateUnreadCount();
-    // Also surface as toast
-    this.addToToastStack(notification);
-    return notification.id;
+    try {
+      const response = await globalThis.sendJsonData("/notification_create", {
+        type: type,
+        message: message,
+        title: title,
+        detail: detail,
+        display_time: display_time,
+        group: group,
+        priority: priority,
+      });
+
+      if (response.success) {
+        return response.notification_id;
+      } else {
+        console.error("Failed to create notification:", response.error);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      return null;
+    }
   },
 
   // Convenience methods for different notification types
@@ -448,11 +505,14 @@ const model = {
     );
   },
 
-  // Enhanced: Open modal without destroying history; keep list intact
+  // Enhanced: Open modal and clear toast stack
   async openModal() {
-    // Open modal
+    // Clear toast stack when modal opens
+    this.clearToastStack(false);
+    // open modal
     await openModal("notifications/notification-modal.html");
-    // Optional: leave read state to the user; do not auto-mark on open
+    // mark all as read when modal closes
+    this.markAllAsRead();
   },
 
   // Legacy method for backward compatibility
@@ -548,7 +608,7 @@ const model = {
     return notification.id;
   },
 
-  // NEW: Frontend-only toast (no backend attempts)
+  // NEW: Enhanced frontend toast that tries backend first, falls back to frontend-only
   async addFrontendToast(
     type,
     message,
@@ -557,7 +617,34 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    // Always use frontend-only path to avoid any 404s or legacy endpoints
+    // Try to send to backend first if connected
+    if (this.isConnected()) {
+      try {
+        const notificationId = await this.createNotification(
+          type,
+          message,
+          title,
+          "",
+          display_time,
+          group,
+          priority
+        );
+        if (notificationId) {
+          // Backend handled it, notification will arrive via polling
+          return notificationId;
+        }
+      } catch (error) {
+        console.log(
+          `Backend unavailable for notification, showing as frontend-only: ${
+            error.message || error
+          }`
+        );
+      }
+    } else {
+      console.log("Backend disconnected, showing as frontend-only toast");
+    }
+
+    // Fallback to frontend-only toast
     return this.addFrontendToastOnly(
       type,
       message,

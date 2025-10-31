@@ -15,6 +15,8 @@ import os
 import time
 import uuid
 from datetime import datetime
+import base64
+import tempfile
 import secrets
 from typing import Annotated, Any, AsyncIterator, Dict, Optional, List
 
@@ -51,6 +53,7 @@ import socket
 import contextlib
 from urllib.parse import urlencode
 import copy
+from urllib.parse import urlparse, urlunparse, ParseResult
 
 SERVICE_NAME = "gateway"
 
@@ -141,6 +144,34 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
+
+# --- Optional ML dependencies (STT) ---
+try:  # lazy import guard to avoid failing when ML deps aren’t installed
+    from faster_whisper import WhisperModel  # type: ignore
+    _HAVE_FASTER_WHISPER = True
+except Exception:  # pragma: no cover - optional dependency path
+    WhisperModel = None  # type: ignore
+    _HAVE_FASTER_WHISPER = False
+
+# Simple in-process cache for STT model (size keyed)
+_STT_MODEL_CACHE: dict[str, WhisperModel] = {}  # type: ignore[name-defined]
+
+def _get_stt_model(model_size: str) -> "WhisperModel":  # type: ignore[name-defined]
+    if not _HAVE_FASTER_WHISPER:
+        raise HTTPException(status_code=501, detail="speech_to_text_unavailable: faster-whisper not installed")
+    size = (model_size or "tiny").strip().lower()
+    # Reuse cached model if available
+    m = _STT_MODEL_CACHE.get(size)
+    if m is not None:
+        return m
+    # Create and cache a new model instance (CPU-only by default)
+    try:
+        m = WhisperModel(size, device="cpu", compute_type="int8")  # smaller memory footprint
+        _STT_MODEL_CACHE[size] = m
+        return m
+    except Exception as e:  # pragma: no cover
+        LOGGER.exception("Failed to initialize faster-whisper model: %s", size)
+        raise HTTPException(status_code=500, detail=f"stt_model_init_error: {type(e).__name__}")
 
 # Global exception handler to surface unexpected errors (helps during dev)
 @app.exception_handler(Exception)
@@ -269,6 +300,12 @@ EXPORT_JOB_SECONDS = _get_or_create_histogram(
     "Export job processing time (seconds)",
 )
 
+# --- Speech (STT) endpoint models ---
+class TranscribeRequest(BaseModel):
+    audio: str = Field(..., description="Base64-encoded WAV audio data")
+    language: Optional[str] = Field(default=None, description="e.g., 'en'")
+    model_size: Optional[str] = Field(default=None, description="e.g., 'tiny', 'base', ...")
+
 # Upload metrics
 GATEWAY_UPLOADS = _get_or_create_counter(
     "gateway_uploads_total",
@@ -300,6 +337,346 @@ JANITOR_LAST_RUN = _get_or_create_gauge(
     "gateway_uploads_janitor_last_run_timestamp",
     "Last uploads janitor run timestamp (seconds since epoch)",
 )
+
+
+# -----------------------------
+# /v1/speech/transcribe (STT)
+# -----------------------------
+@app.post("/v1/speech/transcribe")
+async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
+    """Speech-to-text transcription endpoint (Gateway-only).
+
+    Accepts base64-encoded WAV audio and returns recognized text using faster-whisper.
+    This endpoint returns 501 if ML dependencies are not installed in the environment.
+    """
+    if not req.audio:
+        raise HTTPException(status_code=400, detail="missing_audio")
+
+    # Decode and enforce a reasonable size limit (e.g., 12 MB) to avoid abuse
+    try:
+        raw = base64.b64decode(req.audio, validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid_base64_audio")
+
+    max_bytes = int(os.getenv("STT_MAX_AUDIO_BYTES", "12582912"))  # 12 MiB default
+    if len(raw) > max_bytes:
+        raise HTTPException(status_code=413, detail="audio_too_large")
+
+    # Initialize or reuse model
+    model_size = (req.model_size or os.getenv("STT_MODEL_SIZE", "tiny")).strip().lower()
+    try:
+        model = _get_stt_model(model_size)
+    except HTTPException:
+        # Propagate 501 when deps missing or init fails meaningfully
+        raise
+    except Exception as e:  # pragma: no cover
+        LOGGER.exception("STT model init error")
+        raise HTTPException(status_code=500, detail=f"stt_init_error: {type(e).__name__}")
+
+    # Write to a temporary file for the model to read from
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tf:
+        tf.write(raw)
+        tf.flush()
+        # Transcribe
+        try:
+            # faster-whisper returns (segments generator, info)
+            segments, info = model.transcribe(
+                tf.name,
+                language=(req.language or os.getenv("STT_LANGUAGE") or None),
+                vad_filter=True,
+                beam_size=1,
+                temperature=0.0,
+            )
+            # Concatenate segments into a single line of text (preserve spaces as in A0 behavior)
+            parts: list[str] = []
+            for seg in segments:
+                text = getattr(seg, "text", None)
+                if text:
+                    parts.append(text.strip())
+            out = " ".join([p for p in parts if p])
+        except HTTPException:
+            raise
+        except Exception as e:  # pragma: no cover
+            LOGGER.exception("STT transcription error")
+            raise HTTPException(status_code=500, detail=f"stt_transcription_error: {type(e).__name__}")
+
+    return JSONResponse({"text": out or ""}, status_code=200)
+
+
+# --- Kokoro TTS endpoint models ---
+class KokoroSynthesizeRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None  # comma-separated for blends, per kokoro_tts helper
+    speed: Optional[float] = None
+
+
+@app.post("/v1/speech/tts/kokoro")
+async def v1_speech_tts_kokoro(req: KokoroSynthesizeRequest) -> JSONResponse:
+    """Text-to-speech synthesis using Kokoro.
+
+    Returns base64-encoded WAV audio. If Kokoro dependencies are not available
+    in this environment, returns 501 to allow the UI to fallback to browser TTS.
+    """
+    text = (req.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="missing_text")
+
+    # Optional short-circuit to prevent abuse
+    max_chars = int(os.getenv("TTS_MAX_TEXT_CHARS", "2000"))
+    if len(text) > max_chars:
+        raise HTTPException(status_code=413, detail="text_too_long")
+
+    # Lazy import kokoro helper; return 501 when not present
+    try:
+        from python.helpers import kokoro_tts
+    except Exception:
+        raise HTTPException(status_code=501, detail="kokoro_unavailable")
+
+    # If model is downloading, let the client decide to retry later
+    try:
+        downloading = await kokoro_tts.is_downloading()
+    except Exception:
+        downloading = False
+    if downloading:
+        # 425 Too Early / 503? Choose 503 with a retry-after hint
+        raise HTTPException(status_code=503, detail="kokoro_initializing")
+
+    # Synthesize (helper returns base64 WAV)
+    try:
+        # The helper currently uses internal default voice/speed; extended controls
+        # can be added later by surfacing req.voice/req.speed to the helper.
+        audio_b64 = await kokoro_tts.synthesize_sentences([text])
+    except HTTPException:
+        raise
+    except Exception as e:  # pragma: no cover
+        LOGGER.exception("Kokoro synthesis error")
+        raise HTTPException(status_code=500, detail=f"kokoro_error: {type(e).__name__}")
+
+    return JSONResponse({"audio": audio_b64}, status_code=200)
+
+
+# -----------------------------
+# Realtime speech: session + WS (scaffold)
+# -----------------------------
+
+class RealtimeSessionRequest(BaseModel):
+    locale: Optional[str] = None
+    device: Optional[str] = None
+
+
+class RealtimeSessionResponse(BaseModel):
+    session_id: str
+    ws_url: str
+    expires_at: float
+    caps: dict[str, Any] | None = None
+
+
+def _realtime_cfg() -> dict[str, Any]:
+    try:
+        cfg = getattr(app.state, "speech_cfg", {})
+        return dict(cfg) if isinstance(cfg, dict) else {}
+    except Exception:
+        return {}
+
+
+def _realtime_enabled() -> bool:
+    cfg = _realtime_cfg()
+    # Primary toggle comes from stored UI settings; env var is a secondary override for ops
+    if isinstance(cfg.get("speech_realtime_enabled"), bool):
+        return bool(cfg.get("speech_realtime_enabled"))
+    return os.getenv("GATEWAY_REALTIME_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+
+
+def _build_ws_url(request: Request, path: str, query: str) -> str:
+    # Derive ws:// or wss:// from the incoming request and preserve host/port
+    u = urlparse(str(request.url))
+    scheme = "wss" if u.scheme == "https" else "ws"
+    # Respect proxies setting x-forwarded-proto when present
+    xf_proto = request.headers.get("x-forwarded-proto", "").lower()
+    if xf_proto in {"http", "https"}:
+        scheme = "wss" if xf_proto == "https" else "ws"
+    new = ParseResult(scheme, u.netloc, path, "", query, "")
+    return urlunparse(new)
+
+
+@app.post("/v1/speech/realtime/session", response_model=RealtimeSessionResponse)
+async def v1_speech_realtime_session(payload: RealtimeSessionRequest, request: Request) -> RealtimeSessionResponse:
+    """Mint a short-lived realtime speech session and return WS URL.
+
+    This is a scaffold endpoint. When realtime is disabled, returns 503 to let
+    the UI fallback gracefully. When enabled, creates a one-use session id in
+    cache with a small TTL and returns the websocket URL.
+    """
+    # Basic authz + (optional) policy – treat as user action under current session
+    _ = await authorize_request(request, {"action": "speech.realtime.session"})
+
+    if not _realtime_enabled():
+        # Service not ready – return 503 so UI can fallback to browser/Kokoro
+        raise HTTPException(status_code=503, detail="realtime_unavailable")
+
+    session_id = secrets.token_urlsafe(16)
+    ttl = int(os.getenv("REALTIME_SESSION_TTL_SECONDS", "45"))
+    caps = {
+        "sample_rate": int(os.getenv("REALTIME_SAMPLE_RATE", "16000")),
+        "frame_ms": int(os.getenv("REALTIME_FRAME_MS", "20")),
+        "max_session_secs": int(os.getenv("REALTIME_MAX_SESSION_SECS", "600")),
+    }
+
+    # Stash a minimal session record in Redis cache (one-use claim at WS connect)
+    try:
+        cache = get_session_cache()
+        await cache.set(f"realtime:session:{session_id}", {"claims": _}, ex=ttl)
+    except Exception as exc:
+        LOGGER.error("Failed to persist realtime session", extra={"error": str(exc)})
+        raise HTTPException(status_code=500, detail="session_init_failed")
+
+    ws_url = _build_ws_url(request, "/v1/speech/realtime/ws", f"session_id={session_id}")
+    return RealtimeSessionResponse(
+        session_id=session_id,
+        ws_url=ws_url,
+        expires_at=time.time() + ttl,
+        caps=caps,
+    )
+
+
+@app.websocket("/v1/speech/realtime/ws")
+async def v1_speech_realtime_ws(websocket: WebSocket, session_id: str | None = None):
+    """Realtime speech WS scaffold.
+
+    Validates the one-use session id and accepts the connection. For now it
+    immediately informs the client that realtime is not yet available and
+    closes gracefully. This placeholder allows UI wiring without breaking flows.
+    """
+    await websocket.accept()
+    try:
+        if not session_id:
+            await websocket.send_json({"type": "error", "code": "missing_session_id", "message": "Missing session id"})
+            await websocket.close(code=4401)
+            return
+        try:
+            cache = get_session_cache()
+            key = f"realtime:session:{session_id}"
+            item = await cache.get(key)
+            # Enforce one-time use by deleting immediately
+            await cache.delete(key)
+        except Exception:
+            item = None
+        if not item:
+            await websocket.send_json({"type": "error", "code": "invalid_session", "message": "Session is invalid or expired"})
+            await websocket.close(code=4403)
+            return
+
+        # If the feature is disabled mid-flight, notify and close
+        if not _realtime_enabled():
+            await websocket.send_json({"type": "error", "code": "realtime_unavailable", "message": "Realtime service is not available"})
+            await websocket.close(code=1013)  # Try again later
+            return
+
+        # Placeholder behavior: immediately notify not-implemented and close
+        await websocket.send_json({"type": "ready", "caps": _realtime_cfg()})
+        await websocket.send_json({"type": "error", "code": "not_implemented", "message": "Realtime pipeline coming soon"})
+        await websocket.close(code=1000)
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        try:
+            await websocket.send_json({"type": "error", "code": "internal_error", "message": str(exc)})
+        except Exception:
+            pass
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1011)
+    finally:
+        return
+
+
+# -----------------------------
+# OpenAI Realtime (browser WebRTC via Gateway offer proxy)
+# -----------------------------
+
+class OpenAIRealtimeOffer(BaseModel):
+    model: Optional[str] = None
+    sdp: str
+
+
+class OpenAIRealtimeAnswer(BaseModel):
+    sdp: str
+
+
+def _normalize_openai_realtime_base(endpoint: str | None) -> str:
+    """Normalize a configured realtime endpoint to the base '/v1/realtime'.
+
+    Users may provide the sessions endpoint in settings; for SDP offer/answer we need
+    the '/v1/realtime' path. Preserve the host and scheme.
+    """
+    try:
+        base = endpoint or "https://api.openai.com/v1/realtime"
+        u = urlparse(base)
+        # If the path already points to /v1/realtime, keep it
+        if u.path.rstrip("/") == "/v1/realtime":
+            return urlunparse(ParseResult(u.scheme, u.netloc, "/v1/realtime", "", "", ""))
+        # If the path is /v1/realtime/sessions or similar, collapse to /v1/realtime
+        if u.path.startswith("/v1/realtime"):
+            return urlunparse(ParseResult(u.scheme, u.netloc, "/v1/realtime", "", "", ""))
+        # Otherwise, force /v1/realtime on same origin
+        return urlunparse(ParseResult(u.scheme, u.netloc, "/v1/realtime", "", "", ""))
+    except Exception:
+        return "https://api.openai.com/v1/realtime"
+
+
+@app.post("/v1/speech/openai/realtime/offer", response_model=OpenAIRealtimeAnswer)
+async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request: Request) -> OpenAIRealtimeAnswer:
+    """Accept a browser WebRTC SDP offer and return OpenAI's SDP answer.
+
+    This keeps OpenAI API keys on the server (single point of configuration). The media
+    flows directly between the browser and OpenAI; Gateway only relays SDP.
+    """
+    # Authz (treat as user speech action)
+    _ = await authorize_request(request, {"action": "speech.openai.realtime.offer"})
+
+    # Resolve model and endpoint from settings overlay
+    speech_cfg = _realtime_cfg()
+    model = (payload.model or speech_cfg.get("speech_realtime_model") or "gpt-4o-realtime-preview").strip()
+    endpoint_cfg = speech_cfg.get("speech_realtime_endpoint")
+    base_url = _normalize_openai_realtime_base(endpoint_cfg)
+
+    # Fetch OpenAI credentials from managed store
+    try:
+        secret = await get_llm_credentials_store().get("openai")
+    except Exception as exc:
+        LOGGER.error("LLM credentials retrieval failed", extra={"provider": "openai", "error": str(exc)})
+        raise HTTPException(status_code=500, detail="credentials_error")
+    if not secret:
+        raise HTTPException(status_code=404, detail="credentials_not_found")
+
+    # Forward the offer to OpenAI; expect plain SDP answer body
+    # Append model as query parameter correctly (avoid exposing any secrets)
+    params = httpx.QueryParams({"model": model})
+    url = f"{base_url}?{params}"
+    headers = {
+        "Authorization": f"Bearer {secret}",
+        "Content-Type": "application/sdp",
+        "Accept": "application/sdp",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, content=payload.sdp, headers=headers)
+    except Exception as exc:
+        LOGGER.error("OpenAI realtime offer POST failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="upstream_unreachable")
+
+    if resp.status_code != 200:
+        detail = (resp.text or "").strip()[:400]
+        LOGGER.warning("OpenAI realtime offer error", extra={"status": resp.status_code, "detail": detail})
+        # Map common errors
+        if resp.status_code in (401, 403):
+            raise HTTPException(status_code=502, detail="upstream_auth_failed")
+        raise HTTPException(status_code=502, detail="upstream_error")
+
+    answer_sdp = resp.text
+    if not answer_sdp:
+        raise HTTPException(status_code=502, detail="empty_answer")
+
+    return OpenAIRealtimeAnswer(sdp=answer_sdp)
 
 
 def _uploads_root() -> Path:
@@ -630,7 +1007,7 @@ async def _config_update_listener() -> None:
                 "Failed to apply config update",
                 extra={"error": str(exc), "payload_type": type(payload).__name__},
             )
-            # Continue processing other config updates
+    return HISTOGRAM
 
 
 # Schedule the listener when the FastAPI app starts
@@ -710,6 +1087,7 @@ async def start_background_services() -> None:
         if isinstance(doc, dict):
             app.state.uploads_cfg = dict(doc.get("uploads") or {})
             app.state.av_cfg = dict(doc.get("antivirus") or {})
+            app.state.speech_cfg = dict(doc.get("speech") or {})
         # Enforce uploads disabled when file saving is disabled
         if _file_saving_disabled():
             cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
@@ -3142,7 +3520,31 @@ async def list_sessions_endpoint(
     limit: int = Query(50, ge=1, le=200),
     tenant: str | None = Query(None, description="Filter sessions by tenant identifier"),
 ) -> list[SessionSummary]:
+    """List sessions; seed a default welcome session if none exist (A0 parity).
+
+    The UI expects one chat with a welcome assistant message on first load.
+    We create a real assistant.final event to back that behavior when the
+    store is empty. No mocks; a real event is appended to session_events.
+    """
     envelopes = await store.list_sessions(limit=limit, tenant=tenant)
+
+    # Seed a default session with a welcome message if none exist
+    if not envelopes and tenant is None:
+        try:
+            from uuid import uuid4
+            sid = str(uuid4())
+            welcome_event = {
+                "session_id": sid,
+                "role": "assistant",
+                "type": "assistant.final",
+                "message": "\ud83d\udc4b Welcome to Soma Agent. How can I help today?",
+                "metadata": {"subject": "New chat"},
+            }
+            await store.append_event(sid, welcome_event)
+            # re-list after seeding
+            envelopes = await store.list_sessions(limit=limit, tenant=tenant)
+        except Exception:
+            LOGGER.debug("Failed to seed default welcome session", exc_info=True)
     summaries: list[SessionSummary] = []
     for envelope in envelopes:
         # Ensure metadata/analysis are dicts for pydantic model validation.
@@ -4057,14 +4459,23 @@ try:
         if index_js.exists():
             @app.get("/index.js", include_in_schema=False)
             async def _index_js() -> FileResponse:  # type: ignore
-                return FileResponse(str(index_js), media_type="application/javascript")
+                # Force fresh fetch to avoid browsers using a cached legacy copy that still calls /poll
+                return FileResponse(
+                    str(index_js),
+                    media_type="application/javascript",
+                    headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+                )
 
         # Serve root-level index.css so the homepage styles load when UI is mounted at root
         index_css = UI_DIR / "index.css"
         if index_css.exists():
             @app.get("/index.css", include_in_schema=False)
             async def _index_css() -> FileResponse:  # type: ignore
-                return FileResponse(str(index_css), media_type="text/css")
+                return FileResponse(
+                    str(index_css),
+                    media_type="text/css",
+                    headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+                )
 
         # Serve a favicon for browsers that automatically request /favicon.ico
         favicon_svg = UI_DIR / "public" / "favicon.svg"
@@ -5101,6 +5512,24 @@ async def ui_sections_get() -> dict[str, Any]:
                     except Exception:
                         # non-fatal; continue overlaying others
                         pass
+
+        # Speech overlay: apply any saved speech config values over defaults
+        try:
+            speech_cfg = agent_cfg.get("speech") if isinstance(agent_cfg, dict) else None
+        except Exception:
+            speech_cfg = None
+        if isinstance(speech_cfg, dict) and speech_cfg:
+            for sec in sections:
+                if (sec.get("id") or "") != "speech":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if isinstance(fid, str) and fid in speech_cfg:
+                        # Coerce types lightly: keep UI-provided shape; trust persisted doc
+                        try:
+                            fld["value"] = speech_cfg[fid]
+                        except Exception:
+                            pass
     except Exception:
         LOGGER.debug("Failed to overlay UI sections", exc_info=True)
 
@@ -5222,6 +5651,7 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
     uploads_cfg: Dict[str, Any] = {}
     av_cfg: Dict[str, Any] = {}
     explicit_provider: str | None = None
+    speech_cfg: Dict[str, Any] = {}
 
     def _as_env_kv(text: str) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -5284,6 +5714,21 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
             # Antivirus config fields
             elif fid in {"av_enabled", "av_strict", "av_host", "av_port"}:
                 av_cfg[fid] = val
+            # Speech config fields
+            elif fid in {
+                "speech_provider",
+                "stt_model_size",
+                "stt_language",
+                "stt_silence_threshold",
+                "stt_silence_duration",
+                "stt_waiting_timeout",
+                "speech_realtime_enabled",
+                "speech_realtime_model",
+                "speech_realtime_voice",
+                "speech_realtime_endpoint",
+                "tts_kokoro",
+            }:
+                speech_cfg[fid] = val
 
     # Persist settings (merge with existing document)
     ui_store = get_ui_settings_store()
@@ -5299,6 +5744,24 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
         current_doc["uploads"] = {**dict(current_doc.get("uploads") or {}), **uploads_cfg}
     if av_cfg:
         current_doc["antivirus"] = {**dict(current_doc.get("antivirus") or {}), **av_cfg}
+    if speech_cfg:
+        # Normalize numeric fields when possible
+        def _to_num(x, cast=int):
+            try:
+                return cast(x)
+            except Exception:
+                return x
+        # Copy and coerce some known numeric types for stability
+        coerced: Dict[str, Any] = dict(speech_cfg)
+        if "stt_silence_threshold" in coerced:
+            try:
+                coerced["stt_silence_threshold"] = float(coerced["stt_silence_threshold"])
+            except Exception:
+                pass
+        for k in ("stt_silence_duration", "stt_waiting_timeout"):
+            if k in coerced:
+                coerced[k] = _to_num(coerced[k], int)
+        current_doc["speech"] = {**dict(current_doc.get("speech") or {}), **coerced}
     await ui_store.set(current_doc)
 
     # Prepare audit context now that the new doc is set

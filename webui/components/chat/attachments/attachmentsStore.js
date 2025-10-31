@@ -6,7 +6,6 @@ const model = {
   attachments: [],
   hasAttachments: false,
   dragDropOverlayVisible: false,
-  _seenKeys: new Set(),
 
   // Image modal properties
   currentImageUrl: null,
@@ -30,54 +29,34 @@ const model = {
   // Basic attachment management methods
   addAttachment(attachment) {
     // Validate for duplicates
-    const key = this._makeKey(attachment);
-    if (this.validateDuplicates(attachment) && !this._seenKeys.has(key)) {
+    if (this.validateDuplicates(attachment)) {
       this.attachments.push(attachment);
-      this._seenKeys.add(key);
       this.updateAttachmentState();
     }
   },
 
   removeAttachment(index) {
     if (index >= 0 && index < this.attachments.length) {
-      const att = this.attachments[index];
-      const key = this._makeKey(att);
       this.attachments.splice(index, 1);
-      if (key) this._seenKeys.delete(key);
       this.updateAttachmentState();
     }
   },
 
   clearAttachments() {
     this.attachments = [];
-    this._seenKeys.clear();
     this.updateAttachmentState();
   },
 
   validateDuplicates(newAttachment) {
     // Check if attachment already exists based on name and size
-    const isDuplicate = this.attachments.some((existing) => {
-      if (existing.name !== newAttachment.name) return false;
-      if (existing.file && newAttachment.file) {
-        if (existing.file.size === newAttachment.file.size) return true;
-        // Also consider lastModified when available
-        if (existing.file.lastModified && newAttachment.file.lastModified && existing.file.lastModified === newAttachment.file.lastModified) return true;
-      }
-      // For images pasted vs selected where file objects differ, compare preview/url if present
-      if (existing.type === 'image' && newAttachment.type === 'image' && existing.url && newAttachment.url) {
-        return existing.url === newAttachment.url;
-      }
-      return false;
-    });
+    const isDuplicate = this.attachments.some(
+      (existing) =>
+        existing.name === newAttachment.name &&
+        existing.file &&
+        newAttachment.file &&
+        existing.file.size === newAttachment.file.size
+    );
     return !isDuplicate;
-  },
-
-  _makeKey(att) {
-    try {
-      const size = att?.file?.size || 0;
-      const lm = att?.file?.lastModified || 0;
-      return `${att?.name || ''}|${size}|${lm}`;
-    } catch { return att?.name || ''; }
   },
 
   updateAttachmentState() {
@@ -286,19 +265,11 @@ const model = {
 
   // Generate server-side API URL for file (for device sync)
   getServerImgUrl(filename) {
-    // Support Gateway attachments API paths directly
-    const path = String(filename || "");
-    if (path.startsWith("/v1/attachments/")) return path;
-    // No legacy fallback: only Gateway attachments paths are supported
-    return null;
+    return `/image_get?path=/a0/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
   getServerFileUrl(filename) {
-    // Support Gateway attachments API paths directly
-    const path = String(filename || "");
-    if (path.startsWith("/v1/attachments/")) return path;
-    // No legacy fallback
-    return null;
+    return `/a0/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
   // Check if file is an image based on extension
@@ -320,8 +291,8 @@ const model = {
         // For images, use blob URL for current session preview
         return attachment.url || URL.createObjectURL(attachment.file);
       } else {
-        // For non-image files, we don't have a server URL until upload; use generic icon
-        return this.getFilePreviewUrl("document");
+        // For non-image files, use server URL to get appropriate icon
+        return this.getServerImgUrl(attachment.name);
       }
     }
     return null;
@@ -372,44 +343,27 @@ const model = {
   // Enhanced method to get attachment display info for UI
   getAttachmentDisplayInfo(attachment) {
     if (typeof attachment === "string") {
-      // attachment is either a Gateway path (/v1/attachments/<id>) or a legacy filename
-      const value = attachment;
-      if (value.startsWith("/v1/attachments/")) {
-        const url = value; // use as-is
-        // We can't know the file type without a HEAD; render a file tile and open on click
-        return {
-          filename: url,
-          extension: "",
-          isImage: false,
-          previewUrl: this.getFilePreviewUrl("document"),
-          clickHandler: () => {
-            // Open in a new tab; browser will render or download based on content-type
-            window.open(url, "_blank");
-          },
-        };
-      } else {
-        // legacy filename in work dir
-        const filename = value;
-        const extension = filename.split(".").pop();
-        const isImage = this.isImageFile(filename);
-        const previewUrl = isImage
-          ? this.getServerImgUrl(filename)
-          : this.getFilePreviewUrl(filename);
+      // attachment is filename only (from persistent storage)
+      const filename = attachment;
+      const extension = filename.split(".").pop();
+      const isImage = this.isImageFile(filename);
+      const previewUrl = isImage
+        ? this.getServerImgUrl(filename)
+        : this.getFilePreviewUrl(filename);
 
-        return {
-          filename: filename,
-          extension: (extension || "").toUpperCase(),
-          isImage: isImage,
-          previewUrl: previewUrl,
-          clickHandler: () => {
-            if (this.isImageFile(filename)) {
-              this.openImageModal(this.getServerImgUrl(filename), filename);
-            } else {
-              this.downloadAttachment(filename);
-            }
-          },
-        };
-      }
+      return {
+        filename: filename,
+        extension: extension.toUpperCase(),
+        isImage: isImage,
+        previewUrl: previewUrl,
+        clickHandler: () => {
+          if (this.isImageFile(filename)) {
+            this.openImageModal(this.getServerImgUrl(filename), filename);
+          } else {
+            this.downloadAttachment(filename);
+          }
+        },
+      };
     } else {
       // attachment is object (from current session)
       const isImage = this.isImageFile(attachment.name);
@@ -437,13 +391,22 @@ const model = {
 
   async downloadAttachment(filename) {
     try {
-      // If filename is already a Gateway attachments path, open directly
-      if (typeof filename === "string" && filename.startsWith("/v1/attachments/")) {
-        window.open(filename, "_blank");
-      } else {
-        // No legacy fallback available
-        throw new Error("Attachment is not available for download yet.");
+      const path = this.getServerFileUrl(filename);
+      const response = await fetchApi("/download_work_dir_file?path=" + path);
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
       }
+
+      const blob = await response.blob();
+
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
     } catch (error) {
       window.toastFetchError("Error downloading file", error);
       alert("Error downloading file");

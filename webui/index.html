@@ -96,13 +96,16 @@
         };
     </script>
 
-    <!-- Load Alpine & framework init first so x- directives are ready for early clicks -->
-    <script type="module" src="js/initFw.js"></script>
+    <!-- Load module scripts first -->
+    <script type="module" src="js/scheduler.js?v=sa01"></script>
+    <script type="module" src="js/history.js?v=sa01"></script>
 
-    <!-- Then load module scripts -->
-    <script type="module" src="js/scheduler.js"></script>
-    <script type="module" src="js/history.js"></script>
-    <script type="module" src="index.js"></script>
+    <script type="module" src="index.js?v=sa01"></script>
+
+    <!-- Then load Alpine.js -->
+    <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
+    <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
+    <script type="module" src="js/initFw.js?v=sa01"></script>
 
     <script src="vendor/ace-min/ace.js"></script>
     <link href="vendor/ace-min/ace.min.css" rel="stylesheet">
@@ -123,9 +126,9 @@
     <link rel="manifest" href="js/manifest.json">
 
     <!-- Non-module scripts after Alpine.js -->
-    <script type="text/javascript" src="js/settings.js"></script>
-    <script type="text/javascript" src="js/file_browser.js"></script>
-    <script type="text/javascript" src="js/modal.js"></script>
+    <script type="text/javascript" src="js/settings.js?v=sa01"></script>
+    <script type="text/javascript" src="js/file_browser.js?v=sa01"></script>
+    <script type="text/javascript" src="js/modal.js?v=sa01"></script>
 </head>
 
 <body class="dark-mode device-pointer">
@@ -310,7 +313,7 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showThoughts: false }">
+                            <li x-data="{ showThoughts: true }">
                                 <span>Show thoughts</span>
                                 <label class="switch">
                                     <input type="checkbox" x-model="showThoughts"
@@ -369,7 +372,15 @@
                 <x-component path="notifications/notification-toast-stack.html"></x-component>
             </div>
 
-            <!-- Legacy #toast element removed; using unified toast stack component -->
+            <div id="toast" class="toast">
+                <div class="toast__content">
+                    <div class="toast__title"></div>
+                    <div class="toast__separator"></div>
+                    <div class="toast__message"></div>
+                </div>
+                <button class="toast__copy" style="display: none;">Copy</button>
+                <button class="toast__close">Close</button>
+            </div>
             <div id="progress-bar-box">
                 <h4 id="progress-bar-h">
                     <span id="progress-bar-i">|></span><span id="progress-bar"></span>
@@ -530,7 +541,7 @@
     <div id="settingsModal" x-data="settingsModalProxy">
         <template x-teleport="body">
             <div x-show="isOpen" class="modal-overlay" @click.self="handleCancel()"
-                @keydown.escape.window="isOpen && handleCancel()">
+                @keydown.escape.window="isOpen && handleCancel()" x-transition>
                 <div class="modal-container">
                     <div class="modal-header">
                         <h2 x-text="settings.title"></h2>
@@ -568,7 +579,13 @@
                                             </a>
                                         </li>
                                     </template>
-                                    
+                                    <!-- Tunnel navigation entry - only visible in the External Services tab -->
+                                    <li x-show="activeTab === 'external'">
+                                        <a href="#section-tunnel">
+                                            <img src="/public/tunnel.svg" alt="Tunnel">
+                                            <span>Flare Tunnel</span>
+                                        </a>
+                                    </li>
                                 </ul>
                             </nav>
 
@@ -577,13 +594,6 @@
                                     <div class="section-title" x-text="section.title"></div>
                                     <div class="section-description" x-html="section.description"></div>
 
-                                    <!-- Special case: render Flare Tunnel component when synthesized as a section -->
-                                    <template x-if="section.id === 'tunnel'">
-                                        <x-component path="settings/tunnel/tunnel-section.html" />
-                                    </template>
-
-                                    <!-- Standard fields for other sections -->
-                                    <template x-if="section.id !== 'tunnel'">
                                     <template x-for="(field, fieldIndex) in section.fields.filter(f => !f.hidden)"
                                         :key="fieldIndex">
                                         <div :class="{'field': true, 'field-full': field.type === 'textarea'}">
@@ -592,15 +602,6 @@
                                                 </div>
                                                 <div class="field-description" x-html="field.description || ''"
                                                     x-show="field.description"></div>
-                                                <!-- Provider credential presence badge -->
-                                                <template x-if="String(field.id||'').startsWith('api_key_')">
-                                                    <span style="margin-left: 8px; font-size: 0.8rem; opacity: 0.8;">
-                                                        <span x-show="$root.settings?.credentials?.has_secret?.[String(field.id).slice(8).toLowerCase()] === true"
-                                                              style="color: var(--color-primary);">Stored</span>
-                                                        <span x-show="!$root.settings?.credentials?.has_secret?.[String(field.id).slice(8).toLowerCase()]"
-                                                              style="color: var(--color-danger);">Not set</span>
-                                                    </span>
-                                                </template>
                                             </div>
 
                                             <div class="field-control">
@@ -682,11 +683,13 @@
                                             </div>
                                         </div>
                                     </template>
-                                    </template>
                                 </div>
                             </template>
 
-                            
+                            <!-- Tunnel section content - only visible in External Services tab -->
+                            <div id="section-tunnel" class="section" x-show="activeTab === 'external'">
+                                <x-component path="settings/tunnel/tunnel-section.html" />
+                            </div>
                         </div>
 
                         <!-- Task Scheduler Tab Content -->
