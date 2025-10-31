@@ -20,6 +20,8 @@
       "items": {"type": "string"}
     },
     "metadata": {"type": "object"},
+    "type": {"type": "string"},
+    "version": {"type": "string"},
     "trace_context": {
       "type": "object",
       "additionalProperties": {"type": "string"}

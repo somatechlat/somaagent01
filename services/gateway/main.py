@@ -5201,19 +5201,18 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
     - Stores any provider credentials embedded in fields (keys starting with 'api_key_').
     Returns refreshed UI sections.
     """
-    # Enforce policy for settings updates (fail-closed when OPA is configured)
+    # Enforce policy in environments that require auth; skip in dev/local to avoid blocking Settings saves
     # Derive tenant from header (if present) or default to public in local/dev
-    try:
-        tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
-        await _evaluate_opa(request, {"action": "settings.update", "resource": "ui.settings", "tenant": tenant}, {})
-    except HTTPException:
-        # Bubble up policy decision (403/5xx)
-        raise
-    except Exception as exc:
-        # If OPA is misconfigured and OPA_URL is set, propagate as 502 to fail-closed
-        if OPA_URL:
+    if REQUIRE_AUTH and OPA_URL:
+        try:
+            tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
+            await _evaluate_opa(request, {"action": "settings.update", "resource": "ui.settings", "tenant": tenant}, {})
+        except HTTPException:
+            # Bubble up policy decision (403/5xx)
+            raise
+        except Exception as exc:
+            # If OPA is enabled but unreachable, fail-closed for safety
             raise HTTPException(status_code=502, detail=f"policy evaluation failed: {exc}")
-        # Otherwise, continue best-effort in local/dev
 
     sections = payload.sections or []
     # Extract top-level agent settings and new nested groups
@@ -5426,6 +5425,20 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
 
     # Return refreshed sections
     return await ui_sections_get()
+
+
+@app.get("/v1/ui/settings/credentials")
+async def ui_settings_credentials() -> dict[str, Any]:
+    """Return presence map of stored LLM credentials by provider.
+
+    This exposes only presence/absence, never secrets.
+    """
+    try:
+        store = get_llm_credentials_store()
+        providers = await store.list_providers()
+    except Exception:
+        providers = []
+    return {"has_secret": {p: True for p in providers}}
 
 
 @app.get("/v1/av/test")

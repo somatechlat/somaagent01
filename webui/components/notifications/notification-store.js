@@ -48,45 +48,8 @@ const model = {
     // }, 5 * 60 * 1000); // Every 5 minutes
   },
 
-  // Update notifications from polling data
-  updateFromPoll(pollData) {
-    if (!pollData) return;
-
-    // Check if GUID changed (system restart)
-    if (pollData.notifications_guid !== this.lastNotificationGuid) {
-      this.lastNotificationVersion = 0;
-      this.notifications = [];
-      this.toastStack = []; // Clear toast stack on restart
-      this.lastNotificationGuid = pollData.notifications_guid || "";
-    }
-
-    // Process new notifications and add to toast stack
-    if (pollData.notifications && pollData.notifications.length > 0) {
-      pollData.notifications.forEach((notification) => {
-        // should we toast the notification?
-        const shouldToast = !notification.read;
-
-        // adjust notification data before adding
-        this.adjustNotificationData(notification);
-
-        const isNew = !this.notifications.find((n) => n.id === notification.id);
-        this.addOrUpdateNotification(notification);
-
-        // Add new unread notifications to toast stack
-        if (isNew && shouldToast) {
-          this.addToToastStack(notification);
-        }
-      });
-    }
-
-    // Update version tracking
-    this.lastNotificationVersion = pollData.notifications_version || 0;
-    this.lastNotificationGuid = pollData.notifications_guid || "";
-
-    // Update UI state
-    this.updateUnreadCount();
-    // this.removeOldNotifications();
-  },
+  // SSE-only build: no polling path used. Keep a no-op for compatibility.
+  updateFromPoll(_pollData) { /* no-op in SSE-only UI */ },
 
   adjustNotificationData(notification) {
     // set default priority if not set
@@ -355,7 +318,7 @@ const model = {
     return `<span class="material-symbols-outlined">${iconName}</span>`;
   },
 
-  // Create notification via backend (will appear via polling)
+  // Create a frontend notification: log in list AND show toast
   async createNotification(
     type,
     message,
@@ -365,8 +328,28 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    // Frontend-only notifications: push directly to toast stack and return id
-    return this.addFrontendToastOnly(type, message, title, display_time, group, priority);
+    const timestamp = new Date().toISOString();
+    const notification = {
+      id: `frontend-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      type,
+      title,
+      message,
+      detail,
+      timestamp,
+      display_time,
+      read: false,
+      frontend: true,
+      group,
+      priority,
+    };
+    // Normalize
+    this.adjustNotificationData(notification);
+    // Add to list and update counters
+    this.addOrUpdateNotification(notification);
+    this.updateUnreadCount();
+    // Also surface as toast
+    this.addToToastStack(notification);
+    return notification.id;
   },
 
   // Convenience methods for different notification types
@@ -465,14 +448,11 @@ const model = {
     );
   },
 
-  // Enhanced: Open modal and clear toast stack
+  // Enhanced: Open modal without destroying history; keep list intact
   async openModal() {
-    // Clear toast stack when modal opens
-    this.clearToastStack(false);
-    // open modal
+    // Open modal
     await openModal("notifications/notification-modal.html");
-    // mark all as read when modal closes
-    this.markAllAsRead();
+    // Optional: leave read state to the user; do not auto-mark on open
   },
 
   // Legacy method for backward compatibility

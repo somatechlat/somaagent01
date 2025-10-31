@@ -37,11 +37,26 @@ window.__defaultSelectionDone = window.__defaultSelectionDone || false;
 let _gatewaySSE = null;
 let _gatewaySSESession = null;
 let _sseActiveAssistantBySession = {}; // sessionId -> stable in-progress assistant message id
+const _lastAssistantBySession = {}; // sessionId -> { text, ts }
+function _normalizeText(s) { try { return String(s || '').trim(); } catch(_) { return ''; } }
+function _removeStaleThinking(exceptId = null) {
+  try {
+    const nodes = Array.from(document.querySelectorAll('[id^="message-assistant-current-"]'));
+    for (const n of nodes) {
+      if (!exceptId || n.id !== `message-${exceptId}`) {
+        const cid = n.id.replace(/^message-/, '');
+        removeMessageById(cid);
+      }
+    }
+  } catch(_) {}
+}
 let __sseConnected = false; // dedupe poll vs SSE when connected
 let __sseDesired = false; // true as soon as we attempt to open SSE; helps dedupe before onopen
 let __provisionalContext = false; // set true when we create a temp session id client-side prior to server ack
 let _optimisticToolStarts = new Map(); // toolName -> optimistic message id
 let __sendInFlight = false; // gate duplicate rapid submissions
+// Track upload message ids by filename to avoid duplicates when streams overlap (e.g., provisional vs server session)
+const _uploadMessageByFilename = new Map(); // filename -> messageId
 
 // Render a single Gateway event payload to the chat UI in a normalized way
 function renderGatewayEvent(sessionId, event) {
@@ -57,24 +72,7 @@ function renderGatewayEvent(sessionId, event) {
     // Use a stable id for all streaming chunks in a single assistant turn, and per-tool lifecycle
     let stableId = event.event_id || event.id || generateGUID();
 
-    // Normalize tool lifecycle even if role is misclassified but metadata indicates a tool event
-    if ((meta && meta.tool_name) && (status === "start" || kind === "tool.start" || kind === "tool.result")) {
-      const toolName = meta.tool_name || event.tool_name || "Tool";
-      const isStart = status === "start" || kind === "tool.start";
-      const reqId = meta.request_id || meta.requestId || stableId;
-      const heading = `Tool: ${toolName}`;
-      const body = isStart ? "Starting…" : content;
-      // Dedupe any prior optimistic start for same tool name
-      try {
-        const optId = _optimisticToolStarts.get(toolName);
-        if (optId && optId !== reqId) {
-          removeMessageById(optId);
-          _optimisticToolStarts.delete(toolName);
-        }
-      } catch (_) {}
-      setMessage(reqId, "tool", heading, body, false, { ...meta });
-      return;
-    }
+    // Intentionally avoid rendering tools here to centralize logic below
 
     if (role === "assistant") {
       // Insert a Thinking… placeholder only for streaming or explicit thinking events
@@ -100,6 +98,7 @@ function renderGatewayEvent(sessionId, event) {
         // Finalize by reusing the in-progress id, then clear it
         stableId = _sseActiveAssistantBySession[sessionId];
         delete _sseActiveAssistantBySession[sessionId];
+        _removeStaleThinking(stableId);
       }
       // Surface explicit chat failures as a red toast so it's visible
       try {
@@ -137,8 +136,8 @@ function renderGatewayEvent(sessionId, event) {
       const reqId = meta.request_id || meta.requestId || null;
       const fallbackId = `tool-${sessionId}-${toolName}`;
       stableId = reqId ? reqId : fallbackId;
-      // Keep a visible "Starting…" body for lifecycle parity; show details via kvps/meta on result.
-      const body = "Starting…";
+      // Keep a visible "Starting…" body for lifecycle parity; on result show the actual content
+      const body = isStart ? "Starting…" : (typeof content === 'string' ? content : "");
       // Dedupe any prior optimistic start for same tool name
       try {
         const optId = _optimisticToolStarts.get(toolName);
@@ -169,16 +168,41 @@ function renderGatewayEvent(sessionId, event) {
 
     // Upload progress events (sa01-v1)
     if (kind === "uploads.progress") {
-      const filename = meta.filename || "file";
+      const filename = String(meta.filename || "file");
       const bytes = meta.bytes_uploaded || 0;
       const total = meta.bytes_total || 0;
       const pct = total > 0 ? Math.min(100, Math.floor((bytes / total) * 100)) : null;
-      const upId = `upload-${sessionId}-${filename}`;
+      // Prefer the event’s declared session over the current stream param to dedupe across provisional/server sessions
+      const evSession = (event.session_id || sessionId);
+      const upId = `upload-${evSession}-${filename}`;
       const isDone = (total > 0 && bytes >= total) || String(meta.status || '').toLowerCase() === 'done';
       const upHeading = `${isDone ? 'Uploaded' : 'Uploading'}: ${filename}`;
       const url = meta.url || (meta.attachment_id ? `/v1/attachments/${meta.attachment_id}` : undefined);
       const kv = { ...meta, percent: pct ?? 0, url };
+      try {
+        const prevId = _uploadMessageByFilename.get(filename);
+        if (prevId && prevId !== upId) {
+          // Remove any previous upload message for this filename (e.g., from a provisional session)
+          removeMessageById(prevId);
+        }
+        _uploadMessageByFilename.set(filename, upId);
+      } catch (_) {}
       setMessage(upId, "upload", upHeading, "", false, kv);
+      // Defensive dedupe: remove any other upload blocks with the same heading
+      try {
+        const headings = Array.from(document.querySelectorAll('#chat-history .message-upload .msg-heading h4'));
+        for (const h of headings) {
+          const text = String(h.textContent || '').trim();
+          if (/^Uploaded:|^Uploading:/.test(text) && text.toLowerCase() === upHeading.toLowerCase()) {
+            const container = h.closest('.message-container');
+            if (container && container.id !== `message-${upId}`) {
+              const cid = container.id && container.id.replace(/^message-/, '');
+              removeMessageById(cid || '');
+            }
+          }
+        }
+      } catch (_) {}
+      // Once done, keep the latest mapping; further events for same filename will update the same block
       return;
     }
 
@@ -186,6 +210,16 @@ function renderGatewayEvent(sessionId, event) {
     const heading = role === "assistant" ? "Soma response" : "Info";
     const type = role === "assistant" ? "response" : "info";
     const kvps = { ...meta };
+    if (role === 'assistant' && !isStreaming) {
+      const now = Date.now();
+      const prev = _lastAssistantBySession[sessionId] || { text: '', ts: 0 };
+      const cur = _normalizeText(content);
+      if (cur && prev.text === cur && (now - prev.ts) < 3000) {
+        return; // suppress duplicate final content within 3s
+      }
+      _lastAssistantBySession[sessionId] = { text: cur, ts: now };
+      _removeStaleThinking(null);
+    }
     setMessage(stableId, type, heading, content, isStreaming, kvps);
   } catch (e) {
     console.warn("Event render error:", e);
@@ -321,19 +355,20 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleSidebar(false);
     }
   });
-  // Eagerly load critical UI components so they are present before any toasts/updates
+  // Ensure chat input exists and is interactable early for automation stability
   try {
-    const eagerSelectors = [
-      'x-component[path="notifications/notification-toast-stack.html"]',
-      'x-component[path="notifications/notification-icons.html"]',
-      'x-component[path="/chat/attachments/inputPreview.html"]'
-    ];
-    const nodes = document.querySelectorAll(eagerSelectors.join(","));
-    nodes.forEach((n) => {
-      const p = n.getAttribute("path");
-      if (p) importComponent(p, n).catch(() => {});
-    });
-  } catch (_) {}
+    const container = document.getElementById('chat-input-container');
+    if (container && !document.getElementById('chat-input')) {
+      const ta = document.createElement('textarea');
+      ta.id = 'chat-input';
+      ta.placeholder = 'Type your message here...';
+      ta.rows = 1;
+      container.insertBefore(ta, container.firstChild);
+    }
+  } catch(_) {}
+  // Eagerly load critical UI components so they are present before any toasts/updates
+  // Avoid eager-loading notification components; they are already present in the DOM via x-component.
+  // Only eager-load critical chat subcomponents if absolutely necessary. For now, none.
   // Populate the chats list from live sessions (non-blocking)
   try { refreshChatsList(); } catch (_) {}
   // Kick a quick health probe so connection status becomes available immediately
@@ -1187,21 +1222,8 @@ export const newContext = function () {
   context = generateShortId();
   setContext(context);
   try { window.__newContextCount++; } catch(_) {}
-  // Optimistically add to chats list
-  try {
-    if (globalThis.Alpine && chatsSection) {
-      const chatsAD = Alpine.$data(chatsSection);
-      if (chatsAD) {
-        const exists = (chatsAD.contexts || []).some(c => c.id === context);
-        if (!exists) {
-          const nextNo = (chatsAD.contexts?.length || 0) + 1;
-          const item = { id: context, name: "", no: nextNo };
-          chatsAD.contexts = [item, ...(chatsAD.contexts || [])];
-          chatsAD.selected = context;
-        }
-      }
-    }
-  } catch (_) {}
+  // Avoid inserting placeholder list items; refresh from server instead
+  try { refreshChatsList(); } catch (_) {}
 }
 
 export const setContext = function (id, options = {}) {
@@ -1232,12 +1254,8 @@ export const setContext = function (id, options = {}) {
       if (chatsAD) {
         chatsAD.selected = id;
         // Mark selection and ensure the chat exists in list if we have none yet
-        if (!Array.isArray(chatsAD.contexts)) chatsAD.contexts = [];
-        const exists = chatsAD.contexts.some(c => c.id === id);
-        if (!exists) {
-          const nextNo = (chatsAD.contexts?.length || 0) + 1;
-          chatsAD.contexts = [{ id, name: "", no: nextNo }, ...chatsAD.contexts];
-        }
+        // Keep selection stable; do not add placeholder entries. Let refreshChatsList() repopulate.
+        try { refreshChatsList(); } catch (_) {}
       }
     }
     if (tasksSection) {
@@ -1306,6 +1324,16 @@ globalThis.toggleSpeech = function (isOn) {
   console.log("Speech:", isOn);
   localStorage.setItem("speech", isOn);
   if (!isOn) speechStore.stopAudio();
+};
+
+// Restart (Agent Zero parity): perform a safe UI reload
+globalThis.restart = function () {
+  try {
+    justToast("Restarting UI…", "info", 2000, "ui-restart");
+  } catch (_) {}
+  try { closeGatewayStream(); } catch (_) {}
+  try { speechStore.stopAudio(); } catch (_) {}
+  location.reload();
 };
 
 globalThis.nudge = async function () {

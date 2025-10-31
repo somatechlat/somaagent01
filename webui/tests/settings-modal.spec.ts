@@ -14,10 +14,10 @@ test('Settings modal shows API provider fields', async ({ page }) => {
     await page.evaluate(() => (window as any).settingsModalProxy?.openModal?.());
   }
 
-  // Wait for modal to appear and render sections
-  await expect(page.locator('#settingsModal .modal-container')).toHaveCount(1);
+  // Wait for modal to appear and render sections (teleported to <body>)
+  await expect(page.locator('.modal-container:visible').first()).toBeVisible();
 
   // Look for any input of type password or text with id containing 'api_key'
-  const input = page.locator('#settingsModal input[id*="api_key_"], #settingsModal input[type="password"], #settingsModal input[type="text"]');
+  const input = page.locator('.modal-container:visible input[id*="api_key_"], .modal-container:visible input[type="password"], .modal-container:visible input[type="text"]');
   await expect(input.first()).toBeVisible();
 });

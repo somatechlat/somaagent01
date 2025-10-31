@@ -698,6 +698,42 @@ class ConversationWorker:
                         usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
         text = "".join(buffer)
         if not text:
+            # Fallback: call non-streaming invoke once to get a definitive answer
+            try:
+                url2 = f"{self._gateway_base}/v1/llm/invoke"
+                ov2: dict[str, Any] = {}
+                for k, v in {
+                    "model": slm_kwargs.get("model"),
+                    "base_url": slm_kwargs.get("base_url"),
+                    "temperature": slm_kwargs.get("temperature"),
+                    "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                }.items():
+                    if v is None:
+                        continue
+                    if isinstance(v, str) and v.strip() == "":
+                        continue
+                    ov2[k] = v
+                body2 = {
+                    "role": "dialogue",
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "tenant": (base_metadata or {}).get("tenant"),
+                    "messages": [m.__dict__ for m in messages],
+                    "overrides": ov2,
+                }
+                headers2 = {"X-Internal-Token": self._internal_token or ""}
+                async with httpx.AsyncClient(timeout=30.0) as client2:
+                    resp2 = await client2.post(url2, json=body2, headers=headers2)
+                    if resp2.is_error:
+                        raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                    data2 = resp2.json()
+                    content2 = data2.get("content", "")
+                    usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                    if content2:
+                        return content2, usage2
+            except Exception:
+                # Bubble up to callers; higher-level handler will surface a meaningful error
+                pass
             raise RuntimeError("Empty response from streaming Gateway/SLM")
         return text, usage
 

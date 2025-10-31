@@ -65,3 +65,9 @@ if (window.Alpine) {
     onCreate();
   });
 }
+
+// Mark app as ready for tests/automation once initial scripts have run.
+try {
+  document.documentElement.setAttribute('data-app-ready','1');
+  window.__APP_READY = true;
+} catch(_) {}

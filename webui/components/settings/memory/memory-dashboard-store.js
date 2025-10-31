@@ -91,7 +91,7 @@ const memoryDashboardStore = {
   async getCurrentMemorySubdir() {
     try {
       // Try to get current memory subdirectory from the backend
-      const response = await API.callJsonApi("memory_dashboard", {
+      const response = await API.callJsonApi("/memory_dashboard", {
         action: "get_current_memory_subdir",
         context_id: getContext(),
       });
@@ -113,7 +113,7 @@ const memoryDashboardStore = {
     this.error = null;
 
     try {
-      const response = await API.callJsonApi("memory_dashboard", {
+      const response = await API.callJsonApi("/memory_dashboard", {
         action: "get_memory_subdirs",
       });
 
@@ -172,7 +172,7 @@ const memoryDashboardStore = {
     }
 
     try {
-      const response = await API.callJsonApi("memory_dashboard", {
+      const response = await API.callJsonApi("/memory_dashboard", {
         action: "search",
         memory_subdir: this.selectedMemorySubdir,
         area: this.areaFilter,
@@ -329,7 +329,7 @@ const memoryDashboardStore = {
 
     try {
       this.loading = true;
-      const response = await API.callJsonApi("memory_dashboard", {
+      const response = await API.callJsonApi("/memory_dashboard", {
         action: "bulk_delete",
         memory_subdir: this.selectedMemorySubdir,
         memory_ids: selectedMemories.map((memory) => memory.id),
@@ -567,7 +567,7 @@ ${memory.content_full}
       const isViewingThisMemory =
         this.detailMemory && this.detailMemory.id === memory.id;
 
-      const response = await API.callJsonApi("memory_dashboard", {
+      const response = await API.callJsonApi("/memory_dashboard", {
         action: "delete",
         memory_subdir: this.selectedMemorySubdir,
         memory_id: memory.id,
@@ -685,7 +685,7 @@ ${memory.content_full}
   async confirmEditMode() {
     try {
 
-      const response = await API.callJsonApi("memory_dashboard", {
+      const response = await API.callJsonApi("/memory_dashboard", {
         action: "update",
         memory_subdir: this.selectedMemorySubdir,
         original: JSON.parse(this.editMemoryBackup),

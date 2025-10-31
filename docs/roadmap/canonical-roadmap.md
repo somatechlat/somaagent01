@@ -417,3 +417,41 @@ Migration strategy (high level)
 Risks & mitigations
 - Risk: Missing credentials after migration. Mitigation: use `/v1/llm/test` and a migration script to copy secrets into Gateway store, validate, and only then enforce lock.
 - Risk: Legacy clients sending `base_url`. Mitigation: `warn` mode that logs and surfaces in UI and builds a one-click migration map.
+
+---
+
+## 2025-10-31 Update — Real Endpoints Roadmap (Merged)
+
+This addendum locks our single-surface Gateway API and the UI’s SSE-only behavior. It merges decisions we’ve implemented with the remaining work to reach full parity with the original Agent Zero Web UI while retaining the somaAgent01 architecture.
+
+Feature → Endpoint map (authoritative)
+- Chat ingress: `POST /v1/session/message`
+- Session stream (SSE): `GET /v1/session/{session_id}/events`
+- Recent timeline: `GET /v1/sessions/{session_id}/events`
+- Uploads: `POST /v1/uploads`
+- Attachments download: `GET /v1/attachments/{id}`
+- Tools catalog/list: `GET /v1/tools`, `GET /v1/tool-catalog`, `PUT /v1/tool-catalog/{name}`
+- Tool request enqueue: `POST /v1/tool/request`
+- UI settings (sections): `GET|POST /v1/ui/settings/sections`
+- Runtime config (UI boot hints): `GET /v1/runtime-config`, `GET /ui/config.json`
+- Session helpers: `POST /v1/sessions/{id}/reset`, `POST /v1/sessions/{id}/pause`, `GET /v1/sessions/{id}/history`, `GET /v1/sessions/{id}/context-window`, `POST /v1/sessions/import`, `POST /v1/sessions/export`, `DELETE /v1/sessions/{id}`
+- Workdir (developer UX): `GET /v1/workdir/list`, `POST /v1/workdir/upload`, `POST /v1/workdir/delete`, `GET /v1/workdir/download`
+- Antivirus check: `GET /v1/av/test`
+
+Transport and events (canonical)
+- SSE-only. Event envelope matches “Outbound SSE Event Contract (sa01-v1)”.
+- Event types: `assistant.thinking`, `assistant.stream`, `assistant.final`, `tool.start`, `tool.result`, `uploads.progress`.
+
+Phased delivery (done vs remaining)
+- Done: single Gateway surface; UI served under `/ui`; session durability; outbox + memory write outbox; settings sections + audit logging.
+- Remaining (high→medium):
+  - UI tool lifecycle de-duplication when `tool.start` lacks `request_id` but `tool.result` includes it
+  - Uploads progress single-block per file and render “Uploaded:” when only a final “done” event arrives
+  - Settings modal Alpine init race under automation; ensure modal opens reliably on first click
+  - Provider credential presence hints to enable SSE assistant tests
+
+Acceptance for this addendum
+- No legacy UI calls appear (`/v1/ui/poll`, `/v1/csrf`)
+- Uploading small files shows “Uploaded:” even without intermediate progress
+- Tool start→result yields a single “Tool: <name>” block with result body
+- Settings modal renders sections on first open in CI/local

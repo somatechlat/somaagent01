@@ -73,6 +73,7 @@ const settingsModalProxy = {
     },
 
     async openModal() {
+        const _delay = (ms)=> new Promise(res=>setTimeout(res, ms));
         console.log('Settings modal opening');
         const modalEl = document.getElementById('settingsModal');
         const modalAD = Alpine.$data(modalEl);
@@ -84,9 +85,10 @@ const settingsModalProxy = {
             store.isOpen = true;
         }
 
-        // Optimistically open the modal UI before network calls so users see it even if fetch fails
+        // Open the modal shell immediately; we’ll populate sections below
         try { if (modalAD) modalAD.isOpen = true; } catch(_) {}
         this.isOpen = true;
+        try { await _delay(0); } catch(_) {}
 
         //get settings from backend
         try {
@@ -115,14 +117,39 @@ const settingsModalProxy = {
                         "classes": "btn btn-cancel"
                     }
                 ],
-                "sections": set.settings.sections
+                "sections": set.settings.sections,
+                // to be filled with presence map (has_secret)
+                "credentials": { "has_secret": {} }
             }
 
-            // Update modal data
+            // Fetch provider credentials presence for UI badges (non-fatal)
+            try {
+                const c = await fetchApi('/v1/ui/settings/credentials', { method: 'GET' });
+                if (c && c.ok) {
+                    const body = await c.json().catch(()=>({}));
+                    if (body && body.has_secret && typeof body.has_secret === 'object') {
+                        settings.credentials = { has_secret: body.has_secret };
+                    }
+                }
+            } catch (_) { /* ignore */ }
+
+            // Update modal data and wait a frame to ensure teleported DOM renders
             modalAD.isOpen = true;
             modalAD.settings = settings;
             this.settings = settings;
             this.updateSpeechFieldVisibility();
+            try { await _delay(0); } catch(_) {}
+
+            // Wait until the teleported modal container is visible before resolving
+            const deadline = Date.now() + 3000;
+            while (Date.now() < deadline) {
+                try {
+                    const modal = document.querySelector('.modal-container');
+                    const visible = modal && modal.offsetParent !== null;
+                    if (visible) break;
+                } catch(_) {}
+                await _delay(50);
+            }
             // Apply initial readonly state for Uploads & AV based on current values
             try{
                 const getField=(id)=>{
@@ -538,9 +565,18 @@ document.addEventListener('alpine:init', function () {
                         section.tab === 'agent'
                     ) || [];
                 } else if (this.activeTab === 'external') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'external'
-                    ) || [];
+                    const base = this.settingsData.sections?.filter(section => section.tab === 'external') || [];
+                    // Synthesize a Flare Tunnel section at the end to avoid hard-coded duplicates in HTML
+                    // This keeps navigation and content generation uniform.
+                    const tunnelSection = {
+                        id: 'tunnel',
+                        title: 'Flare Tunnel',
+                        description: 'Create a secure public URL to access your Agent Zero instance anytime, anywhere.',
+                        fields: []
+                    };
+                    // Avoid duplication if the backend ever ships a tunnel section in the future
+                    const hasTunnel = base.some(s => (s.id || '').toLowerCase() === 'tunnel');
+                    this.filteredSections = hasTunnel ? base : [...base, tunnelSection];
                 } else if (this.activeTab === 'developer') {
                     this.filteredSections = this.settingsData.sections?.filter(section =>
                         section.tab === 'developer'

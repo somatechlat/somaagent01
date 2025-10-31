@@ -121,7 +121,23 @@ document.addEventListener('alpine:init', () => {
             Object.assign(this, genericModalProxy);
             // Ensure immediate file fetch when modal opens
             this.$watch('isOpen', async (value) => {
-               // what now?
+                try {
+                    const modalContent = document.getElementById('viewer');
+                    if (!value) {
+                        // Reset content/state when closing
+                        this.title = '';
+                        this.description = '';
+                        this.html = '';
+                        if (modalContent) {
+                            modalContent.className = 'modal-content';
+                        }
+                    } else {
+                        // When opening, ensure content container has base class
+                        if (modalContent && !modalContent.className.includes('modal-content')) {
+                            modalContent.classList.add('modal-content');
+                        }
+                    }
+                } catch (_) { /* non-fatal */ }
             });
         }
     }));

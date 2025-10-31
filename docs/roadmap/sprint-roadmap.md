@@ -130,3 +130,25 @@ Tracking and Metrics per Sprint:
 - Observability: new metrics/spans visible in dev dashboards when relevant.
 
 Review cadence: Demo and checkpoint at the end of each sprint; update this document and the canonical roadmap with any deltas.
+
+---
+
+## 2025-10-31 Sprint Addendum — Immediate Focus
+
+Sprint A — UI Parity Polish (now)
+- Fix tool lifecycle de-duplication: single “Tool: <name>” block even when `request_id` appears only on `tool.result`.
+- Uploads progress: exactly one upload block per filename; show “Uploaded:” when only a final event is observed.
+- Settings modal: ensure Alpine initialization so modal opens on first click in automation.
+- Tests: extend Playwright specs to assert the above behaviors.
+
+Sprint B — API Contract Tests + Docs
+- Add pytest probes for: `/v1/session/message`, `/v1/session/{id}/events` (SSE), `/v1/uploads`, `/v1/tools`, `/v1/ui/settings/sections`.
+- Document request/response examples in technical manual for each UI-used endpoint.
+
+Sprint C — Credential UX + Model Test
+- Settings: add provider key masking hints and a light-weight “Test model” (optional `/v1/llm/test`) wiring.
+- Update runtime-config to surface provider availability for boot-time UX hints.
+
+Sprint D — Memory + Observability
+- Health: surface WAL/outbox lag with thresholds and banners; collect Prometheus metrics.
+- Tests: chaos test to assert outbox/WAL resilience; Playwright checks for health banners without blocking chat.
