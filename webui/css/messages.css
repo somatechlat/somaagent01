@@ -206,6 +206,49 @@
   background-color: #af2222;
 }
 
+/* Upload message */
+.message-upload {
+  background-color: #2e3a28;
+}
+.light-mode .message-upload {
+  background-color: var(--color-panel);
+  color: #2b5f2e;
+}
+.upload-progress {
+  margin-top: 0.5em;
+}
+.upload-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+.upload-progress-bar {
+  position: relative;
+  height: 8px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+.light-mode .upload-progress-bar {
+  background: rgba(0,0,0,0.1);
+}
+.upload-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #50c878, #2ecc71);
+  transition: width 0.12s ease-out;
+}
+.upload-progress-text {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9em;
+}
+.upload-meta {
+  margin-top: 0.35em;
+  font-size: 0.9em;
+}
+
 .message-code-exe .message-body {
   min-height: 5em;
   width: 100%;

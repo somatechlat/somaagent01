@@ -1,0 +1,106 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic:
+      - button "Toggle Sidebar" [ref=e3] [cursor=pointer]:
+        - img [ref=e5]
+      - link "a0" [ref=e8] [cursor=pointer]:
+        - /url: https://github.com/agent0ai/agent-zero
+        - img "a0" [ref=e9]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - button "Reset Chat" [ref=e13] [cursor=pointer]
+          - button "New Chat" [ref=e14] [cursor=pointer]
+          - button "Load Chat" [ref=e15] [cursor=pointer]
+          - button "Save Chat" [ref=e16] [cursor=pointer]
+          - button "Restart" [ref=e17] [cursor=pointer]
+          - button "Settings" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+            - text: Settings
+          - button "SomaBrain" [ref=e20] [cursor=pointer]
+        - generic [ref=e22]:
+          - generic [ref=e23] [cursor=pointer]: Chats
+          - generic [ref=e24] [cursor=pointer]: Tasks
+        - paragraph [ref=e28]: No chats to list.
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - heading "Preferences" [level=3] [ref=e32] [cursor=pointer]:
+            - text: Preferences
+            - img [ref=e33]
+          - list [ref=e35]:
+            - listitem [ref=e36]:
+              - generic [ref=e37]: Autoscroll
+              - generic [ref=e38]:
+                - checkbox [checked]
+            - listitem [ref=e40]:
+              - generic [ref=e41]: Dark mode
+              - generic [ref=e42]:
+                - checkbox [checked]
+            - listitem [ref=e44]:
+              - generic [ref=e45]: Speech
+              - generic [ref=e46]:
+                - checkbox
+            - listitem [ref=e48]:
+              - generic [ref=e49]: Show thoughts
+              - generic [ref=e50]:
+                - checkbox [checked]
+            - listitem [ref=e52]:
+              - generic [ref=e53]: Show JSON
+              - generic [ref=e54]:
+                - checkbox
+            - listitem [ref=e56]:
+              - generic [ref=e57]: Show utility messages
+              - generic [ref=e58]:
+                - checkbox
+        - generic [ref=e60]: "Version {{version_no}} {{version_time}}"
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - text: 8:26:13 pm
+          - text: Oct 30, 2025
+        - 'generic "Health: ok postgres: ok redis: ok kafka: ok memory_replicator: ok (lag_seconds=9.200) memory_dlq: ok (depth=0)" [ref=e64]':
+          - img [ref=e65]
+        - generic [ref=e69]:
+          - generic "View Notifications" [ref=e71] [cursor=pointer]:
+            - generic [ref=e73]: notifications
+          - generic "View Notifications" [ref=e75] [cursor=pointer]:
+            - generic [ref=e77]: notifications
+      - heading "|>" [level=4] [ref=e80]:
+        - generic [ref=e81]: "|>"
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - img [ref=e86] [cursor=pointer]
+          - generic [ref=e88]:
+            - textbox "Type your message here..." [ref=e89]: file test
+            - button "Expand input" [ref=e90] [cursor=pointer]:
+              - img [ref=e91]
+          - generic [ref=e93]:
+            - button "Send message" [active] [ref=e94] [cursor=pointer]:
+              - img [ref=e95]
+            - button "Start/Stop recording" [ref=e96] [cursor=pointer]:
+              - img [ref=e97]
+        - generic [ref=e99]:
+          - button "Pause Agent" [ref=e100] [cursor=pointer]:
+            - img [ref=e101]
+            - generic [ref=e103]: Pause Agent
+          - button "Import knowledge" [ref=e104] [cursor=pointer]:
+            - img [ref=e105]
+            - paragraph [ref=e106]: Import knowledge
+          - button "Files" [ref=e107] [cursor=pointer]:
+            - img [ref=e108]
+            - paragraph [ref=e111]: Files
+          - button "History" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+            - paragraph [ref=e114]: History
+          - button "Context" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+            - paragraph [ref=e117]: Context
+          - button "Nudge" [ref=e118] [cursor=pointer]:
+            - img [ref=e119]
+            - paragraph [ref=e122]: Nudge
+  - generic [ref=e123]: ⚠️ SomaBrain offline – messages are being saved locally until connection restores.
+  - generic [ref=e124]: ℹ️ Memories degraded – conversation will continue but long-term memory may be delayed.
+```

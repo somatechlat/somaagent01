@@ -92,6 +92,8 @@ export function getHandler(type) {
       return drawMessageResponse;
     case "tool":
       return drawMessageTool;
+    case "upload":
+      return drawMessageUpload;
     case "code_exe":
       return drawMessageCodeExe;
     case "browser":
@@ -529,6 +531,71 @@ export function drawMessageTool(
     false,
     false
   );
+}
+
+export function drawMessageUpload(
+  messageContainer,
+  id,
+  type,
+  heading,
+  content,
+  temp,
+  kvps = null
+) {
+  // Ensure the shell exists
+  const msgDiv = _drawMessage(
+    messageContainer,
+    heading,
+    "",
+    temp,
+    false,
+    "message-upload",
+    kvps,
+    ["message-ai"],
+    [],
+    false,
+    false
+  );
+
+  // Build/update progress UI inside message body
+  const body = msgDiv.querySelector('.message-body');
+  if (!body) return;
+
+  // Container
+  let prog = body.querySelector('.upload-progress');
+  if (!prog) {
+    prog = document.createElement('div');
+    prog.className = 'upload-progress';
+    prog.innerHTML = `
+      <div class="upload-progress-row">
+        <div class="upload-progress-bar"><div class="upload-progress-fill" style="width:0%"></div></div>
+        <div class="upload-progress-text">0%</div>
+      </div>
+      <div class="upload-meta"></div>
+    `;
+    body.appendChild(prog);
+  }
+
+  const pct = Math.max(0, Math.min(100, Number(kvps?.percent ?? (kvps && kvps.bytes_total ? Math.floor(100 * (kvps.bytes_uploaded || 0) / kvps.bytes_total) : 0))));
+  const fill = prog.querySelector('.upload-progress-fill');
+  const txt = prog.querySelector('.upload-progress-text');
+  if (fill) fill.style.width = pct + '%';
+  if (txt) txt.textContent = pct + '%';
+
+  // If complete, show link if available
+  const complete = (kvps && kvps.bytes_total && kvps.bytes_uploaded >= kvps.bytes_total) || kvps?.status === 'done' || pct >= 100;
+  const meta = prog.querySelector('.upload-meta');
+  if (complete) {
+    messageContainer.querySelector('.msg-heading h4')?.innerHTML && (messageContainer.querySelector('.msg-heading h4').innerHTML = (heading || '').replace(/^Uploading:/, 'Uploaded:'));
+    if (kvps?.url || kvps?.attachment_id) {
+      const url = kvps.url || (`/v1/attachments/${kvps.attachment_id}`);
+      meta.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">Open attachment</a>`;
+    } else {
+      meta.textContent = 'Upload complete';
+    }
+  } else {
+    meta.textContent = '';
+  }
 }
 
 export function drawMessageCodeExe(

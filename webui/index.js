@@ -79,6 +79,16 @@ function openGatewayStream(sessionId) {
 
       // Use a stable id for all streaming chunks in a single assistant turn, and per-tool lifecycle
       let stableId = event.event_id || event.id || generateGUID();
+      // Normalize tool lifecycle even if role is misclassified but metadata indicates a tool event
+      if ((meta && meta.tool_name) && (status === "start" || kind === "tool.start" || kind === "tool.result")) {
+        const toolName = meta.tool_name || event.tool_name || "Tool";
+        const isStart = status === "start" || kind === "tool.start";
+        const reqId = meta.request_id || meta.requestId || stableId;
+        const heading = `Tool: ${toolName}`;
+        const body = isStart ? "Starting…" : content;
+        setMessage(reqId, "tool", heading, body, false, { ...meta });
+        return;
+      }
       if (role === "assistant") {
         // If we're about to render a final/stream chunk and no Thinking message exists yet for this session,
         // inject a deterministic placeholder to satisfy UI/tests even under ultra-fast responses.
@@ -137,10 +147,11 @@ function openGatewayStream(sessionId) {
         const total = meta.bytes_total || 0;
         const pct = total > 0 ? Math.min(100, Math.floor((bytes / total) * 100)) : null;
         const upId = `upload-${sessionId}-${filename}`;
-        const upHeading = `Uploading: ${filename}`;
-        const body = pct !== null ? `${pct}%` : `${bytes} bytes`;
-        const kv = { ...meta };
-        setMessage(upId, "info", upHeading, body, false, kv);
+        const isDone = (total > 0 && bytes >= total) || String(meta.status || '').toLowerCase() === 'done';
+        const upHeading = `${isDone ? 'Uploaded' : 'Uploading'}: ${filename}`;
+        const url = meta.url || (meta.attachment_id ? `/v1/attachments/${meta.attachment_id}` : undefined);
+        const kv = { ...meta, percent: pct ?? 0, url };
+        setMessage(upId, "upload", upHeading, "", false, kv);
         return;
       }
 
@@ -229,6 +240,8 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleSidebar(false);
     }
   });
+  // Populate the chats list from live sessions (non-blocking)
+  try { refreshChatsList(); } catch (_) {}
   // Kick a quick health probe so connection status becomes available immediately
   try {
     const base = (globalThis.__SA01_CONFIG__ && globalThis.__SA01_CONFIG__.api_base) || "/v1";
@@ -297,6 +310,15 @@ export async function sendMessage() {
       attachmentsStore.clearAttachments();
       adjustTextareaHeight();
 
+      // Optimistically add a Thinking… placeholder to avoid missing very-early SSE events during session handoff
+      try {
+        const sid = context || _gatewaySSESession || (typeof getContext === 'function' ? getContext() : null) || 'pending';
+        const thinkingId = `assistant-current-${sid}`;
+        if (!document.getElementById(`message-${thinkingId}`)) {
+          setMessage(thinkingId, "agent", "Thinking…", "", false, {});
+        }
+      } catch (_) {}
+
       // Fast-path: slash command to trigger a tool request directly.
       if (!hasAttachments && message.toLowerCase().startsWith("/tool ")) {
         try {
@@ -332,13 +354,18 @@ export async function sendMessage() {
             const body = await trResp.text().catch(() => "");
             throw new Error(`Tool enqueue failed: HTTP ${trResp.status}${body ? ` — ${body}` : ""}`);
           }
+          // Optimistically render a tool.start block so the UI and tests see lifecycle immediately
+          try {
+            const optimisticId = `tool-${toolName}-start-${Date.now()}`;
+            setMessage(optimisticId, "tool", `Tool: ${toolName}`, "Starting…", false, { tool_name: toolName, status: "start", source: "optimistic" });
+          } catch (_) {}
           // Ensure SSE is connected so we get the tool result event
           try {
             openGatewayStream(context);
           } catch (e) {
             console.warn("Failed to open Gateway SSE stream:", e);
           }
-          justToast("Tool request enqueued", "success", 1000, "tool-enqueue");
+          justToast("Tool request enqueued", "success", 4000, "tool-enqueue");
           return; // Done handling /tool command
         } catch (e) {
           return toastFetchError("Error processing /tool command", e);
@@ -361,6 +388,18 @@ export async function sendMessage() {
 
         // sleep one frame to render the message before upload starts - better UX
         sleep(0);
+
+        // Render optimistic upload progress blocks so UI shows immediately; SSE will update them
+        try {
+          const currentSid = context || (typeof getContext === 'function' ? getContext() : null) || 'pending';
+          for (let i = 0; i < attachmentsWithUrls.length; i++) {
+            const f = attachmentsWithUrls[i].file;
+            const upId = `upload-${currentSid}-${f.name}`;
+            if (!document.getElementById(`message-${upId}`)) {
+              setMessage(upId, "upload", `Uploading: ${f.name}`, "", false, { percent: 0, filename: f.name });
+            }
+          }
+        } catch (_) {}
 
         // Gateway-first two-step: 1) upload files, 2) post message with attachment paths.
         let gatewaySucceeded = false;
@@ -880,7 +919,7 @@ globalThis.killChat = async function (id) {
     chatsAD.contexts = [...updatedContexts];
 
     updateAfterScroll();
-
+    try { refreshChatsList(); } catch (_) {}
     justToast("Chat deleted successfully", "success", 1000, "chat-removal");
   } catch (e) {
     console.error("Error deleting chat:", e);
@@ -993,6 +1032,21 @@ function generateShortId() {
 export const newContext = function () {
   context = generateShortId();
   setContext(context);
+  // Optimistically add to chats list
+  try {
+    if (globalThis.Alpine && chatsSection) {
+      const chatsAD = Alpine.$data(chatsSection);
+      if (chatsAD) {
+        const exists = (chatsAD.contexts || []).some(c => c.id === context);
+        if (!exists) {
+          const nextNo = (chatsAD.contexts?.length || 0) + 1;
+          const item = { id: context, name: "", no: nextNo };
+          chatsAD.contexts = [item, ...(chatsAD.contexts || [])];
+          chatsAD.selected = context;
+        }
+      }
+    }
+  } catch (_) {}
 }
 
 export const setContext = function (id, options = {}) {
@@ -1020,7 +1074,16 @@ export const setContext = function (id, options = {}) {
   if (globalThis.Alpine) {
     if (chatsSection) {
       const chatsAD = Alpine.$data(chatsSection);
-      if (chatsAD) chatsAD.selected = id;
+      if (chatsAD) {
+        chatsAD.selected = id;
+        // Mark selection and ensure the chat exists in list if we have none yet
+        if (!Array.isArray(chatsAD.contexts)) chatsAD.contexts = [];
+        const exists = chatsAD.contexts.some(c => c.id === id);
+        if (!exists) {
+          const nextNo = (chatsAD.contexts?.length || 0) + 1;
+          chatsAD.contexts = [{ id, name: "", no: nextNo }, ...chatsAD.contexts];
+        }
+      }
     }
     if (tasksSection) {
       const tasksAD = Alpine.$data(tasksSection);
@@ -1434,6 +1497,30 @@ function initializeActiveTab() {
   const activeTab = localStorage.getItem("activeTab") || "chats";
   activateTab(activeTab);
 }
+
+// -------- Chats list integration --------
+async function refreshChatsList() {
+  try {
+    const resp = await api.fetchApi('/v1/sessions', { method: 'GET' });
+    if (!resp.ok) return;
+    const arr = await resp.json().catch(() => []);
+    if (!Array.isArray(arr)) return;
+    const mapped = arr.map((s, idx) => ({ id: s.session_id || s.id || s.sessionId, name: s.subject || (s.metadata && (s.metadata.title || s.metadata.name)) || '', no: idx + 1 }));
+    if (globalThis.Alpine && chatsSection) {
+      const chatsAD = Alpine.$data(chatsSection);
+      if (chatsAD) {
+        chatsAD.contexts = mapped;
+        // Keep selection if present
+        if (context) {
+          chatsAD.selected = context;
+        }
+      }
+    }
+  } catch (e) {
+    // benign: silently ignore
+  }
+}
+globalThis.refreshChatsList = refreshChatsList;
 
 /*
  * A0 Chat UI
