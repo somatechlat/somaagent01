@@ -51,24 +51,31 @@ async def _preload():
     try:
         is_updating_model = True
         if not _pipeline:
-            NotificationManager.send_notification(
-                NotificationType.INFO,
-                NotificationPriority.NORMAL,
-                "Loading Kokoro TTS model...",
-                display_time=99,
-                group="kokoro-preload",
-            )
+            # Best-effort UX notification; in uvicorn/uvloop contexts the notification bus may not be available
+            try:
+                NotificationManager.send_notification(
+                    NotificationType.INFO,
+                    NotificationPriority.NORMAL,
+                    "Loading Kokoro TTS model...",
+                    display_time=99,
+                    group="kokoro-preload",
+                )
+            except Exception:
+                pass
             PrintStyle.standard("Loading Kokoro TTS model...")
             from kokoro import KPipeline
 
             _pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
-            NotificationManager.send_notification(
-                NotificationType.INFO,
-                NotificationPriority.NORMAL,
-                "Kokoro TTS model loaded.",
-                display_time=2,
-                group="kokoro-preload",
-            )
+            try:
+                NotificationManager.send_notification(
+                    NotificationType.INFO,
+                    NotificationPriority.NORMAL,
+                    "Kokoro TTS model loaded.",
+                    display_time=2,
+                    group="kokoro-preload",
+                )
+            except Exception:
+                pass
     finally:
         is_updating_model = False
 
@@ -116,15 +123,21 @@ async def synthesize_sentences(sentences: list[str]):
 
 
 async def _synthesize_sentences(sentences: list[str]):
+    PrintStyle.standard(f"Kokoro TTS: synthesize start (n_sentences={len(sentences)})")
     await _preload()
+    PrintStyle.standard(f"Kokoro TTS: pipeline ready={_pipeline is not None}")
 
     chunks: List[np.ndarray] = []
 
     try:
         for sentence in sentences:
             if sentence.strip():
-                segments = _pipeline(sentence.strip(), voice=_voice, speed=_speed)  # type: ignore
-                for segment in list(segments):
+                s = sentence.strip()
+                PrintStyle.standard(f"Kokoro TTS: infer len={len(s)} voice={_voice} speed={_speed}")
+                segments = _pipeline(s, voice=_voice, speed=_speed)  # type: ignore
+                segs = list(segments)
+                PrintStyle.standard(f"Kokoro TTS: segments={len(segs)}")
+                for segment in segs:
                     audio_tensor = segment.audio
                     audio_numpy = audio_tensor.detach().cpu().numpy()  # type: ignore
                     # Force mono: flatten to 1-D float32 to avoid shape/channel issues with writers
@@ -132,18 +145,36 @@ async def _synthesize_sentences(sentences: list[str]):
                     chunks.append(arr)
 
         # Concatenate and convert to bytes
-        if not _SOUNDFILE_AVAILABLE:
-            raise RuntimeError(
-                "soundfile is not available in the runtime. Enable audio features or install 'soundfile' and libsndfile."
-            )
         if not chunks:
             # Return a short silence (0.2s) to avoid empty file edge cases
             arr = np.zeros(int(0.2 * 24000), dtype=np.float32)
         else:
             arr = np.concatenate(chunks, axis=0)
+        PrintStyle.standard(f"Kokoro TTS: total_chunks={len(chunks)}")
         buffer = io.BytesIO()
-        sf.write(buffer, arr, 24000, format="WAV")
-        audio_bytes = buffer.getvalue()
+        audio_bytes: bytes
+        wrote = False
+        # Preferred: soundfile (libsndfile) if available
+        if _SOUNDFILE_AVAILABLE:
+            try:
+                sf.write(buffer, arr, 24000, format="WAV")
+                audio_bytes = buffer.getvalue()
+                wrote = True
+            except Exception as se:
+                # Fallback to pure-Python writer if soundfile misbehaves in this environment
+                PrintStyle.warn(f"soundfile write failed ({type(se).__name__}): {se}; falling back to wave module")
+                buffer = io.BytesIO()
+        if not wrote:
+            import wave
+            # Convert float32 [-1,1] to int16 PCM
+            pcm = np.clip(arr, -1.0, 1.0)
+            pcm = (pcm * 32767.0).astype(np.int16, copy=False)
+            with wave.open(buffer, 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)  # 16-bit
+                wf.setframerate(24000)
+                wf.writeframes(pcm.tobytes())
+            audio_bytes = buffer.getvalue()
 
         # Return base64 encoded audio
         return base64.b64encode(audio_bytes).decode("utf-8")
