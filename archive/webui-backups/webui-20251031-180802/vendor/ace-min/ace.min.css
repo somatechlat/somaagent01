@@ -1,4 +1,0 @@
-/* Minimal stub to satisfy legacy link in index.html and avoid MIME/type warnings.
-   The project uses Ace JS for syntax highlighting; CSS is optional for our UI.
-*/
-.ace_editor{font-family:monospace;}
