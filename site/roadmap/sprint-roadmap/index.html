@@ -372,9 +372,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sprint-05-strictness-and-no-legacy-enablement-051-week" class="md-nav__link">
+  <a href="#sprint-05-strictness-and-no-legacy-enablement-completed" class="md-nav__link">
     <span class="md-ellipsis">
-      Sprint 0.5 — Strictness and No-Legacy Enablement (0.5–1 week)
+      Sprint 0.5 — Strictness and No-Legacy Enablement (completed)
     </span>
   </a>
   
@@ -427,6 +427,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2025-10-31-sprint-addendum-immediate-focus" class="md-nav__link">
+    <span class="md-ellipsis">
+      2025-10-31 Sprint Addendum — Immediate Focus
+    </span>
+  </a>
   
 </li>
       
@@ -1267,9 +1276,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sprint-05-strictness-and-no-legacy-enablement-051-week" class="md-nav__link">
+  <a href="#sprint-05-strictness-and-no-legacy-enablement-completed" class="md-nav__link">
     <span class="md-ellipsis">
-      Sprint 0.5 — Strictness and No-Legacy Enablement (0.5–1 week)
+      Sprint 0.5 — Strictness and No-Legacy Enablement (completed)
     </span>
   </a>
   
@@ -1325,6 +1334,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#2025-10-31-sprint-addendum-immediate-focus" class="md-nav__link">
+    <span class="md-ellipsis">
+      2025-10-31 Sprint Addendum — Immediate Focus
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1369,14 +1387,12 @@
 <p>Exit criteria:
 - A send operation produces an assistant SSE event in local dev.
 - Basic upload+send works without 5xx.</p>
-<h3 id="sprint-05-strictness-and-no-legacy-enablement-051-week">Sprint 0.5 — Strictness and No-Legacy Enablement (0.5–1 week)<a class="headerlink" href="#sprint-05-strictness-and-no-legacy-enablement-051-week" title="Permanent link">&para;</a></h3>
+<h3 id="sprint-05-strictness-and-no-legacy-enablement-completed">Sprint 0.5 — Strictness and No-Legacy Enablement (completed)<a class="headerlink" href="#sprint-05-strictness-and-no-legacy-enablement-completed" title="Permanent link">&para;</a></h3>
 <p>Scope:
-- Disable legacy UI polling (<code>/v1/ui/poll</code>) code paths and remove custom CSRF fetch logic in the UI; keep same-origin or header auth.
-- Remove duplicate SSE route registrations and inline dialogue fallbacks in Gateway.
-- Keep behavior identical for users; add Playwright test to assert no <code>/poll</code>/<code>memory_dashboard</code> calls; UI must not fetch <code>/csrf_token</code>.</p>
+- Enforced SSE-only; removed UI proxy/poll and bespoke CSRF paths. Added tests to assert no <code>/v1/ui/poll</code> or <code>/v1/csrf</code> calls.</p>
 <p>Deliverables:
 - UI free of polling and bespoke CSRF; SSE-only for streaming.
-- Gateway has a single SSE route implementation.</p>
+- Gateway exposes a single SSE route implementation.</p>
 <p>Acceptance tests:
 - tests/webui/test_no_legacy_network.spec.ts: asserts no calls to legacy endpoints during chat flows.</p>
 <p>Exit criteria:
@@ -1446,6 +1462,22 @@
 - Tests: unit+integration must pass; E2E smoke (when applicable).
 - Observability: new metrics/spans visible in dev dashboards when relevant.</p>
 <p>Review cadence: Demo and checkpoint at the end of each sprint; update this document and the canonical roadmap with any deltas.</p>
+<hr />
+<h2 id="2025-10-31-sprint-addendum-immediate-focus">2025-10-31 Sprint Addendum — Immediate Focus<a class="headerlink" href="#2025-10-31-sprint-addendum-immediate-focus" title="Permanent link">&para;</a></h2>
+<p>Sprint A — UI Parity Polish (now)
+- Fix tool lifecycle de-duplication: single “Tool: <name>” block even when <code>request_id</code> appears only on <code>tool.result</code>.
+- Uploads progress: exactly one upload block per filename; show “Uploaded:” when only a final event is observed.
+- Settings modal: ensure Alpine initialization so modal opens on first click in automation.
+- Tests: extend Playwright specs to assert the above behaviors.</p>
+<p>Sprint B — API Contract Tests + Docs
+- Add pytest probes for: <code>/v1/session/message</code>, <code>/v1/session/{id}/events</code> (SSE), <code>/v1/uploads</code>, <code>/v1/tools</code>, <code>/v1/ui/settings/sections</code>.
+- Document request/response examples in technical manual for each UI-used endpoint.</p>
+<p>Sprint C — Credential UX + Model Test
+- Settings: add provider key masking hints and a light-weight “Test model” (optional <code>/v1/llm/test</code>) wiring.
+- Update runtime-config to surface provider availability for boot-time UX hints.</p>
+<p>Sprint D — Memory + Observability
+- Health: surface WAL/outbox lag with thresholds and banners; collect Prometheus metrics.
+- Tests: chaos test to assert outbox/WAL resilience; Playwright checks for health banners without blocking chat.</p>
 
 
 

@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://docs.somaagent01.dev/roadmap/roadmap-sprinted/">
+        <link rel="canonical" href="https://docs.somaagent01.dev/technical-manual/outbound-events/">
       
       
       
@@ -20,7 +20,7 @@
     
     
       
-        <title>Roadmap sprinted - SomaAgent01 Docs</title>
+        <title>Outbound SSE Event Contract (sa01-v1) - SomaAgent01 Docs</title>
       
     
     
@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#somaagent01-roadmap-sprinted" class="md-skip">
+        <a href="#outbound-sse-event-contract-sa01-v1" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Roadmap sprinted
+              Outbound SSE Event Contract (sa01-v1)
             
           </span>
         </div>
@@ -278,7 +278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../canonical-roadmap/" class="md-nav__link">
+      <a href="../../roadmap/canonical-roadmap/" class="md-nav__link">
         
   
   
@@ -301,7 +301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sprint-roadmap/" class="md-nav__link">
+      <a href="../../roadmap/sprint-roadmap/" class="md-nav__link">
         
   
   
@@ -552,7 +552,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -575,7 +575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   
@@ -598,7 +598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/deployment/" class="md-nav__link">
+      <a href="../deployment/" class="md-nav__link">
         
   
   
@@ -621,7 +621,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/monitoring/" class="md-nav__link">
+      <a href="../monitoring/" class="md-nav__link">
         
   
   
@@ -644,7 +644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/security/" class="md-nav__link">
+      <a href="../security/" class="md-nav__link">
         
   
   
@@ -667,7 +667,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/tools-messages-memories/" class="md-nav__link">
+      <a href="../tools-messages-memories/" class="md-nav__link">
         
   
   
@@ -1128,18 +1128,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#priority-centralize-llm-modelprofile-management-1-2-sprints" class="md-nav__link">
+  <a href="#common-envelope" class="md-nav__link">
     <span class="md-ellipsis">
-      Priority: Centralize LLM model/profile management (1-2 sprints)
+      Common envelope
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#sprint-ui-parity-nolegacy-completion-20251031-1-week" class="md-nav__link">
+  <a href="#assistant-events" class="md-nav__link">
     <span class="md-ellipsis">
-      Sprint — UI Parity &amp; No‑Legacy Completion (2025‑10‑31 → +1 week)
+      Assistant events
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool events
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
     </span>
   </a>
   
@@ -1164,166 +1182,103 @@
   
 
 
-<!-- Sprinted roadmap derived from canonical roadmap — generated 2025-10-30 -->
-<h1 id="somaagent01-roadmap-sprinted">SomaAgent01 Roadmap (Sprinted)<a class="headerlink" href="#somaagent01-roadmap-sprinted" title="Permanent link">&para;</a></h1>
-<p>Last updated: 2025-10-31
-Branch: INTEGRATION-ZERO</p>
-<p>Overview
-This file breaks the canonical roadmap into sprint-sized deliverables, with acceptance tests, owners (placeholder), and estimated effort.</p>
-<h2 id="priority-centralize-llm-modelprofile-management-1-2-sprints">Priority: Centralize LLM model/profile management (1-2 sprints)<a class="headerlink" href="#priority-centralize-llm-modelprofile-management-1-2-sprints" title="Permanent link">&para;</a></h2>
-<p>Why priority
-- Recent diagnostics found the UI/worker flow failing due to inconsistent model/profile values and base_url normalization (<code>invalid model/base_url after normalization</code>). This blocks end-to-end assistant replies. Centralizing profiles in the Gateway is required to unblock E2E functionality and make the system operable and secure.</p>
-<p>Goals
-- Make Gateway the single source of truth for model profiles, provider credentials, and base_url normalization.
-- Remove raw <code>base_url</code> propagation from workers and other services; workers must send only role + messages + limited overrides (model name, temperature, kwargs).
-- Provide compatibility flags and a migration path with <code>warn</code> → <code>enforce</code> modes.</p>
-<p>Sprint A (1 week) — Audit &amp; Gateway API
-- Tasks
-  1. Complete a full audit of code and env usage of <code>model</code>, <code>base_url</code>, and model profile reads/writes. Produce an audit doc with file-by-file findings and backups of current profiles (todo #1).
-  2. Design Gateway API contract for model/profile CRUD, credential management, and a <code>/v1/llm/test</code> endpoint (todo #2).
-  3. Add <code>GATEWAY_MODEL_LOCK</code> env flag and implement <code>warn</code> logging behavior (no enforcement yet).
-- Acceptance
-  - Audit doc delivered. Gateway API spec reviewed. <code>GATEWAY_MODEL_LOCK=warn</code> logs incoming <code>base_url</code> overrides but does not block invokes.</p>
-<p>Sprint B (1–2 weeks) — Gateway authority &amp; worker migration
-- Tasks
-  1. Implement Gateway CRUD for <code>/v1/model-profiles</code> and internal credentials endpoints (todo #3).
-  2. Harden <code>_normalize_llm_base_url</code> and provider detection; add unit tests (todo #7).
-  3. Update workers to stop sending <code>base_url</code> in overrides and to call Gateway only (todo #4).
-  4. Deprecate per-service profile envs and add startup warnings (todo #5).
-- Acceptance
-  - Worker-&gt;Gateway-&gt;Provider flow works end-to-end in dev; Playwright smoke shows assistant reply. <code>GATEWAY_MODEL_LOCK=enforce</code> can be enabled in a canary without breaking processing.</p>
-<p>Notes
-- These centralization sprints take precedence over other UI migration work until assistant reply flow is stable.</p>
-<h2 id="sprint-ui-parity-nolegacy-completion-20251031-1-week">Sprint — UI Parity &amp; No‑Legacy Completion (2025‑10‑31 → +1 week)<a class="headerlink" href="#sprint-ui-parity-nolegacy-completion-20251031-1-week" title="Permanent link">&para;</a></h2>
-<p>Goals
-- Make the Web UI identical in behavior to Agent Zero while fully wired to our backend.
-- Eliminate the “auto new chat” symptom and ensure default selection is idempotent.
-- Replace remaining legacy UI actions (history, context, files) with canonical /v1 routes.</p>
-<p>Tasks
-1) Stop auto new chat creation
-  - Add a one-time init guard for default selection.
-  - Do not auto-create a session when no sessions exist; show empty state and wait for explicit action.
-  - Consolidate duplicate DOMContentLoaded handlers that cause re-inits; add a dev-only counter for newContext calls.</p>
-<p>2) History/context endpoints and UI wiring
-  - Backend: GET <code>/v1/sessions/{id}/history</code> → { history, tokens }.
-  - Backend: GET <code>/v1/sessions/{id}/context-window</code> → { content, tokens }.
-  - UI: <code>webui/js/history.js</code> calls these routes; SSE-only, no polling.</p>
-<p>3) Files modal to /v1
-  - Backend: <code>/v1/workdir/list|upload|delete|download</code> minimal FS adapter under a sandboxed base dir.
-  - UI: <code>webui/js/file_browser.js</code> to use <code>/v1/workdir/*</code> with current response mapping.</p>
-<p>4) Playwright parity tests
-  - Startup default selection without auto-create; thinking placeholder + tool.start lifecycle; uploads progress; history/context display; files modal list/upload/delete/download.</p>
-<p>Acceptance
-- No phantom sessions created over 10+ minutes idle.
-- History/Context and Files actions work via /v1; no legacy calls observed in network logs.
-- UI smoke and tool e2e pass; new Playwright parity specs added and green locally.</p>
-<p>Sprint 1 — Foundation &amp; Tests (2 weeks)
-- Goals
-  - Create API contract tests and Playwright smoke test harness.
-  - Add or generate <code>docker-compose.optimized.yaml</code> or update <code>deploy-optimized.sh</code> to point to <code>docker-compose.yaml</code> with tuned profiles.
-  - Archive deprecated files (<code>run_ui.py</code>, <code>tmp/webui</code>) and update docs/Makefile/launch configs.</p>
+<h1 id="outbound-sse-event-contract-sa01-v1">Outbound SSE Event Contract (sa01-v1)<a class="headerlink" href="#outbound-sse-event-contract-sa01-v1" title="Permanent link">&para;</a></h1>
+<p>This document describes the unified, versioned event shapes emitted to the canonical SSE stream at:</p>
 <ul>
-<li>Tasks</li>
-<li>Add pytest API contract tests (smoke):<ul>
-<li>Test SSE subscribe: open SSE stream to <code>/v1/session/{test-session}</code> and assert event types for a synthetic message flow.</li>
-<li>Test POST /v1/session/{id}/message returns 202 and appears in SSE.</li>
-<li>Test POST /v1/uploads returns a usable resource URL.</li>
+<li>/v1/session/{session_id}/events</li>
 </ul>
-</li>
-<li>Add a Playwright smoke test that opens the Gateway-served UI, subscribes to SSE, sends a message via the UI, and checks for progressive token rendering.</li>
-<li>Create <code>docker-compose.optimized.yaml</code> (subset of <code>docker-compose.yaml</code>) and update <code>deploy-optimized.sh</code>.</li>
-<li>
-<p>Archive <code>run_ui.py</code> into <code>archive/</code> and tarball <code>tmp/webui</code> into <code>archive/tmp-webui-&lt;date&gt;.tar.gz</code>.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>All new tests pass locally in the dev environment.</li>
-<li><code>deploy-optimized.sh</code> runs successfully in a local laptop dev environment (simulated) and brings up core infra.</li>
-</ul>
-<p>Sprint 0 — Urgent: Centralize URLs &amp; Cleanup (immediate, half-day)</p>
+<p>All events share a common envelope and MUST be JSON-serializable.</p>
+<h2 id="common-envelope">Common envelope<a class="headerlink" href="#common-envelope" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Goal</li>
-<li>
-<p>Make the UI canonical at http://localhost:21016/ui and remove non-working hard-coded references across tests, scripts, and docs. Archive deprecated artifacts that cause confusion.</p>
-</li>
-<li>
-<p>Tasks</p>
-</li>
-<li>Hard-coded discovery: grep and list all occurrences of <code>localhost:21016</code>, <code>127.0.0.1:21016</code>, <code>20016</code>, and <code>8010</code> usage in tests/scripts/docs (already performed).</li>
-<li>Set canonical env defaults in <code>.env</code> / <code>.env.example</code>:<ul>
-<li>GATEWAY_PORT=21016</li>
-<li>GATEWAY_BASE_URL=http://localhost:21016</li>
-<li>WEB_UI_BASE_URL=http://localhost:21016/ui</li>
+<li>event_id: string (UUID)</li>
+<li>session_id: string (UUID)</li>
+<li>persona_id: string | null</li>
+<li>role: string — one of: user, assistant, tool, system (future)</li>
+<li>message: string — primary text payload; may be empty for lifecycle markers</li>
+<li>metadata: object — additional fields; see type-specific sections</li>
+<li>version: string — protocol version, currently "sa01-v1"</li>
+<li>type: string — semantic event type, namespaced as below</li>
 </ul>
-</li>
-<li>Replace literal fallbacks in the following files with env lookups:<ul>
-<li><code>tests/e2e/*</code>, <code>tests/playwright/*</code>, <code>tests/ui/*</code></li>
-<li><code>webui/playwright.config.ts</code>, <code>webui/tests/*.spec.ts</code></li>
-<li><code>scripts/e2e_quick.py</code>, <code>scripts/ui-smoke.sh</code>, <code>scripts/check_stack.sh</code></li>
-<li><code>python/api/*</code> modules with fallback strings</li>
-<li><code>.vscode/tasks.json</code></li>
-</ul>
-</li>
-<li>Archive the confusing artifacts to <code>archive/</code> (timestamped): <code>run_ui.py</code>, <code>tmp/webui/</code>, <code>deploy-optimized.sh</code>.</li>
-<li>
-<p>Run quick verification: <code>make dev-up</code> then <code>pytest -q tests/e2e/test_api_contract_smoke.py</code> and <code>./scripts/ui-smoke.sh</code>.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>UI loads at http://localhost:21016/ui/index.html in a browser.</li>
-<li>Smoke tests issue POST /v1/session/message and open SSE streams successfully.</li>
-<li>
-<p>A repo grep for <code>localhost:21016</code> / <code>127.0.0.1:21016</code> shows only documented examples that reference the env variables (not raw literals used at runtime).</p>
-</li>
-<li>
-<p>Notes</p>
-</li>
-<li>This sprint (Sprint 0) is tactical and must be completed before Sprint 1 tests are relied upon in CI.</li>
-<li>Per your direction: no new config systems or helper files will be added; we will reuse existing env mechanisms and helpers. Files will be archived before removal.</li>
-</ul>
-<p>Sprint 2 — UI Migration &amp; Compatibility (2 weeks)
-- Goals
-  - Migrate key UX components from <code>tmp/webui</code> into <code>webui/</code> (streaming rendering, tool panel, upload progress).
-  - Implement Gateway adapter endpoints for legacy poll flows (marked deprecated).</p>
+<h2 id="assistant-events">Assistant events<a class="headerlink" href="#assistant-events" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Tasks</li>
-<li>Identify and extract UI components from <code>tmp/webui</code> (list source file names and functions). Port them to <code>webui/</code> with minimal refactors to fit project build.</li>
-<li>Add Playwright tests for tool invocation: open tool panel, call a sample tool (mocked), and assert <code>tool.result</code> appears in UI.</li>
+<li>assistant.thinking</li>
+<li>Purpose: indicate the assistant has started planning/thinking.</li>
+<li>role: assistant</li>
+<li>message: ""</li>
 <li>
-<p>Implement a Gateway adapter route that accepts legacy poll payloads and transforms them into the canonical message/event workflow.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>Playwright UX tests pass in CI.</li>
-<li>Legacy adapter logs show correct transformations; the adapter is flagged as deprecated in docs.</li>
-</ul>
-<p>Sprint 3 — Harden &amp; Remove Legacy (2 weeks)
-- Goals
-  - Harden resource settings and deployment, add OPA checks, run end-to-end tool execution tests and memory WAL verification.
-  - Remove legacy adapter after clients are migrated.</p>
+<p>metadata:</p>
 <ul>
-<li>Tasks</li>
-<li>Add OPA policy verification into CI for tool execution flows.</li>
-<li>Run end-to-end tests that: send a message, cause a tool invocation, ensure Tool Executor publishes <code>tool.result</code>, and confirm memory WAL ingestion to SomaBrain.</li>
-<li>
-<p>Finalize deploy resource tuning in <code>docker-compose.optimized.yaml</code> and update docs.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>E2E tests pass in CI and local dev.</li>
-<li>Legacy adapter fully removed and all references cleaned.</li>
+<li>status: "thinking"</li>
+<li>source: "worker"</li>
+<li>analysis: { intent: string, sentiment: string, tags: string[] }</li>
 </ul>
-<p>Backlog / Nice-to-have
-- Websocket support for high-throughput UIs (research + benchmark).
-- Autoscaling blueprint for cloud deployment (k8s helm charts + metrics rules).
-- Rich Playwright scenarios for error paths and long-lived sessions.</p>
-<p>Owners and notes
-- Owners: TBD. Suggest assigning one engineer (backend) for Sprint 1 and one frontend engineer for Sprint 2.
-- Notes: All changes should be done on feature branches and validated with the provided tests before merge to <code>main</code>.</p>
+</li>
+<li>
+<p>assistant.stream</p>
+</li>
+<li>Purpose: streaming partial content.</li>
+<li>role: assistant</li>
+<li>message: cumulative content buffer (not a delta)</li>
+<li>
+<p>metadata:</p>
+<ul>
+<li>status: "streaming"</li>
+<li>source: "slm" | "escalation_llm"</li>
+<li>analysis: {...}</li>
+<li>stream_index: number (1-based)</li>
+</ul>
+</li>
+<li>
+<p>assistant.final</p>
+</li>
+<li>Purpose: final response for a turn.</li>
+<li>role: assistant</li>
+<li>message: complete assistant answer</li>
+<li>metadata:<ul>
+<li>status: "completed"</li>
+<li>source: "slm" | "escalation_llm"</li>
+<li>analysis: {...}</li>
+<li>escalation: { reason: string, metadata: object } | null</li>
+</ul>
+</li>
+</ul>
+<h2 id="tool-events">Tool events<a class="headerlink" href="#tool-events" title="Permanent link">&para;</a></h2>
+<ul>
+<li>tool.start</li>
+<li>Purpose: indicate tool execution has begun.</li>
+<li>role: tool</li>
+<li>message: ""</li>
+<li>
+<p>metadata:</p>
+<ul>
+<li>status: "start"</li>
+<li>source: "tool_executor"</li>
+<li>tool_name: string</li>
+<li>request_id: string (stable across lifecycle)</li>
+</ul>
+</li>
+<li>
+<p>tool.result</p>
+</li>
+<li>Purpose: final tool result payload for display and memory.</li>
+<li>role: tool</li>
+<li>message: compacted string form of payload (JSON if structured)</li>
+<li>metadata:<ul>
+<li>status: "success" | "error" | "blocked" | string</li>
+<li>source: "tool_executor"</li>
+<li>tool_name: string</li>
+<li>request_id: string (stable across lifecycle)</li>
+<li>execution_time: number (seconds)</li>
+<li>sandbox_logs: string | null (when available)</li>
+</ul>
+</li>
+</ul>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The UI should treat unknown fields as opaque and forward-compatible.</li>
+<li>For long-term stability, clients should use <code>type</code> and <code>metadata.status</code> to drive rendering, not rely on implicit roles alone.</li>
+<li>The assistant.stream events carry the full cumulative buffer to simplify UI replacement logic.</li>
+</ul>
 
 
 
