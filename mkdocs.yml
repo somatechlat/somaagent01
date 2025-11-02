@@ -19,14 +19,22 @@ nav:
   - Technical Manual:
       - Overview: technical-manual/index.md
       - Architecture: technical-manual/architecture.md
+      - Outbound Events: technical-manual/outbound-events.md
       - Deployment: technical-manual/deployment.md
       - Monitoring & Health: technical-manual/monitoring.md
       - Security: technical-manual/security.md
       - Tools, Messages & Memories: technical-manual/tools-messages-memories.md
+      - Runbooks:
+          - Circuit Breaker Open: technical-manual/runbooks/circuit-breaker.md
+          - High Error Rate: technical-manual/runbooks/high-error-rate.md
+          - High Latency: technical-manual/runbooks/high-latency.md
+          - Kafka Consumer Lag: technical-manual/runbooks/kafka-lag.md
   - Development Manual:
       - Overview: development-manual/index.md
       - Local Setup: development-manual/local-setup.md
       - Contribution Workflow: development-manual/contribution-workflow.md
+      - Extensibility: development-manual/extensibility.md
+      - VIBE Coding Rules: development-manual/vibe-coding-rules.md
       - Coding Standards: development-manual/coding-standards.md
       - Testing Guidelines: development-manual/testing-guidelines.md
       - UI Troubleshooting: development-manual/ui-troubleshooting.md

@@ -164,7 +164,7 @@
                     <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
                     <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
                     <button class="config-button" id="restart" @click="restart()">Restart</button>
-                    <button class="config-button" id="settings" @click="settingsModalProxy.openModal()"><svg
+                        <button class="config-button" id="settings" data-testid="settings-button" @click="settingsModalProxy.openModal()"><svg
                             xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-5.0 -17.0 110.0 135.0"
                             fill="currentColor" width="24" height="24">
                             <path
@@ -351,7 +351,7 @@
             <!--Chat-->
             <div id="time-date-container">
                 <div id="time-date"></div>
-                <div class="status-icon" x-data="{ connected: true }">
+                <div class="status-icon" x-data="{ connected: true }" data-testid="status-indicator">
                     <svg viewBox="0 0 30 30">
                         <!-- Connected State (filled circle) -->
                         <circle class="connected-circle" cx="15" cy="15" r="8"
@@ -421,7 +421,7 @@
 
                     <!-- Container for textarea and button -->
                     <div id="chat-input-container" style="position: relative;">
-                        <textarea id="chat-input" placeholder="Type your message here..." rows="1"></textarea>
+                        <textarea id="chat-input" data-testid="chat-input" placeholder="Type your message here..." rows="1"></textarea>
 
                         <!-- Expand button inside the textarea container -->
                         <button id="expand-button" @click="$store.fullScreenInputModal.openModal()"
@@ -436,7 +436,7 @@
                     <div id="chat-buttons-wrapper">
 
                         <!-- Send button -->
-                        <button class="chat-button" id="send-button" aria-label="Send message">
+                        <button class="chat-button" id="send-button" data-testid="send-button" aria-label="Send message">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
                                 <path d="M25 20 L75 50 L25 80" fill="none" stroke="currentColor" stroke-width="15">
                                 </path>
@@ -545,7 +545,7 @@
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
                 <div class="modal-container">
                     <div class="modal-header">
-                        <h2 x-text="settings.title"></h2>
+                        <h2 x-text="settings.title" data-testid="settings-modal-title"></h2>
                         <button class="modal-close" @click="handleCancel()">&times;</button>
                     </div>
 
@@ -1598,17 +1598,28 @@
                                     <template x-for="file in sortFiles(browser.entries)" :key="file.path">
                                         <div class="file-item" :data-is-dir="file.is_dir">
                                             <div class="file-name"
-                                                @click="file.is_dir ? navigateToFolder(file.path) : downloadFile(file)">
+                                                @click="!file.uploading && (file.is_dir ? navigateToFolder(file.path) : downloadFile(file))">
                                                 <img :src="'/public/' + (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type)) + '.svg'"
                                                     class="file-icon" :alt="file.type">
                                                 <span x-text="file.name"></span>
+                                                <!-- Inline upload progress for temporary entries -->
+                                                <template x-if="file.uploading">
+                                                    <div class="inline-progress">
+                                                        <div class="progress-bar"><div class="progress-fill" :style="{ width: (file.progress||0) + '%' }"></div></div>
+                                                        <span class="progress-label" x-text="(file.progress||0) + '%' "></span>
+                                                        <button class="progress-cancel" @click.stop="cancelUpload(file)">Cancel</button>
+                                                    </div>
+                                                </template>
+                                                <template x-if="file.uploadError">
+                                                    <span class="progress-error">Upload failed</span>
+                                                </template>
                                             </div>
                                             <div class="file-size" x-text="formatFileSize(file.size)"></div>
                                             <div class="file-date" x-text="formatDate(file.modified)"></div>
 
                                             <div class="file-actions">
                                                 <button class="action-button download-button"
-                                                    @click.stop="downloadFile(file)">
+                                                    @click.stop="downloadFile(file)" :disabled="file.uploading">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.5 19.5">
                                                         <path
                                                             d="m.75,14.25v2.25c0,1.24,1.01,2.25,2.25,2.25h13.5c1.24,0,2.25-1.01,2.25-2.25v-2.25m-4.5-4.5l-4.5,4.5m0,0l-4.5-4.5m4.5,4.5V.75"
@@ -1616,7 +1627,7 @@
                                                             stroke-linejoin="round" stroke-width="1.5"></path>
                                                     </svg>
                                                 </button>
-                                                <button class="delete-button" @click.stop="deleteFile(file)">
+                                                <button class="delete-button" @click.stop="deleteFile(file)" :disabled="file.uploading">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.03 22.53"
                                                         fill="currentColor">
                                                         <path

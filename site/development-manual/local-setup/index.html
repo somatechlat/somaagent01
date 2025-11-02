@@ -602,6 +602,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../technical-manual/outbound-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Outbound Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../technical-manual/deployment/" class="md-nav__link">
         
   
@@ -682,6 +705,144 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/circuit-breaker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Circuit Breaker Open
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/high-error-rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    High Error Rate
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/high-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    High Latency
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/kafka-lag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kafka Consumer Lag
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1099,6 +1260,52 @@
   
   <span class="md-ellipsis">
     Contribution Workflow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Extensibility
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vibe-coding-rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    VIBE Coding Rules
     
   </span>
   
@@ -1764,18 +1971,8 @@ make<span class="w"> </span>stack-up
 make<span class="w"> </span>ui
 </code></pre></div>
 <h3 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Check all services</span>
-make<span class="w"> </span>check-stack
-
-<span class="c1"># Expected output:</span>
-<span class="c1"># ✅ Kafka: healthy</span>
-<span class="c1"># ✅ Redis: healthy</span>
-<span class="c1"># ✅ PostgreSQL: healthy</span>
-<span class="c1"># ✅ OPA: healthy</span>
-<span class="c1"># ✅ Gateway: healthy</span>
-
-<span class="c1"># Test API</span>
-curl<span class="w"> </span>http://localhost:20016/v1/health
+<div class="highlight"><pre><span></span><code><span class="c1"># Health check (Gateway)</span>
+curl<span class="w"> </span>-fsS<span class="w"> </span>http://127.0.0.1:21016/v1/health<span class="w"> </span>-D<span class="w"> </span>-<span class="w"> </span>-o<span class="w"> </span>/dev/null
 
 <span class="c1"># Open UI</span>
 open<span class="w"> </span>http://127.0.0.1:3000
@@ -1817,16 +2014,17 @@ nano<span class="w"> </span>.env
 </code></pre></div></p>
 <p><strong>Optional variables</strong>:
 <div class="highlight"><pre><span></span><code><span class="c1"># Ports (defaults shown)</span>
-<span class="nv">GATEWAY_PORT</span><span class="o">=</span><span class="m">20016</span>
-<span class="nv">KAFKA_PORT</span><span class="o">=</span><span class="m">20000</span>
-<span class="nv">REDIS_PORT</span><span class="o">=</span><span class="m">20001</span>
-<span class="nv">POSTGRES_PORT</span><span class="o">=</span><span class="m">20002</span>
+<span class="nv">GATEWAY_PORT</span><span class="o">=</span><span class="m">21016</span>
+<span class="nv">KAFKA_PORT</span><span class="o">=</span><span class="m">21000</span>
+<span class="nv">REDIS_PORT</span><span class="o">=</span><span class="m">21001</span>
+<span class="nv">POSTGRES_PORT</span><span class="o">=</span><span class="m">21002</span>
+<span class="nv">OPA_PORT</span><span class="o">=</span><span class="m">21009</span>
 
 <span class="c1"># Logging</span>
 <span class="nv">LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w">  </span><span class="c1"># DEV mode: DEBUG, PROD: INFO</span>
 
 <span class="c1"># Memory</span>
-<span class="nv">SOMABRAIN_BASE_URL</span><span class="o">=</span>http://localhost:9696
+<span class="nv">SOMA_BASE_URL</span><span class="o">=</span>http://localhost:9696
 </code></pre></div></p>
 <h3 id="3-infrastructure-services">3. Infrastructure Services<a class="headerlink" href="#3-infrastructure-services" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Start Kafka, Redis, PostgreSQL, OPA</span>
@@ -1857,7 +2055,7 @@ python<span class="w"> </span>scripts/ensure_outbox_schema.py
 make<span class="w"> </span>stack-up
 
 <span class="c1"># This starts:</span>
-<span class="c1"># - Gateway (port 20016)</span>
+<span class="c1"># - Gateway (port 21016)</span>
 <span class="c1"># - Conversation Worker</span>
 <span class="c1"># - Tool Executor</span>
 <span class="c1"># - Memory Replicator</span>
@@ -1917,7 +2115,7 @@ docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">ex
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="port-conflicts">Port Conflicts<a class="headerlink" href="#port-conflicts" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find process using port</span>
-lsof<span class="w"> </span>-i<span class="w"> </span>:20016
+lsof<span class="w"> </span>-i<span class="w"> </span>:21016
 
 <span class="c1"># Kill process</span>
 <span class="nb">kill</span><span class="w"> </span>-9<span class="w"> </span>&lt;PID&gt;
@@ -1973,7 +2171,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>restart<span class=
 </ol>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="./first-contribution.md">First Contribution</a></li>
+<li><a href="../contribution-workflow/">Contribution Workflow</a></li>
 <li><a href="../coding-standards/">Coding Standards</a></li>
 <li><a href="../testing-guidelines/">Testing Guidelines</a></li>
 </ul>

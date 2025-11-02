@@ -204,7 +204,12 @@ const settingsModalProxy = {
 
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
+            let savedJson = null;
             try {
+                // Progress toast (replaced by success/error via group)
+                if (window.toastFrontendInfo) {
+                    window.toastFrontendInfo('Saving settings…', 'Settings', 2, 'settings-save');
+                }
                 // Save sections back to canonical endpoint
                 const resp = await fetchApi('/ui/settings/sections', {
                     method: 'POST',
@@ -212,8 +217,14 @@ const settingsModalProxy = {
                     body: JSON.stringify({ sections: modalAD.settings.sections })
                 });
                 if (!resp.ok) throw new Error(await resp.text());
+                try { savedJson = await resp.json(); } catch (_) { savedJson = null; }
             } catch (e) {
-                window.toastFetchError("Error saving settings", e)
+                if (window.toastFrontendError) {
+                    const msg = (e && e.message) ? e.message : String(e);
+                    window.toastFrontendError(`Failed to save settings: ${msg}`, 'Settings', 6, 'settings-save');
+                } else {
+                    window.toastFetchError("Error saving settings", e)
+                }
                 return
             }
 
@@ -242,7 +253,15 @@ const settingsModalProxy = {
                 // Non-fatal; credential saving is best-effort
                 console.warn('LLM credentials save skipped:', e?.message || e);
             }
-            document.dispatchEvent(new CustomEvent('settings-updated', { detail: resp.settings }));
+            // Success toast replaces progress toast
+            if (window.toastFrontendSuccess) {
+                window.toastFrontendSuccess('Settings saved successfully', 'Settings', 3, 'settings-save');
+            }
+            // Update modal data with server-returned shape when available
+            if (savedJson && savedJson.settings) {
+                modalAD.settings = savedJson.settings;
+            }
+            document.dispatchEvent(new CustomEvent('settings-updated', { detail: (savedJson && savedJson.settings) ? savedJson.settings : modalAD.settings }));
             this.resolvePromise({
                 status: 'saved',
                 data: modalAD.settings
@@ -317,6 +336,25 @@ const settingsModalProxy = {
             openModal("settings/external/api-examples.html");
         } else if (field.id === "memory_dashboard") {
             openModal("settings/memory/memory-dashboard.html");
+        } else if (field.id === "av_test") {
+            try {
+                const oldVal = field.value;
+                field.value = 'Testing…';
+                const resp = await fetchApi('/v1/av/test', { method: 'GET' });
+                const data = await resp.json().catch(() => ({}));
+                field.value = oldVal;
+                const status = (data && data.status) || 'unknown';
+                if (status === 'ok') {
+                    showToast(`Antivirus reachable at ${data.host}:${data.port}`, 'success');
+                } else if (status === 'disabled') {
+                    showToast(`Antivirus is disabled (configured ${data.host}:${data.port})`, 'info');
+                } else {
+                    const detail = (data && data.detail) ? `: ${data.detail}` : '';
+                    showToast(`Antivirus error${detail}`, 'error');
+                }
+            } catch (e) {
+                showToast(`Antivirus test failed: ${e?.message || e}`, 'error');
+            }
         }
     }
 };

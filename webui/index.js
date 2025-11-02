@@ -30,6 +30,10 @@ let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 // Persisted UI header preferences (defaults aligned with golden UI)
 let uiPrefs = { show_thoughts: true, show_json: false, show_utils: false };
+// Guard to avoid persisting during initial bootstrapping of preferences
+let initializingUiPrefs = false;
+// Debounce timer for preference saves to avoid rapid flapping and race conditions
+let _savePrefsTimer = null;
 
 // Initialize the toggle button
 setupSidebarToggle();
@@ -119,28 +123,35 @@ export async function sendMessage() {
     attachmentsStore.clearAttachments();
     adjustTextareaHeight();
 
-    // Upload attachments first (if any)
+    // Upload attachments first (if any), but skip files already uploaded by selection flow
     let attachmentPaths = [];
     if (hasAttachments) {
       try {
-        // let DOM paint before heavy upload
-        await sleep(0);
+        await sleep(0); // let DOM paint
+        // Paths from any pre-uploaded attachments
+        const prePaths = attachmentsWithUrls
+          .map((a) => a.path)
+          .filter((p) => typeof p === "string" && p.length > 0);
 
-        const formData = new FormData();
-        for (let i = 0; i < attachmentsWithUrls.length; i++) {
-          formData.append("files", attachmentsWithUrls[i].file);
+        // Identify attachments that still need uploading
+        const needUpload = attachmentsWithUrls.filter((a) => !a.path && a.file);
+        let uploadedPaths = [];
+        if (needUpload.length > 0) {
+          const formData = new FormData();
+          for (const a of needUpload) formData.append("files", a.file);
+          if (context) formData.append("session_id", context);
+
+          const upResp = await api.fetchApi("/uploads", {
+            method: "POST",
+            body: formData,
+          });
+          if (!upResp.ok) throw new Error(await upResp.text());
+          const descriptors = await upResp.json();
+          uploadedPaths = Array.isArray(descriptors)
+            ? descriptors.map((d) => d.path).filter(Boolean)
+            : [];
         }
-        if (context) formData.append("session_id", context);
-
-        const upResp = await api.fetchApi("/uploads", {
-          method: "POST",
-          body: formData,
-        });
-        if (!upResp.ok) throw new Error(await upResp.text());
-        const descriptors = await upResp.json();
-        attachmentPaths = Array.isArray(descriptors)
-          ? descriptors.map((d) => d.path).filter(Boolean)
-          : [];
+        attachmentPaths = [...prePaths, ...uploadedPaths];
       } catch (err) {
         toastFetchError("Attachment upload failed", err);
       }
@@ -457,9 +468,12 @@ function connectEventStream(sessionId) {
           setThinking("");
           hideThinkingBubble();
         } else if (/^uploads[.:]progress$/i.test(t)) {
-          const file = (payload.metadata && payload.metadata.filename) || "file";
-          const bytes = (payload.metadata && payload.metadata.bytes_uploaded) || 0;
+          const meta = (payload && payload.metadata) || {};
+          const file = meta.filename || "file";
+          const bytes = meta.bytes_uploaded || 0;
           setThinking(`Uploading ${file} (${bytes} bytes)…`);
+          // Update per-attachment progress bar if available
+          try { attachmentsStore.updateUploadProgress(meta); } catch(_e) {}
         } else if ((role === "assistant" || t.startsWith("assistant")) && !(payload.done || /completed|final/i.test(t))) {
           // For any non-final assistant activity, ensure thinking shows
           setThinking("Assistant is thinking…");
@@ -804,7 +818,7 @@ globalThis.toggleJson = async function (showJson) {
   css.toggleCssProperty(".msg-json", "display", showJson ? "block" : "none");
   try {
     uiPrefs.show_json = !!showJson;
-    await saveUiPreferences();
+    if (!initializingUiPrefs) scheduleSaveUiPreferences();
   } catch(_e) {}
 };
 
@@ -816,7 +830,7 @@ globalThis.toggleThoughts = async function (showThoughts) {
   );
   try {
     uiPrefs.show_thoughts = !!showThoughts;
-    await saveUiPreferences();
+    if (!initializingUiPrefs) scheduleSaveUiPreferences();
   } catch(_e) {}
 };
 
@@ -828,7 +842,7 @@ globalThis.toggleUtils = async function (showUtils) {
   );
   try {
     uiPrefs.show_utils = !!showUtils;
-    await saveUiPreferences();
+    if (!initializingUiPrefs) scheduleSaveUiPreferences();
   } catch(_e) {}
 };
 
@@ -1012,35 +1026,34 @@ function removeClassFromElement(element, className) {
 }
 
 function justToast(text, type = "info", timeout = 5000, group = "") {
-  notificationStore.addFrontendToastOnly(
-    type,
-    text,
-    "",
-    timeout / 1000,
-    group
-  )
+  const seconds = Math.max(timeout / 1000, 1);
+  const t = String(type || "info").toLowerCase();
+  switch (t) {
+    case "error":
+      return notificationStore.frontendError(text, "Error", seconds, group);
+    case "success":
+      return notificationStore.frontendSuccess(text, "Success", seconds, group);
+    case "warning":
+      return notificationStore.frontendWarning(text, "Warning", seconds, group);
+    case "info":
+    default:
+      return notificationStore.frontendInfo(text, "Info", seconds, group);
+  }
 }
-  
 
 function toast(text, type = "info", timeout = 5000) {
-  // Convert timeout from milliseconds to seconds for new notification system
-  const display_time = Math.max(timeout / 1000, 1); // Minimum 1 second
-
-  // Use new frontend notification system based on type
-    switch (type.toLowerCase()) {
-      case "error":
-        return notificationStore.frontendError(text, "Error", display_time);
-      case "success":
-        return notificationStore.frontendInfo(text, "Success", display_time);
-      case "warning":
-        return notificationStore.frontendWarning(text, "Warning", display_time);
-      case "info":
-      default:
-        return notificationStore.frontendInfo(text, "Info", display_time);
-    }
-
+  // Alias to justToast without group
+  return justToast(text, type, timeout);
 }
 globalThis.toast = toast;
+
+function scheduleSaveUiPreferences(delayMs = 250) {
+  try { if (_savePrefsTimer) clearTimeout(_savePrefsTimer); } catch(_e) {}
+  _savePrefsTimer = setTimeout(() => {
+    // Fire-and-forget; any error is non-fatal
+    saveUiPreferences().catch(() => {});
+  }, delayMs);
+}
 
 // OLD: hideToast function removed - now using new notification system
 
@@ -1202,6 +1215,7 @@ function initializeActiveTab() {
 // ---- UI Preferences (persisted) ----
 
 async function initUiPreferences() {
+  initializingUiPrefs = true;
   try {
     const resp = await api.fetchApi('/ui/preferences');
     if (resp.ok) {
@@ -1215,6 +1229,8 @@ async function initUiPreferences() {
     }
   } catch(_e) {
     // Non-fatal; keep defaults
+  } finally {
+    // We keep the flag true while applying values to avoid persisting during init
   }
 
   // Apply to Alpine-bound toggles by updating their component state
@@ -1251,6 +1267,10 @@ async function initUiPreferences() {
       globalThis.toggleUtils(!!uiPrefs.show_utils);
     }
   } catch(_e) {}
+  finally {
+    // Allow subsequent user interactions to persist preferences
+    initializingUiPrefs = false;
+  }
 }
 
 async function saveUiPreferences() {

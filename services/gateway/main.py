@@ -4910,6 +4910,15 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                     sid = payload.get("session_id") or (payload.get("payload") or {}).get("session_id")
                     if sid != session_id:
                         continue
+                    # Coalesce away empty assistant stubs to ensure first assistant chunk carries content
+                    try:
+                        role = str((payload.get("role") or "")).lower()
+                        message = (payload.get("message") or "").strip()
+                        if role == "assistant" and not message:
+                            # Skip empty assistant messages; downstream UI starts rendering on first non-empty token
+                            continue
+                    except Exception:
+                        pass
                     data = json.dumps(payload, ensure_ascii=False)
                     yield (f"data: {data}\n\n").encode("utf-8")
                 except Exception:
@@ -5711,6 +5720,35 @@ def _detect_provider_from_base(base_url: str) -> str:
         return "openai"
     return "other"
 
+def _default_base_url_for_provider(provider: str) -> str | None:
+    """Return a sensible OpenAI-compatible base URL for a known provider.
+
+    This helps when the UI selects a provider but leaves the API base blank; we
+    persist a working default to avoid misconfigured model profiles that would
+    otherwise result in silent failures at runtime.
+    """
+    p = (provider or "").strip().lower()
+    mapping = {
+        "groq": "https://api.groq.com/openai/v1",
+        "openai": "https://api.openai.com/v1",
+        "openrouter": "https://openrouter.ai/api/v1",
+        "venice": "https://api.venice.ai/api/v1",
+        "a0_venice": "https://api.agent-zero.ai/venice/v1",
+        "mistral": "https://api.mistral.ai/v1",
+        # Azure OpenAI requires per-tenant endpoint; leave as None to force explicit config
+        "azure": None,
+        "xai": "https://api.x.ai/v1",
+        "google": None,  # non OpenAI-compatible by default in our stack
+        "huggingface": None,
+        "lm_studio": "http://localhost:1234/v1",
+        "ollama": "http://localhost:11434/v1",
+        "github_copilot": None,
+        "sambanova": None,
+        "deepseek": None,
+        "other": None,
+    }
+    return mapping.get(p)
+
 
 @app.put("/v1/ui/settings")
 async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
@@ -6101,6 +6139,12 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
             raise HTTPException(status_code=400, detail="chat_model_name is required")
         # Normalize base_url before saving (allows empty -> provider default)
         normalized_base = _normalize_llm_base_url(base_url_raw)
+
+        # If the user chose an explicit provider but left base_url empty, fill a sensible default
+        if (not normalized_base) and explicit_provider:
+            fallback = _default_base_url_for_provider(explicit_provider)
+            if fallback:
+                normalized_base = fallback
 
         # Determine provider for credential validation
         provider = explicit_provider or ""

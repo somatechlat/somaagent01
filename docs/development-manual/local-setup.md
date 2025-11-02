@@ -51,18 +51,8 @@ make ui
 ### Verification
 
 ```bash
-# Check all services
-make check-stack
-
-# Expected output:
-# ✅ Kafka: healthy
-# ✅ Redis: healthy
-# ✅ PostgreSQL: healthy
-# ✅ OPA: healthy
-# ✅ Gateway: healthy
-
-# Test API
-curl http://localhost:20016/v1/health
+# Health check (Gateway)
+curl -fsS http://127.0.0.1:21016/v1/health -D - -o /dev/null
 
 # Open UI
 open http://127.0.0.1:3000
@@ -115,16 +105,17 @@ DEPLOYMENT_MODE=DEV
 **Optional variables**:
 ```bash
 # Ports (defaults shown)
-GATEWAY_PORT=20016
-KAFKA_PORT=20000
-REDIS_PORT=20001
-POSTGRES_PORT=20002
+GATEWAY_PORT=21016
+KAFKA_PORT=21000
+REDIS_PORT=21001
+POSTGRES_PORT=21002
+OPA_PORT=21009
 
 # Logging
 LOG_LEVEL=DEBUG  # DEV mode: DEBUG, PROD: INFO
 
 # Memory
-SOMABRAIN_BASE_URL=http://localhost:9696
+SOMA_BASE_URL=http://localhost:9696
 ```
 
 ### 3. Infrastructure Services
@@ -166,7 +157,7 @@ python scripts/ensure_outbox_schema.py
 make stack-up
 
 # This starts:
-# - Gateway (port 20016)
+# - Gateway (port 21016)
 # - Conversation Worker
 # - Tool Executor
 # - Memory Replicator
@@ -250,7 +241,7 @@ docker compose exec kafka kafka-console-consumer.sh \
 
 ```bash
 # Find process using port
-lsof -i :20016
+lsof -i :21016
 
 # Kill process
 kill -9 <PID>
@@ -320,6 +311,6 @@ docker compose restart kafka
 
 ## Next Steps
 
-- [First Contribution](./first-contribution.md)
+- [Contribution Workflow](./contribution-workflow.md)
 - [Coding Standards](./coding-standards.md)
 - [Testing Guidelines](./testing-guidelines.md)

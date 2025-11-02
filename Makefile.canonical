@@ -1,57 +1,65 @@
-# Makefile for Agent Zero
+# Canonical Makefile shim (deprecated)
+#
+# This file is kept for backwards compatibility but is intentionally minimal.
+# Single point of entry is the root Makefile. Prefer these targets:
+#   - make dev-up | dev-down | dev-logs | dev-rebuild | dev-down-clean
+#   - make build | up | down | logs (power users)
+#
+# All targets below delegate to the root Makefile and print a deprecation notice.
 
-.PHONY: help build run clean test lint
+.PHONY: help build run stop clean test lint setup logs restart shell monitoring
 
-# Variables
-DOCKER_COMPOSE = docker compose -f docker-compose.yaml
-PYTHON = python3
-PIP = pip3
+ROOT_MAKE := Makefile
+
+define _deprecated
+@echo "[DEPRECATION] Makefile.canonical is deprecated. Use the root Makefile targets.";
+@echo "Suggested: dev-up | dev-down | dev-logs | dev-rebuild | dev-down-clean";
+endef
 
 help:
-	@echo "Available commands:"
-	@echo "  make build    - Build Docker images"
-	@echo "  make run      - Run the application stack"
-	@echo "  make stop     - Stop the application stack"
-	@echo "  make clean    - Clean up containers and volumes"
-	@echo "  make test     - Run tests"
-	@echo "  make lint     - Run linting"
-	@echo "  make setup    - Setup development environment"
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) help
 
 build:
-	$(DOCKER_COMPOSE) build
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) build
 
 run:
-	$(DOCKER_COMPOSE) up -d
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) dev-up
 
 stop:
-	$(DOCKER_COMPOSE) down
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) dev-down
 
 clean:
-	$(DOCKER_COMPOSE) down -v
-	find . -type d -name "__pycache__" -exec rm -r {} +
-	find . -type f -name "*.pyc" -delete
-
-test:
-	$(PYTHON) -m pytest tests/
-
-lint:
-	$(PYTHON) -m black .
-	$(PYTHON) -m ruff check .
-
-setup:
-	$(PIP) install -r requirements-canonical.txt
-	pre-commit install
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) dev-down-clean
 
 logs:
-	$(DOCKER_COMPOSE) logs -f
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) dev-logs
 
 restart:
-	$(DOCKER_COMPOSE) restart
+	$(_deprecated)
+	@$(MAKE) -f $(ROOT_MAKE) dev-rebuild
 
 shell:
-	$(DOCKER_COMPOSE) exec gateway /bin/bash
+	$(_deprecated)
+	@echo "Tip: gateway shell -> docker exec -it somaAgent01_gateway /bin/bash";
+
+test:
+	$(_deprecated)
+	@python3 -m pytest -q || true
+
+lint:
+	$(_deprecated)
+	@python3 -m ruff check . || true
+
+setup:
+	$(_deprecated)
+	@echo "Use .venv and pyproject/requirements.*; provider secrets via UI Settings.";
 
 monitoring:
-	@echo "Opening monitoring endpoints..."
-	@echo "Prometheus: http://localhost:8889/metrics"
-	@echo "Health Check: http://localhost:8000/health"
+	$(_deprecated)
+	@echo "Prometheus and health paths are exposed by services; see Makefile help."

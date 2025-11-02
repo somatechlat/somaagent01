@@ -46,7 +46,7 @@ ifneq (,$(wildcard ./.build.env))
 	export
 endif
 
-.PHONY: help build up down restart logs rebuild clean
+.PHONY: help build up down restart logs rebuild clean ensure-env ensure-networks
 
 help:
 	@echo "Usage: make [target]"
@@ -54,18 +54,32 @@ help:
 	@echo "Targets:"
 	@echo "  help      Show this help message."
 	@echo "  build     Build or rebuild the Docker images for the stack."
-	@echo "  up        Create and start the containers in detached mode."
-	@echo "  down      Stop and remove the containers, networks, and volumes."
+	@echo "  up        Create and start the containers in detached mode (ensures .env and networks)."
+	@echo "  down      Stop and remove the containers (use REMOVE_VOLUMES=1 to also remove volumes)."
 	@echo "  restart   Restart all services."
 	@echo "  logs      Follow the logs of all services."
 	@echo "  rebuild   Stop, rebuild, and restart the entire stack."
 	@echo "  clean     Remove all build artifacts and Docker volumes."
+	@echo ""
+	@echo "Standardized stack aliases (production-friendly names):"
+	@echo "  stack-start     Alias for 'up'"
+	@echo "  stack-stop      Alias for 'down'"
+	@echo "  stack-restart   Alias for 'restart'"
+	@echo "  stack-logs      Alias for 'logs'"
 	@echo ""
 	@echo "Developer (lightweight) targets:"
 	@echo "  dev-up                    Start minimal dev stack (docker-compose.yaml)."
 	@echo "  dev-down                  Stop minimal dev stack."
 	@echo "  dev-logs                  Tail logs for minimal dev stack."
 	@echo "  dev-rebuild               Rebuild and restart minimal dev stack."
+	@echo "  dev-down-hard             Stop dev stack and remove named volumes."
+	@echo "  dev-down-clean            Stop dev stack, remove volumes, and remove dev network."
+
+	@echo ""
+	@echo "Standardized dev aliases:"
+	@echo "  dev-start                 Alias for 'dev-up'"
+	@echo "  dev-stop                  Alias for 'dev-down'"
+	@echo "  dev-restart               Alias for 'dev-rebuild'"
 	@echo "  dev-build [SERVICES=...]  Build images for specific services (or all)."
 	@echo "  dev-up-services SERVICES=svc1 [svc2 ...]    Start specific services."
 	@echo "  dev-restart-services SERVICES=svc1 [svc2 ...]  Rebuild+start specific services."
@@ -83,6 +97,11 @@ help:
 	@echo "  stack-down                Alias for stack-up (use Ctrl+C)."
 	@echo "  ui                        Run Agent UI locally (Ctrl+C to stop)."
 	@echo ""
+	@echo "Quick operations:"
+	@echo "  health                    Curl Gateway /v1/health"
+	@echo "  ui-smoke                  Run UI smoke test"
+	@echo "  test-e2e                  Run E2E pytest suite (tests/e2e)"
+	@echo ""
 	@echo "Helm quickstart targets:"
 	@echo "  helm-dev-up               Install soma-infra (dev) and soma-stack (dev) into cluster."
 	@echo "  helm-dev-down             Uninstall soma and soma-infra releases from cluster."
@@ -95,12 +114,14 @@ build:
 up:
 	@echo "Starting the stack in detached mode..."
 	# Expand comma-separated PROFILES into multiple --profile flags for docker compose
-	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
+	$(MAKE) ensure-env
+	$(MAKE) ensure-networks
 	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) $(DOCKER_PROFILES) up -d
 
 down:
 	@echo "Stopping and removing the stack..."
-	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) down
+	# Use REMOVE_VOLUMES=1 to also remove named volumes; always remove orphans
+	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) down $(if $(REMOVE_VOLUMES),-v,) --remove-orphans
 
 restart: down up
 
@@ -135,7 +156,25 @@ dev-up:
 
 dev-down:
 	@echo "Stopping lightweight developer stack..."
-	$(MAKE) down COMPOSE_FILE=$(DEV_COMPOSE_FILE) COMPOSE_PROJECT_NAME=somaagent01_dev
+	$(MAKE) down COMPOSE_FILE=$(DEV_COMPOSE_FILE) COMPOSE_PROJECT_NAME=somaagent01_dev REMOVE_VOLUMES=$(DEV_REMOVE_VOLUMES)
+	@# Fallback: in some Docker Compose versions, containers with explicit container_name or external networks
+	@# might not be removed by `compose down` reliably. Ensure the dev project containers are gone.
+	@echo "Ensuring all dev containers are removed (fallback)..."
+	@ids=$$(docker ps -aq --filter "label=com.docker.compose.project=somaagent01_dev"); \
+	if [ -n "$$ids" ]; then \
+	  echo "Forcibly removing containers: $$ids"; \
+	  docker rm -f $$ids >/dev/null 2>&1 || true; \
+	else \
+	  echo "No leftover dev containers found."; \
+	fi
+	@if [ "$(DEV_REMOVE_NETWORK)" = "1" ]; then \
+	  echo "Removing dev network 'somaagent01_dev'..."; \
+	  docker network rm somaagent01_dev >/dev/null 2>&1 || true; \
+	  echo "Removing any orphan dev networks matching 'somaagent01_dev*'..."; \
+	  for net in $$(docker network ls --format '{{.Name}}' | grep -E '^somaagent01_dev($|_)' || true); do \
+	    docker network rm $$net >/dev/null 2>&1 || true; \
+	  done; \
+	fi
 
 dev-logs:
 	@echo "Tailing logs for lightweight developer stack..."
@@ -144,6 +183,20 @@ dev-logs:
 dev-rebuild:
 	@echo "Rebuilding lightweight developer stack..."
 	$(MAKE) rebuild COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=$(DEV_PROFILES) COMPOSE_PROJECT_NAME=somaagent01_dev
+
+.PHONY: dev-down-hard
+# Forceful dev down: remove containers, orphans, and named volumes for the dev project
+dev-down-hard:
+	@echo "Forcefully stopping developer stack and removing volumes..."
+	$(MAKE) dev-down DEV_REMOVE_VOLUMES=1
+
+.PHONY: dev-down-clean
+# Fully clean dev stack: containers, volumes, and the shared network to ensure fresh restarts
+dev-down-clean:
+	@echo "Fully cleaning developer stack (containers, volumes, network)..."
+	$(MAKE) dev-down DEV_REMOVE_VOLUMES=1 DEV_REMOVE_NETWORK=1
+
+
 
 .PHONY: dev-up-ui dev-restart-ui
 
@@ -161,6 +214,7 @@ dev-restart-ui:
 deps-up:
 	@echo "Starting shared dependencies (Kafka/Redis/Postgres/OPA)..."
 	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
+	@docker network inspect somaagent01_dev >/dev/null 2>&1 || docker network create somaagent01_dev
 	$(MAKE) up COMPOSE_FILE=$(COMPOSE_FILE) PROFILES=core COMPOSE_PROJECT_NAME=$(DEPS_PROJECT_NAME)
 
 deps-down:
@@ -274,3 +328,59 @@ docker-push:
 	@if [ -z "$(IMAGE_REPO)" ]; then echo "IMAGE_REPO is required (set in .build.env or env)"; exit 1; fi
 	@echo "Pushing image $(IMAGE_REPO):$(TAG)"
 	docker push $(IMAGE_REPO):$(TAG)
+
+# Ensure required local files and networks exist for compose
+ensure-env:
+	@# Create a minimal .env so docker compose env_file resolves; provider secrets come from the UI
+	@[ -f ./.env ] || (echo "# Local development .env (minimal)" > ./.env && echo "Created .env for docker-compose env_file")
+
+ensure-networks:
+	@docker network inspect somaagent01 >/dev/null 2>&1 || docker network create somaagent01
+	@docker network inspect somaagent01_dev >/dev/null 2>&1 || docker network create somaagent01_dev
+
+# -------------------------------------------------------------
+# Standardized alias targets (production-friendly naming)
+# -------------------------------------------------------------
+.PHONY: stack-start stack-stop stack-restart stack-logs
+
+stack-start:
+	$(MAKE) up
+
+stack-stop:
+	$(MAKE) down
+
+stack-restart:
+	$(MAKE) restart
+
+stack-logs:
+	$(MAKE) logs
+
+.PHONY: dev-start dev-stop dev-restart
+
+dev-start:
+	$(MAKE) dev-up
+
+dev-stop:
+	$(MAKE) dev-down
+
+dev-restart:
+	$(MAKE) dev-rebuild
+
+
+
+# -------------------------------------------------------------
+# Quick operations
+# -------------------------------------------------------------
+.PHONY: health ui-smoke test-e2e
+
+health:
+	@echo "Checking Gateway health at http://127.0.0.1:$${GATEWAY_PORT:-21016}/v1/health ..."
+	@curl -fsS -D - http://127.0.0.1:$${GATEWAY_PORT:-21016}/v1/health -o /dev/null
+
+ui-smoke:
+	@echo "Running UI smoke ..."
+	@WEB_UI_BASE_URL=$${WEB_UI_BASE_URL:-http://localhost:$${GATEWAY_PORT:-21016}/ui} ./scripts/ui-smoke.sh
+
+test-e2e:
+	@echo "Running E2E tests ..."
+	@[ -x ./.venv/bin/python ] && ./.venv/bin/python -m pytest -q tests/e2e || pytest -q tests/e2e
