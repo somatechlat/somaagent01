@@ -27,6 +27,22 @@ Or see DeepWiki generated documentation:
 </div>
 
 
+## Single point of entry (development)
+
+Use the root Makefile targets below. Provider credentials and settings are managed in the Web UI Settings screen, not via environment variables.
+
+- Start stack (developer profile): `make dev-up`
+- Stop stack: `make dev-down`
+- Tail logs: `make dev-logs`
+- Rebuild and restart: `make dev-rebuild`
+- Clean shutdown and remove volumes: `make dev-down-hard`
+- Fully clean (containers, volumes, dev network): `make dev-down-clean`
+
+Notes:
+- A minimal `.env` is auto-created to satisfy docker compose `env_file`; do not put secrets there. The UI is the source of truth for credentials.
+- Legacy `Makefile.canonical` is deprecated and now delegates to the root Makefile to avoid confusion.
+
+
 <div align="center">
 
 > ### 🚨 **IMPORTANT ANNOUNCEMENT** 🚨

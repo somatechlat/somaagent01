@@ -104,6 +104,6 @@ GitHub Actions workflows:
 
 - [API Reference](./api-reference.md)
 - [Coding Standards](./coding-standards.md)
-- [Testing Guide](./testing.md)
-- [CI/CD Pipeline](./ci-cd.md)
+- [Testing Guidelines](./testing-guidelines.md)
+- [Contribution Workflow](./contribution-workflow.md)
 - [Contribution Workflow](./contribution-workflow.md)

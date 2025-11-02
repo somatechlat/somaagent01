@@ -55,6 +55,8 @@ x-agent-service: &agent-service
   volumes:
     - ./memory:/git/agent-zero/memory
     - ./logs:/git/agent-zero/logs
+    # Map .env so runtime can persist tokens/ids without permission errors
+    - ./.env:/git/agent-zero/.env
     - ./conf:/git/agent-zero/conf:ro
     - ./services:/git/agent-zero/services:ro
     - ./python:/git/agent-zero/python:ro

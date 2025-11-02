@@ -19,6 +19,36 @@
                             <span class="file-title" x-text="attachment.name"></span>
                         </div>
                     </template>
+                    <!-- Progress/status overlay -->
+                                        <div class="attachment-progress" x-show="attachment.uploading || (attachment.uploadedBytes && attachment.totalBytes) || attachment.status === 'quarantined' || attachment.status === 'error' || attachment.uploadError">
+                        <template x-if="attachment.status === 'quarantined'">
+                            <span class="status-badge status-quarantined" title="Blocked by antivirus">Quarantined</span>
+                        </template>
+                                                <template x-if="attachment.status !== 'quarantined'">
+                            <div class="progress-bar">
+                                <div class="progress-fill"
+                                     :style="{
+                                        width: (attachment.totalBytes ? Math.min(100, Math.round((attachment.uploadedBytes||0) * 100 / (attachment.totalBytes||1))) : (attachment.uploading ? 5 : 100)) + '%'
+                                     }"></div>
+                            </div>
+                                                        <div class="progress-text">
+                                                            <template x-if="attachment.status === 'error' || attachment.uploadError">
+                                                                <span class="status-badge status-error">Upload failed</span>
+                                                            </template>
+                                                            <template x-if="!(attachment.status === 'error' || attachment.uploadError)">
+                                                                <span x-text="
+                                                                    (attachment.totalBytes && attachment.uploadedBytes >= 0)
+                                                                        ? (Math.min(100, Math.round((attachment.uploadedBytes||0) * 100 / (attachment.totalBytes||1))) + '%')
+                                                                        : (attachment.uploading ? 'Uploading…' : 'Ready')
+                                                                "></span>
+                                                            </template>
+                                                        </div>
+                                                        <div class="progress-actions">
+                                                            <button class="btn-cancel" x-show="attachment.uploading" @click="$store.chatAttachments.cancelAttachment(index)">Cancel</button>
+                                                            <button class="btn-retry" x-show="attachment.status === 'error' || attachment.uploadError" @click="$store.chatAttachments.retryAttachment(index)">Retry</button>
+                                                        </div>
+                        </template>
+                    </div>
                     <button @click="$store.chatAttachments.removeAttachment(index)"
                         class="remove-attachment">&times;</button>
                 </div>

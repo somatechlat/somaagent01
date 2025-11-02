@@ -12,7 +12,7 @@ SomaAgent01 is a microservices-based conversational AI platform implementing eve
 
 | Component | Type | Port | Purpose |
 |-----------|------|------|---------|
-| Gateway | FastAPI | 20016 | HTTP/WebSocket API, authentication, routing |
+| Gateway | FastAPI | 21016 | HTTP/WebSocket API, authentication, routing |
 | Conversation Worker | Kafka Consumer | - | Process user messages, generate LLM responses |
 | Tool Executor | Kafka Consumer | - | Execute tools requested by conversations |
 | Memory Replicator | Kafka Consumer | - | Replicate memory.wal events to PostgreSQL |
@@ -66,6 +66,6 @@ User → Gateway → conversation.inbound → Conversation Worker → SLM → co
 ## Related Documents
 
 - [Architecture Details](./architecture.md)
-- [API Specification](./api-spec.md)
+- [Outbound Events](./outbound-events.md)
 - [Security Controls](./security.md)
 - [Deployment Guide](./deployment.md)

@@ -6,6 +6,10 @@ const model = {
   attachments: [],
   hasAttachments: false,
   dragDropOverlayVisible: false,
+  // Track active per-file uploads for cancel/retry
+  activeUploads: {},
+  // Upload progress tracking per attachment
+  // Each attachment may have: uploading:boolean, uploadedBytes:number, totalBytes:number, status:string ('uploading'|'uploaded'|'quarantined'|'error')
 
   // Image modal properties
   currentImageUrl: null,
@@ -208,15 +212,24 @@ const model = {
   },
 
   // Update handleFileUpload to use the attachments store
-  handleFileUpload(event) {
+  async handleFileUpload(event) {
     const files = event.target.files;
-    this.handleFiles(files);
+    // Add to store for immediate UX preview
+    this.handleFiles(files, { autoUpload: true });
+    // Kick off background upload (golden parity: upload on selection)
+    try {
+      await this.uploadFiles(Array.from(files || []));
+    } catch (e) {
+      console.warn("Background upload failed:", e?.message || e);
+      // Non-fatal; users can still send which will retry any missing files
+    }
     event.target.value = ""; // clear uploader selection to fix issue where same file is ignored the second time
   },
 
   // File handling logic (moved from index.js)
-  handleFiles(files) {
+  handleFiles(files, opts = {}) {
     console.log("handleFiles called with", files.length, "files");
+    const autoUpload = !!opts.autoUpload;
     Array.from(files).forEach((file) => {
       console.log("Processing file:", file.name, file.type);
       const ext = file.name.split(".").pop().toLowerCase();
@@ -229,6 +242,11 @@ const model = {
         type: isImage ? "image" : "file",
         name: file.name,
         extension: ext,
+        path: null, // will be set after successful server upload
+        uploading: autoUpload,
+        uploadedBytes: 0,
+        totalBytes: typeof file.size === "number" ? file.size : undefined,
+        status: autoUpload ? "uploading" : undefined,
         displayInfo: this.getAttachmentDisplayInfo(file),
       };
 
@@ -244,23 +262,145 @@ const model = {
         // For non-image files, add directly
         this.addAttachment(attachment);
       }
+      // Optionally enqueue upload
+      if (autoUpload) {
+        // Best-effort background upload for this file only
+        this.uploadFiles([file]).catch((e) => console.warn("Auto-upload failed:", e?.message || e));
+      }
     });
   },
 
-  // Get attachments for sending message
+  // Upload provided files to the server, per file, enabling cancel/retry
+  async uploadFiles(filesArray) {
+    const files = Array.isArray(filesArray) ? filesArray : [];
+    if (!files.length) return;
+    for (const f of files) {
+      // Skip if we already have a server path
+      const idx = this.attachments.findIndex((a) => a && a.file === f && !a.path);
+      if (idx === -1) continue;
+      await this._uploadSingleByIndex(idx).catch((e) => {
+        console.warn("upload single failed:", e?.message || e);
+      });
+    }
+  },
+
+  async _uploadSingleByIndex(idx) {
+    const att = this.attachments[idx];
+    if (!att || !att.file) return;
+    // Set uploading state
+    this.attachments[idx] = { ...att, uploading: true, status: "uploading", uploadError: false };
+    const form = new FormData();
+    form.append("files", att.file);
+    // Support cancel with AbortController via fetchApi
+    const controller = new AbortController();
+    this.activeUploads[att.name] = controller;
+    try {
+      const resp = await fetchApi("/uploads", { method: "POST", body: form, signal: controller.signal });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => "");
+        throw new Error(txt || `HTTP ${resp.status}`);
+      }
+      const arr = await resp.json();
+      const first = Array.isArray(arr) ? arr.find((d) => (d.filename || d.name) === att.name) || arr[0] : null;
+      const serverPath = first && typeof first.path === "string" ? first.path : null;
+      const status = first && first.status;
+      const attId = first && first.id;
+      this.attachments[idx] = {
+        ...this.attachments[idx],
+        uploading: false,
+        status: status || "uploaded",
+        path: serverPath || this.attachments[idx].path,
+        uploadedBytes: this.attachments[idx].totalBytes || this.attachments[idx].uploadedBytes || (att.file ? att.file.size : 0),
+        totalBytes: this.attachments[idx].totalBytes || (att.file ? att.file.size : undefined),
+        attachment_id: attId || this.attachments[idx].attachment_id,
+        uploadError: false,
+      };
+    } catch (e) {
+      // Abort is not an error UX
+      const aborted = e && (e.name === "AbortError" || /abort/i.test(e.message || ""));
+      this.attachments[idx] = {
+        ...this.attachments[idx],
+        uploading: false,
+        uploadError: !aborted,
+        status: aborted ? this.attachments[idx].status : "error",
+      };
+      if (!aborted) console.warn("Upload failed:", e?.message || e);
+    } finally {
+      delete this.activeUploads[att.name];
+      this.updateAttachmentState();
+    }
+  },
+
+  cancelAttachment(index) {
+    const att = this.attachments[index];
+    if (!att) return;
+    const ctl = this.activeUploads[att.name];
+    if (ctl) ctl.abort();
+    // UI state is set in _uploadSingleByIndex catch
+  },
+
+  retryAttachment(index) {
+    const att = this.attachments[index];
+    if (!att || !att.file) {
+      (window.toastFrontendInfo || window.toastInfo || console.info)("Please reselect the file to retry.", "Attachments");
+      return;
+    }
+    // Reset error and kick upload
+    this.attachments[index] = { ...att, uploadError: false, status: "uploading", uploading: true };
+    return this._uploadSingleByIndex(index);
+  },
+
+  // Get attachments for sending message (preserve server path when available)
   getAttachmentsForSending() {
     return this.attachments.map((attachment) => {
       if (attachment.type === "image") {
         return {
           ...attachment,
-          url: URL.createObjectURL(attachment.file),
-        };
-      } else {
-        return {
-          ...attachment,
+          url: attachment.url || (attachment.file ? URL.createObjectURL(attachment.file) : null),
         };
       }
+      return { ...attachment };
     });
+  },
+
+  // Update progress based on SSE event metadata
+  // meta: { filename, bytes_uploaded, bytes_total?, status, attachment_id?, file_index? }
+  updateUploadProgress(meta) {
+    try {
+      if (!meta) return;
+      const fname = meta.filename || meta.name;
+      const uploaded = typeof meta.bytes_uploaded === "number" ? meta.bytes_uploaded : 0;
+      const total = typeof meta.bytes_total === "number" ? meta.bytes_total : undefined;
+      const status = meta.status || (total && uploaded >= total ? "uploaded" : "uploading");
+      // Find the first matching attachment without a finalized path or still uploading
+      const idx = this.attachments.findIndex((a) => a && a.name === fname && (!a.path || a.uploading));
+      if (idx < 0) return;
+      const prev = this.attachments[idx] || {};
+      const next = {
+        ...prev,
+        uploading: status !== "uploaded",
+        status: status || prev.status,
+        uploadedBytes: Math.max(prev.uploadedBytes || 0, uploaded || 0),
+        totalBytes: prev.totalBytes || total || (prev.file ? prev.file.size : undefined),
+        path: prev.path || (meta.attachment_id ? `/v1/attachments/${meta.attachment_id}` : prev.path),
+        attachment_id: prev.attachment_id || meta.attachment_id || prev.attachment_id,
+      };
+      this.attachments[idx] = next;
+      // Notify user if AV quarantined the file
+      if (next.status === 'quarantined' && prev.status !== 'quarantined') {
+        (window.toastFrontendWarning || window.toastWarning || console.warn)(`Attachment quarantined by antivirus: ${fname}`, 'Attachments');
+      }
+      this.updateAttachmentState();
+    } catch (e) {
+      console.warn("updateUploadProgress error:", e?.message || e);
+    }
+  },
+
+  // Convenience: return only already-uploaded server paths
+  getServerAttachmentPaths() {
+    return this.attachments
+      .map((a) => a && a.path)
+      .filter((p) => typeof p === "string" && p.length > 0);
   },
 
   // Generate server-side API URL for file (for device sync)
