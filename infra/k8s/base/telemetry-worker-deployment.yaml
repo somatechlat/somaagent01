@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-worker
+  labels:
+    app.kubernetes.io/name: telemetry-worker
+    app.kubernetes.io/part-of: somaagent01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telemetry-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: telemetry-worker
+        app.kubernetes.io/part-of: somaagent01
+    spec:
+      containers:
+        - name: telemetry-worker
+          image: agent0ai/agent-zero:latest
+          args:
+            - "uvicorn"
+            - "services.telemetry_worker.main:app"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8020"
+          env:
+            - name: LOG_LEVEL
+              value: INFO
+            - name: TELEMETRY_DIRECT_WRITE
+              value: "false"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: telemetry-postgres
+                  key: dsn
+          ports:
+            - containerPort: 8020
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

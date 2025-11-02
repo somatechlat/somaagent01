@@ -1,0 +1,3 @@
+CREATE DATABASE openfga;
+CREATE USER openfga WITH PASSWORD 'openfga';
+GRANT ALL PRIVILEGES ON DATABASE openfga TO openfga;

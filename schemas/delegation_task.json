@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DelegationTaskEvent",
+  "type": "object",
+  "required": ["task_id", "payload"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "payload": {"type": "object"},
+    "callback_url": {"type": ["string", "null"]},
+    "metadata": {"type": "object"},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

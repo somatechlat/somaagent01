@@ -1,0 +1,205 @@
+name: CI/CD Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/**'
+      - 'infra/helm/**'
+      - 'Dockerfile*'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - '.github/workflows/deploy.yaml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Deploy mode (dev_full, dev_prod, prod, prod_ha)'
+        required: true
+        default: 'dev_full'
+      namespace:
+        description: 'Kubernetes namespace to deploy to'
+        required: true
+        default: 'soma'
+      imageTag:
+        description: 'Image tag to deploy (defaults to short SHA)'
+        required: false
+        default: ''
+      canaryEnabled:
+        description: 'Enable canary for gateway (true/false)'
+        required: false
+        default: 'false'
+      canaryWeight:
+        description: 'Canary traffic weight (0-100)'
+        required: false
+        default: '10'
+      canaryImageTag:
+        description: 'Image tag for gateway canary (defaults to built tag)'
+        required: false
+        default: ''
+      stableImageTag:
+        description: 'Stable image tag for non-canary services (optional)'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install mkdocs deps (docs sanity)
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f docs/requirements-docs.txt ]; then pip install -r docs/requirements-docs.txt; fi
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+
+      - name: Build docs
+        run: |
+          export ENABLE_DOCS_GIT_PLUGINS=0
+          if [ -f mkdocs.yml ]; then mkdocs build --strict; fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
+          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: meta
+        run: |
+          SHORT_SHA=${GITHUB_SHA::7}
+          if [ -n "${{ github.event.inputs.imageTag }}" ]; then TAG='${{ github.event.inputs.imageTag }}'; else TAG=$SHORT_SHA; fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          if [ -n "${{ github.event.inputs.canaryImageTag }}" ]; then CTAG='${{ github.event.inputs.canaryImageTag }}'; else CTAG=$TAG; fi
+          echo "canaryTag=$CTAG" >> $GITHUB_OUTPUT
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Trivy scan image
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          timeout: 10m
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set kubeconfig
+        if: ${{ secrets.KUBECONFIG_CONTENTS != '' }}
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_CONTENTS }}" | base64 -d > $HOME/.kube/config
+
+      - name: Select namespace
+        run: |
+          kubectl get ns ${{ github.event.inputs.namespace || 'soma' }} || kubectl create ns ${{ github.event.inputs.namespace || 'soma' }}
+
+      - name: Helm lint charts
+        run: |
+          helm lint infra/helm/outbox-sync
+          helm lint infra/helm/soma-stack
+
+      - name: Generate global env
+        run: |
+          chmod +x scripts/generate-global-env.sh
+          MODE='${{ github.event.inputs.mode || 'dev_full' }}'
+          ./scripts/generate-global-env.sh "$MODE" /root/soma-global.env
+          echo "DEPLOY_MODE=$MODE" >> $GITHUB_ENV
+
+      - name: Choose overlay file
+        id: overlay
+        run: |
+          case "${{ github.event.inputs.mode || 'dev_full' }}" in
+            dev_full|dev_prod)
+              echo "file=infra/helm/overlays/dev-values.yaml" >> $GITHUB_OUTPUT ;;
+            prod)
+              echo "file=infra/helm/overlays/prod-values.yaml" >> $GITHUB_OUTPUT ;;
+            prod_ha)
+              echo "file=infra/helm/overlays/prod-ha-values.yaml" >> $GITHUB_OUTPUT ;;
+            *)
+              echo "file=infra/helm/overlays/dev-values.yaml" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Helm upgrade (umbrella)
+        run: |
+          helm upgrade --install soma \
+            infra/helm/soma-stack \
+            --namespace ${{ github.event.inputs.namespace || 'soma' }} \
+            -f infra/helm/soma-stack/values.yaml \
+            -f ${{ steps.overlay.outputs.file }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ github.event.inputs.stableImageTag || steps.meta.outputs.tag }} \
+            --set services.gateway.canary.enabled=${{ github.event.inputs.canaryEnabled }} \
+            --set services.gateway.canary.weight=${{ github.event.inputs.canaryWeight }} \
+            --set services.gateway.canary.imageTag=${{ steps.meta.outputs.canaryTag }} \
+            --wait --timeout 10m
+
+      - name: Helm tests
+        run: |
+          helm test soma -n ${{ github.event.inputs.namespace || 'soma' }} --timeout 5m
+
+      - name: Show rollout status
+        continue-on-error: true
+        run: |
+          kubectl rollout status deploy/$(kubectl get deploy -n ${{ github.event.inputs.namespace || 'soma' }} -o jsonpath='{.items[0].metadata.name}') -n ${{ github.event.inputs.namespace || 'soma' }} || true
+          kubectl get pods -n ${{ github.event.inputs.namespace || 'soma' }}
+
+      - name: Basic validation
+        continue-on-error: true
+        run: |
+          # Try to port-forward the gateway service and check /health
+          kubectl port-forward svc/$(kubectl get svc -n ${{ github.event.inputs.namespace || 'soma' }} -o jsonpath='{.items[?(@.metadata.name~=".*gateway")].metadata.name}' | head -n1) 18015:${{ vars.GATEWAY_PORT || '8010' }} -n ${{ github.event.inputs.namespace || 'soma' }} &
+          PF_PID=$!
+          sleep 5
+          curl -fsS http://127.0.0.1:18015/health || curl -fsS http://127.0.0.1:18015/v1/health
+          kill $PF_PID || true
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          REV=$(helm history soma -n ${{ github.event.inputs.namespace || 'soma' }} --output json | jq '.[-2].revision')
+          if [ -n "$REV" ] && [ "$REV" != "null" ]; then
+            helm rollback soma $REV -n ${{ github.event.inputs.namespace || 'soma' }}
+          fi
+

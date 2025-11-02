@@ -1,0 +1,55 @@
+# prod-values.yaml – production (single-zone)
+global:
+  DEPLOY_MODE: prod
+  JWT_ENABLED: true
+  OPA_ENABLED: true
+  MTLS_ENABLED: true
+  REPLICA_COUNT: 2
+  RESOURCE_REQUESTS:
+    cpu: 250m
+    memory: 256Mi
+  RESOURCE_LIMITS:
+    cpu: 500m
+    memory: 512Mi
+  ISTIO_INJECTION: true
+  VAULT_AGENT_INJECT: true
+  PROMETHEUS_SCRAPE: true
+  OTEL_ENABLED: true
+  NETWORK_POLICY_ENABLED: true
+  CERT_MANAGER_CLUSTER_ISSUER: letsencrypt-prod
+
+services:
+  gateway:
+    ingress:
+      enabled: true
+      className: nginx
+      host: gateway.prod.soma.internal
+      path: /
+      annotations: {}
+      tls:
+        - hosts: [gateway.prod.soma.internal]
+          secretName: gateway-tls
+    istio:
+      enabled: false
+      host: gateway.prod.soma.internal
+      gateways: ["istio-system/public-gateway"]
+  ui:
+    ingress:
+      enabled: true
+      className: nginx
+      host: ui.prod.soma.internal
+      path: /
+      annotations: {}
+      tls:
+        - hosts: [ui.prod.soma.internal]
+          secretName: ui-tls
+  uiProxy:
+    ingress:
+      enabled: true
+      className: nginx
+      host: uip.prod.soma.internal
+      path: /
+      annotations: {}
+      tls:
+        - hosts: [uip.prod.soma.internal]
+          secretName: uip-tls

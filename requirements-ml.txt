@@ -1,0 +1,23 @@
+########## Optional ML/Document-processing dependencies ##########
+# Installed only when INCLUDE_ML_DEPS=true during Docker build.
+
+# LangChain integrations for Unstructured
+langchain-unstructured==0.1.6
+
+# Embeddings, vector search, tokenization (pulls torch via sentence-transformers)
+sentence-transformers==3.0.1
+faiss-cpu==1.11.0
+
+# Speech-to-text and audio processing
+faster-whisper==1.0.3
+openai-whisper==20240930; python_version < "3.13"
+soundfile==0.13.1
+
+# OCR and document parsing
+pytesseract==0.3.13
+pdf2image==1.17.0
+pymupdf==1.25.3
+pypdf==6.0.0
+
+# Full Unstructured stack (very heavy)
+unstructured[all-docs]==0.16.23

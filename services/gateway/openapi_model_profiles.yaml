@@ -1,0 +1,105 @@
+openapi: 3.0.3
+info:
+  title: Gateway Model Profiles API
+  version: '1.0'
+  description: "API surface for managing model profiles and validating LLM provider connectivity (Gateway single source of truth)."
+paths:
+  /v1/model-profiles:
+    get:
+      summary: List model profiles
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create a model profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelProfile'
+      responses:
+        '201':
+          description: Created
+  /v1/model-profiles/{role}/{deployment_mode}:
+    put:
+      summary: Update model profile
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: deployment_mode
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelProfile'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete model profile
+      responses:
+        '200':
+          description: Deleted
+  /v1/llm/test:
+    post:
+      summary: Test an LLM model profile connectivity
+      description: Admin endpoint. Requires internal token. Validates profile resolution, credentials presence, and performs a lightweight connectivity check against the normalized base_url.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  example: dialogue
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  base_url:
+                    type: string
+                  provider:
+                    type: string
+                  credentials_present:
+                    type: boolean
+                  reachable:
+                    type: boolean
+components:
+  schemas:
+    ModelProfile:
+      type: object
+      properties:
+        role:
+          type: string
+          example: dialogue
+        deployment_mode:
+          type: string
+          example: DEV
+        model:
+          type: string
+          example: openai/gpt-4o-mini
+        base_url:
+          type: string
+          example: https://api.openai.com
+        temperature:
+          type: number
+          example: 0.2
+        kwargs:
+          type: object
+          additionalProperties: true

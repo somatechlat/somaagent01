@@ -1,0 +1,69 @@
+site_name: SomaAgent01 Docs
+site_description: "Unified documentation portal for SomaAgent01"
+site_url: https://docs.somaagent01.dev
+repo_url: https://github.com/somatechlat/somaagent01
+repo_name: somaagent01
+
+nav:
+  - Home: README.md
+  - Roadmap:
+      - Canonical Roadmap: roadmap/canonical-roadmap.md
+      - Sprint Roadmap: roadmap/sprint-roadmap.md
+  - User Manual:
+      - Overview: user-manual/index.md
+      - Installation: user-manual/installation.md
+      - Quick Start: user-manual/quick-start-tutorial.md
+      - Features: user-manual/features.md
+      - Troubleshooting: user-manual/troubleshooting.md
+      - FAQ: user-manual/faq.md
+  - Technical Manual:
+      - Overview: technical-manual/index.md
+      - Architecture: technical-manual/architecture.md
+      - Deployment: technical-manual/deployment.md
+      - Monitoring & Health: technical-manual/monitoring.md
+      - Security: technical-manual/security.md
+      - Tools, Messages & Memories: technical-manual/tools-messages-memories.md
+  - Development Manual:
+      - Overview: development-manual/index.md
+      - Local Setup: development-manual/local-setup.md
+      - Contribution Workflow: development-manual/contribution-workflow.md
+      - Coding Standards: development-manual/coding-standards.md
+      - Testing Guidelines: development-manual/testing-guidelines.md
+      - UI Troubleshooting: development-manual/ui-troubleshooting.md
+      - Runbook (Local Stack): development-manual/runbook.md
+      - API Reference: development-manual/api-reference.md
+  - Onboarding Manual:
+      - Overview: onboarding-manual/index.md
+  - Shared Resources:
+      - Style Guide: style-guide.md
+      - Glossary: glossary.md
+      - Change Log: changelog.md
+
+theme:
+  name: material
+  features:
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - content.tabs.link
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji
+  - footnotes
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+      enabled: !ENV [ENABLE_DOCS_GIT_PLUGINS, false]
+  - git-committers:
+      repository: somatechlat/somaagent01
+      branch: soma_integration
+      enabled: !ENV [ENABLE_DOCS_GIT_PLUGINS, false]

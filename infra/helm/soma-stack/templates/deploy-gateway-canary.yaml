@@ -1,0 +1,87 @@
+{{- $svc := .Values.services.gateway -}}
+{{- if and $svc.enabled $svc.canary.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-gateway-canary
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    track: canary
+spec:
+  replicas: {{ $svc.canary.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      track: canary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gateway
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        track: canary
+      annotations:
+        {{- include "soma-stack.annotations" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "soma-stack.saName" . }}
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "soma-stack.imagePullSecrets" . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: "{{ .Values.image.repository }}:{{ $svc.canary.imageTag | default .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python3", "-m", "uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "{{ $svc.port }}"]
+          env:
+            - name: POSTGRES_DSN
+              value: {{ .Values.env.POSTGRES_DSN | quote }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.env.KAFKA_BOOTSTRAP_SERVERS | quote }}
+            - name: REDIS_URL
+              value: {{ .Values.env.REDIS_URL | quote }}
+            - name: SOMA_BASE_URL
+              value: {{ .Values.env.SOMA_BASE_URL | quote }}
+            - name: SOMA_NAMESPACE
+              value: {{ .Values.env.SOMA_NAMESPACE | quote }}
+            - name: JWT_ENABLED
+              value: {{ .Values.global.JWT_ENABLED | quote }}
+            - name: OPA_ENABLED
+              value: {{ .Values.global.OPA_ENABLED | quote }}
+            - name: MTLS_ENABLED
+              value: {{ .Values.global.MTLS_ENABLED | quote }}
+            - name: PROMETHEUS_SCRAPE
+              value: {{ .Values.global.PROMETHEUS_SCRAPE | quote }}
+            - name: OTEL_ENABLED
+              value: {{ .Values.global.OTEL_ENABLED | quote }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+          resources:
+            requests:
+              cpu: {{ .Values.global.RESOURCE_REQUESTS.cpu | quote }}
+              memory: {{ .Values.global.RESOURCE_REQUESTS.memory | quote }}
+            limits:
+              cpu: {{ .Values.global.RESOURCE_LIMITS.cpu | quote }}
+              memory: {{ .Values.global.RESOURCE_LIMITS.memory | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-gateway-canary
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    track: canary
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    track: canary
+{{- end }}

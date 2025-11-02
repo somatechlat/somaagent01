@@ -1,0 +1,60 @@
+name: CI - Kind Integration
+
+on:
+  push:
+    branches: [main, soma_integration]
+  pull_request:
+    branches: [main, soma_integration]
+
+jobs:
+  kind-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install helmify  # placeholder for any helm lint tool
+
+      - name: Install Kind and Kubectl
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x ./kubectl
+          sudo mv ./kubectl /usr/local/bin/kubectl
+
+      - name: Create Kind cluster
+        run: |
+          kind create cluster --name ci-cluster
+
+      - name: Lint Helm charts
+        run: |
+          helm lint infra/helm/soma-infra
+
+      - name: Install Helm charts
+        run: |
+          helm repo add local file://infra/helm/soma-infra
+          helm install soma-infra soma-infra/soma-infra --wait --timeout 5m
+
+      - name: Run smoke tests
+        run: |
+          # Placeholder: replace with actual test command, e.g., pytest or curl checks
+          echo "Running basic health checks..."
+          kubectl get pods -n default
+
+      - name: Cleanup Kind cluster
+        if: always()
+        run: |
+          kind delete cluster --name ci-cluster

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ToolRequestEvent",
+  "type": "object",
+  "required": [
+    "event_id",
+    "session_id",
+    "tool_name",
+    "args",
+    "metadata"
+  ],
+  "properties": {
+    "event_id": { "type": "string" },
+    "session_id": { "type": "string" },
+    "persona_id": { "type": ["string", "null"] },
+    "tool_name": { "type": "string" },
+    "args": { "type": "object" },
+    "metadata": { "type": "object" },
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

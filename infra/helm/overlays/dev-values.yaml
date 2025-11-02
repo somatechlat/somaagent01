@@ -1,0 +1,42 @@
+# dev-values.yaml – base for dev_full and dev_prod
+global:
+  DEPLOY_MODE: dev_full
+  JWT_ENABLED: false
+  OPA_ENABLED: false
+  MTLS_ENABLED: false
+  REPLICA_COUNT: 1
+  RESOURCE_REQUESTS:
+    cpu: 100m
+    memory: 128Mi
+  RESOURCE_LIMITS:
+    cpu: 200m
+    memory: 256Mi
+  ISTIO_INJECTION: false
+  VAULT_AGENT_INJECT: false
+  PROMETHEUS_SCRAPE: true
+  OTEL_ENABLED: true
+  CERT_MANAGER_CLUSTER_ISSUER: ""  # no TLS issuance in dev by default
+
+services:
+  gateway:
+    ingress:
+      enabled: true
+      className: nginx
+      host: gateway.127.0.0.1.sslip.io
+      path: /
+    istio:
+      enabled: false
+      host: gateway.127.0.0.1.sslip.io
+      gateways: ["istio-system/public-gateway"]
+  ui:
+    ingress:
+      enabled: true
+      className: nginx
+      host: ui.127.0.0.1.sslip.io
+      path: /
+  uiProxy:
+    ingress:
+      enabled: true
+      className: nginx
+      host: uip.127.0.0.1.sslip.io
+      path: /

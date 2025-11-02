@@ -1,0 +1,109 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sharedinfra_postgres
+    environment:
+      POSTGRES_USER: soma
+      POSTGRES_PASSWORD: soma
+      POSTGRES_DB: somaagent01
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5436:5432"  # host mapping for app consumption; pick a free port
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: sharedinfra_kafka
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CLUSTER_ID: "kcqIv3RutQm49oJm9sYzVg"
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_KRAFT_CLUSTER_ID: "soma-shared-01"
+    ports:
+      - "9094:9092"  # avoid conflicts
+    restart: unless-stopped
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+
+  redis:
+    image: redis:7-alpine
+    container_name: sharedinfra_redis
+    command: ["redis-server", "--save", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"  # avoid conflicts
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: sharedinfra_opa
+    command: ["run", "--server"]
+    ports:
+      - "8182:8181"  # avoid conflicts
+    restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:1.16
+    container_name: sharedinfra_vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8201:8200"  # avoid conflicts
+    restart: unless-stopped
+
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.13
+    container_name: sharedinfra_etcd
+    command: [
+      "etcd",
+      "--name=s1",
+      "--data-dir=/var/lib/etcd",
+      "--advertise-client-urls=http://0.0.0.0:2379",
+      "--listen-client-urls=http://0.0.0.0:2379"
+    ]
+    ports:
+      - "2380:2379"  # avoid conflicts
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sharedinfra_prometheus
+    ports:
+      - "9091:9090"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  kafka_data:
+  redis_data:

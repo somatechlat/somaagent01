@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delegation-worker
+  labels:
+    app.kubernetes.io/name: delegation-worker
+    app.kubernetes.io/part-of: somaagent01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: delegation-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: delegation-worker
+        app.kubernetes.io/part-of: somaagent01
+    spec:
+      containers:
+        - name: delegation-worker
+          image: agent0ai/agent-zero:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python"]
+          args: ["-m", "services.delegation_worker.main"]
+          envFrom:
+            - configMapRef:
+                name: somaagent-config
+            - secretRef:
+                name: somaagent-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

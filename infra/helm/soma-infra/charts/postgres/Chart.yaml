@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgres
+description: Postgres for Soma infra
+version: 0.1.0
+appVersion: "15"
+type: application

@@ -1,0 +1,33 @@
+{{- $g := .Values.global -}}
+{{- $svc := .Values.services.gateway -}}
+{{- if and $g.ISTIO_ENABLED $svc.enabled $svc.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-gateway
+spec:
+  hosts:
+    - {{ $svc.istio.host | quote }}
+  gateways:
+    {{- toYaml $svc.istio.gateways | nindent 4 }}
+  http:
+    - {{- if $svc.istio.http.timeout }}
+      timeout: {{ $svc.istio.http.timeout }}
+      {{- end }}
+      {{- if $svc.istio.http.retries }}
+      retries:
+        attempts: {{ $svc.istio.http.retries.attempts | default 2 }}
+        perTryTimeout: {{ $svc.istio.http.retries.perTryTimeout | default "3s" }}
+      {{- end }}
+      route:
+        - destination:
+            host: {{ include "soma-stack.fullname" . }}-gateway.{{ .Release.Namespace }}.svc.cluster.local
+            subset: stable
+          weight: {{ $svc.istio.weights.stable | default 90 }}
+        {{- if $svc.canary.enabled }}
+        - destination:
+            host: {{ include "soma-stack.fullname" . }}-gateway-canary.{{ .Release.Namespace }}.svc.cluster.local
+            subset: canary
+          weight: {{ $svc.istio.weights.canary | default 10 }}
+        {{- end }}
+{{- end }}

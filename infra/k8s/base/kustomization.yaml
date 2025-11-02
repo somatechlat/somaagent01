@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: somaagent
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - telemetry-worker-deployment.yaml
+  - telemetry-worker-service.yaml
+  - delegation-gateway-deployment.yaml
+  - delegation-gateway-service.yaml
+  - delegation-worker-deployment.yaml
+  - gateway-deployment.yaml
+  - gateway-service.yaml
+  - conversation-worker-deployment.yaml
+  - tool-executor-deployment.yaml
+  - router-deployment.yaml
+  - router-service.yaml
+  - canvas-deployment.yaml
+  - canvas-service.yaml
+  - requeue-service-deployment.yaml
+  - requeue-service.yaml
+  - settings-service-deployment.yaml
+  - settings-service.yaml

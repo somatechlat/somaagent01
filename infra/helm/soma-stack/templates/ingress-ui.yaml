@@ -1,0 +1,31 @@
+{{- $svc := .Values.services.ui -}}
+{{- if and $svc.enabled $svc.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-ui
+  labels:
+    app.kubernetes.io/name: ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    {{- include "soma-stack.ingressAnnotations" (dict "root" . "svcAnns" $svc.ingress.annotations) | nindent 4 }}
+spec:
+  {{- if $svc.ingress.className }}
+  ingressClassName: {{ $svc.ingress.className }}
+  {{- end }}
+  {{- if $svc.ingress.tls }}
+  tls:
+    {{- toYaml $svc.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ $svc.ingress.host | default "" }}
+      http:
+        paths:
+          - path: {{ $svc.ingress.path | default "/" }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "soma-stack.fullname" . }}-ui
+                port:
+                  number: {{ $svc.port }}
+{{- end }}

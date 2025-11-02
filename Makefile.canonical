@@ -1,0 +1,57 @@
+# Makefile for Agent Zero
+
+.PHONY: help build run clean test lint
+
+# Variables
+DOCKER_COMPOSE = docker compose -f docker-compose.yaml
+PYTHON = python3
+PIP = pip3
+
+help:
+	@echo "Available commands:"
+	@echo "  make build    - Build Docker images"
+	@echo "  make run      - Run the application stack"
+	@echo "  make stop     - Stop the application stack"
+	@echo "  make clean    - Clean up containers and volumes"
+	@echo "  make test     - Run tests"
+	@echo "  make lint     - Run linting"
+	@echo "  make setup    - Setup development environment"
+
+build:
+	$(DOCKER_COMPOSE) build
+
+run:
+	$(DOCKER_COMPOSE) up -d
+
+stop:
+	$(DOCKER_COMPOSE) down
+
+clean:
+	$(DOCKER_COMPOSE) down -v
+	find . -type d -name "__pycache__" -exec rm -r {} +
+	find . -type f -name "*.pyc" -delete
+
+test:
+	$(PYTHON) -m pytest tests/
+
+lint:
+	$(PYTHON) -m black .
+	$(PYTHON) -m ruff check .
+
+setup:
+	$(PIP) install -r requirements-canonical.txt
+	pre-commit install
+
+logs:
+	$(DOCKER_COMPOSE) logs -f
+
+restart:
+	$(DOCKER_COMPOSE) restart
+
+shell:
+	$(DOCKER_COMPOSE) exec gateway /bin/bash
+
+monitoring:
+	@echo "Opening monitoring endpoints..."
+	@echo "Prometheus: http://localhost:8889/metrics"
+	@echo "Health Check: http://localhost:8000/health"

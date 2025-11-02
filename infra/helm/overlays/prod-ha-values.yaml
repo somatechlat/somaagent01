@@ -1,0 +1,77 @@
+# prod-ha-values.yaml – high availability production
+global:
+  DEPLOY_MODE: prod_ha
+  JWT_ENABLED: true
+  OPA_ENABLED: true
+  MTLS_ENABLED: true
+  REPLICA_COUNT: 3
+  RESOURCE_REQUESTS:
+    cpu: 500m
+    memory: 512Mi
+  RESOURCE_LIMITS:
+    cpu: "1"
+    memory: 1Gi
+  ISTIO_INJECTION: true
+  VAULT_AGENT_INJECT: true
+  PROMETHEUS_SCRAPE: true
+  OTEL_ENABLED: true
+  NETWORK_POLICY_ENABLED: true
+  CERT_MANAGER_CLUSTER_ISSUER: letsencrypt-prod
+
+# HA toggles for stateful backends can be referenced in service charts
+
+services:
+  gateway:
+    ingress:
+      enabled: true
+      className: nginx
+      host: gateway.prod-ha.soma.internal
+      path: /
+      annotations: {}
+      tls:
+        - hosts: [gateway.prod-ha.soma.internal]
+          secretName: gateway-ha-tls
+    istio:
+      enabled: true
+      host: gateway.prod-ha.soma.internal
+      gateways: ["istio-system/public-gateway"]
+      weights:
+        stable: 95
+        canary: 5
+      trafficPolicy:
+        connectionPool:
+          http:
+            http1MaxPendingRequests: 2048
+            maxRequestsPerConnection: 200
+          tcp:
+            maxConnections: 2000
+        outlierDetection:
+          consecutive5xx: 5
+          interval: 5s
+          baseEjectionTime: 1m
+          maxEjectionPercent: 50
+      http:
+        timeout: 15s
+        retries:
+          attempts: 3
+          perTryTimeout: 5s
+  ui:
+    ingress:
+      enabled: true
+      className: nginx
+      host: ui.prod-ha.soma.internal
+      path: /
+      annotations: {}
+      tls:
+        - hosts: [ui.prod-ha.soma.internal]
+          secretName: ui-ha-tls
+  uiProxy:
+    ingress:
+      enabled: true
+      className: nginx
+      host: uip.prod-ha.soma.internal
+      path: /
+      annotations: {}
+      tls:
+        - hosts: [uip.prod-ha.soma.internal]
+          secretName: uip-ha-tls
