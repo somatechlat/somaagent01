@@ -1,0 +1,49 @@
+apiVersion: v2
+name: soma-infra
+description: Helm chart for Soma Agent shared infrastructure (Auth, OPA, Kafka, Redis, Prometheus, Vault, Etcd)
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - soma
+  - agent
+  - infrastructure
+home: https://github.com/agent0ai/agent-zero
+sources:
+  - https://github.com/agent0ai/agent-zero
+maintainers:
+  - name: Agent Zero Team
+    email: team@agentzero.org
+dependencies:
+  - name: auth
+    version: 0.1.0
+    repository: file://charts/auth
+    condition: auth.enabled
+  - name: opa
+    version: 0.1.0
+    repository: file://charts/opa
+    condition: opa.enabled
+  - name: kafka
+    version: 0.1.0
+    repository: file://charts/kafka
+    condition: kafka.enabled
+  - name: redis
+    version: 0.1.0
+    repository: file://charts/redis
+    condition: redis.enabled
+  - name: prometheus
+    version: 0.1.0
+    repository: file://charts/prometheus
+    condition: prometheus.enabled
+  - name: vault
+    version: 0.1.0
+    repository: file://charts/vault
+    condition: vault.enabled
+  - name: etcd
+    version: 0.1.0
+    repository: file://charts/etcd
+    condition: etcd.enabled
+  - name: postgres
+    version: 0.1.0
+    repository: file://charts/postgres
+    condition: postgres.enabled

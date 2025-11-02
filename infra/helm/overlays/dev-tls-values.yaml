@@ -1,0 +1,21 @@
+# dev-tls-values.yaml – optional app overlay for local TLS via self-signed issuer
+
+global:
+  CERT_MANAGER_CLUSTER_ISSUER: dev-selfsigned
+
+services:
+  gateway:
+    ingress:
+      tls:
+        - hosts: [gateway.127.0.0.1.sslip.io]
+          secretName: gateway-dev-tls
+  ui:
+    ingress:
+      tls:
+        - hosts: [ui.127.0.0.1.sslip.io]
+          secretName: ui-dev-tls
+  uiProxy:
+    ingress:
+      tls:
+        - hosts: [uip.127.0.0.1.sslip.io]
+          secretName: uip-dev-tls

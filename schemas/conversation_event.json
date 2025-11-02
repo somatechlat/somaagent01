@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConversationEvent",
+  "type": "object",
+  "required": [
+    "event_id",
+    "session_id",
+    "role",
+    "message",
+    "metadata"
+  ],
+  "properties": {
+    "event_id": {"type": "string"},
+    "session_id": {"type": "string"},
+    "persona_id": {"type": ["string", "null"]},
+    "role": {"type": "string", "enum": ["user", "assistant", "system"]},
+    "message": {"type": "string"},
+    "attachments": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "metadata": {"type": "object"},
+    "type": {"type": "string"},
+    "version": {"type": "string"},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

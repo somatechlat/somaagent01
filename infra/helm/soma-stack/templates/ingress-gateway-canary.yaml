@@ -1,0 +1,36 @@
+{{- $svc := .Values.services.gateway -}}
+{{- if and $svc.enabled $svc.ingress.enabled $svc.canary.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-gateway-canary
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    track: canary
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "{{ $svc.canary.weight | default 10 }}"
+    {{- with $svc.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if $svc.ingress.className }}
+  ingressClassName: {{ $svc.ingress.className }}
+  {{- end }}
+  {{- if $svc.ingress.tls }}
+  tls:
+    {{- toYaml $svc.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ $svc.ingress.host | default "" }}
+      http:
+        paths:
+          - path: {{ $svc.ingress.path | default "/" }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "soma-stack.fullname" . }}-gateway-canary
+                port:
+                  number: {{ $svc.port }}
+{{- end }}

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+# Exclude common generated directories and the virtual environment from formatting.
+extend-exclude = "logs|tmp|\\.venv"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+respect-gitignore = true
+extend-exclude = [
+    "logs",
+    "tmp",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "B",
+    "I",
+]
+ignore = [
+    "E203",
+    "E266",
+    "E501",
+    "B008",
+    "B006",
+    "E402",
+    "B007",
+    "F841",
+    "B024",
+    "B904",
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+order-by-type = false
+known-first-party = ["python", "tests"]

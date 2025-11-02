@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: somaagent-config
+data:
+  LOG_LEVEL: "INFO"
+  SOMA_AGENT_MODE: "PRODUCTION"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  REDIS_URL: "redis://redis:6379/0"
+  POSTGRES_DSN: "postgresql://soma:soma@postgres:5432/somaagent01"
+  CONVERSATION_INBOUND: "conversation.inbound"
+  CONVERSATION_OUTBOUND: "conversation.outbound"
+  CONVERSATION_GROUP: "conversation-worker"
+  TOOL_REQUESTS_TOPIC: "tool.requests"
+  TOOL_RESULTS_TOPIC: "tool.results"
+  TOOL_EXECUTOR_GROUP: "tool-executor"
+  DELEGATION_TOPIC: "somastack.delegation"
+  DELEGATION_GROUP: "delegation-worker"
+  OPA_URL: "http://opa:8181"
+  TELEMETRY_DATABASE_DSN: "postgresql://soma:soma@postgres:5432/somaagent01"

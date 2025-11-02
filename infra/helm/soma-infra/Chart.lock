@@ -1,0 +1,30 @@
+dependencies:
+- name: auth
+  repository: file://charts/auth
+  version: 0.1.0
+- name: opa
+  repository: file://charts/opa
+  version: 0.1.0
+- name: kafka
+  repository: file://charts/kafka
+  version: 0.1.0
+- name: redis
+  repository: file://charts/redis
+  version: 0.1.0
+- name: prometheus
+  repository: file://charts/prometheus
+  version: 0.1.0
+- name: grafana
+  repository: file://charts/grafana
+  version: 0.1.0
+- name: vault
+  repository: file://charts/vault
+  version: 0.1.0
+- name: etcd
+  repository: file://charts/etcd
+  version: 0.1.0
+- name: postgres
+  repository: file://charts/postgres
+  version: 0.1.0
+digest: sha256:48777d403529721e37187ed9f66591dcf9c528ef836486af632ddb51715ea9db
+generated: "2025-10-10T19:21:00.045872-05:00"

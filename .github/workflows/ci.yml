@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run pytest (audit-focused)
+        run: |
+          pytest -q tests/test_gateway_tool_request_audit.py tests/test_audit_export_endpoint.py tests/test_gateway_llm_audit.py tests/test_tool_executor_audit.py
+
+  test-webui-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        working-directory: webui
+        run: |
+          npm init -y > /dev/null 2>&1 || true
+          npm install --no-audit --no-fund --save-dev @playwright/test@^1.48.0
+          npx playwright install --with-deps
+
+      - name: Start static server
+        working-directory: webui
+        run: |
+          python -m http.server 4172 &
+          echo $! > /tmp/http_server_pid
+          sleep 2
+
+      - name: Run Playwright smoke
+        working-directory: webui
+        env:
+          BASE_URL: http://localhost:4172
+        run: |
+          npx playwright test --reporter=dot
+
+      - name: Stop static server
+        if: always()
+        run: |
+          if [ -f /tmp/http_server_pid ]; then kill "$(cat /tmp/http_server_pid)" || true; fi
+name: CI
+
+on:
+  push:
+    branches: [ main, V0.1.1 ]
+  pull_request:
+    branches: [ main, V0.1.1 ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Lint Helm charts
+        run: |
+          helm lint infra/helm/soma-stack
+          helm lint infra/helm/soma-infra
+
+      - name: Guard: memory plane is SomaBrain-only
+        run: |
+          set -euo pipefail
+          # Ensure legacy memory_client is tombstoned if present
+          if [ -f "services/common/memory_client.py" ] && ! grep -q "ImportError" services/common/memory_client.py; then
+            echo "ERROR: memory_client.py exists and is not tombstoned with ImportError" >&2
+            exit 1
+          fi
+          # Fail on MEMORY_SERVICE_* env references in tracked files (exclude docs)
+          if grep -R "MEMORY_SERVICE_" --exclude-dir=docs --exclude-dir=.git .; then
+            echo "ERROR: Found MEMORY_SERVICE_ references in code or configs" >&2
+            exit 1
+          fi
+          echo "SomaBrain-only memory plane guard passed"
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check .
+
+      - name: Run tests
+        run: |
+          pytest -q

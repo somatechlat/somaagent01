@@ -1,0 +1,141 @@
+# Default values for soma-infra chart.
+# Override these in a custom values file when deploying.
+
+auth:
+  enabled: true
+  image: "openfga/openfga:latest"
+  replicaCount: 1
+
+opa:
+  enabled: true
+  image: "openpolicyagent/opa:latest"
+  replicaCount: 1
+
+kafka:
+  enabled: true
+  image: "confluentinc/cp-kafka:7.5.3"
+  replicaCount: 1
+  controllerPort: 9093
+  clusterId: TelVMif65nMWlbOjBdhrJw
+  nodeId: "1"
+  env:
+    extra: []
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+  podSecurityContext:
+    runAsNonRoot: true
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+redis:
+  enabled: true
+  image: "redis:7-alpine"
+  replicaCount: 1
+
+prometheus:
+  enabled: true
+  image: "prom/prometheus:latest"
+  replicaCount: 1
+
+vault:
+  enabled: true
+  image: "hashicorp/vault:latest"
+  replicaCount: 1
+  server:
+    dev: true
+    rootToken: root
+    secret:
+      create: true
+      name: ""
+      tokenKey: dev-root-token
+      envVar: VAULT_DEV_ROOT_TOKEN_ID
+
+etcd:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: quay.io/coreos/etcd
+    tag: "v3.5.12"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 2379
+    clientPort: 2379
+    peerPort: 2380
+
+# Additional common settings
+imagePullPolicy: IfNotPresent
+imagePullSecrets: []
+namespace: soma-agent
+
+postgres:
+  enabled: true
+  image: "postgres:15-alpine"
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  auth:
+    username: soma
+    password: soma
+    database: soma
+  secret:
+    create: true
+    name: ""
+    usernameKey: username
+    passwordKey: password
+    databaseKey: database
+    env:
+      username: POSTGRES_USER
+      password: POSTGRES_PASSWORD
+      database: POSTGRES_DB
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+networkPolicy:
+  enabled: true
+  allowedNamespaceLabel:
+    key: soma.sh/allow-shared-infra
+    value: "true"
+
+ingressNginx:
+  enabled: false
+  image: "registry.k8s.io/ingress-nginx/controller:v1.11.2"
+  service:
+    type: NodePort
+    httpNodePort: 30080
+    httpsNodePort: 30443
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+certManager:
+  enabled: false
+  type: acme  # acme | ca | selfSigned
+  email: "ops@local.soma"
+  clusterIssuer:
+    name: "letsencrypt-staging"
+    server: "https://acme-staging-v02.api.letsencrypt.org/directory"
+  ca:
+    secretName: ""  # name of Kubernetes secret containing CA key (tls.key) and cert (tls.crt) for type=ca
