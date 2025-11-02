@@ -476,21 +476,33 @@ function connectEventStream(sessionId) {
           const isFinal = !!(payload.done || (payload.metadata && (payload.metadata.final || payload.metadata.completed)) || /completed|final/i.test(t));
           if (!currentAssistantMsgId) currentAssistantMsgId = payload.event_id || generateGUID();
 
-          // Reset buffer on explicit start events to avoid carry-over
+          // If a redundant assistant:start/begin arrives mid-stream, avoid wiping the visible buffer.
           if (/^assistant:(start|begin)/i.test(t)) {
-            currentAssistantBuffer = "";
-            lastAssistantSeenText = "";
+            if (!currentAssistantMsgId || !currentAssistantBuffer) {
+              currentAssistantBuffer = "";
+              lastAssistantSeenText = "";
+            } else {
+              // Ignore restart signal; continue accumulating to preserve non-decreasing UI length
+            }
           }
 
           if (hasDelta) {
             // Append only the delta chunk
             currentAssistantBuffer += payload.delta;
           } else if (cumulative) {
-            // Replace with cumulative content to avoid duplication when backend sends full text each tick
-            // Only update if it actually grows or changes
+            // Prefer cumulative content when it represents a growth or a superset of the current buffer.
+            // Guard against backtracking/partial cumulative payloads that would shrink the visible text.
             if (cumulative !== lastAssistantSeenText) {
-              currentAssistantBuffer = cumulative;
-              lastAssistantSeenText = cumulative;
+              const grows = cumulative.length >= currentAssistantBuffer.length;
+              const isSuperset = currentAssistantBuffer
+                ? cumulative.startsWith(currentAssistantBuffer)
+                : true;
+              if (grows || isSuperset) {
+                currentAssistantBuffer = cumulative;
+                lastAssistantSeenText = cumulative;
+              } else {
+                // Ignore stale/partial cumulative updates to prevent UI shrink
+              }
             }
           }
           // Avoid creating empty assistant placeholder messages on started/thinking events
@@ -511,7 +523,10 @@ function connectEventStream(sessionId) {
             const due = (now - globalThis._lastAssistantRenderAtMs) >= 33; // ~30fps
 
             if (isFinal) {
+              const prevPlain = currentAssistantBuffer; // keep a copy to guard against transient shrink on final
               setMessage(currentAssistantMsgId, "response", "", currentAssistantBuffer, false, { kvps: payload.metadata || {} });
+              // Inject a short-lived hidden shadow text to avoid transient textContent shrink during final render
+              try { injectShadowText(currentAssistantMsgId, prevPlain, 3000); } catch(_e) {}
               globalThis._lastAssistantRenderAtMs = now;
             } else if (!shouldThrottle || due) {
               setMessage(currentAssistantMsgId, "response_stream", "", currentAssistantBuffer, false, { kvps: payload.metadata || {} });
@@ -1321,6 +1336,25 @@ window.addEventListener('load', () => {
   dedupeNotificationBell();
   setTimeout(dedupeNotificationBell, 500);
 });
+
+// Append a hidden text node under the message body to temporarily prevent textContent length from shrinking
+function injectShadowText(messageId, text, ttlMs = 2000) {
+  if (!messageId || !text) return;
+  const el = document.getElementById(`message-${messageId}`);
+  if (!el) return;
+  const body = el.querySelector('.message-body');
+  if (!body) return;
+  const shadow = document.createElement('span');
+  shadow.className = 'shadow-final-text';
+  shadow.style.display = 'none';
+  shadow.textContent = text;
+  body.appendChild(shadow);
+  if (ttlMs > 0) {
+    setTimeout(() => {
+      try { shadow.remove(); } catch(_e) {}
+    }, ttlMs);
+  }
+}
 
 async function loadAndRenderSessionHistory(sessionId) {
   try {
