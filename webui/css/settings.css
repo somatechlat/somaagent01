@@ -242,8 +242,11 @@ nav ul li a img {
   margin-bottom: 8px;
   padding: 0;
   margin-top: 20px;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   overflow: visible;
+  background: var(--color-panel);
 }
 
 .settings-tabs {

@@ -40,6 +40,10 @@ User: Remember my email is user@example.com
 Agent: ✅ Saved to memory
 ```
 
+Persona-aware metadata:
+- Runtime memory writes include persona summaries (name, tags) to improve downstream filtering and analysis.
+	- Config: `SOMABRAIN_PERSONA_TTL_SECONDS` controls persona cache TTL.
+
 ### Multi-Agent Cooperation
 
 Delegate complex tasks to subordinate agents:
@@ -107,6 +111,15 @@ Secure credential storage:
 - Agents use credentials without seeing them
 - Fernet encryption
 - Vault integration (optional)
+
+### Admin Ops (SomaBrain)
+
+Operator-focused endpoints (admin scope required):
+- `GET /v1/admin/memory/metrics` → SomaBrain memory metrics for a tenant/namespace
+- `POST /v1/admin/migrate/export` → export memory state
+- `POST /v1/admin/migrate/import` → import memory state
+
+Policy decision receipts are captured for every protected call when OPA/OpenFGA are configured, aiding audits and troubleshooting.
 
 ## Next Steps
 

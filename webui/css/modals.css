@@ -3,28 +3,27 @@
 /* Overlay */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2001;
+  z-index: 5000; /* ensure above sidebar and other panels */
+  backdrop-filter: saturate(120%) blur(1px);
 }
 
 /* Modal Container */
 .modal-container {
   background-color: var(--color-panel);
   border-radius: 12px;
-  width: 1100px; /* Reduced from 1200px to 1100px */
+  width: min(1100px, calc(100vw - 48px));
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 4px 23px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
   box-sizing: border-box;
+  contain: layout paint;
 }
 
 .light-mode .modal-container {
@@ -34,9 +33,9 @@
 /* Mobile Viewport Behavior */
 @media (max-width: 1280px) {
   .modal-container {
-    width: 95%; /* Take up most of the screen on mobile */
-    min-width: unset; /* Remove min-width constraints */
-    max-width: 95%; /* Ensure consistent width */
+    width: min(960px, 96vw);
+    min-width: 0;
+    max-width: 96vw;
   }
 
   /* Ensure section content can scroll horizontally */

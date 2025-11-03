@@ -2318,6 +2318,148 @@ async def export_jobs_download(job_id: int, request: Request):
     return StreamingResponse(file_streamer(), headers=headers)
 
 
+# -----------------------------
+# SomaBrain Constitution: pass-through endpoints
+# -----------------------------
+
+
+@app.get("/constitution/version", tags=["admin"], summary="Get SomaBrain constitution version")
+async def constitution_version(request: Request) -> JSONResponse:
+    # Require authorization + admin scope; evaluate OPA with a specific action
+    auth = await authorize_request(request, {"action": "constitution.manage", "resource": "somabrain"})
+    _require_admin_scope(auth)
+    soma = SomaBrainClient.get()
+    try:
+        data = await soma.constitution_version()
+    except SomaClientError as exc:
+        raise HTTPException(status_code=502, detail=f"constitution version failed: {exc}") from exc
+    return JSONResponse(content=data)
+
+
+@app.post("/constitution/validate", tags=["admin"], summary="Validate a constitution document")
+async def constitution_validate(payload: dict[str, Any], request: Request) -> JSONResponse:  # type: ignore[valid-type]
+    auth = await authorize_request(request, {"action": "constitution.manage", "resource": "somabrain"})
+    _require_admin_scope(auth)
+    soma = SomaBrainClient.get()
+    try:
+        data = await soma.constitution_validate(payload)
+    except SomaClientError as exc:
+        raise HTTPException(status_code=502, detail=f"constitution validate failed: {exc}") from exc
+    return JSONResponse(content=data)
+
+
+@app.post("/constitution/load", tags=["admin"], summary="Load a constitution document")
+async def constitution_load(payload: dict[str, Any], request: Request) -> JSONResponse:  # type: ignore[valid-type]
+    auth = await authorize_request(request, {"action": "constitution.manage", "resource": "somabrain"})
+    _require_admin_scope(auth)
+    soma = SomaBrainClient.get()
+    try:
+        data = await soma.constitution_load(payload)
+    except SomaClientError as exc:
+        raise HTTPException(status_code=502, detail=f"constitution load failed: {exc}") from exc
+
+    # Best-effort OPA policy regeneration after load
+    try:
+        await soma.update_opa_policy()
+    except Exception:
+        LOGGER.debug("OPA policy regeneration after constitution load failed", exc_info=True)
+    return JSONResponse(content=data)
+
+
+# -----------------------------
+# Admin: SomaBrain metrics and migration passthroughs
+# -----------------------------
+
+
+@app.get(
+    "/v1/admin/memory/metrics",
+    tags=["admin"],
+    summary="Fetch SomaBrain memory metrics",
+)
+async def admin_memory_metrics(
+    request: Request,
+    tenant: str = Query(..., description="Tenant id to query"),
+    namespace: str = Query("wm", description="Memory namespace (e.g., wm, ltm)"),
+):
+    """Proxy SomaBrain /memory/metrics for operators.
+
+    Requires admin scope when auth is enabled. Applies a light rate limit via the admin limiter.
+    """
+    await _enforce_admin_rate_limit(request)
+    auth = await authorize_request(request, {"tenant": tenant, "namespace": namespace})
+    _require_admin_scope(auth)
+
+    soma = SomaBrainClient.get()
+    try:
+        data = await soma.memory_metrics(tenant=tenant, namespace=namespace)
+    except SomaClientError as exc:
+        LOGGER.error("SomaBrain metrics failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Metrics service unavailable") from exc
+    return JSONResponse(content=data)
+
+
+class MigrateExportPayload(BaseModel):
+    include_wm: bool = True
+    wm_limit: int = 128
+
+
+@app.post(
+    "/v1/admin/migrate/export",
+    tags=["admin"],
+    summary="Export memory state from SomaBrain",
+)
+async def admin_migrate_export(
+    payload: MigrateExportPayload,
+    request: Request,
+):
+    await _enforce_admin_rate_limit(request)
+    auth = await authorize_request(request, payload.model_dump())
+    _require_admin_scope(auth)
+
+    soma = SomaBrainClient.get()
+    try:
+        data = await soma.migrate_export(include_wm=payload.include_wm, wm_limit=payload.wm_limit)
+    except SomaClientError as exc:
+        LOGGER.error("SomaBrain migrate export failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Export failed") from exc
+    return JSONResponse(content=data)
+
+
+class MigrateImportPayload(BaseModel):
+    manifest: dict[str, Any]
+    memories: list[dict[str, Any]]
+    wm: list[dict[str, Any]] | None = None
+    replace: bool = False
+
+
+@app.post(
+    "/v1/admin/migrate/import",
+    tags=["admin"],
+    summary="Import memory state into SomaBrain",
+)
+async def admin_migrate_import(
+    payload: MigrateImportPayload,
+    request: Request,
+):
+    await _enforce_admin_rate_limit(request)
+    # Do not echo full memories back into auth payload to avoid log bloat
+    auth = await authorize_request(request, {"replace": payload.replace})
+    _require_admin_scope(auth)
+
+    soma = SomaBrainClient.get()
+    try:
+        data = await soma.migrate_import(
+            manifest=payload.manifest,
+            memories=payload.memories,
+            wm=payload.wm,
+            replace=payload.replace,
+        )
+    except SomaClientError as exc:
+        LOGGER.error("SomaBrain migrate import failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Import failed") from exc
+    return JSONResponse(content=data)
+
+
 class MessagePayload(BaseModel):
     session_id: str | None = Field(default=None, description="Conversation context identifier")
     persona_id: str | None = Field(default=None, description="Persona guiding this session")
@@ -2504,7 +2646,8 @@ JWT_TENANT_CLAIMS = [
     if claim.strip()
 ]
 OPA_URL = os.getenv("OPA_URL", APP_SETTINGS.opa_url)
-OPA_DECISION_PATH = os.getenv("OPA_DECISION_PATH", "/v1/data/somastack/allow")
+# Default decision path aligned with local policy package; env can override
+OPA_DECISION_PATH = os.getenv("OPA_DECISION_PATH", "/v1/data/soma/policy/allow")
 OPA_TIMEOUT_SECONDS = float(os.getenv("OPA_TIMEOUT_SECONDS", "3"))
 JWKS_TIMEOUT_SECONDS = float(os.getenv("GATEWAY_JWKS_TIMEOUT_SECONDS", "3"))
 
@@ -2778,9 +2921,24 @@ async def _resolve_signing_key(header: Dict[str, Any]) -> Any:
     return None
 
 
-async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[str, Any]) -> None:
+def _current_trace_id_hex() -> str | None:
+    """Return current OpenTelemetry trace id in 32-hex form if available."""
+    try:
+        from opentelemetry import trace as _trace
+        ctx = _trace.get_current_span().get_span_context()
+        return f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
+    except Exception:
+        return None
+
+
+async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any] | None:
+    """Evaluate OPA policy and return a decision receipt.
+
+    Returns a dict with fields { allow, url, status_code, decision } when OPA is configured.
+    Raises HTTPException on transport or explicit deny. When OPA_URL is not set, returns None.
+    """
     if not OPA_URL:
-        return
+        return None
 
     decision_url = f"{OPA_URL.rstrip('/')}{OPA_DECISION_PATH}"
     opa_input = {
@@ -2827,6 +2985,12 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
     allow = result.get("allow") if isinstance(result, dict) else result
     if not allow:
         raise HTTPException(status_code=403, detail="Request blocked by policy")
+    return {
+        "allow": True,
+        "url": decision_url,
+        "status_code": getattr(response, "status_code", None),
+        "decision": decision,
+    }
 
 
 async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
@@ -2899,8 +3063,16 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
             raise HTTPException(status_code=401, detail="Invalid token") from exc
 
     # Evaluate OPA policy only when auth is enforced and a policy URL is configured
+    opa_receipt: Dict[str, Any] | None = None
     if REQUIRE_AUTH and OPA_URL:
-        await _evaluate_opa(request, payload, claims)
+        try:
+            opa_receipt = await _evaluate_opa(request, payload, claims)
+        except HTTPException:
+            # propagate block
+            raise
+        except Exception as exc:
+            LOGGER.error("OPA evaluation unexpected error", extra={"error": str(exc)})
+            raise HTTPException(status_code=502, detail="OPA evaluation failed") from exc
 
     tenant = _extract_tenant(claims)
     scope = _extract_scope(claims)
@@ -2923,6 +3095,33 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
             raise HTTPException(status_code=401, detail="Missing identity claims")
         try:
             client = _get_openfga_client()
+        except ValueError:
+            # OpenFGA not configured (e.g., missing OPENFGA_STORE_ID). In unit/dev environments
+            # we skip enforcement rather than fail the request.
+            # Still emit a decision receipt indicating enforcement was skipped.
+            try:
+                req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+                await get_audit_store().log(
+                    request_id=req_id,
+                    trace_id=_current_trace_id_hex(),
+                    session_id=None,
+                    tenant=tenant,
+                    subject=str(subject) if subject else None,
+                    action="auth.decision",
+                    resource=str(request.url.path),
+                    target_id=None,
+                    details={
+                        "opa": opa_receipt or {"skipped": bool(not OPA_URL)},
+                        "openfga": {"enforced": False, "reason": "not_configured"},
+                        "scope": scope,
+                    },
+                    diff=None,
+                    ip=str(getattr(request.client, "host", None)) if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
+            except Exception:
+                pass
+            return auth_metadata
         except Exception as exc:
             raise HTTPException(status_code=500, detail="Authorization not configured") from exc
         try:
@@ -2941,6 +3140,29 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                 },
             )
             raise HTTPException(status_code=502, detail="Authorization service unavailable") from exc
+        # Emit decision receipt (best-effort; ignore failures)
+        try:
+            req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+            await get_audit_store().log(
+                request_id=req_id,
+                trace_id=_current_trace_id_hex(),
+                session_id=None,
+                tenant=tenant,
+                subject=str(subject) if subject else None,
+                action="auth.decision",
+                resource=str(request.url.path),
+                target_id=None,
+                details={
+                    "opa": opa_receipt or {"skipped": bool(not OPA_URL)},
+                    "openfga": {"enforced": True, "allowed": bool(allowed)},
+                    "scope": scope,
+                },
+                diff=None,
+                ip=str(getattr(request.client, "host", None)) if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+        except Exception:
+            pass
         if not allowed:
             raise HTTPException(status_code=403, detail="Tenant access denied")
 
@@ -3421,6 +3643,9 @@ async def upload_files(
                 try:
                     soma = SomaBrainClient.get()
                     GATEWAY_WT_ATTEMPTS.labels("/v1/uploads").inc()
+                    # Merge header-provided metadata (e.g., X-Universe-Id) with auth-derived tenant
+                    base_meta = {"tenant": tenant}
+                    header_meta, _persona_hdr = _apply_header_metadata(request, base_meta)
                     # Persist a lightweight memory record referencing the stored attachment
                     attachment_info = {
                         "id": str(att_id),
@@ -3448,7 +3673,7 @@ async def upload_files(
                             "mime": mime,
                             "upload_index": idx,
                             # Ensure universe is set for proper memory partitioning
-                            "universe_id": os.getenv("SOMA_NAMESPACE"),
+                            "universe_id": (header_meta or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
                         },
                     }
                     mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -7207,6 +7432,76 @@ async def audit_export(
             if len(rows) < 500:
                 break
     return StreamingResponse(_streamer(), headers={"Content-Type": "application/x-ndjson"})
+
+# List decision receipts (auth.decision) in JSON for quick ops inspection
+class AuditDecisionItem(BaseModel):
+    id: int
+    ts: str
+    request_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    session_id: Optional[str] = None
+    tenant: Optional[str] = None
+    subject: Optional[str] = None
+    resource: str
+    details: Optional[Dict[str, Any]] = None
+    ip: Optional[str] = None
+    user_agent: Optional[str] = None
+
+
+class AuditDecisionListResponse(BaseModel):
+    items: List[AuditDecisionItem]
+    next_cursor: Optional[int] = None
+
+
+@app.get("/v1/admin/audit/decisions", response_model=AuditDecisionListResponse)
+async def audit_list_decisions(
+    request: Request,
+    tenant: Optional[str] = Query(None, description="Filter by tenant"),
+    session_id: Optional[str] = Query(None, description="Filter by session id"),
+    request_id: Optional[str] = Query(None, description="Filter by request id"),
+    after: Optional[int] = Query(None, ge=0, description="Return items with database id greater than this cursor"),
+    limit: int = Query(100, ge=1, le=200),
+) -> AuditDecisionListResponse:
+    """List recent authorization decision receipts (action == 'auth.decision').
+
+    Requires admin scope when auth is enabled. Results are returned in ascending id order
+    with simple cursor pagination via the 'after' parameter. Use 'limit' to bound results.
+    """
+    await _enforce_admin_rate_limit(request)
+    auth = await authorize_request(
+        request,
+        {"action": "audit.read", "resource": "auth.decision", "tenant": tenant, "session_id": session_id},
+    )
+    _require_admin_scope(auth)
+
+    store = get_audit_store()
+    rows = await store.list(
+        request_id=request_id,
+        session_id=session_id,
+        tenant=tenant,
+        action="auth.decision",
+        limit=limit,
+        after_id=after,
+    )
+    items: List[AuditDecisionItem] = []
+    for r in rows:
+        items.append(
+            AuditDecisionItem(
+                id=r.id,
+                ts=r.ts.isoformat() + "Z",
+                request_id=r.request_id,
+                trace_id=r.trace_id,
+                session_id=r.session_id,
+                tenant=r.tenant,
+                subject=r.subject,
+                resource=r.resource,
+                details=r.details if isinstance(r.details, dict) else None,
+                ip=r.ip,
+                user_agent=r.user_agent,
+            )
+        )
+    next_cursor = items[-1].id if items else None
+    return AuditDecisionListResponse(items=items, next_cursor=next_cursor)
 
 class LlmInvokeMessage(BaseModel):
     role: str

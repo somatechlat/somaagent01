@@ -686,6 +686,47 @@ class ToolExecutor:
                         session_id=str(result_event.get("session_id")),
                         tenant=tenant,
                     )
+                    # Optional: semantic link and plan suggestion (best-effort, non-blocking)
+                    if os.getenv("SOMABRAIN_ENABLE_LINK_PLAN", "false").lower() in {"1", "true", "yes", "on"}:
+                        async def _link_and_plan() -> None:
+                            # Link tool_result memory to the session
+                            try:
+                                await self.soma.link(
+                                    {
+                                        "source": {"id": memory_payload.get("id"), "type": "tool_result"},
+                                        "target": {"id": result_event.get("session_id"), "type": "session"},
+                                        "relation": "emitted_in_session",
+                                        "metadata": {
+                                            "tool_name": result_event.get("tool_name"),
+                                            "tenant": tenant,
+                                        },
+                                    }
+                                )
+                            except Exception:
+                                LOGGER.debug("soma.link failed (tool result)", exc_info=True)
+                            # Suggest next steps based on recent tool result
+                            try:
+                                await self.soma.plan_suggest(
+                                    {
+                                        "session_id": result_event.get("session_id"),
+                                        "context": {
+                                            "last_tool": result_event.get("tool_name"),
+                                            "status": result_event.get("status"),
+                                        },
+                                        "tenant": tenant,
+                                        "universe": (memory_payload.get("metadata") or {}).get("universe_id"),
+                                    }
+                                )
+                            except Exception:
+                                LOGGER.debug("soma.plan_suggest failed (tool result)", exc_info=True)
+
+                        try:
+                            import asyncio as _asyncio
+
+                            _asyncio.create_task(_link_and_plan())
+                        except Exception:
+                            # If we cannot schedule, skip silently
+                            pass
                 except Exception:
                     LOGGER.debug("Failed to publish memory WAL (tool result)", exc_info=True)
             else:

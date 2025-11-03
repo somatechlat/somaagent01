@@ -69,3 +69,4 @@ User → Gateway → conversation.inbound → Conversation Worker → SLM → co
 - [Outbound Events](./outbound-events.md)
 - [Security Controls](./security.md)
 - [Deployment Guide](./deployment.md)
+- [SomaBrain Integration](./somabrain-integration.md)

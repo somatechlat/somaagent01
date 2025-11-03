@@ -41,7 +41,7 @@ import time
 from dataclasses import dataclass
 import hashlib
 import json
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, AsyncIterator
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
@@ -738,6 +738,85 @@ class SomaClient:
         if response is None:
             response = await self._request("POST", "/memory/recall/stream", json=dict(payload))
         return response
+
+    async def recall_stream_events(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        request_timeout: Optional[float] = None,
+    ) -> AsyncIterator[Mapping[str, Any]]:
+        """Yield events from the streaming recall endpoint as they arrive.
+
+        Tries the spec-preferred query param (?payload=<json>) first, falling back to a JSON body
+        if necessary. Yields decoded JSON event dicts for each "data:" line; stops on [DONE].
+        """
+        # Prepare headers with tracing and request id; default headers are already on the client
+        request_headers: Dict[str, str] = {"X-Request-ID": str(uuid4())}
+        try:
+            inject(request_headers)
+        except Exception:
+            pass
+
+        timeout_val = request_timeout if (request_timeout is not None) else DEFAULT_TIMEOUT
+
+        # Build compact JSON params payload first
+        params_payload = None
+        try:
+            params_payload = json.dumps(dict(payload), separators=(",", ":"))
+        except Exception:
+            params_payload = None
+
+        async def _stream_with(
+            *,
+            use_params: bool,
+        ) -> AsyncIterator[Mapping[str, Any]]:
+            client = self._get_client()
+            kwargs: Dict[str, Any] = {
+                "headers": request_headers or None,
+                "timeout": httpx.Timeout(timeout_val),
+            }
+            if use_params and params_payload is not None:
+                kwargs["params"] = {"payload": params_payload}
+            else:
+                kwargs["json"] = dict(payload)
+            async with client.stream("POST", "/memory/recall/stream", **kwargs) as resp:
+                if resp.is_error:
+                    # Surface upstream error text for diagnostics
+                    try:
+                        body = await resp.aread()
+                        detail = body.decode("utf-8", errors="ignore")[:512]
+                    except Exception:
+                        detail = resp.reason_phrase or ""
+                    raise SomaClientError(
+                        f"SomaBrain recall stream error {resp.status_code}: {detail}"
+                    )
+                async for line in resp.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        evt = json.loads(data_str)
+                    except Exception:
+                        continue
+                    yield evt
+
+        # Try params first; on error fallback to JSON
+        tried_params = False
+        if params_payload is not None:
+            tried_params = True
+            try:
+                async for evt in _stream_with(use_params=True):
+                    yield evt
+                return
+            except SomaClientError:
+                # fallback below
+                pass
+
+        # Fallback via JSON body
+        async for evt in _stream_with(use_params=False):
+            yield evt
 
     async def remember_batch(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         """Persist multiple memories in a single request."""
