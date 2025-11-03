@@ -68,6 +68,20 @@ class SLMClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        # Provider-specific header requirements
+        try:
+            from urllib.parse import urlparse as _urlparse
+            host = _urlparse(url).netloc.lower()
+        except Exception:
+            host = (base_url or self.base_url or "").lower()
+        # OpenRouter requires either HTTP-Referer (whitelisted) or X-Title
+        if "openrouter.ai" in host:
+            ref = os.getenv("OPENROUTER_REFERER", "http://localhost")
+            title = os.getenv("OPENROUTER_TITLE", "SomaAgent01 Dev")
+            if ref:
+                headers["HTTP-Referer"] = ref
+            if title:
+                headers["X-Title"] = title
 
         response = await self._client.post(url, json=payload, headers=headers)
         if response.is_error:
@@ -123,6 +137,18 @@ class SLMClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        try:
+            from urllib.parse import urlparse as _urlparse
+            host = _urlparse(url).netloc.lower()
+        except Exception:
+            host = (base_url or self.base_url or "").lower()
+        if "openrouter.ai" in host:
+            ref = os.getenv("OPENROUTER_REFERER", "http://localhost")
+            title = os.getenv("OPENROUTER_TITLE", "SomaAgent01 Dev")
+            if ref:
+                headers["HTTP-Referer"] = ref
+            if title:
+                headers["X-Title"] = title
 
         async with self._client.stream("POST", url, json=payload, headers=headers) as response:
             if response.is_error:

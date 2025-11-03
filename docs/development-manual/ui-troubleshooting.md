@@ -14,7 +14,7 @@ This page documents the end-to-end troubleshooting we performed to stabilize the
 ## Root causes
 
 1) Gateway outbox publish crashed when payloads were strings instead of dicts, due to trace-context injection assuming dicts.
-2) Gateway lacked minimal UI support endpoints: UI config, SSE stream, and a JSON handler used by the Memory Dashboard (`/memory_dashboard`).
+2) Gateway lacked minimal UI support endpoints: UI config, SSE stream, and memory endpoints. The canonical memory endpoints are under `/v1/memories/*`. A legacy compatibility shim (`/memory_dashboard`) may exist temporarily but should not be relied upon.
 
 ## Fixes applied
 
@@ -24,7 +24,7 @@ This page documents the end-to-end troubleshooting we performed to stabilize the
 - Implemented Gateway UI endpoints:
   - `GET /ui/config.json`: returns base UI config including `api_base: "/v1"` and selected toggles.
   - `GET /v1/session/{session_id}/events`: SSE endpoint streaming `conversation.outbound` events filtered by `session_id`.
-  - `POST /memory_dashboard`: compatibility shim for the Memory Dashboard (actions: `get_current_memory_subdir`, `get_memory_subdirs`, `search`, `delete`, `bulk_delete`, `update`).
+  - `GET /v1/memories`, `GET /v1/memories/subdirs`, `GET /v1/memories/current-subdir`, plus `DELETE/PATCH /v1/memories/{id}` and `POST /v1/memories/bulk-delete` for admin actions.
 
 ## Verification steps
 
@@ -37,7 +37,7 @@ This page documents the end-to-end troubleshooting we performed to stabilize the
 - UI loads without console errors.
 - `GET /v1/health` returns status ok/degraded with components.
 - `GET /ui/config.json` returns an object with `api_base`.
-- `POST /memory_dashboard` with `{ action: "get_current_memory_subdir" }` returns `{ success: true, memory_subdir: "..." }`.
+- `GET /v1/memories/current-subdir` returns the current memory subdir context.
 - `GET /v1/session/{id}/events` establishes an EventSource connection and delivers events when they are produced.
 
 ## Notes and limitations

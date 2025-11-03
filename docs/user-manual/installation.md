@@ -74,7 +74,7 @@ docker ps | grep -E "kafka|redis|postgres|opa"
 make stack-up
 
 # Verify gateway is running
-curl http://localhost:20016/v1/health
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
 ```
 
 ### 6. Start UI
@@ -93,7 +93,7 @@ open http://127.0.0.1:3000
 |---------|------|---------|
 | UI | 20015 | Web interface (Docker) |
 | UI | 3000 | Web interface (local dev) |
-| Gateway | 20016 | API endpoint |
+| Gateway | 21016 | API endpoint (configurable via GATEWAY_PORT) |
 | Kafka | 20000 | Event streaming |
 | Redis | 20001 | Cache |
 | PostgreSQL | 20002 | Database |
@@ -119,7 +119,7 @@ make check-stack
 
 ```bash
 # Find process using port
-lsof -i :20016
+lsof -i :21016
 
 # Kill process
 kill -9 <PID>

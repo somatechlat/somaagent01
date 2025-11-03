@@ -2,6 +2,7 @@ import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
 import httpx
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
@@ -133,7 +134,9 @@ async def run_flows(base_url: str) -> dict:
         # Tool flow via backend enqueue → observe in UI
         tool_seen = False
         if session_id:
-            base_api = base_url.split("/ui")[0]
+            # Derive API origin from the URL (works with or without trailing /ui)
+            parts = urlsplit(base_url)
+            base_api = f"{parts.scheme}://{parts.netloc}"
             try:
                 async with httpx.AsyncClient(timeout=15.0) as client:
                     payload = {
@@ -170,8 +173,8 @@ async def run_flows(base_url: str) -> dict:
 
 
 async def main():
-    golden = os.environ.get("GOLDEN_UI_BASE_URL", "http://127.0.0.1:7001/ui")
-    local = os.environ.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}/ui"
+    golden = os.environ.get("GOLDEN_UI_BASE_URL", "http://127.0.0.1:7001")
+    local = os.environ.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}"
 
     out = {"golden": None, "local": None}
 

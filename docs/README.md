@@ -43,7 +43,7 @@ This documentation follows ISO/IEC standards for software lifecycle processes an
 
 SomaAgent01 is a microservices-based conversational AI platform built on:
 
-- **Gateway**: FastAPI HTTP/WebSocket gateway (port 20016)
+- **Gateway**: FastAPI Gateway (HTTP + SSE) (port 21016 by default)
 - **Conversation Worker**: Kafka consumer processing user messages
 - **Tool Executor**: Executes tools requested by conversations
 - **Memory Services**: Replication and synchronization with SomaBrain

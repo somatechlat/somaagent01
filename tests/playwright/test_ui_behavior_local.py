@@ -14,7 +14,7 @@ except Exception:
 
 
 async def main():
-    base = os.environ.get('WEB_UI_BASE_URL') or os.environ.get('BASE_URL') or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}/ui"
+    base = os.environ.get('WEB_UI_BASE_URL') or os.environ.get('BASE_URL') or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}"
     code = await run_behavior(base)
     if code != 0:
         raise SystemExit(code)

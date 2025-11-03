@@ -25,6 +25,8 @@ const timeDate = document.getElementById("time-date-container");
 
 let autoScroll = true;
 let context = "";
+// Track which session ids are known to exist on the server (persisted vs. draft)
+const persistedSessions = new Set();
 let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
@@ -177,10 +179,17 @@ export async function sendMessage() {
     });
     if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
     const json = await resp.json();
-    if (json && json.session_id && !context) {
-      // The backend created a real session – switch to it and load history so the first user message remains visible
-      setContext(json.session_id);
-      await loadAndRenderSessionHistory(json.session_id);
+    if (json && json.session_id) {
+      // Mark the session as persisted
+      try { persistedSessions.add(String(json.session_id)); } catch(_e) {}
+      // If we were in a draft (context set but not persisted), ensure SSE + history now
+      if (!context || context !== json.session_id) {
+        setContext(json.session_id);
+      }
+      // Connect SSE for newly persisted sessions (if not already)
+      try { connectEventStream(json.session_id); } catch(_e) {}
+      // Load history so the first user message remains visible in the merged timeline
+      try { await loadAndRenderSessionHistory(json.session_id); } catch(_e) {}
       // Ensure sidebar reflects the new chat
       try {
         const chatsAD = globalThis.Alpine ? Alpine.$data(chatsSection) : null;
@@ -546,12 +555,12 @@ function connectEventStream(sessionId) {
 
             if (isFinal) {
               const prevPlain = currentAssistantBuffer; // keep a copy to guard against transient shrink on final
-              setMessage(currentAssistantMsgId, "response", "", currentAssistantBuffer, false, { kvps: payload.metadata || {} });
+              setMessage(currentAssistantMsgId, "response", "", currentAssistantBuffer, false, payload.metadata || {});
               // Inject a short-lived hidden shadow text to avoid transient textContent shrink during final render
               try { injectShadowText(currentAssistantMsgId, prevPlain, 3000); } catch(_e) {}
               globalThis._lastAssistantRenderAtMs = now;
             } else if (!shouldThrottle || due) {
-              setMessage(currentAssistantMsgId, "response_stream", "", currentAssistantBuffer, false, { kvps: payload.metadata || {} });
+              setMessage(currentAssistantMsgId, "response_stream", "", currentAssistantBuffer, false, payload.metadata || {});
               globalThis._lastAssistantRenderAtMs = now;
             }
           }
@@ -570,13 +579,29 @@ function connectEventStream(sessionId) {
         if (role === "tool" || t.startsWith("tool")) {
           const content = cumulative || payload.message || "";
           const id = payload.event_id || generateGUID();
-          setMessage(id, "tool", "", content, false, { kvps: payload.metadata || {} });
+          setMessage(id, "tool", "", content, false, payload.metadata || {});
           if (evId) processedEventIds.add(evId);
           return;
         }
 
         // Utility messages (hidden when Show utility messages is off)
         if (role === "util" || t.startsWith("util")) {
+          // Special-case: settings saved broadcast from Gateway
+          try {
+            const evType = String(payload.type || "").toLowerCase();
+            const metaType = String((payload.metadata && payload.metadata.event) || "").toLowerCase();
+            if (evType === "ui.settings.saved" || metaType === "ui.settings.saved") {
+              // Notify local components to rehydrate settings without a full page reload
+              try {
+                document.dispatchEvent(new CustomEvent("settings-updated", { detail: payload.settings || null }));
+              } catch (_) {}
+              // Lightweight toast to inform the user (debounced by SSE id)
+              try { justToast("Settings updated", "success", 1200, "settings-apply"); } catch (_) {}
+              if (evId) processedEventIds.add(evId);
+              return;
+            }
+          } catch (_) {}
+
           const content = cumulative || payload.message || "";
           const id = payload.event_id || generateGUID();
           const kv = payload.metadata || {};
@@ -690,6 +715,8 @@ globalThis.selectChat = async function (id) {
 
 export const newContext = function () {
   context = generateGUID();
+  // New chats start as drafts (not persisted on the server yet)
+  try { persistedSessions.delete(String(context)); } catch(_e) {}
   setContext(context);
   // Optimistically add the new chat to the sidebar list for immediate UX feedback
   try {
@@ -739,11 +766,15 @@ export const setContext = function (id) {
 
   //skip one speech if enabled when switching context
   if (localStorage.getItem("speech") == "true") skipOneSpeech = true;
-  // Connect SSE for this session
-  connectEventStream(context);
-  // Load and render current session history for visibility (welcome, first user message, etc.)
-  // Fire and forget; errors surfaced via toast
-  loadAndRenderSessionHistory(context).catch((_e) => {});
+  // Connect SSE and load history only for persisted sessions
+  try {
+    if (persistedSessions.has(String(context))) {
+      connectEventStream(context);
+      // Load and render current session history for visibility (welcome, first user message, etc.)
+      // Fire and forget; errors surfaced via toast
+      loadAndRenderSessionHistory(context).catch((_e) => {});
+    }
+  } catch(_e) {}
 };
 
 // Delete chat/session from sidebar (Chats tab)
@@ -752,10 +783,20 @@ globalThis.killChat = async function (id) {
     if (!id) return;
     // Switch away first if deleting current context
     switchFromContext(id);
-
-    const resp = await api.fetchApi(`/sessions/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    // If this is a draft (not persisted), remove locally without server call
+    if (!persistedSessions.has(String(id))) {
+      // Update UI contexts list if present
+      if (globalThis.Alpine && chatsSection) {
+        const chatsAD = Alpine.$data(chatsSection);
+        const updated = (chatsAD?.contexts || []).filter((c) => c.id !== id);
+        chatsAD.contexts = [...updated];
+      }
+      updateAfterScroll();
+      justToast("Chat deleted", "success", 1000, "chat-removal");
+      return;
+    }
+    // Persisted session – delete server‑side
+    const resp = await api.fetchApi(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (!resp.ok) throw new Error(await resp.text());
 
     // Update UI contexts list if present
@@ -796,9 +837,17 @@ globalThis.resetChat = async function (id) {
   try {
     const sid = id || context;
     if (!sid) return;
-    const resp = await api.fetchApi(`/sessions/${encodeURIComponent(sid)}/reset`, {
-      method: "POST",
-    });
+    // Draft session: clear UI only, no server call
+    if (!persistedSessions.has(String(sid))) {
+      if (sid === context) {
+        chatHistory.innerHTML = "";
+        resetCounter++;
+        try { if (eventSource) { eventSource.close(); eventSource = null; } } catch(_e) {}
+      }
+      justToast("Chat reset", "success", 1200, "chat-reset");
+      return;
+    }
+    const resp = await api.fetchApi(`/sessions/${encodeURIComponent(sid)}/reset`, { method: "POST" });
     if (!resp.ok) throw new Error(await resp.text());
     // Clear current chat history visually
     if (sid === context) {
@@ -820,6 +869,17 @@ export const getContext = function () {
 
 export const getChatBasedId = function (id) {
   return context + "-" + resetCounter + "-" + id;
+};
+
+// Best-effort call of a global method by name. Used by Alpine x-effect bindings
+// for header toggles (Show thoughts / JSON / utilities) to avoid hard coupling
+// and race conditions during component initialization.
+globalThis.safeCall = function (fnName, ...args) {
+  try {
+    const fn = (globalThis || {})[fnName];
+    if (typeof fn === 'function') return fn(...args);
+  } catch (_) {}
+  return undefined;
 };
 
 globalThis.toggleAutoScroll = async function (_autoScroll) {
@@ -1161,6 +1221,8 @@ document.addEventListener("DOMContentLoaded", function () {
   initUiPreferences().catch((e) => {
     console.warn("Failed to init UI preferences:", e?.message || e);
   });
+  // Initialize speech store once on load so it fetches settings immediately
+  try { if (speechStore && typeof speechStore.init === 'function') speechStore.init(); } catch(_e) {}
 });
 
 // Setup tabs functionality
@@ -1374,6 +1436,8 @@ async function bootstrapSessions() {
     if (chatsAD) {
       chatsAD.contexts = items;
     }
+    // Mark all fetched sessions as persisted
+    try { (items || []).forEach((i) => persistedSessions.add(String(i.id))); } catch(_e) {}
 
     // Choose session: lastSelectedChat or first
     const last = localStorage.getItem("lastSelectedChat");
@@ -1441,8 +1505,15 @@ function injectShadowText(messageId, text, ttlMs = 2000) {
 
 async function loadAndRenderSessionHistory(sessionId) {
   try {
+    // Avoid server call for draft sessions
+    if (!persistedSessions.has(String(sessionId))) return;
     const resp = await api.fetchApi(`/sessions/${encodeURIComponent(sessionId)}/events?limit=500`);
-    if (!resp.ok) throw new Error(await resp.text());
+    if (!resp.ok) {
+      // Suppress 404 for races or missing history; only toast for other errors
+      const msg = await resp.text();
+      if (resp.status === 404) return;
+      throw new Error(msg || `HTTP ${resp.status}`);
+    }
     const data = await resp.json();
     const events = Array.isArray(data?.events) ? data.events : [];
     // Render in chronological order by DB id
@@ -1455,9 +1526,9 @@ async function loadAndRenderSessionHistory(sessionId) {
       if (role === "user") {
         setMessage(id, "user", "", msg, false, { attachments: p.attachments || [] });
       } else if (role === "assistant" || type.startsWith("assistant")) {
-        setMessage(id, "response", "", msg, false, { kvps: p.metadata || {} });
+        setMessage(id, "response", "", msg, false, p.metadata || {});
       } else if (role === "tool" || type.startsWith("tool")) {
-        setMessage(id, "tool", "", msg, false, { kvps: p.metadata || {} });
+        setMessage(id, "tool", "", msg, false, p.metadata || {});
       } else {
         // Ignore utilities for initial history render
         continue;

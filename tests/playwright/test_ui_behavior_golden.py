@@ -106,7 +106,7 @@ async def run_behavior(url: str) -> int:
 
 
 async def main():
-    base = os.environ.get('GOLDEN_UI_BASE_URL') or 'http://127.0.0.1:7001/ui'
+    base = os.environ.get('GOLDEN_UI_BASE_URL') or 'http://127.0.0.1:7001'
     try:
         code = await run_behavior(base)
     except Exception as e:  # pragma: no cover

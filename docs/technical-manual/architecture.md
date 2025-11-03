@@ -10,12 +10,12 @@ SomaAgent01 is a distributed conversational AI platform using microservices arch
 
 ### Gateway (`services/gateway/main.py`)
 
-**Purpose**: Public-facing HTTP/WebSocket API
+**Purpose**: Public-facing HTTP API with SSE streaming
 
 **Responsibilities**:
 - Accept user messages via POST /v1/session/message
 - Publish to conversation.inbound topic
-- Stream responses from conversation.outbound via WebSocket/SSE
+- Stream responses from conversation.outbound via SSE (WebSocket may be added later)
 - Authenticate requests (JWT/API keys)
 - Enforce OPA policies
 - Manage sessions in PostgreSQL
@@ -24,7 +24,7 @@ SomaAgent01 is a distributed conversational AI platform using microservices arch
 **Technology**: FastAPI, aiokafka, asyncpg, redis-py
 
 **Ports**:
-- HTTP: 20016
+- HTTP: 21016 (default; configurable via `GATEWAY_PORT`)
 - Metrics: 9600 (Prometheus)
 
 ### Conversation Worker (`services/conversation_worker/main.py`)

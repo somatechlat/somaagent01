@@ -6424,18 +6424,23 @@ async def ui_sections_set(
                 if "api.groq.com" in normalized_base and "/openai" not in normalized_base:
                     normalized_base = normalized_base.rstrip("/") + "/openai"
                     host = normalized_base.lower()
-        # If we recognized a provider (or user explicitly selected one), ensure a key exists
-        if provider:
-            try:
-                creds_store = get_llm_credentials_store()
-                have = await creds_store.has(provider)
-            except Exception:
-                have = False
-            if not have and not any(c[0] == provider for c in creds):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Missing API key for provider '{provider}'. Add it in the API Keys section (field id: api_key_{provider}).",
-                )
+        # If user explicitly selected a provider but the base_url host points to a different provider,
+        # coerce base_url to that provider's default. This prevents accidental cross-provider misroutes
+        # when changing only the provider field in the UI.
+        try:
+            detected = _detect_provider_from_base(normalized_base) if normalized_base else ""
+            if explicit_provider and detected and explicit_provider != detected:
+                fallback = _default_base_url_for_provider(explicit_provider)
+                if fallback:
+                    normalized_base = fallback
+                    host = normalized_base.lower()
+        except Exception:
+            pass
+
+        # Credentials presence is validated at invoke/test time. Allow saving
+        # a model profile even if the provider key is not yet present to keep
+        # Settings UX simple. We still store any credentials provided in the
+        # same save payload below.
 
         # Clamp temperature if provided via kwargs
         try:
@@ -6466,6 +6471,31 @@ async def ui_sections_set(
                 await store.set(provider, secret)
             except Exception as exc:
                 LOGGER.warning("Failed to store LLM credentials", extra={"provider": provider, "error": str(exc)})
+
+    # -----------------------------
+    # Hot-apply overlays for Uploads/Antivirus so changes take effect immediately
+    # -----------------------------
+    try:
+        # Refresh uploads overlay from the latest persisted document
+        up = dict(current_doc.get("uploads") or {}) if isinstance(current_doc, dict) else {}
+        # Respect global file-saving disable switches
+        try:
+            if os.getenv("DISABLE_FILE_SAVING", "true").lower() in {"true", "1", "yes", "on"} or os.getenv(
+                "GATEWAY_DISABLE_FILE_SAVING", "true"
+            ).lower() in {"true", "1", "yes", "on"}:
+                up["uploads_enabled"] = False
+        except Exception:
+            pass
+        app.state.uploads_cfg = up
+    except Exception:
+        LOGGER.debug("Failed to refresh uploads overlay after settings save", exc_info=True)
+
+    try:
+        # Refresh antivirus overlay from the latest persisted document
+        av = dict(current_doc.get("antivirus") or {}) if isinstance(current_doc, dict) else {}
+        app.state.av_cfg = av
+    except Exception:
+        LOGGER.debug("Failed to refresh antivirus overlay after settings save", exc_info=True)
 
     # Emit audit log (masking secrets) – best-effort
     try:

@@ -81,6 +81,8 @@ const settingsModalProxy = {
             // Set isOpen first to ensure proper state
             store.isOpen = true;
         }
+        // Also set the component state so x-show binds render immediately
+        try { this.isOpen = true; } catch(_) {}
 
         //get settings from backend (canonical /v1)
         try {
@@ -257,6 +259,16 @@ const settingsModalProxy = {
             if (window.toastFrontendSuccess) {
                 window.toastFrontendSuccess('Settings saved successfully', 'Settings', 3, 'settings-save');
             }
+            // Immediately re-fetch sections to pick up masked credentials and normalized URLs
+            try {
+                const ref = await fetchApi('/ui/settings/sections', { method: 'GET' });
+                if (ref.ok) {
+                    const fresh = await ref.json().catch(() => null);
+                    if (fresh && fresh.settings) {
+                        modalAD.settings = fresh.settings;
+                    }
+                }
+            } catch(_e) {}
             // Update modal data with server-returned shape when available
             if (savedJson && savedJson.settings) {
                 modalAD.settings = savedJson.settings;
@@ -376,6 +388,27 @@ const settingsModalProxy = {
 //     Alpine.store('settingsModal', initSettingsModal());
 // });
 
+// Live-refresh settings in any open modal when another tab/process saves settings.
+// Listens for 'settings-updated' (also dispatched from SSE handler in index.js).
+document.addEventListener('settings-updated', async function () {
+  try {
+    const modalEl = document.getElementById('settingsModal');
+    if (!modalEl) return;
+    const ad = window.Alpine ? Alpine.$data(modalEl) : null;
+    const needsRefresh = ad && (ad.settings !== undefined || ad.settingsData !== undefined);
+    if (!needsRefresh) return;
+    const resp = await fetchApi('/ui/settings/sections', { method: 'GET' });
+    if (!resp.ok) return;
+    const json = await resp.json().catch(() => null);
+    if (!json || !json.settings) return;
+    if (ad.settings !== undefined) ad.settings = json.settings;
+    if (ad.settingsData !== undefined) ad.settingsData = json.settings;
+    if (typeof ad.updateFilteredSections === 'function') {
+      try { ad.updateFilteredSections(); } catch (_) {}
+    }
+  } catch (_) {}
+});
+
 document.addEventListener('alpine:init', function () {
     // Initialize the root store first to ensure it exists before components try to access it
     Alpine.store('root', {
@@ -485,6 +518,28 @@ document.addEventListener('alpine:init', function () {
                         }
                     }
 
+                    // If provider changed but base_url points to another provider, blank it so Gateway applies provider default.
+                    try {
+                        let provider = '';
+                        let apiBaseField = null;
+                        for (const sec of this.settingsData.sections) {
+                            for (const f of sec.fields || []) {
+                                const id = String(f.id || '').toLowerCase();
+                                if (id === 'chat_model_provider') provider = String(f.value || '').trim().toLowerCase();
+                                if (id === 'chat_model_api_base') apiBaseField = f;
+                            }
+                        }
+                        if (provider && apiBaseField && typeof apiBaseField.value === 'string' && apiBaseField.value.trim()) {
+                            const v = apiBaseField.value.trim().toLowerCase();
+                            const mismatched = (provider === 'groq' && v.includes('openrouter')) ||
+                                               (provider === 'openrouter' && v.includes('groq')) ||
+                                               (provider === 'openai' && (v.includes('openrouter') || v.includes('groq')));
+                            if (mismatched) {
+                                apiBaseField.value = '';
+                            }
+                        }
+                    } catch (_) {}
+
                     // Send sections as-is to canonical endpoint
                     const response = await fetchApi('/ui/settings/sections', {
                         method: 'POST',
@@ -494,8 +549,33 @@ document.addEventListener('alpine:init', function () {
 
                     if (response.ok) {
                         showToast('Settings saved successfully', 'success');
-                        // Refresh settings
+                        // Opportunistic credentials write when an unmasked key is provided
+                        try {
+                            let provider = '';
+                            let secret = '';
+                            for (const sec of this.settingsData.sections) {
+                                for (const f of sec.fields || []) {
+                                    const id = String(f.id || '').toLowerCase();
+                                    const val = (typeof f.value === 'string') ? f.value.trim() : '';
+                                    if (!provider && (id.includes('provider') || id === 'provider')) provider = val;
+                                    const isSecret = id.includes('api_key') || id.includes('secret') || id.includes('token');
+                                    if (!secret && isSecret && val && val !== '************') secret = val;
+                                }
+                            }
+                            if (provider && secret) {
+                                await fetchApi('/llm/credentials', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ provider, secret })
+                                });
+                            }
+                        } catch (e) {
+                            console.warn('Credentials save skipped:', e?.message || e);
+                        }
+                        // Refresh settings sections to pick up normalized base_url and masked secrets
                         await this.fetchSettings();
+                        // Broadcast for other components/tabs
+                        try { document.dispatchEvent(new CustomEvent('settings-updated', { detail: this.settingsData })); } catch(_) {}
                     } else {
                         const errorText = await response.text();
                         throw new Error(errorText || 'Failed to save settings');
@@ -610,6 +690,7 @@ document.addEventListener('alpine:init', function () {
     });
 });
 
+// Global helper to run provider connectivity test and surface provider/host/reachability
 // Show toast notification - now uses new notification system
 function showToast(message, type = 'info') {
     // Use new frontend notification system based on type

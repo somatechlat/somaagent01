@@ -41,7 +41,7 @@ make stack-up
 ```
 somaAgent01/
 ├── services/           # Microservices
-│   ├── gateway/       # HTTP/WebSocket API
+│   ├── gateway/       # HTTP API with SSE streaming
 │   ├── conversation_worker/  # Message processing
 │   ├── tool_executor/ # Tool execution
 │   ├── memory_replicator/    # Memory replication

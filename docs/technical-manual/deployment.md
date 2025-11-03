@@ -38,11 +38,12 @@ GATEWAY_MANAGED_CREDENTIALS=true
 
 **Deploy**:
 ```bash
-# Using Docker Compose
-docker compose -f docker-compose.staging.yaml up -d
-
-# Using Kubernetes
+# Recommended: Kubernetes (staging overlay)
 kubectl apply -k infra/k8s/overlays/staging/
+
+# Or: Docker Compose using the base manifest with env overrides
+# (No dedicated staging compose file is provided.)
+docker compose up -d
 ```
 
 ### PROD (Production)
@@ -110,7 +111,7 @@ kubectl logs -n production deployment/gateway
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GATEWAY_PORT` | Gateway HTTP port | `20016` |
+| `GATEWAY_PORT` | Gateway HTTP port | `21016` |
 | `KAFKA_BOOTSTRAP_SERVERS` | Kafka brokers | `localhost:20000` |
 | `REDIS_URL` | Redis connection URL | `redis://localhost:20001` |
 | `SOMABRAIN_BASE_URL` | Memory service URL | `http://localhost:9696` |
@@ -130,7 +131,7 @@ docker compose up -d
 
 # 3. Verify
 docker compose ps
-curl http://localhost:20016/v1/health
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
 ```
 
 ### Multi-Node Setup
@@ -338,7 +339,7 @@ services:
 livenessProbe:
   httpGet:
     path: /v1/health
-    port: 20016
+    port: 21016
   initialDelaySeconds: 30
   periodSeconds: 10
 ```
@@ -349,7 +350,7 @@ livenessProbe:
 readinessProbe:
   httpGet:
     path: /v1/ready
-    port: 20016
+    port: 21016
   initialDelaySeconds: 10
   periodSeconds: 5
 ```

@@ -42,16 +42,15 @@ Canonical Decisions
 
 Gaps vs Roadmap (prioritized)
 1. Acceptance testing and API contract tests (HIGH)
-   - Missing: automated Playwright smoke tests and API contract probes for: SSE subscribe & receive, message send (POST /v1/session/{id}/message), file upload round-trip, tool request -> tool result flow, and credential flows.
+  - Missing: automated Playwright smoke tests and API contract probes for: SSE subscribe & receive, message send (POST /v1/session/message), file upload round-trip, tool request -> tool result flow, and credential flows.
    - Action: add Playwright smoke tests, pytest API contract tests, and CI workflows to run them.
 
-2. Optimized deploy manifest (HIGH)
-   - Missing: `docker-compose.optimized.yaml` referenced by `deploy-optimized.sh` is absent.
-   - Action: produce an optimized compose file (lean 7-container stack) or update the deploy script to use existing `docker-compose.yaml` with tuned profiles and resource limits.
+2. Deployment manifest alignment (HIGH)
+  - Canonicalize on a single compose file: `docker-compose.yaml`. Remove legacy scripts/manifests. Use Makefile profiles only.
 
 3. Documentation references and stale scripts (MEDIUM)
-   - Issues: `run_ui.py` is deprecated but referenced in Makefile, docs, .vscode/launch.json, and tests. `deploy-optimized.sh` references a missing compose manifest. `tmp/webui` is a redundant copy of the Agent Zero UI.
-   - Action: archive or remove deprecated files and update references; update docs to point to Gateway serving for the UI.
+  - Issues: Legacy artifacts and references existed (`run_ui.py`, `deploy-optimized.sh`, `tmp/webui`).
+  - Action: Remove legacy artifacts and clean references; docs point to Gateway serving the UI.
 
 4. UI parity tasks (MEDIUM)
    - Items: port progressive token rendering, tool-panel UX, upload-progress UI, reconnect/backoff for SSE, and UX polish from Agent Zero (error handling and offline UX).
@@ -62,12 +61,12 @@ Gaps vs Roadmap (prioritized)
 
 Acceptance Criteria (per feature)
 - SSE streaming: UI subscribes to `GET /v1/session/{id}/events` and receives event types: session.open, message.chunk, message.complete, tool.requested, tool.result, memory.write, and session.close. SSE reconnects must resume from last event id where supported.
-- Message send: `POST /v1/session/{id}/message` returns 202 with the session/event envelope; message appears via SSE within acceptable latency (configurable threshold, default 5s in dev).
+- Message send: `POST /v1/session/message` returns 202 with the session/event envelope; message appears via SSE within acceptable latency (configurable threshold, default 5s in dev).
 - Tool invocation: `POST /v1/tool/request` accepts structured tool payloads, publishes to Kafka, Tool Executor consumes and emits `tool.result` events visible to the subscribing client via SSE.
 - Uploads: client uploads to `POST /v1/uploads` which returns a resource URL; uploaded content must be available to workers for tool processing and memory ingestion.
 
 Roadmap: Next 3 sprints (high level)
-- Sprint 1 (2 weeks): API contract tests + CI; create `docker-compose.optimized.yaml` (or fix deploy script); archive deprecated files (`run_ui.py`, `tmp/webui`) and update docs; add basic Playwright smoke test for UI SSE subscribe health.
+- Sprint 1 (2 weeks): API contract tests + CI; clean legacy references; add basic Playwright smoke test for UI SSE subscribe health.
 - Sprint 2 (2 weeks): Migrate key UX from `tmp/webui` into `webui/`: streaming token rendering, tool panel, upload progress. Add Playwright tests for UX flows. Implement small Gateway adapter for legacy poll endpoints (backwards compatibility) — mark deprecated.
 - Sprint 3 (2 weeks): Harden deployments (resource tuning), add OPA policy verification in CI, end-to-end tests for tool executor and memory WAL capture, finalize removal of legacy adapters post migration.
 
@@ -76,7 +75,7 @@ Appendix: Quick API contract samples
   - GET /v1/session/{id}/events
   - Events: id:<event-id>\n event:message.chunk\n data: {"session_id":"...","chunk":"...","cursor":42}\n
 - Send message
-  - POST /v1/session/{id}/message
+  - POST /v1/session/message
   - Body: {"role":"user","content":"Hello"}
   - Response: 202 Accepted {"envelope_id":"...","status":"queued"}
 
@@ -85,7 +84,7 @@ Appendix: Quick API contract samples
   - Body: {"session_id":"...","tool_id":"calculator","inputs":{...}}
 
 Verification & Quality gates
-- Build: ensure `docker-compose.yaml` and `Dockerfile` build locally. If an optimized compose is added, validate composition via `docker compose -f docker-compose.optimized.yaml ps`.
+- Build: ensure `docker-compose.yaml` and `Dockerfile` build locally.
 - Lint/Typecheck: run project linters and Python type checks if configured (e.g., mypy, flake8); add minimal pre-commit hooks if absent.
 - Tests: run newly added Playwright smoke and pytest API contract tests in CI; pass locally in dev before merging.
 
@@ -144,11 +143,7 @@ Immediate plan (no new systems, minimal edits)
    - `python/api/*` modules that fallback to `http://localhost:20016` or `http://127.0.0.1:21016`
    - `.vscode/tasks.json` and Makefile examples
    - docs under `docs/*` and generated `site/*` that embed http://localhost:21016 or other literal ports
-3. Archive (do not permanently delete without record) clearly broken / redundant artifacts that confuse developers:
-   - `run_ui.py` (deprecated stub)
-   - `tmp/webui/` (redundant Agent Zero UI copy)
-   - `deploy-optimized.sh` (references missing compose file)
-   Archive location: `archive/` at repo root, with timestamped names (e.g. `archive/run_ui-20251030.py`, `archive/tmp-webui-20251030.tar.gz`, `archive/deploy-optimized-20251030.sh`).
+3. Remove clearly broken / redundant artifacts that confuse developers and standardize on the single compose manifest.
 4. Verify by running the dev stack and smoke tests (see "Verification" below).
 
 Safety & VIBE constraints

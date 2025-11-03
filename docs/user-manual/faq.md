@@ -36,7 +36,7 @@ Yes. Use `make deps-up` for infrastructure, then `make stack-up` for services. S
 
 ### Which ports are required?
 
-Core ports: 20000 (Kafka), 20001 (Redis), 20002 (PostgreSQL), 20016 (Gateway). See [Port Reference](./installation.md#port-reference).
+Core ports: 20000 (Kafka), 20001 (Redis), 20002 (PostgreSQL), 21016 (Gateway). See [Port Reference](./installation.md#port-reference).
 
 ## Usage
 
@@ -83,7 +83,7 @@ If not, check `docker compose logs somabrain`.
 
 ### UI won't load
 
-1. Check gateway health: `curl http://localhost:20016/v1/health`
+1. Check gateway health: `curl http://localhost:${GATEWAY_PORT:-21016}/v1/health`
 2. Check UI logs: `docker compose logs ui`
 3. Clear browser cache
 
