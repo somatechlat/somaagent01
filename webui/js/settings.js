@@ -83,6 +83,12 @@ const settingsModalProxy = {
         }
         // Also set the component state so x-show binds render immediately
         try { this.isOpen = true; } catch(_) {}
+        try { if (modalAD) modalAD.isOpen = true; } catch(_) {}
+        // Hard-show overlay immediately in case Alpine reactivity is late
+        try {
+            const overlay = modalEl.querySelector('.modal-overlay');
+            if (overlay) overlay.style.setProperty('display','flex','important');
+        } catch(_) {}
 
         //get settings from backend (canonical /v1)
         try {
@@ -287,6 +293,11 @@ const settingsModalProxy = {
 
         // First update our component state
         this.isOpen = false;
+        try {
+            const modalEl = document.getElementById('settingsModal');
+            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
+            if (overlay) overlay.style.removeProperty('display');
+        } catch(_) {}
 
         // Then safely update the store
         const store = Alpine.store('root');
@@ -309,6 +320,11 @@ const settingsModalProxy = {
 
         // First update our component state
         this.isOpen = false;
+        try {
+            const modalEl = document.getElementById('settingsModal');
+            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
+            if (overlay) overlay.style.removeProperty('display');
+        } catch(_) {}
 
         // Then safely update the store
         const store = Alpine.store('root');
@@ -387,6 +403,22 @@ const settingsModalProxy = {
 // document.addEventListener('alpine:init', () => {
 //     Alpine.store('settingsModal', initSettingsModal());
 // });
+
+// Expose for Alpine expressions in markup (e.g., @click="settingsModalProxy.openModal()")
+try { globalThis.settingsModalProxy = settingsModalProxy; } catch (_) {}
+
+// Fallback: bind Settings button click after DOM is ready in case Alpine event parsing fails
+try {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('settings');
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        try { e.preventDefault(); } catch(_) {}
+        try { settingsModalProxy.openModal(); } catch(_) {}
+      });
+    }
+  });
+} catch(_) {}
 
 // Live-refresh settings in any open modal when another tab/process saves settings.
 // Listens for 'settings-updated' (also dispatched from SSE handler in index.js).

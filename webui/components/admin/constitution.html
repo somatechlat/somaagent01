@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Constitution Admin</title>
+</head>
+<body class="admin-constitution">
+  <style>
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .card { border: 1px solid var(--border-color,#333); border-radius: 8px; padding: 12px; }
+    .card h3 { margin: 0 0 8px 0; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+    textarea.constitution-input { width: 100%; min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+    .ok { color: #66e18c; }
+    .err { color: #ff8b8b; }
+    pre { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px; max-height: 300px; overflow: auto; }
+  </style>
+
+  <div id="constitution-root" class="grid">
+    <div class="card">
+      <h3>Version</h3>
+      <div class="row">
+        <button id="btn-refresh-version">Refresh</button>
+        <span id="version-status" class="mono"></span>
+      </div>
+      <pre id="version-json" class="mono">loading…</pre>
+    </div>
+
+    <div class="card">
+      <h3>Validate & Load</h3>
+      <div class="row" style="margin-bottom:6px;">
+        <button id="btn-validate">Validate</button>
+        <button id="btn-load" class="btn-ok">Load</button>
+        <span id="action-status" class="mono"></span>
+      </div>
+      <textarea id="constitution-input" class="constitution-input" placeholder='Paste JSON document here (e.g. {"rules": []})'></textarea>
+      <details>
+        <summary>Result</summary>
+        <pre id="action-result" class="mono"></pre>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    const root = document.currentScript.closest('#constitution-root');
+    const versionJsonEl = root.querySelector('#version-json');
+    const versionStatusEl = root.querySelector('#version-status');
+    const btnRefresh = root.querySelector('#btn-refresh-version');
+
+    const inputEl = root.querySelector('#constitution-input');
+    const btnValidate = root.querySelector('#btn-validate');
+    const btnLoad = root.querySelector('#btn-load');
+    const actionStatusEl = root.querySelector('#action-status');
+    const actionResultEl = root.querySelector('#action-result');
+
+    function setBusy(el, busy) { el.disabled = !!busy; }
+
+    async function fetchVersion() {
+      setBusy(btnRefresh, true);
+      versionStatusEl.textContent = 'Fetching…';
+      try {
+        const resp = await fetch('/constitution/version');
+        const text = await resp.text();
+        versionJsonEl.textContent = prettyMaybeJson(text);
+        versionStatusEl.textContent = resp.ok ? 'OK' : `HTTP ${resp.status}`;
+      } catch (e) {
+        versionStatusEl.textContent = 'error';
+        versionJsonEl.textContent = String(e);
+      } finally {
+        setBusy(btnRefresh, false);
+      }
+    }
+
+    function prettyMaybeJson(s) {
+      try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
+    }
+
+    function getDocumentPayload() {
+      const raw = inputEl.value.trim();
+      if (!raw) return null;
+      try {
+        const doc = JSON.parse(raw);
+        return { document: doc };
+      } catch (e) {
+        throw new Error('Input is not valid JSON');
+      }
+    }
+
+    async function postJson(path, body) {
+      const resp = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const text = await resp.text();
+      return { ok: resp.ok, status: resp.status, text };
+    }
+
+    async function validateDoc() {
+      let payload;
+      try {
+        payload = getDocumentPayload();
+        if (!payload) { throw new Error('Paste a JSON document first'); }
+      } catch (e) {
+        actionStatusEl.textContent = '';
+        actionResultEl.textContent = String(e.message || e);
+        return;
+      }
+      setBusy(btnValidate, true);
+      actionStatusEl.textContent = 'Validating…';
+      try {
+        const res = await postJson('/constitution/validate', payload);
+        actionStatusEl.textContent = res.ok ? 'OK' : `HTTP ${res.status}`;
+        actionResultEl.textContent = prettyMaybeJson(res.text);
+      } catch (e) {
+        actionStatusEl.textContent = 'error';
+        actionResultEl.textContent = String(e);
+      } finally {
+        setBusy(btnValidate, false);
+      }
+    }
+
+    async function loadDoc() {
+      let payload;
+      try {
+        payload = getDocumentPayload();
+        if (!payload) { throw new Error('Paste a JSON document first'); }
+      } catch (e) {
+        actionStatusEl.textContent = '';
+        actionResultEl.textContent = String(e.message || e);
+        return;
+      }
+      setBusy(btnLoad, true);
+      actionStatusEl.textContent = 'Loading…';
+      try {
+        const res = await postJson('/constitution/load', payload);
+        actionStatusEl.textContent = res.ok ? 'OK (OPA policy regen triggered)' : `HTTP ${res.status}`;
+        actionResultEl.textContent = prettyMaybeJson(res.text);
+      } catch (e) {
+        actionStatusEl.textContent = 'error';
+        actionResultEl.textContent = String(e);
+      } finally {
+        setBusy(btnLoad, false);
+      }
+    }
+
+    btnRefresh.addEventListener('click', fetchVersion);
+    btnValidate.addEventListener('click', validateDoc);
+    btnLoad.addEventListener('click', loadDoc);
+
+    // initial
+    fetchVersion();
+  </script>
+</body>
+</html>

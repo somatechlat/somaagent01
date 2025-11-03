@@ -890,7 +890,7 @@ globalThis.toggleJson = async function (showJson) {
   css.toggleCssProperty(".msg-json", "display", showJson ? "block" : "none");
   try {
     uiPrefs.show_json = !!showJson;
-    if (!initializingUiPrefs) await saveUiPreferences();
+    await saveUiPreferences();
   } catch(_e) {}
 };
 
@@ -902,7 +902,7 @@ globalThis.toggleThoughts = async function (showThoughts) {
   );
   try {
     uiPrefs.show_thoughts = !!showThoughts;
-    if (!initializingUiPrefs) await saveUiPreferences();
+    await saveUiPreferences();
     // When user turns thoughts ON, inject a one‑time greeting thought for the current chat
     if (showThoughts) {
       maybeShowThoughtsGreeting();
@@ -918,7 +918,7 @@ globalThis.toggleUtils = async function (showUtils) {
   );
   try {
     uiPrefs.show_utils = !!showUtils;
-    if (!initializingUiPrefs) await saveUiPreferences();
+    await saveUiPreferences();
     if (showUtils) {
       maybeShowUtilitiesGreeting();
     }

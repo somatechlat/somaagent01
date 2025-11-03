@@ -39,3 +39,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Legacy documentation files not aligned with ISO structure
 - Deprecated gRPC memory service documentation
+
+## [1.2.0] - 2025-11-03
+
+### Added
+- Technical Manual: SomaBrain Integration Guide covering API contracts, persona-aware metadata, admin metrics and migration endpoints, and policy decision receipts.
+- Gateway admin endpoints:
+	- `GET /v1/admin/memory/metrics` → proxied SomaBrain memory metrics
+	- `POST /v1/admin/migrate/export` and `POST /v1/admin/migrate/import`
+- Persona-aware memory metadata enrichment in Conversation Worker.
+- Decision receipts for OPA/OpenFGA in Gateway authorization (best-effort audit log).
+
+### Changed
+- OpenFGA enforcement now skips in dev/unit contexts when not configured, while still emitting a decision receipt; production remains fail-closed when configured.
+
+### Tests
+- Unit tests for admin endpoints, expanding coverage without requiring e2e multimedia dependencies.

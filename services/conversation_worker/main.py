@@ -235,6 +235,325 @@ class ConversationWorker:
         except Exception:
             # Last resort: dummy attr
             self.slm = type("_Shim", (), {"api_key": None})()
+        # Persona cache (TTL seconds)
+        # key: persona_id -> (cached_at_epoch_seconds, persona_dict | None)
+        # Keeps outbound memory metadata enrichment fast and avoids repeated HTTP calls.
+        self._persona_cache: dict[str, tuple[float, dict[str, Any] | None]] = {}
+
+    async def _get_persona_cached(self, persona_id: str | None) -> dict[str, Any] | None:
+        """Return persona data for a given persona_id using a small TTL cache.
+
+        - Reads TTL from env SOMABRAIN_PERSONA_TTL_SECONDS (default 10s)
+        - Returns None on any fetch error; callers should treat enrichment as best-effort
+        """
+        if not persona_id:
+            return None
+        ttl_s = 10.0
+        try:
+            ttl_s = float(os.getenv("SOMABRAIN_PERSONA_TTL_SECONDS", "10"))
+        except ValueError:
+            ttl_s = 10.0
+        now = time.time()
+        hit = self._persona_cache.get(str(persona_id))
+        if hit and (now - hit[0]) < ttl_s:
+            return hit[1]
+        try:
+            data = await self.soma.get_persona(str(persona_id))
+        except Exception:
+            data = None
+        self._persona_cache[str(persona_id)] = (now, data if isinstance(data, dict) else None)
+        return self._persona_cache[str(persona_id)][1]
+
+    def _augment_metadata_with_persona(
+        self, meta: dict[str, Any], persona: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Lightly enrich memory metadata with persona summary fields.
+
+        Adds the following keys only if available and not already present:
+        - persona_name: str (name/label/title)
+        - persona_updated_at: str (updated_at/version)
+        - persona_tags: list[str] (up to 8 tags)
+        """
+        if not isinstance(meta, dict):
+            meta = dict(meta or {})
+        if not persona or not isinstance(persona, dict):
+            return meta
+        # Keep metadata light: include a couple of summary fields if present
+        out = dict(meta)
+        name = persona.get("name") or persona.get("label") or persona.get("title")
+        if name:
+            out.setdefault("persona_name", str(name))
+        updated_at = persona.get("updated_at") or persona.get("version")
+        if updated_at:
+            out.setdefault("persona_updated_at", str(updated_at))
+        try:
+            tags = []
+            raw_tags = persona.get("tags") or persona.get("labels")
+            if isinstance(raw_tags, (list, tuple)):
+                tags = [str(x) for x in list(raw_tags)[:8]]
+            if tags:
+                out.setdefault("persona_tags", tags)
+        except Exception:
+            pass
+        return out
+
+    def _extract_last_user_query(self, messages: list[ChatMessage]) -> str:
+        """Return the most recent user message content from a chat history.
+
+        Best-effort; returns empty string when not found.
+        """
+        try:
+            for m in reversed(messages or []):
+                if getattr(m, "role", None) == "user":
+                    return str(getattr(m, "content", "") or "")
+        except Exception:
+            pass
+        return ""
+
+    def _clamp_context_metadata(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+        """Clamp metadata payload for context.update to keep events lightweight.
+
+        Limits JSON-serialized size, list lengths, and string lengths.
+        """
+        try:
+            max_bytes = int(os.getenv("SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES", "20000"))
+        except ValueError:
+            max_bytes = 20000
+        try:
+            max_items = int(os.getenv("SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS", "10"))
+        except ValueError:
+            max_items = 10
+        try:
+            max_str = int(os.getenv("SOMABRAIN_CONTEXT_UPDATE_MAX_STRING", "4000"))
+        except ValueError:
+            max_str = 4000
+
+        def trunc(v: Any, depth: int = 0) -> Any:
+            try:
+                if isinstance(v, str):
+                    return v if len(v) <= max_str else (v[:max_str] + "…")
+                if isinstance(v, list):
+                    if len(v) <= max_items:
+                        return [trunc(x, depth + 1) for x in v]
+                    sliced = v[:max_items]
+                    out = [trunc(x, depth + 1) for x in sliced]
+                    out.append({"_note": f"truncated {len(v)-max_items} more"})
+                    return out
+                if isinstance(v, dict):
+                    # For known heavy keys, replace vectors/embeddings with a short summary
+                    heavy_keys = {"embedding", "embeddings", "vector", "residual_vector"}
+                    out: Dict[str, Any] = {}
+                    for k, val in v.items():
+                        if k in heavy_keys and isinstance(val, (list, dict)):
+                            # summarise length rather than include content
+                            try:
+                                ln = len(val)  # type: ignore[arg-type]
+                            except Exception:
+                                ln = 0
+                            out[k] = {"_summary": f"{k} length {ln}"}
+                        else:
+                            out[k] = trunc(val, depth + 1)
+                    return out
+            except Exception:
+                return v
+            return v
+
+        # Clone to avoid mutating caller
+        clamped = trunc(dict(meta)) if isinstance(meta, dict) else meta
+        try:
+            data = json.dumps(clamped, ensure_ascii=False)
+            if len(data.encode("utf-8")) <= max_bytes:
+                return clamped  # already within limits
+            # As a last resort, keep only small summary fields
+            minimal = {
+                k: clamped.get(k)
+                for k in ("source", "status", "analysis", "tenant", "tenant_id", "universe_id")
+                if isinstance(clamped, dict) and k in clamped
+            }
+            # Add summaries for recall keys if present
+            for rk in ("recall", "recall_event", "context_evaluate"):
+                if isinstance(clamped, dict) and rk in clamped:
+                    try:
+                        rv = clamped[rk]
+                        if isinstance(rv, dict):
+                            # count top-level list-like fields commonly used
+                            cnt = 0
+                            for key in ("results", "memories", "items"):
+                                if isinstance(rv.get(key), list):
+                                    cnt = len(rv.get(key))
+                                    break
+                            minimal[rk] = {"_summary": f"{rk} with {cnt} items (truncated)"}
+                        elif isinstance(rv, list):
+                            minimal[rk] = {"_summary": f"{rk} list size {len(rv)} (truncated)"}
+                        else:
+                            minimal[rk] = {"_summary": f"{rk} present (truncated)"}
+                    except Exception:
+                        pass
+            return minimal
+        except Exception:
+            return clamped
+
+    async def _background_recall_context(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        base_metadata: Dict[str, Any],
+        analysis_metadata: Dict[str, Any],
+        query: str,
+        stop_event: asyncio.Event,
+    ) -> None:
+        """Emit recall context updates during SLM streaming.
+
+        Strategy:
+        1) If SOMABRAIN_USE_RECALL_SSE=true, attempt true SSE streaming via /memory/recall/stream
+           and publish context.update per event (status=recall_sse).
+        2) Otherwise (or on error), fallback to paged recall using chunk_size/chunk_index
+           with periodic context.update (status=recall).
+
+        Cancellation is cooperative via stop_event.
+        """
+        try:
+            tenant = (base_metadata or {}).get("tenant")
+            # Configurable recall paging
+            try:
+                top_k = int(os.getenv("SOMABRAIN_RECALL_TOPK", "8"))
+            except ValueError:
+                top_k = 8
+            try:
+                chunk_size = int(os.getenv("SOMABRAIN_RECALL_CHUNK_SIZE", "4"))
+            except ValueError:
+                chunk_size = 4
+            chunk_size = max(1, min(20, chunk_size))
+            pages = max(1, (top_k + chunk_size - 1) // chunk_size)
+            universe_val = (base_metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE")
+            # Attempt SSE recall stream when enabled
+            use_sse = (os.getenv("SOMABRAIN_USE_RECALL_SSE", "false").lower() in {"1", "true", "yes", "on"})
+            if use_sse and not stop_event.is_set():
+                try:
+                    payload = {
+                        "query": query,
+                        "top_k": top_k,
+                        "universe": universe_val,
+                        "session_id": session_id,
+                        "conversation_id": session_id,
+                    }
+                    # Optional cap on number of events
+                    try:
+                        max_events = int(os.getenv("SOMABRAIN_RECALL_SSE_MAX_EVENTS", "20"))
+                    except ValueError:
+                        max_events = 20
+                    count = 0
+                    async for evt in self.soma.recall_stream_events(
+                        payload, request_timeout=float(os.getenv("SOMABRAIN_RECALL_SSE_TIMEOUT", "15"))
+                    ):
+                        if stop_event.is_set():
+                            break
+                        try:
+                            meta = _compose_outbound_metadata(
+                                base_metadata,
+                                source="memory",
+                                status="recall_sse",
+                                analysis=analysis_metadata,
+                                extra={"recall_event": evt},
+                            )
+                            meta = self._clamp_context_metadata(meta)
+                            context_event = {
+                                "event_id": str(uuid.uuid4()),
+                                "session_id": session_id,
+                                "persona_id": persona_id,
+                                "role": "system",
+                                "message": "",
+                                "metadata": meta,
+                                "version": "sa01-v1",
+                                "type": "context.update",
+                            }
+                            validate_event(context_event, "conversation_event")
+                            await self.publisher.publish(
+                                self.settings["outbound"],
+                                context_event,
+                                dedupe_key=context_event.get("event_id"),
+                                session_id=session_id,
+                                tenant=(context_event.get("metadata") or {}).get("tenant"),
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to publish recall_sse context.update", exc_info=True)
+                        count += 1
+                        if count >= max_events:
+                            break
+                    # If we managed to stream at least one event, consider SSE successful and return
+                    if count > 0:
+                        return
+                except Exception:
+                    # SSE not available or failed — fall through to paging
+                    LOGGER.debug("recall_stream_events failed; falling back to paged recall", exc_info=True)
+
+            # Paged recall fallback
+            for page_index in range(pages):
+                if stop_event.is_set():
+                    break
+                try:
+                    res = await self.soma.recall(
+                        query,
+                        top_k=top_k,
+                        universe=universe_val,
+                        session_id=session_id,
+                        conversation_id=session_id,
+                        chunk_size=chunk_size,
+                        chunk_index=page_index,
+                    )
+                except Exception:
+                    # Do not fail user experience on recall errors
+                    break
+
+                try:
+                    meta = _compose_outbound_metadata(
+                        base_metadata,
+                        source="memory",
+                        status="recall",
+                        analysis=analysis_metadata,
+                        extra={
+                            "recall_page": page_index,
+                            "recall_chunk_size": chunk_size,
+                            "recall_top_k": top_k,
+                            "recall": res or {},
+                        },
+                    )
+                    meta = self._clamp_context_metadata(meta)
+                    context_event = {
+                        "event_id": str(uuid.uuid4()),
+                        "session_id": session_id,
+                        "persona_id": persona_id,
+                        "role": "system",
+                        "message": "",
+                        "metadata": meta,
+                        "version": "sa01-v1",
+                        "type": "context.update",
+                    }
+                    validate_event(context_event, "conversation_event")
+                    await self.publisher.publish(
+                        self.settings["outbound"],
+                        context_event,
+                        dedupe_key=context_event.get("event_id"),
+                        session_id=session_id,
+                        tenant=(context_event.get("metadata") or {}).get("tenant"),
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to publish recall context.update", exc_info=True)
+
+                # Heuristic stop if we seem to have reached the end
+                try:
+                    items = None
+                    if isinstance(res, dict):
+                        items = res.get("results") or res.get("memories")
+                    if isinstance(items, list) and len(items) < chunk_size:
+                        break
+                except Exception:
+                    pass
+
+                await asyncio.sleep(float(os.getenv("SOMABRAIN_RECALL_PAGE_DELAY", "0.05")))
+        except Exception:
+            LOGGER.debug("background recall loop error", exc_info=True)
 
     async def _ensure_llm_key(self) -> None:
         """Best-effort fetch of provider API key from Gateway for DEV/compat.
@@ -643,6 +962,29 @@ class ConversationWorker:
             "overrides": ov,
         }
         headers = {"X-Internal-Token": self._internal_token or ""}
+        # Start background recall paging while we stream the assistant reply
+        stop_event = asyncio.Event()
+        try:
+            user_query = self._extract_last_user_query(messages)
+        except Exception:
+            user_query = ""
+
+        bg_task = None
+        if user_query:
+            try:
+                bg_task = asyncio.create_task(
+                    self._background_recall_context(
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        base_metadata=base_metadata,
+                        analysis_metadata=analysis_metadata,
+                        query=user_query,
+                        stop_event=stop_event,
+                    )
+                )
+            except Exception:
+                LOGGER.debug("Failed to start background recall context", exc_info=True)
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
                 if resp.is_error:
@@ -696,6 +1038,14 @@ class ConversationWorker:
                     if isinstance(chunk_usage, dict):
                         usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
                         usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+        # Signal background context recall to stop and wait briefly
+        try:
+            stop_event.set()
+            if bg_task:
+                await asyncio.wait_for(bg_task, timeout=0.5)
+        except Exception:
+            if bg_task:
+                bg_task.cancel()
         text = "".join(buffer)
         if not text:
             # Fallback: call non-streaming invoke once to get a definitive answer
@@ -1004,6 +1354,28 @@ class ConversationWorker:
         tc_args_acc: dict[int, dict[str, Any]] = {}
         tc_name_acc: dict[int, str] = {}
 
+        # Start background recall paging during streaming
+        stop_event = asyncio.Event()
+        try:
+            user_query = self._extract_last_user_query(messages)
+        except Exception:
+            user_query = ""
+        bg_task = None
+        if user_query:
+            try:
+                bg_task = asyncio.create_task(
+                    self._background_recall_context(
+                        session_id=session_id,
+                        persona_id=persona_id,
+                        base_metadata=base_metadata,
+                        analysis_metadata=analysis_metadata,
+                        query=user_query,
+                        stop_event=stop_event,
+                    )
+                )
+            except Exception:
+                LOGGER.debug("Failed to start background recall context (tools path)", exc_info=True)
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
                 if resp.is_error:
@@ -1078,6 +1450,15 @@ class ConversationWorker:
                     # If finish_reason indicates tool calls, stop accumulating content and break
                     if ch0.get("finish_reason") == "tool_calls":
                         break
+
+        # Stop background recall paging
+        try:
+            stop_event.set()
+            if bg_task:
+                await asyncio.wait_for(bg_task, timeout=0.5)
+        except Exception:
+            if bg_task:
+                bg_task.cancel()
 
         # If we received tool call data, execute tools; otherwise return text
         if tc_args_acc or tc_name_acc:
@@ -1375,6 +1756,7 @@ class ConversationWorker:
             await self.store.append_event(session_id, {"type": "user", **event})
             # Save user message to SomaBrain as a memory (non-blocking semantics with error shielding)
             try:
+                # Build memory payload for user message
                 payload = {
                     "id": event.get("event_id"),
                     "type": "conversation_event",
@@ -1389,6 +1771,12 @@ class ConversationWorker:
                         "universe_id": enriched_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
+                # Enrich metadata with persona summary if available
+                try:
+                    persona_data = await self._get_persona_cached(event.get("persona_id"))
+                    payload["metadata"] = self._augment_metadata_with_persona(payload["metadata"], persona_data)
+                except Exception:
+                    LOGGER.debug("persona metadata enrich failed (user)", exc_info=True)
                 # Idempotency key per contract
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
                 # Pre-write OPA policy check: memory.write (fail-closed)
@@ -1579,6 +1967,70 @@ class ConversationWorker:
             if not messages or messages[-1].role != "user":
                 messages.append(ChatMessage(role="user", content=event.get("message", "")))
 
+            # SB-3: Persona instruction injection (system message) and SSE persona.update
+            try:
+                if persona_id:
+                    persona_data = await self.soma.get_persona(str(persona_id))
+                    # Extract best-effort instruction text
+                    instr: str | None = None
+                    if isinstance(persona_data, dict):
+                        instr = (
+                            persona_data.get("instructions")
+                            or persona_data.get("prompt")
+                            or persona_data.get("system")
+                            or persona_data.get("content")
+                        )
+                        if not instr and isinstance(persona_data.get("messages"), list):
+                            try:
+                                for m in persona_data.get("messages") or []:
+                                    if isinstance(m, dict) and m.get("role") == "system" and m.get("content"):
+                                        instr = str(m.get("content"))
+                                        break
+                            except Exception:
+                                pass
+                    if instr and isinstance(instr, str) and instr.strip():
+                        # Place persona as the first system message
+                        messages.insert(0, ChatMessage(role="system", content=instr.strip()))
+                        # Emit a lightweight persona.update event for UI awareness
+                        try:
+                            base_meta = _compose_outbound_metadata(
+                                session_metadata,
+                                source="persona",
+                                status="loaded",
+                                analysis=analysis_dict,
+                                extra={
+                                    "persona": {
+                                        "persona_id": persona_id,
+                                        # Avoid heavy payloads: only include summary fields if present
+                                        "name": (persona_data or {}).get("name") if isinstance(persona_data, dict) else None,
+                                        "updated_at": (persona_data or {}).get("updated_at") if isinstance(persona_data, dict) else None,
+                                    }
+                                },
+                            )
+                            base_meta = self._clamp_context_metadata(base_meta)
+                            persona_event = {
+                                "event_id": str(uuid.uuid4()),
+                                "session_id": session_id,
+                                "persona_id": persona_id,
+                                "role": "system",
+                                "message": "",
+                                "metadata": base_meta,
+                                "version": "sa01-v1",
+                                "type": "persona.update",
+                            }
+                            validate_event(persona_event, "conversation_event")
+                            await self.publisher.publish(
+                                self.settings["outbound"],
+                                persona_event,
+                                dedupe_key=persona_event.get("event_id"),
+                                session_id=session_id,
+                                tenant=(persona_event.get("metadata") or {}).get("tenant"),
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to publish persona.update event", exc_info=True)
+            except Exception:
+                LOGGER.debug("persona fetch/inject failed", exc_info=True)
+
             summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
             analysis_prompt = ChatMessage(
                 role="system",
@@ -1592,6 +2044,73 @@ class ConversationWorker:
                 ),
             )
             messages.insert(0, analysis_prompt)
+
+            # SB-2: Pre-retrieval context evaluate to build a curated prompt and share context details over SSE
+            curated_prompt: str | None = None
+            evaluated_context: dict[str, Any] | None = None
+            try:
+                eval_req = {
+                    "session_id": session_id,
+                    "query": event.get("message", "") or "",
+                }
+                # Optional: honor persona/profile defaults for top_k if provided via metadata
+                try:
+                    top_k_override = int(os.getenv("SOMABRAIN_EVAL_TOPK", "5"))
+                except ValueError:
+                    top_k_override = 5
+                eval_req["top_k"] = max(1, min(50, top_k_override))
+                if tenant:
+                    eval_req["tenant_id"] = str(tenant)
+                eval_res = await self.soma.context_evaluate(eval_req)
+                if isinstance(eval_res, dict):
+                    curated_prompt = eval_res.get("prompt") or None
+                    evaluated_context = {
+                        "query": eval_res.get("query"),
+                        "tenant_id": eval_res.get("tenant_id"),
+                        "constitution_checksum": eval_res.get("constitution_checksum"),
+                        "memories": eval_res.get("memories"),
+                        "weights": eval_res.get("weights"),
+                        "residual_vector": eval_res.get("residual_vector"),
+                        "working_memory": eval_res.get("working_memory"),
+                    }
+                # Emit a context.update SSE so UI can render context awareness
+                try:
+                    context_meta = _compose_outbound_metadata(
+                        session_metadata,
+                        source="memory",
+                        status="context",
+                        analysis=analysis_dict,
+                        extra={"context_evaluate": evaluated_context or {}},
+                    )
+                    context_meta = self._clamp_context_metadata(context_meta)
+                    context_event = {
+                        "event_id": str(uuid.uuid4()),
+                        "session_id": session_id,
+                        "persona_id": persona_id,
+                        "role": "system",
+                        "message": "",
+                        "metadata": context_meta,
+                        "version": "sa01-v1",
+                        "type": "context.update",
+                    }
+                    validate_event(context_event, "conversation_event")
+                    await self.publisher.publish(
+                        self.settings["outbound"],
+                        context_event,
+                        dedupe_key=context_event.get("event_id"),
+                        session_id=session_id,
+                        tenant=(context_event.get("metadata") or {}).get("tenant"),
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to publish context.update event", exc_info=True)
+            except Exception:
+                LOGGER.debug("context.evaluate failed", exc_info=True)
+
+            if curated_prompt:
+                try:
+                    messages.insert(0, ChatMessage(role="system", content=curated_prompt))
+                except Exception:
+                    LOGGER.debug("Failed to inject curated prompt", exc_info=True)
 
             model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
             slm_kwargs: dict[str, Any] = {}
@@ -1957,6 +2476,7 @@ class ConversationWorker:
                 LOGGER.debug("Failed to log assistant publish", exc_info=True)
             # Save assistant response to SomaBrain as a memory
             try:
+                # Build memory payload for assistant message
                 payload = {
                     "id": response_event.get("event_id"),
                     "type": "conversation_event",
@@ -1971,6 +2491,12 @@ class ConversationWorker:
                         "universe_id": response_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
+                # Enrich metadata with persona fields
+                try:
+                    persona_data = await self._get_persona_cached(event.get("persona_id"))
+                    payload["metadata"] = self._augment_metadata_with_persona(payload["metadata"], persona_data)
+                except Exception:
+                    LOGGER.debug("persona metadata enrich failed (assistant)", exc_info=True)
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
                 allow_memory = False
                 try:
@@ -2017,6 +2543,21 @@ class ConversationWorker:
                         )
                     except Exception:
                         LOGGER.debug("Failed to publish memory WAL (assistant)", exc_info=True)
+                # SB-2: Post-response feedback for adaptation loop (best-effort; never blocks)
+                try:
+                    utility = 1.0 if (response_text or "").strip() else 0.2
+                    fb_req = {
+                        "session_id": session_id,
+                        "query": event.get("message", "") or "",
+                        "prompt": curated_prompt or "",
+                        "response_text": response_text or "",
+                        "utility": utility,
+                        "metadata": {"tenant_id": tenant},
+                        "tenant_id": tenant,
+                    }
+                    asyncio.create_task(self.soma.context_feedback(fb_req))
+                except Exception:
+                    LOGGER.debug("context.feedback scheduling failed", exc_info=True)
                 else:
                     LOGGER.info(
                         "memory.write denied by policy",
