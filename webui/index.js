@@ -157,6 +157,12 @@ export async function sendMessage() {
       }
     }
 
+    // Give immediate UX feedback while backend enqueues/streams
+    try {
+      setThinking("Assistant is thinking…");
+      showThinkingBubble();
+    } catch(_e) {}
+
     // Send message to canonical endpoint
     const payload = {
       session_id: context || null,
@@ -191,6 +197,8 @@ export async function sendMessage() {
     }
   } catch (e) {
     toastFetchError("Error sending message", e);
+    // If sending failed, clear the thinking indicator to avoid a stuck state
+    try { setThinking(""); hideThinkingBubble(); } catch(_e) {}
   }
 }
 
@@ -558,11 +566,22 @@ function connectEventStream(sessionId) {
           return;
         }
 
-        // Optionally render tool outputs or utility messages
+        // Optionally render tool outputs
         if (role === "tool" || t.startsWith("tool")) {
           const content = cumulative || payload.message || "";
           const id = payload.event_id || generateGUID();
           setMessage(id, "tool", "", content, false, { kvps: payload.metadata || {} });
+          if (evId) processedEventIds.add(evId);
+          return;
+        }
+
+        // Utility messages (hidden when Show utility messages is off)
+        if (role === "util" || t.startsWith("util")) {
+          const content = cumulative || payload.message || "";
+          const id = payload.event_id || generateGUID();
+          const kv = payload.metadata || {};
+          const heading = (kv && (kv.headline || kv.title)) || "Utility";
+          setMessage(id, "util", heading, content, false, kv);
           if (evId) processedEventIds.add(evId);
           return;
         }
@@ -667,17 +686,10 @@ globalThis.selectChat = async function (id) {
   updateAfterScroll();
 };
 
-function generateShortId() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+// use v4-like GUIDs for session ids to align with server UUIDs
 
 export const newContext = function () {
-  context = generateShortId();
+  context = generateGUID();
   setContext(context);
   // Optimistically add the new chat to the sidebar list for immediate UX feedback
   try {
@@ -818,7 +830,7 @@ globalThis.toggleJson = async function (showJson) {
   css.toggleCssProperty(".msg-json", "display", showJson ? "block" : "none");
   try {
     uiPrefs.show_json = !!showJson;
-    if (!initializingUiPrefs) scheduleSaveUiPreferences();
+    if (!initializingUiPrefs) await saveUiPreferences();
   } catch(_e) {}
 };
 
@@ -830,7 +842,11 @@ globalThis.toggleThoughts = async function (showThoughts) {
   );
   try {
     uiPrefs.show_thoughts = !!showThoughts;
-    if (!initializingUiPrefs) scheduleSaveUiPreferences();
+    if (!initializingUiPrefs) await saveUiPreferences();
+    // When user turns thoughts ON, inject a one‑time greeting thought for the current chat
+    if (showThoughts) {
+      maybeShowThoughtsGreeting();
+    }
   } catch(_e) {}
 };
 
@@ -842,7 +858,10 @@ globalThis.toggleUtils = async function (showUtils) {
   );
   try {
     uiPrefs.show_utils = !!showUtils;
-    if (!initializingUiPrefs) scheduleSaveUiPreferences();
+    if (!initializingUiPrefs) await saveUiPreferences();
+    if (showUtils) {
+      maybeShowUtilitiesGreeting();
+    }
   } catch(_e) {}
 };
 
@@ -976,6 +995,50 @@ function downloadFile(filename, content) {
   setTimeout(() => {
     URL.revokeObjectURL(url);
   }, 0);
+}
+
+// Inject a one‑time “Thoughts” greeting message in the current chat when the user enables Thoughts.
+function maybeShowThoughtsGreeting() {
+  try {
+    const sid = context || "unspecified";
+    const shownKey = `thoughtsGreetingShown:${sid}`;
+    if (localStorage.getItem(shownKey) === "1") return;
+
+    const id = getChatBasedId("thoughts-greeting");
+    const heading = "Greeting response";
+    const kvps = {
+      thoughts: "**Hello! 👋** How can I assist you today?",
+      tool: "response",
+    };
+    // Render as an informational message with a Thoughts KVP row; respects the Thoughts toggle visibility
+    setMessage(id, "info", heading, "", false, kvps);
+    localStorage.setItem(shownKey, "1");
+  } catch (_) {}
+}
+
+// Enqueue an initial utility bubble via Gateway when utilities are enabled (one-time per chat)
+function maybeShowUtilitiesGreeting() {
+  try {
+    const sid = context || "";
+    if (!sid) return;
+    const shownKey = `utilitiesGreetingShown:${sid}`;
+    if (localStorage.getItem(shownKey) === "1") return;
+
+    // Publish a utility event through Gateway so it appears in SSE like normal events
+    fetch(`/v1/util/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sid,
+        title: 'Utility',
+        text: 'Searching memories…',
+        kvps: {
+          query: 'No relevant memory query generated, skipping search',
+        },
+      })
+    }).catch(() => { /* non-fatal */ });
+    localStorage.setItem(shownKey, "1");
+  } catch (_) {}
 }
 
 function readJsonFiles() {

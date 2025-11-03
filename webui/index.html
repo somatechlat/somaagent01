@@ -159,8 +159,8 @@
             <!--Sidebar upper elements-->
             <div class="left-panel-top">
                 <div class="config-section" x-data="{ showQuickActions: true }">
-                    <button class="config-button" id="resetChat" @click="resetChat()">Reset Chat</button>
-                    <button class="config-button" id="newChat" @click="newChat()">New Chat</button>
+                    <button class="config-button" id="resetChat" data-test="reset-chat" @click="resetChat()">Reset Chat</button>
+                    <button class="config-button" id="newChat" data-test="new-chat" @click="newChat()">New Chat</button>
                     <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
                     <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
                     <button class="config-button" id="restart" @click="restart()">Restart</button>
@@ -201,7 +201,7 @@
                                             :title="context.name ? context.name : 'Chat #' + context.no"
                                             x-text="context.name ? context.name : 'Chat #' + context.no"></span>
                                     </div>
-                                    <button class="edit-button" @click="killChat(context.id)">X</button>
+                                    <button class="edit-button" data-test="delete-chat" @click="killChat(context.id)">X</button>
                                 </li>
                             </template>
                         </ul>
@@ -317,7 +317,7 @@
                             <li x-data="{ showThoughts: true }">
                                 <span>Show thoughts</span>
                                 <label class="switch">
-                                    <input type="checkbox" x-model="showThoughts"
+                                    <input type="checkbox" data-test="toggle-thoughts" x-model="showThoughts"
                                         x-effect="globalThis.safeCall('toggleThoughts',showThoughts)">
                                     <span class="slider"></span>
                                 </label>
@@ -325,7 +325,7 @@
                             <li x-data="{ showJson: false }">
                                 <span>Show JSON</span>
                                 <label class="switch">
-                                    <input type="checkbox" x-model="showJson"
+                                    <input type="checkbox" data-test="toggle-json" x-model="showJson"
                                         x-effect="globalThis.safeCall('toggleJson',showJson)">
                                     <span class="slider"></span>
                                 </label>
@@ -333,7 +333,7 @@
                             <li x-data="{ showUtils: false }">
                                 <span>Show utility messages</span>
                                 <label class="switch">
-                                    <input type="checkbox" x-model="showUtils"
+                                    <input type="checkbox" data-test="toggle-utils" x-model="showUtils"
                                         x-effect="globalThis.safeCall('toggleUtils',showUtils)">
                                     <span class="slider"></span>
                                 </label>

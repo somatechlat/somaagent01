@@ -17,13 +17,13 @@ else:
     pytest_plugins = []
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a fresh event loop for the test session."""
-
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# NOTE:
+# Do not override pytest-asyncio's built-in `event_loop` fixture.
+# Overriding it is deprecated and will break in future versions.
+# If a specific test needs a session-scoped loop, mark it with:
+#   @pytest.mark.asyncio(scope="session")
+# If a different loop type/policy is required, provide an
+# `event_loop_policy` fixture instead.
 
 
 if RUN_INTEGRATION:

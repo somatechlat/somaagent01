@@ -4089,6 +4089,101 @@ async def get_tool_catalog() -> ToolCatalogListResponse:
     ]
     return ToolCatalogListResponse(items=items, count=len(items))
 
+# -----------------------------
+# UI/Utility messages (UI/system hints)
+# -----------------------------
+
+class UtilityEventIn(BaseModel):
+    session_id: str | None = None
+    title: str | None = None
+    text: str | None = None
+    kvps: dict[str, Any] | None = None
+
+
+@app.post("/v1/util/event")
+async def post_utility_event(
+    payload: UtilityEventIn,
+    request: Request,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+) -> dict[str, Any]:
+    """Publish a lightweight utility event to the outbound stream for the session.
+
+    These render as UI utility bubbles and are hidden when the client toggles off
+    'Show utility messages'. Intended for UX diagnostics and non-critical hints.
+    """
+    auth_metadata = await authorize_request(request, {})
+    metadata = _apply_auth_metadata(payload.kvps or {}, auth_metadata)
+    session_id = (payload.session_id or "").strip()
+    if not session_id:
+        # generate a new context id if not supplied (UI typically provides one)
+        session_id = str(uuid.uuid4())
+    ev_id = str(uuid.uuid4())
+    title = (payload.title or "").strip() or "Utility"
+    text = (payload.text or "").strip()
+    event = {
+        "event_id": ev_id,
+        "session_id": session_id,
+        "role": "util",
+        "type": "util.info",
+        "message": text,
+        "metadata": metadata | {"headline": title},
+    }
+    try:
+        await publisher.publish(
+            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            event,
+            dedupe_key=ev_id,
+            session_id=session_id,
+            tenant=metadata.get("tenant"),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Unable to publish util event: {exc}")
+    return {"ok": True, "event_id": ev_id, "session_id": session_id}
+
+
+class UiEventIn(BaseModel):
+    session_id: str | None = None
+    event_type: str
+    role: str | None = "system"
+    message: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+@app.post("/v1/ui/event")
+async def post_ui_event(
+    payload: UiEventIn,
+    request: Request,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+) -> dict[str, Any]:
+    """Publish an arbitrary UI event to the outbound stream for the session.
+
+    Convention: event_type uses dot-namespace (e.g., ui.settings.saved).
+    Role may be 'util' to render as a utility bubble in the Web UI.
+    """
+    auth_metadata = await authorize_request(request, {})
+    metadata = _apply_auth_metadata(payload.metadata or {}, auth_metadata)
+    session_id = (payload.session_id or "").strip() or str(uuid.uuid4())
+    ev_id = str(uuid.uuid4())
+    event = {
+        "event_id": ev_id,
+        "session_id": session_id,
+        "role": (payload.role or "system").lower(),
+        "type": payload.event_type,
+        "message": payload.message or "",
+        "metadata": metadata,
+    }
+    try:
+        await publisher.publish(
+            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            event,
+            dedupe_key=ev_id,
+            session_id=session_id,
+            tenant=metadata.get("tenant"),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Unable to publish ui event: {exc}")
+    return {"ok": True, "event_id": ev_id, "session_id": session_id}
+
 
 class ToolCatalogUpsertPayload(BaseModel):
     enabled: bool
@@ -5107,6 +5202,96 @@ async def api_memories_update(memory_id: int, payload: dict[str, Any]) -> JSONRe
         return JSONResponse({"success": False, "error": str(exc)})
 
 
+# -----------------------------
+# Internal runtime settings (flattened SettingsModel for workers)
+# -----------------------------
+
+
+@app.get("/internal/runtime/settings")
+async def internal_runtime_settings(request: Request) -> JSONResponse:
+    """Return a flattened settings document suitable for workers.
+
+    - Requires X-Internal-Token header matching GATEWAY_INTERNAL_TOKEN
+    - Merges UiSettingsStore (agent config) and ModelProfile (dialogue) into
+      a SettingsModel-compatible dict, without secrets.
+    """
+    _ = _require_internal_token(request)
+
+    # Start from server-side defaults to guarantee all keys
+    base = ui_get_defaults()
+    try:
+        flat = base.model_dump()  # type: ignore[attr-defined]
+    except Exception:
+        # Fallback for legacy TypedDict behavior
+        flat = dict(base)  # type: ignore[arg-type]
+
+    # Overlay agent UI settings
+    doc = await get_ui_settings_store().get()
+    if isinstance(doc, dict):
+        # Simple top-level overlays for known keys used by workers/agent
+        for k in (
+            "agent_profile",
+            "agent_memory_subdir",
+            "agent_knowledge_subdir",
+            "litellm_global_kwargs",
+            # util/embed/browser config and extras
+            "util_model_provider",
+            "util_model_name",
+            "util_model_api_base",
+            "util_model_ctx_length",
+            "util_model_ctx_input",
+            "util_model_rl_requests",
+            "util_model_rl_input",
+            "util_model_rl_output",
+            "util_model_kwargs",
+            "embed_model_provider",
+            "embed_model_name",
+            "embed_model_api_base",
+            "embed_model_rl_requests",
+            "embed_model_rl_input",
+            "embed_model_kwargs",
+            "browser_model_provider",
+            "browser_model_name",
+            "browser_model_api_base",
+            "browser_model_vision",
+            "browser_model_rl_requests",
+            "browser_model_rl_input",
+            "browser_model_rl_output",
+            "browser_model_kwargs",
+            "browser_http_headers",
+        ):
+            if k in doc:
+                flat[k] = doc[k]
+
+    # Overlay dialogue model profile to drive chat model fields
+    prof = await PROFILE_STORE.get("dialogue", APP_SETTINGS.deployment_mode)
+    if prof:
+        # Provider inference from base URL
+        provider = ""
+        try:
+            provider = _detect_provider_from_base(prof.base_url or "")
+        except Exception:
+            provider = ""
+        if provider:
+            flat["chat_model_provider"] = provider
+        if prof.model:
+            flat["chat_model_name"] = prof.model
+        if prof.base_url:
+            flat["chat_model_api_base"] = prof.base_url
+        # kwargs may contain temperature and other params
+        if isinstance(prof.kwargs, dict):
+            flat["chat_model_kwargs"] = dict(prof.kwargs)
+
+    # Never include secrets here; keep api_keys empty
+    flat["api_keys"] = {}
+
+    return JSONResponse({
+        "version": 1,
+        "format": "runtime_settings",
+        "settings": flat,
+    })
+
+
 @app.post("/memory_dashboard")
 async def ui_memory_dashboard(request: Request) -> JSONResponse:
     """Compatibility JSON endpoint for the Memory Dashboard UI component.
@@ -5687,6 +5872,22 @@ def _normalize_llm_base_url(raw: str) -> str:
         if path.endswith("/v1"):
             path = path[: -len("/v1")]
             path = path.rstrip("/")
+        # Provider-specific normalization fixes
+        host_lower = (netloc or "").lower()
+        # OpenRouter: prefer /api over /openai for OpenAI-compatible endpoint
+        # Accept inputs like https://openrouter.ai/openai, /openai/v1, etc.
+        if "openrouter.ai" in host_lower:
+            # Replace a terminal '/openai' segment with '/api'
+            if path.endswith("/openai"):
+                path = path[: -len("/openai")] + "/api"
+            # Also handle accidental nested '/openai/...'
+            # Only replace the first path segment if it is exactly 'openai'
+            elif path.split("/")[-1] == "openai":
+                path = "/".join(path.split("/")[:-1] + ["api"])
+            # If someone specified '/openai/v1' and we already stripped '/v1' above,
+            # the remaining segment may still be '/openai'. Ensure it's '/api'.
+            if path.endswith("/openai"):
+                path = path[: -len("/openai")] + "/api"
         # Enforce https in non-DEV when scheme is present
         deployment = APP_SETTINGS.deployment_mode.upper()
         if scheme and deployment != "DEV" and scheme != "https":
@@ -5824,6 +6025,31 @@ async def ui_sections_get() -> dict[str, Any]:
                         val = agent_cfg.get(fid)
                         if val:
                             fld["value"] = val
+        # Overlay additional model settings (utility/embed/browser) persisted in ui_settings store
+        if isinstance(agent_cfg, dict) and agent_cfg:
+            for sec in sections:
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id") or ""
+                    if not isinstance(fid, str) or not fid:
+                        continue
+                    # Match util/embed/browser model fields and *_kwargs/http_headers
+                    if (
+                        fid.startswith("util_model_")
+                        or fid.startswith("embed_model_")
+                        or fid.startswith("browser_model_")
+                        or fid == "browser_http_headers"
+                        or fid.endswith("_kwargs")
+                    ):
+                        if fid in agent_cfg:
+                            val = agent_cfg.get(fid)
+                            # Render dict-like *_kwargs/http_headers back to KEY=VALUE lines for textarea fields
+                            if isinstance(val, dict) and (fid.endswith("_kwargs") or fid == "browser_http_headers"):
+                                try:
+                                    fld["value"] = "\n".join(f"{k}={v}" for k, v in val.items())
+                                except Exception:
+                                    fld["value"] = val
+                            else:
+                                fld["value"] = val
         # Model overlays
         if profile:
             provider = ""
@@ -5982,7 +6208,11 @@ class UiSectionsPayload(BaseModel):
 
 
 @app.post("/v1/ui/settings/sections")
-async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[str, Any]:
+async def ui_sections_set(
+    payload: UiSectionsPayload,
+    request: Request,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+) -> dict[str, Any]:
     """Accept UI 'sections' and persist to Gateway stores.
 
     - Persists agent settings (ui_settings table).
@@ -6012,6 +6242,8 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
     av_cfg: Dict[str, Any] = {}
     explicit_provider: str | None = None
     speech_cfg: Dict[str, Any] = {}
+    # Collect additional model settings from sections (utility/embed/browser)
+    extra_models_cfg: Dict[str, Any] = {}
 
     def _as_env_kv(text: str) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -6089,6 +6321,18 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
                 "tts_kokoro",
             }:
                 speech_cfg[fid] = val
+            # Utility/Embedding/Browser model fields are persisted in ui_settings top-level
+            elif (
+                fid.startswith("util_model_")
+                or fid.startswith("embed_model_")
+                or fid.startswith("browser_model_")
+                or fid == "browser_http_headers"
+            ):
+                # Parse textarea env-like fields for *_kwargs and browser_http_headers
+                if isinstance(val, str) and (fid.endswith("_kwargs") or fid == "browser_http_headers"):
+                    extra_models_cfg[fid] = _as_env_kv(val)
+                else:
+                    extra_models_cfg[fid] = val
 
     # Persist settings (merge with existing document)
     ui_store = get_ui_settings_store()
@@ -6122,6 +6366,10 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
             if k in coerced:
                 coerced[k] = _to_num(coerced[k], int)
         current_doc["speech"] = {**dict(current_doc.get("speech") or {}), **coerced}
+    # Merge extra model configs (util/embed/browser) at top-level keys
+    if extra_models_cfg:
+        for k, v in extra_models_cfg.items():
+            current_doc[k] = v
     await ui_store.set(current_doc)
 
     # Prepare audit context now that the new doc is set
@@ -6156,6 +6404,26 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
                 provider = "openrouter"
             elif "openai" in host:
                 provider = "openai"
+
+        # Provider-specific normalization/safety rails
+        # Groq requires the OpenAI-compatible path segment "/openai" in its base URL.
+        # If users enter just https://api.groq.com we silently correct it to include "/openai"
+        # so downstream requests to "/v1/chat/completions" succeed.
+        if provider == "groq" and normalized_base:
+            try:
+                from urllib.parse import urlparse, urlunparse
+                _p = urlparse(normalized_base)
+                _path = (_p.path or "").rstrip("/")
+                # If path doesn't already end with "/openai", set it explicitly
+                if not _path.endswith("/openai"):
+                    _new = urlunparse((_p.scheme, _p.netloc, "/openai", "", "", ""))
+                    normalized_base = _new
+                    host = normalized_base.lower()
+            except Exception:
+                # Best-effort: simple string check
+                if "api.groq.com" in normalized_base and "/openai" not in normalized_base:
+                    normalized_base = normalized_base.rstrip("/") + "/openai"
+                    host = normalized_base.lower()
         # If we recognized a provider (or user explicitly selected one), ensure a key exists
         if provider:
             try:
@@ -6251,6 +6519,27 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
         )
     except Exception:
         LOGGER.debug("Failed to write audit log for settings.update", exc_info=True)
+
+    # Publish a UI event notifying clients about the save (util bubble for visibility)
+    try:
+        session_hint = None
+        # If agent settings include a default context id in future, include it; otherwise broadcast with no session
+        ev = {
+            "event_id": str(uuid.uuid4()),
+            "session_id": session_hint or str(uuid.uuid4()),
+            "role": "util",
+            "type": "ui.settings.saved",
+            "message": "Settings saved successfully",
+            "metadata": {"providers_updated": [p for p, _ in creds], "explicit_provider": explicit_provider},
+        }
+        await publisher.publish(
+            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            ev,
+            dedupe_key=ev["event_id"],
+            session_id=ev["session_id"],
+        )
+    except Exception:
+        LOGGER.debug("Failed to publish ui.settings.saved", exc_info=True)
 
     # Return refreshed sections
     return await ui_sections_get()
@@ -6749,11 +7038,19 @@ class LlmTestRequest(BaseModel):
 async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
     """Admin/test endpoint: validate profile resolution, credentials presence, and perform a lightweight connectivity check.
 
-    Requires X-Internal-Token (internal) to avoid exposing secrets publicly.
+    Access control:
+    - Allowed with X-Internal-Token (internal callers), OR
+    - Allowed to authenticated users with admin scope when auth is enabled.
     """
-    # Internal-only
+    # Authorization: internal token or admin-authenticated user
     if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
+        # Fallback to admin scope when internal token is not provided
+        try:
+            auth = await authorize_request(request, {"action": "llm.test", "role": payload.role})
+            _require_admin_scope(auth)
+        except HTTPException:
+            # Preserve 403 for unauthorized callers
+            raise HTTPException(status_code=403, detail="forbidden")
 
     # Fetch profile
     deployment = APP_SETTINGS.deployment_mode

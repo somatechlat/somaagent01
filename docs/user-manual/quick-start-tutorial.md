@@ -19,9 +19,7 @@ export GATEWAY_PORT=21016
 docker compose --profile core --profile dev up -d
 ```
 
-The UI will be available at:
-
-- http://localhost:21016/ui/index.html
+The UI will be available at: http://localhost:21016/ui/index.html
 
 Notes:
 
@@ -33,10 +31,25 @@ Notes:
 
 Open http://localhost:21016/v1/health and confirm component statuses are okay. If Kafka is still booting, give it ~30–60s.
 
+## Configure the LLM (Groq by default)
+
+1) Open Settings in the UI.
+2) In the LLM Credentials section, select provider “groq” and paste your API key.
+3) In the Model Profile section, set:
+	- Model: `llama-3.1-8b-instant` (or another Groq model you have access to)
+	- Base URL: `https://api.groq.com/openai/v1`
+	- Temperature: `0.2`
+4) Save. The Gateway will normalize and persist these values globally.
+
+Verify from a terminal:
+```bash
+curl -s -X POST http://localhost:21016/v1/llm/test -H 'Content-Type: application/json' -d '{"role":"dialogue"}' | jq .
+```
+
 ## Upload a file and send a message
 
-1) In the UI, click the paperclip to upload a small text file. The UI posts to `/v1/uploads` and shows a reference like `/v1/attachments/{id}`.
-2) Send a chat message and include the uploaded attachment. Small files are ingested inline; larger ones are offloaded to the `document_ingest` tool automatically.
+1) In the UI, click the paperclip to upload a small text file. The UI posts to `/v1/workdir/upload` and shows the file in the Files panel.
+2) Send a chat message and include the uploaded file if relevant. Small files are ingested inline; larger ones are offloaded to tools as needed.
 
 ## Run quick tests (optional)
 
@@ -73,13 +86,11 @@ pytest -q tests/e2e/test_ui_chat_playwright.py
 
 ### 1. Access the UI
 
-Open your browser to:
-- Docker: `http://localhost:50001`
-- Local dev: `http://127.0.0.1:3000`
+Open your browser to: `http://localhost:21016/ui/index.html`
 
-### 2. Login
+### 2. Login (if enabled)
 
-Enter the password you set in `.env` (`AUTH_PASSWORD`)
+If authentication is enabled, enter the password configured in `.env`. By default in local dev, auth is disabled.
 
 ### 3. Start a Conversation
 
