@@ -193,7 +193,7 @@ import httpx
 async def test_gateway_health_endpoint():
     """Test gateway health check."""
     async with httpx.AsyncClient() as client:
-        response = await client.get("http://localhost:20016/v1/health")
+      response = await client.get(f"http://localhost:{int(os.getenv('GATEWAY_PORT', '21016'))}/v1/health")
         
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
@@ -230,13 +230,11 @@ async def test_full_conversation_flow():
         browser = await p.chromium.launch()
         page = await browser.new_page()
         
-        # Login
-        await page.goto("http://localhost:20015")
-        await page.fill("#password", "test-password")
-        await page.click("#login-button")
+        # Open Web UI (served by Gateway)
+        await page.goto("http://localhost:21016/ui/")
         
         # Send message
-        await page.fill("#message-input", "Hello, agent!")
+        await page.fill("#chat-input", "Hello, agent!")
         await page.click("#send-button")
         
         # Wait for response
@@ -253,17 +251,10 @@ async def test_full_conversation_flow():
 async def test_message_processing_end_to_end():
     """Test message from gateway to response."""
     async with httpx.AsyncClient() as client:
-        # Create session
+        # Start a session by sending the first message (session created if omitted)
         response = await client.post(
-            "http://localhost:20016/v1/session",
-            json={"tenant": "test", "persona_id": "default"}
-        )
-        session_id = response.json()["session_id"]
-        
-        # Send message
-        response = await client.post(
-            f"http://localhost:20016/v1/session/{session_id}/message",
-            json={"message": "What is 2+2?"}
+          f"http://localhost:{int(os.getenv('GATEWAY_PORT', '21016'))}/v1/session/message",
+          json={"session_id": None, "message": "What is 2+2?"}
         )
         
         assert response.status_code == 200
@@ -306,7 +297,7 @@ export let options = {
 
 export default function () {
   let response = http.post(
-    'http://localhost:20016/v1/session/test123/message',
+    `http://localhost:${__ENV.GATEWAY_PORT || 21016}/v1/session/message`,
     JSON.stringify({ message: 'Hello' }),
     { headers: { 'Content-Type': 'application/json' } }
   );

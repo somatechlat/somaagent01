@@ -39,6 +39,8 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 from uuid import uuid4
 from weakref import WeakKeyDictionary
@@ -531,11 +533,37 @@ class SomaClient:
             or self.universe
         )
 
+        # Derive a stable key: prefer payload.id, then explicit/idempotency keys, else a short hash of the value
+        candidate_key: Optional[str] = None
+        if isinstance(payload_dict.get("id"), (str, int)):
+            candidate_key = str(payload_dict.get("id"))
+        elif isinstance(payload_dict.get("idempotency_key"), (str, int)):
+            candidate_key = str(payload_dict.get("idempotency_key"))
+        elif isinstance(metadata_dict.get("idempotency_key"), (str, int)):
+            candidate_key = str(metadata_dict.get("idempotency_key"))
+        elif isinstance(payload_dict.get("session_id"), (str, int)) and isinstance(payload_dict, Mapping):
+            # Combine session_id with value for stability if available
+            try:
+                blob = json.dumps(payload_dict, sort_keys=True, ensure_ascii=False).encode("utf-8")
+            except Exception:
+                blob = repr(payload_dict).encode("utf-8")
+            candidate_key = (
+                str(payload_dict.get("session_id"))
+                + ":"
+                + hashlib.sha256(blob).hexdigest()[:16]
+            )
+        else:
+            try:
+                blob = json.dumps(payload_dict, sort_keys=True, ensure_ascii=False).encode("utf-8")
+            except Exception:
+                blob = repr(payload_dict).encode("utf-8")
+            candidate_key = hashlib.sha256(blob).hexdigest()[:24]
+
         body: Dict[str, Any] = {
             "value": payload_dict,
             "tenant": derived_tenant,
             "namespace": derived_namespace,
-            "key": payload_dict.get("id"),
+            "key": candidate_key,
         }
 
         # Ensure we do not send empty strings for key/tenant/namespace
@@ -546,8 +574,8 @@ class SomaClient:
         if not body["namespace"]:
             body["namespace"] = "default"
 
-        if coord:
-            body["coord"] = coord
+        # IMPORTANT: do NOT send coord to /memory/remember (spec does not accept it). We still use coord when falling back
+        # to legacy /remember (handled below).
         if derived_universe:
             body["universe"] = derived_universe
             body["value"].setdefault("universe", derived_universe)
@@ -588,6 +616,7 @@ class SomaClient:
         if response is None:
             legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
             if coord:
+                # Legacy endpoint supports coord
                 legacy_payload["coord"] = coord
             # Use logical universe fallback, not memory namespace
             if universe or self.universe:
@@ -654,12 +683,33 @@ class SomaClient:
         if chunk_index is not None:
             body["chunk_index"] = int(chunk_index)
 
-        response = await self._request(
-            "POST",
-            "/memory/recall",
-            json={k: v for k, v in body.items() if v is not None},
-            allow_404=True,
-        )
+        # Spec prefers a query parameter named "payload" which may be a JSON string/object; send compact JSON string first
+        params_payload = None
+        try:
+            params_payload = json.dumps({k: v for k, v in body.items() if v is not None}, separators=(",", ":"))
+        except Exception:
+            params_payload = None
+
+        response = None
+        if params_payload is not None:
+            try:
+                response = await self._request(
+                    "POST",
+                    "/memory/recall",
+                    params={"payload": params_payload},
+                    allow_404=True,
+                )
+            except SomaClientError:
+                response = None
+
+        if response is None:
+            # Fallback to JSON body for older/newer deployments that accept it
+            response = await self._request(
+                "POST",
+                "/memory/recall",
+                json={k: v for k, v in body.items() if v is not None},
+                allow_404=True,
+            )
         if response is None:
             legacy_body = {"query": query, "top_k": top_k}
             if universe or self.universe:
@@ -672,7 +722,22 @@ class SomaClient:
         payload: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         """Invoke the streaming recall endpoint."""
-        return await self._request("POST", "/memory/recall/stream", json=dict(payload))
+        # Prefer spec-compliant query param ?payload=<json>; fallback to JSON body
+        params_payload = None
+        try:
+            params_payload = json.dumps(dict(payload), separators=(",", ":"))
+        except Exception:
+            params_payload = None
+
+        response = None
+        if params_payload is not None:
+            try:
+                response = await self._request("POST", "/memory/recall/stream", params={"payload": params_payload})
+            except SomaClientError:
+                response = None
+        if response is None:
+            response = await self._request("POST", "/memory/recall/stream", json=dict(payload))
+        return response
 
     async def remember_batch(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         """Persist multiple memories in a single request."""
@@ -686,7 +751,8 @@ class SomaClient:
         return await self._request("GET", "/memory/metrics", params=params)
 
     async def rag_retrieve(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return await self._request("POST", "/rag/retrieve", json=dict(payload))
+        # No longer supported by the live API; guard with a clear error to avoid accidental use
+        raise SomaClientError("/rag/retrieve is not supported by the current SomaBrain API")
 
     async def context_evaluate(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         return await self._request("POST", "/context/evaluate", json=dict(payload))

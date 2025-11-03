@@ -468,14 +468,19 @@ export function drawMessageUser(
     messageDiv.className = "message message-user";
   }
 
-  // Handle heading
-  let headingElement = messageDiv.querySelector(".msg-heading");
-  if (!headingElement) {
-    headingElement = document.createElement("h4");
-    headingElement.classList.add("msg-heading");
-    messageDiv.insertBefore(headingElement, messageDiv.firstChild);
+  // Handle heading (only when provided)
+  if (heading && String(heading).trim().length > 0) {
+    let headingElement = messageDiv.querySelector(".msg-heading");
+    if (!headingElement) {
+      headingElement = document.createElement("h4");
+      headingElement.classList.add("msg-heading");
+      messageDiv.insertBefore(headingElement, messageDiv.firstChild);
+    }
+    headingElement.innerHTML = `${heading} <span class='icon material-symbols-outlined'>person</span>`;
+  } else {
+    const existingHeading = messageDiv.querySelector(".msg-heading");
+    if (existingHeading) existingHeading.remove();
   }
-  headingElement.innerHTML = `${heading} <span class='icon material-symbols-outlined'>person</span>`;
 
   // Handle content
   let textDiv = messageDiv.querySelector(".message-text");

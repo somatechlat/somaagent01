@@ -343,6 +343,9 @@ services:
       # Enable write-through to SomaBrain in dev so WAL is emitted immediately.
       GATEWAY_WRITE_THROUGH: "true"
       GATEWAY_WRITE_THROUGH_ASYNC: "true"
+      # OpenRouter header hints (prevent 401s due to missing metadata). Override in staging/prod.
+      OPENROUTER_REFERER: "${OPENROUTER_REFERER:-http://localhost}"
+      OPENROUTER_TITLE: "${OPENROUTER_TITLE:-SomaAgent01 Dev}"
     ports:
       - "${GATEWAY_PORT:-21016}:8010"
     networks:

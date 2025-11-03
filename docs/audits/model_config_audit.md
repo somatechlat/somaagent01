@@ -37,7 +37,7 @@ Key files & excerpts (representative)
   - Contains `GATEWAY_BASE_URL` and `WEB_UI_BASE_URL` templates and `SLM_MODEL` default.
 
 - `docker-compose.yaml`
-  - Sets `WORKER_GATEWAY_BASE` to `http://host.docker.internal:${GATEWAY_PORT:-20016}` and `SLM_MODEL` environment mapping.
+  - Sets `WORKER_GATEWAY_BASE` to `http://host.docker.internal:${GATEWAY_PORT:-21016}` and `SLM_MODEL` environment mapping.
 
 Concrete search hits (representative; not exhaustive)
 - `GATEWAY_BASE_URL` referenced in: `docs/roadmap/canonical-roadmap.md`, `.env.example`, `scripts/e2e_quick.py`, `docs/user-manual/quick-start-tutorial.md`, tests under `tests/e2e` and `tests/playwright`.

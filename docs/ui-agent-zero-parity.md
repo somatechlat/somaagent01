@@ -13,7 +13,7 @@ This report captures file-level differences between the current web UI in this r
 - Attachments: Gateway attachments paths only; no `/download_work_dir_file` or `image_get` fallbacks.
 - Settings: Uses `/v1/ui/settings/sections` and `/v1/ui/settings/credentials`; AV test exists; tab filter + synthesized Tunnel section.
 - Speech: Realtime and Kokoro gracefully disabled; browser TTS is fallback. STT disabled with gentle warning. No legacy `/synthesize` or `/transcribe`.
-- Memory Dashboard: Uses `/memory_dashboard` FastAPI shim in Gateway (compatibility route implemented in code) with polling improvements.
+- Memory Dashboard: Canonical endpoints live under `/v1/memories/*`. A legacy `/memory_dashboard` compatibility shim may exist temporarily; prefer `/v1/memories/*` going forward.
 
 ## File-level gaps and decisions
 
@@ -49,8 +49,8 @@ This report captures file-level differences between the current web UI in this r
 - Decision: KEEP. No changes needed.
 
 7) `webui/components/settings/memory/memory-dashboard-store.js`
-- Reference: Calls `memory_dashboard` without `/v1` prefix; standard actions (search, update, delete, bulk_delete, get subdirs).
-- Current: Uses `/memory_dashboard` FastAPI shim implemented in Gateway, adds resilience for polling, pagination and UX niceties.
+- Reference: Use `/v1/memories` and related endpoints for search, update, delete, bulk_delete, and subdir listing.
+- Current: Transition to `/v1/memories/*` endpoints with pagination and improved UX; legacy shim support may still be present for older clients.
 - Decision: KEEP. Gateway compatibility route is present (`services/gateway/main.py`), so no legacy surface is reintroduced.
 
 8) `webui/components/settings/tunnel/*`
@@ -74,5 +74,5 @@ This report captures file-level differences between the current web UI in this r
 ## Next steps
 - Optional: When backend exposes realtime/STT endpoints, enable those branches in `speech-store.js` and add minimal UI toggle tests.
 - Optional: Add an explicit Model Connectivity test in Settings to validate provider credentials (maps to `/v1/llm/credentials` or `/v1/llm/ping`).
-- Docs alignment: Update any mentions of CSRF/legacy endpoints to reflect `/v1/ui/*` and `/memory_dashboard` compatibility shim.
+- Docs alignment: Update any mentions of CSRF/legacy endpoints to reflect `/v1/ui/*` and canonical `/v1/memories/*` endpoints.
 

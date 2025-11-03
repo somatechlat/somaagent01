@@ -7,6 +7,32 @@ Branch: INTEGRATION-ZERO
 Overview
 This file breaks the canonical roadmap into sprint-sized deliverables, with acceptance tests, owners (placeholder), and estimated effort.
 
+## Milestone — Golden-first behavior capture (pre‑SA01 parity)
+
+Why now
+- Per directive, we must precisely capture the Golden (7001) UI behavior before attempting any SA01/UI changes. This becomes the source of truth for parity.
+
+Goals
+- Stabilize and run the Golden Playwright suite serially, collecting reliable pass/fail, traces, and screenshots.
+- Build a comprehensive checklist of visible controls and interactions with selectors and expected outcomes.
+- Use this checklist to drive SA01 parity work later; no SA01 changes until this milestone is complete.
+
+Tasks
+1) Stabilize Golden runs
+  - Run Playwright with `--project=golden --workers=1` (optionally `--headed`) against BASELINE_URL=http://127.0.0.1:7001.
+  - Capture artifacts (traces/screenshots) for any failures.
+2) Compile behavior checklist
+  - Enumerate sidebar navigation, chat composer, message flow, delete/reset, long-stream stability, toggles, scheduler/tools, uploads, settings visibility.
+  - Link each behavior to a selector and acceptance expectation.
+3) Gap analysis and test updates
+  - Mark tests that are flaky or environment-dependent; annotate reasons (e.g., modal not present on Golden, off‑viewport toggles).
+  - Propose minimal test guards for Golden where needed (skip/soft-assert) without altering product behavior.
+
+Acceptance
+- A markdown checklist exists in the repo (under `docs/`) capturing every tested Golden behavior with selectors and expected outcomes.
+- Golden Playwright suite produces a stable run with documented failures/gaps and corresponding trace links.
+- SA01 parity work is explicitly gated on this completed milestone.
+
 ## Priority: Centralize LLM model/profile management (1-2 sprints)
 
 Why priority
@@ -72,21 +98,21 @@ Acceptance
 Sprint 1 — Foundation & Tests (2 weeks)
 - Goals
   - Create API contract tests and Playwright smoke test harness.
-  - Add or generate `docker-compose.optimized.yaml` or update `deploy-optimized.sh` to point to `docker-compose.yaml` with tuned profiles.
-  - Archive deprecated files (`run_ui.py`, `tmp/webui`) and update docs/Makefile/launch configs.
+  - Enforce a single Docker entry point (`docker-compose.yaml` only); remove legacy scripts/manifests and update Makefile/docs.
+  - Remove deprecated deploy artifacts and references (no archives for deploy scripts/manifests): delete `deploy-optimized.sh`, `docker-compose.lite.yaml`, `Makefile.canonical`.
 
 - Tasks
   1. Add pytest API contract tests (smoke):
      - Test SSE subscribe: open SSE stream to `/v1/session/{test-session}` and assert event types for a synthetic message flow.
-     - Test POST /v1/session/{id}/message returns 202 and appears in SSE.
+    - Test POST /v1/session/message returns 202 and appears in SSE.
      - Test POST /v1/uploads returns a usable resource URL.
   2. Add a Playwright smoke test that opens the Gateway-served UI, subscribes to SSE, sends a message via the UI, and checks for progressive token rendering.
-  3. Create `docker-compose.optimized.yaml` (subset of `docker-compose.yaml`) and update `deploy-optimized.sh`.
-  4. Archive `run_ui.py` into `archive/` and tarball `tmp/webui` into `archive/tmp-webui-<date>.tar.gz`.
+  3. Remove legacy deployment artifacts and ensure Makefile targets use only `docker-compose.yaml` (`deploy-optimized.sh`, `docker-compose.lite.yaml`, `Makefile.canonical`).
+  4. Purge any references to `run_ui.py` and `tmp/webui` in docs/scripts; confirm `webui/` is the only UI used.
 
 - Acceptance
   - All new tests pass locally in the dev environment.
-  - `deploy-optimized.sh` runs successfully in a local laptop dev environment (simulated) and brings up core infra.
+  - Grep shows no references to optimized/lite compose or `deploy-optimized.sh`; only `docker-compose.yaml` is used.
 
 Sprint 0 — Urgent: Centralize URLs & Cleanup (immediate, half-day)
 
@@ -105,7 +131,7 @@ Sprint 0 — Urgent: Centralize URLs & Cleanup (immediate, half-day)
      - `scripts/e2e_quick.py`, `scripts/ui-smoke.sh`, `scripts/check_stack.sh`
      - `python/api/*` modules with fallback strings
      - `.vscode/tasks.json`
-  4. Archive the confusing artifacts to `archive/` (timestamped): `run_ui.py`, `tmp/webui/`, `deploy-optimized.sh`.
+  4. Delete non-aligned artifacts and remove references: `deploy-optimized.sh`; remove references to `run_ui.py` and `tmp/webui`.
   5. Run quick verification: `make dev-up` then `pytest -q tests/e2e/test_api_contract_smoke.py` and `./scripts/ui-smoke.sh`.
 
 - Acceptance
@@ -139,7 +165,7 @@ Sprint 3 — Harden & Remove Legacy (2 weeks)
 - Tasks
   1. Add OPA policy verification into CI for tool execution flows.
   2. Run end-to-end tests that: send a message, cause a tool invocation, ensure Tool Executor publishes `tool.result`, and confirm memory WAL ingestion to SomaBrain.
-  3. Finalize deploy resource tuning in `docker-compose.optimized.yaml` and update docs.
+  3. Finalize deploy resource tuning in `docker-compose.yaml` and update docs.
 
 - Acceptance
   - E2E tests pass in CI and local dev.

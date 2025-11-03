@@ -760,9 +760,8 @@ class _SomaDocStore:
                 coord_str = self._format_coord(coord)
                 result = await self._client.remember(
                     payload,
-                    coord=coord_str,
+                    # Do not pass coord to new endpoint; client will handle legacy fallback internally if needed
                     universe=self.memory.memory_subdir,
-                    namespace=self.memory.memory_subdir,
                 )
             except SomaClientError as exc:
                 PrintStyle.error(f"Failed to store memory via SomaBrain: {exc}")

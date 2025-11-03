@@ -54,11 +54,11 @@ docker compose run --rm kafka-init
 - Gateway health:
 
 ```
-curl -s http://localhost:${GATEWAY_PORT:-20016}/v1/health | jq .
+curl -s http://localhost:${GATEWAY_PORT:-21016}/v1/health | jq .
 ```
 
 - Web UI:
-  - Open http://localhost:21016
+  - Open http://localhost:21016/ui/
   - You should see the chat UI. Open DevTools → Console; it should be clean.
 
 ## Key settings (dev defaults)
@@ -74,8 +74,8 @@ curl -s http://localhost:${GATEWAY_PORT:-20016}/v1/health | jq .
 - SSE not streaming:
   - `GET /v1/session/{id}/events` must be reachable (network/proxy ok)
   - `conversation.outbound` events must be produced (tool/worker healthy)
-- Memory dashboard errors:
-  - `POST /memory_dashboard` should return success for supported actions.
+- Memory dashboard checks:
+  - Read APIs under `/v1/memories*` should respond (e.g., `GET /v1/memories`, `GET /v1/memories/subdirs`).
   - Replica store table `memory_replica` should exist and have rows if WAL is running.
 
 ## Graceful restart

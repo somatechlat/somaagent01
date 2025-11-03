@@ -23,7 +23,7 @@ docker compose logs gateway --tail=50
 |-------|-----|
 | Kafka not ready | Wait 30s, retry. Check `docker compose logs kafka` |
 | PostgreSQL connection failed | Verify `docker compose ps postgres`, check credentials in `.env` |
-| Port 20016 in use | `lsof -i :20016`, kill conflicting process |
+| Port 21016 in use | `lsof -i :21016`, kill conflicting process |
 
 ### Conversation Worker Not Processing Messages
 

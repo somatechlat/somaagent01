@@ -40,7 +40,49 @@ Use the root Makefile targets below. Provider credentials and settings are manag
 
 Notes:
 - A minimal `.env` is auto-created to satisfy docker compose `env_file`; do not put secrets there. The UI is the source of truth for credentials.
-- Legacy `Makefile.canonical` is deprecated and now delegates to the root Makefile to avoid confusion.
+
+### Enable live LLM chat via Groq (DEV)
+
+Use the Settings UI (preferred) or the helper script to persist your Groq API key and dialogue model profile in the Gateway. The Gateway securely stores LLM credentials in Redis (encrypted with `GATEWAY_ENC_KEY`) and injects them into centralized `/v1/llm/invoke` calls used by the conversation worker.
+
+- Option A – through the UI:
+    - Open the app at http://localhost:${GATEWAY_PORT:-21016}/ui
+    - Open Settings → Model
+    - Set Provider: groq
+    - Set Model: e.g. `llama-3.1-8b-instant` (or another Groq-supported model)
+    - Leave API Base blank or set `https://api.groq.com/openai` (Gateway normalizes and appends `/v1` if needed)
+    - In API Keys section, set `api_key_groq` with your Groq API key
+    - Save; then start a chat. The worker uses Gateway `/v1/llm/invoke(/stream)` with stored credentials.
+
+- Option B – helper script:
+    - Ensure the stack is running (Gateway at http://127.0.0.1:21016)
+    - Export your key and run the script:
+        - `export GROQ_API_KEY=...`
+        - `python scripts/ops/seed_groq.py`
+    - Optional envs: `GROQ_MODEL` (default `llama-3.1-8b-instant`), `GROQ_BASE` (default `https://api.groq.com/openai`), `INTERNAL_TOKEN` (to run `/v1/llm/test`).
+
+Notes:
+- Groq requires an OpenAI-compatible path; if you provide `https://api.groq.com` the Gateway will normalize to include `/openai` and `/v1` when needed.
+- LLM invoke endpoints are internal-token gated; in dev this is `dev-internal-token` and already configured for worker↔gateway calls.
+
+## Golden vs Local (parity) endpoints and tests
+
+- Golden baseline UI: http://127.0.0.1:7001 (external reference server, read-only for parity capture)
+- Local SA01 Gateway + UI: http://127.0.0.1:21016/ui (served by the Gateway at port 21016)
+
+Playwright UI suites live in `webui/tests/ui`:
+- Golden project (baseline capture): runs against 7001, records visual snapshots and design tokens.
+- Local/parity projects: run against 21016 and compare behavior/visuals with Golden.
+
+Quick run examples (from `webui/tests/ui`):
+- Golden serial run: `BASELINE_URL=http://127.0.0.1:7001 npx playwright test --project=golden --workers=1`
+- Local serial run: `npx playwright test --project=local --workers=1`
+- Parity compare: `npx playwright test --project=parity --workers=1`
+
+Artifacts:
+- Snapshots: `specs/*-snapshots/`
+- Traces/screenshots: `test-results/**/trace.zip`, `test-results/**/test-failed-*.png`
+- Design tokens: `tokens/{golden,local}/*.json`
 
 
 <div align="center">
@@ -177,7 +219,7 @@ make rebuild   # rebuild images and restart everything
 ```
 
 Once the Docker stack is healthy, you can reach the Agent UI at
-`http://localhost:20015`, the delegation gateway on port `20016`, and
+`http://localhost:20015`, the delegation gateway on port `21016`, and
 supporting services across the reserved host range `20000-20099`. Run
 `make help` for the complete command catalog.
 

@@ -22,7 +22,7 @@
 
 ### G
 
-**Gateway**: FastAPI service exposing HTTP/WebSocket endpoints for client interactions (port 20016).
+**Gateway**: FastAPI service exposing HTTP endpoints with SSE streaming for client interactions (default port 21016, configurable via `GATEWAY_PORT`).
 
 ### K
 

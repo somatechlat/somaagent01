@@ -50,7 +50,7 @@ make ui
 
 ```bash
 # Check health
-curl http://localhost:20016/v1/health
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
 
 # Check UI
 open http://127.0.0.1:3000

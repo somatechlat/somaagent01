@@ -5,7 +5,7 @@
 ## Base URL
 
 ```
-http://localhost:20016/v1
+http://localhost:${GATEWAY_PORT:-21016}
 ```
 
 ## Authentication
@@ -14,14 +14,14 @@ http://localhost:20016/v1
 
 ```bash
 curl -H "Authorization: Bearer <jwt-token>" \
-  http://localhost:20016/v1/session/message
+  http://localhost:${GATEWAY_PORT:-21016}/v1/session/message
 ```
 
 ### API Key
 
 ```bash
 curl -H "Authorization: Bearer sk-soma-<key>" \
-  http://localhost:20016/v1/session/message
+  http://localhost:${GATEWAY_PORT:-21016}/v1/session/message
 ```
 
 ## Endpoints
@@ -43,27 +43,25 @@ Check service health.
 
 ---
 
-### Create Session
+### Start a Session (first message)
 
-**POST** `/v1/session`
+**POST** `/v1/session/message`
 
-Create a new conversation session.
+Send the first message with `session_id` omitted or null to create a session.
 
 **Request**:
 ```json
 {
-  "tenant": "acme",
-  "persona_id": "default"
+  "session_id": null,
+  "message": "Hello"
 }
 ```
 
-**Response**:
+**Response** (truncated):
 ```json
 {
   "session_id": "abc123",
-  "tenant": "acme",
-  "persona_id": "default",
-  "created_at": "2025-01-24T12:00:00Z"
+  "enqueued": true
 }
 ```
 
@@ -71,7 +69,7 @@ Create a new conversation session.
 
 ### Send Message
 
-**POST** `/v1/session/{session_id}/message`
+**POST** `/v1/session/message`
 
 Send a message to the agent.
 
@@ -106,7 +104,7 @@ Send a message to the agent.
 
 ### Get Session History
 
-**GET** `/v1/session/{session_id}/history`
+**GET** `/v1/sessions/{session_id}/history`
 
 Retrieve conversation history.
 
@@ -138,7 +136,7 @@ Retrieve conversation history.
 
 ### Delete Session
 
-**DELETE** `/v1/session/{session_id}`
+**DELETE** `/v1/sessions/{session_id}`
 
 Delete a session and all associated data.
 
@@ -152,9 +150,9 @@ Delete a session and all associated data.
 
 ---
 
-### Upload File
+### Upload File(s)
 
-**POST** `/v1/files/upload`
+**POST** `/v1/uploads`
 
 Upload a file for use in conversations.
 
@@ -166,20 +164,22 @@ session_id: abc123
 
 **Response**:
 ```json
-{
-  "file_id": "file123",
-  "filename": "document.pdf",
-  "size": 102400,
-  "mime_type": "application/pdf",
-  "url": "/v1/files/file123"
-}
+[
+  {
+    "id": "att_123",
+    "filename": "document.pdf",
+    "size": 102400,
+    "content_type": "application/pdf",
+    "path": "/v1/attachments/att_123"
+  }
+]
 ```
 
 ---
 
-### Get File
+### Download Attachment
 
-**GET** `/v1/files/{file_id}`
+**GET** `/v1/attachments/{attachment_id}`
 
 Download a previously uploaded file.
 
@@ -216,54 +216,16 @@ List all sessions for the authenticated user.
 
 ---
 
-### Memory Operations
+### Memory (Read APIs for UI)
 
-**POST** `/v1/memory/save`
+Read-only endpoints used by the UI memory dashboard:
 
-Save information to long-term memory.
-
-**Request**:
-```json
-{
-  "session_id": "abc123",
-  "content": "User prefers Python over JavaScript",
-  "tags": ["preference", "programming"]
-}
-```
-
-**Response**:
-```json
-{
-  "memory_id": "mem123",
-  "status": "saved"
-}
-```
-
----
-
-**GET** `/v1/memory/search`
-
-Search long-term memory.
-
-**Query Parameters**:
-- `query`: Search query
-- `session_id` (optional): Filter by session
-- `limit` (optional): Max results (default: 10)
-
-**Response**:
-```json
-{
-  "results": [
-    {
-      "memory_id": "mem123",
-      "content": "User prefers Python over JavaScript",
-      "relevance": 0.95,
-      "created_at": "2025-01-24T12:00:00Z"
-    }
-  ],
-  "total": 1
-}
-```
+- **GET** `/v1/memories` — list/search
+- **GET** `/v1/memories/subdirs` — available subdirectories
+- **GET** `/v1/memories/current-subdir` — current browsing context
+- **DELETE** `/v1/memories/{id}` — delete memory (policy-gated)
+- **PATCH** `/v1/memories/{id}` — update memory metadata/content (policy-gated)
+- **POST** `/v1/memories/bulk-delete` — delete multiple memories (policy-gated)
 
 ---
 
@@ -310,56 +272,21 @@ Update settings.
 }
 ```
 
-## WebSocket API
+## Streaming (SSE)
 
-### Connect
+The UI uses Server-Sent Events for streaming responses.
+
+### Subscribe
 
 ```javascript
-const ws = new WebSocket('ws://localhost:20016/v1/ws/session/abc123');
-
-ws.onopen = () => {
-  console.log('Connected');
+const es = new EventSource(`http://localhost:${GATEWAY_PORT || 21016}/v1/session/${sessionId}/events`);
+es.onmessage = (evt) => {
+  const payload = JSON.parse(evt.data);
+  // Handle assistant/tool/util events
 };
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received:', data);
+es.onerror = () => {
+  // Handle reconnect/backoff
 };
-
-ws.send(JSON.stringify({
-  type: 'message',
-  content: 'Hello, agent!'
-}));
-```
-
-### Message Types
-
-**Client → Server**:
-```json
-{
-  "type": "message",
-  "content": "User message text"
-}
-```
-
-**Server → Client**:
-```json
-{
-  "type": "response",
-  "content": "Agent response text",
-  "metadata": {
-    "tokens_used": 150
-  }
-}
-```
-
-**Server → Client (streaming)**:
-```json
-{
-  "type": "chunk",
-  "content": "Partial response...",
-  "done": false
-}
 ```
 
 ## Error Responses
@@ -432,7 +359,7 @@ ws.send(JSON.stringify({
 |----------|-------|--------|
 | `/v1/session/message` | 60 requests | 1 minute |
 | `/v1/memory/search` | 100 requests | 1 minute |
-| `/v1/files/upload` | 10 requests | 1 minute |
+| `/v1/uploads` | 10 requests | 1 minute |
 | All others | 300 requests | 1 minute |
 
 **Headers**:
@@ -478,13 +405,13 @@ X-API-Deprecated: false
 Full OpenAPI 3.0 specification:
 
 ```bash
-curl http://localhost:20016/v1/openapi.json
+curl http://localhost:${GATEWAY_PORT:-21016}/openapi.json
 ```
 
 Or view interactive docs:
 
 ```
-http://localhost:20016/docs
+http://localhost:${GATEWAY_PORT:-21016}/docs
 ```
 
 ## SDKs
@@ -533,36 +460,36 @@ console.log(response.content);
 
 ```bash
 # 1. Create session
-SESSION_ID=$(curl -X POST http://localhost:20016/v1/session \
+SESSION_ID=$(curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/session/message \
   -H "Content-Type: application/json" \
-  -d '{"tenant":"acme","persona_id":"default"}' \
+  -d '{"message":"Hello"}' \
   | jq -r '.session_id')
 
 # 2. Send message
-curl -X POST http://localhost:20016/v1/session/$SESSION_ID/message \
+curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/session/message \
   -H "Content-Type: application/json" \
-  -d '{"message":"What is 2+2?"}' \
+  -d "{\"session_id\":\"$SESSION_ID\",\"message\":\"What is 2+2?\"}" \
   | jq '.response'
 
 # 3. Get history
-curl http://localhost:20016/v1/session/$SESSION_ID/history \
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/$SESSION_ID/history \
   | jq '.messages'
 
 # 4. Delete session
-curl -X DELETE http://localhost:20016/v1/session/$SESSION_ID
+curl -X DELETE http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/$SESSION_ID
 ```
 
 ### File Upload and Query
 
 ```bash
 # 1. Upload file
-FILE_ID=$(curl -X POST http://localhost:20016/v1/files/upload \
+ATT_ID=$(curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/uploads \
   -F "file=@document.pdf" \
   -F "session_id=$SESSION_ID" \
-  | jq -r '.file_id')
+  | jq -r '.[0].id')
 
 # 2. Query document
-curl -X POST http://localhost:20016/v1/session/$SESSION_ID/message \
+curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/session/message \
   -H "Content-Type: application/json" \
-  -d "{\"message\":\"Summarize the document\",\"file_id\":\"$FILE_ID\"}"
+  -d "{\"session_id\":\"$SESSION_ID\",\"message\":\"Summarize the document\",\"attachments\":[\"$ATT_ID\"]}"
 ```

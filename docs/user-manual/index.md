@@ -53,7 +53,7 @@ Visit `http://127.0.0.1:3000`
 | Service | Port | Purpose |
 |---------|------|---------|
 | UI | 20015 | Web interface |
-| Gateway | 20016 | API endpoint |
+| Gateway | 21016 | API endpoint (configurable via GATEWAY_PORT) |
 | Kafka | 20000 | Event streaming |
 | Redis | 20001 | Cache |
 | PostgreSQL | 20002 | Database |

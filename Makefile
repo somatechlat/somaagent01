@@ -88,10 +88,7 @@ help:
 	@echo "  dev-up-ui                 Start dev stack including UI profile."
 	@echo "  dev-restart-ui            Rebuild and start dev stack including UI profile."
 	@echo ""
-	@echo "Lightweight (reduced memory) targets:"
-	@echo "  up-lite                   Start stack with docker-compose.lite.yaml overrides."
-	@echo "  dev-up-lite               Start dev stack with lite overrides."
-	@echo ""
+
 	@echo "Dependency & local runtime targets:"
 	@echo "  deps-up                   Start Kafka/Redis/Postgres/OPA (core profile only)."
 	@echo "  deps-down                 Stop dependency containers."
@@ -213,19 +210,7 @@ dev-restart-ui:
 	@echo "Rebuilding developer stack with UI profile..."
 	$(MAKE) rebuild COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,dev COMPOSE_PROJECT_NAME=somaagent01_dev
 
-.PHONY: up-lite dev-up-lite
 
-# Start full stack with lite overrides merged
-up-lite:
-	@echo "Starting stack with lightweight overrides (docker-compose.lite.yaml)..."
-	$(MAKE) ensure-env
-	$(MAKE) ensure-networks
-	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) -f docker-compose.lite.yaml $(DOCKER_PROFILES) up -d
-
-# Start dev stack with lite overrides merged
-dev-up-lite:
-	@echo "Starting dev stack with lightweight overrides (docker-compose.lite.yaml)..."
-	$(DEV_DOCKER) -f docker-compose.lite.yaml $(DOCKER_PROFILES) up -d
 
 .PHONY: deps-up deps-down deps-logs stack-up stack-up-reload stack-down
 

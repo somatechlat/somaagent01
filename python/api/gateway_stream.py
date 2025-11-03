@@ -34,7 +34,7 @@ class GatewayStream(ApiHandler):
         if not session_id:
             return Response("Missing session_id", status=400, mimetype="text/plain")
 
-        base = os.getenv("UI_GATEWAY_BASE", os.getenv("GATEWAY_BASE_URL", "http://localhost:20016")).rstrip("/")
+        base = os.getenv("UI_GATEWAY_BASE", os.getenv("GATEWAY_BASE_URL", "http://localhost:21016")).rstrip("/")
         primary = f"{base}/v1/session/{session_id}/events"
         host_alias = os.getenv("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
         gw_port = os.getenv("GATEWAY_PORT", "21016")

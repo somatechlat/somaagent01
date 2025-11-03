@@ -38,7 +38,7 @@ JWT_EXPIRY_SECONDS=3600
 **Usage**:
 ```bash
 curl -H "Authorization: Bearer sk-soma-abc123..." \
-  http://localhost:20016/v1/session/message
+  http://localhost:${GATEWAY_PORT:-21016}/v1/session/message
 ```
 
 ### UI Authentication
@@ -162,7 +162,7 @@ POSTGRES_SSLKEY=/certs/client.key
 ### Firewall Rules
 
 **Inbound**:
-- 20016 (Gateway) - Public
+- 21016 (Gateway) - Public
 - 20015 (UI) - Public
 - All other ports - Internal only
 

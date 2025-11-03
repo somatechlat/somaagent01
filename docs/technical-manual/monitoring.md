@@ -21,7 +21,7 @@
 **Gateway**:
 - `http_requests_total` - Total HTTP requests
 - `http_request_duration_seconds` - Request latency
-- `websocket_connections_active` - Active WebSocket connections
+- `streaming_connections_active` - Active streaming (SSE) connections
 - `kafka_publish_errors_total` - Failed Kafka publishes
 
 **Conversation Worker**:
@@ -122,7 +122,7 @@ groups:
 - Request rate (RPS)
 - Error rate (%)
 - P50/P95/P99 latency
-- Active WebSocket connections
+- Active streaming (SSE) connections
 - Kafka publish success rate
 
 ### Worker Dashboard
@@ -221,15 +221,15 @@ Traces propagate across services via Kafka headers:
 
 ```bash
 # Gateway
-curl http://localhost:20016/v1/health
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
 # Response: {"status": "healthy", "version": "1.0.0"}
 
 # Liveness (K8s)
-curl http://localhost:20016/v1/health/live
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health/live
 # Response: 200 OK
 
 # Readiness (K8s)
-curl http://localhost:20016/v1/health/ready
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health/ready
 # Response: 200 OK (if Kafka/PostgreSQL accessible)
 ```
 
@@ -243,7 +243,7 @@ services=(
   "Kafka:20000"
   "Redis:20001"
   "PostgreSQL:20002"
-  "Gateway:20016"
+  "Gateway:21016"
 )
 
 for service in "${services[@]}"; do

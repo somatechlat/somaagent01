@@ -299,7 +299,7 @@ git push upstream main --tags
 
 ### Fixed
 - Memory replication lag issue (#456)
-- WebSocket connection timeout (#478)
+- Streaming connection timeout (#478)
 
 ### Security
 - Patched SQL injection vulnerability (CVE-2025-1234)
