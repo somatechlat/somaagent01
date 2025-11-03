@@ -19,6 +19,7 @@ nav:
   - Technical Manual:
       - Overview: technical-manual/index.md
       - Architecture: technical-manual/architecture.md
+      - LLM Routing & Settings: technical-manual/gateway-llm-routing.md
       - Outbound Events: technical-manual/outbound-events.md
       - Deployment: technical-manual/deployment.md
       - Monitoring & Health: technical-manual/monitoring.md

@@ -519,46 +519,33 @@ document.addEventListener('alpine:init', function () {
                 }
             },
 
-            // Test API connection
+            // Test LLM connection (admin): uses /v1/llm/test
             async testConnection(field) {
                 try {
                     field.testResult = 'Testing...';
                     field.testStatus = 'loading';
 
-                    // Find the API key field
-                    let apiKey = '';
-                    for (const section of this.settingsData.sections) {
-                        for (const f of section.fields) {
-                            if (f.id === field.target) {
-                                apiKey = f.value;
-                                break;
-                            }
-                        }
-                    }
+                    // Determine role under test (dialogue|escalation); default to dialogue
+                    const role = (field?.service === 'escalation' || field?.role === 'escalation') ? 'escalation' : 'dialogue';
 
-                    if (!apiKey) {
-                        throw new Error('API key is required');
-                    }
-
-                    // Send test request
-                    const response = await fetchApi('/api/test_connection', {
+                    const response = await fetchApi('/llm/test', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            service: field.service,
-                            api_key: apiKey
-                        })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ role })
                     });
 
                     const data = await response.json();
 
-                    if (response.ok && data.success) {
-                        field.testResult = 'Connection successful!';
-                        field.testStatus = 'success';
+                    if (response.ok && data.ok) {
+                        const parts = [];
+                        if (data.provider) parts.push(`provider: ${data.provider}`);
+                        if (data.base_url) parts.push(`base: ${data.base_url}`);
+                        parts.push(`credentials: ${data.credentials_present ? 'present' : 'missing'}`);
+                        parts.push(`reachable: ${data.reachable ? 'yes' : 'no'}`);
+                        field.testResult = `OK (${parts.join(', ')})`;
+                        field.testStatus = data.reachable && data.credentials_present ? 'success' : 'warning';
                     } else {
-                        throw new Error(data.error || 'Connection failed');
+                        throw new Error(data.detail || data.error || 'Connection failed');
                     }
                 } catch (error) {
                     console.error('Connection test failed:', error);

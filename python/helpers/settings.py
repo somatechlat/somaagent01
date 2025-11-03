@@ -1301,7 +1301,12 @@ def convert_in(settings: dict) -> Settings:
 def get_settings() -> Settings:
     global _settings
     if not _settings:
-        _settings = _read_settings_file()
+        # Prefer centralized Gateway runtime settings when configured
+        runtime = _read_settings_from_gateway()
+        if runtime:
+            _settings = runtime
+        else:
+            _settings = _read_settings_file()
     if not _settings:
         _settings = get_default_settings()
     norm = normalize_settings(_settings)
@@ -1381,6 +1386,41 @@ def _read_settings_file() -> Settings | None:
         return normalize_settings(parsed)
 
 
+def _read_settings_from_gateway() -> Settings | None:
+    """Fetch flattened runtime settings from the Gateway if configured.
+
+    Requires environment variable GATEWAY_BASE_URL (e.g. http://127.0.0.1:21016).
+    If GATEWAY_INTERNAL_TOKEN is present, it is sent as X-Internal-Token.
+    Returns None on any error.
+    """
+    base = (
+        os.getenv("GATEWAY_BASE_URL")
+        or os.getenv("WORKER_GATEWAY_BASE")
+        or os.getenv("SOMA_GATEWAY_URL")
+    )
+    if not base:
+        return None
+    url = (base.rstrip("/") + "/internal/runtime/settings")
+    try:
+        import urllib.request
+        req = urllib.request.Request(url)
+        token = os.getenv("GATEWAY_INTERNAL_TOKEN", "").strip()
+        if token:
+            req.add_header("X-Internal-Token", token)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:  # nosec B310
+            data = resp.read().decode("utf-8")
+        obj = json.loads(data)
+        if not isinstance(obj, dict):
+            return None
+        settings_doc = obj.get("settings")
+        if not isinstance(settings_doc, dict):
+            return None
+        # Normalize into SettingsModel shape
+        return normalize_settings(settings_doc)  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
 def _write_settings_file(settings: Settings):
     settings = settings.copy()
     _write_sensitive_settings(settings)
@@ -1451,8 +1491,10 @@ def _write_sensitive_settings(settings: Settings):
 def get_default_settings() -> Settings:
     return Settings(
         version=_get_version(),
-        chat_model_provider="openrouter",
-        chat_model_name="openai/gpt-4.1",
+        # Default all providers to Groq; users can change in Settings
+        chat_model_provider="groq",
+        # Choose broadly available Groq models (OpenAI-compatible API)
+        chat_model_name="llama-3.1-70b-versatile",
         chat_model_api_base="",
         chat_model_kwargs={"temperature": "0"},
         chat_model_ctx_length=100000,
@@ -1461,8 +1503,8 @@ def get_default_settings() -> Settings:
         chat_model_rl_requests=0,
         chat_model_rl_input=0,
         chat_model_rl_output=0,
-        util_model_provider="openrouter",
-        util_model_name="openai/gpt-4.1-mini",
+        util_model_provider="groq",
+        util_model_name="llama-3.1-8b-instant",
         util_model_api_base="",
         util_model_ctx_length=100000,
         util_model_ctx_input=0.7,
@@ -1470,14 +1512,15 @@ def get_default_settings() -> Settings:
         util_model_rl_requests=0,
         util_model_rl_input=0,
         util_model_rl_output=0,
-        embed_model_provider="huggingface",
-        embed_model_name="sentence-transformers/all-MiniLM-L6-v2",
+        # Default embeddings to Groq as requested; can be changed to local/HF in UI
+        embed_model_provider="groq",
+        embed_model_name="text-embedding-3-large",
         embed_model_api_base="",
         embed_model_kwargs={},
         embed_model_rl_requests=0,
         embed_model_rl_input=0,
-        browser_model_provider="openrouter",
-        browser_model_name="openai/gpt-4.1",
+        browser_model_provider="groq",
+        browser_model_name="llama-3.1-70b-versatile",
         browser_model_api_base="",
         browser_model_vision=True,
         browser_model_rl_requests=0,

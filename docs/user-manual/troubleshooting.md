@@ -6,7 +6,7 @@
 
 ### Gateway Health Check Fails
 
-**Symptom**: `curl http://localhost:20016/v1/health` returns error
+**Symptom**: `curl http://localhost:21016/v1/health` returns error
 
 **Diagnosis**:
 ```bash
@@ -46,7 +46,7 @@ docker compose exec kafka kafka-consumer-groups.sh \
 | Cause | Fix |
 |-------|-----|
 | Worker crashed | `docker compose restart conversation-worker` |
-| LLM API key invalid | Update `OPENROUTER_API_KEY` in `.env`, restart |
+| LLM credentials missing/invalid | Open Settings → LLM Credentials, set the provider (e.g., groq) and paste the key. Alternatively, POST `/v1/llm/credentials`. |
 | Kafka consumer lag | Scale workers: `docker compose up -d --scale conversation-worker=3` |
 
 ### Memory Not Persisting
@@ -144,8 +144,10 @@ docker compose exec postgres psql -U somauser -d somadb \
 ### Full System Health Check
 
 ```bash
-# Run comprehensive health check
-make check-stack
+# Quick health probes
+curl -sS -D - http://localhost:21016/v1/health -o /dev/null | head -n 1
+curl -sS http://localhost:21016/v1/ui/settings | jq .
+curl -sS http://localhost:21016/v1/ui/settings/credentials | jq .
 
 # Expected output:
 # ✅ Kafka: healthy
@@ -175,7 +177,37 @@ docker compose logs --tail=100 conversation-worker
 # Nuclear option: delete all data and restart
 docker compose down -v
 docker system prune -f
-make up
+make dev-up
+
+## LLM Issues (401/405)
+
+### 401 Unauthorized during chat
+
+Symptoms:
+- Gateway audit shows `llm.invoke` with `http_status=401` and provider `groq`/`openrouter`.
+
+Fix:
+- Open the Settings modal → LLM Credentials and re‑enter the provider key.
+- Ensure the selected model is accessible by your key.
+- Verify with:
+  ```bash
+  curl -s -X POST http://localhost:21016/v1/llm/test -H 'Content-Type: application/json' -d '{"role":"dialogue"}' | jq .
+  ```
+
+### 405 Method Not Allowed (OpenRouter)
+
+Symptoms:
+- Audit shows provider `openrouter` with `http_status=405`.
+
+Cause:
+- Base URL saved as `https://openrouter.ai/openai`, which is not compatible when composing `/v1/chat/completions`.
+
+Fix:
+- Save Settings again; the Gateway normalizes `/openai` → `/api`.
+- Confirm the effective profile:
+  ```bash
+  curl -s http://localhost:21016/v1/ui/settings | jq .
+  ```
 ```
 
 ## Getting Help

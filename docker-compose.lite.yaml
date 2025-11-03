@@ -1,0 +1,41 @@
+# Lightweight overrides for local development
+# Usage:
+#   docker compose -f docker-compose.yaml -f docker-compose.lite.yaml up -d
+# or via Makefile: `make up-lite` (added below)
+
+services:
+  # Core infra with smaller footprints
+  kafka:
+    mem_limit: 1500m
+    environment:
+      # Reduce Kafka JVM heap for local
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx768m"
+
+  redis:
+    mem_limit: 256m
+
+  postgres:
+    mem_limit: 1024m
+
+  opa:
+    mem_limit: 128m
+
+  # Application services (override the heavy defaults from x-agent-service)
+  gateway:
+    mem_limit: 1500m
+
+  conversation-worker:
+    mem_limit: 1500m
+
+  tool-executor:
+    mem_limit: 1000m
+
+  memory-replicator:
+    mem_limit: 512m
+
+  memory-sync:
+    mem_limit: 512m
+
+  outbox-sync:
+    mem_limit: 512m
+
