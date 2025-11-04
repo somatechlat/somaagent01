@@ -338,6 +338,60 @@ JANITOR_LAST_RUN = _get_or_create_gauge(
     "Last uploads janitor run timestamp (seconds since epoch)",
 )
 
+# Admin/API metrics
+ADMIN_DECISIONS_LIST = _get_or_create_counter(
+    "gateway_admin_decisions_list_total",
+    "Admin decisions list calls",
+    labelnames=("status",),
+)
+ADMIN_AUDIT_EXPORT = _get_or_create_counter(
+    "gateway_admin_audit_export_total",
+    "Admin audit export calls",
+    labelnames=("status",),
+)
+
+# Authorization decision metrics
+AUTH_OPA_DECISIONS = _get_or_create_counter(
+    "gateway_auth_opa_decisions_total",
+    "OPA authorization decision outcomes",
+    labelnames=("outcome",),  # allow|deny|skipped|error
+)
+AUTH_FGA_DECISIONS = _get_or_create_counter(
+    "gateway_auth_fga_decisions_total",
+    "OpenFGA authorization decision outcomes",
+    labelnames=("enforced", "outcome"),  # enforced:true|false, outcome:allowed|denied|skipped|error
+)
+
+# LLM operation metrics
+LLM_TEST_RESULTS = _get_or_create_counter(
+    "gateway_llm_test_results_total",
+    "LLM test outcomes",
+    labelnames=("provider", "validated", "result"),  # validated:true|false, result: ok|auth_failed|unreachable|error
+)
+LLM_INVOKE_RESULTS = _get_or_create_counter(
+    "gateway_llm_invoke_results_total",
+    "LLM invoke outcomes",
+    labelnames=("provider", "stream", "result"),  # stream:true|false, result: ok|error|timeout
+)
+
+# Simple sensitive data scrubber for audit details payloads
+SENSITIVE_KEYS = {"authorization", "auth", "token", "api_key", "apikey", "secret", "password", "credentials"}
+
+def _scrub(obj: Any, depth: int = 0) -> Any:
+    if depth > 6:
+        return obj
+    if isinstance(obj, dict):
+        redacted: dict[str, Any] = {}
+        for k, v in obj.items():
+            if str(k).lower() in SENSITIVE_KEYS:
+                redacted[k] = "[REDACTED]"
+            else:
+                redacted[k] = _scrub(v, depth + 1)
+        return redacted
+    if isinstance(obj, list):
+        return [_scrub(v, depth + 1) for v in obj]
+    return obj
+
 
 # -----------------------------
 # /v1/speech/transcribe (STT)
@@ -3064,15 +3118,38 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
 
     # Evaluate OPA policy only when auth is enforced and a policy URL is configured
     opa_receipt: Dict[str, Any] | None = None
-    if REQUIRE_AUTH and OPA_URL:
-        try:
-            opa_receipt = await _evaluate_opa(request, payload, claims)
-        except HTTPException:
-            # propagate block
-            raise
-        except Exception as exc:
-            LOGGER.error("OPA evaluation unexpected error", extra={"error": str(exc)})
-            raise HTTPException(status_code=502, detail="OPA evaluation failed") from exc
+    if REQUIRE_AUTH:
+        if not OPA_URL:
+            # OPA disabled -> skipped
+            try:
+                AUTH_OPA_DECISIONS.labels("skipped").inc()
+            except Exception:
+                pass
+        else:
+            try:
+                opa_receipt = await _evaluate_opa(request, payload, claims)
+                try:
+                    AUTH_OPA_DECISIONS.labels("allow").inc()
+                except Exception:
+                    pass
+            except HTTPException as http_exc:
+                # Distinguish deny vs other errors
+                try:
+                    if getattr(http_exc, "status_code", None) == 403:
+                        AUTH_OPA_DECISIONS.labels("deny").inc()
+                    else:
+                        AUTH_OPA_DECISIONS.labels("error").inc()
+                except Exception:
+                    pass
+                # propagate block
+                raise
+            except Exception as exc:
+                try:
+                    AUTH_OPA_DECISIONS.labels("error").inc()
+                except Exception:
+                    pass
+                LOGGER.error("OPA evaluation unexpected error", extra={"error": str(exc)})
+                raise HTTPException(status_code=502, detail="OPA evaluation failed") from exc
 
     tenant = _extract_tenant(claims)
     scope = _extract_scope(claims)
@@ -3121,6 +3198,10 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                 )
             except Exception:
                 pass
+            try:
+                AUTH_FGA_DECISIONS.labels("false", "skipped").inc()
+            except Exception:
+                pass
             return auth_metadata
         except Exception as exc:
             raise HTTPException(status_code=500, detail="Authorization not configured") from exc
@@ -3139,6 +3220,10 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                     "error_type": type(exc).__name__,
                 },
             )
+            try:
+                AUTH_FGA_DECISIONS.labels("true", "error").inc()
+            except Exception:
+                pass
             raise HTTPException(status_code=502, detail="Authorization service unavailable") from exc
         # Emit decision receipt (best-effort; ignore failures)
         try:
@@ -3161,6 +3246,11 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                 ip=str(getattr(request.client, "host", None)) if request.client else None,
                 user_agent=request.headers.get("user-agent"),
             )
+        except Exception:
+            pass
+        # Record enforcement outcome
+        try:
+            AUTH_FGA_DECISIONS.labels("true", "allowed" if allowed else "denied").inc()
         except Exception:
             pass
         if not allowed:
@@ -5488,6 +5578,17 @@ async def internal_runtime_settings(request: Request) -> JSONResponse:
             if k in doc:
                 flat[k] = doc[k]
 
+        # Overlay memory settings if present (nested group persisted by UI)
+        try:
+            mem_cfg = doc.get("memory")
+        except Exception:
+            mem_cfg = None
+        if isinstance(mem_cfg, dict):
+            for k, v in mem_cfg.items():
+                # Only apply fields that look like memory_* to avoid accidental pollution
+                if isinstance(k, str) and k.startswith("memory_"):
+                    flat[k] = v
+
     # Overlay dialogue model profile to drive chat model fields
     prof = await PROFILE_STORE.get("dialogue", APP_SETTINGS.deployment_mode)
     if prof:
@@ -6250,7 +6351,7 @@ async def ui_sections_get() -> dict[str, Any]:
                         val = agent_cfg.get(fid)
                         if val:
                             fld["value"] = val
-        # Overlay additional model settings (utility/embed/browser) persisted in ui_settings store
+        # Overlay additional UI-stored settings (utility/embed/browser, litellm, browser headers)
         if isinstance(agent_cfg, dict) and agent_cfg:
             for sec in sections:
                 for fld in sec.get("fields", []):
@@ -6275,6 +6376,16 @@ async def ui_sections_get() -> dict[str, Any]:
                                     fld["value"] = val
                             else:
                                 fld["value"] = val
+                    # LiteLLM globals (textarea in .env-like format)
+                    if fid == "litellm_global_kwargs" and "litellm_global_kwargs" in agent_cfg:
+                        val = agent_cfg.get("litellm_global_kwargs")
+                        if isinstance(val, dict):
+                            try:
+                                fld["value"] = "\n".join(f"{k}={v}" for k, v in val.items())
+                            except Exception:
+                                fld["value"] = val
+                        else:
+                            fld["value"] = val
         # Model overlays
         if profile:
             provider = ""
@@ -6339,6 +6450,22 @@ async def ui_sections_get() -> dict[str, Any]:
                         # Coerce types lightly: keep UI-provided shape; trust persisted doc
                         try:
                             fld["value"] = speech_cfg[fid]
+                        except Exception:
+                            pass
+        # Memory overlay: apply any saved memory config values over defaults
+        try:
+            memory_cfg = agent_cfg.get("memory") if isinstance(agent_cfg, dict) else None
+        except Exception:
+            memory_cfg = None
+        if isinstance(memory_cfg, dict) and memory_cfg:
+            for sec in sections:
+                if (sec.get("id") or "") != "memory":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if isinstance(fid, str) and fid in memory_cfg:
+                        try:
+                            fld["value"] = memory_cfg[fid]
                         except Exception:
                             pass
     except Exception:
@@ -6469,6 +6596,10 @@ async def ui_sections_set(
     speech_cfg: Dict[str, Any] = {}
     # Collect additional model settings from sections (utility/embed/browser)
     extra_models_cfg: Dict[str, Any] = {}
+    # Memory settings
+    memory_cfg: Dict[str, Any] = {}
+    # LiteLLM globals
+    litellm_cfg: Dict[str, Any] = {}
 
     def _as_env_kv(text: str) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -6558,6 +6689,15 @@ async def ui_sections_set(
                     extra_models_cfg[fid] = _as_env_kv(val)
                 else:
                     extra_models_cfg[fid] = val
+            # LiteLLM global kwargs
+            elif fid == "litellm_global_kwargs":
+                if isinstance(val, str):
+                    litellm_cfg[fid] = _as_env_kv(val)
+                elif isinstance(val, dict):
+                    litellm_cfg[fid] = val
+            # Memory settings (persist as a nested group)
+            elif fid.startswith("memory_"):
+                memory_cfg[fid] = val
 
     # Persist settings (merge with existing document)
     ui_store = get_ui_settings_store()
@@ -6591,10 +6731,15 @@ async def ui_sections_set(
             if k in coerced:
                 coerced[k] = _to_num(coerced[k], int)
         current_doc["speech"] = {**dict(current_doc.get("speech") or {}), **coerced}
+    if memory_cfg:
+        current_doc["memory"] = {**dict(current_doc.get("memory") or {}), **memory_cfg}
     # Merge extra model configs (util/embed/browser) at top-level keys
     if extra_models_cfg:
         for k, v in extra_models_cfg.items():
             current_doc[k] = v
+    # Merge LiteLLM globals
+    if litellm_cfg:
+        current_doc["litellm_global_kwargs"] = dict(litellm_cfg.get("litellm_global_kwargs") or {})
     await ui_store.set(current_doc)
 
     # Prepare audit context now that the new doc is set
@@ -6662,6 +6807,28 @@ async def ui_sections_set(
         except Exception:
             pass
 
+        # If the user selected a provider but supplied a model name that clearly belongs
+        # to another provider (e.g. an OpenRouter/OpenAI prefixed name), coerce to a
+        # sensible provider default to avoid runtime 401/404 from upstream.
+        try:
+            if explicit_provider and isinstance(model_name, str):
+                mn = model_name.strip().lower()
+                if explicit_provider == "groq":
+                    # Replace obviously foreign model identifiers (contain a provider prefix)
+                    # with a widely available Groq default.
+                    if "/" in mn or mn.startswith("openai/") or mn.startswith("openrouter/"):
+                        model_name = "llama-3.1-8b-instant"
+                elif explicit_provider == "openrouter":
+                    # OpenRouter accepts many vendor-prefixed names; leave as-is unless empty.
+                    if not mn:
+                        model_name = "openai/gpt-4o-mini"
+                elif explicit_provider == "openai":
+                    # Strip foreign prefixes to reduce auth/model mismatches
+                    if "/" in mn and not mn.startswith("gpt"):
+                        model_name = "gpt-4o-mini"
+        except Exception:
+            pass
+
         # Credentials presence is validated at invoke/test time. Allow saving
         # a model profile even if the provider key is not yet present to keep
         # Settings UX simple. We still store any credentials provided in the
@@ -6677,6 +6844,15 @@ async def ui_sections_set(
         except Exception:
             temp = 0.2
 
+        # Merge any extra kwargs and persist provider hint so invoke can prefer it over base_url heuristics
+        _kwargs = model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else {}
+        if explicit_provider:
+            try:
+                _kwargs = dict(_kwargs)
+                _kwargs["provider"] = explicit_provider
+            except Exception:
+                pass
+
         mp = ModelProfile(
             role="dialogue",
             deployment_mode=APP_SETTINGS.deployment_mode,
@@ -6684,7 +6860,7 @@ async def ui_sections_set(
             base_url=normalized_base,
             api_path=str(model_profile.get("api_path", "")) or None,
             temperature=temp,
-            kwargs=(model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else None),
+            kwargs=_kwargs or None,
         )
         await PROFILE_STORE.upsert(mp)
 
@@ -6721,6 +6897,13 @@ async def ui_sections_set(
         app.state.av_cfg = av
     except Exception:
         LOGGER.debug("Failed to refresh antivirus overlay after settings save", exc_info=True)
+
+    try:
+        # Refresh speech overlay from the latest persisted document
+        sp = dict(current_doc.get("speech") or {}) if isinstance(current_doc, dict) else {}
+        app.state.speech_cfg = sp
+    except Exception:
+        LOGGER.debug("Failed to refresh speech overlay after settings save", exc_info=True)
 
     # Emit audit log (masking secrets) – best-effort
     try:
@@ -7271,6 +7454,40 @@ def _internal_token_ok(request: Request) -> bool:
     return bool(got and got == expected)
 
 
+def _coerce_model_for_provider(provider: str, model: str) -> tuple[str, bool]:
+    """Best-effort guardrail to avoid upstream 401/404 due to model/provider mismatches.
+
+    Returns (new_model, changed_flag). Only coerces when the model name clearly
+    belongs to a different provider or is empty.
+    """
+    try:
+        p = (provider or "").strip().lower()
+        m = (model or "").strip()
+        ml = m.lower()
+        changed = False
+        if p == "groq":
+            # Groq expects OpenAI-compatible schema with Groq-supported model names (no vendor prefixes)
+            if not ml or "/" in ml or ml.startswith("openai/") or ml.startswith("openrouter/"):
+                m = "llama-3.1-8b-instant"
+                changed = True
+        elif p == "openai":
+            # Strip foreign prefixes; default to a widely-available small model when ambiguous
+            if not ml:
+                m = "gpt-4o-mini"
+                changed = True
+            elif "/" in ml and not ml.startswith("gpt"):
+                m = "gpt-4o-mini"
+                changed = True
+        elif p == "openrouter":
+            # OpenRouter accepts many vendor-prefixed models; if empty, pick a sane default
+            if not ml:
+                m = "openai/gpt-4o-mini"
+                changed = True
+        return m, changed
+    except Exception:
+        return model, False
+
+
 @app.get("/v1/llm/credentials/{provider}")
 async def get_llm_credentials(provider: str, request: Request, store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None) -> dict:  # type: ignore[assignment]
     # Only allow internal calls with X-Internal-Token; do not expose via normal auth
@@ -7290,7 +7507,7 @@ class LlmTestRequest(BaseModel):
 
 
 @app.post("/v1/llm/test")
-async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
+async def llm_test(payload: LlmTestRequest, request: Request, validate_auth: bool = Query(False)) -> dict:
     """Admin/test endpoint: validate profile resolution, credentials presence, and perform a lightweight connectivity check.
 
     Access control:
@@ -7326,19 +7543,39 @@ async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
     reachable = False
     status_code: int | None = None
     detail: str | None = None
+    result_label = "error"
     if normalized:
-        # Attempt a HEAD request to the normalized base to validate connectivity.
+        # When validate_auth=true perform an authenticated GET to /v1/models (OpenAI-compatible)
+        # Otherwise, do a lightweight HEAD to the base URL.
         try:
-            headers = {}
-            if secret:
-                headers["Authorization"] = f"Bearer {secret}"
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                resp = await client.head(normalized)
-                status_code = resp.status_code
-                reachable = True
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                if validate_auth:
+                    path = normalized.rstrip("/") + "/v1/models"
+                    headers = {"Authorization": f"Bearer {secret}"} if secret else {}
+                    resp = await client.get(path, headers=headers)
+                    status_code = resp.status_code
+                    reachable = True
+                    if resp.status_code == 200:
+                        result_label = "ok"
+                    elif resp.status_code in (401, 403):
+                        result_label = "auth_failed"
+                    else:
+                        result_label = "error"
+                else:
+                    resp = await client.head(normalized)
+                    status_code = resp.status_code
+                    reachable = True
+                    result_label = "ok"
         except Exception as exc:
             reachable = False
             detail = str(exc)
+            result_label = "unreachable"
+
+    # Emit metrics
+    try:
+        LLM_TEST_RESULTS.labels(provider or "unknown", str(bool(validate_auth)).lower(), result_label).inc()
+    except Exception:
+        pass
 
     return {
         "ok": True,
@@ -7349,7 +7586,96 @@ async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
         "reachable": reachable,
         "status_code": status_code,
         "detail": detail,
+        "validated": bool(validate_auth),
     }
+
+
+class LlmStatusResponse(BaseModel):
+    role: str
+    deployment: str
+    provider: Optional[str] = None
+    provider_hint: Optional[str] = None
+    model: Optional[str] = None
+    coerced_model: Optional[str] = None
+    model_coercion_applied: bool = False
+    base_url: Optional[str] = None
+    api_path: Optional[str] = None
+    credentials_present: bool = False
+    gateway_model_lock: str
+    reachable: bool = False
+    status_code: Optional[int] = None
+    detail: Optional[str] = None
+
+
+@app.get("/v1/llm/status", response_model=LlmStatusResponse)
+async def llm_status(request: Request, role: str = Query("dialogue", pattern="^(dialogue|escalation)$")) -> LlmStatusResponse:
+    """Return a snapshot of the active model profile, provider, and credential state.
+
+    Includes whether model coercion would apply for the selected provider/model and
+    a quick reachability probe against the provider base URL.
+    """
+    # Internal or admin-only
+    if not _internal_token_ok(request):
+        try:
+            auth = await authorize_request(request, {"action": "llm.status", "role": role})
+            _require_admin_scope(auth)
+        except HTTPException:
+            raise HTTPException(status_code=403, detail="forbidden")
+
+    deployment = APP_SETTINGS.deployment_mode
+    profile = await PROFILE_STORE.get(role, deployment)
+    if not profile:
+        raise HTTPException(status_code=404, detail="model profile not found")
+
+    base_url = _normalize_llm_base_url(str(profile.base_url or ""))
+    provider_hint = None
+    try:
+        provider_hint = (profile.kwargs or {}).get("provider") if isinstance(profile.kwargs, dict) else None
+    except Exception:
+        provider_hint = None
+    provider = provider_hint or _detect_provider_from_base(base_url)
+
+    # Check creds presence
+    creds_present = False
+    try:
+        secret = await get_llm_credentials_store().get(provider)
+        creds_present = bool(secret)
+    except Exception:
+        creds_present = False
+
+    # Coercion
+    coerced_model, changed = _coerce_model_for_provider(provider, profile.model or "")
+
+    # Reachability
+    reachable = False
+    status_code: int | None = None
+    detail: str | None = None
+    if base_url:
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.head(base_url)
+                status_code = resp.status_code
+                reachable = True
+        except Exception as exc:
+            detail = str(exc)
+            reachable = False
+
+    return LlmStatusResponse(
+        role=role,
+        deployment=deployment,
+        provider=provider,
+        provider_hint=provider_hint,
+        model=profile.model,
+        coerced_model=coerced_model if changed else profile.model,
+        model_coercion_applied=bool(changed),
+        base_url=base_url,
+        api_path=profile.api_path,
+        credentials_present=creds_present,
+        gateway_model_lock=os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower(),
+        reachable=reachable,
+        status_code=status_code,
+        detail=detail,
+    )
 
 
 # -----------------------------
@@ -7375,6 +7701,9 @@ async def audit_export(
     session_id: Optional[str] = Query(None),
     tenant: Optional[str] = Query(None),
     action: Optional[str] = Query(None),
+    from_ts: Optional[datetime] = Query(None, description="Start timestamp (inclusive)"),
+    to_ts: Optional[datetime] = Query(None, description="End timestamp (inclusive)"),
+    subject: Optional[str] = Query(None, description="Filter by subject (sub)"),
 ) -> StreamingResponse:
     """Export audit events as NDJSON (admin-only).
 
@@ -7403,6 +7732,9 @@ async def audit_export(
                 session_id=session_id,
                 tenant=tenant,
                 action=action,
+                from_ts=from_ts,
+                to_ts=to_ts,
+                subject=subject,
                 limit=500,
                 after_id=after_id,
             )
@@ -7422,7 +7754,7 @@ async def audit_export(
                     "target_id": r.target_id,
                     "ip": r.ip,
                     "user_agent": r.user_agent,
-                    "details": r.details,
+                    "details": _scrub(r.details) if isinstance(r.details, dict) else r.details,
                     "diff": r.diff,
                 }
                 line = _json.dumps(obj, ensure_ascii=False) + "\n"
@@ -7431,7 +7763,12 @@ async def audit_export(
                 after_id = r.id
             if len(rows) < 500:
                 break
-    return StreamingResponse(_streamer(), headers={"Content-Type": "application/x-ndjson"})
+    try:
+        ADMIN_AUDIT_EXPORT.labels("ok").inc()
+        return StreamingResponse(_streamer(), headers={"Content-Type": "application/x-ndjson"})
+    except Exception:
+        ADMIN_AUDIT_EXPORT.labels("error").inc()
+        raise
 
 # List decision receipts (auth.decision) in JSON for quick ops inspection
 class AuditDecisionItem(BaseModel):
@@ -7459,6 +7796,9 @@ async def audit_list_decisions(
     tenant: Optional[str] = Query(None, description="Filter by tenant"),
     session_id: Optional[str] = Query(None, description="Filter by session id"),
     request_id: Optional[str] = Query(None, description="Filter by request id"),
+    subject: Optional[str] = Query(None, description="Filter by subject (sub)"),
+    from_ts: Optional[datetime] = Query(None, description="Start timestamp (inclusive)"),
+    to_ts: Optional[datetime] = Query(None, description="End timestamp (inclusive)"),
     after: Optional[int] = Query(None, ge=0, description="Return items with database id greater than this cursor"),
     limit: int = Query(100, ge=1, le=200),
 ) -> AuditDecisionListResponse:
@@ -7480,6 +7820,9 @@ async def audit_list_decisions(
         session_id=session_id,
         tenant=tenant,
         action="auth.decision",
+        subject=subject,
+        from_ts=from_ts,
+        to_ts=to_ts,
         limit=limit,
         after_id=after,
     )
@@ -7495,13 +7838,18 @@ async def audit_list_decisions(
                 tenant=r.tenant,
                 subject=r.subject,
                 resource=r.resource,
-                details=r.details if isinstance(r.details, dict) else None,
+                details=_scrub(r.details) if isinstance(r.details, dict) else None,
                 ip=r.ip,
                 user_agent=r.user_agent,
             )
         )
     next_cursor = items[-1].id if items else None
-    return AuditDecisionListResponse(items=items, next_cursor=next_cursor)
+    try:
+        ADMIN_DECISIONS_LIST.labels("ok").inc()
+        return AuditDecisionListResponse(items=items, next_cursor=next_cursor)
+    except Exception:
+        ADMIN_DECISIONS_LIST.labels("error").inc()
+        raise
 
 class LlmInvokeMessage(BaseModel):
     role: str
@@ -7640,7 +7988,17 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             extra_kwargs.update(payload.overrides.kwargs)
         if not model or not base_url:
             raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
-        provider = _detect_provider_from_base(base_url)
+        # Prefer provider explicitly stored in profile.extra (set by UI) over base_url heuristics
+        try:
+            provider_hint = (profile.kwargs or {}).get("provider") if profile and isinstance(profile.kwargs, dict) else None
+        except Exception:
+            provider_hint = None
+        provider = provider_hint or _detect_provider_from_base(base_url)
+        # Coerce model if it obviously mismatches the provider to avoid upstream 401/404
+        try:
+            model, _model_coerced = _coerce_model_for_provider(provider, model)
+        except Exception:
+            _model_coerced = False
         secret = await get_llm_credentials_store().get(provider)
         if not secret:
             raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
@@ -7842,6 +8200,11 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             )
         except Exception:
             LOGGER.debug("Failed to write audit log for llm.invoke runtime error", exc_info=True)
+        # Metrics
+        try:
+            LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "error").inc()
+        except Exception:
+            pass
         raise HTTPException(status_code=502, detail=f"provider_error: {exc}")
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code if exc.response is not None else 502
@@ -7870,6 +8233,11 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             )
         except Exception:
             LOGGER.debug("Failed to write audit log for llm.invoke error", exc_info=True)
+        # Metrics
+        try:
+            LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "error").inc()
+        except Exception:
+            pass
         raise HTTPException(status_code=status, detail=f"provider_error: {exc}") from exc
     except httpx.RequestError as exc:
         # Audit timeout
@@ -7896,6 +8264,11 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             )
         except Exception:
             LOGGER.debug("Failed to write audit log for llm.invoke timeout", exc_info=True)
+        # Metrics
+        try:
+            LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "timeout").inc()
+        except Exception:
+            pass
         raise HTTPException(status_code=504, detail=f"provider_timeout: {exc}") from exc
     finally:
         try:
@@ -7930,10 +8303,21 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     except Exception:
         LOGGER.debug("Failed to write audit log for llm.invoke", exc_info=True)
 
+    # Metrics success
+    try:
+        LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "ok").inc()
+    except Exception:
+        pass
+
     # Include a warning header when Gateway is in warn-mode and an override was ignored
     headers_out: dict[str, str] = {}
     if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
         headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
+    try:
+        if _model_coerced:
+            headers_out["X-Gateway-Model-Coerced"] = "true"
+    except Exception:
+        pass
 
     return JSONResponse(
         {"content": content, "usage": usage, "model": model, "base_url": base_url},
@@ -8061,7 +8445,17 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
             extra_kwargs.update(payload.overrides.kwargs)
         if not model or not base_url:
             raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
-        provider = _detect_provider_from_base(base_url)
+        # Prefer provider explicitly stored in profile.extra (set by UI) over base_url heuristics
+        try:
+            provider_hint = (profile.kwargs or {}).get("provider") if profile and isinstance(profile.kwargs, dict) else None
+        except Exception:
+            provider_hint = None
+        provider = provider_hint or _detect_provider_from_base(base_url)
+        # Coerce model if it obviously mismatches the provider to avoid upstream 401/404
+        try:
+            model, _model_coerced = _coerce_model_for_provider(provider, model)
+        except Exception:
+            _model_coerced = False
         secret = await get_llm_credentials_store().get(provider)
         if not secret:
             raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
@@ -8153,6 +8547,11 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 )
             except Exception:
                 LOGGER.debug("Failed to write audit log for llm.invoke.stream error", exc_info=True)
+            # Metrics
+            try:
+                LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "error").inc()
+            except Exception:
+                pass
             msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
             yield msg.encode("utf-8")
         except httpx.RequestError as exc:
@@ -8180,6 +8579,11 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 )
             except Exception:
                 LOGGER.debug("Failed to write audit log for llm.invoke.stream timeout", exc_info=True)
+            # Metrics
+            try:
+                LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "timeout").inc()
+            except Exception:
+                pass
             msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
             yield msg.encode("utf-8")
         finally:
@@ -8213,9 +8617,19 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 )
             except Exception:
                 LOGGER.debug("Failed to write audit log for llm.invoke.stream", exc_info=True)
+            # Metrics success
+            try:
+                LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "ok").inc()
+            except Exception:
+                pass
             yield b"data: [DONE]\n\n"
 
     headers = {"Content-Type": "text/event-stream"}
     if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
         headers["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
+    try:
+        if _model_coerced:
+            headers["X-Gateway-Model-Coerced"] = "true"
+    except Exception:
+        pass
     return StreamingResponse(streamer(), headers=headers)

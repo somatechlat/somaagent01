@@ -65,6 +65,14 @@ File: `services/gateway/main.py`
 - Logging is best-effort; failures to write audit events do not impact the request flow.
 - OpenFGA behavior in dev/unit contexts: if not configured (missing `OPENFGA_STORE_ID`), enforcement is skipped but a receipt is still emitted with `enforced=false`.
 
+### Metrics
+
+- `gateway_auth_opa_decisions_total{outcome}`: OPA policy outcomes
+  - outcomes: `allow`, `deny`, `skipped`, `error`
+- `gateway_auth_fga_decisions_total{enforced,outcome}`: OpenFGA outcomes
+  - `enforced`: `true` or `false`
+  - `outcome`: `allowed`, `denied`, `skipped`, `error`
+
 ## Constitution Pass-Through Endpoints (Gateway)
 
 File: `services/gateway/main.py`
@@ -85,9 +93,26 @@ Auth & Policy
   - `details.scope`: captured scope string (if any) from the JWT.
 
 - Admin API to list recent decision receipts:
-  - `GET /v1/admin/audit/decisions?tenant=&session_id=&request_id=&after=&limit=`
+  - `GET /v1/admin/audit/decisions?tenant=&session_id=&request_id=&subject=&from_ts=&to_ts=&after=&limit=`
   - Returns `{ items: [ { id, ts, tenant, subject, resource, details, ... } ], next_cursor }`.
-  - Requires admin scope when auth is enabled; subject filtering can be added later if needed.
+  - Requires admin scope when auth is enabled.
+
+## Web UI (Admin) Wiring
+
+The Web UI exposes lightweight admin tools wired to the endpoints above.
+
+- Decisions Viewer
+  - Open the left sidebar and click “Decisions” to launch the modal at `webui/components/admin/decisions.html`.
+  - The grid lists recent `auth.decision` receipts fetched from `GET /v1/admin/audit/decisions` with filter fields (tenant, session_id, request_id, subject, from_ts, to_ts) and pagination via `next_cursor`.
+  - Use “Export NDJSON” to download an NDJSON stream from `GET /v1/admin/audit/export?action=auth.decision` with the same filters applied, including the time range and subject.
+  - Authorization: requires admin scope when `GATEWAY_REQUIRE_AUTH=true`. UI surfaces 401/403 as an inline banner.
+
+- Constitution Tools
+  - Click “Constitution” to open `webui/components/admin/constitution.html`.
+  - Version: calls `GET /constitution/version` and shows the current SomaBrain constitution metadata.
+  - Validate: paste a JSON document, posts `{ document: <json> }` to `POST /constitution/validate`.
+  - Load: posts `{ document: <json> }` to `POST /constitution/load` and, on success, Gateway triggers an OPA policy regeneration (`POST /opa/policy`).
+  - Authorization: admin scope required when auth is enabled; OPA decision path defaults to `/v1/data/soma/policy/allow`.
 
 ## Optional Semantics & Planning Hooks
 
