@@ -1259,6 +1259,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
 
 def _get_api_key_field(settings: Settings, provider: str, title: str) -> SettingsField:
+    # Keep UI field shape; actual credential persistence is handled by Gateway APIs.
     key = settings["api_keys"].get(provider, "")
     has_secret = isinstance(key, str) and key.strip() not in {"", "None"}
     return {
@@ -1442,33 +1443,8 @@ def _remove_sensitive_settings(settings: Settings):
 
 
 def _write_sensitive_settings(settings: Settings):
-    # Persist provider API keys into .env using the conventional {PROVIDER}_API_KEY
-    # naming (e.g. OPENROUTER_API_KEY, GROQ_API_KEY). The internal api_keys
-    # dictionary stores entries keyed by provider id (e.g. "openrouter", "groq").
-    # Be tolerant to legacy shapes where keys might already be prefixed with
-    # "api_key_" from older UIs.
-    for key, val in settings["api_keys"].items():
-        if not isinstance(key, str):
-            continue
-        provider = key.strip()
-        if provider.startswith("api_key_"):
-            provider = provider[len("api_key_"):]
-        if not provider:
-            continue
-        if not isinstance(val, str) or val.strip() in {"", "None"}:
-            # Skip empty placeholders
-            continue
-        env_key = f"{provider.upper()}_API_KEY"
-        # One-time migration support: if old "API_KEY_{PROVIDER}" exists and new key is empty, copy it.
-        legacy_key = f"API_KEY_{provider.upper()}"
-        try:
-            cur = dotenv.get_dotenv_value(env_key)
-            legacy = dotenv.get_dotenv_value(legacy_key)
-            if (not cur) and legacy:
-                dotenv.save_dotenv_value(env_key, legacy)
-        except Exception:
-            pass
-        dotenv.save_dotenv_value(env_key, val)
+    # Stop writing provider API keys to .env to avoid env-based overrides.
+    # Provider credentials should be managed by the Gateway credentials store or SecretsManager.
 
     dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])
     if settings["auth_password"]:

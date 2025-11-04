@@ -55,9 +55,9 @@ Immediate issues to address (priority)
 
 Recommendations / next steps
 - Sprint 0 (immediate): finish this audit (this document), update `.env.example` with canonical vars (if not already), and archive legacy files (done for `run_ui.py` and `deploy-optimized.sh` but cross-check references). Marked tasks in the tracker.
-- Sprint 1: implement Gateway CRUD for model profiles, centralize normalization rules, add `GATEWAY_MODEL_LOCK=warn` to detect worker overrides, and add `/v1/llm/test` to validate provider connectivity.
+- Sprint 1: implement Gateway CRUD for model profiles, centralize normalization rules, and add `/v1/llm/test` to validate provider connectivity. Gateway ignores any `overrides.base_url`.
 - Sprint 2: update workers to omit `base_url` in overrides and run migration scripts to copy profiles and credentials into Gateway.
-- Add unit tests for normalization and integration tests for invoke/stream flows before flipping `GATEWAY_MODEL_LOCK` to `enforce`.
+- Add unit tests for normalization and integration tests for invoke/stream flows. No lock env needed; base URL overrides are not accepted.
 
 Planned artifacts I will create next
 - `docs/audits/model_config_audit.md` (this file) — complete.

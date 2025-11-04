@@ -396,7 +396,7 @@ Why this is needed
 Design decisions (summary)
 - Gateway owns: ModelProfileStore reads/writes, `_normalize_llm_base_url` rules, provider detection, and credential lookup. It exposes a CRUD API for profiles and a secure credentials endpoint. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send `base_url`.
 - Gateway exposes `/v1/model-profiles` (CRUD), `/v1/llm/credentials/{provider}` (internal credential access), and an admin `/v1/llm/test` to validate profile connectivity.
-- Compatibility modes: `GATEWAY_MODEL_LOCK` config with values `off|warn|enforce` to aid migration: warn when workers send `base_url`, then block when enforce is set.
+- Callers cannot override `base_url`; the Gateway always uses the profile’s value.
 
 Acceptance criteria
 - Worker->Gateway->Provider flow succeeds end-to-end: POST to Gateway invoke returns stream or non-stream content and the UI receives assistant events via SSE.
@@ -405,9 +405,9 @@ Acceptance criteria
 
 Migration strategy (high level)
 1. Audit all usages of model/profile and `base_url` (scripts, conf, services). Document and back up existing profiles.
-2. Implement Gateway CRUD/API and `GATEWAY_MODEL_LOCK=warn` to detect incoming `base_url` overrides and log warnings.
+2. Implement Gateway CRUD/API and ensure any incoming `overrides.base_url` is ignored.
 3. Update workers to stop sending `base_url` and to rely on Gateway resolution of model->provider->base_url.
-4. Flip `GATEWAY_MODEL_LOCK=enforce` after canary testing and complete removal of duplicated config.
+4. Complete removal of duplicated config; no lock flag required.
 
 Risks & mitigations
 - Risk: Missing credentials after migration. Mitigation: use `/v1/llm/test` and a migration script to copy secrets into Gateway store, validate, and only then enforce lock.

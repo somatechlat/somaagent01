@@ -41,24 +41,24 @@ Why priority
 Goals
 - Make Gateway the single source of truth for model profiles, provider credentials, and base_url normalization.
 - Remove raw `base_url` propagation from workers and other services; workers must send only role + messages + limited overrides (model name, temperature, kwargs).
-- Provide compatibility flags and a migration path with `warn` → `enforce` modes.
+- Provide a clean migration path with Gateway authority; no env flags.
 
 Sprint A (1 week) — Audit & Gateway API
 - Tasks
   1. Complete a full audit of code and env usage of `model`, `base_url`, and model profile reads/writes. Produce an audit doc with file-by-file findings and backups of current profiles (todo #1).
   2. Design Gateway API contract for model/profile CRUD, credential management, and a `/v1/llm/test` endpoint (todo #2).
-  3. Add `GATEWAY_MODEL_LOCK` env flag and implement `warn` logging behavior (no enforcement yet).
+  3. Remove per-service overrides and ensure workers never send `base_url`.
 - Acceptance
-  - Audit doc delivered. Gateway API spec reviewed. `GATEWAY_MODEL_LOCK=warn` logs incoming `base_url` overrides but does not block invokes.
+  - Audit doc delivered. Gateway API spec reviewed. Base URL overrides are ignored by Gateway.
 
 Sprint B (1–2 weeks) — Gateway authority & worker migration
 - Tasks
   1. Implement Gateway CRUD for `/v1/model-profiles` and internal credentials endpoints (todo #3).
   2. Harden `_normalize_llm_base_url` and provider detection; add unit tests (todo #7).
   3. Update workers to stop sending `base_url` in overrides and to call Gateway only (todo #4).
-  4. Deprecate per-service profile envs and add startup warnings (todo #5).
+  4. Deprecate per-service profile envs and remove startup warnings.
 - Acceptance
-  - Worker->Gateway->Provider flow works end-to-end in dev; Playwright smoke shows assistant reply. `GATEWAY_MODEL_LOCK=enforce` can be enabled in a canary without breaking processing.
+  - Worker->Gateway->Provider flow works end-to-end in dev; Playwright smoke shows assistant reply. No lock flag is needed.
 
 Notes
 - These centralization sprints take precedence over other UI migration work until assistant reply flow is stable.

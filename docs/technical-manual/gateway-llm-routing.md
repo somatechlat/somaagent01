@@ -49,12 +49,9 @@ Default base URLs (when needed):
 - openai → `https://api.openai.com/v1`
 - openrouter → `https://openrouter.ai/api/v1`
 
-## Gateway Model Lock
+## Base URL Overrides
 
-The `GATEWAY_MODEL_LOCK` env controls whether callers can override the profile’s base URL:
-- `off` (default): allow overrides.
-- `warn`: ignore `overrides.base_url` and add warning header `X-Gateway-Model-Lock-Warning`.
-- `enforce`: reject requests with `400` if an override base URL is provided.
+Callers cannot override the profile’s base URL. The Gateway always uses the value saved in the profile and ignores any `overrides.base_url` provided by clients. This ensures a single source of truth for provider routing.
 
 ## End‑to‑End Flow
 

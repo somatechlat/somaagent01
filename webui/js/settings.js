@@ -115,6 +115,35 @@ const settingsModalProxy = {
                 "sections": set.settings.sections
             }
 
+            // Fetch credentials presence and annotate API key fields for clarity
+            try {
+                const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
+                if (credResp.ok) {
+                    const credMap = await credResp.json().catch(() => null);
+                    const has = credMap && credMap.has_secret ? credMap.has_secret : {};
+                    if (settings.sections && has) {
+                        for (const sec of settings.sections) {
+                            for (const f of (sec.fields || [])) {
+                                const fid = String(f.id || '');
+                                if (fid.startsWith('api_key_')) {
+                                    const prov = fid.substring('api_key_'.length).toLowerCase();
+                                    const present = !!has[prov];
+                                    // Append a tiny hint without relying on CSS badges
+                                    const hint = present ? ' (saved on server)' : ' (not set)';
+                                    if (typeof f.description === 'string' && f.description.length) {
+                                        if (!f.description.includes('(saved on server)') && !f.description.includes('(not set)')) {
+                                            f.description += hint;
+                                        }
+                                    } else {
+                                        f.description = hint;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch(_) {}
+
             // Update modal data
             modalAD.isOpen = true;
             modalAD.settings = settings;
@@ -219,10 +248,22 @@ const settingsModalProxy = {
                     window.toastFrontendInfo('Saving settings…', 'Settings', 2, 'settings-save');
                 }
                 // Save sections back to canonical endpoint
+                // Make a shallow copy and mask api_key_* fields to avoid server-side persistence via sections
+                const masked = JSON.parse(JSON.stringify(modalAD.settings.sections || []));
+                try {
+                    for (const sec of masked) {
+                        for (const f of (sec.fields || [])) {
+                            const fid = String(f.id || '');
+                            if (fid.startsWith('api_key_') && typeof f.value === 'string' && f.value.trim()) {
+                                f.value = '************';
+                            }
+                        }
+                    }
+                } catch(_) {}
                 const resp = await fetchApi('/ui/settings/sections', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sections: modalAD.settings.sections })
+                    body: JSON.stringify({ sections: masked })
                 });
                 if (!resp.ok) throw new Error(await resp.text());
                 try { savedJson = await resp.json(); } catch (_) { savedJson = null; }
@@ -271,6 +312,29 @@ const settingsModalProxy = {
                 if (ref.ok) {
                     const fresh = await ref.json().catch(() => null);
                     if (fresh && fresh.settings) {
+                        // Also annotate with credential presence
+                        try {
+                            const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
+                            const credMap = credResp.ok ? await credResp.json().catch(() => null) : null;
+                            const has = credMap && credMap.has_secret ? credMap.has_secret : {};
+                            for (const sec of (fresh.settings.sections || [])) {
+                                for (const f of (sec.fields || [])) {
+                                    const fid = String(f.id || '');
+                                    if (fid.startsWith('api_key_')) {
+                                        const prov = fid.substring('api_key_'.length).toLowerCase();
+                                        const present = !!has[prov];
+                                        const hint = present ? ' (saved on server)' : ' (not set)';
+                                        if (typeof f.description === 'string' && f.description.length) {
+                                            if (!f.description.includes('(saved on server)') && !f.description.includes('(not set)')) {
+                                                f.description += hint;
+                                            }
+                                        } else {
+                                            f.description = hint;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch(_) {}
                         modalAD.settings = fresh.settings;
                     }
                 }
@@ -497,6 +561,31 @@ document.addEventListener('alpine:init', function () {
                         const data = await response.json();
                         if (data && data.settings) {
                             this.settingsData = data.settings;
+                            // Annotate API key fields with credential presence map
+                            try {
+                                const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
+                                if (credResp.ok) {
+                                    const credMap = await credResp.json().catch(() => null);
+                                    const has = credMap && credMap.has_secret ? credMap.has_secret : {};
+                                    for (const sec of (this.settingsData.sections || [])) {
+                                        for (const f of (sec.fields || [])) {
+                                            const fid = String(f.id || '');
+                                            if (fid.startsWith('api_key_')) {
+                                                const prov = fid.substring('api_key_'.length).toLowerCase();
+                                                const present = !!has[prov];
+                                                const hint = present ? ' (saved on server)' : ' (not set)';
+                                                if (typeof f.description === 'string' && f.description.length) {
+                                                    if (!f.description.includes('(saved on server)') && !f.description.includes('(not set)')) {
+                                                        f.description += hint;
+                                                    }
+                                                } else {
+                                                    f.description = hint;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch(_) {}
                         } else {
                             console.error('Invalid settings data format');
                         }
@@ -573,14 +662,35 @@ document.addEventListener('alpine:init', function () {
                     } catch (_) {}
 
                     // Send sections as-is to canonical endpoint
+                    // Mask api_key_* fields to ensure secrets are only sent to /v1/llm/credentials
+                    const maskedSections = JSON.parse(JSON.stringify(this.settingsData.sections || []));
+                    try {
+                        for (const sec of maskedSections) {
+                            for (const f of (sec.fields || [])) {
+                                const fid = String(f.id || '');
+                                if (fid.startsWith('api_key_') && typeof f.value === 'string' && f.value.trim()) {
+                                    f.value = '************';
+                                }
+                            }
+                        }
+                    } catch(_) {}
+
                     const response = await fetchApi('/ui/settings/sections', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sections: this.settingsData.sections })
+                        body: JSON.stringify({ sections: maskedSections })
                     });
 
                     if (response.ok) {
                         showToast('Settings saved successfully', 'success');
+                        // Auto-close modal on success (legacy path)
+                        try {
+                            const store = window.Alpine ? Alpine.store('root') : null;
+                            if (store) store.isOpen = false;
+                            const modalEl = document.getElementById('settingsModal');
+                            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
+                            if (overlay) overlay.style.removeProperty('display');
+                        } catch (_) {}
                         // Opportunistic credentials write when an unmasked key is provided
                         try {
                             let provider = '';
