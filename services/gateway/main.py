@@ -416,8 +416,16 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail="audio_too_large")
 
-    # Initialize or reuse model
-    model_size = (req.model_size or os.getenv("STT_MODEL_SIZE", "tiny")).strip().lower()
+    # Initialize or reuse model – prefer UI overlay from settings when available
+    try:
+        speech_cfg = getattr(app.state, "speech_cfg", {}) if hasattr(app, "state") else {}
+    except Exception:
+        speech_cfg = {}
+    model_size = (
+        (req.model_size or "").strip()
+        or str((speech_cfg.get("stt_model_size") or "")).strip()
+        or os.getenv("STT_MODEL_SIZE", "tiny")
+    ).strip().lower()
     try:
         model = _get_stt_model(model_size)
     except HTTPException:
@@ -436,7 +444,12 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
             # faster-whisper returns (segments generator, info)
             segments, info = model.transcribe(
                 tf.name,
-                language=(req.language or os.getenv("STT_LANGUAGE") or None),
+                language=(
+                    (req.language or "").strip()
+                    or str((speech_cfg.get("stt_language") or "")).strip()
+                    or os.getenv("STT_LANGUAGE")
+                    or None
+                ),
                 vad_filter=True,
                 beam_size=1,
                 temperature=0.0,
@@ -1175,6 +1188,26 @@ async def start_background_services() -> None:
         await ensure_session_schema(get_session_store())
     except Exception:
         LOGGER.debug("Session schema ensure failed", exc_info=True)
+
+    # Warn on legacy/deprecated env-based LLM configuration that is now ignored.
+    try:
+        legacy_env = [
+            "OPENAI_API_KEY",
+            "GROQ_API_KEY",
+            "OPENROUTER_API_KEY",
+            "SLM_API_KEY",
+            "SLM_BASE_URL",
+            "SLM_MODEL",
+            "SLM_TEMPERATURE",
+        ]
+        found = [k for k in legacy_env if os.getenv(k)]
+        if found:
+            LOGGER.warning(
+                "Deprecated env vars detected and ignored for LLM config; use /v1/llm/credentials and UI Settings",
+                extra={"env": found},
+            )
+    except Exception:
+        LOGGER.debug("Env deprecation warning failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -6636,9 +6669,13 @@ async def ui_sections_set(
                         model_profile["temperature"] = float(kv["temperature"])  # type: ignore
                     except Exception:
                         pass
-            elif fid.startswith("api_key_") and isinstance(val, str) and val and val != "************":
-                provider = fid[len("api_key_") :].strip().lower()
-                creds.append((provider, val))
+            elif fid.startswith("api_key_") and isinstance(val, str) and val:
+                # Centralized credentials policy: reject secrets posted via UI sections.
+                # Clients must use POST /v1/llm/credentials to persist provider API keys.
+                raise HTTPException(
+                    status_code=400,
+                    detail="provider secrets must be saved via /v1/llm/credentials; api_key_* fields are not accepted",
+                )
             # Uploads config fields
             elif fid in {
                 "uploads_enabled",
@@ -6865,16 +6902,10 @@ async def ui_sections_set(
         await PROFILE_STORE.upsert(mp)
 
     # Store provider credentials
-    if creds:
-        store = get_llm_credentials_store()
-        for provider, secret in creds:
-            try:
-                await store.set(provider, secret)
-            except Exception as exc:
-                LOGGER.warning("Failed to store LLM credentials", extra={"provider": provider, "error": str(exc)})
+    # Deprecated: credentials are no longer accepted via settings sections. Use /v1/llm/credentials instead.
 
     # -----------------------------
-    # Hot-apply overlays for Uploads/Antivirus so changes take effect immediately
+    # Hot-apply overlays for Uploads/Antivirus/Speech so changes take effect immediately
     # -----------------------------
     try:
         # Refresh uploads overlay from the latest persisted document
@@ -6904,6 +6935,99 @@ async def ui_sections_set(
         app.state.speech_cfg = sp
     except Exception:
         LOGGER.debug("Failed to refresh speech overlay after settings save", exc_info=True)
+
+    # -----------------------------
+    # Hot-apply full runtime settings in-process and broadcast to workers
+    # -----------------------------
+    try:
+        # Build a flattened SettingsModel-compatible dict (same as /internal/runtime/settings)
+        base = ui_get_defaults()
+        try:
+            flat = base.model_dump()  # type: ignore[attr-defined]
+        except Exception:
+            flat = dict(base)  # type: ignore[arg-type]
+
+        # Overlay agent UI settings (top-level simple keys and nested groups)
+        doc_for_flat = await get_ui_settings_store().get()
+        if isinstance(doc_for_flat, dict):
+            for k in (
+                "agent_profile",
+                "agent_memory_subdir",
+                "agent_knowledge_subdir",
+                "litellm_global_kwargs",
+                # util/embed/browser config and extras
+                "util_model_provider",
+                "util_model_name",
+                "util_model_api_base",
+                "util_model_ctx_length",
+                "util_model_ctx_input",
+                "util_model_rl_requests",
+                "util_model_rl_input",
+                "util_model_rl_output",
+                "util_model_kwargs",
+                "embed_model_provider",
+                "embed_model_name",
+                "embed_model_api_base",
+                "embed_model_rl_requests",
+                "embed_model_rl_input",
+                "embed_model_kwargs",
+                "browser_model_provider",
+                "browser_model_name",
+                "browser_model_api_base",
+                "browser_model_vision",
+                "browser_model_rl_requests",
+                "browser_model_rl_input",
+                "browser_model_rl_output",
+                "browser_model_kwargs",
+                "browser_http_headers",
+            ):
+                if k in doc_for_flat:
+                    flat[k] = doc_for_flat[k]
+            # Memory nested group
+            try:
+                mem_cfg = doc_for_flat.get("memory")
+            except Exception:
+                mem_cfg = None
+            if isinstance(mem_cfg, dict):
+                for k, v in mem_cfg.items():
+                    if isinstance(k, str) and k.startswith("memory_"):
+                        flat[k] = v
+
+        # Overlay dialogue model profile
+        prof = await PROFILE_STORE.get("dialogue", APP_SETTINGS.deployment_mode)
+        if prof:
+            try:
+                provider = _detect_provider_from_base(prof.base_url or "")
+            except Exception:
+                provider = ""
+            if provider:
+                flat["chat_model_provider"] = provider
+            if prof.model:
+                flat["chat_model_name"] = prof.model
+            if prof.base_url:
+                flat["chat_model_api_base"] = prof.base_url
+            if isinstance(prof.kwargs, dict):
+                flat["chat_model_kwargs"] = dict(prof.kwargs)
+
+        # Never include secrets here
+        flat["api_keys"] = {}
+
+        # Hot-apply in-process immediately (updates AgentContext + dependent components)
+        try:
+            set_settings(flat, apply=True)  # type: ignore[arg-type]
+        except Exception:
+            LOGGER.debug("set_settings hot-apply failed (best-effort)", exc_info=True)
+
+        # Broadcast config update so other processes can refresh if they subscribe
+        try:
+            await publisher.publish(
+                "config_updates",
+                {"type": "ui.settings.updated", "settings": flat, "ts": time.time()},
+            )
+        except Exception:
+            LOGGER.debug("Failed to publish config update (ui.settings.updated)", exc_info=True)
+    except Exception:
+        LOGGER.debug("Failed to compute/apply flattened settings after save", exc_info=True)
 
     # Emit audit log (masking secrets) – best-effort
     try:
@@ -6948,7 +7072,6 @@ async def ui_sections_set(
             resource="ui.settings",
             target_id=None,
             details={
-                "providers_updated": [p for p, _ in creds],
                 "explicit_provider": explicit_provider,
             },
             diff=diff,
@@ -6968,7 +7091,7 @@ async def ui_sections_set(
             "role": "util",
             "type": "ui.settings.saved",
             "message": "Settings saved successfully",
-            "metadata": {"providers_updated": [p for p, _ in creds], "explicit_provider": explicit_provider},
+            "metadata": {"explicit_provider": explicit_provider},
         }
         await publisher.publish(
             os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
@@ -7601,7 +7724,6 @@ class LlmStatusResponse(BaseModel):
     base_url: Optional[str] = None
     api_path: Optional[str] = None
     credentials_present: bool = False
-    gateway_model_lock: str
     reachable: bool = False
     status_code: Optional[int] = None
     detail: Optional[str] = None
@@ -7671,7 +7793,6 @@ async def llm_status(request: Request, role: str = Query("dialogue", pattern="^(
         base_url=base_url,
         api_path=profile.api_path,
         credentials_present=creds_present,
-        gateway_model_lock=os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower(),
         reachable=reachable,
         status_code=status_code,
         detail=detail,
@@ -7889,33 +8010,14 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
 
     model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
 
-    # Determine base_url with respect to Gateway lock policy.
-    # Behavior:
-    #  - If an override.base_url is provided and non-empty:
-    #      * GATEWAY_MODEL_LOCK=enforce -> reject (400)
-    #      * GATEWAY_MODEL_LOCK=warn -> ignore override, warn via returned meta
-    #      * GATEWAY_MODEL_LOCK=off -> accept override
+    # Determine base_url. Ignore any provided override and use profile value only.
     override_base_raw = None
     if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
         # Accept explicit empty-string as "provided but empty" (we'll normalize later)
         override_base_raw = str(payload.overrides.base_url)
 
-    gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
-    gw_lock_warning = False
-
-    if override_base_raw is not None and override_base_raw.strip() != "":
-        # explicit non-empty override provided
-        if gw_lock == "enforce":
-            raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
-        if gw_lock == "warn":
-            # Ignore override but signal a warning in returned meta
-            gw_lock_warning = True
-            base_url_raw = profile.base_url if profile else ""
-        else:
-            base_url_raw = override_base_raw
-    else:
-        # No meaningful override provided -> use profile
-        base_url_raw = profile.base_url if profile else ""
+    # Always use profile base_url regardless of any override
+    base_url_raw = profile.base_url if profile else ""
 
     base_url = _normalize_llm_base_url(str(base_url_raw))
     try:
@@ -7939,8 +8041,6 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
         raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
 
     meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
-    if gw_lock_warning:
-        meta["_gateway_model_lock_warning"] = True
     api_path = profile.api_path if profile else None
     return model, base_url, api_path, temperature, meta
 
@@ -7960,22 +8060,8 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         if not profile and not payload.overrides:
             raise HTTPException(status_code=400, detail="model profile not configured for role")
         model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
-        # GATEWAY_MODEL_LOCK handling
-        override_base_raw = None
-        if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
-            override_base_raw = str(payload.overrides.base_url)
-        gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
-        gw_lock_warning = False
-        if override_base_raw is not None and override_base_raw.strip() != "":
-            if gw_lock == "enforce":
-                raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
-            if gw_lock == "warn":
-                gw_lock_warning = True
-                base_url_raw = profile.base_url if profile else ""
-            else:
-                base_url_raw = override_base_raw
-        else:
-            base_url_raw = profile.base_url if profile else ""
+        # Ignore any overrides.base_url; use profile base_url only
+        base_url_raw = profile.base_url if profile else ""
         base_url = _normalize_llm_base_url(str(base_url_raw))
         try:
             temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
@@ -8003,8 +8089,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         if not secret:
             raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
         meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
-        if gw_lock_warning:
-            meta["_gateway_model_lock_warning"] = True
+        
         api_path = profile.api_path if profile else None
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=f"debug:resolve {exc}")
@@ -8097,8 +8182,6 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                     "output_tokens": int(_usage2.get("completion_tokens", 0)),
                                 }
                                 headers_out: dict[str, str] = {}
-                                if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
-                                    headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
                                 # Audit as ok
                                 try:
                                     elapsed = max(0.0, time.time() - start)
@@ -8164,8 +8247,6 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                             LOGGER.debug("Failed to write audit log for llm.invoke tool_calls", exc_info=True)
 
                         headers_out: dict[str, str] = {}
-                        if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
-                            headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
                         return JSONResponse(
                             {"tool_calls": _tc, "usage": usage, "model": model, "base_url": base_url},
                             headers=headers_out,
@@ -8309,10 +8390,8 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     except Exception:
         pass
 
-    # Include a warning header when Gateway is in warn-mode and an override was ignored
+    # Headers (model coercion only)
     headers_out: dict[str, str] = {}
-    if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
-        headers_out["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
     try:
         if _model_coerced:
             headers_out["X-Gateway-Model-Coerced"] = "true"
@@ -8352,21 +8431,8 @@ async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
     if not profile and not payload.overrides:
         raise HTTPException(status_code=400, detail="model profile not configured for role")
     model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
-    override_base_raw = None
-    if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
-        override_base_raw = str(payload.overrides.base_url)
-    gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
-    gw_lock_warning = False
-    if override_base_raw is not None and override_base_raw.strip() != "":
-        if gw_lock == "enforce":
-            raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
-        if gw_lock == "warn":
-            gw_lock_warning = True
-            base_url_raw = profile.base_url if profile else ""
-        else:
-            base_url_raw = override_base_raw
-    else:
-        base_url_raw = profile.base_url if profile else ""
+    # Ignore any overrides.base_url; use profile base_url only
+    base_url_raw = profile.base_url if profile else ""
     base_url = _normalize_llm_base_url(str(base_url_raw))
     try:
         temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
@@ -8384,8 +8450,7 @@ async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
     if not secret:
         raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
     meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
-    if gw_lock_warning:
-        meta["_gateway_model_lock_warning"] = True
+    
     api_path = profile.api_path if profile else None
 
     messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
@@ -8418,21 +8483,8 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         if not profile and not payload.overrides:
             raise HTTPException(status_code=400, detail="model profile not configured for role")
         model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
-        override_base_raw = None
-        if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
-            override_base_raw = str(payload.overrides.base_url)
-        gw_lock = os.getenv("GATEWAY_MODEL_LOCK", "off").strip().lower()
-        gw_lock_warning = False
-        if override_base_raw is not None and override_base_raw.strip() != "":
-            if gw_lock == "enforce":
-                raise HTTPException(status_code=400, detail="overrides.base_url disallowed by GATEWAY_MODEL_LOCK=enforce")
-            if gw_lock == "warn":
-                gw_lock_warning = True
-                base_url_raw = profile.base_url if profile else ""
-            else:
-                base_url_raw = override_base_raw
-        else:
-            base_url_raw = profile.base_url if profile else ""
+        # Ignore any overrides.base_url; use profile base_url only
+        base_url_raw = profile.base_url if profile else ""
         base_url = _normalize_llm_base_url(str(base_url_raw))
         try:
             temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
@@ -8460,8 +8512,6 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         if not secret:
             raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
         meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
-        if gw_lock_warning:
-            meta["_gateway_model_lock_warning"] = True
         api_path = profile.api_path if profile else None
     except Exception:
         raise
@@ -8625,8 +8675,6 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
             yield b"data: [DONE]\n\n"
 
     headers = {"Content-Type": "text/event-stream"}
-    if isinstance(meta, dict) and meta.get("_gateway_model_lock_warning"):
-        headers["X-Gateway-Model-Lock-Warning"] = "overrides.base_url provided and ignored by Gateway (GATEWAY_MODEL_LOCK=warn)"
     try:
         if _model_coerced:
             headers["X-Gateway-Model-Coerced"] = "true"

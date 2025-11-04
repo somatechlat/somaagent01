@@ -1,4 +1,8 @@
-"""Async client for OSS SLM/LLM endpoints (OpenAI-compatible)."""
+"""Async client for OSS SLM/LLM endpoints (OpenAI-compatible).
+
+This client no longer reads any environment variables. All configuration must be
+provided explicitly by the caller (base_url, model, api_key, temperature, etc.).
+"""
 
 from __future__ import annotations
 
@@ -20,18 +24,19 @@ class ChatMessage:
 
 
 class SLMClient:
-    def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
-        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
-        self.default_model = model or os.getenv(
-            "SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct"
-        )
-        try:
-            # Lazy import to avoid tight coupling when helpers are unused in some runtimes
-            from python.helpers.dotenv import get_dotenv_value as _get
-        except Exception:
-            def _get(k: str, default: str | None = None):
-                return os.getenv(k, default)
-        self.api_key = _get("SLM_API_KEY")  # required for authenticated providers
+    def __init__(
+        self,
+        base_url: str | None = None,
+        model: str | None = None,
+        *,
+        api_key: str | None = None,
+        temperature: float | None = None,
+    ) -> None:
+        # No env fallbacks: callers must supply configuration
+        self.base_url = base_url or ""
+        self.default_model = model or ""
+        self.api_key = api_key or ""
+        self.default_temperature = 0.2 if temperature is None else float(temperature)
         self._client = httpx.AsyncClient(timeout=30.0)
 
     async def chat(
@@ -45,22 +50,18 @@ class SLMClient:
         **kwargs: Any,
     ) -> Tuple[str, dict[str, int]]:
         # No dev fallback: fail fast if misconfigured
-        if not (self.base_url and (model or self.default_model)):
+        if not ((base_url or self.base_url) and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
-            # Some providers allow no key; most require it. Enforce presence to avoid silent failures.
-            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
+            # Most providers require a key; enforce presence to avoid silent failures.
+            raise RuntimeError("API key missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": (
-                temperature
-                if temperature is not None
-                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
-            ),
+            "temperature": (temperature if temperature is not None else self.default_temperature),
             "stream": False,
         }
         if kwargs:
@@ -68,20 +69,6 @@ class SLMClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        # Provider-specific header requirements
-        try:
-            from urllib.parse import urlparse as _urlparse
-            host = _urlparse(url).netloc.lower()
-        except Exception:
-            host = (base_url or self.base_url or "").lower()
-        # OpenRouter requires either HTTP-Referer (whitelisted) or X-Title
-        if "openrouter.ai" in host:
-            ref = os.getenv("OPENROUTER_REFERER", "http://localhost")
-            title = os.getenv("OPENROUTER_TITLE", "SomaAgent01 Dev")
-            if ref:
-                headers["HTTP-Referer"] = ref
-            if title:
-                headers["X-Title"] = title
 
         response = await self._client.post(url, json=payload, headers=headers)
         if response.is_error:
@@ -115,21 +102,17 @@ class SLMClient:
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> AsyncIterator[Dict[str, Any]]:
-        if not (self.base_url and (model or self.default_model)):
+        if not ((base_url or self.base_url) and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
-            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
+            raise RuntimeError("API key missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": (
-                temperature
-                if temperature is not None
-                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
-            ),
+            "temperature": (temperature if temperature is not None else self.default_temperature),
             "stream": True,
         }
         if kwargs:
@@ -137,18 +120,6 @@ class SLMClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        try:
-            from urllib.parse import urlparse as _urlparse
-            host = _urlparse(url).netloc.lower()
-        except Exception:
-            host = (base_url or self.base_url or "").lower()
-        if "openrouter.ai" in host:
-            ref = os.getenv("OPENROUTER_REFERER", "http://localhost")
-            title = os.getenv("OPENROUTER_TITLE", "SomaAgent01 Dev")
-            if ref:
-                headers["HTTP-Referer"] = ref
-            if title:
-                headers["X-Title"] = title
 
         async with self._client.stream("POST", url, json=payload, headers=headers) as response:
             if response.is_error:

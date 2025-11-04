@@ -193,8 +193,24 @@ class ConversationWorker:
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
-        self._gateway_base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        # Prefer explicit WORKER_GATEWAY_BASE, then a generic GATEWAY_BASE_URL, then localhost host-port
+        # that matches docker-compose's forwarded port (default 20016). Last resort: the in-cluster name.
+        default_host_port = f"http://localhost:{os.getenv('GATEWAY_PORT', '20016')}"
+        self._gateway_base = (
+            os.getenv("WORKER_GATEWAY_BASE")
+            or os.getenv("GATEWAY_BASE_URL")
+            or default_host_port
+            or "http://gateway:8010"
+        ).rstrip("/")
         self._internal_token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        if not self._internal_token:
+            try:
+                LOGGER.warning(
+                    "GATEWAY_INTERNAL_TOKEN is not set for worker; Gateway will reject LLM calls (403)",
+                    extra={"gateway_base": self._gateway_base},
+                )
+            except Exception:
+                pass
         self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
         tenant_config_path = os.getenv(
             "TENANT_CONFIG_PATH",
@@ -1592,7 +1608,7 @@ class ConversationWorker:
         latency = time.time() - start_time
         text = data.get("content", "")
         usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
-        model_used = data.get("model") or overrides.get("model") or os.getenv("SLM_MODEL", "unknown")
+        model_used = data.get("model") or overrides.get("model") or "unknown"
         base_url_used = data.get("base_url") or overrides.get("base_url")
         if not text:
             raise RuntimeError("Empty response from escalation LLM via Gateway")
@@ -2240,7 +2256,7 @@ class ConversationWorker:
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
-            model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
+            model_used = slm_kwargs.get("model") or "unknown"
             path = "slm"
             escalation_metadata: dict[str, Any] | None = None
 
@@ -2364,7 +2380,7 @@ class ConversationWorker:
                     except Exception:
                         response_text = "I encountered an error while generating a reply."
                 latency = time.time() - response_start
-                model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
+                model_used = slm_kwargs.get("model") or "unknown"
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)

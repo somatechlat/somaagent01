@@ -16,7 +16,7 @@
 .modal-container {
   background-color: var(--color-panel);
   border-radius: 12px;
-  width: min(1100px, calc(100vw - 48px));
+  width: min(1400px, calc(100vw - 48px));
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -33,7 +33,7 @@
 /* Mobile Viewport Behavior */
 @media (max-width: 1280px) {
   .modal-container {
-    width: min(960px, 96vw);
+    width: min(1100px, 96vw);
     min-width: 0;
     max-width: 96vw;
   }
