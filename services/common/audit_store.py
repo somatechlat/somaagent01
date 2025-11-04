@@ -73,6 +73,9 @@ class AuditStore:
         session_id: str | None = None,
         tenant: str | None = None,
         action: str | None = None,
+        subject: str | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]: ...
@@ -146,6 +149,9 @@ class PostgresAuditStore(AuditStore):
         session_id: str | None = None,
         tenant: str | None = None,
         action: str | None = None,
+        subject: str | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]:
@@ -166,6 +172,15 @@ class PostgresAuditStore(AuditStore):
         if action:
             params.append(action)
             conditions.append(f"action = ${len(params)}")
+        if subject:
+            params.append(subject)
+            conditions.append(f"subject = ${len(params)}")
+        if from_ts is not None:
+            params.append(from_ts)
+            conditions.append(f"ts >= ${len(params)}")
+        if to_ts is not None:
+            params.append(to_ts)
+            conditions.append(f"ts <= ${len(params)}")
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
         params.append(limit)
         sql = f"""
@@ -238,6 +253,9 @@ class InMemoryAuditStore(AuditStore):
         session_id: str | None = None,
         tenant: str | None = None,
         action: str | None = None,
+        subject: str | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]:
@@ -246,7 +264,10 @@ class InMemoryAuditStore(AuditStore):
             (session_id is None or r.session_id == session_id) and
             (tenant is None or r.tenant == tenant) and
             (action is None or r.action == action) and
-            (after_id is None or r.id > after_id)
+            (subject is None or r.subject == subject) and
+            (after_id is None or r.id > after_id) and
+            (from_ts is None or r.ts >= from_ts) and
+            (to_ts is None or r.ts <= to_ts)
         )]
         return rows[:limit]
 

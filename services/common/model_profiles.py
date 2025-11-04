@@ -189,14 +189,21 @@ class ModelProfileStore:
 
     async def sync_from_settings(self, settings: BaseServiceSettings) -> None:
         """Upsert profiles defined in the shared ``model_profiles.yaml`` file."""
-
+        # Seed-only behavior: insert defaults for missing roles, but never overwrite
+        # profiles already created/updated via the Web UI. This ensures the UI remains
+        # the single source of truth in production while still allowing initial defaults.
         payload = settings.environment_profile()
         records = payload.get("profiles", []) if isinstance(payload, dict) else []
         for record in records:
             if not isinstance(record, dict):
                 continue
+            role = str(record.get("role", "default"))
+            # Skip when an existing profile is present for this role+deployment
+            existing = await self.get(role, settings.deployment_mode)
+            if existing is not None:
+                continue
             profile = ModelProfile(
-                role=str(record.get("role", "default")),
+                role=role,
                 deployment_mode=settings.deployment_mode,
                 model=str(record.get("model", "")),
                 base_url=str(record.get("base_url", "")),

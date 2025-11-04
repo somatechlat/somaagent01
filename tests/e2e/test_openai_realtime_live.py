@@ -49,30 +49,31 @@ BASE_URL = os.getenv("GATEWAY_BASE_URL", "http://127.0.0.1:21016")
 OUT_WAV = Path("tmp/openai_realtime_out.wav")
 
 
-class SineAudioTrack(MediaStreamTrack):
-    kind = "audio"
+if HAVE_AIORTC:
+    class SineAudioTrack(MediaStreamTrack):
+        kind = "audio"
 
-    def __init__(self, sample_rate: int = 24000, freq: float = 440.0):
-        super().__init__()
-        self.sample_rate = sample_rate
-        self.freq = freq
-        self._t = 0.0
+        def __init__(self, sample_rate: int = 24000, freq: float = 440.0):
+            super().__init__()
+            self.sample_rate = sample_rate
+            self.freq = freq
+            self._t = 0.0
 
-    async def recv(self) -> av.AudioFrame:  # type: ignore[override]
-        frame_duration = 0.02  # 20 ms per frame
-        samples = int(self.sample_rate * frame_duration)
-        # Generate a simple sine wave in float32 then convert to s16
-        import math
-        import numpy as np
+        async def recv(self) -> av.AudioFrame:  # type: ignore[override]
+            frame_duration = 0.02  # 20 ms per frame
+            samples = int(self.sample_rate * frame_duration)
+            # Generate a simple sine wave in float32 then convert to s16
+            import math
+            import numpy as np
 
-        t = (self._t + (1 / self.sample_rate) * np.arange(samples)).astype(np.float32)
-        self._t = t[-1] + (1 / self.sample_rate)
-        waveform = 0.2 * np.sin(2 * math.pi * self.freq * t)  # keep it quiet
-        pcm = (waveform * 32767.0).astype("int16")
+            t = (self._t + (1 / self.sample_rate) * np.arange(samples)).astype(np.float32)
+            self._t = t[-1] + (1 / self.sample_rate)
+            waveform = 0.2 * np.sin(2 * math.pi * self.freq * t)  # keep it quiet
+            pcm = (waveform * 32767.0).astype("int16")
 
-        frame = av.AudioFrame.from_ndarray(pcm, format="s16", layout="mono")
-        frame.sample_rate = self.sample_rate
-        return frame
+            frame = av.AudioFrame.from_ndarray(pcm, format="s16", layout="mono")
+            frame.sample_rate = self.sample_rate
+            return frame
 
 
 @pytest.mark.skipif(not E2E_ENABLED, reason="Set OPENAI_REALTIME_E2E=1 to run this live test")

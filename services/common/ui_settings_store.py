@@ -46,7 +46,21 @@ class UiSettingsStore:
             if not row:
                 return {}
             val = row["value"]
-            return dict(val) if isinstance(val, dict) else {}
+            # Depending on asyncpg codecs, JSONB may arrive as a Python dict or a JSON string.
+            # Handle both shapes gracefully.
+            if isinstance(val, dict):
+                return dict(val)
+            if isinstance(val, str):
+                try:
+                    parsed = json.loads(val)
+                    return dict(parsed) if isinstance(parsed, dict) else {}
+                except Exception:
+                    return {}
+            # Fallback: attempt to coerce to dict, else return empty
+            try:
+                return dict(val)  # type: ignore[arg-type]
+            except Exception:
+                return {}
 
     async def set(self, value: dict[str, Any]) -> None:
         pool = await self._pool_ensure()

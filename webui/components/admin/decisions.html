@@ -38,8 +38,20 @@
         <input id="filter-request" type="text" placeholder="request id (optional)">
       </div>
       <div class="field">
+        <label>Subject</label>
+        <input id="filter-subject" type="text" placeholder="subject (optional)">
+      </div>
+      <div class="field">
         <label>Limit</label>
         <input id="filter-limit" type="number" min="1" max="200" value="50">
+      </div>
+      <div class="field">
+        <label>From</label>
+        <input id="filter-from" type="datetime-local" placeholder="Start time (optional)">
+      </div>
+      <div class="field">
+        <label>To</label>
+        <input id="filter-to" type="datetime-local" placeholder="End time (optional)">
       </div>
       <div class="field" style="gap:6px">
         <button id="btn-apply">Apply</button>
@@ -84,6 +96,9 @@
     const sessionEl = root.querySelector('#filter-session');
     const requestEl = root.querySelector('#filter-request');
     const limitEl = root.querySelector('#filter-limit');
+    const subjectEl = root.querySelector('#filter-subject');
+    const fromEl = root.querySelector('#filter-from');
+    const toEl = root.querySelector('#filter-to');
     const applyBtn = root.querySelector('#btn-apply');
     const clearBtn = root.querySelector('#btn-clear');
     const loadMoreBtn = root.querySelector('#btn-load-more');
@@ -137,7 +152,10 @@
       if (tenantEl.value) params.set('tenant', tenantEl.value.trim());
       if (sessionEl.value) params.set('session_id', sessionEl.value.trim());
       if (requestEl.value) params.set('request_id', requestEl.value.trim());
+      if (subjectEl.value) params.set('subject', subjectEl.value.trim());
       if (limitEl.value) params.set('limit', String(limitEl.value));
+      if (fromEl.value) params.set('from_ts', new Date(fromEl.value).toISOString());
+      if (toEl.value) params.set('to_ts', new Date(toEl.value).toISOString());
       if (append && nextCursor) params.set('after', String(nextCursor));
 
       const url = '/v1/admin/audit/decisions?' + params.toString();
@@ -175,6 +193,9 @@
       tenantEl.value = '';
       sessionEl.value = '';
       requestEl.value = '';
+      subjectEl.value = '';
+      fromEl.value = '';
+      toEl.value = '';
       nextCursor = null;
       loadDecisions({ append: false }).catch(() => {});
     });
@@ -185,6 +206,9 @@
       if (tenantEl.value) params.set('tenant', tenantEl.value.trim());
       if (sessionEl.value) params.set('session_id', sessionEl.value.trim());
       if (requestEl.value) params.set('request_id', requestEl.value.trim());
+      if (subjectEl.value) params.set('subject', subjectEl.value.trim());
+      if (fromEl.value) params.set('from_ts', new Date(fromEl.value).toISOString());
+      if (toEl.value) params.set('to_ts', new Date(toEl.value).toISOString());
       // Ensure only decision receipts are exported
       params.set('action', 'auth.decision');
       return '/v1/admin/audit/export?' + params.toString();

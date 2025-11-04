@@ -70,8 +70,9 @@ USER agent
 
 # Health check endpoint defined in services.gateway.main
 # Standardize to use port 8010 (matches docker-compose service mapping)
+# NOTE: Gateway exposes /v1/health (not /health)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-        CMD curl -f http://localhost:8010/health || exit 1
+        CMD curl -f http://localhost:8010/v1/health || exit 1
 
 EXPOSE 8010
 
