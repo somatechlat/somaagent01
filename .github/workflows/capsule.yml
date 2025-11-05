@@ -1,4 +1,4 @@
-name: Capsule CI/CD Pipeline
+name: Capsule CI/CD Pipeline (disabled)
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 
 jobs:
   build-and-publish:
+    if: false  # disabled: capsule feature removed
     runs-on: ubuntu-latest
     env:
       COSIGN_EXPERIMENTAL: "1"

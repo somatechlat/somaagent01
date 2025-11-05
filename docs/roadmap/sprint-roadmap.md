@@ -1,3 +1,52 @@
+# Sprint Roadmap
+
+## Sprint 1 — Settings Centralization + Make The Agent Talk
+- Goals:
+	- Single-save Settings (`/v1/ui/settings/sections`) for every field, including External → API Keys.
+	- Secrets masked on GET; encrypted at rest; no seeders or secondary POSTs.
+	- Hot-apply overlays and service toggles; publish `config_updates`; workers reload.
+	- Expand provider dropdowns (chat/util/browser) to show all providers with Groq default.
+	- Agent can “talk” end-to-end: save → test → stream a reply.
+- Tasks:
+	- Accept all `api_key_*` in Gateway sections; persist encrypted; mask on GET.
+	- Expand `conf/model_providers.yaml` chat providers (OpenAI, Groq, Azure, Mistral, DeepSeek, xAI, HuggingFace, LM Studio, Ollama, Other).
+	- Ensure `settings.js` posts only sections; remove secondary credential POSTs; keep placeholders.
+	- Hot-apply updated fields for chat/util/embed/browser, LiteLLM, uploads, AV, speech.
+	- Add `/v1/llm/status` details into Settings “Status” panel (follow-up UI wiring).
+- Acceptance:
+	- Saving any field updates runtime without restart; secrets masked.
+	- `/v1/llm/test` passes with valid key; UI chat streams assistant replies.
+
+## Sprint 2 — Diagnostics, Aliases, and Provider Polish
+- Goals:
+	- Model alias registry (e.g., UI label “GPT‑OSS‑120B” → exact provider model).
+	- Provider normalization guardrails (no OpenRouter special cases, sensible defaults).
+	- Settings banners for missing keys/unreachable providers.
+- Tasks:
+	- Alias resolver in Gateway; pass-through by default.
+	- Expand `/v1/llm/status` reachability and coercion flags.
+	- UI: Add Status view and lightweight banners.
+- Acceptance:
+	- Aliases resolve in invoke/test; diagnostics show clear state/banners.
+
+## Sprint 3 — Memory + Constitution
+- Goals:
+	- SomaBrain memory parity across conversation stages.
+	- Constitution and Decisions tabs fully editable and hot-applied.
+- Tasks:
+	- Ensure memory recall toggles/thresholds are read dynamically by workers.
+	- Wire Constitution endpoints and hot-apply.
+- Acceptance:
+	- Memory button shows relevant content; constitution edits reflected immediately.
+
+## Sprint 4 — Observability & Tests
+- Goals:
+	- Robust metrics and admin probes; end-to-end tests.
+- Tasks:
+	- Metrics for `/v1/llm/test` by provider; SSE stability checks.
+	- Playwright: Settings save → LLM test → stream → visual assertions.
+- Acceptance:
+	- CI passes; telemetry surfaces failures quickly; no secrets in logs.
 ## Sprint Roadmap — Execution Plan
 
 This sprint roadmap breaks the canonical roadmap into concrete, time-boxed sprints with clear scope, deliverables, and tests. Each sprint completes with PASS/FAIL gates and visible artifacts.

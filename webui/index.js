@@ -1447,9 +1447,10 @@ async function bootstrapSessions() {
       setContext(pick.id);
       if (chatsAD) chatsAD.selected = pick.id;
     } else {
-      // No sessions – show a simple inline welcome message locally
-      const id = generateGUID();
-      setMessage(id, "info", "", "Hello and welcome to SomaAgent01. Please let me know how I may be of service.", false, {});
+      // No sessions present. Golden UI parity requires an empty history here
+      // (no default welcome/notification bubbles) so tests that assert
+      // post-reset counts (≤ 1 bubble) remain stable. Do not inject any
+      // default bubbles when there are no sessions.
     }
   } catch (e) {
     toastFetchError("Failed to load sessions", e);

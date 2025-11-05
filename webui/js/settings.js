@@ -661,24 +661,13 @@ document.addEventListener('alpine:init', function () {
                         }
                     } catch (_) {}
 
-                    // Send sections as-is to canonical endpoint
-                    // Mask api_key_* fields to ensure secrets are only sent to /v1/llm/credentials
-                    const maskedSections = JSON.parse(JSON.stringify(this.settingsData.sections || []));
-                    try {
-                        for (const sec of maskedSections) {
-                            for (const f of (sec.fields || [])) {
-                                const fid = String(f.id || '');
-                                if (fid.startsWith('api_key_') && typeof f.value === 'string' && f.value.trim()) {
-                                    f.value = '************';
-                                }
-                            }
-                        }
-                    } catch(_) {}
+                    // Send sections as-is to canonical endpoint (includes api_key_* fields)
+                    const rawSections = JSON.parse(JSON.stringify(this.settingsData.sections || []));
 
                     const response = await fetchApi('/ui/settings/sections', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sections: maskedSections })
+                        body: JSON.stringify({ sections: rawSections })
                     });
 
                     if (response.ok) {
@@ -691,29 +680,7 @@ document.addEventListener('alpine:init', function () {
                             const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
                             if (overlay) overlay.style.removeProperty('display');
                         } catch (_) {}
-                        // Opportunistic credentials write when an unmasked key is provided
-                        try {
-                            let provider = '';
-                            let secret = '';
-                            for (const sec of this.settingsData.sections) {
-                                for (const f of sec.fields || []) {
-                                    const id = String(f.id || '').toLowerCase();
-                                    const val = (typeof f.value === 'string') ? f.value.trim() : '';
-                                    if (!provider && (id.includes('provider') || id === 'provider')) provider = val;
-                                    const isSecret = id.includes('api_key') || id.includes('secret') || id.includes('token');
-                                    if (!secret && isSecret && val && val !== '************') secret = val;
-                                }
-                            }
-                            if (provider && secret) {
-                                await fetchApi('/llm/credentials', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ provider, secret })
-                                });
-                            }
-                        } catch (e) {
-                            console.warn('Credentials save skipped:', e?.message || e);
-                        }
+                        // Credentials are saved as part of sections; no extra POST required
                         // Refresh settings sections to pick up normalized base_url and masked secrets
                         await this.fetchSettings();
                         // Broadcast for other components/tabs

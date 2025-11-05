@@ -1,3 +1,6 @@
+import pytest
+
+pytest.skip("Capsule registry removed from project", allow_module_level=True)
 import importlib
 import os
 import tempfile
