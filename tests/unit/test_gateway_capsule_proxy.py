@@ -1,3 +1,6 @@
+import pytest
+
+pytest.skip("Capsule functionality removed from project", allow_module_level=True)
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient

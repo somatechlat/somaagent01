@@ -1,9 +1,6 @@
-"""SomaAgent SDK modules."""
+"""SomaAgent SDK modules.
 
-from .capsule import download_capsule, install_capsule, list_capsules
+Capsule-related helpers were removed from the project.
+"""
 
-__all__ = [
-    "list_capsules",
-    "download_capsule",
-    "install_capsule",
-]
+__all__: list[str] = []

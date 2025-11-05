@@ -489,11 +489,38 @@ def apply_rate_limiter_sync(
     if not model_config:
         return
     import asyncio
+    import threading
 
-    import nest_asyncio
+    async_coro = apply_rate_limiter(model_config, input_text, rate_limiter_callback)
 
-    nest_asyncio.apply()
-    return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
+    # If we're NOT already in an event loop, it's safe to use asyncio.run directly.
+    try:
+        asyncio.get_running_loop()
+        in_loop = True
+    except RuntimeError:
+        in_loop = False
+
+    if not in_loop:
+        return asyncio.run(async_coro)
+
+    # When already inside a running event loop (e.g., FastAPI request handlers),
+    # run the coroutine in a dedicated thread with its own loop to avoid
+    # "event loop already running" errors.
+    result: dict[str, object] = {}
+    error: dict[str, BaseException] = {}
+
+    def _runner():
+        try:
+            result["value"] = asyncio.run(async_coro)
+        except BaseException as exc:  # propagate exact exception type
+            error["error"] = exc
+
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    t.join()
+    if "error" in error:
+        raise error["error"]
+    return result.get("value")
 
 
 class LiteLLMChatWrapper(SimpleChatModel):

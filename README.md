@@ -58,7 +58,7 @@ Use the Settings UI (preferred) or the helper script to persist your Groq API ke
     - Ensure the stack is running (Gateway at http://127.0.0.1:21016)
     - Export your key and run the script:
         - `export GROQ_API_KEY=...`
-        - `python scripts/ops/seed_groq.py`
+        - Use the Settings UI (External → API Keys) to set provider keys. Seeding scripts are not supported.
     - Optional envs: `GROQ_MODEL` (default `llama-3.1-8b-instant`), `GROQ_BASE` (default `https://api.groq.com/openai`), `INTERNAL_TOKEN` (to run `/v1/llm/test`).
 
 Notes:

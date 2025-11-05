@@ -1,3 +1,91 @@
+# Canonical Roadmap
+
+## Vision & Principles
+- Centralize all LLM traffic through the Gateway; workers never hold provider secrets or override base URLs.
+- Settings UI is the single source of truth for runtime-tunable config; ENV only for non-centralizable/bootstrap items (and DEV fallback when no UI key exists).
+- Show all providers in UI; Groq is the default, but not special-cased in UX.
+- Secrets are stored server-side, encrypted at rest; UI never echoes secrets, only placeholders.
+- No seed scripts. All changes flow via the Settings UI save.
+
+## Architecture
+- Call path: UI → Gateway → Worker → Gateway `/v1/llm/invoke(/stream)` → Provider → stream to UI.
+- Control plane:
+  - UI settings: `GET|POST /v1/ui/settings/sections`
+  - Model profiles: stored in Gateway; normalized base URL defaults per provider.
+  - Credentials store: encrypted Redis-backed `LlmCredentialsStore`.
+- Admin/diagnostics:
+  - `/v1/llm/status`: snapshot of provider, model, creds, reachability, and any coercion applied.
+  - `/v1/llm/test`: minimal connectivity probe; optional authenticated upstream ping.
+
+## Settings & Credentials
+- Save: Single POST to `/v1/ui/settings/sections` persists all fields, including API keys in External → API Keys.
+- Masking: On GET, secrets return as placeholders; never echo raw values.
+- Multiple keys: API key fields support comma-separated values.
+- Precedence: UI value > DEV fallback > default. DEV fallback (e.g., `GROQ_API_KEY`) only applies if UI key is missing; disabled outside DEV.
+- Non-centralizable ENV: Keep sensitive bootstrap (e.g., `GATEWAY_ENC_KEY`, internal token, datastore URLs) in ENV only.
+
+## Providers & Models
+- UI dropdowns: show full provider lists for chat/util/browser (OpenAI, Groq, Azure, Mistral, DeepSeek, xAI, HuggingFace, LM Studio, Ollama, Other).
+- Default: Groq selected initially; user can choose any provider at a time (single-select).
+- Normalization: sensible defaults for base URLs; no OpenRouter-specific special cases; prevent cross-provider mismatch.
+- Model alias registry: UI label like “GPT‑OSS‑120B” mapped to exact provider model names (pass-through when no alias exists).
+
+## UI Parity & UX Enhancements
+- Toggles: persist “showThoughts/showJSON/showUtils”; restore Utilities bubble, Notifications modal, and visual diffs parity.
+- Settings modal: Make save hot-apply; ensure tabs include Constitution and Decisions; provide connectivity “Test” and “Status” feedback.
+- External → API Keys: show all `api_key_*` fields; allow editing many providers’ keys; mask on reload.
+
+## Memory (SomaBrain) Integration
+- Map remember/recall/context endpoints to Gateway; ensure Memory button surfaces recalled content across conversation stages.
+- Constitution endpoints exposed under Settings tabs; allow edits and hot-apply.
+- Ensure recall flows are optional AI-assisted (query prep/post-filter) with configurable thresholds.
+
+## LLM Centralization Details
+- Internal token gate for invoke/test; workers pass role/messages/limited kwargs only (no secrets/base_url).
+- Gateway resolves model profile, provider, base URL, and credentials on each call.
+- SSE streaming from Gateway to UI; attachments handled via Gateway endpoints only.
+
+## Security & AuthZ
+- Secrets at rest encrypted via `GATEWAY_ENC_KEY` (mandatory).
+- Admin scope or internal token required for `/v1/llm/status` and `/v1/llm/test`.
+- OPA (if enabled) guards settings updates; fail-closed on policy errors when configured.
+- Audit logs omit secret values; config_updates topic notifies workers on changes without exposing secrets.
+
+## Observability & Diagnostics
+- `/v1/llm/status`: include provider, model, base_url normalized, creds presence, reachability code, and coercion flags.
+- Metrics for llm test results by provider and auth mode.
+- Banner guidance in Settings if credentials missing or connectivity fails.
+
+## Migration & Rollout
+- Remove all seeding scripts and doc references; rely solely on Settings UI saves.
+- On first open after upgrade, show “Missing provider key” banner with quick link to External → API Keys.
+- Document ENV-only items, DEV fallback scope, and data precedence.
+- No downtime; hot-apply on save; broadcast via `config_updates`.
+
+## Validation & Tests
+- Unit: settings round-trip (masking), provider normalization, credential store encrypt/decrypt.
+- API: `/v1/ui/settings/sections` save/read, `/v1/llm/status`, `/v1/llm/test`.
+- E2E/Playwright: open Settings → choose provider/model → set API key(s) → Save → Test → send chat and verify streaming.
+- SSE reliability checks; attachment upload/download flows.
+
+## Decisions & Risks
+- Decision: UI shows all providers; Groq is default, not special in UX.
+- Decision: No seeders; Settings UI is the only save surface for provider secrets.
+- Risk: ENV fallbacks can drift; mitigated by DEV-only fallback and clear precedence docs.
+- Risk: Provider/model mismatch; mitigated by normalization and coercion with explicit status flags.
+
+## Milestones
+- M1: UI save accepts all fields; secrets masked; hot-apply; `/v1/llm/status` live.
+- M2: Full provider lists in dropdowns; Groq default; base URL normalization; alias registry.
+- M3: Memory UI parity with SomaBrain; Constitution/Decisions tabs wired.
+- M4: Observability metrics and Settings banners; E2E tests pass; no seeders left.
+
+## Acceptance Criteria
+- All Settings fields round-trip through `/v1/ui/settings/sections` in one save path.
+- External → API Keys displays all providers’ keys; supports multiple values and masks after save.
+- Streaming chat works immediately after save with chosen provider/model.
+- Status/Test endpoints reflect true state; no secrets leak in responses or logs.
+- No seed scripts; docs align with UI-first credential management.
 <!-- Canonical roadmap for somaAgent01 — generated/updated 2025-10-30 by GitHub Copilot -->
 # SomaAgent01 Canonical Roadmap (Canonical)
 

@@ -99,6 +99,35 @@ from services.common.idempotency import generate_for_memory_payload
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.slm_client import SLMClient, ChatMessage
+from services.common.dlq_store import DLQStore
+from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
+from services.common.logging_config import setup_logging
+from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
+from services.common.attachments_store import AttachmentsStore
+from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
+from services.common.memory_write_outbox import MemoryWriteOutbox
+from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
+from services.common.model_profiles import ModelProfile, ModelProfileStore
+from services.common.tool_catalog import ToolCatalogStore, ToolCatalogEntry
+from services.common.ui_settings_store import UiSettingsStore
+from services.common.ui_settings_store import UiSettingsStore
+from services.common.openfga_client import OpenFGAClient
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
+from services.common.llm_credentials_store import LlmCredentialsStore
+from services.common.publisher import DurablePublisher
+from services.common.requeue_store import RequeueStore
+from services.common.schema_validator import validate_event
+from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
+from services.common.settings_sa01 import SA01Settings
+from services.common.telemetry_store import TelemetryStore
+from services.common.tracing import setup_tracing
+from services.common.vault_secrets import load_kv_secret
+from services.common.idempotency import generate_for_memory_payload
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common.memory_write_outbox import MemoryWriteOutbox
+from services.common.slm_client import SLMClient, ChatMessage
 
 # Import PyJWT properly - no fallbacks or shims allowed in production
 try:
@@ -1136,17 +1165,7 @@ async def start_background_services() -> None:
         except Exception:
             LOGGER.debug("Failed to start export jobs runner", exc_info=True)
 
-    # Ensure UI settings schema exists (best-effort)
-    try:
-        await get_ui_settings_store().ensure_schema()
-    except Exception:
-        LOGGER.debug("UI settings schema ensure failed", exc_info=True)
-
-    # Ensure UI settings schema exists (best-effort)
-    try:
-        await get_ui_settings_store().ensure_schema()
-    except Exception:
-        LOGGER.debug("UI settings schema ensure failed", exc_info=True)
+    # UI settings schema is ensured earlier during startup
 
     # Load runtime overlays for uploads/antivirus from stored UI settings
     try:
@@ -1177,37 +1196,7 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Attachments store schema ensure failed", exc_info=True)
 
-    # Ensure audit schema exists (best-effort)
-    try:
-        await get_audit_store().ensure_schema()
-    except Exception:
-        LOGGER.debug("Audit store schema ensure failed", exc_info=True)
-
-    # Ensure session schema exists so SSE can function even before worker runs
-    try:
-        await ensure_session_schema(get_session_store())
-    except Exception:
-        LOGGER.debug("Session schema ensure failed", exc_info=True)
-
-    # Warn on legacy/deprecated env-based LLM configuration that is now ignored.
-    try:
-        legacy_env = [
-            "OPENAI_API_KEY",
-            "GROQ_API_KEY",
-            "OPENROUTER_API_KEY",
-            "SLM_API_KEY",
-            "SLM_BASE_URL",
-            "SLM_MODEL",
-            "SLM_TEMPERATURE",
-        ]
-        found = [k for k in legacy_env if os.getenv(k)]
-        if found:
-            LOGGER.warning(
-                "Deprecated env vars detected and ignored for LLM config; use /v1/llm/credentials and UI Settings",
-                extra={"env": found},
-            )
-    except Exception:
-        LOGGER.debug("Env deprecation warning failed", exc_info=True)
+    # Ensure UI settings schema exists (best-effort)
 
 
 # ---------------------------------------------------------------------------
@@ -1276,6 +1265,10 @@ async def ui_policy_overview(request: Request) -> HTMLResponse:
 # port (default 8000) and exposes the default prometheus_client metrics.
 @app.on_event("startup")
 def _start_metrics_server() -> None:
+    # Skip in pytest to avoid port binding and background tasks
+    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {"1", "true", "yes", "on"}:
+        LOGGER.debug("Test mode: skipping metrics server startup and aux services")
+        return
     port = int(os.getenv("GATEWAY_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
     host = os.getenv("GATEWAY_METRICS_HOST", APP_SETTINGS.metrics_host)
     start_http_server(port, addr=host)
@@ -2740,8 +2733,6 @@ JWKS_TIMEOUT_SECONDS = float(os.getenv("GATEWAY_JWKS_TIMEOUT_SECONDS", "3"))
 
 JWKS_CACHE: dict[str, tuple[list[dict[str, Any]], float]] = {}
 
-CAPSULE_REGISTRY_URL = os.getenv("CAPSULE_REGISTRY_URL", "http://localhost:8000")
-CAPSULE_REGISTRY_TIMEOUT = float(os.getenv("CAPSULE_REGISTRY_TIMEOUT_SECONDS", "10"))
 
 _OPENAPI_CACHE: dict[str, Any] | None = None
 _OPENFGA_CLIENT: OpenFGAClient | None = None
@@ -4890,80 +4881,7 @@ async def workdir_download(path: str) -> FileResponse:
     return FileResponse(str(target), filename=target.name)
 
 
-def _capsule_registry_url(path: str) -> str:
-    base = CAPSULE_REGISTRY_URL.rstrip("/")
-    if not path.startswith("/"):
-        path = f"/{path}"
-    return f"{base}{path}"
 
-
-@app.get("/v1/capsules")
-async def proxy_list_capsules() -> JSONResponse:
-    url = _capsule_registry_url("/capsules")
-    try:
-        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
-    return JSONResponse(response.json())
-
-
-@app.post("/v1/capsules/{capsule_id}/install")
-async def proxy_install_capsule(capsule_id: str) -> JSONResponse:
-    url = _capsule_registry_url(f"/capsules/{capsule_id}/install")
-    try:
-        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
-            response = await client.post(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
-    return JSONResponse(response.json())
-
-
-@app.get("/v1/capsules/{capsule_id}")
-async def proxy_download_capsule(capsule_id: str) -> Response:
-    url = _capsule_registry_url(f"/capsules/{capsule_id}")
-    try:
-        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
-
-    headers: dict[str, str] = {}
-    disposition = response.headers.get("content-disposition")
-    if disposition:
-        headers["Content-Disposition"] = disposition
-
-    media_type = response.headers.get("content-type", "application/octet-stream")
-    return Response(content=response.content, media_type=media_type, headers=headers)
-
-
-app.add_api_route(
-    "/capsules",
-    proxy_list_capsules,
-    methods=["GET"],
-    include_in_schema=False,
-)
-app.add_api_route(
-    "/capsules/{capsule_id}",
-    proxy_download_capsule,
-    methods=["GET"],
-    include_in_schema=False,
-)
-app.add_api_route(
-    "/capsules/{capsule_id}/install",
-    proxy_install_capsule,
-    methods=["POST"],
-    include_in_schema=False,
-)
 
 
 # -----------------------------
@@ -5174,6 +5092,10 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
 
 @app.on_event("startup")
 async def _start_uploads_janitor() -> None:
+    # Skip background janitor in pytest
+    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {"1", "true", "yes", "on"}:
+        LOGGER.debug("Test mode: skipping uploads janitor startup")
+        return
     try:
         app.state._uploads_stop = asyncio.Event()
         asyncio.create_task(_uploads_janitor(app.state._uploads_stop))
@@ -6233,20 +6155,7 @@ def _normalize_llm_base_url(raw: str) -> str:
             path = path.rstrip("/")
         # Provider-specific normalization fixes
         host_lower = (netloc or "").lower()
-        # OpenRouter: prefer /api over /openai for OpenAI-compatible endpoint
-        # Accept inputs like https://openrouter.ai/openai, /openai/v1, etc.
-        if "openrouter.ai" in host_lower:
-            # Replace a terminal '/openai' segment with '/api'
-            if path.endswith("/openai"):
-                path = path[: -len("/openai")] + "/api"
-            # Also handle accidental nested '/openai/...'
-            # Only replace the first path segment if it is exactly 'openai'
-            elif path.split("/")[-1] == "openai":
-                path = "/".join(path.split("/")[:-1] + ["api"])
-            # If someone specified '/openai/v1' and we already stripped '/v1' above,
-            # the remaining segment may still be '/openai'. Ensure it's '/api'.
-            if path.endswith("/openai"):
-                path = path[: -len("/openai")] + "/api"
+        # No provider-specific normalization other than Groq path handled elsewhere
         # Enforce https in non-DEV when scheme is present
         deployment = APP_SETTINGS.deployment_mode.upper()
         if scheme and deployment != "DEV" and scheme != "https":
@@ -6274,8 +6183,6 @@ def _detect_provider_from_base(base_url: str) -> str:
         host = base_url.lower()
     if "groq" in host:
         return "groq"
-    if "openrouter" in host:
-        return "openrouter"
     if "openai" in host:
         return "openai"
     return "other"
@@ -6291,14 +6198,10 @@ def _default_base_url_for_provider(provider: str) -> str | None:
     mapping = {
         "groq": "https://api.groq.com/openai/v1",
         "openai": "https://api.openai.com/v1",
-        "openrouter": "https://openrouter.ai/api/v1",
-        "venice": "https://api.venice.ai/api/v1",
-        "a0_venice": "https://api.agent-zero.ai/venice/v1",
-        "mistral": "https://api.mistral.ai/v1",
         # Azure OpenAI requires per-tenant endpoint; leave as None to force explicit config
         "azure": None,
         "xai": "https://api.x.ai/v1",
-        "google": None,  # non OpenAI-compatible by default in our stack
+        "google": None,
         "huggingface": None,
         "lm_studio": "http://localhost:1234/v1",
         "ollama": "http://localhost:11434/v1",
@@ -6425,8 +6328,6 @@ async def ui_sections_get() -> dict[str, Any]:
             host = (profile.base_url or "").lower()
             if "groq" in host:
                 provider = "groq"
-            elif "openrouter" in host:
-                provider = "openrouter"
             for sec in sections:
                 for fld in sec.get("fields", []):
                     fid = fld.get("id")
@@ -6670,12 +6571,17 @@ async def ui_sections_set(
                     except Exception:
                         pass
             elif fid.startswith("api_key_") and isinstance(val, str) and val:
-                # Centralized credentials policy: reject secrets posted via UI sections.
-                # Clients must use POST /v1/llm/credentials to persist provider API keys.
-                raise HTTPException(
-                    status_code=400,
-                    detail="provider secrets must be saved via /v1/llm/credentials; api_key_* fields are not accepted",
-                )
+                # Allow saving credentials via Settings UI for any provider.
+                # Persist only when the value is not a placeholder.
+                try:
+                    placeholder = {"************", "****PSWD****"}
+                    if val.strip() in placeholder:
+                        continue
+                    prov = fid[len("api_key_"):].strip().lower()
+                    if prov:
+                        creds.append((prov, val.strip()))
+                except Exception:
+                    pass
             # Uploads config fields
             elif fid in {
                 "uploads_enabled",
@@ -6901,8 +6807,22 @@ async def ui_sections_set(
         )
         await PROFILE_STORE.upsert(mp)
 
-    # Store provider credentials
-    # Deprecated: credentials are no longer accepted via settings sections. Use /v1/llm/credentials instead.
+    # Store provider credentials captured from sections (all providers)
+    if creds:
+        try:
+            store = get_llm_credentials_store()
+            for prov, secret in creds:
+                try:
+                    await store.set(prov, secret)
+                    # Broadcast config update for each stored credential
+                    try:
+                        await publisher.publish("config_updates", {"type": "llm.credentials.updated", "provider": prov})
+                    except Exception:
+                        LOGGER.debug("Failed to publish config update (llm credentials)", exc_info=True)
+                except Exception:
+                    LOGGER.debug("Failed to persist LLM credential via settings save", exc_info=True)
+        except Exception:
+            LOGGER.debug("Credentials store unavailable during settings save", exc_info=True)
 
     # -----------------------------
     # Hot-apply overlays for Uploads/Antivirus/Speech so changes take effect immediately
@@ -7590,7 +7510,9 @@ def _coerce_model_for_provider(provider: str, model: str) -> tuple[str, bool]:
         changed = False
         if p == "groq":
             # Groq expects OpenAI-compatible schema with Groq-supported model names (no vendor prefixes)
-            if not ml or "/" in ml or ml.startswith("openai/") or ml.startswith("openrouter/"):
+            # Allow explicit Groq-supported OpenAI-style OSS aliases
+            _allow_set = {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}
+            if not ml or ("/" in ml or ml.startswith("openai/") or ml.startswith("openrouter/")) and (ml not in _allow_set):
                 m = "llama-3.1-8b-instant"
                 changed = True
         elif p == "openai":
@@ -7607,6 +7529,35 @@ def _coerce_model_for_provider(provider: str, model: str) -> tuple[str, bool]:
                 m = "openai/gpt-4o-mini"
                 changed = True
         return m, changed
+    except Exception:
+        return model, False
+
+
+def _resolve_model_alias(model: str) -> tuple[str, bool]:
+    """Map friendly UI aliases to provider-specific model IDs.
+
+    Returns (resolved_model, changed_flag). Case-insensitive match; tolerates
+    unicode hyphen variants in alias names.
+    """
+    try:
+        if not model:
+            return model, False
+        # Normalize hyphen-like characters and lowercase for matching
+        alias_key = (
+            model.replace("–", "-").replace("—", "-").replace("‑", "-")  # en/em/non-breaking hyphens
+            .strip()
+            .lower()
+        )
+        # Minimal alias registry aligned with roadmap/UI labels
+        alias_map = {
+            "gpt-oss-120b": "openai/gpt-oss-120b",
+            "gpt oss 120b": "openai/gpt-oss-120b",
+            "gpt-oss-20b": "openai/gpt-oss-20b",
+            "gpt oss 20b": "openai/gpt-oss-20b",
+        }
+        if alias_key in alias_map:
+            return alias_map[alias_key], True
+        return model, False
     except Exception:
         return model, False
 
@@ -7765,8 +7716,12 @@ async def llm_status(request: Request, role: str = Query("dialogue", pattern="^(
     except Exception:
         creds_present = False
 
-    # Coercion
-    coerced_model, changed = _coerce_model_for_provider(provider, profile.model or "")
+    # Alias resolution then coercion
+    _orig_model = profile.model or ""
+    _alias_resolved, _alias_changed = _resolve_model_alias(_orig_model)
+    _coerced_after_alias, _coerce_changed = _coerce_model_for_provider(provider, _alias_resolved)
+    coerced_model = _coerced_after_alias
+    changed = bool(_alias_changed or _coerce_changed) and (_orig_model.strip() != (coerced_model or "").strip())
 
     # Reachability
     reachable = False
@@ -8080,6 +8035,11 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         except Exception:
             provider_hint = None
         provider = provider_hint or _detect_provider_from_base(base_url)
+        # Resolve model aliases (e.g., GPT-OSS-120B) before provider-specific coercion
+        try:
+            model, _alias_changed = _resolve_model_alias(model)
+        except Exception:
+            _alias_changed = False
         # Coerce model if it obviously mismatches the provider to avoid upstream 401/404
         try:
             model, _model_coerced = _coerce_model_for_provider(provider, model)
@@ -8503,6 +8463,11 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         except Exception:
             provider_hint = None
         provider = provider_hint or _detect_provider_from_base(base_url)
+        # Resolve model aliases (e.g., GPT-OSS-120B) before provider-specific coercion
+        try:
+            model, _alias_changed = _resolve_model_alias(model)
+        except Exception:
+            _alias_changed = False
         # Coerce model if it obviously mismatches the provider to avoid upstream 401/404
         try:
             model, _model_coerced = _coerce_model_for_provider(provider, model)
