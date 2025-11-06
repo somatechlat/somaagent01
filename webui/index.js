@@ -536,8 +536,12 @@ function connectEventStream(sessionId) {
       if (myToken !== streamToken) return; // discard stale events from previous streams
       try {
         const payload = JSON.parse(evt.data);
-        const t = payload.type || "";
-        const role = payload.role || "";
+        const t = String(payload.type || "");
+        const roleRaw = payload.role || "";
+        const tLower = t.toLowerCase();
+        // Normalize role by preferring payload.role, otherwise derive from type prefix
+        const role = String(roleRaw || (tLower.split(':')[0] || ""));
+        const roleLower = role.toLowerCase();
         const evId = payload.event_id || payload.id || null;
 
         // If we've already processed this exact event id (final/tool), skip it
@@ -561,7 +565,7 @@ function connectEventStream(sessionId) {
           setThinking(`Uploading ${file} (${bytes} bytes)…`);
           // Update per-attachment progress bar if available
           try { attachmentsStore.updateUploadProgress(meta); } catch(_e) {}
-        } else if ((role === "assistant" || t.startsWith("assistant")) && !(payload.done || /completed|final/i.test(t))) {
+        } else if ((roleLower === "assistant" || tLower.startsWith("assistant")) && !(payload.done || /completed|final/i.test(t))) {
           // For any non-final assistant activity, ensure thinking shows
           setThinking("Assistant is thinking…");
           showThinkingBubble();
@@ -572,7 +576,7 @@ function connectEventStream(sessionId) {
           ? payload.message
           : (typeof payload.content === 'string' ? payload.content : "");
         // Assistant streaming: accumulate deltas into a single UI message
-        if (role === "assistant" || t.startsWith("assistant")) {
+        if (roleLower === "assistant" || tLower.startsWith("assistant")) {
           // Determine if this is a final/completed event
           const isFinal = !!(payload.done || (payload.metadata && (payload.metadata.final || payload.metadata.completed)) || /completed|final/i.test(t));
           if (!currentAssistantMsgId) currentAssistantMsgId = payload.event_id || generateGUID();
@@ -646,7 +650,7 @@ function connectEventStream(sessionId) {
         }
 
         // Optionally render tool outputs
-        if (role === "tool" || t.startsWith("tool")) {
+        if (roleLower === "tool" || tLower.startsWith("tool")) {
           // Suppress echo tool outputs from UI; keep others for diagnostics
           try {
             const meta = payload.metadata || {};
@@ -664,7 +668,7 @@ function connectEventStream(sessionId) {
         }
 
         // Utility messages (hidden when Show utility messages is off)
-        if (role === "util" || t.startsWith("util")) {
+        if (roleLower === "util" || tLower.startsWith("util")) {
           // Special-case: settings saved broadcast from Gateway
           try {
             const evType = String(payload.type || "").toLowerCase();

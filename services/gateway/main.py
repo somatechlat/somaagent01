@@ -4024,7 +4024,7 @@ async def list_sessions_endpoint(
                 "role": "assistant",
                 "type": "assistant.final",
                 "message": "Hello and welcome to SomaAgent01. Please let me know how I may be of service.",
-                "metadata": {"subject": "New chat"},
+                "metadata": {"subject": "New chat", "done": True},
             }
             await store.append_event(sid, welcome_event)
             # re-list after seeding
@@ -8530,6 +8530,25 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
     start = time.time()
 
     async def streamer():
+        """Stream provider chunks as canonical assistant.delta / assistant.final events.
+
+        Canonical mode (default):
+          - Each upstream content token -> assistant.delta (message=delta content)
+          - Accumulate full content; emit single assistant.final with metadata.done=true
+          - Errors -> assistant.error with metadata.error
+        OpenAI compatibility mode (env GATEWAY_LLM_STREAM_MODE=openai OR ?mode=openai):
+          - Re-emit raw upstream OpenAI-style chunks unchanged + final [DONE]
+        """
+        mode = os.getenv("GATEWAY_LLM_STREAM_MODE", "canonical").lower()
+        try:
+            qp_mode = request.query_params.get("mode")
+            if qp_mode:
+                mode = qp_mode.lower()
+        except Exception:
+            pass
+        canonical = mode != "openai"
+        buffer: list[str] = []
+        import json as _json
         try:
             try:
                 async for chunk in client.chat_stream(
@@ -8540,37 +8559,90 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                     temperature=temperature,
                     **{k: v for k, v in meta.items() if not k.startswith("_")},
                 ):
-                    # Re-emit upstream chunk as OpenAI-style SSE data line
-                    import json as _json
+                    if not canonical:
+                        # Legacy passthrough
+                        try:
+                            _choices = chunk.get("choices") if isinstance(chunk, dict) else None
+                            if _choices and isinstance(_choices, list) and _choices:
+                                _delta = (_choices[0] or {}).get("delta", {})
+                                _has_content = bool(_delta.get("content"))
+                                _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(_delta.get("tool_calls"))
+                                LOGGER.debug(
+                                    "LLM stream chunk (legacy)",
+                                    extra={
+                                        "model": model,
+                                        "has_content": _has_content,
+                                        "has_tool_calls": _has_tool_calls,
+                                        "finish_reason": (_choices[0] or {}).get("finish_reason"),
+                                    },
+                                )
+                        except Exception:
+                            pass
+                        line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
+                        yield line.encode("utf-8")
+                        continue
+
+                    # Canonical transformation
                     try:
-                        # Best-effort debug trace for streaming shape issues
                         _choices = chunk.get("choices") if isinstance(chunk, dict) else None
-                        if _choices and isinstance(_choices, list) and _choices:
-                            _delta = (_choices[0] or {}).get("delta", {})
-                            _has_content = bool(_delta.get("content"))
-                            _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(_delta.get("tool_calls"))
-                            LOGGER.debug(
-                                "LLM stream chunk",
-                                extra={
+                        if not _choices or not isinstance(_choices, list) or not _choices:
+                            # Ignore non-choice fragments
+                            continue
+                        primary = (_choices[0] or {})
+                        delta = primary.get("delta", {}) if isinstance(primary.get("delta"), dict) else {}
+                        content_piece = str(delta.get("content") or "")
+                        finish_reason = primary.get("finish_reason")
+                        tool_calls = delta.get("tool_calls") if isinstance(delta.get("tool_calls"), list) else None
+                        if content_piece:
+                            buffer.append(content_piece)
+                            event_delta = {
+                                "event_id": str(uuid.uuid4()),
+                                "session_id": payload.session_id,
+                                "persona_id": payload.persona_id,
+                                "role": "assistant",
+                                "message": content_piece,
+                                "metadata": {
+                                    "source": "gateway.llm_stream",
+                                    "provider": meta.get("_provider"),
                                     "model": model,
-                                    "has_content": _has_content,
-                                    "has_tool_calls": _has_tool_calls,
-                                    "finish_reason": (_choices[0] or {}).get("finish_reason"),
+                                    "done": False,
                                 },
-                            )
-                        else:
-                            LOGGER.debug("LLM stream non-choice chunk", extra={"model": model, "keys": list(chunk.keys()) if isinstance(chunk, dict) else type(chunk).__name__})
+                                "version": "sa01-v1",
+                                "type": "assistant.delta",
+                            }
+                            if tool_calls:
+                                event_delta["metadata"]["tool_calls"] = tool_calls
+                            yield ("data: " + _json.dumps(event_delta, ensure_ascii=False) + "\n\n").encode("utf-8")
+                        # If finish_reason appears before [DONE] sentinel, we'll emit final after loop end
+                        if finish_reason:
+                            LOGGER.debug("Finish reason observed", extra={"finish_reason": finish_reason, "model": model})
                     except Exception:
-                        pass
-                    line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
-                    yield line.encode("utf-8")
+                        LOGGER.debug("Failed to transform provider chunk", exc_info=True)
+                        continue
             except ValueError as exc:
-                msg = "data: " + "{\"error\": \"debug:stream " + str(exc).replace("\n", " ") + "\"}" + "\n\n"
-                yield msg.encode("utf-8")
+                if canonical:
+                    err_event = {
+                        "event_id": str(uuid.uuid4()),
+                        "session_id": payload.session_id,
+                        "persona_id": payload.persona_id,
+                        "role": "assistant",
+                        "message": "",
+                        "metadata": {
+                            "source": "gateway.llm_stream",
+                            "provider": meta.get("_provider"),
+                            "model": model,
+                            "error": "debug:stream " + str(exc).replace("\n", " "),
+                        },
+                        "version": "sa01-v1",
+                        "type": "assistant.error",
+                    }
+                    yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+                else:
+                    msg = "data: " + "{\"error\": \"debug:stream " + str(exc).replace("\n", " ") + "\"}" + "\n\n"
+                    yield msg.encode("utf-8")
                 return
         except httpx.HTTPStatusError as exc:
             detail = f"provider_error: {exc}"
-            # Audit error
             try:
                 status = exc.response.status_code if exc.response is not None else 502
                 await get_audit_store().log(
@@ -8596,13 +8668,30 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 )
             except Exception:
                 LOGGER.debug("Failed to write audit log for llm.invoke.stream error", exc_info=True)
-            # Metrics
             try:
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "error").inc()
             except Exception:
                 pass
-            msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
-            yield msg.encode("utf-8")
+            if canonical:
+                err_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "role": "assistant",
+                    "message": "",
+                    "metadata": {
+                        "source": "gateway.llm_stream",
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "error": detail.replace("\n", " "),
+                    },
+                    "version": "sa01-v1",
+                    "type": "assistant.error",
+                }
+                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+            else:
+                msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
+                yield msg.encode("utf-8")
         except httpx.RequestError as exc:
             detail = f"provider_timeout: {exc}"
             try:
@@ -8628,20 +8717,35 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 )
             except Exception:
                 LOGGER.debug("Failed to write audit log for llm.invoke.stream timeout", exc_info=True)
-            # Metrics
             try:
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "timeout").inc()
             except Exception:
                 pass
-            msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
-            yield msg.encode("utf-8")
+            if canonical:
+                err_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "role": "assistant",
+                    "message": "",
+                    "metadata": {
+                        "source": "gateway.llm_stream",
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "error": detail.replace("\n", " "),
+                    },
+                    "version": "sa01-v1",
+                    "type": "assistant.error",
+                }
+                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+            else:
+                msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
+                yield msg.encode("utf-8")
         finally:
-            # Close client and send [DONE]
             try:
                 await client.close()
             except Exception:
                 pass
-            # Success audit at end of stream
             try:
                 elapsed = max(0.0, time.time() - start)
                 await get_audit_store().log(
@@ -8666,12 +8770,32 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 )
             except Exception:
                 LOGGER.debug("Failed to write audit log for llm.invoke.stream", exc_info=True)
-            # Metrics success
             try:
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "ok").inc()
             except Exception:
                 pass
-            yield b"data: [DONE]\n\n"
+            if canonical:
+                # Emit final event with full content (even if empty)
+                final_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "role": "assistant",
+                    "message": "".join(buffer),
+                    "metadata": {
+                        "source": "gateway.llm_stream",
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "done": True,
+                    },
+                    "version": "sa01-v1",
+                    "type": "assistant.final",
+                }
+                yield ("data: " + _json.dumps(final_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+                # Preserve sentinel for any generic SSE client
+                yield b"data: [DONE]\n\n"
+            else:
+                yield b"data: [DONE]\n\n"
 
     headers = {"Content-Type": "text/event-stream"}
     try:
