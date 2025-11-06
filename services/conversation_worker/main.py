@@ -110,12 +110,22 @@ def ensure_metrics_server() -> None:
         _METRICS_SERVER_STARTED = True
         return
     metrics_host = os.getenv("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
-    start_http_server(metrics_port, addr=metrics_host)
-    LOGGER.info(
-        "Conversation worker metrics server started",
-        extra={"host": metrics_host, "port": metrics_port},
-    )
-    _METRICS_SERVER_STARTED = True
+    try:
+        start_http_server(metrics_port, addr=metrics_host)
+        LOGGER.info(
+            "Conversation worker metrics server started",
+            extra={"host": metrics_host, "port": metrics_port},
+        )
+    except OSError as exc:
+        # In test environments multiple workers may attempt to bind the same
+        # port; treat address-in-use as non-fatal and continue without metrics.
+        LOGGER.warning(
+            "Metrics server unavailable; continuing without exporter",
+            extra={"host": metrics_host, "port": metrics_port, "error": str(exc)},
+        )
+    finally:
+        # Mark as started to avoid retry storms during tests
+        _METRICS_SERVER_STARTED = True
 
 
 @dataclass

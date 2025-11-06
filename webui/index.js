@@ -59,7 +59,8 @@ let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 // Persisted UI header preferences (defaults aligned with golden UI)
-let uiPrefs = { show_thoughts: true, show_json: false, show_utils: false };
+// Golden UI defaults: Thoughts OFF, JSON ON, Utilities ON
+let uiPrefs = { show_thoughts: false, show_json: true, show_utils: true };
 // Guard to avoid persisting during initial bootstrapping of preferences
 let initializingUiPrefs = false;
 // Debounce timer for preference saves to avoid rapid flapping and race conditions
@@ -215,10 +216,10 @@ export async function sendMessage() {
       if (!context || context !== json.session_id) {
         setContext(json.session_id);
       }
-      // Connect SSE for newly persisted sessions (if not already)
+      // Connect SSE for newly persisted sessions (if not already). Avoid immediate
+      // history load to prevent duplicating the optimistic user bubble; history will
+      // be loaded on context switch or page reload.
       try { connectEventStream(json.session_id); } catch(_e) {}
-      // Load history so the first user message remains visible in the merged timeline
-      try { await loadAndRenderSessionHistory(json.session_id); } catch(_e) {}
       // Ensure sidebar reflects the new chat
       try {
         const chatsAD = globalThis.Alpine ? Alpine.$data(chatsSection) : null;
@@ -323,26 +324,58 @@ globalThis.loadKnowledge = async function () {
 
   input.onchange = async () => {
     try {
+      const sid = getContext() || "";
+      const files = Array.from(input.files || []);
+      if (files.length === 0) return;
+
+      // 1) Upload via canonical endpoint
       const formData = new FormData();
-      for (let file of input.files) {
-        formData.append("files[]", file);
+      for (const file of files) {
+        formData.append("files", file);
       }
+      if (sid) formData.append("session_id", sid);
 
-      formData.append("ctxid", getContext());
-
-      const response = await api.fetchApi("/import_knowledge", {
+      const uploadResp = await api.fetchApi("/uploads", {
         method: "POST",
         body: formData,
       });
+      if (!uploadResp.ok) throw new Error(await uploadResp.text());
+      const descriptors = await uploadResp.json();
+      const list = Array.isArray(descriptors) ? descriptors : [];
+      if (list.length === 0) {
+        toast("No files uploaded", "warning");
+        return;
+      }
 
-      if (!response.ok) {
-        toast(await response.text(), "error");
-      } else {
-        const data = await response.json();
-        toast(
-          "Knowledge files imported: " + data.filenames.join(", "),
-          "success"
-        );
+      // 2) Trigger ingestion tool per attachment
+      const ingested = [];
+      const failures = [];
+      for (const d of list) {
+        const attId = d && (d.id || d.attachment_id);
+        if (!attId) continue;
+        try {
+          const req = await api.fetchApi("/tool/request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: sid || (d.session_id || ""),
+              tool_name: "document_ingest",
+              args: { attachment_id: String(attId), metadata: { tenant: d.tenant } },
+              metadata: {},
+            }),
+          });
+          if (!req.ok) throw new Error(await req.text());
+          ingested.push(d.filename || d.path || attId);
+        } catch (err) {
+          failures.push((d && (d.filename || d.path)) || String(attId));
+        }
+      }
+
+      if (ingested.length > 0) {
+        toast(`Queued ingestion for: ${ingested.join(", ")}`, "success");
+      }
+      if (failures.length > 0) {
+        toast(`Failed to queue: ${failures.join(", ")}` , "warning");
       }
     } catch (e) {
       toastFetchError("Error loading knowledge", e);
@@ -403,6 +436,7 @@ function setConnectionStatus(connected) {
 
 let lastSpokenNo = 0;
 let eventSource = null;
+let currentEventSessionId = null; // Track which session the current SSE is bound to
 let currentAssistantMsgId = null;
 let currentAssistantBuffer = "";
 let lastAssistantSeenText = ""; // used to prevent duplicated fragments during streaming
@@ -469,9 +503,15 @@ async function poll() { /* no-op (SSE-only) */ }
 // SSE-only stream (replaces legacy polling)
 function connectEventStream(sessionId) {
   try {
-    // Always rotate the token on any new connection attempt
-    rotateStreamToken();
-    // Close any existing source before opening a new one
+    // If already connected to this session and stream is open, keep the stream/token
+    if (eventSource && currentEventSessionId === sessionId && eventSource.readyState === 1) {
+      return;
+    }
+    // If switching sessions, rotate token to drop stale streaming state
+    if (currentEventSessionId !== sessionId) {
+      rotateStreamToken();
+    }
+    // Close any existing source before opening a new one (same session reconnects will preserve token)
     if (eventSource) {
       try { eventSource.close(); } catch (e) {}
       eventSource = null;
@@ -480,6 +520,7 @@ function connectEventStream(sessionId) {
     const url = `/v1/session/${encodeURIComponent(sessionId)}/events`;
     const es = new EventSource(url);
     eventSource = es;
+    currentEventSessionId = sessionId;
     const myToken = streamToken;
     es.onopen = () => {
       if (myToken !== streamToken) return; // stale
@@ -1385,9 +1426,9 @@ async function initUiPreferences() {
       const prefs = await resp.json();
       // Update local cache with defaults for missing keys
       uiPrefs = {
-        show_thoughts: typeof prefs.show_thoughts === 'boolean' ? prefs.show_thoughts : true,
-        show_json: typeof prefs.show_json === 'boolean' ? prefs.show_json : false,
-        show_utils: typeof prefs.show_utils === 'boolean' ? prefs.show_utils : false,
+        show_thoughts: typeof prefs.show_thoughts === 'boolean' ? prefs.show_thoughts : false,
+        show_json: typeof prefs.show_json === 'boolean' ? prefs.show_json : true,
+        show_utils: typeof prefs.show_utils === 'boolean' ? prefs.show_utils : true,
       };
     }
   } catch(_e) {
@@ -1437,6 +1478,8 @@ async function initUiPreferences() {
 }
 
 async function saveUiPreferences() {
+  // Avoid persisting while initializing from server/defaults to prevent flapping
+  if (initializingUiPrefs) return;
   try {
     await api.fetchApi('/ui/preferences', {
       method: 'PUT',
