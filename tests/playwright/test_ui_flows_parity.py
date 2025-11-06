@@ -188,7 +188,7 @@ async def main():
     out["local"] = await run_flows(local)
 
     # Print compact summary for CI logs
-    print("PARITY SUMMARY:", out)
+    print("UI CHECK SUMMARY:", out)
 
     # If golden ran, compare critical booleans; otherwise just ensure local passed core flows
     def all_ok(d: dict):

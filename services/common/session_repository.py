@@ -11,6 +11,9 @@ from datetime import datetime
 from time import perf_counter
 from typing import Any, Optional
 from uuid import UUID
+import uuid
+from services.common import masking as _masking
+from services.common import error_classifier as _errclass
 
 import os
 import asyncpg
@@ -247,6 +250,48 @@ class PostgresSessionStore(SessionStore):
     async def append_event(self, session_id: str, event: dict[str, Any]) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
+            # Normalize error events before persistence
+            try:
+                if isinstance(event, dict) and event.get("type") == "error":
+                    # Promote to assistant.error unless role provided
+                    role = event.get("role") or "assistant"
+                    # Move details -> metadata.error and provide user-friendly message
+                    details = event.get("details") or event.get("message") or "Unexpected error"
+                    event = {
+                        "event_id": event.get("event_id") or str(uuid.uuid4()),
+                        "session_id": session_id,
+                        "persona_id": event.get("persona_id"),
+                        "role": role,
+                        "message": "An internal error occurred while processing your request.",
+                        "metadata": {"source": event.get("metadata", {}).get("source", "system"), "error": str(details)[:400]},
+                        "type": f"{role}.error" if role in {"assistant", "tool", "system"} else "assistant.error",
+                        "version": event.get("version", "sa01-v1"),
+                    }
+                    # Error classification (flag-driven)
+                    if os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {"true","1","yes","on"}:
+                        meta = event.get("metadata") or {}
+                        em = _errclass.classify(message=str(details))
+                        meta.update({
+                            "error_code": em.error_code,
+                            "retriable": em.retriable,
+                        })
+                        if em.retry_after is not None:
+                            meta["retry_after"] = em.retry_after
+                        event["metadata"] = meta
+            except Exception:
+                pass
+
+            # Optional masking (only for assistant/tool/system roles and user-visible message)
+            if os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {"true","1","yes","on"}:
+                try:
+                    masked_event, hits = _masking.mask_event_payload(event)
+                    if hits:
+                        meta = dict(masked_event.get("metadata") or {})
+                        meta.setdefault("mask_rules", hits)
+                        masked_event["metadata"] = meta
+                        event = masked_event
+                except Exception:
+                    pass
             envelope_payload = self._compose_envelope_payload(event)
             async with conn.transaction():
                 await conn.execute(
@@ -263,6 +308,88 @@ class PostgresSessionStore(SessionStore):
                         envelope_payload,
                         operation="append",
                     )
+
+    async def backfill_error_events(self) -> dict[str, int]:
+        """Convert legacy raw error rows to enriched '*.error' format and fill missing fields.
+
+        Returns a dict of counts for each update applied.
+        """
+        pool = await self._ensure_pool()
+        raw_to_enriched = 0
+        fill_missing_msg = 0
+        fill_missing_role = 0
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                # 1) Transform legacy payloads where type == 'error' into canonical '<role>.error'
+                res1 = await conn.execute(
+                    """
+                    UPDATE session_events
+                    SET payload = (
+                        payload
+                        || jsonb_build_object(
+                            'role', COALESCE(NULLIF(payload->>'role',''), 'assistant')
+                        )
+                        || jsonb_build_object(
+                            'type', CASE
+                                WHEN COALESCE(NULLIF(payload->>'role',''), 'assistant') IN ('assistant','tool','system')
+                                    THEN (COALESCE(NULLIF(payload->>'role',''), 'assistant') || '.error')
+                                ELSE 'assistant.error'
+                            END
+                        )
+                        || jsonb_build_object(
+                            'message', CASE
+                                WHEN COALESCE(payload->>'message','') = ''
+                                    THEN 'An internal error occurred while processing your request.'
+                                ELSE payload->>'message'
+                            END
+                        )
+                        || jsonb_build_object(
+                            'metadata', COALESCE(payload->'metadata', '{}'::jsonb)
+                                || jsonb_build_object('source', COALESCE(payload->'metadata'->>'source','system'))
+                                || jsonb_build_object('error', SUBSTRING(COALESCE(payload->>'details', payload->>'message', 'Unexpected error') FROM 1 FOR 400))
+                        )
+                    )
+                    WHERE payload->>'type' = 'error'
+                    """
+                )
+                try:
+                    raw_to_enriched = int(str(res1).split(" ")[-1])
+                except Exception:
+                    raw_to_enriched = 0
+
+                # 2) Ensure any '*.error' rows have a non-empty 'message'
+                res2 = await conn.execute(
+                    """
+                    UPDATE session_events
+                    SET payload = payload || jsonb_build_object('message', 'An internal error occurred while processing your request.')
+                    WHERE payload->>'type' LIKE '%.error'
+                      AND (NOT (payload ? 'message') OR COALESCE(payload->>'message','') = '')
+                    """
+                )
+                try:
+                    fill_missing_msg = int(str(res2).split(" ")[-1])
+                except Exception:
+                    fill_missing_msg = 0
+
+                # 3) Fill missing 'role' when type already encodes it as '<role>.error'
+                res3 = await conn.execute(
+                    """
+                    UPDATE session_events
+                    SET payload = payload || jsonb_build_object('role', split_part(payload->>'type', '.', 1))
+                    WHERE payload->>'type' LIKE '%.error'
+                      AND NOT (payload ? 'role')
+                    """
+                )
+                try:
+                    fill_missing_role = int(str(res3).split(" ")[-1])
+                except Exception:
+                    fill_missing_role = 0
+
+        return {
+            "raw_to_enriched": raw_to_enriched,
+            "fill_missing_msg": fill_missing_msg,
+            "fill_missing_role": fill_missing_role,
+        }
 
     async def list_events(self, session_id: str, limit: int = 100) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
@@ -673,6 +800,19 @@ EXECUTE FUNCTION session_envelopes_touch_updated_at();
 -- Uniqueness index to prevent duplicate event_ids per session (if present in payload)
 CREATE INDEX IF NOT EXISTS idx_session_events_event_id ON session_events ((payload->>'event_id'));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_session_events_session_event ON session_events (session_id, (payload->>'event_id')) WHERE (payload ? 'event_id');
+
+-- Prevent future raw error events (payload->>'type' = 'error') by adding a CHECK constraint.
+-- Add it only if missing and mark NOT VALID initially to avoid blocking on legacy rows.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_session_events_no_raw_error'
+    ) THEN
+        ALTER TABLE session_events
+            ADD CONSTRAINT chk_session_events_no_raw_error
+            CHECK (COALESCE(payload->>'type','') <> 'error') NOT VALID;
+    END IF;
+END$$;
 """
 
 
@@ -681,3 +821,27 @@ async def ensure_schema(store: PostgresSessionStore) -> None:
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
         LOGGER.info("Ensured session_events and session_envelopes tables exist")
+
+async def ensure_constraints(store: PostgresSessionStore) -> None:
+    """Ensure optional runtime constraints that can't be safely added pre-backfill.
+
+    - chk_session_events_no_raw_error: Disallow raw payload type 'error' rows.
+    """
+    pool = await store._ensure_pool()
+    async with pool.acquire() as conn:
+        # Add CHECK constraint if not exists (guarded via catalog lookup)
+        await conn.execute(
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'chk_session_events_no_raw_error'
+                ) THEN
+                    ALTER TABLE session_events
+                    ADD CONSTRAINT chk_session_events_no_raw_error
+                    CHECK (NOT ((payload ? 'type') AND (payload->>'type' = 'error')));
+                END IF;
+            END$$;
+            """
+        )
+        LOGGER.info("Ensured runtime constraints for session_events")

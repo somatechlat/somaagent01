@@ -575,6 +575,31 @@ function connectEventStream(sessionId) {
         const cumulative = (typeof payload.message === 'string' && payload.message.length > 0)
           ? payload.message
           : (typeof payload.content === 'string' ? payload.content : "");
+        // Tool events emitted as assistant.tool.* from backend – render progress separately
+        if (tLower.startsWith("assistant.tool.")) {
+          if (evId && processedEventIds.has(evId)) return;
+          const meta = payload.metadata || {};
+          let content = "";
+          if (tLower === "assistant.tool.started") {
+            content = `Tool calls started (${meta.tool_calls_count || 1})`;
+          } else if (tLower === "assistant.tool.delta") {
+            content = `Tool calls update (+${meta.tool_calls_delta || 0})`;
+          } else if (tLower === "assistant.tool.final") {
+            content = `Tool calls finished (total ${meta.tool_calls_total || 0})`;
+          }
+          if (content) {
+            const id = evId || generateGUID();
+            setMessage(id, "tool", "", content, false, meta);
+            processedEventIds.add(id);
+          }
+          // Maintain thinking indicator if tool activity ongoing
+          if (tLower !== "assistant.tool.final") {
+            setThinking("Running tools…");
+          } else {
+            setThinking("");
+          }
+          return;
+        }
         // Assistant streaming: accumulate deltas into a single UI message
         if (roleLower === "assistant" || tLower.startsWith("assistant")) {
           // Determine if this is a final/completed event
