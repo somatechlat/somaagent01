@@ -99,6 +99,11 @@ from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
+try:
+    # Pydantic v2 configuration helper; safe fallback if unavailable
+    from pydantic import ConfigDict  # type: ignore
+except Exception:  # pragma: no cover - fallback for environments without pydantic
+    ConfigDict = dict  # type: ignore
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -394,20 +399,53 @@ rate_limiters: dict[str, RateLimiter] = {}
 api_keys_round_robin: dict[str, int] = {}
 
 
-def get_api_key(service: str) -> str:
-    # get api key for the service
-    key = (
-        dotenv.get_dotenv_value(f"API_KEY_{service.upper()}")
-        or dotenv.get_dotenv_value(f"{service.upper()}_API_KEY")
-        or dotenv.get_dotenv_value(f"{service.upper()}_API_TOKEN")
-        or "None"
-    )
-    # if the key contains a comma, use round-robin
-    if "," in key:
-        api_keys = [k.strip() for k in key.split(",") if k.strip()]
-        api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
-        key = api_keys[api_keys_round_robin[service] % len(api_keys)]
-    return key
+def _get_provider_secret_sync(provider: str) -> str:
+    """Retrieve provider secret from the centralized LLM credentials store.
+
+    This replaces any environment-based lookups. Fails fast when credentials
+    are not configured to avoid silent misconfiguration.
+    """
+    provider = (provider or "").strip().lower()
+    if not provider:
+        return ""
+    try:
+        import asyncio
+        import threading
+        from services.common.llm_credentials_store import LlmCredentialsStore  # type: ignore
+
+        async def _fetch() -> str:
+            store = LlmCredentialsStore()
+            secret = await store.get(provider)
+            return secret or ""
+
+        # If we're NOT already in an event loop, use asyncio.run directly
+        try:
+            asyncio.get_running_loop()
+            in_loop = True
+        except RuntimeError:
+            in_loop = False
+
+        if not in_loop:
+            return asyncio.run(_fetch())
+
+        # If already inside an event loop, run in a dedicated thread
+        result: dict[str, str] = {}
+        error: dict[str, BaseException] = {}
+
+        def _runner():
+            try:
+                result["value"] = asyncio.run(_fetch())
+            except BaseException as exc:
+                error["error"] = exc
+
+        t = threading.Thread(target=_runner, daemon=True)
+        t.start()
+        t.join()
+        if "error" in error:
+            raise error["error"]
+        return result.get("value", "")
+    except Exception:
+        return ""
 
 
 def get_rate_limiter(
@@ -528,10 +566,12 @@ class LiteLLMChatWrapper(SimpleChatModel):
     provider: str
     kwargs: dict = {}
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"  # Allow extra attributes
-        validate_assignment = False  # Don't validate on assignment
+    # Pydantic v2 configuration (remove v1 Config to avoid conflicts)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="allow",
+        validate_assignment=False,
+    )
 
     def __init__(
         self,
@@ -540,10 +580,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
         model_config: Optional[ModelConfig] = None,
         **kwargs: Any,
     ):
-        model_value = f"{provider}/{model}"
-        super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
-        # Set A0 model config as instance attribute after parent init
+        # Initialize instance attributes
+        self.model_name = model
+        self.provider = provider
         self.a0_model_conf = model_config
+        self.kwargs = kwargs or {}
 
     @property
     def _llm_type(self) -> str:
@@ -1108,16 +1149,13 @@ def _get_litellm_chat(
     except Exception:
         pass
 
-    # use api key from kwargs or env
-    api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
-
-    # Production validation - no placeholder API keys allowed
-    if api_key in ("None", "NA", None, ""):
+    # Resolve API key from centralized credentials store (no env fallback)
+    api_key = kwargs.pop("api_key", None) or _get_provider_secret_sync(provider_name)
+    if not api_key:
         raise LLMNotConfiguredError(
-            f"Invalid API key '{api_key}' for provider '{provider_name}'. Configure proper API key."
+            f"Missing API key for provider '{provider_name}'. Save it in Settings → API Keys."
         )
-    if api_key:
-        kwargs["api_key"] = api_key
+    kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
     return cls(provider=provider_name, model=model_name, model_config=model_config, **kwargs)
@@ -1140,16 +1178,13 @@ def _get_litellm_embedding(
             **kwargs,
         )
 
-    # use api key from kwargs or env
-    api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
-
-    # Production validation - no placeholder API keys allowed
-    if api_key in ("None", "NA", None, ""):
+    # Resolve API key from centralized credentials store (no env fallback)
+    api_key = kwargs.pop("api_key", None) or _get_provider_secret_sync(provider_name)
+    if not api_key:
         raise LLMNotConfiguredError(
-            f"Invalid API key '{api_key}' for embedding provider '{provider_name}'. Configure proper API key."
+            f"Missing API key for embedding provider '{provider_name}'. Save it in Settings → API Keys."
         )
-    if api_key:
-        kwargs["api_key"] = api_key
+    kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
     return LiteLLMEmbeddingWrapper(
@@ -1221,11 +1256,7 @@ def _merge_provider_defaults(
             for k, v in extra_kwargs.items():
                 kwargs.setdefault(k, v)
 
-    # Inject API key based on the *original* provider id if still missing
-    if "api_key" not in kwargs:
-        key = get_api_key(original_provider)
-        if key and key not in ("None", "NA"):
-            kwargs["api_key"] = key
+    # Do not inject API keys from environment; credentials are managed centrally.
 
     # Merge LiteLLM global kwargs (timeouts, stream_timeout, etc.)
     try:
@@ -1254,17 +1285,13 @@ def get_chat_model(
     from python.helpers.settings import get_settings
 
     use_llm = get_settings().get("USE_LLM", True)  # Default to True for production
-    api_key = kwargs.get("api_key")
 
     if not use_llm:
         raise LLMNotConfiguredError(
             f"LLM disabled in settings. Set USE_LLM=true for provider '{provider_name}'."
         )
 
-    if provider_name == "openai" and (not api_key or api_key in ("None", "NA")):
-        raise LLMNotConfiguredError(
-            f"Invalid OpenAI API key for provider '{provider_name}'. Configure proper API key."
-        )
+    # API key presence is enforced inside _get_litellm_chat via centralized store
 
     return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 

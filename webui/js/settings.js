@@ -248,14 +248,14 @@ const settingsModalProxy = {
                     window.toastFrontendInfo('Saving settings…', 'Settings', 2, 'settings-save');
                 }
                 // Save sections back to canonical endpoint
-                // Make a shallow copy and mask api_key_* fields to avoid server-side persistence via sections
+                // Mask ALL api_key_* fields to avoid persistence via sections
                 const masked = JSON.parse(JSON.stringify(modalAD.settings.sections || []));
                 try {
                     for (const sec of masked) {
                         for (const f of (sec.fields || [])) {
                             const fid = String(f.id || '');
-                            if (fid.startsWith('api_key_') && typeof f.value === 'string' && f.value.trim()) {
-                                f.value = '************';
+                            if (fid.startsWith('api_key_')) {
+                                f.value = (typeof f.value === 'string' && f.value.trim()) ? '************' : '';
                             }
                         }
                     }
@@ -277,30 +277,35 @@ const settingsModalProxy = {
                 return
             }
 
-            // Opportunistic LLM credentials save if fields present
+            // Persist any provided provider secrets via credentials endpoint (one POST per provider)
             try {
                 const sections = modalAD.settings.sections || [];
-                let provider = '';
-                let secret = '';
+                const creds = [];
                 for (const sec of sections) {
                     for (const f of sec.fields || []) {
                         const id = String(f.id || '').toLowerCase();
-                        if (id.includes('provider') && !provider) provider = String(f.value || '').trim();
-                        if ((id.includes('api_key') || id.includes('secret') || id.includes('token')) && !secret) {
-                            secret = String(f.value || '').trim();
+                        if (id.startsWith('api_key_')) {
+                            const provider = id.replace('api_key_', '').trim();
+                            const secret = String(f.value || '').trim();
+                            if (provider && secret && secret !== '************') {
+                                creds.push({ provider, secret });
+                            }
                         }
                     }
                 }
-                if (provider && secret) {
-                    await fetchApi('/llm/credentials', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ provider, secret })
-                    });
+                for (const c of creds) {
+                    try {
+                        await fetchApi('/llm/credentials', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(c)
+                        });
+                    } catch (e) {
+                        console.warn('Credential save failed for', c.provider, e?.message || e);
+                    }
                 }
             } catch (e) {
-                // Non-fatal; credential saving is best-effort
-                console.warn('LLM credentials save skipped:', e?.message || e);
+                console.warn('LLM credentials processing skipped:', e?.message || e);
             }
             // Success toast replaces progress toast
             if (window.toastFrontendSuccess) {
@@ -661,13 +666,23 @@ document.addEventListener('alpine:init', function () {
                         }
                     } catch (_) {}
 
-                    // Send sections as-is to canonical endpoint (includes api_key_* fields)
-                    const rawSections = JSON.parse(JSON.stringify(this.settingsData.sections || []));
+                    // Mask api_key_* fields to avoid persisting secrets via sections
+                    const maskedSections = JSON.parse(JSON.stringify(this.settingsData.sections || []));
+                    try {
+                        for (const sec of maskedSections) {
+                            for (const f of (sec.fields || [])) {
+                                const fid = String(f.id || '');
+                                if (fid.startsWith('api_key_')) {
+                                    f.value = (typeof f.value === 'string' && f.value.trim()) ? '************' : '';
+                                }
+                            }
+                        }
+                    } catch(_) {}
 
                     const response = await fetchApi('/ui/settings/sections', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sections: rawSections })
+                        body: JSON.stringify({ sections: maskedSections })
                     });
 
                     if (response.ok) {
@@ -680,7 +695,33 @@ document.addEventListener('alpine:init', function () {
                             const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
                             if (overlay) overlay.style.removeProperty('display');
                         } catch (_) {}
-                        // Credentials are saved as part of sections; no extra POST required
+                        // Persist provider credentials via dedicated endpoint for any provided keys
+                        try {
+                            const creds = [];
+                            for (const sec of (this.settingsData.sections || [])) {
+                                for (const f of (sec.fields || [])) {
+                                    const fid = String(f.id || '').toLowerCase();
+                                    if (fid.startsWith('api_key_')) {
+                                        const provider = fid.replace('api_key_', '').trim();
+                                        const secret = String(f.value || '').trim();
+                                        if (provider && secret && secret !== '************') {
+                                            creds.push({ provider, secret });
+                                        }
+                                    }
+                                }
+                            }
+                            for (const c of creds) {
+                                try {
+                                    await fetchApi('/llm/credentials', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(c)
+                                    });
+                                } catch (e) {
+                                    console.warn('Credential save failed for', c.provider, e?.message || e);
+                                }
+                            }
+                        } catch (_) {}
                         // Refresh settings sections to pick up normalized base_url and masked secrets
                         await this.fetchSettings();
                         // Broadcast for other components/tabs

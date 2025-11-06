@@ -130,10 +130,7 @@ def test_realtime_provider_requests_openai_session(page):
             body=json.dumps(payload),
         )
 
-    page.route(
-        "**/csrf_token",
-        lambda route: fulfill_json(route, {"token": "fake"}),
-    )
+    # No CSRF route: UI does not use CSRF in Gateway flow
 
     def handle_settings_get(route, _request):
         fulfill_json(route, _build_settings_payload(settings_state["provider"]))

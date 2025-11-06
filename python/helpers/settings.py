@@ -1259,14 +1259,12 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
 
 def _get_api_key_field(settings: Settings, provider: str, title: str) -> SettingsField:
-    # Keep UI field shape; actual credential persistence is handled by Gateway APIs.
-    key = settings["api_keys"].get(provider, "")
-    has_secret = isinstance(key, str) and key.strip() not in {"", "None"}
+    # UI-only field. Secrets are never persisted via settings.json; managed by Gateway.
     return {
         "id": f"api_key_{provider}",
         "title": title,
         "type": "password",
-        "value": API_KEY_PLACEHOLDER if has_secret else "",
+        "value": "",
     }
 
 
@@ -1285,15 +1283,8 @@ def convert_in(settings: dict) -> Settings:
                     if field["id"] == "browser_http_headers" or field["id"].endswith("_kwargs"):
                         current[field["id"]] = _env_to_dict(field["value"])
                     elif field["id"].startswith("api_key_"):
-                        provider = field["id"][len("api_key_") :]
-                        if isinstance(current, dict):
-                            existing = current.get("api_keys")
-                        else:
-                            existing = getattr(current, "api_keys", None)
-                        if not isinstance(existing, dict):
-                            existing = {}
-                        existing[provider] = field["value"]
-                        current["api_keys"] = existing
+                        # Do not persist provider API keys via settings; handled by /v1/llm/credentials
+                        continue
                     else:
                         current[field["id"]] = field["value"]
     return current

@@ -199,7 +199,7 @@
                     x-show="contexts.length > 0 || true">
                     <div class="chats-list-container">
                         <ul class="config-list" x-show="contexts.length > 0">
-                            <template x-for="context in contexts">
+                            <template x-for="(context, idx) in contexts" :key="context.id || context.no || idx">
                                 <li>
                                     <div :class="{'chat-list-button': true, 'font-bold': context.id === selected}"
                                         @click="selected = context.id; selectChat(context.id)">
@@ -227,7 +227,7 @@
                 }" style="display: none;">
                     <div class="tasks-list-container">
                         <ul class="config-list" x-show="tasks.length > 0">
-                            <template x-for="task in tasks">
+                            <template x-for="(task, idx) in tasks" :key="task.id || task.no || idx">
                                 <li>
                                     <div :class="{'chat-list-button': true, 'font-bold': task.id === selected, 'has-task-container': true}"
                                         @click="selected = task.id; selectChat(task.id)">
@@ -580,7 +580,7 @@
                         <div id="settings-sections" x-show="activeTab !== 'scheduler'">
                             <nav>
                                 <ul>
-                                    <template x-for="(section, index) in filteredSections" :key="section.title">
+                                    <template x-for="(section, index) in filteredSections" :key="section.id || section.title || index">
                                         <li>
                                             <a :href="'#section' + (index + 1)">
                                                 <img :src="'/public/' + section.id +'.svg'" :alt="section.title">
@@ -598,13 +598,13 @@
                                 </ul>
                             </nav>
 
-                            <template x-for="(section, sectionIndex) in filteredSections" :key="sectionIndex">
+                            <template x-for="(section, sectionIndex) in filteredSections" :key="section.id || sectionIndex">
                                 <div :id="'section' + (sectionIndex + 1)" class="section">
                                     <div class="section-title" x-text="section.title"></div>
                                     <div class="section-description" x-html="section.description"></div>
 
                                     <template x-for="(field, fieldIndex) in section.fields.filter(f => !f.hidden)"
-                                        :key="fieldIndex">
+                                        :key="field.id || field.name || field.title || field.key || fieldIndex">
                                         <div :class="{'field': true, 'field-full': field.type === 'textarea'}">
                                             <div class="field-label" x-show="field.title || field.description">
                                                 <div class="field-title" x-text="field.title" x-show="field.title">
