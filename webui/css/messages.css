@@ -191,13 +191,11 @@
 
 .message-info {
   background-color: var(--color-panel);
-  /* Subtle thinking/info hint: slightly smaller and tighter padding */
-  padding: 0.55rem var(--spacing-sm) 0.5rem var(--spacing-sm);
-  font-size: var(--font-size-smaller);
 }
 
 .message-util {
   background-color: #23211a;
+  display: none;
 }
 
 .message-warning {
@@ -341,10 +339,9 @@
   display: none;
 }
 
-/* Thoughts rows should use the element's natural display (table-row on desktop, flex in mobile overrides). */
-/* Removing invalid display:auto to ensure proper layout and clean toggling via JS (display:none when hidden). */
+/* Thoughts rows */
 .msg-thoughts {
-  /* default/natural display */
+  display: auto;
 }
 
 .msg-thoughts .kvps-val {
@@ -496,52 +493,7 @@
   max-height: 100em;
 }
 
-/* Pixel-parity polish: typography, lists, inline code, icons, images */
-.message .message-body {
-  line-height: 1.45;
-}
 
-.msg-heading .icon {
-  font-size: 18px;
-  vertical-align: text-bottom;
-  margin-left: 0.25em;
-}
-
-.msg-content p {
-  margin: 0 0 0.6em 0;
-}
-
-.msg-content ul,
-.msg-content ol {
-  margin: 0.4em 0 0.6em 0;
-  padding-left: 1.25em;
-}
-
-.msg-content li {
-  margin: 0.15em 0;
-}
-
-/* Inline code (not code blocks) */
-.msg-content :not(pre) > code {
-  background: rgba(142, 142, 142, 0.12);
-  padding: 0.1em 0.35em;
-  border-radius: 0.3em;
-  font-family: var(--font-family-code);
-  font-optical-sizing: auto;
-  -webkit-font-optical-sizing: auto;
-  font-size: 0.95em;
-}
-
-.message .message-body img {
-  border-radius: 6px;
-}
-
-.msg-content blockquote {
-  margin: 0.6em 0;
-  padding: 0.4em 0.8em;
-  border-left: 3px solid rgba(142, 142, 142, 0.35);
-  background: rgba(142, 142, 142, 0.06);
-}
 
 .msg-content h1 {
   font-size: 1.25em;
@@ -638,7 +590,7 @@
   grid-auto-rows: auto;
   max-width: 100%;
   width: fit-content;
-  gap: 0; /* match golden: stacked bubbles have no gap */
+  gap: var(--spacing-xs);
 }
 
 .message-group > * {

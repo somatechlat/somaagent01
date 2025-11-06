@@ -1779,7 +1779,13 @@ class ConversationWorker:
                 record_metrics("policy_denied", "policy")
                 return
 
-            await self.store.append_event(session_id, {"type": "user", **event})
+            # Avoid duplicating user events if Gateway already persisted the same event_id
+            try:
+                if not await self.store.event_exists(session_id, event.get("event_id")):
+                    await self.store.append_event(session_id, {"type": "user", **event})
+            except Exception:
+                # Fallback: append without duplication check on failure
+                await self.store.append_event(session_id, {"type": "user", **event})
             # Save user message to SomaBrain as a memory (non-blocking semantics with error shielding)
             try:
                 # Build memory payload for user message
@@ -2206,7 +2212,7 @@ class ConversationWorker:
                     "persona_id": persona_id,
                     "role": "assistant",
                     "message": "Token budget exceeded for this persona/tenant.",
-                    "metadata": {"source": "budget"},
+                    "metadata": {"source": "budget", "done": True},
                     "version": "sa01-v1",
                     "type": "assistant.final",
                 }
@@ -2344,14 +2350,29 @@ class ConversationWorker:
                     LOGGER.exception("SLM request failed")
                     # Attempt a non-streaming fallback via Gateway once more before giving up
                     result_label = "generation_error"
-                    await self.store.append_event(
-                        session_id,
-                        {
-                            "type": "error",
+                    try:
+                        error_event = {
+                            "type": "assistant.error",
                             "event_id": str(uuid.uuid4()),
-                            "details": str(exc),
-                        },
-                    )
+                            "session_id": session_id,
+                            "persona_id": persona_id,
+                            "role": "assistant",
+                            "message": "Generation backend error encountered; attempting fallback.",
+                            "metadata": {
+                                "source": "worker",
+                                "error": str(exc)[:400],
+                            },
+                        }
+                        await self.store.append_event(session_id, error_event)
+                        await self.publisher.publish(
+                            self.settings["outbound"],
+                            error_event,
+                            dedupe_key=error_event.get("event_id"),
+                            session_id=session_id,
+                            tenant=(error_event.get("metadata") or {}).get("tenant"),
+                        )
+                    except Exception:
+                        LOGGER.debug("Failed to publish assistant.error event", exc_info=True)
                     try:
                         url_ns = f"{self._gateway_base}/v1/llm/invoke"
                         ov2: dict[str, Any] = {}
@@ -2467,6 +2488,12 @@ class ConversationWorker:
                 analysis=analysis_dict,
                 extra={"escalation": escalation_payload} if escalation_payload else None,
             )
+            # Mark completion for UI parity
+            try:
+                if isinstance(response_metadata, dict):
+                    response_metadata.setdefault("done", True)
+            except Exception:
+                pass
             response_event = {
                 "event_id": str(uuid.uuid4()),
                 "session_id": session_id,

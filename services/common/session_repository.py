@@ -329,6 +329,23 @@ class PostgresSessionStore(SessionStore):
             )
         return events
 
+    async def event_exists(self, session_id: str, event_id: Optional[str]) -> bool:
+        if not event_id:
+            return False
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT 1 FROM session_events
+                WHERE session_id = $1
+                  AND payload->>'event_id' = $2
+                LIMIT 1
+                """,
+                session_id,
+                event_id,
+            )
+        return row is not None
+
     async def delete_session(self, session_id: str) -> dict[str, int]:
         """Delete all timeline events and the session envelope for a session.
 
@@ -652,6 +669,10 @@ CREATE TRIGGER session_envelopes_set_updated_at
 BEFORE UPDATE ON session_envelopes
 FOR EACH ROW
 EXECUTE FUNCTION session_envelopes_touch_updated_at();
+
+-- Uniqueness index to prevent duplicate event_ids per session (if present in payload)
+CREATE INDEX IF NOT EXISTS idx_session_events_event_id ON session_events ((payload->>'event_id'));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_session_events_session_event ON session_events (session_id, (payload->>'event_id')) WHERE (payload ? 'event_id');
 """
 
 

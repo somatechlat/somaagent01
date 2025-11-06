@@ -8,22 +8,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 5000; /* ensure above sidebar and other panels */
-  backdrop-filter: saturate(120%) blur(1px);
+  z-index: 2001; /* match Agent Zero layering */
 }
 
 /* Modal Container */
 .modal-container {
   background-color: var(--color-panel);
   border-radius: 12px;
-  width: min(1400px, calc(100vw - 48px));
+  width: 1100px; /* match Agent Zero */
+  max-width: 1100px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 23px rgba(0, 0, 0, 0.2);
   box-sizing: border-box;
-  contain: layout paint;
 }
 
 .light-mode .modal-container {
@@ -33,9 +32,9 @@
 /* Mobile Viewport Behavior */
 @media (max-width: 1280px) {
   .modal-container {
-    width: min(1100px, 96vw);
-    min-width: 0;
-    max-width: 96vw;
+    width: 95%;
+    min-width: unset;
+    max-width: 95%;
   }
 
   /* Ensure section content can scroll horizontally */
