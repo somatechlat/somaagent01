@@ -167,6 +167,7 @@ img {
   color: var(--color-text);
   box-shadow: 1px 0 5px rgba(0, 0, 0, 0.3);
   user-select: none;
+  overflow-y: auto; /* ensure preferences are scrollable into viewport */
 }
 
 #left-panel.hidden {
@@ -199,8 +200,12 @@ img {
 }
 
 .left-panel-bottom {
-  position: relative;
+  position: sticky;
+  bottom: 0;
   flex-shrink: 0;
+  background: var(--color-panel);
+  z-index: 1;
+  border-top: 1px solid var(--color-border);
 }
 
 /* Sidebar Toggle Button */
