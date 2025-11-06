@@ -99,11 +99,9 @@ Scope:
 
 Deliverables:
 - New internal endpoint: GET `/internal/attachments/{id}/binary` (authZ, tenant-scoped, policy enforced) or reuse existing with service auth.
-- Worker inline/offload ingestion logic uses attachment_id; document_ingest accepts `{ attachment_id, tenant_id, ... }`.
 - UI code no longer references filesystem paths like `/git/agent-zero/tmp/uploads/*`.
 
 Acceptance tests:
-- tests/e2e/test_document_ingest_by_id.py: upload → attach → tool offload → assistant uses extracted text; memory WAL contains `attachment_text` record.
 - tests/webui/test_attachment_preview_routes.py (Playwright or integration): preview/download via Gateway only.
 
 Exit criteria:
@@ -143,18 +141,7 @@ Acceptance tests:
 Exit criteria:
 - Chaos test reliable on local dev; deny paths user-visible and audited; dashboards include WAL lag.
 
-### Sprint 4 — Large Files and External Storage (2 weeks)
-Scope:
-- Optional S3/MinIO backing for large attachments; signed URL fetch; AV/quarantine; TTL janitor.
-
-Deliverables:
-- Gateway integration to generate signed URLs and store metadata in Postgres; document_ingest fetch via signed GET.
-
-Acceptance tests:
-- tests/e2e/test_large_uploads_external_storage.py: 200MB PDF → upload → ingest summarized; policy/AV enforced.
-
-Exit criteria:
-- Large-file path stable and documented; default remains Postgres BYTEA for small files.
+ 
 
 ### Sprint 5 — E2E and CI (1 week)
 Scope:

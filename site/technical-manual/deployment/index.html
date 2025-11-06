@@ -604,6 +604,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../outbound-events/" class="md-nav__link">
         
   
@@ -1186,10 +1209,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -1202,8 +1225,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2261,11 +2284,12 @@ make<span class="w"> </span>ui
 <span class="nv">GATEWAY_MANAGED_CREDENTIALS</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div></p>
 <p><strong>Deploy</strong>:
-<div class="highlight"><pre><span></span><code><span class="c1"># Using Docker Compose</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.staging.yaml<span class="w"> </span>up<span class="w"> </span>-d
-
-<span class="c1"># Using Kubernetes</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Recommended: Kubernetes (staging overlay)</span>
 kubectl<span class="w"> </span>apply<span class="w"> </span>-k<span class="w"> </span>infra/k8s/overlays/staging/
+
+<span class="c1"># Or: Docker Compose using the base manifest with env overrides</span>
+<span class="c1"># (No dedicated staging compose file is provided.)</span>
+docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div></p>
 <h3 id="prod-production">PROD (Production)<a class="headerlink" href="#prod-production" title="Permanent link">&para;</a></h3>
 <p><strong>Purpose</strong>: Live production environment</p>
@@ -2439,7 +2463,7 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 <tr>
 <td><code>GATEWAY_PORT</code></td>
 <td>Gateway HTTP port</td>
-<td><code>20016</code></td>
+<td><code>21016</code></td>
 </tr>
 <tr>
 <td><code>KAFKA_BOOTSTRAP_SERVERS</code></td>
@@ -2474,7 +2498,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> 
 
 <span class="c1"># 3. Verify</span>
 docker<span class="w"> </span>compose<span class="w"> </span>ps
-curl<span class="w"> </span>http://localhost:20016/v1/health
+curl<span class="w"> </span>http://localhost:<span class="si">${</span><span class="nv">GATEWAY_PORT</span><span class="k">:-</span><span class="nv">21016</span><span class="si">}</span>/v1/health
 </code></pre></div>
 <h3 id="multi-node-setup">Multi-Node Setup<a class="headerlink" href="#multi-node-setup" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># 1. Start infrastructure on node1</span>
@@ -2631,7 +2655,7 @@ kubectl<span class="w"> </span>scale<span class="w"> </span>deployment<span clas
 <span class="nt">livenessProbe</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/v1/health</span>
-<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20016</span>
+<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">21016</span>
 <span class="w">  </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 <span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 </code></pre></div>
@@ -2639,7 +2663,7 @@ kubectl<span class="w"> </span>scale<span class="w"> </span>deployment<span clas
 <div class="highlight"><pre><span></span><code><span class="nt">readinessProbe</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/v1/ready</span>
-<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20016</span>
+<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">21016</span>
 <span class="w">  </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 <span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
 </code></pre></div>

@@ -1,6 +1,0 @@
-### THIS FILE HAS BEEN REMOVED — DO NOT USE
-# Single docker entry point is docker-compose.yaml. This file remains only to
-# fail fast if referenced. See docs/roadmap/roadmap-sprinted.md.
-
-DELETED: true
-

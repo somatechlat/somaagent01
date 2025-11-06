@@ -498,6 +498,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configure-the-llm-groq-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the LLM (Groq by default)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#upload-a-file-and-send-a-message" class="md-nav__link">
     <span class="md-ellipsis">
       Upload a file and send a message
@@ -544,9 +553,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-login" class="md-nav__link">
+  <a href="#2-login-if-enabled" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Login
+      2. Login (if enabled)
     </span>
   </a>
   
@@ -811,6 +820,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -934,10 +966,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -950,8 +982,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1575,6 +1607,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configure-the-llm-groq-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the LLM (Groq by default)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#upload-a-file-and-send-a-message" class="md-nav__link">
     <span class="md-ellipsis">
       Upload a file and send a message
@@ -1621,9 +1662,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-login" class="md-nav__link">
+  <a href="#2-login-if-enabled" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Login
+      2. Login (if enabled)
     </span>
   </a>
   
@@ -1745,10 +1786,7 @@
 <div class="highlight"><pre><span></span><code>export GATEWAY_PORT=21016
 docker compose --profile core --profile dev up -d
 </code></pre></div>
-<p>The UI will be available at:</p>
-<ul>
-<li>http://localhost:21016/ui/index.html</li>
-</ul>
+<p>The UI will be available at: http://localhost:21016/ui/index.html</p>
 <p>Notes:</p>
 <ul>
 <li>LLM/secrets are centralized in the Gateway; the Conversation Worker fetches credentials via an internal token.</li>
@@ -1757,9 +1795,20 @@ docker compose --profile core --profile dev up -d
 </ul>
 <h2 id="verify-health">Verify health<a class="headerlink" href="#verify-health" title="Permanent link">&para;</a></h2>
 <p>Open http://localhost:21016/v1/health and confirm component statuses are okay. If Kafka is still booting, give it ~30–60s.</p>
+<h2 id="configure-the-llm-groq-by-default">Configure the LLM (Groq by default)<a class="headerlink" href="#configure-the-llm-groq-by-default" title="Permanent link">&para;</a></h2>
+<p>1) Open Settings in the UI.
+2) In the LLM Credentials section, select provider “groq” and paste your API key.
+3) In the Model Profile section, set:
+    - Model: <code>llama-3.1-8b-instant</code> (or another Groq model you have access to)
+    - Base URL: <code>https://api.groq.com/openai/v1</code>
+    - Temperature: <code>0.2</code>
+4) Save. The Gateway will normalize and persist these values globally.</p>
+<p>Verify from a terminal:
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:21016/v1/llm/test<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;role&quot;:&quot;dialogue&quot;}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+</code></pre></div></p>
 <h2 id="upload-a-file-and-send-a-message">Upload a file and send a message<a class="headerlink" href="#upload-a-file-and-send-a-message" title="Permanent link">&para;</a></h2>
-<p>1) In the UI, click the paperclip to upload a small text file. The UI posts to <code>/v1/uploads</code> and shows a reference like <code>/v1/attachments/{id}</code>.
-2) Send a chat message and include the uploaded attachment. Small files are ingested inline; larger ones are offloaded to the <code>document_ingest</code> tool automatically.</p>
+<p>1) In the UI, click the paperclip to upload a small text file. The UI posts to <code>/v1/uploads</code> and shows the file as an attachment.
+2) Send a chat message and include the uploaded file if relevant. Small files are ingested inline.</p>
 <h2 id="run-quick-tests-optional">Run quick tests (optional)<a class="headerlink" href="#run-quick-tests-optional" title="Permanent link">&para;</a></h2>
 <ul>
 <li>API smoke and gateway unit tests:</li>
@@ -1786,11 +1835,9 @@ pytest -q tests/e2e/test_ui_chat_playwright.py
 <p><strong>Standards</strong>: ISO/IEC 29148§5.2</p>
 <h2 id="your-first-conversation">Your First Conversation<a class="headerlink" href="#your-first-conversation" title="Permanent link">&para;</a></h2>
 <h3 id="1-access-the-ui">1. Access the UI<a class="headerlink" href="#1-access-the-ui" title="Permanent link">&para;</a></h3>
-<p>Open your browser to:
-- Docker: <code>http://localhost:50001</code>
-- Local dev: <code>http://127.0.0.1:3000</code></p>
-<h3 id="2-login">2. Login<a class="headerlink" href="#2-login" title="Permanent link">&para;</a></h3>
-<p>Enter the password you set in <code>.env</code> (<code>AUTH_PASSWORD</code>)</p>
+<p>Open your browser to: <code>http://localhost:21016/ui/index.html</code></p>
+<h3 id="2-login-if-enabled">2. Login (if enabled)<a class="headerlink" href="#2-login-if-enabled" title="Permanent link">&para;</a></h3>
+<p>If authentication is enabled, enter the password configured in <code>.env</code>. By default in local dev, auth is disabled.</p>
 <h3 id="3-start-a-conversation">3. Start a Conversation<a class="headerlink" href="#3-start-a-conversation" title="Permanent link">&para;</a></h3>
 <p>Type in the chat input:
 <div class="highlight"><pre><span></span><code>Hello! Can you help me understand what you can do?

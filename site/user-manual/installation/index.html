@@ -802,6 +802,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -925,10 +948,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -941,8 +964,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1767,7 +1790,7 @@ docker<span class="w"> </span>ps<span class="w"> </span><span class="p">|</span>
 make<span class="w"> </span>stack-up
 
 <span class="c1"># Verify gateway is running</span>
-curl<span class="w"> </span>http://localhost:20016/v1/health
+curl<span class="w"> </span>http://localhost:<span class="si">${</span><span class="nv">GATEWAY_PORT</span><span class="k">:-</span><span class="nv">21016</span><span class="si">}</span>/v1/health
 </code></pre></div>
 <h3 id="6-start-ui">6. Start UI<a class="headerlink" href="#6-start-ui" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># In a new terminal</span>
@@ -1798,8 +1821,8 @@ open<span class="w"> </span>http://127.0.0.1:3000
 </tr>
 <tr>
 <td>Gateway</td>
-<td>20016</td>
-<td>API endpoint</td>
+<td>21016</td>
+<td>API endpoint (configurable via GATEWAY_PORT)</td>
 </tr>
 <tr>
 <td>Kafka</td>
@@ -1841,7 +1864,7 @@ make<span class="w"> </span>check-stack
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="port-already-in-use">Port Already in Use<a class="headerlink" href="#port-already-in-use" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find process using port</span>
-lsof<span class="w"> </span>-i<span class="w"> </span>:20016
+lsof<span class="w"> </span>-i<span class="w"> </span>:21016
 
 <span class="c1"># Kill process</span>
 <span class="nb">kill</span><span class="w"> </span>-9<span class="w"> </span>&lt;PID&gt;

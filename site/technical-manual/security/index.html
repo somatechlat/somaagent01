@@ -604,6 +604,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../outbound-events/" class="md-nav__link">
         
   
@@ -1204,10 +1227,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -1220,8 +1243,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -2298,7 +2321,7 @@
 <p><strong>Format</strong>: <code>sk-soma-&lt;32-char-random&gt;</code></p>
 <p><strong>Usage</strong>:
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer sk-soma-abc123...&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>http://localhost:20016/v1/session/message
+<span class="w">  </span>http://localhost:<span class="si">${</span><span class="nv">GATEWAY_PORT</span><span class="k">:-</span><span class="nv">21016</span><span class="si">}</span>/v1/session/message
 </code></pre></div></p>
 <h3 id="ui-authentication">UI Authentication<a class="headerlink" href="#ui-authentication" title="Permanent link">&para;</a></h3>
 <p><strong>Method</strong>: Password-based (configurable)</p>
@@ -2389,7 +2412,7 @@ type session
 <h2 id="network-security">Network Security<a class="headerlink" href="#network-security" title="Permanent link">&para;</a></h2>
 <h3 id="firewall-rules">Firewall Rules<a class="headerlink" href="#firewall-rules" title="Permanent link">&para;</a></h3>
 <p><strong>Inbound</strong>:
-- 20016 (Gateway) - Public
+- 21016 (Gateway) - Public
 - 20015 (UI) - Public
 - All other ports - Internal only</p>
 <p><strong>Outbound</strong>:

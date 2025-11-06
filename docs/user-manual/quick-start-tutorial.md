@@ -48,8 +48,8 @@ curl -s -X POST http://localhost:21016/v1/llm/test -H 'Content-Type: application
 
 ## Upload a file and send a message
 
-1) In the UI, click the paperclip to upload a small text file. The UI posts to `/v1/workdir/upload` and shows the file in the Files panel.
-2) Send a chat message and include the uploaded file if relevant. Small files are ingested inline; larger ones are offloaded to tools as needed.
+1) In the UI, click the paperclip to upload a small text file. The UI posts to `/v1/uploads` and shows the file as an attachment.
+2) Send a chat message and include the uploaded file if relevant. Small files are ingested inline.
 
 ## Run quick tests (optional)
 

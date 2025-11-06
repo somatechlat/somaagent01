@@ -602,6 +602,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -725,10 +748,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -741,8 +764,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1779,7 +1802,7 @@ make<span class="w"> </span>ui
 </code></pre></div>
 <h3 id="5-verify-setup">5. Verify Setup<a class="headerlink" href="#5-verify-setup" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Check health</span>
-curl<span class="w"> </span>http://localhost:20016/v1/health
+curl<span class="w"> </span>http://localhost:<span class="si">${</span><span class="nv">GATEWAY_PORT</span><span class="k">:-</span><span class="nv">21016</span><span class="si">}</span>/v1/health
 
 <span class="c1"># Check UI</span>
 open<span class="w"> </span>http://127.0.0.1:3000

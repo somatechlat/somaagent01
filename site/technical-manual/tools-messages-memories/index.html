@@ -604,6 +604,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../outbound-events/" class="md-nav__link">
         
   
@@ -865,10 +888,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -881,8 +904,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1732,16 +1755,18 @@ python<span class="w"> </span>tests/playwright/test_ui_smoke.py
 <li>
 <p>HEAD <code>/internal/attachments/{id}/binary</code></p>
 </li>
-<li>Same headers as GET; returns only metadata. Use this to decide inline vs offload without transferring bytes.</li>
 </ul>
 <p>Public download remains available at GET <code>/v1/attachments/{id}</code>, which blocks <code>quarantined</code> payloads.</p>
 <h3 id="ingestion-by-id-flow">Ingestion by ID flow<a class="headerlink" href="#ingestion-by-id-flow" title="Permanent link">&para;</a></h3>
 <ul>
 <li>UI uploads via <code>/v1/uploads</code> produce <code>/v1/attachments/{id}</code> references.</li>
 <li>Conversation Worker parses the attachment ID from that path and:</li>
-<li>HEADs the internal endpoint to get <code>X-Attachment-Size</code>.</li>
-<li>Ingests inline for small attachments or enqueues the <code>document_ingest</code> tool with <code>attachment_id</code> for large ones.</li>
-<li>The <code>document_ingest</code> tool fetches bytes from the internal endpoint using <code>X-Internal-Token</code>, extracts text (text/PDF/IMG), and returns the result.</li>
+<li>
+<p>HEADs the internal endpoint to get <code>X-Attachment-Size</code>.</p>
+</li>
+<li>
+<p>The <code>document_ingest</code> tool fetches bytes from the internal endpoint using <code>X-Internal-Token</code>, extracts text (text/PDF/IMG), and returns the result.</p>
+</li>
 </ul>
 <h3 id="ports-and-environment-alignment">Ports and environment alignment<a class="headerlink" href="#ports-and-environment-alignment" title="Permanent link">&para;</a></h3>
 <ul>

@@ -598,6 +598,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -721,10 +744,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -737,8 +760,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1393,7 +1416,7 @@ Scope: repo-wide search for <code>model</code>, <code>base_url</code>, <code>mod
 <li>
 <p><code>docker-compose.yaml</code></p>
 </li>
-<li>Sets <code>WORKER_GATEWAY_BASE</code> to <code>http://host.docker.internal:${GATEWAY_PORT:-20016}</code> and <code>SLM_MODEL</code> environment mapping.</li>
+<li>Sets <code>WORKER_GATEWAY_BASE</code> to <code>http://host.docker.internal:${GATEWAY_PORT:-21016}</code> and <code>SLM_MODEL</code> environment mapping.</li>
 </ul>
 <p>Concrete search hits (representative; not exhaustive)
 - <code>GATEWAY_BASE_URL</code> referenced in: <code>docs/roadmap/canonical-roadmap.md</code>, <code>.env.example</code>, <code>scripts/e2e_quick.py</code>, <code>docs/user-manual/quick-start-tutorial.md</code>, tests under <code>tests/e2e</code> and <code>tests/playwright</code>.
@@ -1409,9 +1432,9 @@ Scope: repo-wide search for <code>model</code>, <code>base_url</code>, <code>mod
 4. Legacy UI artifacts and <code>run_ui.py</code> references remain in docs/tests/Makefile — ensure these references are updated or removed now that <code>run_ui.py</code> is archived.</p>
 <p>Recommendations / next steps
 - Sprint 0 (immediate): finish this audit (this document), update <code>.env.example</code> with canonical vars (if not already), and archive legacy files (done for <code>run_ui.py</code> and <code>deploy-optimized.sh</code> but cross-check references). Marked tasks in the tracker.
-- Sprint 1: implement Gateway CRUD for model profiles, centralize normalization rules, add <code>GATEWAY_MODEL_LOCK=warn</code> to detect worker overrides, and add <code>/v1/llm/test</code> to validate provider connectivity.
+- Sprint 1: implement Gateway CRUD for model profiles, centralize normalization rules, and add <code>/v1/llm/test</code> to validate provider connectivity. Gateway ignores any <code>overrides.base_url</code>.
 - Sprint 2: update workers to omit <code>base_url</code> in overrides and run migration scripts to copy profiles and credentials into Gateway.
-- Add unit tests for normalization and integration tests for invoke/stream flows before flipping <code>GATEWAY_MODEL_LOCK</code> to <code>enforce</code>.</p>
+- Add unit tests for normalization and integration tests for invoke/stream flows. No lock env needed; base URL overrides are not accepted.</p>
 <p>Planned artifacts I will create next
 - <code>docs/audits/model_config_audit.md</code> (this file) — complete.
 - <code>scripts/migrate_profiles_to_gateway.py</code> — migration helper (next sprint).
