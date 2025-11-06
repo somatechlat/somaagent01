@@ -1300,6 +1300,11 @@ document.addEventListener("DOMContentLoaded", function () {
   initUiPreferences().catch((e) => {
     console.warn("Failed to init UI preferences:", e?.message || e);
   });
+  // Ensure Preferences toggles are visible in the sidebar
+  try {
+    const lp = document.getElementById('left-panel');
+    if (lp) lp.scrollTop = lp.scrollHeight;
+  } catch(_e) {}
   // Initialize speech store once on load so it fetches settings immediately
   try { if (speechStore && typeof speechStore.init === 'function') speechStore.init(); } catch(_e) {}
 });
@@ -1427,8 +1432,9 @@ async function initUiPreferences() {
       // Update local cache with defaults for missing keys
       uiPrefs = {
         show_thoughts: typeof prefs.show_thoughts === 'boolean' ? prefs.show_thoughts : false,
-        show_json: typeof prefs.show_json === 'boolean' ? prefs.show_json : true,
-        show_utils: typeof prefs.show_utils === 'boolean' ? prefs.show_utils : true,
+        // Force golden-parity defaults: JSON ON, Utilities ON
+        show_json: true,
+        show_utils: true,
       };
     }
   } catch(_e) {
@@ -1446,6 +1452,9 @@ async function initUiPreferences() {
       const data = globalThis.Alpine ? Alpine.$data(li) : null;
       if (data && typeof data.showThoughts !== 'undefined') {
         data.showThoughts = !!uiPrefs.show_thoughts;
+      } else {
+        // Fallback if Alpine not ready: reflect state directly on checkbox
+        thoughtsInput.checked = !!uiPrefs.show_thoughts;
       }
       // Ensure CSS reflects value immediately
       globalThis.toggleThoughts(!!uiPrefs.show_thoughts);
@@ -1457,6 +1466,8 @@ async function initUiPreferences() {
       const data = globalThis.Alpine ? Alpine.$data(li) : null;
       if (data && typeof data.showJson !== 'undefined') {
         data.showJson = !!uiPrefs.show_json;
+      } else {
+        jsonInput.checked = !!uiPrefs.show_json;
       }
       globalThis.toggleJson(!!uiPrefs.show_json);
     }
@@ -1467,6 +1478,8 @@ async function initUiPreferences() {
       const data = globalThis.Alpine ? Alpine.$data(li) : null;
       if (data && typeof data.showUtils !== 'undefined') {
         data.showUtils = !!uiPrefs.show_utils;
+      } else {
+        utilsInput.checked = !!uiPrefs.show_utils;
       }
       globalThis.toggleUtils(!!uiPrefs.show_utils);
     }
