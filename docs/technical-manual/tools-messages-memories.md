@@ -147,7 +147,7 @@ To support ingestion without exposing raw bytes publicly, the Gateway provides a
   - Behavior: Allows retrieval even when status is `quarantined`; callers must enforce policy.
 
 - HEAD `/internal/attachments/{id}/binary`
-  - Same headers as GET; returns only metadata. Use this to decide inline vs offload without transferring bytes.
+  
 
 Public download remains available at GET `/v1/attachments/{id}`, which blocks `quarantined` payloads.
 
@@ -156,7 +156,7 @@ Public download remains available at GET `/v1/attachments/{id}`, which blocks `q
 - UI uploads via `/v1/uploads` produce `/v1/attachments/{id}` references.
 - Conversation Worker parses the attachment ID from that path and:
   - HEADs the internal endpoint to get `X-Attachment-Size`.
-  - Ingests inline for small attachments or enqueues the `document_ingest` tool with `attachment_id` for large ones.
+ 
 - The `document_ingest` tool fetches bytes from the internal endpoint using `X-Internal-Token`, extracts text (text/PDF/IMG), and returns the result.
 
 ### Ports and environment alignment

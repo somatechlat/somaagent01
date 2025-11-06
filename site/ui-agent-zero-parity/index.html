@@ -598,6 +598,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -721,10 +744,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -737,8 +760,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1422,7 +1445,7 @@
 <li>Attachments: Gateway attachments paths only; no <code>/download_work_dir_file</code> or <code>image_get</code> fallbacks.</li>
 <li>Settings: Uses <code>/v1/ui/settings/sections</code> and <code>/v1/ui/settings/credentials</code>; AV test exists; tab filter + synthesized Tunnel section.</li>
 <li>Speech: Realtime and Kokoro gracefully disabled; browser TTS is fallback. STT disabled with gentle warning. No legacy <code>/synthesize</code> or <code>/transcribe</code>.</li>
-<li>Memory Dashboard: Uses <code>/memory_dashboard</code> FastAPI shim in Gateway (compatibility route implemented in code) with polling improvements.</li>
+<li>Memory Dashboard: Canonical endpoints live under <code>/v1/memories/*</code>. A legacy <code>/memory_dashboard</code> compatibility shim may exist temporarily; prefer <code>/v1/memories/*</code> going forward.</li>
 </ul>
 <h2 id="file-level-gaps-and-decisions">File-level gaps and decisions<a class="headerlink" href="#file-level-gaps-and-decisions" title="Permanent link">&para;</a></h2>
 <p>1) <code>webui/js/api.js</code>
@@ -1449,10 +1472,11 @@
 <p>6) <code>webui/index.html</code>
 - Reference: Different script order, legacy toast section.
 - Current: Loads <code>initFw.js</code> early, unified toast stack component, service worker registration, scheduler scaffolding.
-- Decision: KEEP. No changes needed.</p>
+- Decision: KEEP. No changes needed.
+- Note: Implemented pre-paint theme bootstrap to prevent first-load flicker. An inline script in <code>&lt;head&gt;</code> applies <code>.dark-mode</code>/<code>.light-mode</code> based on <code>localStorage.darkMode</code> before CSS loads; body mirrors the class on <code>DOMContentLoaded</code>. This aligns first render with the saved preference and removes the initial CSS glitch.</p>
 <p>7) <code>webui/components/settings/memory/memory-dashboard-store.js</code>
-- Reference: Calls <code>memory_dashboard</code> without <code>/v1</code> prefix; standard actions (search, update, delete, bulk_delete, get subdirs).
-- Current: Uses <code>/memory_dashboard</code> FastAPI shim implemented in Gateway, adds resilience for polling, pagination and UX niceties.
+- Reference: Use <code>/v1/memories</code> and related endpoints for search, update, delete, bulk_delete, and subdir listing.
+- Current: Transition to <code>/v1/memories/*</code> endpoints with pagination and improved UX; legacy shim support may still be present for older clients.
 - Decision: KEEP. Gateway compatibility route is present (<code>services/gateway/main.py</code>), so no legacy surface is reintroduced.</p>
 <p>8) <code>webui/components/settings/tunnel/*</code>
 - Reference: Tunnel-specific assets present; behavior relies on a tunnel proxy route.
@@ -1476,7 +1500,7 @@
 <ul>
 <li>Optional: When backend exposes realtime/STT endpoints, enable those branches in <code>speech-store.js</code> and add minimal UI toggle tests.</li>
 <li>Optional: Add an explicit Model Connectivity test in Settings to validate provider credentials (maps to <code>/v1/llm/credentials</code> or <code>/v1/llm/ping</code>).</li>
-<li>Docs alignment: Update any mentions of CSRF/legacy endpoints to reflect <code>/v1/ui/*</code> and <code>/memory_dashboard</code> compatibility shim.</li>
+<li>Docs alignment: Update any mentions of CSRF/legacy endpoints to reflect <code>/v1/ui/*</code> and canonical <code>/v1/memories/*</code> endpoints.</li>
 </ul>
 
 

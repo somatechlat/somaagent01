@@ -16,7 +16,7 @@
         <link rel="prev" href="../">
       
       
-        <link rel="next" href="../outbound-events/">
+        <link rel="next" href="../gateway-llm-routing/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -835,6 +835,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../outbound-events/" class="md-nav__link">
         
   
@@ -958,10 +981,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -974,8 +997,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1785,18 +1808,18 @@
 <p>SomaAgent01 is a distributed conversational AI platform using microservices architecture with event-driven communication via Kafka.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <h3 id="gateway-servicesgatewaymainpy">Gateway (<code>services/gateway/main.py</code>)<a class="headerlink" href="#gateway-servicesgatewaymainpy" title="Permanent link">&para;</a></h3>
-<p><strong>Purpose</strong>: Public-facing HTTP/WebSocket API</p>
+<p><strong>Purpose</strong>: Public-facing HTTP API with SSE streaming</p>
 <p><strong>Responsibilities</strong>:
 - Accept user messages via POST /v1/session/message
 - Publish to conversation.inbound topic
-- Stream responses from conversation.outbound via WebSocket/SSE
+- Stream responses from conversation.outbound via SSE (WebSocket may be added later)
 - Authenticate requests (JWT/API keys)
 - Enforce OPA policies
 - Manage sessions in PostgreSQL
 - Cache session metadata in Redis</p>
 <p><strong>Technology</strong>: FastAPI, aiokafka, asyncpg, redis-py</p>
 <p><strong>Ports</strong>:
-- HTTP: 20016
+- HTTP: 21016 (default; configurable via <code>GATEWAY_PORT</code>)
 - Metrics: 9600 (Prometheus)</p>
 <h3 id="conversation-worker-servicesconversation_workermainpy">Conversation Worker (<code>services/conversation_worker/main.py</code>)<a class="headerlink" href="#conversation-worker-servicesconversation_workermainpy" title="Permanent link">&para;</a></h3>
 <p><strong>Purpose</strong>: Process user messages and generate responses</p>

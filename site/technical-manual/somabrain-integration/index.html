@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://docs.somaagent01.dev/roadmap/roadmap-sprinted/">
+        <link rel="canonical" href="https://docs.somaagent01.dev/technical-manual/somabrain-integration/">
       
       
       
@@ -20,7 +20,7 @@
     
     
       
-        <title>Roadmap sprinted - SomaAgent01 Docs</title>
+        <title>SomaBrain Integration Guide - SomaAgent01 Docs</title>
       
     
     
@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#somaagent01-roadmap-sprinted" class="md-skip">
+        <a href="#somabrain-integration-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Roadmap sprinted
+              SomaBrain Integration Guide
             
           </span>
         </div>
@@ -278,7 +278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../canonical-roadmap/" class="md-nav__link">
+      <a href="../../roadmap/canonical-roadmap/" class="md-nav__link">
         
   
   
@@ -301,7 +301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sprint-roadmap/" class="md-nav__link">
+      <a href="../../roadmap/sprint-roadmap/" class="md-nav__link">
         
   
   
@@ -552,7 +552,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -575,7 +575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   
@@ -598,7 +598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+      <a href="../gateway-llm-routing/" class="md-nav__link">
         
   
   
@@ -621,7 +621,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/outbound-events/" class="md-nav__link">
+      <a href="../outbound-events/" class="md-nav__link">
         
   
   
@@ -644,7 +644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/deployment/" class="md-nav__link">
+      <a href="../deployment/" class="md-nav__link">
         
   
   
@@ -667,7 +667,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/monitoring/" class="md-nav__link">
+      <a href="../monitoring/" class="md-nav__link">
         
   
   
@@ -690,7 +690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/security/" class="md-nav__link">
+      <a href="../security/" class="md-nav__link">
         
   
   
@@ -713,7 +713,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/tools-messages-memories/" class="md-nav__link">
+      <a href="../tools-messages-memories/" class="md-nav__link">
         
   
   
@@ -774,7 +774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/runbooks/circuit-breaker/" class="md-nav__link">
+      <a href="../runbooks/circuit-breaker/" class="md-nav__link">
         
   
   
@@ -797,7 +797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/runbooks/high-error-rate/" class="md-nav__link">
+      <a href="../runbooks/high-error-rate/" class="md-nav__link">
         
   
   
@@ -820,7 +820,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/runbooks/high-latency/" class="md-nav__link">
+      <a href="../runbooks/high-latency/" class="md-nav__link">
         
   
   
@@ -843,7 +843,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../technical-manual/runbooks/kafka-lag/" class="md-nav__link">
+      <a href="../runbooks/kafka-lag/" class="md-nav__link">
         
   
   
@@ -1358,27 +1358,141 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#milestone-golden-first-behavior-capture-presa01-parity" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
-      Milestone — Golden-first behavior capture (pre‑SA01 parity)
+      Overview
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#priority-centralize-llm-modelprofile-management-1-2-sprints" class="md-nav__link">
+  <a href="#api-contracts" class="md-nav__link">
     <span class="md-ellipsis">
-      Priority: Centralize LLM model/profile management (1-2 sprints)
+      API Contracts
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#sprint-ui-parity-nolegacy-completion-20251031-1-week" class="md-nav__link">
+  <a href="#persona-aware-memory-metadata" class="md-nav__link">
     <span class="md-ellipsis">
-      Sprint — UI Parity &amp; No‑Legacy Completion (2025‑10‑31 → +1 week)
+      Persona-aware Memory Metadata
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gateway-admin-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gateway Admin Endpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#policy-decision-receipts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Policy Decision Receipts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Policy Decision Receipts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constitution-pass-through-endpoints-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constitution Pass-Through Endpoints (Gateway)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-decision-receipts-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      Audit Decision Receipts (Gateway)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-ui-admin-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Web UI (Admin) Wiring
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-semantics-planning-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional Semantics &amp; Planning Hooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-enhancements-previously-landed" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI Enhancements (Previously Landed)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runbooks-brief" class="md-nav__link">
+    <span class="md-ellipsis">
+      Runbooks (brief)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      Non-goals
     </span>
   </a>
   
@@ -1403,187 +1517,171 @@
   
 
 
-<!-- Sprinted roadmap derived from canonical roadmap — generated 2025-10-30 -->
-<h1 id="somaagent01-roadmap-sprinted">SomaAgent01 Roadmap (Sprinted)<a class="headerlink" href="#somaagent01-roadmap-sprinted" title="Permanent link">&para;</a></h1>
-<p>Last updated: 2025-10-31
-Branch: INTEGRATION-ZERO</p>
-<p>Overview
-This file breaks the canonical roadmap into sprint-sized deliverables, with acceptance tests, owners (placeholder), and estimated effort.</p>
-<h2 id="milestone-golden-first-behavior-capture-presa01-parity">Milestone — Golden-first behavior capture (pre‑SA01 parity)<a class="headerlink" href="#milestone-golden-first-behavior-capture-presa01-parity" title="Permanent link">&para;</a></h2>
-<p>Why now
-- Per directive, we must precisely capture the Golden (7001) UI behavior before attempting any SA01/UI changes. This becomes the source of truth for parity.</p>
-<p>Goals
-- Stabilize and run the Golden Playwright suite serially, collecting reliable pass/fail, traces, and screenshots.
-- Build a comprehensive checklist of visible controls and interactions with selectors and expected outcomes.
-- Use this checklist to drive SA01 parity work later; no SA01 changes until this milestone is complete.</p>
-<p>Tasks
-1) Stabilize Golden runs
-  - Run Playwright with <code>--project=golden --workers=1</code> (optionally <code>--headed</code>) against BASELINE_URL=http://127.0.0.1:7001.
-  - Capture artifacts (traces/screenshots) for any failures.
-2) Compile behavior checklist
-  - Enumerate sidebar navigation, chat composer, message flow, delete/reset, long-stream stability, toggles, scheduler/tools, uploads, settings visibility.
-  - Link each behavior to a selector and acceptance expectation.
-3) Gap analysis and test updates
-  - Mark tests that are flaky or environment-dependent; annotate reasons (e.g., modal not present on Golden, off‑viewport toggles).
-  - Propose minimal test guards for Golden where needed (skip/soft-assert) without altering product behavior.</p>
-<p>Acceptance
-- A markdown checklist exists in the repo (under <code>docs/</code>) capturing every tested Golden behavior with selectors and expected outcomes.
-- Golden Playwright suite produces a stable run with documented failures/gaps and corresponding trace links.
-- SA01 parity work is explicitly gated on this completed milestone.</p>
-<h2 id="priority-centralize-llm-modelprofile-management-1-2-sprints">Priority: Centralize LLM model/profile management (1-2 sprints)<a class="headerlink" href="#priority-centralize-llm-modelprofile-management-1-2-sprints" title="Permanent link">&para;</a></h2>
-<p>Why priority
-- Recent diagnostics found the UI/worker flow failing due to inconsistent model/profile values and base_url normalization (<code>invalid model/base_url after normalization</code>). This blocks end-to-end assistant replies. Centralizing profiles in the Gateway is required to unblock E2E functionality and make the system operable and secure.</p>
-<p>Goals
-- Make Gateway the single source of truth for model profiles, provider credentials, and base_url normalization.
-- Remove raw <code>base_url</code> propagation from workers and other services; workers must send only role + messages + limited overrides (model name, temperature, kwargs).
-- Provide a clean migration path with Gateway authority; no env flags.</p>
-<p>Sprint A (1 week) — Audit &amp; Gateway API
-- Tasks
-  1. Complete a full audit of code and env usage of <code>model</code>, <code>base_url</code>, and model profile reads/writes. Produce an audit doc with file-by-file findings and backups of current profiles (todo #1).
-  2. Design Gateway API contract for model/profile CRUD, credential management, and a <code>/v1/llm/test</code> endpoint (todo #2).
-  3. Remove per-service overrides and ensure workers never send <code>base_url</code>.
-- Acceptance
-  - Audit doc delivered. Gateway API spec reviewed. Base URL overrides are ignored by Gateway.</p>
-<p>Sprint B (1–2 weeks) — Gateway authority &amp; worker migration
-- Tasks
-  1. Implement Gateway CRUD for <code>/v1/model-profiles</code> and internal credentials endpoints (todo #3).
-  2. Harden <code>_normalize_llm_base_url</code> and provider detection; add unit tests (todo #7).
-  3. Update workers to stop sending <code>base_url</code> in overrides and to call Gateway only (todo #4).
-  4. Deprecate per-service profile envs and remove startup warnings.
-- Acceptance
-  - Worker-&gt;Gateway-&gt;Provider flow works end-to-end in dev; Playwright smoke shows assistant reply. No lock flag is needed.</p>
-<p>Notes
-- These centralization sprints take precedence over other UI migration work until assistant reply flow is stable.</p>
-<h2 id="sprint-ui-parity-nolegacy-completion-20251031-1-week">Sprint — UI Parity &amp; No‑Legacy Completion (2025‑10‑31 → +1 week)<a class="headerlink" href="#sprint-ui-parity-nolegacy-completion-20251031-1-week" title="Permanent link">&para;</a></h2>
-<p>Goals
-- Make the Web UI identical in behavior to Agent Zero while fully wired to our backend.
-- Eliminate the “auto new chat” symptom and ensure default selection is idempotent.
-- Replace remaining legacy UI actions (history, context, files) with canonical /v1 routes.</p>
-<p>Tasks
-1) Stop auto new chat creation
-  - Add a one-time init guard for default selection.
-  - Do not auto-create a session when no sessions exist; show empty state and wait for explicit action.
-  - Consolidate duplicate DOMContentLoaded handlers that cause re-inits; add a dev-only counter for newContext calls.</p>
-<p>2) History/context endpoints and UI wiring
-  - Backend: GET <code>/v1/sessions/{id}/history</code> → { history, tokens }.
-  - Backend: GET <code>/v1/sessions/{id}/context-window</code> → { content, tokens }.
-  - UI: <code>webui/js/history.js</code> calls these routes; SSE-only, no polling.</p>
-<p>3) Files modal to /v1
-  - Backend: <code>/v1/workdir/list|upload|delete|download</code> minimal FS adapter under a sandboxed base dir.
-  - UI: <code>webui/js/file_browser.js</code> to use <code>/v1/workdir/*</code> with current response mapping.</p>
-<p>4) Playwright parity tests
-  - Startup default selection without auto-create; thinking placeholder + tool.start lifecycle; uploads progress; history/context display; files modal list/upload/delete/download.</p>
-<p>Acceptance
-- No phantom sessions created over 10+ minutes idle.
-- History/Context and Files actions work via /v1; no legacy calls observed in network logs.
-- UI smoke and tool e2e pass; new Playwright parity specs added and green locally.</p>
-<p>Sprint 1 — Foundation &amp; Tests (2 weeks)
-- Goals
-  - Create API contract tests and Playwright smoke test harness.
-  - Enforce a single Docker entry point (<code>docker-compose.yaml</code> only); remove legacy scripts/manifests and update Makefile/docs.
-  - Remove deprecated deploy artifacts and references (no archives for deploy scripts/manifests): delete <code>deploy-optimized.sh</code>, <code>docker-compose.lite.yaml</code>, <code>Makefile.canonical</code>.</p>
+<h1 id="somabrain-integration-guide">SomaBrain Integration Guide<a class="headerlink" href="#somabrain-integration-guide" title="Permanent link">&para;</a></h1>
+<p>Date: 2025-11-03</p>
+<p>This document describes how SomaAgent01 integrates with SomaBrain across memory, recall, persona, policy, and ops. It covers API contracts we honor, runtime behaviors, and operator endpoints.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Tasks</li>
-<li>Add pytest API contract tests (smoke):<ul>
-<li>Test SSE subscribe: open SSE stream to <code>/v1/session/{test-session}</code> and assert event types for a synthetic message flow.</li>
-<li>Test POST /v1/session/message returns 202 and appears in SSE.</li>
-<li>Test POST /v1/uploads returns a usable resource URL.</li>
+<li>Client: <code>python/integrations/soma_client.py</code> (aliased as <code>SomaBrainClient</code>) implements spec-compliant calls with defensive fallbacks and metrics.</li>
+<li>Runtime: Conversation Worker enriches memory writes with persona metadata; Gateway performs write-through when configured.</li>
+<li>Policy: Gateway evaluates OPA and (when configured) OpenFGA; decision receipts are recorded to the audit store.</li>
+<li>Ops: Admin endpoints expose SomaBrain memory metrics and migration (export/import) passthroughs.</li>
 </ul>
-</li>
-<li>Add a Playwright smoke test that opens the Gateway-served UI, subscribes to SSE, sends a message via the UI, and checks for progressive token rendering.</li>
-<li>Remove legacy deployment artifacts and ensure Makefile targets use only <code>docker-compose.yaml</code> (<code>deploy-optimized.sh</code>, <code>docker-compose.lite.yaml</code>, <code>Makefile.canonical</code>).</li>
-<li>
-<p>Purge any references to <code>run_ui.py</code> and <code>tmp/webui</code> in docs/scripts; confirm <code>webui/</code> is the only UI used.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>All new tests pass locally in the dev environment.</li>
-<li>Grep shows no references to optimized/lite compose or <code>deploy-optimized.sh</code>; only <code>docker-compose.yaml</code> is used.</li>
-</ul>
-<p>Sprint 0 — Urgent: Centralize URLs &amp; Cleanup (immediate, half-day)</p>
+<h2 id="api-contracts">API Contracts<a class="headerlink" href="#api-contracts" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Goal</li>
-<li>
-<p>Make the UI canonical at http://localhost:21016/ui and remove non-working hard-coded references across tests, scripts, and docs. Archive deprecated artifacts that cause confusion.</p>
-</li>
-<li>
-<p>Tasks</p>
-</li>
-<li>Hard-coded discovery: grep and list all occurrences of <code>localhost:21016</code>, <code>127.0.0.1:21016</code>, <code>20016</code>, and <code>8010</code> usage in tests/scripts/docs (already performed).</li>
-<li>Set canonical env defaults in <code>.env</code> / <code>.env.example</code>:<ul>
-<li>GATEWAY_PORT=21016</li>
-<li>GATEWAY_BASE_URL=http://localhost:21016</li>
-<li>WEB_UI_BASE_URL=http://localhost:21016/ui</li>
+<li>remember: POST <code>/memory/remember</code></li>
+<li>No <code>coord</code> in the request (spec). Deterministic keys via payload/idempotency hashing.</li>
+<li>Universe is set via <code>metadata.universe_id</code> or client default <code>SOMA_NAMESPACE</code>.</li>
+<li>recall: POST <code>/memory/recall</code></li>
+<li>Prefer <code>?payload=&lt;json&gt;</code> query param. Fallback to JSON body. Legacy <code>/recall</code> fallback supported.</li>
+<li>recall stream: POST <code>/memory/recall/stream</code></li>
+<li>SSE-style event iterator. Prefer <code>?payload=&lt;json&gt;</code> first.</li>
+<li>persona: GET/PUT/DELETE <code>/persona/{id}</code> with ETag/If-Match semantics.</li>
+<li>constitution + OPA policy: <code>/constitution/*</code>, <code>/opa/policy</code> supported by the client and CLI.</li>
+<li>ops: <code>/memory/metrics</code>, <code>/migrate/export</code>, <code>/migrate/import</code>.</li>
 </ul>
-</li>
-<li>Replace literal fallbacks in the following files with env lookups:<ul>
-<li><code>tests/e2e/*</code>, <code>tests/playwright/*</code>, <code>tests/ui/*</code></li>
-<li><code>webui/playwright.config.ts</code>, <code>webui/tests/*.spec.ts</code></li>
-<li><code>scripts/e2e_quick.py</code>, <code>scripts/ui-smoke.sh</code>, <code>scripts/check_stack.sh</code></li>
-<li><code>python/api/*</code> modules with fallback strings</li>
-<li><code>.vscode/tasks.json</code></li>
-</ul>
-</li>
-<li>Delete non-aligned artifacts and remove references: <code>deploy-optimized.sh</code>; remove references to <code>run_ui.py</code> and <code>tmp/webui</code>.</li>
-<li>
-<p>Run quick verification: <code>make dev-up</code> then <code>pytest -q tests/e2e/test_api_contract_smoke.py</code> and <code>./scripts/ui-smoke.sh</code>.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>UI loads at http://localhost:21016/ui/index.html in a browser.</li>
-<li>Smoke tests issue POST /v1/session/message and open SSE streams successfully.</li>
-<li>
-<p>A repo grep for <code>localhost:21016</code> / <code>127.0.0.1:21016</code> shows only documented examples that reference the env variables (not raw literals used at runtime).</p>
-</li>
-<li>
-<p>Notes</p>
-</li>
-<li>This sprint (Sprint 0) is tactical and must be completed before Sprint 1 tests are relied upon in CI.</li>
-<li>Per your direction: no new config systems or helper files will be added; we will reuse existing env mechanisms and helpers. Files will be archived before removal.</li>
-</ul>
-<p>Sprint 2 — UI Migration &amp; Compatibility (2 weeks)
-- Goals
-  - Migrate key UX components from <code>tmp/webui</code> into <code>webui/</code> (streaming rendering, tool panel, upload progress).
-  - Implement Gateway adapter endpoints for legacy poll flows (marked deprecated).</p>
+<h2 id="persona-aware-memory-metadata">Persona-aware Memory Metadata<a class="headerlink" href="#persona-aware-memory-metadata" title="Permanent link">&para;</a></h2>
+<p>File: <code>services/conversation_worker/main.py</code></p>
 <ul>
-<li>Tasks</li>
-<li>Identify and extract UI components from <code>tmp/webui</code> (list source file names and functions). Port them to <code>webui/</code> with minimal refactors to fit project build.</li>
-<li>Add Playwright tests for tool invocation: open tool panel, call a sample tool (mocked), and assert <code>tool.result</code> appears in UI.</li>
-<li>
-<p>Implement a Gateway adapter route that accepts legacy poll payloads and transforms them into the canonical message/event workflow.</p>
-</li>
-<li>
-<p>Acceptance</p>
-</li>
-<li>Playwright UX tests pass in CI.</li>
-<li>Legacy adapter logs show correct transformations; the adapter is flagged as deprecated in docs.</li>
+<li>New helpers with TTL cache:</li>
+<li><code>_get_persona_cached(persona_id)</code>: fetches persona from SomaBrain and caches for <code>SOMABRAIN_PERSONA_TTL_SECONDS</code> (default 10s).</li>
+<li><code>_augment_metadata_with_persona(meta, persona)</code>: adds <code>persona_name</code>, <code>persona_updated_at</code>, and <code>persona_tags</code> (up to 8).</li>
+<li>Applied to both user and assistant memory writes in the Conversation Worker.</li>
+<li>Fail-safe: if persona fetch fails, enrichment is skipped; core behavior unchanged.</li>
 </ul>
-<p>Sprint 3 — Harden &amp; Remove Legacy (2 weeks)
-- Goals
-  - Harden resource settings and deployment, add OPA checks, run end-to-end tool execution tests and memory WAL verification.
-  - Remove legacy adapter after clients are migrated.</p>
+<h2 id="gateway-admin-endpoints">Gateway Admin Endpoints<a class="headerlink" href="#gateway-admin-endpoints" title="Permanent link">&para;</a></h2>
+<p>File: <code>services/gateway/main.py</code></p>
 <ul>
-<li>Tasks</li>
-<li>Add OPA policy verification into CI for tool execution flows.</li>
-<li>Run end-to-end tests that: send a message, cause a tool invocation, ensure Tool Executor publishes <code>tool.result</code>, and confirm memory WAL ingestion to SomaBrain.</li>
+<li>GET <code>/v1/admin/memory/metrics</code></li>
+<li>Params: <code>tenant</code> (required), <code>namespace</code> (default <code>wm</code>)</li>
+<li>Authorization: admin scope required; optional admin rate limiting.</li>
 <li>
-<p>Finalize deploy resource tuning in <code>docker-compose.yaml</code> and update docs.</p>
+<p>Proxies SomaBrain <code>/memory/metrics</code>.</p>
 </li>
 <li>
-<p>Acceptance</p>
+<p>POST <code>/v1/admin/migrate/export</code></p>
 </li>
-<li>E2E tests pass in CI and local dev.</li>
-<li>Legacy adapter fully removed and all references cleaned.</li>
+<li>Body: <code>{ include_wm: bool = true, wm_limit: int = 128 }</code></li>
+<li>Authorization: admin scope required; rate limited.</li>
+<li>
+<p>Proxies SomaBrain <code>/migrate/export</code>.</p>
+</li>
+<li>
+<p>POST <code>/v1/admin/migrate/import</code></p>
+</li>
+<li>Body: <code>{ manifest: object, memories: object[], wm?: object[], replace?: bool }</code></li>
+<li>Authorization: admin scope required; rate limited.</li>
+<li>Proxies SomaBrain <code>/migrate/import</code>.</li>
 </ul>
-<p>Backlog / Nice-to-have
-- Websocket support for high-throughput UIs (research + benchmark).
-- Autoscaling blueprint for cloud deployment (k8s helm charts + metrics rules).
-- Rich Playwright scenarios for error paths and long-lived sessions.</p>
-<p>Owners and notes
-- Owners: TBD. Suggest assigning one engineer (backend) for Sprint 1 and one frontend engineer for Sprint 2.
-- Notes: All changes should be done on feature branches and validated with the provided tests before merge to <code>main</code>.</p>
+<h2 id="policy-decision-receipts">Policy Decision Receipts<a class="headerlink" href="#policy-decision-receipts" title="Permanent link">&para;</a></h2>
+<p>File: <code>services/gateway/main.py</code></p>
+<ul>
+<li><code>_evaluate_opa(...)</code> now returns a decision receipt <code>{ allow, url, status_code, decision }</code> and blocks on deny.</li>
+<li><code>authorize_request(...)</code> emits an audit event <code>auth.decision</code> with:</li>
+<li>OPA receipt (or <code>skipped</code> when OPA is disabled)</li>
+<li>OpenFGA enforcement result <code>{ enforced: bool, allowed?: bool }</code></li>
+<li><code>tenant</code>, <code>subject</code>, <code>scope</code>, request path, IP, user-agent</li>
+<li>Logging is best-effort; failures to write audit events do not impact the request flow.</li>
+<li>OpenFGA behavior in dev/unit contexts: if not configured (missing <code>OPENFGA_STORE_ID</code>), enforcement is skipped but a receipt is still emitted with <code>enforced=false</code>.</li>
+</ul>
+<h3 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>gateway_auth_opa_decisions_total{outcome}</code>: OPA policy outcomes</li>
+<li>outcomes: <code>allow</code>, <code>deny</code>, <code>skipped</code>, <code>error</code></li>
+<li><code>gateway_auth_fga_decisions_total{enforced,outcome}</code>: OpenFGA outcomes</li>
+<li><code>enforced</code>: <code>true</code> or <code>false</code></li>
+<li><code>outcome</code>: <code>allowed</code>, <code>denied</code>, <code>skipped</code>, <code>error</code></li>
+</ul>
+<h2 id="constitution-pass-through-endpoints-gateway">Constitution Pass-Through Endpoints (Gateway)<a class="headerlink" href="#constitution-pass-through-endpoints-gateway" title="Permanent link">&para;</a></h2>
+<p>File: <code>services/gateway/main.py</code></p>
+<ul>
+<li><code>GET /constitution/version</code>: proxies SomaBrain version/metadata.</li>
+<li><code>POST /constitution/validate</code>: proxies validation of a constitution document; post body forwarded verbatim.</li>
+<li><code>POST /constitution/load</code>: proxies load of a constitution; after success, Gateway performs a best‑effort OPA policy regeneration via <code>POST /opa/policy</code>.</li>
+</ul>
+<p>Auth &amp; Policy
+- All three routes require authentication and admin scope; OPA is evaluated with <code>{ action: "constitution.manage", resource: "somabrain" }</code> in the request context.
+- Default OPA decision path: <code>/v1/data/soma/policy/allow</code> (override with <code>OPA_DECISION_PATH</code>).</p>
+<h2 id="audit-decision-receipts-gateway">Audit Decision Receipts (Gateway)<a class="headerlink" href="#audit-decision-receipts-gateway" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Gateway emits <code>auth.decision</code> audit events for every authorized request with structured details:</li>
+<li><code>details.opa</code>: <code>{ allow, url, status_code, decision }</code> or <code>{ skipped: true }</code> when OPA_URL is unset.</li>
+<li><code>details.openfga</code>: <code>{ enforced: true, allowed }</code> or <code>{ enforced: false, reason: "not_configured" }</code>.</li>
+<li>
+<p><code>details.scope</code>: captured scope string (if any) from the JWT.</p>
+</li>
+<li>
+<p>Admin API to list recent decision receipts:</p>
+</li>
+<li><code>GET /v1/admin/audit/decisions?tenant=&amp;session_id=&amp;request_id=&amp;subject=&amp;from_ts=&amp;to_ts=&amp;after=&amp;limit=</code></li>
+<li>Returns <code>{ items: [ { id, ts, tenant, subject, resource, details, ... } ], next_cursor }</code>.</li>
+<li>Requires admin scope when auth is enabled.</li>
+</ul>
+<h2 id="web-ui-admin-wiring">Web UI (Admin) Wiring<a class="headerlink" href="#web-ui-admin-wiring" title="Permanent link">&para;</a></h2>
+<p>The Web UI exposes lightweight admin tools wired to the endpoints above.</p>
+<ul>
+<li>Decisions Viewer</li>
+<li>Open the left sidebar and click “Decisions” to launch the modal at <code>webui/components/admin/decisions.html</code>.</li>
+<li>The grid lists recent <code>auth.decision</code> receipts fetched from <code>GET /v1/admin/audit/decisions</code> with filter fields (tenant, session_id, request_id, subject, from_ts, to_ts) and pagination via <code>next_cursor</code>.</li>
+<li>Use “Export NDJSON” to download an NDJSON stream from <code>GET /v1/admin/audit/export?action=auth.decision</code> with the same filters applied, including the time range and subject.</li>
+<li>
+<p>Authorization: requires admin scope when <code>GATEWAY_REQUIRE_AUTH=true</code>. UI surfaces 401/403 as an inline banner.</p>
+</li>
+<li>
+<p>Constitution Tools</p>
+</li>
+<li>Click “Constitution” to open <code>webui/components/admin/constitution.html</code>.</li>
+<li>Version: calls <code>GET /constitution/version</code> and shows the current SomaBrain constitution metadata.</li>
+<li>Validate: paste a JSON document, posts <code>{ document: &lt;json&gt; }</code> to <code>POST /constitution/validate</code>.</li>
+<li>Load: posts <code>{ document: &lt;json&gt; }</code> to <code>POST /constitution/load</code> and, on success, Gateway triggers an OPA policy regeneration (<code>POST /opa/policy</code>).</li>
+<li>Authorization: admin scope required when auth is enabled; OPA decision path defaults to <code>/v1/data/soma/policy/allow</code>.</li>
+</ul>
+<h2 id="optional-semantics-planning-hooks">Optional Semantics &amp; Planning Hooks<a class="headerlink" href="#optional-semantics-planning-hooks" title="Permanent link">&para;</a></h2>
+<p>File: <code>services/tool_executor/main.py</code></p>
+<ul>
+<li>After successful tool result memory write, optional calls to SomaBrain <code>link</code> and <code>plan_suggest</code> are performed.</li>
+<li>Guarded by <code>SOMABRAIN_ENABLE_LINK_PLAN</code> environment flag; failures do not affect main flow.</li>
+</ul>
+<h2 id="cli-enhancements-previously-landed">CLI Enhancements (Previously Landed)<a class="headerlink" href="#cli-enhancements-previously-landed" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>scripts/constitution_admin.py</code></li>
+<li>Payload dual-shape for validate/load: <code>{ input: doc, document: doc }</code></li>
+<li><code>load</code> triggers OPA policy regeneration via <code>POST /opa/policy</code></li>
+<li>
+<p>New <code>status</code> command shows constitution version and OPA policy hash.</p>
+</li>
+<li>
+<p><code>scripts/persona_admin.py</code></p>
+</li>
+<li>Persona CAS CLI for GET/PUT/DELETE with ETag/If-Match support and conflict handling.</li>
+</ul>
+<h2 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Unit tests added for admin endpoints:</li>
+<li><code>tests/unit/test_admin_somabrain_endpoints.py</code></li>
+<li>Existing tests cover constitution CLI and persona CLI behaviors.</li>
+<li>Note: E2E tests require optional multimedia deps; unit tests cover new features without those deps.</li>
+</ul>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>SOMA_BASE_URL</code> default: <code>http://localhost:9696</code></li>
+<li><code>SOMA_NAMESPACE</code>: universe_id fallback; included in memory metadata.</li>
+<li><code>SOMABRAIN_PERSONA_TTL_SECONDS</code>: persona cache TTL (default 10s)</li>
+<li><code>GATEWAY_ADMIN_RPS</code>, <code>GATEWAY_ADMIN_BURST</code>: admin endpoint rate limit</li>
+<li><code>OPA_URL</code>, <code>OPA_DECISION_PATH</code>: OPA location and decision entrypoint</li>
+<li><code>OPENFGA_STORE_ID</code>: enable OpenFGA enforcement; when omitted, enforcement is skipped with a decision receipt</li>
+</ul>
+<h2 id="runbooks-brief">Runbooks (brief)<a class="headerlink" href="#runbooks-brief" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Metrics: <code>GET /v1/admin/memory/metrics?tenant=&lt;id&gt;&amp;namespace=wm</code></li>
+<li>Export: <code>POST /v1/admin/migrate/export</code> with <code>{ "include_wm": true, "wm_limit": 128 }</code></li>
+<li>Import: <code>POST /v1/admin/migrate/import</code> with <code>{ manifest, memories, wm?, replace? }</code></li>
+</ul>
+<h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li>No local constitution storage or signing in this repo; all constitution concerns remain in SomaBrain.</li>
+<li>No RAG; retrieval is via SomaBrain recall endpoints only.</li>
+</ul>
 
 
 

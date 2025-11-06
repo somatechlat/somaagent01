@@ -602,6 +602,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -725,10 +748,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -741,8 +764,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1659,7 +1682,7 @@
 <p><strong>DLQ (Dead Letter Queue)</strong>: PostgreSQL-backed storage for failed Kafka messages requiring manual intervention.</p>
 <p><strong>Durable Publisher</strong>: Component ensuring message delivery via Kafka with PostgreSQL outbox fallback.</p>
 <h3 id="g">G<a class="headerlink" href="#g" title="Permanent link">&para;</a></h3>
-<p><strong>Gateway</strong>: FastAPI service exposing HTTP/WebSocket endpoints for client interactions (port 20016).</p>
+<p><strong>Gateway</strong>: FastAPI service exposing HTTP endpoints with SSE streaming for client interactions (default port 21016, configurable via <code>GATEWAY_PORT</code>).</p>
 <h3 id="k">K<a class="headerlink" href="#k" title="Permanent link">&para;</a></h3>
 <p><strong>Kafka</strong>: Distributed event streaming platform used for inter-service communication.</p>
 <h3 id="m">M<a class="headerlink" href="#m" title="Permanent link">&para;</a></h3>

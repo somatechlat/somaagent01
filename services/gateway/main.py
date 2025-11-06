@@ -3587,7 +3587,7 @@ async def upload_files(
                 size += len(chunk)
                 if size > max_bytes:
                     GATEWAY_UPLOADS.labels("blocked").inc()
-                    raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes} bytes)")
+                    raise HTTPException(status_code=413, detail="File too large")
                 sha.update(chunk)
                 chunks.append(chunk)
                 # Emit progress event to outbound stream (best-effort)
@@ -3680,7 +3680,7 @@ async def upload_files(
         if size > inline_cap:
             # For now reject oversize inline; external_ref path can be added later via settings
             GATEWAY_UPLOADS.labels("blocked").inc()
-            raise HTTPException(status_code=413, detail=f"File exceeds inline cap ({inline_mb} MB)")
+            raise HTTPException(status_code=413, detail="Attachment exceeds inline cap")
 
         try:
             att_store = get_attachments_store()

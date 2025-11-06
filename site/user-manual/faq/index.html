@@ -916,6 +916,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -1039,10 +1062,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -1055,8 +1078,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1968,7 +1991,7 @@
 <h3 id="can-i-run-without-docker">Can I run without Docker?<a class="headerlink" href="#can-i-run-without-docker" title="Permanent link">&para;</a></h3>
 <p>Yes. Use <code>make deps-up</code> for infrastructure, then <code>make stack-up</code> for services. See <a href="../installation/">Installation Guide</a>.</p>
 <h3 id="which-ports-are-required">Which ports are required?<a class="headerlink" href="#which-ports-are-required" title="Permanent link">&para;</a></h3>
-<p>Core ports: 20000 (Kafka), 20001 (Redis), 20002 (PostgreSQL), 20016 (Gateway). See <a href="../installation/#port-reference">Port Reference</a>.</p>
+<p>Core ports: 20000 (Kafka), 20001 (Redis), 20002 (PostgreSQL), 21016 (Gateway). See <a href="../installation/#port-reference">Port Reference</a>.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="how-do-i-save-conversations">How do I save conversations?<a class="headerlink" href="#how-do-i-save-conversations" title="Permanent link">&para;</a></h3>
 <p>Conversations are automatically saved to PostgreSQL. Use the UI's "Export Chat" button to download as JSON.</p>
@@ -1996,7 +2019,7 @@
 <p>If not, check <code>docker compose logs somabrain</code>.</p>
 <h3 id="ui-wont-load">UI won't load<a class="headerlink" href="#ui-wont-load" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Check gateway health: <code>curl http://localhost:20016/v1/health</code></li>
+<li>Check gateway health: <code>curl http://localhost:${GATEWAY_PORT:-21016}/v1/health</code></li>
 <li>Check UI logs: <code>docker compose logs ui</code></li>
 <li>Clear browser cache</li>
 </ol>

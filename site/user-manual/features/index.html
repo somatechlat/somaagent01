@@ -617,6 +617,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#admin-ops-somabrain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Admin Ops (SomaBrain)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -784,6 +793,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../technical-manual/outbound-events/" class="md-nav__link">
         
   
@@ -907,10 +939,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
             
   
   
@@ -923,8 +955,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
             <span class="md-nav__icon md-icon"></span>
             Runbooks
           </label>
@@ -1644,6 +1676,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#admin-ops-somabrain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Admin Ops (SomaBrain)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1704,6 +1745,9 @@ Agent: [Writes Python code, executes it, returns result]
 <div class="highlight"><pre><span></span><code>User: Remember my email is user@example.com
 Agent: ✅ Saved to memory
 </code></pre></div></p>
+<p>Persona-aware metadata:
+- Runtime memory writes include persona summaries (name, tags) to improve downstream filtering and analysis.
+    - Config: <code>SOMABRAIN_PERSONA_TTL_SECONDS</code> controls persona cache TTL.</p>
 <h3 id="multi-agent-cooperation">Multi-Agent Cooperation<a class="headerlink" href="#multi-agent-cooperation" title="Permanent link">&para;</a></h3>
 <p>Delegate complex tasks to subordinate agents:
 - Main agent breaks down tasks
@@ -1753,6 +1797,12 @@ Agent: Creating 5 subordinate agents...
 - Agents use credentials without seeing them
 - Fernet encryption
 - Vault integration (optional)</p>
+<h3 id="admin-ops-somabrain">Admin Ops (SomaBrain)<a class="headerlink" href="#admin-ops-somabrain" title="Permanent link">&para;</a></h3>
+<p>Operator-focused endpoints (admin scope required):
+- <code>GET /v1/admin/memory/metrics</code> → SomaBrain memory metrics for a tenant/namespace
+- <code>POST /v1/admin/migrate/export</code> → export memory state
+- <code>POST /v1/admin/migrate/import</code> → import memory state</p>
+<p>Policy decision receipts are captured for every protected call when OPA/OpenFGA are configured, aiding audits and troubleshooting.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../installation/">Installation Guide</a></li>

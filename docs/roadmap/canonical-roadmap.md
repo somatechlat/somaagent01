@@ -305,7 +305,7 @@ Persistence contract:
 Attachment ingestion contract:
 - All ingestion paths use `attachment_id` (no filesystem paths). A service-only fetch streams content from Gateway (policy-enforced; tenant-scoped).
 - The `document_ingest` tool accepts `{ attachment_id, tenant_id, content_type?, size_bytes? }` and returns `{ text, metadata }` with extraction details.
-- Large files use external object storage via signed URLs (optional), with metadata retained in Postgres.
+ 
 
 SSE/WS streaming contract:
 - Streamed events carry `event` and `data` fields; `data` includes `meta` fields above.
@@ -448,8 +448,7 @@ Phase 3 — Memory Guarantees and Policy
 - Strengthen outbox/WAL/idempotency; expose WAL/outbox lag in health; chaos-test recovery.
 - OPA gates for conversation.send, tool.execute, memory.write; precise user-visible denies and audit.
 
-Phase 4 — Large Files and External Storage
-- Add S3/MinIO storage for large attachments with signed URL fetch; Gateway AV/quarantine and TTL janitor.
+ 
 
 Phase 5 — E2E and CI
 - Playwright suite for chat streaming, uploads, tool flows, delete chat, policy denies; wire to CI.
