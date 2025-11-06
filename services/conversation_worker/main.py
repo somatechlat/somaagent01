@@ -2488,7 +2488,7 @@ class ConversationWorker:
                 analysis=analysis_dict,
                 extra={"escalation": escalation_payload} if escalation_payload else None,
             )
-            # Mark completion for UI parity
+            # Mark completion for UI expectations
             try:
                 if isinstance(response_metadata, dict):
                     response_metadata.setdefault("done", True)

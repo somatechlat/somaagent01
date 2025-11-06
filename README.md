@@ -66,23 +66,97 @@ Notes:
 - LLM invoke endpoints are internal-token gated; in dev this is `dev-internal-token` and already configured for worker↔gateway calls.
 
 ## Golden vs Local (parity) endpoints and tests
+## Reference vs Local endpoints and visual tests
 
-- Golden baseline UI: http://127.0.0.1:7001 (external reference server, read-only for parity capture)
-- Local SA01 Gateway + UI: http://127.0.0.1:21016/ui (served by the Gateway at port 21016)
+- Reference baseline UI: http://127.0.0.1:7001 (read‑only capture server)
+- Local Gateway + UI: http://127.0.0.1:21016/ui
 
-Playwright UI suites live in `webui/tests/ui`:
-- Golden project (baseline capture): runs against 7001, records visual snapshots and design tokens.
-- Local/parity projects: run against 21016 and compare behavior/visuals with Golden.
+Playwright suites (`webui/tests/ui`):
+- Baseline project records snapshots + tokens against reference host.
+- Local project asserts functional/visual alignment; comparison project diffs snapshots.
 
-Quick run examples (from `webui/tests/ui`):
-- Golden serial run: `BASELINE_URL=http://127.0.0.1:7001 npx playwright test --project=golden --workers=1`
-- Local serial run: `npx playwright test --project=local --workers=1`
-- Parity compare: `npx playwright test --project=parity --workers=1`
+Run examples (from `webui/tests/ui`):
+- Baseline: `BASELINE_URL=http://127.0.0.1:7001 npx playwright test --project=golden --workers=1`
+- Local: `npx playwright test --project=local --workers=1`
+- Compare: `npx playwright test --project=parity --workers=1`
 
 Artifacts:
 - Snapshots: `specs/*-snapshots/`
 - Traces/screenshots: `test-results/**/trace.zip`, `test-results/**/test-failed-*.png`
 - Design tokens: `tokens/{golden,local}/*.json`
+
+### Streaming Modes
+
+Gateway streaming endpoint `/v1/llm/invoke/stream` supports two modes:
+1. Canonical (default): each provider token → `assistant.delta`, then a single `assistant.final` carrying `metadata.done=true`.
+2. Passthrough (OpenAI style): opt-in via query `?mode=openai` or env `GATEWAY_LLM_STREAM_MODE=openai` to forward raw upstream chunks plus the `[DONE]` sentinel unchanged.
+
+Canonical contract sequence (typical):
+`assistant.started` → optional `assistant.thinking.started` → repeated `assistant.delta` → optional `assistant.thinking.final` → `assistant.final` (+ `metadata.done=true`).
+Optional tool markers (when enabled via `SA01_ENABLE_TOOL_EVENTS=true`): `assistant.tool.started` / `assistant.tool.delta` / `assistant.tool.final` may appear interleaved with deltas.
+Errors are emitted as `assistant.error` (or `<role>.error` when tool/system sourced) and always normalized before persistence.
+
+Prefer canonical for stable UI/event tooling. Passthrough exists solely for debugging or legacy client compatibility.
+
+#### Feature Flags
+
+- `SA01_ENABLE_CONTENT_MASKING`: enable masking of sensitive content in streamed errors and persisted events.
+- `SA01_ENABLE_ERROR_CLASSIFIER`: enrich errors with `error_code` and `retriable` hints.
+- `SA01_ENABLE_SEQUENCE` (default true): attach `metadata.sequence` counters to streamed events.
+- `SA01_ENABLE_TOKEN_METRICS` (default true): emit first-token latency and token counters.
+- `SA01_ENABLE_REASONING_STREAM`: include `assistant.thinking.started/final` markers in the stream (non-persisted).
+- `SA01_ENABLE_TOOL_EVENTS`: include `assistant.tool.*` markers when providers stream tool calls.
+
+### Metrics & Persistence
+
+- Core Gateway metrics (Prometheus): `GATEWAY_METRICS_PORT` (default 8000).
+- Additional connection gauges & rate limiter counters exposed on the same metrics endpoint.
+- Circuit breaker metrics (if enabled by environment): `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`.
+
+In addition to Prometheus counters/gauges, the Gateway persists key metrics to Postgres via `TelemetryStore`:
+- `assistant_first_token_seconds` (per provider/model, with session/persona metadata)
+- Reasoning markers: `reasoning_events{phase=started|final,provider,model}`
+- Tool markers: `tool_events{type=started|delta|final,provider,model}`
+
+Persisted rows live in `generic_metrics`. Use `services/common/telemetry.py::TelemetryPublisher.emit_generic_metric` for new metrics.
+
+Scrape configuration example snippet:
+```
+- job_name: gateway
+    static_configs:
+        - targets: ['localhost:8000']
+- job_name: circuit_breakers
+    static_configs:
+        - targets: ['localhost:9610']
+```
+
+
+### Event Dedupe & Error Normalization
+
+Timeline uniqueness enforced by index `(session_id, payload->>'event_id')`. Raw `type:"error"` rows are auto-upgraded on startup and blocked by a CHECK constraint. Read-time normalization (list + SSE) ensures defense in depth.
+
+### SSE Heartbeats & Metrics
+
+`/v1/session/{session_id}/events` streams canonical outbound events and injects `system.keepalive` heartbeats every `SSE_HEARTBEAT_SECONDS` (default 20s). Active connections tracked via Prometheus gauge `gateway_sse_connections`.
+
+Metrics (scrape `${GATEWAY_METRICS_PORT:-8000}`):
+- `gateway_sse_connections`
+- `gateway_rate_limit_results_total{result=allowed|blocked|error}`
+- `gateway_write_through_*`
+
+Prometheus scrape example:
+```yaml
+- job_name: 'gateway'
+    static_configs:
+        - targets: ['localhost:8000']
+```
+
+### Rate Limiting
+
+Enable with `GATEWAY_RATE_LIMIT_ENABLED=true`.
+- `GATEWAY_RATE_LIMIT_WINDOW_SECONDS` (default 60)
+- `GATEWAY_RATE_LIMIT_MAX_REQUESTS` (default 120)
+Returns HTTP 429 + `retry_after` when exceeded; health and metrics endpoints exempt.
 
 
 <div align="center">

@@ -100,6 +100,15 @@ class TelemetryStore:
                     extra JSONB,
                     UNIQUE(model, deployment_mode, window_start, window_end)
                 );
+
+                CREATE TABLE IF NOT EXISTS generic_metrics (
+                    id SERIAL PRIMARY KEY,
+                    metric_name TEXT NOT NULL,
+                    labels JSONB,
+                    value DOUBLE PRECISION,
+                    metadata JSONB,
+                    occurred_at TIMESTAMPTZ DEFAULT NOW()
+                );
                 """
             )
 
@@ -213,3 +222,51 @@ class TelemetryStore:
                 score,
                 json.dumps(extra, ensure_ascii=False),
             )
+
+    async def insert_generic_metric(
+        self,
+        *,
+        metric_name: str,
+        labels: dict[str, Any] | None,
+        value: float | int | None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO generic_metrics (metric_name, labels, value, metadata)
+                VALUES ($1,$2,$3,$4)
+                """,
+                metric_name,
+                json.dumps(labels or {}, ensure_ascii=False),
+                float(value) if value is not None else None,
+                json.dumps(metadata or {}, ensure_ascii=False),
+            )
+
+    async def fetch_recent_generic(self, metric_name: str, limit: int = 25) -> list[dict[str, Any]]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT metric_name, labels, value, metadata, occurred_at
+                FROM generic_metrics
+                WHERE metric_name = $1
+                ORDER BY occurred_at DESC
+                LIMIT $2
+                """,
+                metric_name,
+                limit,
+            )
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            out.append(
+                {
+                    "metric_name": r["metric_name"],
+                    "labels": r["labels"],
+                    "value": r["value"],
+                    "metadata": r["metadata"],
+                    "occurred_at": r["occurred_at"].isoformat() if r["occurred_at"] else None,
+                }
+            )
+        return out
