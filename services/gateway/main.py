@@ -48,6 +48,7 @@ from jsonschema import ValidationError
 from werkzeug.utils import secure_filename
 import hashlib
 from pathlib import Path
+from contextlib import asynccontextmanager
 import subprocess
 import socket
 import contextlib
@@ -1106,8 +1107,7 @@ async def _config_update_listener() -> None:
     return HISTOGRAM
 
 
-# Schedule the listener when the FastAPI app starts
-@app.on_event("startup")
+# Startup tasks (migrated from deprecated on_event to lifespan)
 async def start_background_services() -> None:
     """Initialize shared resources and background services."""
     # Initialize shared event bus for reuse across requests
@@ -1263,7 +1263,6 @@ async def ui_policy_overview(request: Request) -> HTMLResponse:
 # ---------------------------------------------------------------------------
 # Start a dedicated metrics HTTP server on startup. The server runs on a separate
 # port (default 8000) and exposes the default prometheus_client metrics.
-@app.on_event("startup")
 def _start_metrics_server() -> None:
     # Skip in pytest to avoid port binding and background tasks
     if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {"1", "true", "yes", "on"}:
@@ -1421,7 +1420,7 @@ async def get_runtime_config() -> dict[str, Any]:
     }
 
 
-# (CSRF issuance endpoint removed; SSE-only UI with same-origin and token-based auth is used.)
+# SSE-only UI with same-origin and token-based auth is used.
 
 _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
@@ -1477,7 +1476,7 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-# (CSRF middleware removed.)
+# CSRF middleware is not used.
 
 
 def _session_claims_from_cookie(request: Request) -> dict[str, Any] | None:
@@ -1573,7 +1572,8 @@ async def _oidc_discovery() -> dict[str, Any]:
 
 
 def _jwt_cookie_flags(request: Request) -> dict[str, Any]:
-    same_site = os.getenv("GATEWAY_JWT_COOKIE_SAMESITE", os.getenv("GATEWAY_CSRF_COOKIE_SAMESITE", "Lax"))
+    # Configure cookie flags strictly via JWT-specific env, defaulting to Lax
+    same_site = os.getenv("GATEWAY_JWT_COOKIE_SAMESITE", "Lax")
     forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
     secure_env = os.getenv("GATEWAY_COOKIE_SECURE", "false").lower() in {"true", "1", "yes", "on"}
     secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
@@ -5090,7 +5090,6 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
             pass
 
 
-@app.on_event("startup")
 async def _start_uploads_janitor() -> None:
     # Skip background janitor in pytest
     if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {"1", "true", "yes", "on"}:
@@ -5103,7 +5102,6 @@ async def _start_uploads_janitor() -> None:
         LOGGER.debug("Failed to start uploads janitor", exc_info=True)
 
 
-@app.on_event("shutdown")
 async def _stop_uploads_janitor() -> None:
     try:
         if hasattr(app.state, "_uploads_stop"):
@@ -5111,7 +5109,6 @@ async def _stop_uploads_janitor() -> None:
     except Exception:
         pass
 
-@app.on_event("shutdown")
 async def shutdown_background_services() -> None:
     """Ensure all shared resources are properly closed on shutdown."""
 
@@ -5131,6 +5128,43 @@ async def shutdown_background_services() -> None:
     # Stop DLQ refresher
     if hasattr(app.state, "_dlq_refresher_stop"):
         app.state._dlq_refresher_stop.set()
+
+# Lifespan handler replacing deprecated on_event startup/shutdown
+@asynccontextmanager
+async def _gateway_lifespan(fastapi_app: FastAPI):
+    # Startup
+    try:
+        await start_background_services()
+    except Exception:
+        LOGGER.debug("start_background_services failed", exc_info=True)
+    try:
+        _start_metrics_server()
+    except Exception:
+        LOGGER.debug("_start_metrics_server failed", exc_info=True)
+    try:
+        await _start_uploads_janitor()
+    except Exception:
+        LOGGER.debug("_start_uploads_janitor failed", exc_info=True)
+
+    # Serve
+    try:
+        yield
+    finally:
+        # Shutdown
+        try:
+            await _stop_uploads_janitor()
+        except Exception:
+            pass
+        try:
+            await shutdown_background_services()
+        except Exception:
+            pass
+
+# Register lifespan
+try:
+    app.router.lifespan_context = _gateway_lifespan  # type: ignore[attr-defined]
+except Exception:
+    LOGGER.debug("Failed to register lifespan context", exc_info=True)
 
 @app.get("/v1/health")
 async def health_check(

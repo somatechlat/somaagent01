@@ -39,7 +39,8 @@ class ApiHandler:
 
     @classmethod
     def requires_csrf(cls) -> bool:
-        return cls.requires_auth()
+        # CSRF is not used in this project; rely on same-origin cookies or bearer auth
+        return False
 
     @abstractmethod
     async def process(self, input: Input, request: Request) -> Output:

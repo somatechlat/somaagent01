@@ -8,6 +8,34 @@ import { store as notificationStore } from "/components/notifications/notificati
 
 globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
 
+// Proactively clear any legacy CSRF/XSRF cookies that might be set by proxies or old UI code
+function clearLegacyAntiCsrfCookies() {
+  try {
+    const names = document.cookie.split("; ").map((p) => p.split("=")[0]);
+    const shouldDelete = (n) => /(^|[_-])(csrf|xsrf)(_|-|$)/i.test(n);
+    const targets = names.filter(shouldDelete);
+    if (targets.length === 0) return;
+    const host = window.location.hostname;
+    const paths = ["/", "/ui"]; // both root and UI subpath
+    const samesites = ["Lax", "Strict", "None"];
+    for (const name of targets) {
+      for (const path of paths) {
+        // Basic delete
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
+        // With domain variations and SameSite flags
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${host};`;
+        for (const ss of samesites) {
+          const secure = ss === "None" ? " Secure;" : "";
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; SameSite=${ss};${secure}`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${host}; SameSite=${ss};${secure}`;
+        }
+      }
+    }
+  } catch (e) {
+    // Non-fatal; proceed without blocking UI
+  }
+}
+
 const leftPanel = document.getElementById("left-panel");
 const rightPanel = document.getElementById("right-panel");
 const container = document.querySelector(".container");
@@ -83,6 +111,7 @@ globalThis.addEventListener("load", handleResize);
 globalThis.addEventListener("resize", handleResize);
 
 document.addEventListener("DOMContentLoaded", () => {
+  clearLegacyAntiCsrfCookies();
   const overlay = document.getElementById("sidebar-overlay");
   overlay.addEventListener("click", () => {
     if (isMobile()) {
@@ -577,6 +606,15 @@ function connectEventStream(sessionId) {
 
         // Optionally render tool outputs
         if (role === "tool" || t.startsWith("tool")) {
+          // Suppress echo tool outputs from UI; keep others for diagnostics
+          try {
+            const meta = payload.metadata || {};
+            const toolName = String(meta.tool_name || meta.name || "").toLowerCase();
+            if (toolName.includes("echo")) {
+              if (evId) processedEventIds.add(evId);
+              return;
+            }
+          } catch(_) {}
           const content = cumulative || payload.message || "";
           const id = payload.event_id || generateGUID();
           setMessage(id, "tool", "", content, false, payload.metadata || {});

@@ -19,6 +19,7 @@ attribute access (e.g. ``settings.chat_model_provider``).
 from __future__ import annotations
 
 from typing import Any, Dict
+from pydantic import ConfigDict
 
 try:
     # pydantic v2+: BaseSettings was moved to pydantic-settings
@@ -98,9 +99,8 @@ class SettingsModel(BaseSettings):
     # runtime errors when the settings file is missing or not yet persisted.
     USE_LLM: bool = Field(default=True)
 
-    class Config:
-        # Allow any extra keys from the historic JSON file.
-        extra = "allow"
+    # Pydantic v2 config: allow unknown keys to keep backward compatibility
+    model_config = ConfigDict(extra="allow")
 
     # Provide dict‑style access for legacy code paths.
     def __getitem__(self, item: str) -> Any:  # pragma: no cover

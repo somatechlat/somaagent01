@@ -191,6 +191,9 @@
 
 .message-info {
   background-color: var(--color-panel);
+  /* Subtle thinking/info hint: slightly smaller and tighter padding */
+  padding: 0.55rem var(--spacing-sm) 0.5rem var(--spacing-sm);
+  font-size: var(--font-size-smaller);
 }
 
 .message-util {

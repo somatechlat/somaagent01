@@ -753,6 +753,17 @@ function drawKvps(container, kvps, latex) {
     const table = document.createElement("table");
     table.classList.add("msg-kvps");
     for (let [key, value] of Object.entries(kvps)) {
+      // Normalize and optionally skip empty "thoughts"/"reasoning" entries
+      if (key === "thoughts" || key === "reasoning") {
+        let normalized = Array.isArray(value)
+          ? value
+          : (value == null ? [] : [value]);
+        normalized = normalized
+          .map((v) => (typeof v === "string" ? v.trim() : String(v || "").trim()))
+          .filter((v) => v.length > 0);
+        if (normalized.length === 0) continue; // nothing meaningful to render
+        value = normalized;
+      }
       const row = table.insertRow();
       row.classList.add("kvps-row");
       if (key === "thoughts" || key === "reasoning")
@@ -837,6 +848,17 @@ function drawKvpsIncremental(container, kvps, latex) {
 
     // Update or create rows as needed
     kvpEntries.forEach(([key, value], index) => {
+      // Normalize and optionally skip empty "thoughts"/"reasoning" entries
+      if (key === "thoughts" || key === "reasoning") {
+        let normalized = Array.isArray(value)
+          ? value
+          : (value == null ? [] : [value]);
+        normalized = normalized
+          .map((v) => (typeof v === "string" ? v.trim() : String(v || "").trim()))
+          .filter((v) => v.length > 0);
+        if (normalized.length === 0) return; // skip creating this row entirely
+        value = normalized;
+      }
       let row = existingRows[index];
 
       if (!row) {
