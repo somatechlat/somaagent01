@@ -47,6 +47,7 @@ This report captures file-level differences between the current web UI in this r
 - Reference: Different script order, legacy toast section.
 - Current: Loads `initFw.js` early, unified toast stack component, service worker registration, scheduler scaffolding.
 - Decision: KEEP. No changes needed.
+- Note: Implemented pre-paint theme bootstrap to prevent first-load flicker. An inline script in `<head>` applies `.dark-mode`/`.light-mode` based on `localStorage.darkMode` before CSS loads; body mirrors the class on `DOMContentLoaded`. This aligns first render with the saved preference and removes the initial CSS glitch.
 
 7) `webui/components/settings/memory/memory-dashboard-store.js`
 - Reference: Use `/v1/memories` and related endpoints for search, update, delete, bulk_delete, and subdir listing.

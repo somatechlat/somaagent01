@@ -5,6 +5,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Agent Zero</title>
+    <script>
+        // Apply theme class before CSS loads to prevent first-paint flicker
+        (function () {
+            try {
+                var isDark = localStorage.getItem('darkMode') !== 'false';
+                var root = document.documentElement;
+                if (isDark) {
+                    root.classList.remove('light-mode');
+                    root.classList.add('dark-mode');
+                } else {
+                    root.classList.remove('dark-mode');
+                    root.classList.add('light-mode');
+                }
+                // Also reflect onto body once it exists
+                document.addEventListener('DOMContentLoaded', function () {
+                    var body = document.body;
+                    if (!body) return;
+                    if (isDark) {
+                        body.classList.remove('light-mode');
+                        body.classList.add('dark-mode');
+                    } else {
+                        body.classList.remove('dark-mode');
+                        body.classList.add('light-mode');
+                    }
+                });
+            } catch (_) { /* non-fatal */ }
+        })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="css/messages.css">
@@ -134,7 +162,7 @@
     <script type="text/javascript" src="js/modal.js"></script>
 </head>
 
-<body class="dark-mode device-pointer">
+<body class="device-pointer">
     <div class="container">
         <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
         <div class="icons-section" id="hide-button" x-data="{ connected: true }">
@@ -360,7 +388,7 @@
             <!--Chat-->
             <div id="time-date-container">
                 <div id="time-date"></div>
-                <div class="status-icon" x-data="{ connected: true }" data-testid="status-indicator">
+                <div id="status-indicator" class="status-icon" x-data="{ connected: true }" data-testid="status-indicator">
                     <svg viewBox="0 0 30 30">
                         <!-- Connected State (filled circle) -->
                         <circle class="connected-circle" cx="15" cy="15" r="8"

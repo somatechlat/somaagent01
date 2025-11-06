@@ -55,3 +55,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 - Unit tests for admin endpoints, expanding coverage without requiring e2e multimedia dependencies.
+
+## [1.2.1] - 2025-11-06
+
+### Changed
+- Web UI theme bootstrap now applies before first paint to prevent initial flicker and incorrect styles on first interaction. Implemented an inline pre-paint script in `webui/index.html` that reads `localStorage.darkMode` and sets `.dark-mode`/`.light-mode` on `<html>` and mirrors to `<body>` on `DOMContentLoaded`.
+
+### Fixed
+- First-load CSS glitch where the wrong theme briefly appeared until the first message or DOM event updated the class list.
+- Playwright selector alignment by adding `id="status-indicator"` (parity with test expectations).
+- Metrics server startup conflict during tests now degrades gracefully (no retry storms) when port is already in use.
+
+### Notes
+- Continued enforcement of SSE-only streaming and canonical uploads + `document_ingest` tool flow; CSRF fully removed and legacy endpoints purged.

@@ -34,6 +34,7 @@
 - Toggles: persist “showThoughts/showJSON/showUtils”; restore Utilities bubble, Notifications modal, and visual diffs parity.
 - Settings modal: Make save hot-apply; ensure tabs include Constitution and Decisions; provide connectivity “Test” and “Status” feedback.
 - External → API Keys: show all `api_key_*` fields; allow editing many providers’ keys; mask on reload.
+- Theme pre-paint: Apply `.dark-mode`/`.light-mode` before first paint to eliminate initial flicker; mirror to body on `DOMContentLoaded`.
 
 ## Memory (SomaBrain) Integration
 - Map remember/recall/context endpoints to Gateway; ensure Memory button surfaces recalled content across conversation stages.
@@ -86,6 +87,7 @@
 - Streaming chat works immediately after save with chosen provider/model.
 - Status/Test endpoints reflect true state; no secrets leak in responses or logs.
 - No seed scripts; docs align with UI-first credential management.
+- First render matches saved theme with no flicker; Playwright UI suite green.
 <!-- Canonical roadmap for somaAgent01 — generated/updated 2025-10-30 by GitHub Copilot -->
 # SomaAgent01 Canonical Roadmap (Canonical)
 
