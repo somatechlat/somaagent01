@@ -229,48 +229,23 @@ Read-only endpoints used by the UI memory dashboard:
 
 ---
 
-### Settings
+### UI Settings
 
-**GET** `/v1/settings`
+Settings and credentials are managed via the Gateway UI Settings APIs.
 
-Get current settings.
+**GET** `/v1/ui/settings`
 
-**Response**:
-```json
-{
-  "llm_model": "openai/gpt-4",
-  "temperature": 0.7,
-  "max_tokens": 2000,
-  "memory_enabled": true
-}
-```
+Returns the effective agent configuration and model profile.
 
----
+**PUT** `/v1/ui/settings`
 
-**PUT** `/v1/settings`
+Accepts `model_profile`, `agent`, and related sections from the UI.
 
-Update settings.
+Related endpoints:
 
-**Request**:
-```json
-{
-  "llm_model": "anthropic/claude-3-opus",
-  "temperature": 0.5
-}
-```
-
-**Response**:
-```json
-{
-  "status": "updated",
-  "settings": {
-    "llm_model": "anthropic/claude-3-opus",
-    "temperature": 0.5,
-    "max_tokens": 2000,
-    "memory_enabled": true
-  }
-}
-```
+- **GET** `/v1/ui/settings/credentials` — presence map of stored provider secrets
+- **POST** `/v1/llm/credentials` — store/update a provider secret
+- **POST** `/v1/llm/test` — validate active model profile and provider reachability
 
 ## Streaming (SSE)
 
@@ -287,6 +262,38 @@ es.onmessage = (evt) => {
 es.onerror = () => {
   // Handle reconnect/backoff
 };
+```
+
+## Export Jobs
+
+Asynchronous export of memory replica rows to NDJSON. Disabled by default.
+
+Enable with:
+
+```
+DISABLE_FILE_SAVING=false
+EXPORT_JOBS_ENABLED=true
+```
+
+Endpoints (admin scope):
+
+- **POST** `/v1/memory/export/jobs` — create a job
+- **GET** `/v1/memory/export/jobs/{job_id}` — get status
+- **GET** `/v1/memory/export/jobs/{job_id}/download` — download NDJSON
+
+Example:
+
+```bash
+JOB_ID=$(curl -s -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/memory/export/jobs \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <admin-jwt>' \
+  -d '{"tenant":"acme","q":"timeout","limit_total":2000}' | jq -r '.job_id')
+
+curl -s http://localhost:${GATEWAY_PORT:-21016}/v1/memory/export/jobs/$JOB_ID \
+  -H 'Authorization: Bearer <admin-jwt>' | jq .
+
+curl -L http://localhost:${GATEWAY_PORT:-21016}/v1/memory/export/jobs/$JOB_ID/download \
+  -H 'Authorization: Bearer <admin-jwt>' -o export.ndjson
 ```
 
 ## Error Responses
