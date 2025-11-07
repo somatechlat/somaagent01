@@ -209,6 +209,10 @@ def _get_stt_model(model_size: str) -> "WhisperModel":  # type: ignore[name-defi
 # Global exception handler to surface unexpected errors (helps during dev)
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:  # pragma: no cover
+    """Global handler for unexpected exceptions.
+
+    Logs the exception details and returns a generic 500 JSON response.
+    """
     try:
         LOGGER.error(
             "Unhandled exception",
@@ -220,6 +224,7 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
             },
         )
     except Exception:
+        # Defensive: ensure logging failures do not mask the original error handling
         pass
     return JSONResponse({"detail": "internal error", "error_type": type(exc).__name__}, status_code=500)
 
@@ -9054,7 +9059,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 **{k: v for k, v in meta.items() if not k.startswith("_")},
             ):
                 if not canonical:
-                    # Legacy passthrough
+                    # Legacy passthrough – emit raw chunk and skip further processing for this iteration
                     try:
                         _choices = chunk.get("choices") if isinstance(chunk, dict) else None
                         if _choices and isinstance(_choices, list) and _choices:
@@ -9074,14 +9079,14 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                         pass
                     line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
                     yield line.encode("utf-8")
-                    # continue to next chunk (implicit)
+                    continue  # skip canonical handling for this chunk
 
-            # Canonical transformation
-            try:
+                # Canonical transformation for each chunk
+                # Parse chunk and extract streaming data
                 _choices = chunk.get("choices") if isinstance(chunk, dict) else None
                 if not _choices or not isinstance(_choices, list) or not _choices:
-                    # Ignore non-choice fragments
-                    pass  # No loop to continue; safely ignore
+                    # Ignore non-choice fragments and move to next chunk
+                    continue
                 primary = (_choices[0] or {})
                 delta = primary.get("delta", {}) if isinstance(primary.get("delta"), dict) else {}
                 content_piece = str(delta.get("content") or "")
@@ -9261,31 +9266,32 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                                 "Finish reason observed",
                                 extra={"finish_reason": finish_reason, "model": model},
                             )
-            except Exception:
-                LOGGER.debug("Failed to transform provider chunk", exc_info=True)
-                continue
-            except ValueError as exc:
-                if canonical:
-                    err_event = {
-                        "event_id": str(uuid.uuid4()),
-                        "session_id": payload.session_id,
-                        "persona_id": payload.persona_id,
-                        "role": "assistant",
-                        "message": "",
-                        "metadata": {
-                            "source": "gateway.llm_stream",
-                            "provider": meta.get("_provider"),
-                            "model": model,
-                            "error": "debug:stream " + str(exc).replace("\n", " "),
-                        },
-                        "version": "sa01-v1",
-                        "type": "assistant.error",
-                    }
-                    yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
-                else:
-                    msg = "data: " + "{\"error\": \"debug:stream " + str(exc).replace("\n", " ") + "\"}" + "\n\n"
-                    yield msg.encode("utf-8")
-                return
+        # End of async for loop – handle errors from the streaming operation
+        except Exception:
+            LOGGER.debug("Failed to transform provider chunk", exc_info=True)
+            pass
+        except ValueError as exc:
+            if canonical:
+                err_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "role": "assistant",
+                    "message": "",
+                    "metadata": {
+                        "source": "gateway.llm_stream",
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "error": "debug:stream " + str(exc).replace("\n", " "),
+                    },
+                    "version": "sa01-v1",
+                    "type": "assistant.error",
+                }
+                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+            else:
+                msg = "data: " + "{\"error\": \"debug:stream " + str(exc).replace("\n", " ") + "\"}" + "\n\n"
+                yield msg.encode("utf-8")
+            return
         except httpx.HTTPStatusError as exc:
             detail = f"provider_error: {exc}"
             try:

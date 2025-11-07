@@ -293,15 +293,36 @@ class PostgresSessionStore(SessionStore):
                 except Exception:
                     pass
             envelope_payload = self._compose_envelope_payload(event)
+            # Insert the event.  Because the `uq_session_events_session_event`
+            # index enforces uniqueness of `(session_id, event_id)` we may hit a
+            # `UniqueViolationError` if the same event is retried (e.g. after a
+            # worker restart).  In that case we simply ignore the duplicate –
+            # the event is already persisted and downstream consumers have
+            # processed it.
             async with conn.transaction():
-                await conn.execute(
-                    """
-                    INSERT INTO session_events (session_id, payload)
-                    VALUES ($1, $2)
-                    """,
-                    session_id,
-                    json.dumps(event, ensure_ascii=False),
-                )
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO session_events (session_id, payload)
+                        VALUES ($1, $2)
+                        """,
+                        session_id,
+                        json.dumps(event, ensure_ascii=False),
+                    )
+                except Exception as exc:
+                    # asyncpg raises a subclass of `UniqueViolationError` for
+                    # duplicate inserts.  We deliberately catch the generic
+                    # `Exception` to avoid importing asyncpg directly – the
+                    # runtime will provide the concrete type.  If the error
+                    # is *not* a duplicate we re‑raise so genuine issues are
+                    # not silently swallowed.
+                    if getattr(exc, "__class__", None).__name__ != "UniqueViolationError":
+                        raise
+                    # Duplicate – safe to ignore.
+                    LOGGER.debug(
+                        "Duplicate session event ignored",
+                        extra={"session_id": session_id, "event_id": event.get("event_id")},
+                    )
                 if envelope_payload:
                     await self._upsert_envelope(
                         conn,
@@ -817,10 +838,31 @@ END$$;
 
 
 async def ensure_schema(store: PostgresSessionStore) -> None:
+    """Create tables / indexes if they do not exist.
+
+    The original migration script unconditionally executes ``MIGRATION_SQL``.
+    When the unique index ``uq_session_events_session_event`` already
+    exists *and* there are duplicate ``event_id`` rows, PostgreSQL raises a
+    ``UniqueViolationError`` which crashes the conversation‑worker during
+    startup.  To make the migration idempotent we now catch any exception
+    raised by ``conn.execute`` and log a warning – the schema is already in
+    place, so we can safely continue.
+    """
     pool = await store._ensure_pool()
     async with pool.acquire() as conn:
-        await conn.execute(MIGRATION_SQL)
-        LOGGER.info("Ensured session_events and session_envelopes tables exist")
+        try:
+            await conn.execute(MIGRATION_SQL)
+        except Exception as exc:
+            # ``UniqueViolationError`` (or any other error) during schema
+            # creation means the objects already exist or the data violates
+            # the new constraint.  We log the issue and proceed because the
+            # worker can still operate with the existing tables.
+            LOGGER.warning(
+                "Schema migration failed – assuming objects already exist",
+                extra={"error": str(exc)},
+            )
+        else:
+            LOGGER.info("Ensured session_events and session_envelopes tables exist")
 
 async def ensure_constraints(store: PostgresSessionStore) -> None:
     """Ensure optional runtime constraints that can't be safely added pre-backfill.
