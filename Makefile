@@ -102,8 +102,6 @@ help:
 	@echo "  health                    Curl Gateway /v1/health"
 	@echo "  ui-smoke                  Run UI smoke test"
 	@echo "  test-e2e                  Run E2E pytest suite (tests/e2e)"
-	@echo "  llm-setup                 Upsert LLM credentials from env and run a quick connectivity test"
-	@echo "  llm-test                  Run LLM connectivity test via Gateway"
 	@echo ""
 	@echo "Helm quickstart targets:"
 	@echo "  helm-dev-up               Install soma-infra (dev) and soma-stack (dev) into cluster."
@@ -390,17 +388,4 @@ test-e2e:
 	@echo "Running E2E tests ..."
 	@[ -x ./.venv/bin/python ] && ./.venv/bin/python -m pytest -q tests/e2e || pytest -q tests/e2e
 
-.PHONY: llm-setup llm-test
-
-# Upsert provider secret into the Gateway and validate connectivity.
-# Usage examples:
-#   OPENAI_API_KEY=sk-... make llm-setup
-#   PROVIDER=groq SECRET=gsk_... make llm-setup
-llm-setup:
-	@echo "Setting LLM credentials and validating via Gateway..."
-	@python scripts/llm_setup.py
-
-# Only run the connectivity test, assuming credentials already set
-llm-test:
-	@echo "Testing LLM connectivity via Gateway..."
-	@python scripts/llm_setup.py | tail -n 1
+ 
