@@ -1095,8 +1095,9 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Failed to start DLQ refresher task", exc_info=True)
 
-    # Initialize export jobs store and schema, then start worker (skip local-file exports entirely)
-    if False:
+    # Initialize export jobs store and schema, then start worker (controlled by env flags)
+    # Enable with: EXPORT_JOBS_ENABLED=true and DISABLE_FILE_SAVING=false
+    if _flag_truthy(os.getenv("EXPORT_JOBS_ENABLED", "false"), False) and not _file_saving_disabled():
         try:
             export_store = get_export_job_store()
             await ensure_export_jobs_schema(export_store)
