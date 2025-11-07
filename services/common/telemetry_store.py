@@ -109,6 +109,39 @@ class TelemetryStore:
                     metadata JSONB,
                     occurred_at TIMESTAMPTZ DEFAULT NOW()
                 );
+                -- Helpful indexes for common queries and recent lookups
+                DO $$
+                BEGIN
+                    -- Composite index for metric_name and recency
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_class c
+                        JOIN pg_namespace n ON n.oid = c.relnamespace
+                        WHERE c.relkind = 'i' AND c.relname = 'idx_generic_metrics_name_time'
+                    ) THEN
+                        CREATE INDEX idx_generic_metrics_name_time
+                        ON generic_metrics (metric_name, occurred_at DESC);
+                    END IF;
+
+                    -- Standalone occurred_at index for time-based scans
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_class c
+                        JOIN pg_namespace n ON n.oid = c.relnamespace
+                        WHERE c.relkind = 'i' AND c.relname = 'idx_generic_metrics_occurred_at'
+                    ) THEN
+                        CREATE INDEX idx_generic_metrics_occurred_at
+                        ON generic_metrics (occurred_at DESC);
+                    END IF;
+
+                    -- GIN index on labels JSONB for generic key/value filters
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_class c
+                        JOIN pg_namespace n ON n.oid = c.relnamespace
+                        WHERE c.relkind = 'i' AND c.relname = 'idx_generic_metrics_labels'
+                    ) THEN
+                        CREATE INDEX idx_generic_metrics_labels
+                        ON generic_metrics USING GIN (labels jsonb_ops);
+                    END IF;
+                END$$;
                 """
             )
 

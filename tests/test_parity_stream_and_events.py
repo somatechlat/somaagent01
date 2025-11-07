@@ -31,7 +31,9 @@ async def test_stream_canonical_produces_deltas_then_single_final():
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(url, json=body)
-        assert resp.status_code == 200, f"stream invoke failed: {resp.status_code} {resp.text}"\n\n    # The response is an SSE stream; we re-request with stream semantics using raw client
+        assert resp.status_code == 200, f"stream invoke failed: {resp.status_code} {resp.text}"
+
+    # The response is an SSE stream; we re-request with stream semantics using raw client
     async with httpx.AsyncClient(timeout=None) as client:
         async with client.stream("POST", url, json=body) as rstream:
             assert rstream.status_code == 200, f"stream status {rstream.status_code}"

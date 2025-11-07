@@ -442,27 +442,8 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # basic auth section
     auth_fields: list[SettingsField] = []
 
-    auth_fields.append(
-        {
-            "id": "auth_login",
-            "title": "UI Login",
-            "description": "Set user name for web UI",
-            "type": "text",
-            "value": dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or "",
-        }
-    )
-
-    auth_fields.append(
-        {
-            "id": "auth_password",
-            "title": "UI Password",
-            "description": "Set user password for web UI",
-            "type": "password",
-            "value": (
-                PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) else ""
-            ),
-        }
-    )
+    # Legacy UI login/password fields have been removed. Authentication now relies on OIDC or JWT tokens.
+    # The root password field (for dockerized environments) is retained.
 
     if runtime.is_dockerized():
         auth_fields.append(
@@ -1752,11 +1733,17 @@ def get_runtime_config(set: Settings):
 
 
 def create_auth_token() -> str:
+    """Generate a deterministic token for internal authentication.
+
+    Historically this token incorporated the UI ``AUTH_LOGIN`` and ``AUTH_PASSWORD``
+    environment variables. Those variables have been deprecated and are no longer
+    required for the core system operation. The token now derives solely from the
+    persistent runtime identifier, ensuring uniqueness while simplifying the
+    configuration.
+    """
     runtime_id = runtime.get_persistent_id()
-    username = dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or ""
-    password = dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) or ""
     # use base64 encoding for a more compact token with alphanumeric chars
-    hash_bytes = hashlib.sha256(f"{runtime_id}:{username}:{password}".encode()).digest()
+    hash_bytes = hashlib.sha256(runtime_id.encode()).digest()
     # encode as base64 and remove any non-alphanumeric chars (like +, /, =)
     b64_token = base64.urlsafe_b64encode(hash_bytes).decode().replace("=", "")
     return b64_token[:16]

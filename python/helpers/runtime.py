@@ -8,6 +8,8 @@ import threading
 from typing import Awaitable, Callable, cast, overload, TypeVar, Union
 
 from python.helpers import dotenv, files, rfc, settings
+import os
+import pathlib
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -72,12 +74,55 @@ def get_runtime_id() -> str:
     return runtime_id
 
 
+# ----------------------------------------------------------------------
+# Persistent runtime identifier – stored in a secret file (no env fallback)
+# ----------------------------------------------------------------------
+# Default location is a writable file inside the repository (./tmp/persistent_id).
+# In production you should mount a secret and point the env var
+# SA01_PERSISTENT_ID_PATH to that mount (e.g. /run/secrets/soma_persistent_id).
+_default_dev_path = pathlib.Path(__file__).parents[2] / "tmp" / "persistent_id"
+_PERSISTENT_ID_PATH = pathlib.Path(
+    os.getenv("SA01_PERSISTENT_ID_PATH", str(_default_dev_path))
+)
+
+def _read_id_file() -> str | None:
+    """Return the persisted ID if the secret file exists and is non‑empty.
+
+    The secret file is expected to be mounted by Docker/Kubernetes as a
+    read‑only secret. On the first container start the file will be empty –
+    in that case we generate a new ID and write it back (the orchestrator
+    typically allows a one‑time write to an empty secret volume).
+    """
+    try:
+        raw = _PERSISTENT_ID_PATH.read_text().strip()
+        return raw or None
+    except Exception:
+        return None
+
+def _write_id_file(value: str) -> None:
+    """Write the generated ID back to the secret file.
+
+    If the orchestrator has made the mount read‑only after the first write,
+    this call will raise; letting the exception propagate makes the
+    mis‑configuration obvious during startup.
+    """
+    _PERSISTENT_ID_PATH.write_text(value)
+
 def get_persistent_id() -> str:
-    id = dotenv.get_dotenv_value("A0_PERSISTENT_RUNTIME_ID")
-    if not id:
-        id = secrets.token_hex(16)
-        dotenv.save_dotenv_value("A0_PERSISTENT_RUNTIME_ID", id)
-    return id
+    """Return a stable runtime identifier.
+
+    The identifier is stored in a secret file defined by
+    ``SA01_PERSISTENT_ID_PATH``. No environment variable fallback is used –
+    this is the *single source of truth* for production deployments.
+    """
+    persisted = _read_id_file()
+    if persisted:
+        return persisted
+
+    # No ID yet – generate a new one and persist it
+    new_id = secrets.token_hex(16)
+    _write_id_file(new_id)
+    return new_id
 
 
 @overload
