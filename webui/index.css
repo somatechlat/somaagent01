@@ -199,13 +199,16 @@ img {
   flex-shrink: 0;
 }
 
+/* Match baseline left-panel footer behavior unless enhanced-ui is enabled */
 .left-panel-bottom {
-  position: sticky;
-  bottom: 0;
   flex-shrink: 0;
   background: var(--color-panel);
   z-index: 1;
   border-top: 1px solid var(--color-border);
+}
+.enhanced-ui .left-panel-bottom {
+  position: sticky;
+  bottom: 0;
 }
 
 /* Sidebar Toggle Button */

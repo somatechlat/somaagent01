@@ -6,29 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Agent Zero</title>
     <script>
-        // Apply theme class before CSS loads to prevent first-paint flicker
+        // Apply theme & enhancement classes before CSS loads to prevent first-paint flicker
         (function () {
             try {
                 var isDark = localStorage.getItem('darkMode') !== 'false';
+                var enhancedUI = localStorage.getItem('enhancedUI') === 'true';
                 var root = document.documentElement;
-                if (isDark) {
-                    root.classList.remove('light-mode');
-                    root.classList.add('dark-mode');
-                } else {
-                    root.classList.remove('dark-mode');
-                    root.classList.add('light-mode');
-                }
-                // Also reflect onto body once it exists
+                root.classList.remove('light-mode','dark-mode');
+                root.classList.add(isDark ? 'dark-mode' : 'light-mode');
+                if (enhancedUI) root.classList.add('enhanced-ui'); else root.classList.remove('enhanced-ui');
                 document.addEventListener('DOMContentLoaded', function () {
                     var body = document.body;
                     if (!body) return;
-                    if (isDark) {
-                        body.classList.remove('light-mode');
-                        body.classList.add('dark-mode');
-                    } else {
-                        body.classList.remove('dark-mode');
-                        body.classList.add('light-mode');
-                    }
+                    body.classList.remove('light-mode','dark-mode');
+                    body.classList.add(isDark ? 'dark-mode' : 'light-mode');
+                    if (enhancedUI) body.classList.add('enhanced-ui'); else body.classList.remove('enhanced-ui');
                 });
             } catch (_) { /* non-fatal */ }
         })();
@@ -46,6 +38,9 @@
     <link rel="stylesheet" href="css/history.css">
     <link rel="stylesheet" href="css/scheduler-datepicker.css">
     <link rel="stylesheet" href="css/notification.css">
+    <!-- Final parity overrides must be last to match Golden exactly -->
+    <link rel="stylesheet" href="/css/a0-parity-overrides.css">
+    
 
     <!-- Flatpickr for datetime picker -->
     <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css">
@@ -324,6 +319,7 @@
                         </h3>
                         <ul class="config-list" id="pref-list" x-show="prefOpen" x-collapse x-transition>
                             <!-- Preferences Items -->
+                            <!-- Baseline defaults adjusted for parity: autoScroll true, darkMode true, speech false, showThoughts true, showJson false, showUtils false -->
                             <li x-data="{ autoScroll: true }">
                                 <span>Autoscroll</span>
                                 <label class="switch">
@@ -348,30 +344,39 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showThoughts: false }">
+                            <li x-data="{ showThoughts: localStorage.getItem('showThoughts') !== 'false' }">
                                 <span>Show thoughts</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-thoughts" x-model="showThoughts"
-                                        x-effect="globalThis.safeCall('toggleThoughts',showThoughts)"
-                                        @change="globalThis.safeCall('toggleThoughts',showThoughts)">
+                                        x-effect="globalThis.safeCall('toggleThoughts',showThoughts); localStorage.setItem('showThoughts', showThoughts ? 'true' : 'false')"
+                                        @change="globalThis.safeCall('toggleThoughts',showThoughts); localStorage.setItem('showThoughts', showThoughts ? 'true' : 'false')">
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showJson: true }">
+                            <li x-data="{ showJson: localStorage.getItem('showJson') === 'true' }">
                                 <span>Show JSON</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-json" x-model="showJson"
-                                        x-effect="globalThis.safeCall('toggleJson',showJson)"
-                                        @change="globalThis.safeCall('toggleJson',showJson)">
+                                        x-effect="globalThis.safeCall('toggleJson',showJson); localStorage.setItem('showJson', showJson ? 'true' : 'false')"
+                                        @change="globalThis.safeCall('toggleJson',showJson); localStorage.setItem('showJson', showJson ? 'true' : 'false')">
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showUtils: true }">
+                            <li x-data="{ showUtils: localStorage.getItem('showUtils') === 'true' }">
                                 <span>Show utility messages</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-utils" x-model="showUtils"
-                                        x-effect="globalThis.safeCall('toggleUtils',showUtils)"
-                                        @change="globalThis.safeCall('toggleUtils',showUtils)">
+                                        x-effect="globalThis.safeCall('toggleUtils',showUtils); localStorage.setItem('showUtils', showUtils ? 'true' : 'false')"
+                                        @change="globalThis.safeCall('toggleUtils',showUtils); localStorage.setItem('showUtils', showUtils ? 'true' : 'false')">
+                                    <span class="slider"></span>
+                                </label>
+                            </li>
+                            <!-- Optional enhancement toggle (hidden for strict pixel parity) -->
+                            <li x-data="{ enhancedUI: localStorage.getItem('enhancedUI') === 'true' }" style="display:none;">
+                                <span>Enhanced stream accents</span>
+                                <label class="switch">
+                                    <input type="checkbox" x-model="enhancedUI"
+                                        @change="(enhancedUI?document.body.classList.add('enhanced-ui'):document.body.classList.remove('enhanced-ui')); localStorage.setItem('enhancedUI', enhancedUI ? 'true' : 'false')">
                                     <span class="slider"></span>
                                 </label>
                             </li>
@@ -577,7 +582,8 @@
         </div>
     </div>
     <div id="settingsModal" x-data="settingsModalProxy">
-            <div x-show="isOpen" :style="isOpen ? 'display:flex' : 'display:none'" class="modal-overlay" @click.self="handleCancel()"
+        <template x-teleport="body">
+            <div x-show="isOpen" class="modal-overlay" @click.self="handleCancel()"
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
                 <div class="modal-container">
                     <div class="modal-header">
@@ -1571,6 +1577,7 @@
                     </div>
                 </div>
             </div>
+        </template>
     </div>
 
     <!-- work_dir Browser Modal -->
