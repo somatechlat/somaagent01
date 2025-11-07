@@ -964,7 +964,7 @@ class ConversationWorker:
     ) -> tuple[str, dict[str, int]]:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
-        url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        url = f"{self._gateway_base}/v1/llm/invoke/stream?mode=openai"
         # Build overrides but omit empty strings (e.g. base_url="") while allowing 0/0.0
         ov: dict[str, Any] = {}
         for k, v in {
@@ -1349,7 +1349,7 @@ class ConversationWorker:
             slm_kwargs["metadata"] = extra_kwargs
 
         # Stream and detect tool calls
-        url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        url = f"{self._gateway_base}/v1/llm/invoke/stream?mode=openai"
         # Build overrides and omit empty-string values (esp. base_url="")
         ov: dict[str, Any] = {}
         for k, v in {
