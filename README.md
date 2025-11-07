@@ -117,6 +117,7 @@ In addition to Prometheus counters/gauges, the Gateway persists key metrics to P
 - `assistant_first_token_seconds` (per provider/model, with session/persona metadata)
 - Reasoning markers: `reasoning_events{phase=started|final,provider,model}`
 - Tool markers: `tool_events{type=started|delta|final,provider,model}`
+ - LLM invoke outcomes: `llm_invoke{stream=true|false,result=ok|error|timeout,provider,model}`
 
 Persisted rows live in `generic_metrics`. Use `services/common/telemetry.py::TelemetryPublisher.emit_generic_metric` for new metrics.
 

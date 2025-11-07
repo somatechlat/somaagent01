@@ -38,27 +38,6 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse, RedirectResponse
-        # Attempt to VALIDATE raw-error prevention constraint after backfill
-        try:
-            pool = await store._ensure_pool()
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    """
-                    DO $$
-                    BEGIN
-                        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname='chk_session_events_no_raw_error' AND convalidated = false) THEN
-                            BEGIN
-                                ALTER TABLE session_events VALIDATE CONSTRAINT chk_session_events_no_raw_error;
-                            EXCEPTION WHEN others THEN
-                                -- Leave unvalidated if legacy rows still exist
-                                NULL;
-                            END;
-                        END IF;
-                    END$$;
-                    """
-                )
-        except Exception:
-            LOGGER.debug("Constraint validation skipped", exc_info=True)
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -437,6 +416,13 @@ LLM_INVOKE_RESULTS = _get_or_create_counter(
     "gateway_llm_invoke_results_total",
     "LLM invoke outcomes",
     labelnames=("provider", "stream", "result"),  # stream:true|false, result: ok|error|timeout
+)
+
+# Token usage counters – track input and output token volumes per provider/model
+GATEWAY_TOKENS_TOTAL = _get_or_create_counter(
+    "gateway_tokens_total",
+    "Total LLM tokens processed (input and output)",
+    labelnames=("provider", "model", "direction"),  # direction: input|output
 )
 
 # Reasoning/tool event markers
@@ -1602,10 +1588,38 @@ async def rate_limit_guard(request: Request, call_next):
             await cache._client.expire(key, window)  # type: ignore[attr-defined]
         if cur_raw > max_requests:
             GATEWAY_RATE_LIMIT_RESULTS.labels("blocked").inc()
+            # Persist rate limit decision
+            try:
+                await get_telemetry().emit_generic_metric(
+                    metric_name="gateway_rate_limit",
+                    labels={"result": "blocked"},
+                    value=1,
+                    metadata={"path": request.url.path, "method": request.method},
+                )
+            except Exception:
+                LOGGER.debug("telemetry emit failed (rate limit blocked)", exc_info=True)
             return JSONResponse({"detail":"rate_limited","retry_after":window}, status_code=429)
         GATEWAY_RATE_LIMIT_RESULTS.labels("allowed").inc()
+        try:
+            await get_telemetry().emit_generic_metric(
+                metric_name="gateway_rate_limit",
+                labels={"result": "allowed"},
+                value=1,
+                metadata={"path": request.url.path, "method": request.method},
+            )
+        except Exception:
+            LOGGER.debug("telemetry emit failed (rate limit allowed)", exc_info=True)
     except Exception:
         GATEWAY_RATE_LIMIT_RESULTS.labels("error").inc()
+        try:
+            await get_telemetry().emit_generic_metric(
+                metric_name="gateway_rate_limit",
+                labels={"result": "error"},
+                value=1,
+                metadata={"path": request.url.path, "method": request.method},
+            )
+        except Exception:
+            LOGGER.debug("telemetry emit failed (rate limit error)", exc_info=True)
     return await call_next(request)
 
 
@@ -5513,6 +5527,16 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                 GATEWAY_SSE_CONNECTIONS.inc()
             except Exception:
                 pass
+            # Persist SSE connection open
+            try:
+                await get_telemetry().emit_generic_metric(
+                    metric_name="sse_connection",
+                    labels={"event": "open"},
+                    value=1,
+                    metadata={"session_id": session_id},
+                )
+            except Exception:
+                LOGGER.debug("telemetry emit failed (sse open)", exc_info=True)
             last_beat = 0.0
             heartbeat_secs = float(os.getenv("SSE_HEARTBEAT_SECONDS", "20"))
             async for payload in iterate_topic(topic=topic, group_id=group_id, settings=_kafka_settings()):
@@ -5607,6 +5631,16 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                 GATEWAY_SSE_CONNECTIONS.dec()
             except Exception:
                 pass
+            # Persist SSE connection close
+            try:
+                await get_telemetry().emit_generic_metric(
+                    metric_name="sse_connection",
+                    labels={"event": "close"},
+                    value=1,
+                    metadata={"session_id": session_id},
+                )
+            except Exception:
+                LOGGER.debug("telemetry emit failed (sse close)", exc_info=True)
 
     headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(event_iter(), media_type="text/event-stream", headers=headers)
@@ -8484,6 +8518,43 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                     )
                                 except Exception:
                                     LOGGER.debug("Failed to write audit log for llm.invoke content after tools stripped", exc_info=True)
+                                # Metrics: success (content after tools stripped)
+                                try:
+                                    LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "ok").inc()
+                                except Exception:
+                                    pass
+                                try:
+                                    await get_telemetry().emit_generic_metric(
+                                        metric_name="llm_invoke",
+                                        labels={
+                                            "provider": meta.get("_provider"),
+                                            "model": model,
+                                            "stream": "false",
+                                            "result": "ok",
+                                        },
+                                        value=1,
+                                        metadata={
+                                            "session_id": payload.session_id,
+                                            "persona_id": payload.persona_id,
+                                            "latency_ms": int(max(0.0, time.time() - start) * 1000),
+                                        },
+                                    )
+                                except Exception:
+                                    LOGGER.debug("telemetry emit failed (llm_invoke ok: content_after_tools_stripped)", exc_info=True)
+                                # Token usage metrics (non‑stream)
+                                try:
+                                    GATEWAY_TOKENS_TOTAL.labels(
+                                        meta.get("_provider", "unknown"),
+                                        model,
+                                        "input",
+                                    ).inc(usage.get("input_tokens", 0))
+                                    GATEWAY_TOKENS_TOTAL.labels(
+                                        meta.get("_provider", "unknown"),
+                                        model,
+                                        "output",
+                                    ).inc(usage.get("output_tokens", 0))
+                                except Exception:
+                                    LOGGER.debug("token metric emit failed (content after tools)", exc_info=True)
                                 return JSONResponse(
                                     {"content": _content2, "usage": usage, "model": model, "base_url": base_url},
                                     headers=headers_out,
@@ -8522,6 +8593,43 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                             LOGGER.debug("Failed to write audit log for llm.invoke tool_calls", exc_info=True)
 
                         headers_out: dict[str, str] = {}
+                        # Metrics: success (tool_calls response)
+                        try:
+                            LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "ok").inc()
+                        except Exception:
+                            pass
+                        try:
+                            await get_telemetry().emit_generic_metric(
+                                metric_name="llm_invoke",
+                                labels={
+                                    "provider": meta.get("_provider"),
+                                    "model": model,
+                                    "stream": "false",
+                                    "result": "ok",
+                                },
+                                value=1,
+                                metadata={
+                                    "session_id": payload.session_id,
+                                    "persona_id": payload.persona_id,
+                                    "latency_ms": int(max(0.0, time.time() - start) * 1000),
+                                },
+                            )
+                        except Exception:
+                            LOGGER.debug("telemetry emit failed (llm_invoke ok: tool_calls)", exc_info=True)
+                        # Token usage metrics (non‑stream tool_calls)
+                        try:
+                            GATEWAY_TOKENS_TOTAL.labels(
+                                meta.get("_provider", "unknown"),
+                                model,
+                                "input",
+                            ).inc(usage.get("input_tokens", 0))
+                            GATEWAY_TOKENS_TOTAL.labels(
+                                meta.get("_provider", "unknown"),
+                                model,
+                                "output",
+                            ).inc(usage.get("output_tokens", 0))
+                        except Exception:
+                            LOGGER.debug("token metric emit failed (tool_calls)", exc_info=True)
                         return JSONResponse(
                             {"tool_calls": _tc, "usage": usage, "model": model, "base_url": base_url},
                             headers=headers_out,
@@ -8533,6 +8641,24 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             LOGGER.debug("Direct tool_calls fetch failed", exc_info=True)
         # Surface provider schema issues (e.g., tool_call-only responses) as provider errors
         try:
+            # Base audit details for runtime (502) errors
+            details = {
+                "provider": meta.get("_provider"),
+                "model": model,
+                "base_url": base_url,
+                "status": "error",
+                "http_status": 502,
+                "error_type": type(exc).__name__,
+            }
+            # Optional classification enrichment
+            if _error_classifier_enabled():
+                em = _errclass.classify(message=str(exc))
+                details.update({
+                    "error_code": em.error_code,
+                    "retriable": em.retriable,
+                })
+                if em.retry_after is not None:
+                    details["retry_after"] = em.retry_after
             await get_audit_store().log(
                 request_id=req_id,
                 trace_id=trace_id_hex,
@@ -8542,14 +8668,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                 action="llm.invoke",
                 resource="llm.chat",
                 target_id=None,
-                details={
-                    "provider": meta.get("_provider"),
-                    "model": model,
-                    "base_url": base_url,
-                    "status": "error",
-                    "http_status": 502,
-                    "error_type": type(exc).__name__,
-                },
+                details=details,
                 diff=None,
                 ip=getattr(request.client, "host", None) if request.client else None,
                 user_agent=request.headers.get("user-agent"),
@@ -8561,11 +8680,45 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "error").inc()
         except Exception:
             pass
+        try:
+            await get_telemetry().emit_generic_metric(
+                metric_name="llm_invoke",
+                labels={
+                    "provider": meta.get("_provider"),
+                    "model": model,
+                    "stream": "false",
+                    "result": "error",
+                },
+                value=1,
+                metadata={
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "http_status": 502,
+                },
+            )
+        except Exception:
+            LOGGER.debug("telemetry emit failed (llm_invoke error: runtime)", exc_info=True)
         raise HTTPException(status_code=502, detail=f"provider_error: {exc}")
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code if exc.response is not None else 502
-        # Audit error
+        # Audit error with optional classification enrichment
         try:
+            details = {
+                "provider": meta.get("_provider"),
+                "model": model,
+                "base_url": base_url,
+                "status": "error",
+                "http_status": status,
+                "error_type": type(exc).__name__,
+            }
+            if _error_classifier_enabled():
+                em = _errclass.classify(message=str(exc))
+                details.update({
+                    "error_code": em.error_code,
+                    "retriable": em.retriable,
+                })
+                if em.retry_after is not None:
+                    details["retry_after"] = em.retry_after
             await get_audit_store().log(
                 request_id=req_id,
                 trace_id=trace_id_hex,
@@ -8575,14 +8728,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                 action="llm.invoke",
                 resource="llm.chat",
                 target_id=None,
-                details={
-                    "provider": meta.get("_provider"),
-                    "model": model,
-                    "base_url": base_url,
-                    "status": "error",
-                    "http_status": status,
-                    "error_type": type(exc).__name__,
-                },
+                details=details,
                 diff=None,
                 ip=getattr(request.client, "host", None) if request.client else None,
                 user_agent=request.headers.get("user-agent"),
@@ -8594,6 +8740,24 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "error").inc()
         except Exception:
             pass
+        try:
+            await get_telemetry().emit_generic_metric(
+                metric_name="llm_invoke",
+                labels={
+                    "provider": meta.get("_provider"),
+                    "model": model,
+                    "stream": "false",
+                    "result": "error",
+                },
+                value=1,
+                metadata={
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                    "http_status": status,
+                },
+            )
+        except Exception:
+            LOGGER.debug("telemetry emit failed (llm_invoke error: status)", exc_info=True)
         raise HTTPException(status_code=status, detail=f"provider_error: {exc}") from exc
     except httpx.RequestError as exc:
         # Audit timeout
@@ -8625,6 +8789,23 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "timeout").inc()
         except Exception:
             pass
+        try:
+            await get_telemetry().emit_generic_metric(
+                metric_name="llm_invoke",
+                labels={
+                    "provider": meta.get("_provider"),
+                    "model": model,
+                    "stream": "false",
+                    "result": "timeout",
+                },
+                value=1,
+                metadata={
+                    "session_id": payload.session_id,
+                    "persona_id": payload.persona_id,
+                },
+            )
+        except Exception:
+            LOGGER.debug("telemetry emit failed (llm_invoke timeout)", exc_info=True)
         raise HTTPException(status_code=504, detail=f"provider_timeout: {exc}") from exc
     finally:
         try:
@@ -8664,6 +8845,24 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "ok").inc()
     except Exception:
         pass
+    try:
+        await get_telemetry().emit_generic_metric(
+            metric_name="llm_invoke",
+            labels={
+                "provider": meta.get("_provider"),
+                "model": model,
+                "stream": "false",
+                "result": "ok",
+            },
+            value=1,
+            metadata={
+                "session_id": payload.session_id,
+                "persona_id": payload.persona_id,
+                "latency_ms": int(max(0.0, time.time() - start) * 1000),
+            },
+        )
+    except Exception:
+        LOGGER.debug("telemetry emit failed (llm_invoke ok)", exc_info=True)
 
     # Headers (model coercion only)
     headers_out: dict[str, str] = {}
@@ -8672,6 +8871,15 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             headers_out["X-Gateway-Model-Coerced"] = "true"
     except Exception:
         pass
+
+    # Optional content masking before sending response
+    if _masking_enabled():
+        try:
+            masked_content, hits = _masking.mask_text(content)
+            if hits:
+                content = masked_content
+        except Exception:
+            LOGGER.debug("masking failed on llm.invoke response", exc_info=True)
 
     return JSONResponse(
         {"content": content, "usage": usage, "model": model, "base_url": base_url},
@@ -8830,178 +9038,176 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         canonical = mode != "openai"
         buffer: list[str] = []
         import json as _json
-        try:
+        # Initialize streaming state variables
         first_emitted = False
         thinking_started = False
         emitted_tool_started = False
         tool_calls_buffer: list[dict[str, Any]] = []
+        # Stream chunks from the provider
         try:
-            try:
-                async for chunk in client.chat_stream(
-                    messages,
-                    model=model,
-                    base_url=base_url,
-                    api_path=api_path,
-                    temperature=temperature,
-                    **{k: v for k, v in meta.items() if not k.startswith("_")},
-                ):
-                    if not canonical:
-                        # Legacy passthrough
-                        try:
-                            _choices = chunk.get("choices") if isinstance(chunk, dict) else None
-                            if _choices and isinstance(_choices, list) and _choices:
-                                _delta = (_choices[0] or {}).get("delta", {})
-                                _has_content = bool(_delta.get("content"))
-                                _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(_delta.get("tool_calls"))
-                                LOGGER.debug(
-                                    "LLM stream chunk (legacy)",
-                                    extra={
-                                        "model": model,
-                                        "has_content": _has_content,
-                                        "has_tool_calls": _has_tool_calls,
-                                        "finish_reason": (_choices[0] or {}).get("finish_reason"),
-                                    },
-                                )
-                        except Exception:
-                            pass
-                        line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
-                        yield line.encode("utf-8")
-                        continue
-
-                    # Canonical transformation
+            async for chunk in client.chat_stream(
+                messages,
+                model=model,
+                base_url=base_url,
+                api_path=api_path,
+                temperature=temperature,
+                **{k: v for k, v in meta.items() if not k.startswith("_")},
+            ):
+                if not canonical:
+                    # Legacy passthrough
                     try:
                         _choices = chunk.get("choices") if isinstance(chunk, dict) else None
-                        if not _choices or not isinstance(_choices, list) or not _choices:
-                            # Ignore non-choice fragments
-                            continue
-                        primary = (_choices[0] or {})
-                        delta = primary.get("delta", {}) if isinstance(primary.get("delta"), dict) else {}
-                        content_piece = str(delta.get("content") or "")
-                        finish_reason = primary.get("finish_reason")
-                        tool_calls = delta.get("tool_calls") if isinstance(delta.get("tool_calls"), list) else None
-                        # Emit optional thinking.started once before first content
-                        if _reasoning_enabled() and not thinking_started:
-                            thinking_started = True
-                            thinking_evt = {
-                                "event_id": str(uuid.uuid4()),
-                                "session_id": payload.session_id,
-                                "persona_id": payload.persona_id,
-                                "role": "assistant",
-                                "message": "",
-                                "metadata": {
-                                    "source": "gateway.llm_stream",
-                                    "provider": meta.get("_provider"),
+                        if _choices and isinstance(_choices, list) and _choices:
+                            _delta = (_choices[0] or {}).get("delta", {})
+                            _has_content = bool(_delta.get("content"))
+                            _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(_delta.get("tool_calls"))
+                            LOGGER.debug(
+                                "LLM stream chunk (legacy)",
+                                extra={
                                     "model": model,
+                                    "has_content": _has_content,
+                                    "has_tool_calls": _has_tool_calls,
+                                    "finish_reason": (_choices[0] or {}).get("finish_reason"),
                                 },
-                                "version": "sa01-v1",
-                                "type": "assistant.thinking.started",
-                            }
-                            if _sequence_enabled():
-                                try:
-                                    cache = get_session_cache()
-                                    seq = await cache._client.incr(f"session:{payload.session_id}:seq")  # type: ignore[attr-defined]
-                                    thinking_evt.setdefault("metadata", {})["sequence"] = int(seq)
-                                except Exception:
-                                    pass
+                            )
+                    except Exception:
+                        pass
+                    line = "data: " + _json.dumps(chunk, ensure_ascii=False) + "\n\n"
+                    yield line.encode("utf-8")
+                    # continue to next chunk (implicit)
+
+            # Canonical transformation
+            try:
+                _choices = chunk.get("choices") if isinstance(chunk, dict) else None
+                if not _choices or not isinstance(_choices, list) or not _choices:
+                    # Ignore non-choice fragments
+                    pass  # No loop to continue; safely ignore
+                primary = (_choices[0] or {})
+                delta = primary.get("delta", {}) if isinstance(primary.get("delta"), dict) else {}
+                content_piece = str(delta.get("content") or "")
+                finish_reason = primary.get("finish_reason")
+                tool_calls = delta.get("tool_calls") if isinstance(delta.get("tool_calls"), list) else None
+                # Emit optional thinking.started once before first content
+                if _reasoning_enabled() and not thinking_started:
+                    thinking_started = True
+                    thinking_evt = {
+                        "event_id": str(uuid.uuid4()),
+                        "session_id": payload.session_id,
+                        "persona_id": payload.persona_id,
+                        "role": "assistant",
+                        "message": "",
+                        "metadata": {
+                            "source": "gateway.llm_stream",
+                            "provider": meta.get("_provider"),
+                            "model": model,
+                        },
+                        "version": "sa01-v1",
+                        "type": "assistant.thinking.started",
+                    }
+                    if _sequence_enabled():
+                        try:
+                            cache = get_session_cache()
+                            seq = await cache._client.incr(f"session:{payload.session_id}:seq")  # type: ignore[attr-defined]
+                            thinking_evt.setdefault("metadata", {})["sequence"] = int(seq)
+                        except Exception:
+                            pass
+                    try:
+                        GATEWAY_REASONING_EVENTS.labels(meta.get("_provider", "unknown"), "started").inc()
+                    except Exception:
+                        pass
+                    # Persist generic metric for reasoning start
+                    try:
+                        await get_telemetry().emit_generic_metric(
+                            metric_name="reasoning_events",
+                            labels={"phase": "started", "provider": meta.get("_provider"), "model": model},
+                            value=1,
+                            metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                        )
+                    except Exception:
+                        LOGGER.debug("telemetry emit failed (reasoning started)", exc_info=True)
+                    yield ("data: " + _json.dumps(thinking_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
+                # Tool events scaffolding (started/delta) before content deltas
+                if _tool_events_enabled() and tool_calls:
+                    sanitized_calls: list[dict[str, Any]] = []
+                    for tc in tool_calls:
+                        if isinstance(tc, dict):
+                            sanitized_calls.append({k: v for k, v in tc.items() if k in {"id", "type", "function", "name", "arguments"}})
+                    tool_calls_buffer.extend(sanitized_calls)
+                    if not emitted_tool_started:
+                        emitted_tool_started = True
+                        started_evt = {
+                            "event_id": str(uuid.uuid4()),
+                            "session_id": payload.session_id,
+                            "persona_id": payload.persona_id,
+                            "role": "assistant",
+                            "message": "",
+                            "metadata": {
+                                "source": "gateway.llm_stream",
+                                "provider": meta.get("_provider"),
+                                "model": model,
+                                "tool_calls_count": len(sanitized_calls),
+                            },
+                            "version": "sa01-v1",
+                            "type": "assistant.tool.started",
+                        }
+                        if _sequence_enabled():
                             try:
-                                GATEWAY_REASONING_EVENTS.labels(meta.get("_provider", "unknown"), "started").inc()
+                                cache = get_session_cache()
+                                seq = await cache._client.incr(f"session:{payload.session_id}:seq")  # type: ignore[attr-defined]
+                                started_evt.setdefault("metadata", {})["sequence"] = int(seq)
                             except Exception:
                                 pass
-                            # Persist generic metric for reasoning start
+                        try:
+                            GATEWAY_TOOL_EVENTS.labels(meta.get("_provider", "unknown"), "started").inc()
+                        except Exception:
+                            pass
+                        try:
+                            await get_telemetry().emit_generic_metric(
+                                metric_name="tool_events",
+                                labels={"type": "started", "provider": meta.get("_provider"), "model": model},
+                                value=len(sanitized_calls) or 1,
+                                metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                            )
+                        except Exception:
+                            LOGGER.debug("telemetry emit failed (tool started)", exc_info=True)
+                        yield ("data: " + _json.dumps(started_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
+                    else:
+                        delta_evt = {
+                            "event_id": str(uuid.uuid4()),
+                            "session_id": payload.session_id,
+                            "persona_id": payload.persona_id,
+                            "role": "assistant",
+                            "message": "",
+                            "metadata": {
+                                "source": "gateway.llm_stream",
+                                "provider": meta.get("_provider"),
+                                "model": model,
+                                "tool_calls_delta": len(sanitized_calls),
+                            },
+                            "version": "sa01-v1",
+                            "type": "assistant.tool.delta",
+                        }
+                        if _sequence_enabled():
                             try:
-                                await get_telemetry().emit_generic_metric(
-                                    metric_name="reasoning_events",
-                                    labels={"phase": "started", "provider": meta.get("_provider"), "model": model},
-                                    value=1,
-                                    metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
-                                )
+                                cache = get_session_cache()
+                                seq = await cache._client.incr(f"session:{payload.session_id}:seq")  # type: ignore[attr-defined]
+                                delta_evt.setdefault("metadata", {})["sequence"] = int(seq)
                             except Exception:
-                                LOGGER.debug("telemetry emit failed (reasoning started)", exc_info=True)
-                            yield ("data: " + _json.dumps(thinking_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
-                        # Tool events scaffolding (started/delta) before content deltas
-                        if _tool_events_enabled() and tool_calls:
-                            sanitized_calls: list[dict[str, Any]] = []
-                            for tc in tool_calls:
-                                if isinstance(tc, dict):
-                                    sanitized_calls.append({
-                                        k: v for k, v in tc.items() if k in {"id", "type", "function", "name", "arguments"}
-                                    })
-                            tool_calls_buffer.extend(sanitized_calls)
-                            if not emitted_tool_started:
-                                emitted_tool_started = True
-                                started_evt = {
-                                    "event_id": str(uuid.uuid4()),
-                                    "session_id": payload.session_id,
-                                    "persona_id": payload.persona_id,
-                                    "role": "assistant",
-                                    "message": "",
-                                    "metadata": {
-                                        "source": "gateway.llm_stream",
-                                        "provider": meta.get("_provider"),
-                                        "model": model,
-                                        "tool_calls_count": len(sanitized_calls),
-                                    },
-                                    "version": "sa01-v1",
-                                    "type": "assistant.tool.started",
-                                }
-                                if _sequence_enabled():
-                                    try:
-                                        cache = get_session_cache()
-                                        seq = await cache._client.incr(f"session:{payload.session_id}:seq")  # type: ignore[attr-defined]
-                                        started_evt.setdefault("metadata", {})["sequence"] = int(seq)
-                                    except Exception:
-                                        pass
-                                try:
-                                    GATEWAY_TOOL_EVENTS.labels(meta.get("_provider", "unknown"), "started").inc()
-                                except Exception:
-                                    pass
-                                try:
-                                    await get_telemetry().emit_generic_metric(
-                                        metric_name="tool_events",
-                                        labels={"type": "started", "provider": meta.get("_provider"), "model": model},
-                                        value=len(sanitized_calls) or 1,
-                                        metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
-                                    )
-                                except Exception:
-                                    LOGGER.debug("telemetry emit failed (tool started)", exc_info=True)
-                                yield ("data: " + _json.dumps(started_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
-                            else:
-                                delta_evt = {
-                                    "event_id": str(uuid.uuid4()),
-                                    "session_id": payload.session_id,
-                                    "persona_id": payload.persona_id,
-                                    "role": "assistant",
-                                    "message": "",
-                                    "metadata": {
-                                        "source": "gateway.llm_stream",
-                                        "provider": meta.get("_provider"),
-                                        "model": model,
-                                        "tool_calls_delta": len(sanitized_calls),
-                                    },
-                                    "version": "sa01-v1",
-                                    "type": "assistant.tool.delta",
-                                }
-                                if _sequence_enabled():
-                                    try:
-                                        cache = get_session_cache()
-                                        seq = await cache._client.incr(f"session:{payload.session_id}:seq")  # type: ignore[attr-defined]
-                                        delta_evt.setdefault("metadata", {})["sequence"] = int(seq)
-                                    except Exception:
-                                        pass
-                                try:
-                                    GATEWAY_TOOL_EVENTS.labels(meta.get("_provider", "unknown"), "delta").inc()
-                                except Exception:
-                                    pass
-                                try:
-                                    await get_telemetry().emit_generic_metric(
-                                        metric_name="tool_events",
-                                        labels={"type": "delta", "provider": meta.get("_provider"), "model": model},
-                                        value=len(sanitized_calls) or 1,
-                                        metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
-                                    )
-                                except Exception:
-                                    LOGGER.debug("telemetry emit failed (tool delta)", exc_info=True)
-                                yield ("data: " + _json.dumps(delta_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
+                                pass
+                        try:
+                            GATEWAY_TOOL_EVENTS.labels(meta.get("_provider", "unknown"), "delta").inc()
+                        except Exception:
+                            pass
+                        try:
+                            await get_telemetry().emit_generic_metric(
+                                metric_name="tool_events",
+                                labels={"type": "delta", "provider": meta.get("_provider"), "model": model},
+                                value=len(sanitized_calls) or 1,
+                                metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                            )
+                        except Exception:
+                            LOGGER.debug("telemetry emit failed (tool delta)", exc_info=True)
+                        yield ("data: " + _json.dumps(delta_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
                         if content_piece:
                             buffer.append(content_piece)
                             event_delta = {
@@ -9051,10 +9257,13 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                             yield ("data: " + _json.dumps(event_delta, ensure_ascii=False) + "\n\n").encode("utf-8")
                         # If finish_reason appears before [DONE] sentinel, we'll emit final after loop end
                         if finish_reason:
-                            LOGGER.debug("Finish reason observed", extra={"finish_reason": finish_reason, "model": model})
-                    except Exception:
-                        LOGGER.debug("Failed to transform provider chunk", exc_info=True)
-                        continue
+                            LOGGER.debug(
+                                "Finish reason observed",
+                                extra={"finish_reason": finish_reason, "model": model},
+                            )
+            except Exception:
+                LOGGER.debug("Failed to transform provider chunk", exc_info=True)
+                continue
             except ValueError as exc:
                 if canonical:
                     err_event = {
@@ -9108,6 +9317,24 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "error").inc()
             except Exception:
                 pass
+            try:
+                await get_telemetry().emit_generic_metric(
+                    metric_name="llm_invoke",
+                    labels={
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "stream": "true",
+                        "result": "error",
+                    },
+                    value=1,
+                    metadata={
+                        "session_id": payload.session_id,
+                        "persona_id": payload.persona_id,
+                        "http_status": status,
+                    },
+                )
+            except Exception:
+                LOGGER.debug("telemetry emit failed (llm_invoke stream error)", exc_info=True)
             if canonical:
                 err_event = {
                     "event_id": str(uuid.uuid4()),
@@ -9178,6 +9405,23 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "timeout").inc()
             except Exception:
                 pass
+            try:
+                await get_telemetry().emit_generic_metric(
+                    metric_name="llm_invoke",
+                    labels={
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "stream": "true",
+                        "result": "timeout",
+                    },
+                    value=1,
+                    metadata={
+                        "session_id": payload.session_id,
+                        "persona_id": payload.persona_id,
+                    },
+                )
+            except Exception:
+                LOGGER.debug("telemetry emit failed (llm_invoke stream timeout)", exc_info=True)
             if canonical:
                 err_event = {
                     "event_id": str(uuid.uuid4()),
@@ -9252,6 +9496,24 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "ok").inc()
             except Exception:
                 pass
+            try:
+                await get_telemetry().emit_generic_metric(
+                    metric_name="llm_invoke",
+                    labels={
+                        "provider": meta.get("_provider"),
+                        "model": model,
+                        "stream": "true",
+                        "result": "ok",
+                    },
+                    value=1,
+                    metadata={
+                        "session_id": payload.session_id,
+                        "persona_id": payload.persona_id,
+                        "latency_ms": int(max(0.0, time.time() - start) * 1000),
+                    },
+                )
+            except Exception:
+                LOGGER.debug("telemetry emit failed (llm_invoke stream ok)", exc_info=True)
             if canonical:
                 # Emit final event with full content (even if empty)
                 # Optional thinking.final marker
@@ -9344,6 +9606,21 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                     except Exception:
                         LOGGER.debug("telemetry emit failed (tool final)", exc_info=True)
                     yield ("data: " + _json.dumps(tool_final, ensure_ascii=False) + "\n\n").encode("utf-8")
+                # Emit token usage for streaming output (approximate token count based on buffer length)
+                try:
+                    output_tokens_est = len(buffer)
+                    GATEWAY_TOKENS_TOTAL.labels(
+                        meta.get("_provider", "unknown"), model, "output"
+                    ).inc(output_tokens_est)
+                    # Generic metric for token usage
+                    await get_telemetry().emit_generic_metric(
+                        metric_name="token_usage",
+                        labels={"provider": meta.get("_provider"), "model": model, "direction": "output"},
+                        value=output_tokens_est,
+                        metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                    )
+                except Exception:
+                    LOGGER.debug("token metric emit failed (stream output)", exc_info=True)
                 yield ("data: " + _json.dumps(final_event, ensure_ascii=False) + "\n\n").encode("utf-8")
                 # Preserve sentinel for any generic SSE client
                 yield b"data: [DONE]\n\n"

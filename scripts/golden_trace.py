@@ -102,13 +102,13 @@ async def main(argv: list[str]) -> int:
     cap = sub.add_parser("capture")
     cap.add_argument("--prompt", required=True)
     cap.add_argument("--out", required=True)
-    cap.add_argument("--model", default=os.getenv("GOLDEN_TRACE_MODEL", "gpt-4o-mini"))
+    cap.add_argument("--model", default="gpt-4o-mini")
     cap.add_argument("--internal-token", required=True)
 
     comp = sub.add_parser("compare")
     comp.add_argument("--prompt", required=True)
     comp.add_argument("--in", dest="inp", required=True)
-    comp.add_argument("--model", default=os.getenv("GOLDEN_TRACE_MODEL", "gpt-4o-mini"))
+    comp.add_argument("--model", default="gpt-4o-mini")
     comp.add_argument("--internal-token", required=True)
 
     args = ap.parse_args(argv)
