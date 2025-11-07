@@ -308,7 +308,8 @@ load-soak:
 # ------------------------------------------------------------------------------
 
 # Default image repo; override via .build.env or environment
-IMAGE_REPO ?= $(IMAGE_REPO)
+# Leave blank by default to avoid recursive reference; set in .build.env or env
+IMAGE_REPO ?=
 # Build arg for ML deps; override via .build.env or environment
 INCLUDE_ML_DEPS ?= false
 

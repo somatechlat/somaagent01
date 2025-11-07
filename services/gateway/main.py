@@ -8908,55 +8908,7 @@ async def llm_invoke_debug(payload: Dict[str, Any], request: Request) -> dict:  
     return {"ok": True, "received_keys": keys}
 
 
-@app.post("/v1/llm/invoke2")
-async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
-    # This endpoint mirrors llm_invoke but exists to bypass any stale route registration issues during debugging.
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
-
-    # Inline resolution
-    profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
-    if not profile and not payload.overrides:
-        raise HTTPException(status_code=400, detail="model profile not configured for role")
-    model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
-    # Ignore any overrides.base_url; use profile base_url only
-    base_url_raw = profile.base_url if profile else ""
-    base_url = _normalize_llm_base_url(str(base_url_raw))
-    try:
-        temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
-    except Exception:
-        temperature = 0.2
-    extra_kwargs: dict[str, Any] = {}
-    if profile and isinstance(profile.kwargs, dict):
-        extra_kwargs.update(profile.kwargs)
-    if payload.overrides and isinstance(payload.overrides.kwargs, dict):
-        extra_kwargs.update(payload.overrides.kwargs)
-    if not model or not base_url:
-        raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
-    provider = _detect_provider_from_base(base_url)
-    secret = await get_llm_credentials_store().get(provider)
-    if not secret:
-        raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
-    meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
-    
-    api_path = profile.api_path if profile else None
-
-    messages = [ChatMessage(role=m.role, content=m.content) for m in payload.messages]
-    client = _gateway_slm_client()
-    client.api_key = meta["_secret"]
-    content, usage = await client.chat(
-        messages,
-        model=model,
-        base_url=base_url,
-        api_path=api_path,
-        temperature=temperature,
-        **{k: v for k, v in meta.items() if not k.startswith("_")},
-    )
-    try:
-        await client.close()
-    except Exception:
-        pass
-    return {"content": content, "usage": usage, "model": model, "base_url": base_url}
+ 
 
 
 @app.post("/v1/llm/invoke/stream")
