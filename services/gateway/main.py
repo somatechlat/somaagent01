@@ -957,102 +957,7 @@ async def _clamav_scan_bytes(data: bytes) -> tuple[str, str]:
     except Exception as exc:
         return "error", str(exc)
 
-# -----------------------------
-# Kafka debug (dev-only admin) endpoint
-# -----------------------------
-
-@app.get("/v1/admin/kafka/status")
-async def kafka_status(topic: str = Query(...), group: str = Query(...)) -> dict[str, Any]:
-    """Return partition end offsets and group committed offsets for a topic.
-
-    Development aid to diagnose publish/consume mismatches without external tools.
-    """
-    try:
-        from aiokafka import AIOKafkaConsumer  # type: ignore
-        from aiokafka.structs import TopicPartition  # type: ignore
-    except Exception as exc:  # pragma: no cover - env dependent
-        raise HTTPException(status_code=500, detail=f"aiokafka unavailable: {exc}")
-
-    ks = _kafka_settings()
-    consumer = AIOKafkaConsumer(
-        topic,
-        bootstrap_servers=ks.bootstrap_servers,
-        group_id=group,
-        enable_auto_commit=False,
-        security_protocol=ks.security_protocol,
-        sasl_mechanism=ks.sasl_mechanism,
-        sasl_plain_username=ks.sasl_username,
-        sasl_plain_password=ks.sasl_password,
-    )
-    await consumer.start()
-    try:
-        # partitions_for_topic returns a set synchronously once metadata is available
-        parts = consumer.partitions_for_topic(topic) or set()
-        tps = [TopicPartition(topic, p) for p in sorted(parts)]
-        end_offsets = await consumer.end_offsets(tps) if tps else {}
-        committed = {tp: (await consumer.committed(tp)) for tp in tps}
-        return {
-            "topic": topic,
-            "group": group,
-            "bootstrap": ks.bootstrap_servers,
-            "partitions": [
-                {
-                    "partition": tp.partition,
-                    "committed": int(committed.get(tp) or -1),
-                    "end": int(end_offsets.get(tp) or -1),
-                    "lag": max(0, int((end_offsets.get(tp) or 0) - (committed.get(tp) or 0))),
-                }
-                for tp in tps
-            ],
-        }
-    finally:
-        await consumer.stop()
-
-
-@app.post("/v1/admin/kafka/seek_to_end")
-async def kafka_seek_to_end(topic: str = Query(...), group: str = Query(...)) -> dict[str, Any]:
-    """DEV‑only: set the consumer group's committed offsets to end for a topic."""
-    try:
-        from aiokafka import AIOKafkaConsumer  # type: ignore
-        from aiokafka.structs import TopicPartition  # type: ignore
-    except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail=f"aiokafka unavailable: {exc}")
-
-    ks = _kafka_settings()
-    consumer = AIOKafkaConsumer(
-        topic,
-        bootstrap_servers=ks.bootstrap_servers,
-        group_id=group,
-        enable_auto_commit=False,
-        security_protocol=ks.security_protocol,
-        sasl_mechanism=ks.sasl_mechanism,
-        sasl_plain_username=ks.sasl_username,
-        sasl_plain_password=ks.sasl_password,
-        auto_offset_reset="latest",
-    )
-    await consumer.start()
-    try:
-        parts = consumer.partitions_for_topic(topic) or set()
-        tps = [TopicPartition(topic, p) for p in sorted(parts)]
-        if not tps:
-            return {"topic": topic, "group": group, "updated": [], "detail": "no partitions"}
-        await consumer.assign(tps)
-        await consumer.seek_to_end(*tps)
-        offsets = {}
-        for tp in tps:
-            pos = await consumer.position(tp)
-            offsets[tp] = pos
-        # Commit the end positions
-        await consumer.commit(offsets=offsets)
-        return {
-            "topic": topic,
-            "group": group,
-            "updated": [
-                {"partition": tp.partition, "committed": int(offsets.get(tp) or -1)} for tp in tps
-            ],
-        }
-    finally:
-        await consumer.stop()
+# (Removed dev-only Kafka admin endpoints)
 
 # -----------------------------
 # DLQ depth refresher settings
@@ -4791,41 +4696,13 @@ async def revoke_api_key(
     return Response(status_code=204)
 
 
-async def stream_events(session_id: str) -> AsyncIterator[dict[str, str]]:
-    group_id = f"gateway-{session_id}"
-    async for payload in iterate_topic(
-        "conversation.outbound",
-        group_id,
-        settings=_kafka_settings(),
-    ):
-        if payload.get("session_id") == session_id:
-            yield payload
+    # (Removed unused WebSocket stream endpoint; SSE is the supported mechanism.)
 
 
-@app.websocket("/v1/session/{session_id}/stream")
-async def websocket_stream(
-    websocket: WebSocket,
-    session_id: str,
-) -> None:
-    await websocket.accept()
-    try:
-        async for event in stream_events(session_id):
-            await websocket.send_json(event)
-    except WebSocketDisconnect:
-        LOGGER.info("WebSocket disconnected", extra={"session_id": session_id})
-    except Exception as exc:
-        LOGGER.error(
-            "WebSocket streaming error",
-            extra={"error": str(exc), "error_type": type(exc).__name__, "session_id": session_id},
-        )
-    finally:
-        if not websocket.client_state.closed:
-            await websocket.close()
-
-
-# Note: SSE endpoint is defined later with a per-connection consumer group to avoid
-# inter-client interference. This legacy implementation is removed to prevent
-# duplicate route registration and shared group_ids across clients.
+"""SSE endpoint is defined later with a per-connection consumer group to avoid
+inter-client interference. A legacy WebSocket stream implementation has been
+removed to prevent duplicate mechanisms and shared consumer groups across clients.
+"""
 
 
 @app.get("/v1/sessions/{session_id}/events", response_model=SessionEventsResponse)
@@ -5481,34 +5358,7 @@ async def health_check(
 
 # (moved earlier above the StaticFiles mount)
 
-@app.get("/v1/av/test")
-async def av_test() -> JSONResponse:
-    """Lightweight connectivity test for ClamAV.
-
-    Returns status ok if a TCP connection to the configured host/port succeeds.
-    When antivirus is disabled via settings/env, returns status disabled.
-    """
-    # Resolve from UI settings overlay first, then env
-    cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
-    host = str(cfg.get("av_host") or os.getenv("CLAMAV_HOST", "clamav"))
-    try:
-        port = int(cfg.get("av_port") or int(os.getenv("CLAMAV_PORT", "3310")))
-    except Exception:
-        port = 3310
-
-    if not _clamav_enabled():
-        return JSONResponse({"status": "disabled", "host": host, "port": port})
-    try:
-        reader, writer = await asyncio.open_connection(host, port)
-        try:
-            writer.close()
-            with contextlib.suppress(Exception):
-                await writer.wait_closed()
-        except Exception:
-            pass
-        return JSONResponse({"status": "ok", "host": host, "port": port})
-    except Exception as exc:
-        return JSONResponse({"status": "error", "detail": str(exc), "host": host, "port": port})
+# (Removed duplicate /v1/av/test; consolidated later UI settings-based implementation remains.)
 
 
 @app.get("/v1/session/{session_id}/events")
@@ -8892,23 +8742,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     )
 
 
-@app.post("/v1/llm/invoke.debug")
-async def llm_invoke_debug(payload: Dict[str, Any], request: Request) -> dict:  # type: ignore[type-arg]
-    """Lightweight debug endpoint to validate routing and request parsing.
-
-    Accepts an untyped JSON body to bypass Pydantic model parsing and helps isolate
-    pre-handler errors (e.g., validation issues). Internal-token gated.
-    """
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
-    try:
-        keys = sorted(list((payload or {}).keys()))
-    except Exception:
-        keys = []
-    return {"ok": True, "received_keys": keys}
-
-
- 
+# (Removed debug-only /v1/llm/invoke.debug endpoint)
 
 
 @app.post("/v1/llm/invoke/stream")
