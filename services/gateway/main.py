@@ -2061,7 +2061,8 @@ async def list_admin_memory(
     max_ts: float | None = Query(None, description="Maximum wal_timestamp (epoch seconds)"),
     after: int | None = Query(None, ge=0, description="Return items with database id less than this cursor (paging)"),
     limit: int = Query(50, ge=1, le=200),
-    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
+    *,
+    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)],
 ) -> AdminMemoryListResponse:
     """List memory replica rows with filters and pagination.
 
@@ -2127,7 +2128,7 @@ async def list_admin_memory(
 async def get_admin_memory_item(
     event_id: str,
     request: Request,
-    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
+    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)],
 ) -> AdminMemoryItem:
     """Fetch a single memory replica item by its event_id."""
     await _enforce_admin_rate_limit(request)
@@ -2163,6 +2164,9 @@ async def get_admin_memory_item(
 # -----------------------------
 # Memory batch/write + delete + export
 # -----------------------------
+
+class MemoryBatchPayload(BaseModel):
+    items: list[dict[str, Any]] = Field(default_factory=list, description="Memory payloads to persist")
 
 
 @app.post("/v1/memory/batch")
@@ -2278,7 +2282,8 @@ async def memory_export(
     min_ts: float | None = Query(None),
     max_ts: float | None = Query(None),
     limit_total: int | None = Query(None, ge=1),
-    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
+    *,
+    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)],
 ):
     """Stream an NDJSON export of memory replica rows.
 
@@ -2720,8 +2725,6 @@ class SessionEventsResponse(BaseModel):
     # (AdminMemoryItem/AdminMemoryListResponse moved above their usage)
 
 
-class MemoryBatchPayload(BaseModel):
-    items: list[dict[str, Any]] = Field(default_factory=list, description="Memory payloads to persist")
 class ToolRequestPayload(BaseModel):
     session_id: str = Field(..., description="Target session identifier")
     tool_name: str = Field(..., description="Registered tool name to execute")
@@ -3615,7 +3618,8 @@ async def upload_files(
     request: Request,
     files: List[UploadFile] = File(...),
     session_id: str | None = Form(default=None),
-    publisher: Annotated[DurablePublisher, Depends(get_publisher)] = None,
+    *,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
 ) -> JSONResponse:
     """Upload one or more files and return normalized descriptors.
 
@@ -7580,7 +7584,8 @@ async def list_dlq(
     topic: str,
     request: Request,
     limit: int = Query(100, ge=1, le=1000),
-    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
+    *,
+    store: Annotated[DLQStore, Depends(get_dlq_store)],
 ) -> list[DLQItem]:
     auth = await authorize_request(request, {"topic": topic})
     _require_admin_scope(auth)
@@ -7601,7 +7606,8 @@ async def list_dlq(
 async def purge_dlq(
     topic: str,
     request: Request,
-    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
+    *,
+    store: Annotated[DLQStore, Depends(get_dlq_store)],
 ) -> dict:
     auth = await authorize_request(request, {"topic": topic})
     _require_admin_scope(auth)
@@ -7614,8 +7620,8 @@ async def reprocess_dlq_item(
     topic: str,
     item_id: int,
     request: Request,
-    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
-    publisher: Annotated[DurablePublisher, Depends(get_publisher)] = None,  # type: ignore[assignment]
+    store: Annotated[DLQStore, Depends(get_dlq_store)],
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
 ) -> dict:
     """Replay a DLQ message back to its original topic (typically memory.wal).
 
@@ -7676,7 +7682,7 @@ class LlmCredPayload(BaseModel):
 async def upsert_llm_credentials(
     payload: LlmCredPayload,
     request: Request,
-    store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None,  # type: ignore[assignment]
+    store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)],
 ) -> dict:
     # Require admin scope when auth is enabled
     auth = await authorize_request(request, payload.model_dump())
@@ -7768,7 +7774,7 @@ def _resolve_model_alias(model: str) -> tuple[str, bool]:
 
 
 @app.get("/v1/llm/credentials/{provider}")
-async def get_llm_credentials(provider: str, request: Request, store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None) -> dict:  # type: ignore[assignment]
+async def get_llm_credentials(provider: str, request: Request, store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)]) -> dict:
     # Only allow internal calls with X-Internal-Token; do not expose via normal auth
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
