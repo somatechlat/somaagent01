@@ -409,11 +409,10 @@ img {
 .version-info {
   line-height: 0.8rem;
   position: relative;
-  /* Tighter spacing to match Golden */
-  margin: 6px 10px;
-  padding: 4px 6px;
+  /* Match Golden: margin 0 var(--spacing-md) 1rem var(--spacing-md); padding-top 10px; border-top only */
+  margin: 0 var(--spacing-md) 1rem var(--spacing-md);
+  padding-top: 10px;
   border-top: 1px solid var(--color-border);
-  border-radius: 6px;
 }
 
 /* Right Panel */
