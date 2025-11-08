@@ -85,8 +85,6 @@ export function getHandler(type) {
       return drawMessageAgent;
     case "response":
       return drawMessageResponse;
-    case "response_stream":
-      return drawMessageResponseStream;
     case "tool":
       return drawMessageTool;
     case "code_exe":
@@ -309,7 +307,7 @@ export function drawMessageDefault(
     false,
     "message-default",
     kvps,
-    ["message-ai", "ai"],
+    ["message-ai"],
     ["msg-json"],
     false,
     false
@@ -339,7 +337,7 @@ export function drawMessageAgent(
     false,
     "message-agent",
     kvpsFlat,
-    ["message-ai", "ai"],
+    ["message-ai"],
     ["msg-json"],
     false,
     false
@@ -363,64 +361,11 @@ export function drawMessageResponse(
     true,
     "message-agent-response",
     null,
-    ["message-ai", "ai"],
+    ["message-ai"],
     [],
     true,
     true
   );
-}
-
-// Streaming-safe variant: no markdown/KaTeX, minimal DOM churn
-export function drawMessageResponseStream(
-  messageContainer,
-  id,
-  type,
-  heading,
-  content,
-  temp,
-  kvps = null
-) {
-  // Streaming-safe: minimal DOM updates, no markdown/KaTeX/HTML transforms
-  // Ensure message wrapper exists
-  let messageDiv = messageContainer.querySelector(".message");
-  if (!messageDiv) {
-    messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", "message-agent-response", "streaming");
-    messageContainer.appendChild(messageDiv);
-  } else {
-    messageDiv.className = "message message-agent-response streaming";
-  }
-
-  // Remove heading if any
-  const existingHeading = messageDiv.querySelector(".msg-heading");
-  if (existingHeading) existingHeading.remove();
-
-  // Ensure body exists
-  let bodyDiv = messageDiv.querySelector(".message-body");
-  if (!bodyDiv) {
-    bodyDiv = document.createElement("div");
-    bodyDiv.classList.add("message-body");
-    messageDiv.appendChild(bodyDiv);
-  }
-
-  // Lightweight KVPs draw (incremental) — optional: best-effort
-  try { drawKvpsIncremental(bodyDiv, kvps, false); } catch(_e) {}
-
-  // Ensure a simple pre > span text node exists; set textContent (no HTML parsing)
-  let pre = bodyDiv.querySelector(".msg-content");
-  if (!pre) {
-    pre = document.createElement("pre");
-    pre.classList.add("msg-content");
-    pre.style.whiteSpace = "pre-wrap";
-    pre.style.wordBreak = "break-word";
-    bodyDiv.appendChild(pre);
-  }
-  let span = pre.querySelector("span");
-  if (!span) {
-    span = document.createElement("span");
-    pre.appendChild(span);
-  }
-  span.textContent = typeof content === "string" ? content : (content == null ? "" : String(content));
 }
 
 export function drawMessageDelegation(
@@ -468,19 +413,14 @@ export function drawMessageUser(
     messageDiv.className = "message message-user";
   }
 
-  // Handle heading (only when provided)
-  if (heading && String(heading).trim().length > 0) {
-    let headingElement = messageDiv.querySelector(".msg-heading");
-    if (!headingElement) {
-      headingElement = document.createElement("h4");
-      headingElement.classList.add("msg-heading");
-      messageDiv.insertBefore(headingElement, messageDiv.firstChild);
-    }
-    headingElement.innerHTML = `${heading} <span class='icon material-symbols-outlined'>person</span>`;
-  } else {
-    const existingHeading = messageDiv.querySelector(".msg-heading");
-    if (existingHeading) existingHeading.remove();
+  // Handle heading
+  let headingElement = messageDiv.querySelector(".msg-heading");
+  if (!headingElement) {
+    headingElement = document.createElement("h4");
+    headingElement.classList.add("msg-heading");
+    messageDiv.insertBefore(headingElement, messageDiv.firstChild);
   }
+  headingElement.innerHTML = `${heading} <span class='icon material-symbols-outlined'>person</span>`;
 
   // Handle content
   let textDiv = messageDiv.querySelector(".message-text");
@@ -579,7 +519,7 @@ export function drawMessageTool(
     true,
     "message-tool",
     kvps,
-    ["message-ai", "ai"],
+    ["message-ai"],
     ["msg-output"],
     false,
     false
@@ -603,7 +543,7 @@ export function drawMessageCodeExe(
     true,
     "message-code-exe",
     null,
-    ["message-ai", "ai"],
+    ["message-ai"],
     [],
     false,
     false
@@ -627,7 +567,7 @@ export function drawMessageBrowser(
     true,
     "message-browser",
     kvps,
-    ["message-ai", "ai"],
+    ["message-ai"],
     ["msg-json"],
     false,
     false
@@ -753,17 +693,6 @@ function drawKvps(container, kvps, latex) {
     const table = document.createElement("table");
     table.classList.add("msg-kvps");
     for (let [key, value] of Object.entries(kvps)) {
-      // Normalize and optionally skip empty "thoughts"/"reasoning" entries
-      if (key === "thoughts" || key === "reasoning") {
-        let normalized = Array.isArray(value)
-          ? value
-          : (value == null ? [] : [value]);
-        normalized = normalized
-          .map((v) => (typeof v === "string" ? v.trim() : String(v || "").trim()))
-          .filter((v) => v.length > 0);
-        if (normalized.length === 0) continue; // nothing meaningful to render
-        value = normalized;
-      }
       const row = table.insertRow();
       row.classList.add("kvps-row");
       if (key === "thoughts" || key === "reasoning")
@@ -801,7 +730,7 @@ function drawKvps(container, kvps, latex) {
         if (typeof value === "string" && value.startsWith("img://")) {
           const imgElement = document.createElement("img");
           imgElement.classList.add("kvps-img");
-          imgElement.src = value.replace("img://", "/v1/workdir/download?path=");
+          imgElement.src = value.replace("img://", "/image_get?path=");
           imgElement.alt = "Image Attachment";
           tdiv.appendChild(imgElement);
 
@@ -848,17 +777,6 @@ function drawKvpsIncremental(container, kvps, latex) {
 
     // Update or create rows as needed
     kvpEntries.forEach(([key, value], index) => {
-      // Normalize and optionally skip empty "thoughts"/"reasoning" entries
-      if (key === "thoughts" || key === "reasoning") {
-        let normalized = Array.isArray(value)
-          ? value
-          : (value == null ? [] : [value]);
-        normalized = normalized
-          .map((v) => (typeof v === "string" ? v.trim() : String(v || "").trim()))
-          .filter((v) => v.length > 0);
-        if (normalized.length === 0) return; // skip creating this row entirely
-        value = normalized;
-      }
       let row = existingRows[index];
 
       if (!row) {
@@ -927,7 +845,7 @@ function drawKvpsIncremental(container, kvps, latex) {
       if (typeof value === "string" && value.startsWith("img://")) {
         const imgElement = document.createElement("img");
         imgElement.classList.add("kvps-img");
-        imgElement.src = value.replace("img://", "/v1/workdir/download?path=");
+        imgElement.src = value.replace("img://", "/image_get?path=");
         imgElement.alt = "Image Attachment";
         tdiv.appendChild(imgElement);
 
@@ -1002,7 +920,7 @@ function convertHTML(str) {
 }
 
 function convertImgFilePaths(str) {
-  return str.replace(/img:\/\//g, "/v1/workdir/download?path=");
+  return str.replace(/img:\/\//g, "/image_get?path=");
 }
 
 export function convertIcons(str) {

@@ -1,8 +1,6 @@
 const fileBrowserModalProxy = {
   isOpen: false,
   isLoading: false,
-  // Track active XHRs for in-flight uploads to support cancel
-  activeUploads: {},
 
   browser: {
     title: "File Browser",
@@ -42,7 +40,7 @@ const fileBrowserModalProxy = {
     this.isLoading = true;
     try {
       const response = await fetchApi(
-        `/v1/workdir/list?path=${encodeURIComponent(path)}`
+        `/get_work_dir_files?path=${encodeURIComponent(path)}`
       );
 
       if (response.ok) {
@@ -115,7 +113,7 @@ const fileBrowserModalProxy = {
     }
 
     try {
-      const response = await fetchApi("/v1/workdir/delete", {
+      const response = await fetchApi("/delete_work_dir_file", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -146,91 +144,58 @@ const fileBrowserModalProxy = {
       const files = event.target.files;
       if (!files.length) return;
 
-      // Client-side progress using XHR per file for better UX
-      const path = this.browser.currentPath;
+      const formData = new FormData();
+      formData.append("path", this.browser.currentPath);
+
       for (let i = 0; i < files.length; i++) {
-        const f = files[i];
-        const ext = f.name.split(".").pop().toLowerCase();
+        const ext = files[i].name.split(".").pop().toLowerCase();
         if (!["zip", "tar", "gz", "rar", "7z"].includes(ext)) {
-          if (f.size > 100 * 1024 * 1024) {
-            alert(`File ${f.name} exceeds the maximum allowed size of 100MB.`);
+          if (files[i].size > 100 * 1024 * 1024) {
+            // 100MB
+            alert(
+              `File ${files[i].name} exceeds the maximum allowed size of 100MB.`
+            );
             continue;
           }
         }
-        // Add a temporary entry for progress
-        const tempKey = `__uploading__:${f.name}:${Date.now()}`;
-        this.browser.entries = [
-          { name: f.name, path: tempKey, size: f.size, modified: new Date().toISOString(), is_dir: false, type: 'unknown', uploading: true, progress: 0 },
-          ...this.browser.entries,
-        ];
-
-        await new Promise((resolve, reject) => {
-          try {
-            const form = new FormData();
-            form.append('path', path);
-            form.append('files[]', f);
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/v1/workdir/upload');
-            // Save xhr for cancellation
-            this.activeUploads[tempKey] = xhr;
-            xhr.upload.onprogress = (e) => {
-              if (e.lengthComputable) {
-                const pct = Math.min(100, Math.round((e.loaded * 100) / (e.total || f.size || 1)));
-                // Update temp entry progress
-                this.browser.entries = this.browser.entries.map((entry) => entry.path === tempKey ? { ...entry, progress: pct } : entry);
-              }
-            };
-            xhr.onreadystatechange = async () => {
-              if (xhr.readyState === 4) {
-                // Cleanup stored XHR
-                delete this.activeUploads[tempKey];
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  // Refresh listing from server and drop temp entry
-                  await this.fetchFiles(path);
-                  resolve();
-                } else {
-                  // Mark as failed visually then resolve
-                  this.browser.entries = this.browser.entries.map((entry) => entry.path === tempKey ? { ...entry, uploading: false, progress: 0, uploadError: true } : entry);
-                  reject(new Error(xhr.responseText || `Upload failed (${xhr.status})`));
-                }
-              }
-            };
-            xhr.send(form);
-          } catch (ex) {
-            reject(ex);
-          }
-        }).catch((e) => {
-          window.toastFrontendError(`Error uploading ${f.name}: ${e?.message || e}`, 'File Upload Error');
-        });
+        formData.append("files[]", files[i]);
       }
-      // Ensure final refresh after batch
-      await this.fetchFiles(path);
+
+      // Proceed with upload after validation
+      const response = await fetchApi("/upload_work_dir_files", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update the file list with new data
+        this.browser.entries = data.data.entries.map((entry) => ({
+          ...entry,
+          uploadStatus: data.failed.includes(entry.name) ? "failed" : "success",
+        }));
+        this.browser.currentPath = data.data.current_path;
+        this.browser.parentPath = data.data.parent_path;
+
+        // Show success message
+        if (data.failed && data.failed.length > 0) {
+          const failedFiles = data.failed
+            .map((file) => `${file.name}: ${file.error}`)
+            .join("\n");
+          alert(`Some files failed to upload:\n${failedFiles}`);
+        }
+      } else {
+        alert(data.message);
+      }
     } catch (error) {
       window.toastFrontendError("Error uploading files: " + error.message, "File Upload Error");
       alert("Error uploading files");
     }
   },
 
-  cancelUpload(file) {
-    try {
-      const tempKey = file && file.path;
-      if (!tempKey || !tempKey.startsWith("__uploading__:")) return;
-      const xhr = this.activeUploads[tempKey];
-      if (xhr) {
-        xhr.abort();
-        delete this.activeUploads[tempKey];
-      }
-      // Remove the temp entry from UI
-      this.browser.entries = this.browser.entries.filter((e) => e.path !== tempKey);
-      window.toastInfo && window.toastInfo(`Upload canceled: ${file.name}`, 'File Upload');
-    } catch (e) {
-      window.toastFrontendError && window.toastFrontendError("Failed to cancel upload: " + (e?.message || e), 'File Upload');
-    }
-  },
-
   downloadFile(file) {
     const link = document.createElement("a");
-    link.href = `/v1/workdir/download?path=${encodeURIComponent(file.path)}`;
+    link.href = `/download_work_dir_file?path=${encodeURIComponent(file.path)}`;
     link.download = file.name;
     document.body.appendChild(link);
     link.click();
@@ -282,21 +247,20 @@ window.fileBrowserModalProxy = fileBrowserModalProxy;
 
 openFileLink = async function (path) {
   try {
-    // Try treating the path as a directory first
-    const listResp = await fetchApi(`/v1/workdir/list?path=${encodeURIComponent(path)}`);
-    if (listResp.ok) {
-      const data = await listResp.json();
-      const cur = (data && data.data && data.data.current_path) || path;
-      fileBrowserModalProxy.openModal(cur);
+    const resp = await window.sendJsonData("/file_info", { path });
+    if (!resp.exists) {
+      window.toastFrontendError("File does not exist.", "File Error");
       return;
     }
-  } catch (e) {
-    // ignore and try as file
-  }
-  try {
-    // Fallback: treat as a file and attempt download
-    const name = (path || "").split("/").filter(Boolean).pop() || "download";
-    fileBrowserModalProxy.downloadFile({ path, name });
+
+    if (resp.is_dir) {
+      fileBrowserModalProxy.openModal(resp.abs_path);
+    } else {
+      fileBrowserModalProxy.downloadFile({
+        path: resp.abs_path,
+        name: resp.file_name,
+      });
+    }
   } catch (e) {
     window.toastFrontendError("Error opening file: " + e.message, "File Open Error");
   }

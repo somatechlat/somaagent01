@@ -15,8 +15,6 @@
             <template x-for="(toast, index) in $store.notificationStore.toastStack" :key="toast.toastId">
                 <div class="toast-item"
                      :class="$store.notificationStore.getNotificationClass(toast.type)"
-                     @mouseenter="$store.notificationStore.pauseToast(toast.toastId)"
-                     @mouseleave="$store.notificationStore.resumeToast(toast.toastId)"
                      @click="$store.notificationStore.handleToastClick(toast.toastId)"
                      x-transition:enter="toast-enter"
                      x-transition:leave="toast-leave">
