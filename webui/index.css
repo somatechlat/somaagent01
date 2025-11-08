@@ -180,7 +180,8 @@ img {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  /* Allow settings/preferences to scroll so toggles are always reachable */
+  overflow-y: auto;
   margin-top: 3.5rem;
   padding: var(--spacing-md) var(--spacing-md) 0 var(--spacing-md);
 }
@@ -829,6 +830,13 @@ h4 {
 /* Config Section */
 .config-section > h4 {
   margin-top: 0;
+}
+
+/* Parity: hide admin-only quick actions by default on the landing UI */
+#memory-dash,
+#decisions-dash,
+#constitution-dash {
+  display: none;
 }
 
 .config-list {
