@@ -3,11 +3,14 @@ import time
 import uuid
 from typing import Any, Dict, List
 
-import pytest
 import httpx
+import pytest
 
-
-BASE_URL = os.getenv("GATEWAY_BASE_URL") or os.getenv("BASE_URL") or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
+BASE_URL = (
+    os.getenv("GATEWAY_BASE_URL")
+    or os.getenv("BASE_URL")
+    or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
+)
 TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
 POLL_TIMEOUT = float(os.getenv("E2E_POLL_TIMEOUT", "30"))
 POLL_INTERVAL = float(os.getenv("E2E_POLL_INTERVAL", "0.5"))
@@ -51,7 +54,9 @@ def test_document_ingest_tool_by_id() -> None:
         uploaded = up.json()
         assert isinstance(uploaded, list) and uploaded, f"unexpected upload payload: {uploaded}"
         path = uploaded[0].get("path")
-        assert isinstance(path, str) and path.startswith("/v1/attachments/"), f"unexpected path: {path}"
+        assert isinstance(path, str) and path.startswith(
+            "/v1/attachments/"
+        ), f"unexpected path: {path}"
         att_id = path.split("/v1/attachments/")[-1]
 
         # Enqueue tool request for document_ingest
@@ -79,7 +84,11 @@ def test_document_ingest_tool_by_id() -> None:
             if items:
                 observed.extend(items)
                 next_cursor = body.get("next_cursor")
-            tool_events = [e for e in observed if (e.get("payload") or {}).get("tool_name") == "document_ingest"]
+            tool_events = [
+                e
+                for e in observed
+                if (e.get("payload") or {}).get("tool_name") == "document_ingest"
+            ]
             if tool_events:
                 tool_event = tool_events[-1]
                 payload = tool_event.get("payload") or {}
@@ -104,13 +113,18 @@ def test_document_ingest_tool_by_id() -> None:
             found = False
             for it in items:
                 payload = it.get("payload") or {}
-                if payload.get("type") == "tool_result" and payload.get("tool_name") == "document_ingest":
+                if (
+                    payload.get("type") == "tool_result"
+                    and payload.get("tool_name") == "document_ingest"
+                ):
                     text = str((payload.get("content") or ""))
                     if unique in text:
                         found = True
                         break
             if not found:
-                pytest.xfail("tool_result memory for document_ingest not found (OPA may be denying memory.write)")
+                pytest.xfail(
+                    "tool_result memory for document_ingest not found (OPA may be denying memory.write)"
+                )
 
 
 @pytest.mark.e2e
@@ -127,7 +141,9 @@ def test_attachment_ingest_inline_small() -> None:
     with httpx.Client(timeout=TIMEOUT) as client:
         features = _require_gateway(client)
         if not bool(features.get("write_through")):
-            pytest.skip("Write-through to SomaBrain is disabled; cannot verify memory inline ingest.")
+            pytest.skip(
+                "Write-through to SomaBrain is disabled; cannot verify memory inline ingest."
+            )
 
         # Upload tiny text
         files = {"files": ("tiny.txt", f"hello {unique}".encode("utf-8"), "text/plain")}
@@ -156,7 +172,9 @@ def test_attachment_ingest_inline_small() -> None:
             mparams = {"session_id": session_id, "limit": 200}
             mem = client.get(f"{BASE_URL}/v1/admin/memory", params=mparams)
             if mem.status_code in {401, 403}:
-                pytest.skip("/v1/admin/memory requires admin auth in this environment; cannot verify.")
+                pytest.skip(
+                    "/v1/admin/memory requires admin auth in this environment; cannot verify."
+                )
             assert mem.status_code == 200, f"admin memory failed: HTTP {mem.status_code} {mem.text}"
             items: List[Dict[str, Any]] = mem.json().get("items", [])
             for it in items:

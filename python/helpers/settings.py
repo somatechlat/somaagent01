@@ -1314,7 +1314,9 @@ def normalize_settings(settings: Settings) -> Settings:
             copy = {}
 
     default_model = get_default_settings()
-    default = default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
+    default = (
+        default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
+    )
 
     # adjust settings values to match current version if needed
     if "version" not in copy or copy["version"] != default["version"]:
@@ -1373,9 +1375,10 @@ def _read_settings_from_gateway() -> Settings | None:
     )
     if not base:
         return None
-    url = (base.rstrip("/") + "/internal/runtime/settings")
+    url = base.rstrip("/") + "/internal/runtime/settings"
     try:
         import urllib.request
+
         req = urllib.request.Request(url)
         token = os.getenv("GATEWAY_INTERNAL_TOKEN", "").strip()
         if token:

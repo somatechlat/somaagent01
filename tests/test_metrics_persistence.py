@@ -1,6 +1,8 @@
 import os
+
 import pytest
 from httpx import AsyncClient
+
 
 @pytest.mark.asyncio
 async def test_persist_generic_metric_via_stream_or_direct(monkeypatch):
@@ -15,6 +17,7 @@ async def test_persist_generic_metric_via_stream_or_direct(monkeypatch):
     # Attempt DB connectivity early
     try:
         from services.common.telemetry_store import TelemetryStore
+
         store = TelemetryStore()
         pool = await store._ensure_pool()  # noqa: F841
     except Exception:
@@ -53,7 +56,9 @@ async def test_persist_generic_metric_via_stream_or_direct(monkeypatch):
             except Exception:
                 rows = []
             # Look for at least one row with our session id
-            hit = any((r.get("metadata") or {}).get("session_id") == payload["session_id"] for r in rows)
+            hit = any(
+                (r.get("metadata") or {}).get("session_id") == payload["session_id"] for r in rows
+            )
             if not hit:
                 pytest.skip("No reasoning_events persisted for this environment")
             assert hit, "Expected persisted reasoning_events row with session_id"
@@ -77,9 +82,13 @@ async def test_persist_generic_metric_via_stream_or_direct(monkeypatch):
     metric_name = "test_generic_metric"
     labels = {"k": "v"}
     try:
-        await tel.emit_generic_metric(metric_name=metric_name, labels=labels, value=1, metadata={"test": True})
+        await tel.emit_generic_metric(
+            metric_name=metric_name, labels=labels, value=1, metadata={"test": True}
+        )
     except Exception:
         pytest.skip("Failed to emit generic metric (DB/bus unavailable)")
 
     rows = await store.fetch_recent_generic(metric_name, limit=10)
-    assert any((r.get("labels") or {}).get("k") == "v" for r in rows), "Persisted generic metric not found"
+    assert any(
+        (r.get("labels") or {}).get("k") == "v" for r in rows
+    ), "Persisted generic metric not found"

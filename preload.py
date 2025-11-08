@@ -24,84 +24,82 @@ async def preload():
         # preload whisper model
         async def preload_whisper():
             try:
-                    # import whisper lazily
-                    from python.helpers import whisper as _whisper
+                # import whisper lazily
+                from python.helpers import whisper as _whisper
 
-                    return await _whisper.preload(set["stt_model_size"])
+                return await _whisper.preload(set["stt_model_size"])
             except Exception as e:
                 PrintStyle().error(f"Error in preload_whisper: {e}")
 
         # preload embedding model
         async def preload_embedding():
-                # Skip embedding preload if AI features are disabled in the
-                # environment (developer-mode). Prefer the FEATURE_AI env var
-                # which is set by the Docker build args during the installer.
-                feature_ai_env = os.environ.get("FEATURE_AI", "").lower()
-                if feature_ai_env in ("none", "false", "0"):
-                    return
+            # Skip embedding preload if AI features are disabled in the
+            # environment (developer-mode). Prefer the FEATURE_AI env var
+            # which is set by the Docker build args during the installer.
+            feature_ai_env = os.environ.get("FEATURE_AI", "").lower()
+            if feature_ai_env in ("none", "false", "0"):
+                return
 
-                if set["embed_model_provider"].lower() == "huggingface":
-                    try:
-                        # If sentence-transformers isn't installed in the image
-                        # the models.LocalSentenceTransformerWrapper will try to
-                        # call SentenceTransformer which will be None and raise
-                        # a confusing TypeError. Detect that case early and
-                        # skip embedding preload.
-                        import models as _models
+            if set["embed_model_provider"].lower() == "huggingface":
+                try:
+                    # If sentence-transformers isn't installed in the image
+                    # the models.LocalSentenceTransformerWrapper will try to
+                    # call SentenceTransformer which will be None and raise
+                    # a confusing TypeError. Detect that case early and
+                    # skip embedding preload.
+                    import models as _models
 
-                        if getattr(_models, "SentenceTransformer", None) is None:
-                            PrintStyle().print(
-                                "Skipping embedding preload — sentence-transformers not installed in this image"
-                            )
-                            return
-                        # Import models lazily to avoid importing heavy AI libraries at
-                        # module import time during the installer/dev builds.
-                        import models
-
-                        # Use the new LiteLLM-based model system
-                        emb_mod = models.get_embedding_model(
-                            "huggingface", set["embed_model_name"]
+                    if getattr(_models, "SentenceTransformer", None) is None:
+                        PrintStyle().print(
+                            "Skipping embedding preload — sentence-transformers not installed in this image"
                         )
+                        return
+                    # Import models lazily to avoid importing heavy AI libraries at
+                    # module import time during the installer/dev builds.
+                    import models
 
-                        # Some embedding wrappers expose an async `aembed_query`.
-                        # Others only implement a sync `embed_query`. Support both
-                        # to avoid 'NoneType' is not callable errors when aembed_query
-                        # is present but set to None by the base class.
-                        # Some wrappers expose an async `aembed_query`, others only
-                        # a sync `embed_query`. Use inspect to detect coroutine
-                        # functions and fall back to running sync methods in a
-                        # thread. Wrap calls to avoid accidentally calling None or
-                        # non-callable attributes which previously raised
-                        # "'NoneType' object is not callable".
-                        aembed = getattr(emb_mod, "aembed_query", None)
-                        embed_sync = getattr(emb_mod, "embed_query", None)
+                    # Use the new LiteLLM-based model system
+                    emb_mod = models.get_embedding_model("huggingface", set["embed_model_name"])
 
-                        async def _maybe_call(func, *args, **kwargs):
-                            if func is None:
-                                raise RuntimeError("No callable provided")
-                            # coroutine function
-                            if inspect.iscoroutinefunction(func):
-                                return await func(*args, **kwargs)
-                            # already a coroutine object (unlikely as attribute)
-                            if inspect.isawaitable(func):
-                                return await func
-                            # regular callable -> run in thread
-                            if callable(func):
-                                return await asyncio.to_thread(func, *args, **kwargs)
-                            raise RuntimeError("Embedding attribute is not callable")
+                    # Some embedding wrappers expose an async `aembed_query`.
+                    # Others only implement a sync `embed_query`. Support both
+                    # to avoid 'NoneType' is not callable errors when aembed_query
+                    # is present but set to None by the base class.
+                    # Some wrappers expose an async `aembed_query`, others only
+                    # a sync `embed_query`. Use inspect to detect coroutine
+                    # functions and fall back to running sync methods in a
+                    # thread. Wrap calls to avoid accidentally calling None or
+                    # non-callable attributes which previously raised
+                    # "'NoneType' object is not callable".
+                    aembed = getattr(emb_mod, "aembed_query", None)
+                    embed_sync = getattr(emb_mod, "embed_query", None)
 
-                        # Try async embed first, then sync fallback
+                    async def _maybe_call(func, *args, **kwargs):
+                        if func is None:
+                            raise RuntimeError("No callable provided")
+                        # coroutine function
+                        if inspect.iscoroutinefunction(func):
+                            return await func(*args, **kwargs)
+                        # already a coroutine object (unlikely as attribute)
+                        if inspect.isawaitable(func):
+                            return await func
+                        # regular callable -> run in thread
+                        if callable(func):
+                            return await asyncio.to_thread(func, *args, **kwargs)
+                        raise RuntimeError("Embedding attribute is not callable")
+
+                    # Try async embed first, then sync fallback
+                    try:
+                        return await _maybe_call(aembed, "test")
+                    except Exception:
                         try:
-                            return await _maybe_call(aembed, "test")
-                        except Exception:
-                            try:
-                                return await _maybe_call(embed_sync, "test")
-                            except Exception as e:
-                                raise RuntimeError(
-                                    f"Embedding model has no usable embed_query method: {e}"
-                                )
-                    except Exception as e:
-                        PrintStyle().error(f"Error in preload_embedding: {e}")
+                            return await _maybe_call(embed_sync, "test")
+                        except Exception as e:
+                            raise RuntimeError(
+                                f"Embedding model has no usable embed_query method: {e}"
+                            )
+                except Exception as e:
+                    PrintStyle().error(f"Error in preload_embedding: {e}")
 
         # preload kokoro tts model if enabled
         async def preload_kokoro():

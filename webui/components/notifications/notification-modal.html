@@ -3,19 +3,22 @@
 <head>
     <title>Notifications</title>
     <script type="module">
-        import { store } from "/components/notifications/notification-store.js";
+        // Modal now binds to Alpine store 'notificationSse' (fed by SSE)
+        import { store as notificationsSse } from "/components/notifications/notificationsStore.js";
+        // Ensure list is fetched when modal loads
+        try { notificationsSse.fetchList({ limit: 50 }).catch(()=>{}); } catch {}
     </script>
 </head>
 
 <body>
     <div x-data>
-        <template x-if="$store.notificationStore">
+        <template x-if="$store.notificationSse">
             <div>
                 <!-- Modal Header Actions -->
                 <div class="modal-subheader">
                     <div class="notification-header-actions">
-                        <button class="notification-action" @click="$store.notificationStore?.clearAll()"
-                            :disabled="!$store.notificationStore || $store.notificationStore.getDisplayNotifications().length === 0"
+                        <button class="notification-action" @click="globalThis.notificationsSse?.clearAll && globalThis.notificationsSse.clearAll()"
+                            :disabled="!$store.notificationSse || ($store.notificationSse.list||[]).length === 0"
                             title="Clear All">
                             <span class="material-symbols-outlined">delete</span> Clear All
                         </button>
@@ -24,24 +27,24 @@
 
                 <!-- Notifications List -->
                 <div class="notification-list"
-                    x-show="$store.notificationStore && $store.notificationStore.getDisplayNotifications().length > 0">
-                    <template x-for="notification in ($store.notificationStore?.getDisplayNotifications() || [])"
+                    x-show="$store.notificationSse && ($store.notificationSse.list||[]).length > 0">
+                    <template x-for="notification in ($store.notificationSse?.list || [])"
                         :key="notification.id">
                         <div class="notification-item" x-data="{ expanded: false }"
-                            :class="$store.notificationStore?.getNotificationItemClass(notification) || 'notification-item'"
-                            @click="$store.notificationStore?.markAsRead(notification.id)">
+                            :class="(notification.read_at ? 'notification-item read' : 'notification-item unread')"
+                            @click="globalThis.notificationsSse?.markRead && globalThis.notificationsSse.markRead(notification.id)">
 
                             <div class="notification-icon"
-                                x-html="$store.notificationStore?.getNotificationIcon(notification.type) || ''">
+                                x-html="(function(){ const icons={info:'info',success:'check_circle',warning:'warning',error:'error',progress:'hourglass_empty'}; const t=(notification.severity||notification.type||'info').toLowerCase(); const name=icons[t]||'info'; return `<span class='material-symbols-outlined'>${name}</span>`; })()">
                             </div>
 
                             <div class="notification-content">
                                 <div class="notification-title" x-show="notification.title" x-text="notification.title">
                                 </div>
-                                <div class="notification-message" x-text="notification.message">
+                                <div class="notification-message" x-text="notification.body || notification.message">
                                 </div>
                                 <div class="notification-timestamp"
-                                    x-text="$store.notificationStore?.formatTimestamp(notification.timestamp) || notification.timestamp">
+                                    x-text="new Date(notification.created_at || notification.timestamp || Date.now()).toLocaleString()">
                                 </div>
 
                                 <!-- Expand Toggle Button (as last row element) -->
@@ -69,7 +72,7 @@
 
                 <!-- Empty State -->
                 <div class="notification-empty"
-                    x-show="!$store.notificationStore || $store.notificationStore.getDisplayNotifications().length === 0">
+                    x-show="!$store.notificationSse || ($store.notificationSse.list||[]).length === 0">
                     <div class="notification-empty-icon">
                         <span class="material-symbols-outlined">notifications</span>
                     </div>

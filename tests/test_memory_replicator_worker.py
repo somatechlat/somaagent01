@@ -1,12 +1,14 @@
-import asyncio
 import os
 import time
 
 import pytest
 
-from services.memory_replicator.main import MemoryReplicator
-from services.common.memory_replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
+from services.common.memory_replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
+from services.memory_replicator.main import MemoryReplicator
 
 
 @pytest.mark.asyncio
@@ -95,4 +97,3 @@ async def test_replicator_error_goes_to_dlq_store(monkeypatch):
     # Verify DLQ row persisted
     count = await dlq_store.count(topic=f"{rep.wal_topic}.dlq")
     assert count >= 1
-

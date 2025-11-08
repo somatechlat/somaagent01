@@ -1,12 +1,18 @@
-import os
 import json
+import os
 
 import pytest
 from fastapi.testclient import TestClient
 
+from services.common.export_job_store import (
+    ensure_schema as ensure_export_jobs_schema,
+    ExportJobStore,
+)
+from services.common.memory_replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
 from services.gateway.main import app
-from services.common.memory_replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
-from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 
 
 @pytest.mark.asyncio
@@ -34,7 +40,11 @@ async def test_export_job_end_to_end(monkeypatch, tmp_path):
             "role": "assistant",
             "session_id": "s-exp",
             "tenant": "t-exp",
-            "payload": {"id": f"exp-{idx}", "content": f"line {idx}", "metadata": {"universe_id": "u-exp", "namespace": "wm"}},
+            "payload": {
+                "id": f"exp-{idx}",
+                "content": f"line {idx}",
+                "metadata": {"universe_id": "u-exp", "namespace": "wm"},
+            },
             "result": {"coord": f"c-{idx}", "trace_id": f"tr-{idx}", "request_id": f"rq-{idx}"},
             "timestamp": time.time(),
         }
@@ -67,4 +77,3 @@ async def test_export_job_end_to_end(monkeypatch, tmp_path):
     assert len(lines) >= 2
     first = json.loads(lines[0])
     assert first.get("tenant") == "t-exp"
-

@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover
 
 _ERROR_CLASSIFIER_RESULTS: any = None  # type: ignore
 
+
 def _metrics_init() -> None:
     global _ERROR_CLASSIFIER_RESULTS
     if Counter is None or _ERROR_CLASSIFIER_RESULTS is not None:

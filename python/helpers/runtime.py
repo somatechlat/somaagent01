@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import inspect
+import os
+import pathlib
 import queue
 import secrets
 import socket
@@ -8,8 +10,6 @@ import threading
 from typing import Awaitable, Callable, cast, overload, TypeVar, Union
 
 from python.helpers import dotenv, files, rfc, settings
-import os
-import pathlib
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -81,9 +81,8 @@ def get_runtime_id() -> str:
 # In production you should mount a secret and point the env var
 # SA01_PERSISTENT_ID_PATH to that mount (e.g. /run/secrets/soma_persistent_id).
 _default_dev_path = pathlib.Path(__file__).parents[2] / "tmp" / "persistent_id"
-_PERSISTENT_ID_PATH = pathlib.Path(
-    os.getenv("SA01_PERSISTENT_ID_PATH", str(_default_dev_path))
-)
+_PERSISTENT_ID_PATH = pathlib.Path(os.getenv("SA01_PERSISTENT_ID_PATH", str(_default_dev_path)))
+
 
 def _read_id_file() -> str | None:
     """Return the persisted ID if the secret file exists and is non‑empty.
@@ -99,6 +98,7 @@ def _read_id_file() -> str | None:
     except Exception:
         return None
 
+
 def _write_id_file(value: str) -> None:
     """Write the generated ID back to the secret file.
 
@@ -107,6 +107,7 @@ def _write_id_file(value: str) -> None:
     mis‑configuration obvious during startup.
     """
     _PERSISTENT_ID_PATH.write_text(value)
+
 
 def get_persistent_id() -> str:
     """Return a stable runtime identifier.

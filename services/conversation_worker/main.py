@@ -3,30 +3,36 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import mimetypes
 import os
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List
-import json
 
+import httpx
 from jsonschema import ValidationError
 from prometheus_client import Counter, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.idempotency import generate_for_memory_payload
 from services.common.logging_config import setup_logging
+from services.common.memory_write_outbox import (
+    ensure_schema as ensure_mw_outbox_schema,
+    MemoryWriteOutbox,
+)
 from services.common.model_costs import estimate_escalation_cost
 from services.common.model_profiles import ModelProfileStore
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
-from services.common.idempotency import generate_for_memory_payload
 from services.common.router_client import RouterClient
 from services.common.schema_validator import validate_event
 from services.common.session_repository import (
@@ -40,10 +46,7 @@ from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
-import httpx
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
-import mimetypes
-from pathlib import Path
 from services.tool_executor.tool_registry import ToolRegistry
 
 setup_logging()
@@ -454,7 +457,12 @@ class ConversationWorker:
             pages = max(1, (top_k + chunk_size - 1) // chunk_size)
             universe_val = (base_metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE")
             # Attempt SSE recall stream when enabled
-            use_sse = (os.getenv("SOMABRAIN_USE_RECALL_SSE", "false").lower() in {"1", "true", "yes", "on"})
+            use_sse = os.getenv("SOMABRAIN_USE_RECALL_SSE", "false").lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }
             if use_sse and not stop_event.is_set():
                 try:
                     payload = {
@@ -471,7 +479,8 @@ class ConversationWorker:
                         max_events = 20
                     count = 0
                     async for evt in self.soma.recall_stream_events(
-                        payload, request_timeout=float(os.getenv("SOMABRAIN_RECALL_SSE_TIMEOUT", "15"))
+                        payload,
+                        request_timeout=float(os.getenv("SOMABRAIN_RECALL_SSE_TIMEOUT", "15")),
                     ):
                         if stop_event.is_set():
                             break
@@ -503,7 +512,9 @@ class ConversationWorker:
                                 tenant=(context_event.get("metadata") or {}).get("tenant"),
                             )
                         except Exception:
-                            LOGGER.debug("Failed to publish recall_sse context.update", exc_info=True)
+                            LOGGER.debug(
+                                "Failed to publish recall_sse context.update", exc_info=True
+                            )
                         count += 1
                         if count >= max_events:
                             break
@@ -512,7 +523,9 @@ class ConversationWorker:
                         return
                 except Exception:
                     # SSE not available or failed — fall through to paging
-                    LOGGER.debug("recall_stream_events failed; falling back to paged recall", exc_info=True)
+                    LOGGER.debug(
+                        "recall_stream_events failed; falling back to paged recall", exc_info=True
+                    )
 
             # Paged recall fallback
             for page_index in range(pages):
@@ -628,8 +641,8 @@ class ConversationWorker:
             # Images via pytesseract if available
             if mime.startswith("image/"):
                 try:
-                    from PIL import Image  # type: ignore
                     import pytesseract  # type: ignore
+                    from PIL import Image  # type: ignore
 
                     img = Image.open(str(p))
                     return pytesseract.image_to_string(img)[:200_000]
@@ -640,7 +653,15 @@ class ConversationWorker:
         except Exception:
             return ""
 
-    async def _ingest_attachment(self, *, path: str, session_id: str, persona_id: str | None, tenant: str, metadata: dict[str, Any]) -> None:
+    async def _ingest_attachment(
+        self,
+        *,
+        path: str,
+        session_id: str,
+        persona_id: str | None,
+        tenant: str,
+        metadata: dict[str, Any],
+    ) -> None:
         try:
             text = await self._extract_text_from_path(path)
             if not text:
@@ -657,7 +678,8 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id")
+                    or os.getenv("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -679,7 +701,9 @@ class ConversationWorker:
                     )
                 )
             except Exception:
-                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                LOGGER.warning(
+                    "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
+                )
             if not allow_memory:
                 return
             wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
@@ -743,6 +767,7 @@ class ConversationWorker:
             if not s:
                 return None
             import re
+
             # Raw UUID
             if re.fullmatch(r"[0-9a-fA-F-]{36}", s):
                 return s
@@ -788,7 +813,9 @@ class ConversationWorker:
         headers = {"X-Internal-Token": token}
         if tenant:
             headers["X-Tenant-Id"] = str(tenant)
-        async with httpx.AsyncClient(timeout=float(os.getenv("WORKER_FETCH_TIMEOUT", "10"))) as client:
+        async with httpx.AsyncClient(
+            timeout=float(os.getenv("WORKER_FETCH_TIMEOUT", "10"))
+        ) as client:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 404:
                 raise FileNotFoundError("attachment not found")
@@ -813,8 +840,10 @@ class ConversationWorker:
                     return data.decode("latin-1", errors="ignore")[:200_000]
             if mime == "application/pdf" or (filename or "").lower().endswith(".pdf"):
                 try:
-                    import fitz  # type: ignore
                     import io as _io
+
+                    import fitz  # type: ignore
+
                     parts: list[str] = []
                     with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
                         for page in doc:
@@ -824,9 +853,11 @@ class ConversationWorker:
                     return ""
             if (mime or "").startswith("image/"):
                 try:
-                    from PIL import Image  # type: ignore
-                    import pytesseract  # type: ignore
                     import io as _io
+
+                    import pytesseract  # type: ignore
+                    from PIL import Image  # type: ignore
+
                     img = Image.open(_io.BytesIO(data))
                     return pytesseract.image_to_string(img)[:200_000]
                 except Exception:
@@ -835,7 +866,15 @@ class ConversationWorker:
         except Exception:
             return ""
 
-    async def _ingest_attachment_by_id(self, *, att_id: str, session_id: str, persona_id: str | None, tenant: str, metadata: dict[str, Any]) -> None:
+    async def _ingest_attachment_by_id(
+        self,
+        *,
+        att_id: str,
+        session_id: str,
+        persona_id: str | None,
+        tenant: str,
+        metadata: dict[str, Any],
+    ) -> None:
         try:
             data, mime, filename = await self._fetch_attachment_bytes(att_id=att_id, tenant=tenant)
             text = await self._extract_text_from_blob(data=data, mime=mime, filename=filename)
@@ -854,7 +893,8 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id")
+                    or os.getenv("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -875,7 +915,9 @@ class ConversationWorker:
                     )
                 )
             except Exception:
-                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                LOGGER.warning(
+                    "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
+                )
             if not allow_memory:
                 return
             wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
@@ -986,7 +1028,9 @@ class ConversationWorker:
                 if resp.is_error:
                     # Surface upstream error text for telemetry/debugging
                     body = await resp.aread()
-                    raise RuntimeError(f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}")
+                    raise RuntimeError(
+                        f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}"
+                    )
                 async for line in resp.aiter_lines():
                     if not line or not line.startswith("data:"):
                         continue
@@ -1032,8 +1076,12 @@ class ConversationWorker:
                         )
                     chunk_usage = chunk.get("usage")
                     if isinstance(chunk_usage, dict):
-                        usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                        usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                        usage["input_tokens"] = int(
+                            chunk_usage.get("prompt_tokens", usage["input_tokens"])
+                        )
+                        usage["output_tokens"] = int(
+                            chunk_usage.get("completion_tokens", usage["output_tokens"])
+                        )
         # Signal background context recall to stop and wait briefly
         try:
             stop_event.set()
@@ -1071,7 +1119,9 @@ class ConversationWorker:
                 async with httpx.AsyncClient(timeout=30.0) as client2:
                     resp2 = await client2.post(url2, json=body2, headers=headers2)
                     if resp2.is_error:
-                        raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                        raise RuntimeError(
+                            f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}"
+                        )
                     data2 = resp2.json()
                     content2 = data2.get("content", "")
                     usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
@@ -1136,7 +1186,9 @@ class ConversationWorker:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(url, json=body, headers=headers)
                 if resp.is_error:
-                    raise RuntimeError(f"Gateway invoke error {resp.status_code}: {resp.text[:512]}")
+                    raise RuntimeError(
+                        f"Gateway invoke error {resp.status_code}: {resp.text[:512]}"
+                    )
                 data = resp.json()
                 content = data.get("content", "")
                 usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
@@ -1147,15 +1199,25 @@ class ConversationWorker:
                     for call in tool_calls:
                         try:
                             fn = (call or {}).get("function") or {}
-                            tool_name = fn.get("name") or (call.get("name") if isinstance(call, dict) else "")
-                            raw_args = fn.get("arguments") if fn else (call.get("arguments") if isinstance(call, dict) else "")
+                            tool_name = fn.get("name") or (
+                                call.get("name") if isinstance(call, dict) else ""
+                            )
+                            raw_args = (
+                                fn.get("arguments")
+                                if fn
+                                else (call.get("arguments") if isinstance(call, dict) else "")
+                            )
                         except Exception:
                             tool_name = ""
                             raw_args = ""
                         if not tool_name:
                             continue
                         try:
-                            args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+                            args = (
+                                json.loads(raw_args)
+                                if isinstance(raw_args, str)
+                                else (raw_args or {})
+                            )
                         except Exception:
                             args = {"_raw": raw_args}
 
@@ -1183,7 +1245,9 @@ class ConversationWorker:
                                 tenant=metadata.get("tenant"),
                             )
                         except Exception:
-                            LOGGER.debug("Failed to publish tool request (non-stream)", exc_info=True)
+                            LOGGER.debug(
+                                "Failed to publish tool request (non-stream)", exc_info=True
+                            )
                             continue
 
                         result_event = await self._wait_for_tool_result(
@@ -1195,7 +1259,11 @@ class ConversationWorker:
                         if result_event:
                             payload = result_event.get("payload")
                             try:
-                                tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                                tool_text = (
+                                    payload
+                                    if isinstance(payload, str)
+                                    else json.dumps(payload, ensure_ascii=False)
+                                )
                             except Exception:
                                 tool_text = str(payload)
                             messages.append(
@@ -1223,7 +1291,9 @@ class ConversationWorker:
                     }
                     resp2 = await client.post(url, json=body2, headers=headers)
                     if resp2.is_error:
-                        raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                        raise RuntimeError(
+                            f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}"
+                        )
                     data2 = resp2.json()
                     content2 = data2.get("content", "")
                     usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
@@ -1370,7 +1440,9 @@ class ConversationWorker:
                     )
                 )
             except Exception:
-                LOGGER.debug("Failed to start background recall context (tools path)", exc_info=True)
+                LOGGER.debug(
+                    "Failed to start background recall context (tools path)", exc_info=True
+                )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
@@ -1430,7 +1502,7 @@ class ConversationWorker:
                                 idx = int(item.get("index", 0))
                             except Exception:
                                 idx = 0
-                            func = (item.get("function") or {})
+                            func = item.get("function") or {}
                             name_part = func.get("name")
                             if name_part:
                                 tc_name_acc[idx] = name_part
@@ -1441,8 +1513,12 @@ class ConversationWorker:
                     # Capture usage if present
                     chunk_usage = chunk.get("usage")
                     if isinstance(chunk_usage, dict):
-                        usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                        usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                        usage["input_tokens"] = int(
+                            chunk_usage.get("prompt_tokens", usage["input_tokens"])
+                        )
+                        usage["output_tokens"] = int(
+                            chunk_usage.get("completion_tokens", usage["output_tokens"])
+                        )
                     # If finish_reason indicates tool calls, stop accumulating content and break
                     if ch0.get("finish_reason") == "tool_calls":
                         break
@@ -1459,7 +1535,11 @@ class ConversationWorker:
         # If we received tool call data, execute tools; otherwise return text
         if tc_args_acc or tc_name_acc:
             # Compose final tool_calls list
-            max_index = max(list(tc_name_acc.keys()) + list(tc_args_acc.keys())) if (tc_name_acc or tc_args_acc) else -1
+            max_index = (
+                max(list(tc_name_acc.keys()) + list(tc_args_acc.keys()))
+                if (tc_name_acc or tc_args_acc)
+                else -1
+            )
             for i in range(max_index + 1):
                 name = tc_name_acc.get(i) or ""
                 raw_args = (tc_args_acc.get(i) or {}).get("_raw", "")
@@ -1502,13 +1582,19 @@ class ConversationWorker:
                     continue
 
                 result_event = await self._wait_for_tool_result(
-                    session_id=session_id, request_id=req_id, timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20"))
+                    session_id=session_id,
+                    request_id=req_id,
+                    timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20")),
                 )
                 # Append a summarised tool result back into the message context
                 if result_event:
                     payload = result_event.get("payload")
                     try:
-                        tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                        tool_text = (
+                            payload
+                            if isinstance(payload, str)
+                            else json.dumps(payload, ensure_ascii=False)
+                        )
                     except Exception:
                         tool_text = str(payload)
                     messages.append(
@@ -1553,10 +1639,12 @@ class ConversationWorker:
         overrides: Dict[str, Any] = {}
         if profile:
             # Only include base_url when non-empty to avoid sending an empty string
-            overrides.update({
-                "model": profile.model,
-                "temperature": profile.temperature,
-            })
+            overrides.update(
+                {
+                    "model": profile.model,
+                    "temperature": profile.temperature,
+                }
+            )
             if isinstance(profile.base_url, str) and profile.base_url.strip():
                 overrides["base_url"] = profile.base_url
             if isinstance(profile.kwargs, dict):
@@ -1583,7 +1671,9 @@ class ConversationWorker:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.is_error:
-                raise RuntimeError(f"Gateway escalation invoke error {resp.status_code}: {resp.text[:512]}")
+                raise RuntimeError(
+                    f"Gateway escalation invoke error {resp.status_code}: {resp.text[:512]}"
+                )
             data = resp.json()
         latency = time.time() - start_time
         text = data.get("content", "")
@@ -1770,13 +1860,16 @@ class ConversationWorker:
                     "metadata": {
                         **dict(enriched_metadata),
                         "agent_profile_id": enriched_metadata.get("agent_profile_id"),
-                        "universe_id": enriched_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                        "universe_id": enriched_metadata.get("universe_id")
+                        or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
                 # Enrich metadata with persona summary if available
                 try:
                     persona_data = await self._get_persona_cached(event.get("persona_id"))
-                    payload["metadata"] = self._augment_metadata_with_persona(payload["metadata"], persona_data)
+                    payload["metadata"] = self._augment_metadata_with_persona(
+                        payload["metadata"], persona_data
+                    )
                 except Exception:
                     LOGGER.debug("persona metadata enrich failed (user)", exc_info=True)
                 # Idempotency key per contract
@@ -1799,7 +1892,10 @@ class ConversationWorker:
                         )
                     )
                 except Exception:
-                    LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                    LOGGER.warning(
+                        "OPA memory.write check failed; denying by fail-closed policy",
+                        exc_info=True,
+                    )
                 if allow_memory:
                     wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
@@ -1812,7 +1908,8 @@ class ConversationWorker:
                             "tenant": tenant,
                             "payload": payload,
                             "result": {
-                                "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                                "coord": (result or {}).get("coordinate")
+                                or (result or {}).get("coord"),
                                 "trace_id": (result or {}).get("trace_id"),
                                 "request_id": (result or {}).get("request_id"),
                             },
@@ -1838,7 +1935,9 @@ class ConversationWorker:
                         if att_id:
                             # ID-based path
                             size_info = await self._attachment_head(att_id, tenant)
-                            offload = self._should_offload_ingest_id(size_info.get("size") if isinstance(size_info, dict) else None)
+                            offload = self._should_offload_ingest_id(
+                                size_info.get("size") if isinstance(size_info, dict) else None
+                            )
                             if offload:
                                 try:
                                     tool_event = {
@@ -1850,9 +1949,15 @@ class ConversationWorker:
                                             "attachment_id": att_id,
                                             "session_id": session_id,
                                             "persona_id": event.get("persona_id"),
-                                            "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                            "metadata": {
+                                                **dict(enriched_metadata or {}),
+                                                "source": "ingest",
+                                            },
                                         },
-                                        "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                        "metadata": {
+                                            "tenant": tenant,
+                                            **dict(enriched_metadata or {}),
+                                        },
                                     }
                                     topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
@@ -1863,7 +1968,9 @@ class ConversationWorker:
                                         tenant=tenant,
                                     )
                                 except Exception:
-                                    LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                                    LOGGER.debug(
+                                        "Failed to enqueue document_ingest tool", exc_info=True
+                                    )
                             else:
                                 asyncio.create_task(
                                     self._ingest_attachment_by_id(
@@ -1894,9 +2001,15 @@ class ConversationWorker:
                                             "path": fullpath,
                                             "session_id": session_id,
                                             "persona_id": event.get("persona_id"),
-                                            "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                            "metadata": {
+                                                **dict(enriched_metadata or {}),
+                                                "source": "ingest",
+                                            },
                                         },
-                                        "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                        "metadata": {
+                                            "tenant": tenant,
+                                            **dict(enriched_metadata or {}),
+                                        },
                                     }
                                     topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
@@ -1907,7 +2020,9 @@ class ConversationWorker:
                                         tenant=tenant,
                                     )
                                 except Exception:
-                                    LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                                    LOGGER.debug(
+                                        "Failed to enqueue document_ingest tool", exc_info=True
+                                    )
                             else:
                                 asyncio.create_task(
                                     self._ingest_attachment(
@@ -1985,7 +2100,11 @@ class ConversationWorker:
                         if not instr and isinstance(persona_data.get("messages"), list):
                             try:
                                 for m in persona_data.get("messages") or []:
-                                    if isinstance(m, dict) and m.get("role") == "system" and m.get("content"):
+                                    if (
+                                        isinstance(m, dict)
+                                        and m.get("role") == "system"
+                                        and m.get("content")
+                                    ):
                                         instr = str(m.get("content"))
                                         break
                             except Exception:
@@ -2004,8 +2123,16 @@ class ConversationWorker:
                                     "persona": {
                                         "persona_id": persona_id,
                                         # Avoid heavy payloads: only include summary fields if present
-                                        "name": (persona_data or {}).get("name") if isinstance(persona_data, dict) else None,
-                                        "updated_at": (persona_data or {}).get("updated_at") if isinstance(persona_data, dict) else None,
+                                        "name": (
+                                            (persona_data or {}).get("name")
+                                            if isinstance(persona_data, dict)
+                                            else None
+                                        ),
+                                        "updated_at": (
+                                            (persona_data or {}).get("updated_at")
+                                            if isinstance(persona_data, dict)
+                                            else None
+                                        ),
                                     }
                                 },
                             )
@@ -2127,7 +2254,9 @@ class ConversationWorker:
                 # Be defensive: only merge kwargs when it's a dict
                 if isinstance(model_profile.kwargs, dict) and model_profile.kwargs:
                     slm_kwargs.update(model_profile.kwargs)
-                elif model_profile.kwargs is not None and not isinstance(model_profile.kwargs, dict):
+                elif model_profile.kwargs is not None and not isinstance(
+                    model_profile.kwargs, dict
+                ):
                     try:
                         LOGGER.warning(
                             "Ignoring non-dict model_profile.kwargs",
@@ -2371,11 +2500,15 @@ class ConversationWorker:
                             if not resp_ns.is_error:
                                 data_ns = resp_ns.json()
                                 fallback_text = data_ns.get("content", "")
-                                usage = data_ns.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                                usage = data_ns.get(
+                                    "usage", {"input_tokens": 0, "output_tokens": 0}
+                                )
                                 if fallback_text:
                                     response_text = fallback_text
                                 else:
-                                    response_text = "I encountered an error while generating a reply."
+                                    response_text = (
+                                        "I encountered an error while generating a reply."
+                                    )
                             else:
                                 response_text = "I encountered an error while generating a reply."
                     except Exception:
@@ -2511,13 +2644,16 @@ class ConversationWorker:
                     "metadata": {
                         **dict(response_metadata),
                         "agent_profile_id": response_metadata.get("agent_profile_id"),
-                        "universe_id": response_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                        "universe_id": response_metadata.get("universe_id")
+                        or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
                 # Enrich metadata with persona fields
                 try:
                     persona_data = await self._get_persona_cached(event.get("persona_id"))
-                    payload["metadata"] = self._augment_metadata_with_persona(payload["metadata"], persona_data)
+                    payload["metadata"] = self._augment_metadata_with_persona(
+                        payload["metadata"], persona_data
+                    )
                 except Exception:
                     LOGGER.debug("persona metadata enrich failed (assistant)", exc_info=True)
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -2538,7 +2674,10 @@ class ConversationWorker:
                         )
                     )
                 except Exception:
-                    LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                    LOGGER.warning(
+                        "OPA memory.write check failed; denying by fail-closed policy",
+                        exc_info=True,
+                    )
                 if allow_memory:
                     wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
@@ -2551,7 +2690,8 @@ class ConversationWorker:
                             "tenant": tenant,
                             "payload": payload,
                             "result": {
-                                "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                                "coord": (result or {}).get("coordinate")
+                                or (result or {}).get("coord"),
                                 "trace_id": (result or {}).get("trace_id"),
                                 "request_id": (result or {}).get("request_id"),
                             },
@@ -2601,10 +2741,13 @@ class ConversationWorker:
                         dedupe_key=str(payload.get("id")) if payload.get("id") else None,
                     )
                 except Exception:
-                    LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
+                    LOGGER.debug(
+                        "Failed to enqueue memory write for retry (assistant)", exc_info=True
+                    )
             except Exception:
                 LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
             record_metrics(result_label, path)
+
         # Execute the processing pipeline and ensure metrics are recorded on unexpected errors
         try:
             await _process()
@@ -2616,8 +2759,6 @@ class ConversationWorker:
             except Exception:
                 pass
             LOGGER.exception("Unhandled error while processing conversation event")
-
-
 
 
 async def main() -> None:

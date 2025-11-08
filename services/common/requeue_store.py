@@ -36,9 +36,8 @@ class RequeueStore:
         - policy_requeue_prefix (str)
         """
         url = getattr(settings, "redis_url", None) or os.getenv("REDIS_URL")
-        prefix = (
-            getattr(settings, "policy_requeue_prefix", None)
-            or os.getenv("POLICY_REQUEUE_PREFIX")
+        prefix = getattr(settings, "policy_requeue_prefix", None) or os.getenv(
+            "POLICY_REQUEUE_PREFIX"
         )
         return cls(url=url, prefix=prefix)
 

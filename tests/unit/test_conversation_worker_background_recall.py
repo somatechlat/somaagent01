@@ -1,5 +1,6 @@
 import asyncio
 import os
+
 import pytest
 
 from services.conversation_worker.main import ConversationWorker
@@ -20,7 +21,18 @@ class FakeSoma:
         self.items_per_page = items_per_page
         self.last_page_items = last_page_items
 
-    async def recall(self, query, *, top_k=8, universe=None, session_id=None, conversation_id=None, chunk_size=None, chunk_index=None, **kwargs):
+    async def recall(
+        self,
+        query,
+        *,
+        top_k=8,
+        universe=None,
+        session_id=None,
+        conversation_id=None,
+        chunk_size=None,
+        chunk_index=None,
+        **kwargs,
+    ):
         # Return a decreasing number of items to trigger early stop on second page
         idx = int(chunk_index or 0)
         if idx == 0:

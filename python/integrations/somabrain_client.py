@@ -3,6 +3,7 @@
 Temporary shim to allow gradual rename from SomaClient to SomaBrainClient.
 Prefer importing SomaBrainClient from this module going forward.
 """
+
 from __future__ import annotations
 
 from python.integrations.soma_client import (

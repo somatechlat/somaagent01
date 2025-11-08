@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 import pytest
@@ -27,6 +26,7 @@ else:
 
 
 if RUN_INTEGRATION:
+
     @pytest.fixture(scope="session")
     def kafka_container() -> "KafkaContainer":
         """Spin up Kafka via testcontainers and expose its bootstrap server."""
@@ -37,6 +37,7 @@ if RUN_INTEGRATION:
 
 
 if RUN_INTEGRATION:
+
     @pytest.fixture(scope="session")
     def redis_container() -> "RedisContainer":
         """Spin up Redis and export REDIS_URL for the application."""
@@ -53,6 +54,7 @@ if RUN_INTEGRATION:
 
 
 if RUN_INTEGRATION:
+
     @pytest.fixture(scope="session")
     def postgres_container() -> "PostgresContainer":
         """Provision Postgres for integration tests."""
@@ -63,6 +65,7 @@ if RUN_INTEGRATION:
 
 
 if RUN_INTEGRATION:
+
     @pytest_asyncio.fixture
     async def clean_kafka(kafka_container):
         """Placeholder fixture to ensure Kafka is initialised before tests."""
@@ -71,6 +74,7 @@ if RUN_INTEGRATION:
 
 
 if RUN_INTEGRATION:
+
     @pytest_asyncio.fixture
     async def clean_redis(redis_container):
         """Flush Redis databases before each test and return a client handle."""
@@ -86,6 +90,7 @@ if RUN_INTEGRATION:
 
 
 if RUN_INTEGRATION:
+
     @pytest_asyncio.fixture
     async def clean_postgres(postgres_container):
         """Truncate key tables in Postgres before running assertions."""

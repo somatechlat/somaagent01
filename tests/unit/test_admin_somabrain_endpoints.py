@@ -24,9 +24,11 @@ def _make_request(path: str = "/v1/admin/memory/metrics") -> Request:
 @pytest.fixture(autouse=True)
 def _force_auth(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(gateway_main, "REQUIRE_AUTH", True, raising=False)
+
     # No-op rate limiter
     async def no_rl(req):
         return None
+
     monkeypatch.setattr(gateway_main, "_enforce_admin_rate_limit", no_rl)
 
 
@@ -46,6 +48,7 @@ async def test_admin_memory_metrics_proxies_soma(monkeypatch: pytest.MonkeyPatch
     resp = await gateway_main.admin_memory_metrics(req, tenant="tenant-1", namespace="wm")
     assert resp.status_code == 200
     import json as _json
+
     data = _json.loads(resp.body)
     assert data["tenant"] == "tenant-1"
     assert data["namespace"] == "wm"
@@ -68,6 +71,7 @@ async def test_admin_migrate_export_proxies_soma(monkeypatch: pytest.MonkeyPatch
     resp = await gateway_main.admin_migrate_export(payload, req)
     assert resp.status_code == 200
     import json as _json
+
     data = _json.loads(resp.body)
     assert data == {"include_wm": False, "wm_limit": 42}
 
@@ -99,6 +103,7 @@ async def test_admin_migrate_import_proxies_soma(monkeypatch: pytest.MonkeyPatch
     resp = await gateway_main.admin_migrate_import(payload, req)
     assert resp.status_code == 200
     import json as _json
+
     data = _json.loads(resp.body)
     assert data["manifest"] == {"version": 1}
     assert data["memories_count"] == 2

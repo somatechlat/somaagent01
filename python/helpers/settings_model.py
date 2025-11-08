@@ -19,6 +19,7 @@ attribute access (e.g. ``settings.chat_model_provider``).
 from __future__ import annotations
 
 from typing import Any, Dict
+
 from pydantic import ConfigDict
 
 try:

@@ -1,5 +1,6 @@
 import asyncio
 import os
+
 import pytest
 
 from services.conversation_worker.main import ConversationWorker
@@ -20,7 +21,10 @@ class FakeSoma:
 
     async def recall(self, query, **kwargs):
         # Return many results to trigger clamping
-        items = [{"id": f"m-{i}", "score": 1.0, "payload": {"text": "x" * 200}} for i in range(self.n_items)]
+        items = [
+            {"id": f"m-{i}", "score": 1.0, "payload": {"text": "x" * 200}}
+            for i in range(self.n_items)
+        ]
         return {"results": items}
 
 
@@ -48,7 +52,9 @@ async def test_background_recall_metadata_is_clamped(monkeypatch):
         stop_event=stop_event,
     )
 
-    emitted = [e for (topic, e) in worker.publisher.events if (e or {}).get("type") == "context.update"]
+    emitted = [
+        e for (topic, e) in worker.publisher.events if (e or {}).get("type") == "context.update"
+    ]
     assert emitted, "expected at least one context.update event"
     md = emitted[0].get("metadata") or {}
     rec = md.get("recall")

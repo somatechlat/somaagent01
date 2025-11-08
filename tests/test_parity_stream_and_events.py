@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import re
@@ -12,6 +11,7 @@ import pytest
 
 # Assumes gateway is running on localhost:21016 during test execution.
 GATEWAY_BASE = os.getenv("GATEWAY_BASE", "http://localhost:21016")
+
 
 @pytest.mark.asyncio
 async def test_stream_canonical_produces_deltas_then_single_final():
@@ -68,12 +68,14 @@ async def test_stream_canonical_produces_deltas_then_single_final():
     # done flag present
     assert finals[0].get("metadata", {}).get("done") in {True, "true"}
 
+
 @pytest.mark.asyncio
 async def test_error_normalization_upgrade_on_read():
     """Insert a legacy raw error payload and confirm list endpoint upgrades to *.error format."""
     session_id = str(uuid.uuid4())
     # Direct legacy insertion via session_events table (simulate rogue writer)
     import asyncpg
+
     dsn = os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
     pool = await asyncpg.create_pool(dsn)
     async with pool.acquire() as conn:
@@ -83,7 +85,14 @@ async def test_error_normalization_upgrade_on_read():
             VALUES ($1, $2::jsonb)
             """,
             session_id,
-            json.dumps({"event_id": str(uuid.uuid4()), "session_id": session_id, "type": "error", "message": ""}),
+            json.dumps(
+                {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "type": "error",
+                    "message": "",
+                }
+            ),
         )
     await pool.close()
     # Fetch via list API
@@ -92,11 +101,16 @@ async def test_error_normalization_upgrade_on_read():
         resp = await client.get(url)
     assert resp.status_code == 200
     data = resp.json()
-    upgraded = [e for e in data.get("events", []) if (e.get("payload") or {}).get("type", "").endswith(".error")]
+    upgraded = [
+        e
+        for e in data.get("events", [])
+        if (e.get("payload") or {}).get("type", "").endswith(".error")
+    ]
     assert upgraded, "expected upgraded *.error event"
     evt = upgraded[0]["payload"]
     assert evt.get("message"), "normalized error should have user-facing message"
     assert evt.get("metadata", {}).get("error"), "normalized error should include metadata.error"
+
 
 @pytest.mark.asyncio
 async def test_event_dedupe_enforcement():
@@ -104,7 +118,8 @@ async def test_event_dedupe_enforcement():
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
     # Use session repository append_event which will respect dedupe logic for event_exists only if second write checks DB.
-    from services.common.session_repository import PostgresSessionStore, ensure_schema
+    from services.common.session_repository import ensure_schema, PostgresSessionStore
+
     store = PostgresSessionStore()
     await ensure_schema(store)
     payload_base = {
@@ -118,6 +133,7 @@ async def test_event_dedupe_enforcement():
     await store.append_event(session_id, {"type": "user", **payload_base})
     # Attempt duplicate insert bypassing event_exists (direct low-level insertion) and expect unique index violation
     import asyncpg
+
     dsn = os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
     pool = await asyncpg.create_pool(dsn)
     dup_error = None
@@ -135,5 +151,7 @@ async def test_event_dedupe_enforcement():
             dup_error = str(exc)
     await pool.close()
     # Verify unique constraint fired
-    assert dup_error and re.search(r"uq_session_events_session_event", dup_error), "duplicate insert should fail unique constraint"
+    assert dup_error and re.search(
+        r"uq_session_events_session_event", dup_error
+    ), "duplicate insert should fail unique constraint"
     await store.close()

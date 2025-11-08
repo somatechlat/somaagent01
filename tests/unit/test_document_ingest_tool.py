@@ -1,15 +1,13 @@
-import os
-import types
-import asyncio
-import pytest
-
 import httpx
+import pytest
 
 from services.tool_executor.tools import IngestDocumentTool, ToolExecutionError
 
 
 class FakeResponse:
-    def __init__(self, status_code: int = 200, headers: dict | None = None, content: bytes = b"") -> None:
+    def __init__(
+        self, status_code: int = 200, headers: dict | None = None, content: bytes = b""
+    ) -> None:
         self.status_code = status_code
         self.headers = headers or {}
         self.content = content
@@ -48,7 +46,7 @@ async def test_document_ingest_success_text_plain(monkeypatch):
     content = b"hello unit-test"
     headers = {
         "content-type": "text/plain",
-        "content-disposition": "attachment; filename=\"tiny.txt\"",
+        "content-disposition": 'attachment; filename="tiny.txt"',
     }
     fake_resp = FakeResponse(200, headers, content)
 
@@ -79,7 +77,7 @@ async def test_document_ingest_octet_stream_by_extension(monkeypatch):
     content = b"just some markdown text"
     headers = {
         "content-type": "application/octet-stream",
-        "content-disposition": "attachment; filename=\"file.md\"",
+        "content-disposition": 'attachment; filename="file.md"',
     }
     fake_resp = FakeResponse(200, headers, content)
 

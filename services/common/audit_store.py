@@ -8,11 +8,11 @@ for tests via AUDIT_STORE_MODE=memory.
 from __future__ import annotations
 
 import json
-import os
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 import asyncpg
 
@@ -83,7 +83,9 @@ class AuditStore:
 
 class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = dsn or os.getenv(
+            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -91,7 +93,9 @@ class PostgresAuditStore(AuditStore):
         if self._pool is None:
             min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
             max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:
@@ -259,16 +263,20 @@ class InMemoryAuditStore(AuditStore):
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]:
-        rows = [r for r in self._rows if (
-            (request_id is None or r.request_id == request_id) and
-            (session_id is None or r.session_id == session_id) and
-            (tenant is None or r.tenant == tenant) and
-            (action is None or r.action == action) and
-            (subject is None or r.subject == subject) and
-            (after_id is None or r.id > after_id) and
-            (from_ts is None or r.ts >= from_ts) and
-            (to_ts is None or r.ts <= to_ts)
-        )]
+        rows = [
+            r
+            for r in self._rows
+            if (
+                (request_id is None or r.request_id == request_id)
+                and (session_id is None or r.session_id == session_id)
+                and (tenant is None or r.tenant == tenant)
+                and (action is None or r.action == action)
+                and (subject is None or r.subject == subject)
+                and (after_id is None or r.id > after_id)
+                and (from_ts is None or r.ts >= from_ts)
+                and (to_ts is None or r.ts <= to_ts)
+            )
+        ]
         return rows[:limit]
 
 

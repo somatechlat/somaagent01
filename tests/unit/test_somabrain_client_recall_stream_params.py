@@ -1,6 +1,3 @@
-import asyncio
-import json
-import types
 import pytest
 
 from python.integrations.soma_client import SomaClient, SomaClientError
@@ -13,13 +10,15 @@ async def test_recall_stream_prefers_query_param(monkeypatch):
     calls = []
 
     async def fake_request(method, path, *, json=None, params=None, headers=None, allow_404=False):
-        calls.append({
-            "method": method,
-            "path": path,
-            "json": json,
-            "params": params,
-            "allow_404": allow_404,
-        })
+        calls.append(
+            {
+                "method": method,
+                "path": path,
+                "json": json,
+                "params": params,
+                "allow_404": allow_404,
+            }
+        )
         return {"ok": True}
 
     monkeypatch.setattr(client, "_request", fake_request)
@@ -47,13 +46,15 @@ async def test_recall_stream_fallbacks_to_json_body(monkeypatch):
     attempt = {"n": 0}
 
     async def fake_request(method, path, *, json=None, params=None, headers=None, allow_404=False):
-        calls.append({
-            "method": method,
-            "path": path,
-            "json": json,
-            "params": params,
-            "allow_404": allow_404,
-        })
+        calls.append(
+            {
+                "method": method,
+                "path": path,
+                "json": json,
+                "params": params,
+                "allow_404": allow_404,
+            }
+        )
         # First attempt (with params) fails to trigger fallback
         if attempt["n"] == 0 and params is not None:
             attempt["n"] += 1

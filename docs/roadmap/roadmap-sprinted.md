@@ -1,227 +1,79 @@
-<!-- Sprinted roadmap derived from canonical roadmap — generated 2025-10-30 -->
-# SomaAgent01 Roadmap (Sprinted)
+## Sprinted Roadmap — Notifications First, then Scheduler (Q4 2025)
 
-Last updated: 2025-11-08
-Branch: INTEGRATION-ZERO
+Scope: Convert the Celery integration (canonical) into actionable sprints focusing first on centralized Notifications, then unified Scheduler API and Celery enablement under a feature flag.
 
-Overview
-This file breaks the canonical roadmap into sprint-sized deliverables, with acceptance tests, owners (placeholder), and estimated effort.
+Timebox: 4 sprints × 2 weeks (≈8 weeks total)
 
-## Sprint Now — Streaming Centralization (Event Bus) & No‑Poll Migration (2 weeks)
+Sprint 0 (Prep – first 2 days)
+- Runtime config surfaces: `notifications.enabled`, `scheduler.enabled`, `scheduler.use_celery` via `/v1/runtime/config` and `/v1/ui/settings/sections` (read‑only).
+- UI conditional rendering for Notifications & Scheduler panels.
+- Acceptance: Flags show in REST & UI; no functional regressions.
 
-Why now
-- Chat is already on SSE; remaining panels (scheduler, memory dashboard) still poll. We need a single client stream and event bus with production-grade reconnect/heartbeat to meet the “No polls, no CSRF” directive end-to-end.
+Sprint 1 — Notifications System (Backend + UI)
+- Backend:
+  - Table `ui_notifications` (id, tenant_id, user_id?, type, title, body, severity, created_at, read_at, ttl_at, meta JSONB).
+  - REST: `GET /v1/ui/notifications`, `POST /v1/ui/notifications`, `POST /v1/ui/notifications/{id}/read`, `DELETE /v1/ui/notifications/clear` (filter + pagination).
+  - SSE event `ui.notification` (create/read/clear) with lightweight payload; metrics `ui_notifications_total{severity,type}`.
+  - TTL janitor job (APScheduler) deleting expired rows.
+- Frontend:
+  - Store `notificationsStore.js` (list, markRead, clear, subscribe SSE).
+  - Modal/panel + toast helper; unread badge; ARIA roles.
+- Security: Auth scope check; optional OPA policy on create.
+- Tests: Pytest (CRUD + TTL), Playwright (badge, live push, mark read).
+- Acceptance: REST create appears via SSE < 1s; unread counter accurate; TTL purges; tests green.
 
-Goals
-- Create a shared `stream.js` client with jittered backoff, `Last-Event-ID`, heartbeat stall detection, and frame-coalesced rendering.
-- Introduce `event-bus.js` and refactor UI modules to subscribe to canonical UI events (progress, paused, notifications, list updates).
-- Migrate scheduler and memory dashboard off polling to SSE-driven updates.
+Sprint 2 — Unified Scheduler API (APScheduler backend)
+- Backend:
+  - Endpoints: `GET/POST/PUT/DELETE /v1/ui/scheduler/jobs`, `POST /v1/ui/scheduler/jobs/{id}/run`, `GET /v1/ui/scheduler/runs`.
+  - Adapter interface `IScheduler`; APScheduler implementation; Celery stub returns 501 when flag on but not provisioned.
+  - JWT scopes: `scheduler:read`, `scheduler:write`, `scheduler:run`; audit log entries.
+  - Metrics: `scheduler_jobs_total`, `scheduler_runs_started_total`, `scheduler_runs_success_total`, `scheduler_runs_failure_total`, histogram `scheduler_run_duration_seconds`.
+- Frontend: Scheduler panel (list/create/edit/delete/run-now); reads runtime flags to show mode.
+- Docs: API reference, scope matrix, migration notes.
+- Tests: Unit (validators/adapter), integration (CRUD + run), Playwright (create + run + delete).
+- Acceptance: Full CRUD & run-now on APScheduler; metrics exposed; UI operational; scopes enforced.
 
-Tasks
-1) Implement client event bus
-  - Add `webui/js/event-bus.js` minimal pub/sub (on/off/emit).
-  - Unit-test with a simple subscriber sequence (optional if not currently testable in repo).
-2) Implement stream client
-  - Add `webui/js/stream.js` that wraps `EventSource` with: jittered backoff, `Last-Event-ID`, heartbeat tracking, stall detection, and unified dispatch to bus.
-  - Move current SSE handling out of `webui/index.js` to this module; keep index thin.
-3) Canonical UI events & domain stores
-  - Define and handle: `ui.status.progress`, `ui.status.paused`, `ui.notification`, `session.list.update`, `task.list.update`.
-  - Create/extend stores: `notificationsStore`, `progressStore`, `sessionsStore`, `tasksStore` to consume events.
-4) Gateway events (server)
-  - Ensure the SSE endpoint emits the canonical UI events above where applicable; keep `heartbeat` cadence consistent.
-  - Support `Last-Event-ID` resume if not already enabled.
-5) Migrate legacy polling modules
-  - Scheduler store: remove polling; subscribe to `task.list.update` and explicit refresh actions.
-  - Memory dashboard store: remove polling; subscribe to SSE invalidations.
-6) Reliability UX
-  - Add offline banner on heartbeat stall; auto-recover; manual retry button.
-  - Coalesce progress updates; throttle DOM writes (~10–20Hz) and use rAF.
-7) Tests
-  - Playwright: `no-poll.anywhere.spec.ts`, `stream.reconnect.and.banner.spec.ts`, `scheduler.memory.bus.spec.ts`.
-  - Pytest: contract tests for new UI events and SSE resume.
+Sprint 3 — Celery Integration (Flag OFF by default)
+- Infra: docker-compose add `celery_worker`, `celery_beat`; env `SCHEDULER_USE_CELERY`; Redis broker/backend.
+- Backend: `celery_app/` factory; Celery adapter mapping unified API to Beat + ad‑hoc tasks; task wrapper `scheduler.run_job`.
+- Migration tooling: Export APScheduler jobs → JSON; transform → Celery Beat; dry-run apply.
+- Tests: Integration compose test (create job, beat enqueue, worker execute, status visible); unit for adapter.
+- Acceptance: Flag ON routes through Celery; run-now works; rollback by flag toggle validated.
 
-Acceptance
-- No polling requests from any UI module (assert via Playwright’s network logs).
-- Reconnect/backoff with jitter; heartbeat stall triggers a banner and auto-recovery.
-- Scheduler and memory dashboard update via SSE; manual refresh remains but is not required.
-- Long histories remain responsive (trimming or virtualization in place if needed).
+Sprint 4 — Migration & Hardening
+- Staging parallel run (APScheduler control vs Celery) 48h; compare success/failure metrics.
+- Cutover procedure documented; rollback tested.
+- Load tests for p95/p99 durations; queue depth gauges; retry/backoff verified.
+- Security: Final scope review; OPA tenant policies; audit log sampling.
+- Ops: Dashboards (Grafana) & runbooks (alerts: failed jobs spike, queue depth, long duration).
+- Acceptance: Celery mode stable in staging & prod; SLOs met; runbooks + dashboards delivered; all tests green.
 
-Notes
-- Keep edits surgical; do not regress existing chat SSE behavior. Ensure new modules follow existing `webui/` style.
+Cross‑Cutting Risks & Mitigations
+- Redis saturation: add queue depth gauges + alert thresholds.
+- Job duplication on migration: idempotent transform, dry‑run diff before apply.
+- Scope misconfiguration: enforce deny default, explicit 403 with actionable message.
+- Large notification volume: pagination + severity filtering; SSE payload kept lean.
 
-Done in prep for this sprint
-- Removed CSRF fetches in `webui/js/api.js`.
-- Replaced chat polling with SSE in `webui/index.js`; confirmed no `/poll` references in chat path.
+Definition of Done (Program)
+- Notifications live in production, used by UI flows.
+- Unified Scheduler API released; Celery behind feature flag proven in staging.
+- Migration path executed; rollback documented; observability & security baselines established.
 
-## Milestone — Golden-first behavior capture (pre‑SA01 parity)
+Post‑Program Backlog (Nice to Have)
+- Task chaining demo (Celery chords) with UI visualization.
+- Dead‑letter queue surfacing in Scheduler panel.
+- Multi‑tenant throttling policies (rate per tenant).
+- WebSocket optional upgrade for high‑frequency job status streams.
 
-Why now
-- Per directive, we must precisely capture the Golden (7001) UI behavior before attempting any SA01/UI changes. This becomes the source of truth for parity.
+Ownership (Placeholder)
+- Sprint 1: Backend Engineer A + Frontend Engineer B
+- Sprint 2: Backend Engineer A
+- Sprint 3: DevOps Engineer C + Backend Engineer A
+- Sprint 4: DevOps Engineer C + QA Engineer D
 
-Goals
-- Stabilize and run the Golden Playwright suite serially, collecting reliable pass/fail, traces, and screenshots.
-- Build a comprehensive checklist of visible controls and interactions with selectors and expected outcomes.
-- Use this checklist to drive SA01 parity work later; no SA01 changes until this milestone is complete.
-
-Tasks
-1) Stabilize Golden runs
-  - Run Playwright with `--project=golden --workers=1` (optionally `--headed`) against BASELINE_URL=http://127.0.0.1:7001.
-  - Capture artifacts (traces/screenshots) for any failures.
-2) Compile behavior checklist
-  - Enumerate sidebar navigation, chat composer, message flow, delete/reset, long-stream stability, toggles, scheduler/tools, uploads, settings visibility.
-  - Link each behavior to a selector and acceptance expectation.
-3) Gap analysis and test updates
-  - Mark tests that are flaky or environment-dependent; annotate reasons (e.g., modal not present on Golden, off‑viewport toggles).
-  - Propose minimal test guards for Golden where needed (skip/soft-assert) without altering product behavior.
-
-Acceptance
-- A markdown checklist exists in the repo (under `docs/`) capturing every tested Golden behavior with selectors and expected outcomes.
-- Golden Playwright suite produces a stable run with documented failures/gaps and corresponding trace links.
-- SA01 parity work is explicitly gated on this completed milestone.
-
-## Priority: Centralize LLM model/profile management (1-2 sprints)
-
-Why priority
-- Recent diagnostics found the UI/worker flow failing due to inconsistent model/profile values and base_url normalization (`invalid model/base_url after normalization`). This blocks end-to-end assistant replies. Centralizing profiles in the Gateway is required to unblock E2E functionality and make the system operable and secure.
-
-Goals
-- Make Gateway the single source of truth for model profiles, provider credentials, and base_url normalization.
-- Remove raw `base_url` propagation from workers and other services; workers must send only role + messages + limited overrides (model name, temperature, kwargs).
-- Provide a clean migration path with Gateway authority; no env flags.
-
-Sprint A (1 week) — Audit & Gateway API
-- Tasks
-  1. Complete a full audit of code and env usage of `model`, `base_url`, and model profile reads/writes. Produce an audit doc with file-by-file findings and backups of current profiles (todo #1).
-  2. Design Gateway API contract for model/profile CRUD, credential management, and a `/v1/llm/test` endpoint (todo #2).
-  3. Remove per-service overrides and ensure workers never send `base_url`.
-- Acceptance
-  - Audit doc delivered. Gateway API spec reviewed. Base URL overrides are ignored by Gateway.
-
-Sprint B (1–2 weeks) — Gateway authority & worker migration
-- Tasks
-  1. Implement Gateway CRUD for `/v1/model-profiles` and internal credentials endpoints (todo #3).
-  2. Harden `_normalize_llm_base_url` and provider detection; add unit tests (todo #7).
-  3. Update workers to stop sending `base_url` in overrides and to call Gateway only (todo #4).
-  4. Deprecate per-service profile envs and remove startup warnings.
-- Acceptance
-  - Worker->Gateway->Provider flow works end-to-end in dev; Playwright smoke shows assistant reply. No lock flag is needed.
+Tracking & Metrics Source of Truth
+- Prometheus metrics names as listed; Grafana dashboard IDs reserved (`scheduler-overview`, `notifications-lag`).
 
 Notes
-- These centralization sprints take precedence over other UI migration work until assistant reply flow is stable.
-
-
-## Sprint — UI Parity & No‑Legacy Completion (2025‑10‑31 → +1 week)
-
-Goals
-- Make the Web UI identical in behavior to Agent Zero while fully wired to our backend.
-- Eliminate the “auto new chat” symptom and ensure default selection is idempotent.
-- Replace remaining legacy UI actions (history, context, files) with canonical /v1 routes.
-
-Tasks
-1) Stop auto new chat creation
-  - Add a one-time init guard for default selection.
-  - Do not auto-create a session when no sessions exist; show empty state and wait for explicit action.
-  - Consolidate duplicate DOMContentLoaded handlers that cause re-inits; add a dev-only counter for newContext calls.
-
-2) History/context endpoints and UI wiring
-  - Backend: GET `/v1/sessions/{id}/history` → { history, tokens }.
-  - Backend: GET `/v1/sessions/{id}/context-window` → { content, tokens }.
-  - UI: `webui/js/history.js` calls these routes; SSE-only, no polling.
-
-3) Files modal to /v1
-  - Backend: `/v1/workdir/list|upload|delete|download` minimal FS adapter under a sandboxed base dir.
-  - UI: `webui/js/file_browser.js` to use `/v1/workdir/*` with current response mapping.
-
-4) Playwright parity tests
-  - Startup default selection without auto-create; thinking placeholder + tool.start lifecycle; uploads progress; history/context display; files modal list/upload/delete/download.
-
-Acceptance
-- No phantom sessions created over 10+ minutes idle.
-- History/Context and Files actions work via /v1; no legacy calls observed in network logs.
-- UI smoke and tool e2e pass; new Playwright parity specs added and green locally.
-
-
-Sprint 1 — Foundation & Tests (2 weeks)
-- Goals
-  - Create API contract tests and Playwright smoke test harness.
-  - Enforce a single Docker entry point (`docker-compose.yaml` only); remove legacy scripts/manifests and update Makefile/docs.
-  - Remove deprecated deploy artifacts and references (no archives for deploy scripts/manifests): delete `deploy-optimized.sh`, `docker-compose.lite.yaml`, `Makefile.canonical`.
-
-- Tasks
-  1. Add pytest API contract tests (smoke):
-     - Test SSE subscribe: open SSE stream to `/v1/session/{test-session}` and assert event types for a synthetic message flow.
-    - Test POST /v1/session/message returns 202 and appears in SSE.
-     - Test POST /v1/uploads returns a usable resource URL.
-  2. Add a Playwright smoke test that opens the Gateway-served UI, subscribes to SSE, sends a message via the UI, and checks for progressive token rendering.
-  3. Remove legacy deployment artifacts and ensure Makefile targets use only `docker-compose.yaml` (`deploy-optimized.sh`, `docker-compose.lite.yaml`, `Makefile.canonical`).
-  4. Purge any references to `run_ui.py` and `tmp/webui` in docs/scripts; confirm `webui/` is the only UI used.
-
-- Acceptance
-  - All new tests pass locally in the dev environment.
-  - Grep shows no references to optimized/lite compose or `deploy-optimized.sh`; only `docker-compose.yaml` is used.
-
-Sprint 0 — Urgent: Centralize URLs & Cleanup (immediate, half-day)
-
-- Goal
-  - Make the UI canonical at http://localhost:21016/ui and remove non-working hard-coded references across tests, scripts, and docs. Archive deprecated artifacts that cause confusion.
-
-- Tasks
-  1. Hard-coded discovery: grep and list all occurrences of `localhost:21016`, `127.0.0.1:21016`, `20016`, and `8010` usage in tests/scripts/docs (already performed).
-  2. Set canonical env defaults in `.env` / `.env.example`:
-     - GATEWAY_PORT=21016
-     - GATEWAY_BASE_URL=http://localhost:21016
-     - WEB_UI_BASE_URL=http://localhost:21016/ui
-  3. Replace literal fallbacks in the following files with env lookups:
-     - `tests/e2e/*`, `tests/playwright/*`, `tests/ui/*`
-     - `webui/playwright.config.ts`, `webui/tests/*.spec.ts`
-     - `scripts/e2e_quick.py`, `scripts/ui-smoke.sh`, `scripts/check_stack.sh`
-     - `python/api/*` modules with fallback strings
-     - `.vscode/tasks.json`
-  4. Delete non-aligned artifacts and remove references: `deploy-optimized.sh`; remove references to `run_ui.py` and `tmp/webui`.
-  5. Run quick verification: `make dev-up` then `pytest -q tests/e2e/test_api_contract_smoke.py` and `./scripts/ui-smoke.sh`.
-
-- Acceptance
-  - UI loads at http://localhost:21016/ui/index.html in a browser.
-  - Smoke tests issue POST /v1/session/message and open SSE streams successfully.
-  - A repo grep for `localhost:21016` / `127.0.0.1:21016` shows only documented examples that reference the env variables (not raw literals used at runtime).
-
-- Notes
-  - This sprint (Sprint 0) is tactical and must be completed before Sprint 1 tests are relied upon in CI.
-  - Per your direction: no new config systems or helper files will be added; we will reuse existing env mechanisms and helpers. Files will be archived before removal.
-
-Sprint 2 — UI Migration & Compatibility (2 weeks)
-- Goals
-  - Migrate key UX components from `tmp/webui` into `webui/` (streaming rendering, tool panel, upload progress).
-  - Implement Gateway adapter endpoints for legacy poll flows (marked deprecated).
-
-- Tasks
-  1. Identify and extract UI components from `tmp/webui` (list source file names and functions). Port them to `webui/` with minimal refactors to fit project build.
-  2. Add Playwright tests for tool invocation: open tool panel, call a sample tool (mocked), and assert `tool.result` appears in UI.
-  3. Implement a Gateway adapter route that accepts legacy poll payloads and transforms them into the canonical message/event workflow.
-
-- Acceptance
-  - Playwright UX tests pass in CI.
-  - Legacy adapter logs show correct transformations; the adapter is flagged as deprecated in docs.
-
-Sprint 3 — Harden & Remove Legacy (2 weeks)
-- Goals
-  - Harden resource settings and deployment, add OPA checks, run end-to-end tool execution tests and memory WAL verification.
-  - Remove legacy adapter after clients are migrated.
-
-- Tasks
-  1. Add OPA policy verification into CI for tool execution flows.
-  2. Run end-to-end tests that: send a message, cause a tool invocation, ensure Tool Executor publishes `tool.result`, and confirm memory WAL ingestion to SomaBrain.
-  3. Finalize deploy resource tuning in `docker-compose.yaml` and update docs.
-
-- Acceptance
-  - E2E tests pass in CI and local dev.
-  - Legacy adapter fully removed and all references cleaned.
-
-Backlog / Nice-to-have
-- Websocket support for high-throughput UIs (research + benchmark).
-- Autoscaling blueprint for cloud deployment (k8s helm charts + metrics rules).
-- Rich Playwright scenarios for error paths and long-lived sessions.
-
-Owners and notes
-- Owners: TBD. Suggest assigning one engineer (backend) for Sprint 1 and one frontend engineer for Sprint 2.
-- Notes: All changes should be done on feature branches and validated with the provided tests before merge to `main`.
+- Keep feature flags read‑only in UI initially to avoid accidental production toggles.
+- Reuse existing Redis; size check before enabling Celery result backend (may omit if not required for UI history).

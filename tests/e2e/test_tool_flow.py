@@ -1,14 +1,16 @@
 import os
-import asyncio  # retained for potential sleeps when running under event loops; not required
 import time
 import uuid
 from typing import Any, Dict, List
 
-import pytest
 import httpx
+import pytest
 
-
-BASE_URL = os.getenv("GATEWAY_BASE_URL") or os.getenv("BASE_URL") or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
+BASE_URL = (
+    os.getenv("GATEWAY_BASE_URL")
+    or os.getenv("BASE_URL")
+    or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
+)
 TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
 POLL_TIMEOUT = float(os.getenv("E2E_POLL_TIMEOUT", "20"))
 POLL_INTERVAL = float(os.getenv("E2E_POLL_INTERVAL", "0.5"))
@@ -38,7 +40,9 @@ def test_tool_request_echo_flow() -> None:
             pytest.skip(f"Gateway not reachable at {BASE_URL}: {exc}")
 
         if health.status_code != 200:
-            pytest.skip(f"Gateway reachable but /v1/tools not available (HTTP {health.status_code})")
+            pytest.skip(
+                f"Gateway reachable but /v1/tools not available (HTTP {health.status_code})"
+            )
         tools = health.json().get("tools", [])
         tool_names = {t.get("name") for t in tools}
         assert "echo" in tool_names, f"echo tool missing; found: {sorted(tool_names)}"
@@ -71,7 +75,9 @@ def test_tool_request_echo_flow() -> None:
                 observed.extend(items)
                 next_cursor = body.get("next_cursor")
             # Find tool event for echo
-            tool_events = [e for e in observed if (e.get("payload") or {}).get("tool_name") == "echo"]
+            tool_events = [
+                e for e in observed if (e.get("payload") or {}).get("tool_name") == "echo"
+            ]
             if tool_events:
                 tool_event = tool_events[-1]
                 payload = tool_event.get("payload") or {}
@@ -102,7 +108,9 @@ def test_tool_request_echo_flow() -> None:
             assert mem.status_code == 200, f"admin memory failed: HTTP {mem.status_code} {mem.text}"
             items = mem.json().get("items", [])
             if not items:
-                pytest.xfail("No tool memory observed (OPA may be denying memory.write in this environment)")
+                pytest.xfail(
+                    "No tool memory observed (OPA may be denying memory.write in this environment)"
+                )
             else:
                 # Find a tool_result memory for echo
                 found = False
@@ -114,4 +122,6 @@ def test_tool_request_echo_flow() -> None:
                         found = True
                         break
                 if not found:
-                    pytest.xfail("tool_result memory not found for echo (OPA may be denying memory.write)")
+                    pytest.xfail(
+                        "tool_result memory not found for echo (OPA may be denying memory.write)"
+                    )

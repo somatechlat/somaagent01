@@ -19,7 +19,7 @@ import json
 import os
 import sys
 import uuid
-from typing import Any, List, Dict
+from typing import Any, Dict, List
 
 import httpx
 
@@ -55,7 +55,7 @@ async def _stream_prompt(prompt: str, internal_token: str, model: str) -> List[D
                     continue
                 if not line.startswith("data: "):
                     continue
-                raw = line[len("data: "):].strip()
+                raw = line[len("data: ") :].strip()
                 if raw == "[DONE]":
                     break
                 try:
@@ -92,7 +92,7 @@ def _diff(expected: List[Dict[str, Any]], actual: List[Dict[str, Any]]) -> Dict[
                 diffs["order_mismatch"].append({"index": i, "expected": exp, "actual": act})
                 break
     if len(actual) > len(expected):
-        diffs["extra"].extend(actual[len(expected):])
+        diffs["extra"].extend(actual[len(expected) :])
     return diffs
 
 

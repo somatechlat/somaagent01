@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-import os
 import asyncpg
 
 
@@ -35,7 +34,9 @@ class MemoryWriteItem:
 
 class MemoryWriteOutbox:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = dsn or os.getenv(
+            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -43,7 +44,9 @@ class MemoryWriteOutbox:
         if self._pool is None:
             min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
             max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:
@@ -182,7 +185,9 @@ class MemoryWriteOutbox:
     async def count_pending(self) -> int:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT COUNT(*) AS c FROM memory_write_outbox WHERE status='pending'")
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS c FROM memory_write_outbox WHERE status='pending'"
+            )
             return int(row["c"])  # type: ignore[index]
 
 
@@ -230,4 +235,3 @@ async def ensure_schema(store: MemoryWriteOutbox) -> None:
     pool = await store._ensure_pool()
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
-

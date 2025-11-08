@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-import os
 import asyncpg
 
 
@@ -31,7 +30,9 @@ class ExportJob:
 
 class ExportJobStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = dsn or os.getenv(
+            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -39,7 +40,9 @@ class ExportJobStore:
         if self._pool is None:
             min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
             max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:
@@ -116,7 +119,9 @@ class ExportJobStore:
                 job_id,
             )
 
-    async def mark_complete(self, job_id: int, *, file_path: str, rows: int, byte_size: int) -> None:
+    async def mark_complete(
+        self, job_id: int, *, file_path: str, rows: int, byte_size: int
+    ) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
@@ -163,4 +168,3 @@ async def ensure_schema(store: ExportJobStore) -> None:
     pool = await store._ensure_pool()
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
-

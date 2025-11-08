@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
 import httpx
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright
 
 
 @asynccontextmanager
@@ -31,7 +31,7 @@ async def ensure_reachable(base_url: str, timeout_ms: int = 5000) -> bool:
 
 async def run_flows(base_url: str) -> dict:
     headless_env = os.environ.get("HEADLESS", "1").lower()
-    headless = not (headless_env in ("0", "false", "no"))
+    headless = headless_env not in ("0", "false", "no")
 
     results = {
         "base": base_url,
@@ -63,7 +63,9 @@ async def run_flows(base_url: str) -> dict:
 
         # Send a message and ensure exactly one AI bubble appears
         prev_ai = len(await page.query_selector_all("#chat-history .message-ai"))
-        async with page.expect_response(lambda r: "/v1/session/message" in r.url and r.request.method == "POST", timeout=20000) as resp_info:
+        async with page.expect_response(
+            lambda r: "/v1/session/message" in r.url and r.request.method == "POST", timeout=20000
+        ) as resp_info:
             chat = await page.query_selector("#chat-input")
             await chat.fill("simple hello")
             await chat.press("Enter")
@@ -98,7 +100,9 @@ async def run_flows(base_url: str) -> dict:
         upload_ok = False
         file_input = await page.query_selector("#file-input")
         if file_input:
-            async with page.expect_request(lambda r: "/v1/uploads" in r.url and r.method == "POST", timeout=15000) as req_info:
+            async with page.expect_request(
+                lambda r: "/v1/uploads" in r.url and r.method == "POST", timeout=15000
+            ) as req_info:
                 # Create a temporary file
                 tmp_path = os.path.join(os.getcwd(), "tmp_playwright_upload.txt")
                 with open(tmp_path, "w", encoding="utf-8") as f:
@@ -110,8 +114,12 @@ async def run_flows(base_url: str) -> dict:
 
         # Toggle persistence: flip JSON on, Thoughts off, reload, and verify
         # Find the inputs by their effect signatures
-        json_chk = await page.query_selector("xpath=//li[.//span[contains(., 'Show JSON')]]//input[@type='checkbox']")
-        thoughts_chk = await page.query_selector("xpath=//li[.//span[contains(., 'Show thoughts')]]//input[@type='checkbox']")
+        json_chk = await page.query_selector(
+            "xpath=//li[.//span[contains(., 'Show JSON')]]//input[@type='checkbox']"
+        )
+        thoughts_chk = await page.query_selector(
+            "xpath=//li[.//span[contains(., 'Show thoughts')]]//input[@type='checkbox']"
+        )
         if json_chk:
             await json_chk.check()
         if thoughts_chk:
@@ -122,12 +130,16 @@ async def run_flows(base_url: str) -> dict:
         # Accept best-effort: ensure CSS for thoughts is set to display:none
         persisted = True
         # We can’t guarantee thoughts rows exist, so check CSS by injecting a fake element
-        await page.evaluate("""
+        await page.evaluate(
+            """
             const el = document.createElement('div');
             el.className = 'msg-thoughts';
             document.body.appendChild(el);
-        """)
-        disp = await page.evaluate("() => getComputedStyle(document.querySelector('.msg-thoughts')).display")
+        """
+        )
+        disp = await page.evaluate(
+            "() => getComputedStyle(document.querySelector('.msg-thoughts')).display"
+        )
         persisted = persisted and (disp == "none")
         results["toggles_persist"] = persisted
 
@@ -150,7 +162,9 @@ async def run_flows(base_url: str) -> dict:
                         # Wait for a tool block to appear in the DOM
                         end2 = time.time() + 30
                         while time.time() < end2:
-                            blocks = await page.query_selector_all("#chat-history .message-util, #chat-history .message.tool")
+                            blocks = await page.query_selector_all(
+                                "#chat-history .message-util, #chat-history .message.tool"
+                            )
                             if blocks:
                                 tool_seen = True
                                 break
@@ -174,7 +188,9 @@ async def run_flows(base_url: str) -> dict:
 
 async def main():
     golden = os.environ.get("GOLDEN_UI_BASE_URL", "http://127.0.0.1:7001")
-    local = os.environ.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}"
+    local = (
+        os.environ.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}"
+    )
 
     out = {"golden": None, "local": None}
 
@@ -194,7 +210,14 @@ async def main():
     def all_ok(d: dict):
         return all(
             d.get(k) in (True, None)  # None allowed for non-deterministic parts
-            for k in ("opened", "no_dup_ai", "reset_clears", "delete_switches", "uploads_ok", "toggles_persist")
+            for k in (
+                "opened",
+                "no_dup_ai",
+                "reset_clears",
+                "delete_switches",
+                "uploads_ok",
+                "toggles_persist",
+            )
         )
 
     if out["golden"] and not out["golden"].get("skipped"):

@@ -1,7 +1,6 @@
 import os
+
 import pytest
-import json
-import asyncio
 from httpx import AsyncClient
 
 
@@ -13,7 +12,11 @@ async def test_reasoning_events_present(monkeypatch):
     # Enable reasoning stream flag
     monkeypatch.setenv("SA01_ENABLE_REASONING_STREAM", "true")
     # Skip early if no provider credentials configured (avoids hanging outbound calls)
-    if not (os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or os.getenv("AZURE_OPENAI_ENDPOINT")):
+    if not (
+        os.getenv("OPENAI_API_KEY")
+        or os.getenv("ANTHROPIC_API_KEY")
+        or os.getenv("AZURE_OPENAI_ENDPOINT")
+    ):
         pytest.skip("No LLM provider configured for reasoning stream test")
     try:
         from services.gateway.main import app  # type: ignore
@@ -43,4 +46,4 @@ async def test_reasoning_events_present(monkeypatch):
         assert "assistant.thinking.final" in text
         # Sequence numbers optional but if sequence flag enabled should appear at least once
         if os.getenv("SA01_ENABLE_SEQUENCE", "true").lower() == "true":
-            assert "\"sequence\":" in text
+            assert '"sequence":' in text

@@ -26,6 +26,7 @@ from weakref import WeakKeyDictionary
 # a helpful error at the point local index initialization is attempted.
 try:
     import faiss
+
     FAISS_AVAILABLE = True
 except Exception:  # pragma: no cover - runtime environment dependent
     faiss = None
@@ -40,7 +41,9 @@ try:
         # Newer LC: cache class moved under embeddings.cache
         from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
     except Exception:
-        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+        from langchain.embeddings import (
+            CacheBackedEmbeddings as LC_CacheBackedEmbeddings,  # type: ignore
+        )
     from langchain.storage import InMemoryByteStore, LocalFileStore
     from langchain_community.docstore.in_memory import InMemoryDocstore
     from langchain_community.vectorstores import FAISS
@@ -54,13 +57,17 @@ except Exception:
     InMemoryDocstore = None  # type: ignore
     FAISS = None  # type: ignore
     DistanceStrategy = None  # type: ignore
+
     class Document(object):  # fallback for type compatibility
         def __init__(self, page_content: str = "", metadata: dict | None = None):
             self.page_content = page_content
             self.metadata = metadata or {}
+
+
 try:
     from simpleeval import simple_eval  # type: ignore
 except Exception:  # pragma: no cover - optional dependency in minimal images
+
     def simple_eval(expr: str, names: Mapping[str, Any] | None = None) -> bool:
         """Very small fallback evaluator for expressions like: area == 'main'.
 
@@ -79,6 +86,7 @@ except Exception:  # pragma: no cover - optional dependency in minimal images
         except Exception:
             pass
         return False
+
 
 import models
 from agent import Agent
@@ -119,6 +127,7 @@ class MemoryArea(Enum):
 
 
 if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None:
+
     class MyFaiss(FAISS):
         # override get_by_ids to support faster retrieval from the in-memory docstore
         def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
@@ -130,10 +139,12 @@ if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None:
 
         async def aget_by_ids(self, ids: Sequence[str], /) -> List[Document]:
             return self.get_by_ids(ids)
+
 else:
     # Minimal placeholder so import-time does not fail when FAISS/LC are missing.
     class MyFaiss:  # type: ignore
         pass
+
     # override get_by_ids to support faster retrieval from the in-memory docstore
     def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
         # When using the remote SomaMemory path, this method won't be called.
@@ -333,7 +344,9 @@ class Memory:
             db = MyFaiss(
                 embedding_function=embedder,
                 index=index,
-                docstore=InMemoryDocstore() if LC_AVAILABLE and InMemoryDocstore is not None else None,
+                docstore=(
+                    InMemoryDocstore() if LC_AVAILABLE and InMemoryDocstore is not None else None
+                ),
                 index_to_docstore_id={},
                 distance_strategy=DistanceStrategy.COSINE,
                 # normalize_L2=True,
@@ -341,7 +354,6 @@ class Memory:
             )
 
             # insert docs if reindexing
-            from simpleeval import simple_eval
 
         return db, created
 

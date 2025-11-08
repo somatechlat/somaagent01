@@ -1,12 +1,11 @@
 import os
-import time
 
 import pytest
 from fastapi.testclient import TestClient
 
-from services.gateway.main import app
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_schema
 from python.integrations.soma_client import SomaClientError
+from services.common.memory_write_outbox import ensure_schema as ensure_mw_schema, MemoryWriteOutbox
+from services.gateway.main import app
 
 
 class AlwaysFailSoma:
@@ -46,4 +45,3 @@ async def test_gateway_enqueues_memory_on_soma_failure(monkeypatch):
     # Verify outbox has at least one pending row
     pending = await store.count_pending()
     assert pending >= 1
-

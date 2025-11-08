@@ -4,12 +4,12 @@ import os
 import time
 
 import pytest
-from testcontainers.postgres import PostgresContainer
-from testcontainers.kafka import KafkaContainer
-
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_schema
-from services.memory_sync.main import MemorySyncWorker
 from aiokafka import AIOKafkaConsumer
+from testcontainers.kafka import KafkaContainer
+from testcontainers.postgres import PostgresContainer
+
+from services.common.memory_write_outbox import ensure_schema as ensure_mw_schema, MemoryWriteOutbox
+from services.memory_sync.main import MemorySyncWorker
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,9 @@ async def test_memory_sync_drains_after_outage_e2e():
             "session_id": "s-sync",
             "metadata": {"tenant": "t-sync"},
         }
-        await outbox.enqueue(payload=payload, tenant="t-sync", session_id="s-sync", idempotency_key="outage-1")
+        await outbox.enqueue(
+            payload=payload, tenant="t-sync", session_id="s-sync", idempotency_key="outage-1"
+        )
 
         # Patch SomaClient.remember to fail at first, then succeed
         class Boom(Exception):
@@ -74,7 +76,10 @@ async def test_memory_sync_drains_after_outage_e2e():
                 for tp, batch in msgs.items():
                     for record in batch:
                         evt = json.loads(record.value.decode("utf-8"))
-                        if evt.get("type") == "memory.write" and (evt.get("payload") or {}).get("id") == "outage-1":
+                        if (
+                            evt.get("type") == "memory.write"
+                            and (evt.get("payload") or {}).get("id") == "outage-1"
+                        ):
                             found = True
                             break
                     if found:
@@ -86,4 +91,3 @@ async def test_memory_sync_drains_after_outage_e2e():
             await consumer.stop()
 
         assert found, "memory_sync did not publish WAL after outage recovery"
-

@@ -1,5 +1,3 @@
-from typing import Any, Dict, Optional
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -24,4 +22,3 @@ def test_cors_env_config(monkeypatch):
 
 
 # CSRF references removed: no CSRF tests remain by design.
-

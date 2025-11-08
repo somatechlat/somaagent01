@@ -1,6 +1,6 @@
-import os
-import json
 import asyncio
+import os
+
 import httpx
 import pytest
 
@@ -23,7 +23,11 @@ async def _health_ok() -> bool:
             if not resp.status_code or resp.status_code >= 500:
                 return False
             data = resp.json()
-            status = (data or {}).get("status") or (data or {}).get("overall") or (data or {}).get("state")
+            status = (
+                (data or {}).get("status")
+                or (data or {}).get("overall")
+                or (data or {}).get("state")
+            )
             return str(status or "ok").lower() != "down"
     except Exception:
         return False
@@ -72,7 +76,9 @@ async def test_ui_chat_happy_path(page, browser):  # type: ignore[no-redef]
             break
         await asyncio.sleep(0.5)
     else:
-        pytest.fail("No assistant response rendered within timeout; polling diagnostics removed (SSE-only)")
+        pytest.fail(
+            "No assistant response rendered within timeout; polling diagnostics removed (SSE-only)"
+        )
 
     # If we reached here, message is rendered. Pass.
     assert True

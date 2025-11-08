@@ -22,6 +22,7 @@ nav:
       - LLM Routing & Settings: technical-manual/gateway-llm-routing.md
       - Export Jobs: technical-manual/export-jobs.md
       - Outbound Events: technical-manual/outbound-events.md
+    - UI Notifications: technical-manual/notifications.md
       - Deployment: technical-manual/deployment.md
       - Monitoring & Health: technical-manual/monitoring.md
       - Security: technical-manual/security.md

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import json
 import os
 import uuid
-import json
-import pytest
+
 import httpx
+import pytest
 
 GATEWAY_BASE = os.getenv("GATEWAY_BASE", "http://localhost:21016")
 
 
 @pytest.mark.asyncio
 async def test_rate_limit_blocks_when_enabled(monkeypatch):
-    if os.getenv("GATEWAY_RATE_LIMIT_ENABLED", "false").lower() not in {"true","1","yes","on"}:
+    if os.getenv("GATEWAY_RATE_LIMIT_ENABLED", "false").lower() not in {"true", "1", "yes", "on"}:
         pytest.skip("rate limit disabled")
     window = int(os.getenv("GATEWAY_RATE_LIMIT_WINDOW_SECONDS", "10"))
     max_req = int(os.getenv("GATEWAY_RATE_LIMIT_MAX_REQUESTS", "5"))
@@ -28,7 +29,7 @@ async def test_rate_limit_blocks_when_enabled(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_sequence_metadata_present_if_enabled():
-    if os.getenv("SA01_ENABLE_SEQUENCE", "true").lower() not in {"true","1","yes","on"}:
+    if os.getenv("SA01_ENABLE_SEQUENCE", "true").lower() not in {"true", "1", "yes", "on"}:
         pytest.skip("sequence disabled")
     # Use internal streaming endpoint to generate deltas
     url = f"{GATEWAY_BASE}/v1/llm/invoke/stream?mode=canonical"
@@ -46,7 +47,9 @@ async def test_sequence_metadata_present_if_enabled():
     saw_sequence = False
     try:
         async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("POST", url, json=body, headers={"X-Internal-Token": token}) as rstream:
+            async with client.stream(
+                "POST", url, json=body, headers={"X-Internal-Token": token}
+            ) as rstream:
                 if rstream.status_code != 200:
                     pytest.skip("stream endpoint not available")
                 async for line in rstream.aiter_lines():
@@ -54,7 +57,7 @@ async def test_sequence_metadata_present_if_enabled():
                         continue
                     if not line.startswith("data: "):
                         continue
-                    raw = line[len("data: "):].strip()
+                    raw = line[len("data: ") :].strip()
                     if raw == "[DONE]":
                         break
                     try:

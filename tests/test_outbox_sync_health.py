@@ -1,7 +1,3 @@
-import asyncio
-import os
-import types
-
 import pytest
 
 from services.outbox_sync.main import OutboxSyncWorker

@@ -14,8 +14,8 @@ Notes:
 from __future__ import annotations
 
 import asyncio
-import os
 import logging
+import os
 from typing import Any, Optional
 
 from aiokafka.errors import KafkaError

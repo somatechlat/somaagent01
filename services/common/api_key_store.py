@@ -13,12 +13,12 @@ import base64
 import binascii
 import hashlib
 import json
+import os
 import secrets
 import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, List, Optional
-import os
 
 import redis.asyncio as redis
 

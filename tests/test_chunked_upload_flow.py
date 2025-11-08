@@ -1,9 +1,11 @@
 import os
 import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
 from services.gateway.main import app
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -20,12 +22,15 @@ async def test_chunked_upload_end_to_end(monkeypatch, tmp_path):
     filename = "large_test.bin"
 
     # INIT
-    init_resp = client.post("/v1/uploads/init", json={
-        "filename": filename,
-        "size": len(content),
-        "mime": "application/octet-stream",
-        "session_id": session_id,
-    })
+    init_resp = client.post(
+        "/v1/uploads/init",
+        json={
+            "filename": filename,
+            "size": len(content),
+            "mime": "application/octet-stream",
+            "session_id": session_id,
+        },
+    )
     assert init_resp.status_code == 200, init_resp.text
     init_data = init_resp.json()
     upload_id = init_data["upload_id"]
@@ -53,6 +58,7 @@ async def test_chunked_upload_end_to_end(monkeypatch, tmp_path):
     assert descriptor["size"] == len(content)
     assert descriptor["mode"] == "chunked"
     assert descriptor["sha256"], "sha256 computed"
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio

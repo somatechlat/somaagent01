@@ -1,12 +1,10 @@
 import os
-import time
-import pytest
 
+import pytest
 from playwright.sync_api import expect
 
-
 BASE_URL = os.getenv("UI_BASE_URL", "http://localhost:21016/")
-API_BASE = (BASE_URL.rstrip("/") + "/v1")
+API_BASE = BASE_URL.rstrip("/") + "/v1"
 
 
 @pytest.mark.smoke

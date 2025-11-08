@@ -1,6 +1,3 @@
-import os
-import asyncio
-import types
 from typing import Any, Dict, Optional
 
 import pytest
@@ -21,19 +18,23 @@ class StubPublisher:
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
     ) -> Dict[str, Any]:
-        self.published.append({
-            "topic": topic,
-            "event": event,
-            "dedupe_key": dedupe_key,
-            "session_id": session_id,
-            "tenant": tenant,
-        })
+        self.published.append(
+            {
+                "topic": topic,
+                "event": event,
+                "dedupe_key": dedupe_key,
+                "session_id": session_id,
+                "tenant": tenant,
+            }
+        )
         # Pretend Kafka published OK
         return {"published": True}
 
 
 class StubCache:
-    async def write_context(self, session_id: str, persona_id: Optional[str], metadata: Dict[str, Any]) -> None:
+    async def write_context(
+        self, session_id: str, persona_id: Optional[str], metadata: Dict[str, Any]
+    ) -> None:
         return None
 
     async def ping(self) -> None:
@@ -81,6 +82,7 @@ def overrides(monkeypatch):
     app.dependency_overrides[get_session_store] = lambda: StubStore()
     # Monkeypatch SomaBrain client symbol inside gateway module
     import services.gateway.main as gw
+
     monkeypatch.setattr(gw, "SomaBrainClient", FakeSoma)
     yield stub_pub
     app.dependency_overrides.clear()
@@ -111,7 +113,10 @@ def test_message_header_propagation_and_write_through(overrides):
     assert wal, "Expected a WAL publish"
     wal_event = wal[-1]["event"]
     assert wal_event.get("payload", {}).get("metadata", {}).get("agent_profile_id") == "agent-123"
-    assert wal_event.get("payload", {}).get("metadata", {}).get("universe_id") in {"uni-999", "test-universe"}
+    assert wal_event.get("payload", {}).get("metadata", {}).get("universe_id") in {
+        "uni-999",
+        "test-universe",
+    }
     assert wal_event.get("payload", {}).get("attachments") == ["a.txt"]
     assert "idempotency_key" in wal_event.get("payload", {})
 

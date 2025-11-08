@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import re
@@ -11,6 +10,7 @@ import httpx
 import pytest
 
 GATEWAY_BASE = os.getenv("GATEWAY_BASE", "http://localhost:21016")
+
 
 @pytest.mark.asyncio
 async def test_stream_canonical_sequence():
@@ -64,7 +64,9 @@ async def test_sse_heartbeat_presence():
     url = f"{GATEWAY_BASE}/v1/sessions/{session_id}/events?limit=1"
     try:
         async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("GET", url, headers={"Accept": "text/event-stream"}) as rstream:
+            async with client.stream(
+                "GET", url, headers={"Accept": "text/event-stream"}
+            ) as rstream:
                 if rstream.status_code != 200:
                     pytest.skip("SSE not available")
                 saw_heartbeat = False
@@ -73,7 +75,7 @@ async def test_sse_heartbeat_presence():
                     if not line:
                         continue
                     if line.startswith("data: "):
-                        raw = line[len("data: "):].strip()
+                        raw = line[len("data: ") :].strip()
                         try:
                             obj = json.loads(raw)
                         except Exception:
@@ -82,16 +84,18 @@ async def test_sse_heartbeat_presence():
                             saw_heartbeat = True
                             break
         # If we reached here without network errors, assert heartbeat flag
-        if 'saw_heartbeat' in locals():
+        if "saw_heartbeat" in locals():
             assert saw_heartbeat is True
     except Exception:
         pytest.skip("gateway SSE not reachable")
+
 
 @pytest.mark.asyncio
 async def test_error_upgrade_on_read():
     """Insert legacy raw error row and confirm API upgrades to *.error."""
     session_id = str(uuid.uuid4())
     import asyncpg
+
     dsn = os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
     try:
         pool = await asyncpg.create_pool(dsn)
@@ -104,25 +108,38 @@ async def test_error_upgrade_on_read():
             VALUES ($1, $2::jsonb)
             """,
             session_id,
-            json.dumps({"event_id": str(uuid.uuid4()), "session_id": session_id, "type": "error", "message": ""}),
+            json.dumps(
+                {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "type": "error",
+                    "message": "",
+                }
+            ),
         )
     await pool.close()
     url = f"{GATEWAY_BASE}/v1/sessions/{session_id}/events?limit=10"
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url)
     assert resp.status_code == 200
-    upgraded = [e for e in resp.json().get("events", []) if (e.get("payload") or {}).get("type", "").endswith(".error")]
+    upgraded = [
+        e
+        for e in resp.json().get("events", [])
+        if (e.get("payload") or {}).get("type", "").endswith(".error")
+    ]
     assert upgraded
     p = upgraded[0]["payload"]
     assert p.get("message")
     assert p.get("metadata", {}).get("error")
+
 
 @pytest.mark.asyncio
 async def test_event_dedupe():
     """Duplicate event_id insert triggers unique index failure."""
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
-    from services.common.session_repository import PostgresSessionStore, ensure_schema
+    from services.common.session_repository import ensure_schema, PostgresSessionStore
+
     store = PostgresSessionStore()
     await ensure_schema(store)
     payload = {
@@ -135,6 +152,7 @@ async def test_event_dedupe():
     }
     await store.append_event(session_id, {"type": "user", **payload})
     import asyncpg
+
     dsn = os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
     try:
         pool = await asyncpg.create_pool(dsn)

@@ -4,7 +4,7 @@ import time
 import jwt
 from fastapi.testclient import TestClient
 
-from services.gateway.main import app, JWT_SECRET
+from services.gateway.main import app
 
 
 def test_root_redirects_to_login_when_oidc_enabled(monkeypatch):

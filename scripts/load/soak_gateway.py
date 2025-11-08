@@ -26,7 +26,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import statistics
 import time
 import uuid
 from dataclasses import dataclass
@@ -50,11 +49,13 @@ class Stats:
 
     def snapshot(self) -> dict[str, Any]:
         lats = sorted(self.latencies)
+
         def pct(p: float) -> float:
             if not lats:
                 return 0.0
             k = int(max(0, min(len(lats) - 1, round((p / 100.0) * (len(lats) - 1)))))
             return lats[k]
+
         total = self.ok + self.err
         return {
             "count": total,
@@ -82,7 +83,18 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
-async def _worker(name: str, client: httpx.AsyncClient, q: asyncio.Queue, stats: Stats, headers: dict[str, str], base_url: str, path: str, tenant: Optional[str], persona_id: Optional[str], message: str) -> None:
+async def _worker(
+    name: str,
+    client: httpx.AsyncClient,
+    q: asyncio.Queue,
+    stats: Stats,
+    headers: dict[str, str],
+    base_url: str,
+    path: str,
+    tenant: Optional[str],
+    persona_id: Optional[str],
+    message: str,
+) -> None:
     while True:
         try:
             _ = await q.get()
@@ -126,7 +138,14 @@ async def main() -> None:
     q: asyncio.Queue = asyncio.Queue(maxsize=concurrency)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        workers = [asyncio.create_task(_worker(f"w{i}", client, q, stats, headers, base_url, path, tenant, persona_id, message)) for i in range(concurrency)]
+        workers = [
+            asyncio.create_task(
+                _worker(
+                    f"w{i}", client, q, stats, headers, base_url, path, tenant, persona_id, message
+                )
+            )
+            for i in range(concurrency)
+        ]
         start = time.monotonic()
         next_tick = start
         sent = 0
@@ -158,15 +177,20 @@ async def main() -> None:
             await asyncio.gather(*workers, return_exceptions=True)
 
     snap = stats.snapshot()
-    print(json.dumps({
-        "target_url": base_url,
-        "path": path,
-        "rps": rps,
-        "duration": duration,
-        "concurrency": concurrency,
-        "sent": sent,
-        **snap,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "target_url": base_url,
+                "path": path,
+                "rps": rps,
+                "duration": duration,
+                "concurrency": concurrency,
+                "sent": sent,
+                **snap,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

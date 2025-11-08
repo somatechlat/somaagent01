@@ -48,11 +48,15 @@ def migrate(profiles: List[Dict[str, Any]]) -> int:
     for p in profiles:
         ok = _push_via_ui_settings(p)
         if ok:
-            print(f"ok: profile {p.get('role')}@{p.get('deployment_mode') or 'DEV'} via /v1/ui/settings")
+            print(
+                f"ok: profile {p.get('role')}@{p.get('deployment_mode') or 'DEV'} via /v1/ui/settings"
+            )
             continue
         ok = _push_via_api(p)
         if ok:
-            print(f"ok: profile {p.get('role')}@{p.get('deployment_mode') or 'DEV'} via /v1/model-profiles")
+            print(
+                f"ok: profile {p.get('role')}@{p.get('deployment_mode') or 'DEV'} via /v1/model-profiles"
+            )
             continue
         print(f"error: failed to push profile {p.get('role')}@{p.get('deployment_mode')}")
         failed += 1

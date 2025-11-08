@@ -1,12 +1,10 @@
 import asyncio
-import os
 
 import pytest
 
-from services.tool_executor.main import ToolExecutor
 from services.tool_executor.execution_engine import ExecutionResult
-from services.tool_executor.tools import ToolExecutionError
-from services.tool_executor.tools import EchoTool
+from services.tool_executor.main import ToolExecutor
+from services.tool_executor.tools import EchoTool, ToolExecutionError
 
 
 @pytest.mark.asyncio
@@ -20,12 +18,18 @@ async def test_tool_executor_audit_success(monkeypatch):
     # Avoid real side effects
     monkeypatch.setattr(exec, "_publish_result", lambda *a, **k: asyncio.sleep(0))
     monkeypatch.setattr(exec, "_enqueue_requeue", lambda *a, **k: asyncio.sleep(0))
+
     async def _allow(**k):
         return True
+
     monkeypatch.setattr(exec, "_check_policy", _allow)
+
     # Force success result
     async def _fake_execute(tool, args, limits):
-        return ExecutionResult(status="success", payload={"ok": True}, execution_time=0.012, logs=[])
+        return ExecutionResult(
+            status="success", payload={"ok": True}, execution_time=0.012, logs=[]
+        )
+
     monkeypatch.setattr(exec.execution_engine, "execute", _fake_execute)
 
     event = {
@@ -59,9 +63,11 @@ async def test_tool_executor_audit_blocked(monkeypatch):
     # Avoid side effects
     monkeypatch.setattr(exec, "_publish_result", lambda *a, **k: asyncio.sleep(0))
     monkeypatch.setattr(exec, "_enqueue_requeue", lambda *a, **k: asyncio.sleep(0))
+
     # Deny by policy
     async def _deny(**k):
         return False
+
     monkeypatch.setattr(exec, "_check_policy", _deny)
 
     event = {
@@ -92,12 +98,15 @@ async def test_tool_executor_audit_execution_error(monkeypatch):
     # Avoid side effects
     monkeypatch.setattr(exec, "_publish_result", lambda *a, **k: asyncio.sleep(0))
     monkeypatch.setattr(exec, "_enqueue_requeue", lambda *a, **k: asyncio.sleep(0))
+
     async def _allow2(**k):
         return True
+
     monkeypatch.setattr(exec, "_check_policy", _allow2)
 
     async def _raise_exec(*args, **kwargs):
         raise ToolExecutionError("boom")
+
     monkeypatch.setattr(exec.execution_engine, "execute", _raise_exec)
 
     event = {

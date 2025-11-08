@@ -1,8 +1,12 @@
 import os
-import pytest
-import httpx
 
-BASE = os.environ.get("GATEWAY_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT', '21016')}"
+import httpx
+import pytest
+
+BASE = (
+    os.environ.get("GATEWAY_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT', '21016')}"
+)
+
 
 @pytest.mark.asyncio
 async def test_legacy_endpoints_return_404():

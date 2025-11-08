@@ -11,6 +11,7 @@ _FEATURE_BROWSER = os.getenv("FEATURE_BROWSER", "false").strip().lower()
 def _feature_enabled() -> bool:
     return _FEATURE_BROWSER in {"1", "true", "yes", "on"}
 
+
 # ------------------------------------------------------------------------------
 # Gemini Helper for Output Conformance
 # ------------------------------------------------------------------------------

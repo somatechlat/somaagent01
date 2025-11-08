@@ -1,5 +1,4 @@
 import json
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -45,7 +44,11 @@ async def test_tool_request_enqueue_audit(monkeypatch):
     assert lines, "no audit events returned"
     entries = [json.loads(ln) for ln in lines]
     # Find our event
-    match = [e for e in entries if (e.get("target_id") == event_id and e.get("resource") == "tool.request")]
+    match = [
+        e
+        for e in entries
+        if (e.get("target_id") == event_id and e.get("resource") == "tool.request")
+    ]
     assert match, f"expected audit entry for event_id={event_id}"
 
     ent = match[0]

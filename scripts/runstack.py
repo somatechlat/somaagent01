@@ -29,7 +29,6 @@ from typing import Dict, Iterable, List, Tuple
 
 from dotenv import load_dotenv
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -199,7 +198,8 @@ async def main(argv: List[str]) -> int:
             loop.add_signal_handler(sig, _handle_signal, sig)
         except NotImplementedError:
             # add_signal_handler may not be available on some platforms (e.g., Windows)
-            signal.signal(sig, lambda *_: _handle_signal(sig))
+            # Bind current value of `sig` to avoid late binding in the closure (Ruff B023)
+            signal.signal(sig, lambda *_, sig=sig: _handle_signal(sig))
 
     try:
         for name, cmd in specs:

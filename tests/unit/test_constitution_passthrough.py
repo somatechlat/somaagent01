@@ -42,6 +42,7 @@ async def test_constitution_version_proxies(monkeypatch: pytest.MonkeyPatch):
     resp = await gateway_main.constitution_version(req)
     assert resp.status_code == 200
     import json as _json
+
     data = _json.loads(resp.body)
     assert data["checksum"] == "abc123"
     assert data["version"] == 7
@@ -65,6 +66,7 @@ async def test_constitution_validate_proxies(monkeypatch: pytest.MonkeyPatch):
     resp = await gateway_main.constitution_validate({"document": {"rules": []}}, req)
     assert resp.status_code == 200
     import json as _json
+
     data = _json.loads(resp.body)
     assert data == {"ok": True}
 
@@ -77,9 +79,11 @@ async def test_constitution_load_triggers_policy_regen(monkeypatch: pytest.Monke
     class StubClient:
         def __init__(self):
             self.regen_called = False
+
         async def constitution_load(self, payload):
             assert payload == {"document": {"rules": [1]}}
             return {"loaded": True}
+
         async def update_opa_policy(self):
             self.regen_called = True
 
@@ -91,6 +95,7 @@ async def test_constitution_load_triggers_policy_regen(monkeypatch: pytest.Monke
     resp = await gateway_main.constitution_load({"document": {"rules": [1]}}, req)
     assert resp.status_code == 200
     import json as _json
+
     data = _json.loads(resp.body)
     assert data == {"loaded": True}
     assert stub.regen_called is True

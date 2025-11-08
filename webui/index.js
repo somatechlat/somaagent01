@@ -6,7 +6,11 @@ import * as stream from "/js/stream.js";
 import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
+// Legacy notification store (toast + polling-era compatibility)
 import { store as notificationStore } from "/components/notifications/notification-store.js";
+// New SSE + REST notifications store
+import { store as notificationsSseStore } from "/components/notifications/notificationsStore.js";
+import { createStore as createAlpineStore } from "/js/AlpineStore.js";
 
 globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
 
@@ -817,6 +821,43 @@ globalThis.restart = async function () {
 document.addEventListener("DOMContentLoaded", () => {
   const isDarkMode = localStorage.getItem("darkMode") !== "false";
   toggleDarkMode(isDarkMode);
+  // Initialize and subscribe SSE notifications store once DOM ready
+  try {
+    if (!globalThis.Alpine) {
+      document.addEventListener("alpine:init", () => {
+        notificationsSseStore.subscribe();
+        notificationsSseStore.fetchList({ limit: 25 }).catch(()=>{});
+      }, { once: true });
+    } else {
+      notificationsSseStore.subscribe();
+      notificationsSseStore.fetchList({ limit: 25 }).catch(()=>{});
+    }
+    // Expose for debugging
+    globalThis.notificationsSse = notificationsSseStore;
+  } catch (e) { console.warn("Failed to init SSE notifications store", e); }
+
+  // Bridge SSE notifications to an Alpine store for UI bindings
+  try {
+    const notifBridge = createAlpineStore("notificationSse", { unreadCount: 0, count: 0, list: [] });
+    // Seed initial values if already loaded
+    if (notificationsSseStore?.state) {
+      notifBridge.unreadCount = notificationsSseStore.state.unreadCount || 0;
+      notifBridge.count = (notificationsSseStore.state.list || []).length;
+      notifBridge.list = notificationsSseStore.state.list || [];
+    }
+    bus.on("notifications.updated", ({ unread, count }) => {
+      notifBridge.unreadCount = unread || 0;
+      notifBridge.count = count || 0;
+      notifBridge.list = notificationsSseStore.state.list || [];
+    });
+  } catch (e) { console.warn("Failed to create Alpine notifications bridge", e); }
+
+  // Ensure an active context exists so SSE connects (needed for notifications stream)
+  try {
+    if (!getContext()) {
+      newContext();
+    }
+  } catch (e) { console.warn("Failed to ensure SSE context", e); }
 });
 
 globalThis.loadChats = async function () {
