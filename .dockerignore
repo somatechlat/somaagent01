@@ -1,0 +1,45 @@
+# Reduce Docker build context and keep secrets out of images
+
+# VCS and editor noise
+.git
+.github
+.gitmodules
+.DS_Store
+.vscode
+*.swp
+
+# Local virtualenvs and caches
+.venv
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+
+# Test suites, artifacts, and golden assets (not needed at runtime)
+tests/
+webui/tests/
+webui/tests/ui/node_modules/
+webui/tests/ui/test-results/
+webui/tests/ui/tmp/
+webui/tests/ui/tokens/
+
+# Temporary and local data
+tmp/
+logs/
+kafka-logs/
+postgres-backups/
+
+# Documentation (exclude from runtime image)
+docs/
+
+# Node modules anywhere (defensive)
+**/node_modules/
+
+# Secrets and keys — compose injects via env_file
+.env
+*.pem
+
+# Misc large or unused directories
+memory/*
+!memory/.gitkeep
+
