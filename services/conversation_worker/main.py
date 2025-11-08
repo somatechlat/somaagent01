@@ -582,46 +582,16 @@ class ConversationWorker:
             LOGGER.debug("background recall loop error", exc_info=True)
 
     async def _ensure_llm_key(self) -> None:
-        """Best-effort fetch of provider API key from Gateway for DEV/compat.
+        """No-op: credentials are not fetched by worker.
 
-        This does not participate in runtime LLM calls (those use Gateway directly),
-        but preserves prior unit-test expectations by storing the fetched key under
-        self.slm.api_key.
+        Runtime LLM calls go through Gateway which injects provider credentials
+        from its encrypted store. This method remains for backwards-compat
+        but does nothing now.
         """
-        # Only attempt when internal token and gateway base are configured
-        if not self._internal_token or not self._gateway_base:
-            return
-        # Infer provider from current dialogue profile base_url (fallback: openai)
-        provider = "openai"
         try:
-            profile = await self.profile_store.get("dialogue", self.deployment_mode)
-            host = (profile.base_url or "").lower() if profile else ""
-            if "groq" in host:
-                provider = "groq"
-            elif "openrouter" in host:
-                provider = "openrouter"
-            elif "openai" in host:
-                provider = "openai"
+            self.slm.api_key = None
         except Exception:
-            # keep default provider
             pass
-        url = f"{self._gateway_base}/v1/llm/credentials/{provider}"
-        headers = {"X-Internal-Token": self._internal_token}
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    secret = data.get("secret")
-                    if secret:
-                        # store on shim for test visibility
-                        try:
-                            self.slm.api_key = secret
-                        except Exception:
-                            pass
-        except Exception:
-            # Do not fail startup on missing/forbidden credentials
-            LOGGER.debug("LLM key fetch via Gateway failed", exc_info=True)
 
     async def _extract_text_from_path(self, path: str) -> str:
         """Best-effort text extraction for common file types.

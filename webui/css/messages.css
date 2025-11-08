@@ -206,6 +206,11 @@
   background-color: #af2222;
 }
 
+/* Info bubble padding parity */
+.message.message-info {
+  padding: 10px 12px;
+}
+
 .message-code-exe .message-body {
   min-height: 5em;
   width: 100%;
@@ -590,7 +595,13 @@
   grid-auto-rows: auto;
   max-width: 100%;
   width: fit-content;
-  gap: var(--spacing-xs);
+  /* Align inter-bubble spacing with Golden UI for parity */
+  gap: 10px;
+}
+
+/* Streaming stability: contain layout for streaming assistant responses */
+.message-agent-response.streaming {
+  contain: content;
 }
 
 .message-group > * {

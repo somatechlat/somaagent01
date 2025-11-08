@@ -408,9 +408,11 @@ img {
 .version-info {
   line-height: 0.8rem;
   position: relative;
-  margin: 0 var(--spacing-md) 1rem var(--spacing-md);
-  padding-top: 10px;
+  /* Tighter spacing to match Golden */
+  margin: 6px 10px;
+  padding: 4px 6px;
   border-top: 1px solid var(--color-border);
+  border-radius: 6px;
 }
 
 /* Right Panel */
@@ -842,6 +844,7 @@ h4 {
   display: flex;
   justify-content: space-between;
   padding: 0.35rem 0;
+  margin: 4px 0;
 }
 
 .config-list > *:first-child {

@@ -243,8 +243,9 @@ Accepts `model_profile`, `agent`, and related sections from the UI.
 
 Related endpoints:
 
-- **GET** `/v1/ui/settings/credentials` — presence map of stored provider secrets
-- **POST** `/v1/llm/credentials` — store/update a provider secret
+- **GET** `/v1/ui/settings/sections` — load the full Settings modal schema
+- **POST** `/v1/ui/settings/sections` — single writer: persist agent/model settings and any `api_key_*` secrets (encrypted)
+- **GET** `/v1/ui/settings/credentials` — status map of stored provider secrets (`present` + `updated_at`)
 - **POST** `/v1/llm/test` — validate active model profile and provider reachability
 
 ## Streaming (SSE)

@@ -38,8 +38,6 @@
     <link rel="stylesheet" href="css/history.css">
     <link rel="stylesheet" href="css/scheduler-datepicker.css">
     <link rel="stylesheet" href="css/notification.css">
-    <!-- Final parity overrides must be last to match Golden exactly -->
-    <link rel="stylesheet" href="/css/a0-parity-overrides.css">
     
 
     <!-- Flatpickr for datetime picker -->
@@ -135,7 +133,7 @@
 
     <script src="vendor/ace-min/ace.js"></script>
     <!-- Ace editor shipped without a CSS file in this bundle; remove broken link to avoid MIME/type errors -->
-    <!-- <link href="vendor/ace-min/ace.min.css" rel="stylesheet"> -->
+    <link href="vendor/ace-min/ace.min.css" rel="stylesheet">
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="vendor/katex/katex.min.css" crossorigin="anonymous">
 
@@ -344,7 +342,7 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showThoughts: localStorage.getItem('showThoughts') !== 'false' }">
+                            <li x-data="{ showThoughts: localStorage.getItem('showThoughts') === 'true' }">
                                 <span>Show thoughts</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-thoughts" x-model="showThoughts"
@@ -582,7 +580,6 @@
         </div>
     </div>
     <div id="settingsModal" x-data="settingsModalProxy">
-        <template x-teleport="body">
             <div x-show="isOpen" class="modal-overlay" @click.self="handleCancel()"
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
                 <div class="modal-container">
@@ -650,41 +647,37 @@
                                             <div class="field-control">
                                                 <!-- Input field -->
                                                 <template x-if="field.type === 'text'">
-                                                    <input type="text" :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true"
-                                                        @input="field.value = $event.target.value">
+                                                    <input type="text" :class="field.classes" x-model="field.value"
+                                                        :readonly="field.readonly === true">
                                                 </template>
 
                                                 <!-- Number field -->
                                                 <template x-if="field.type === 'number'">
-                                                    <input type="number" :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true"
-                                                        @input="field.value = $event.target.value" :min="field.min"
+                                                    <input type="number" :class="field.classes" x-model="field.value"
+                                                        :readonly="field.readonly === true" :min="field.min"
                                                         :max="field.max" :step="field.step">
                                                 </template>
 
 
                                                 <!-- Password field -->
                                                 <template x-if="field.type === 'password'">
-                                                    <input type="password" :class="field.classes" :value="field.value"
+                                                    <input type="password" :class="field.classes" x-model="field.value"
                                                         :readonly="field.readonly === true" :id="field.id"
-                                                        autocomplete="off" @input="field.value = $event.target.value">
+                                                        autocomplete="off">
                                                 </template>
 
                                                 <!-- Textarea field -->
                                                 <template x-if="field.type === 'textarea'">
-                                                    <textarea :class="field.classes" :value="field.value"
+                                                    <textarea :class="field.classes" x-model="field.value"
                                                         :readonly="field.readonly === true"
-                                                        @input="field.value = $event.target.value"
                                                         :style="field.style"></textarea>
                                                 </template>
 
                                                 <!-- Switch field -->
                                                 <template x-if="field.type === 'switch'">
                                                     <label class="toggle">
-                                                        <input type="checkbox" :checked="field.value"
-                                                            :disabled="field.readonly === true"
-                                                            @change="field.value = $event.target.checked">
+                                                        <input type="checkbox" x-model="field.value"
+                                                            :disabled="field.readonly === true">
                                                         <span class="toggler"></span>
                                                     </label>
                                                 </template>
@@ -693,9 +686,8 @@
                                                 <template x-if="field.type === 'range'">
                                                     <div class="field-control">
                                                         <input type="range" :min="field.min" :max="field.max"
-                                                            :step="field.step" :value="field.value"
+                                                            :step="field.step" x-model="field.value"
                                                             :disabled="field.readonly === true"
-                                                            @input="field.value = $event.target.value"
                                                             :class="field.classes">
                                                         <span class="range-value" x-text="field.value"></span>
                                                     </div>
@@ -1577,7 +1569,6 @@
                     </div>
                 </div>
             </div>
-        </template>
     </div>
 
     <!-- work_dir Browser Modal -->

@@ -22,6 +22,8 @@ class LlmCredentialsStore:
         self._r: redis.Redis = redis.from_url(redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
         self._ns = namespace
         self._fernet = self._load_fernet()
+        # Track metadata (updated_at epoch seconds) in a sibling hash for status endpoint.
+        self._meta_ns = f"{self._ns}:meta"
 
     def _load_fernet(self) -> Fernet:
         key = os.getenv("GATEWAY_ENC_KEY")
@@ -43,6 +45,12 @@ class LlmCredentialsStore:
         provider = provider.strip().lower()
         token = self._fernet.encrypt(secret.encode("utf-8")).decode("ascii")
         await self._r.hset(self._ns, provider, token)
+        try:
+            import time
+            await self._r.hset(self._meta_ns, provider, str(int(time.time())))
+        except Exception:
+            # Non-fatal: metadata update best-effort
+            pass
 
     async def get(self, provider: str) -> Optional[str]:
         provider = provider.strip().lower()
@@ -57,6 +65,10 @@ class LlmCredentialsStore:
     async def delete(self, provider: str) -> None:
         provider = provider.strip().lower()
         await self._r.hdel(self._ns, provider)
+        try:
+            await self._r.hdel(self._meta_ns, provider)
+        except Exception:
+            pass
 
     async def list_providers(self) -> list[str]:
         try:
@@ -64,6 +76,24 @@ class LlmCredentialsStore:
         except Exception:
             return []
         return [str(p) for p in items]
+
+    async def metadata(self) -> dict[str, int]:
+        """Return provider -> updated_at (epoch seconds) map.
+
+        Missing or unparsable timestamps are skipped. Best-effort only.
+        """
+        out: dict[str, int] = {}
+        try:
+            raw = await self._r.hgetall(self._meta_ns)
+            for k, v in (raw or {}).items():
+                try:
+                    ts = int(str(v).strip())
+                    out[str(k)] = ts
+                except Exception:
+                    continue
+        except Exception:
+            return {}
+        return out
 
     async def has(self, provider: str) -> bool:
         """Return True if a credential exists for the provider."""

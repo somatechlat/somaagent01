@@ -46,7 +46,7 @@ docker compose exec kafka kafka-consumer-groups.sh \
 | Cause | Fix |
 |-------|-----|
 | Worker crashed | `docker compose restart conversation-worker` |
-| LLM credentials missing/invalid | Open Settings → LLM Credentials, set the provider (e.g., groq) and paste the key. Alternatively, POST `/v1/llm/credentials`. |
+| LLM credentials missing/invalid | Open Settings → LLM Credentials, set the provider (e.g., groq) and paste the key, then Save. (Legacy `/v1/llm/credentials` endpoint removed.) |
 | Kafka consumer lag | Scale workers: `docker compose up -d --scale conversation-worker=3` |
 
 ### Memory Not Persisting
@@ -187,7 +187,7 @@ Symptoms:
 - Gateway audit shows `llm.invoke` with `http_status=401` and provider `groq`/`openrouter`.
 
 Fix:
-- Open the Settings modal → LLM Credentials and re‑enter the provider key.
+- Open the Settings modal → enter provider key in the `api_key_*` field and Save (sections endpoint persists + encrypts).
 - Ensure the selected model is accessible by your key.
 - Verify with:
   ```bash
