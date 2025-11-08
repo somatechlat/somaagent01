@@ -6,8 +6,6 @@ ARG INCLUDE_ML_DEPS=true
 
 ENV PYTHONUNBUFFERED=1 \
         PYTHONDONTWRITEBYTECODE=1 \
-        PIP_DISABLE_PIP_VERSION_CHECK=1 \
-        PIP_NO_CACHE_DIR=1 \
         VENV_PATH="/opt/venv"
 
 ENV PATH="$VENV_PATH/bin:$PATH"
@@ -39,14 +37,11 @@ FROM python:3.11-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
         PYTHONDONTWRITEBYTECODE=1 \
-        PIP_DISABLE_PIP_VERSION_CHECK=1 \
-        PIP_NO_CACHE_DIR=1 \
         VENV_PATH="/opt/venv"
 
 ENV PATH="$VENV_PATH/bin:$PATH" \
         PYTHONPATH=/app
 
-ARG INCLUDE_TOOLS=true
 RUN apt-get update && apt-get install -y --no-install-recommends \
                 curl \
                 git \
@@ -58,11 +53,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
                 libxslt1-dev \
                 zlib1g-dev \
                 libsndfile1 \
-        && if [ "$INCLUDE_TOOLS" = "true" ]; then apt-get install -y --no-install-recommends \
                 tesseract-ocr \
                 poppler-utils \
                 ffmpeg \
-        ; fi \
         && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder "$VENV_PATH" "$VENV_PATH"
