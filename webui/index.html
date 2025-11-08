@@ -342,7 +342,7 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showThoughts: localStorage.getItem('showThoughts') === 'true' }">
+                            <li x-data="{ showThoughts: (localStorage.getItem('showThoughts') === 'true') }">
                                 <span>Show thoughts</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-thoughts" x-model="showThoughts"
@@ -351,7 +351,7 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showJson: localStorage.getItem('showJson') === 'true' }">
+                            <li x-data="{ showJson: (localStorage.getItem('showJson') === null) ? true : (localStorage.getItem('showJson') === 'true') }">
                                 <span>Show JSON</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-json" x-model="showJson"
@@ -360,7 +360,7 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showUtils: localStorage.getItem('showUtils') === 'true' }">
+                            <li x-data="{ showUtils: (localStorage.getItem('showUtils') === null) ? true : (localStorage.getItem('showUtils') === 'true') }">
                                 <span>Show utility messages</span>
                                 <label class="switch">
                                     <input type="checkbox" data-test="toggle-utils" x-model="showUtils"

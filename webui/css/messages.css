@@ -595,8 +595,8 @@
   grid-auto-rows: auto;
   max-width: 100%;
   width: fit-content;
-  /* Align inter-bubble spacing with Golden UI for parity */
-  gap: 10px;
+  /* Align inter-bubble spacing with Golden UI */
+  gap: var(--spacing-xs);
 }
 
 /* Streaming stability: contain layout for streaming assistant responses */
