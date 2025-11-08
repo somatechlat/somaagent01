@@ -70,6 +70,31 @@ const settingsModalProxy = {
         }, 10);
     },
 
+    // Force-close helper to consolidate all close paths (save/cancel/overlay/escape)
+    forceClose() {
+        try {
+            // Stop any scheduler polling before closing
+            this.stopSchedulerPolling();
+        } catch (_) {}
+        try {
+            this.isOpen = false;
+        } catch (_) {}
+        try {
+            const store = window.Alpine ? Alpine.store('root') : null;
+            if (store) store.isOpen = false;
+        } catch (_) {}
+        try {
+            const modalEl = document.getElementById('settingsModal');
+            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
+            if (overlay) {
+                // Ensure overlay is hidden even if an earlier 'display: flex !important' was set
+                overlay.style.setProperty('display', 'none', 'important');
+                // Give Alpine a tick to reconcile x-show, then clear inline style
+                setTimeout(() => { try { overlay.style.removeProperty('display'); } catch(_) {} }, 30);
+            }
+        } catch (_) {}
+    },
+
     async openModal() {
         console.log('Settings modal opening');
         const modalEl = document.getElementById('settingsModal');
@@ -354,56 +379,20 @@ const settingsModalProxy = {
                 status: 'saved',
                 data: modalAD.settings
             });
+            // Close on successful save
+            this.forceClose();
+            return;
         } else if (buttonId === 'cancel') {
             this.handleCancel();
-        }
-
-        // Stop scheduler polling if it's running
-        this.stopSchedulerPolling();
-
-        // First update our component state
-        this.isOpen = false;
-        try {
-            const modalEl = document.getElementById('settingsModal');
-            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
-            if (overlay) overlay.style.removeProperty('display');
-        } catch(_) {}
-
-        // Then safely update the store
-        const store = Alpine.store('root');
-        if (store) {
-            // Use a slight delay to avoid reactivity issues
-            setTimeout(() => {
-                store.isOpen = false;
-            }, 10);
+            return;
         }
     },
 
     async handleCancel() {
-        this.resolvePromise({
-            status: 'cancelled',
-            data: null
-        });
-
-        // Stop scheduler polling if it's running
-        this.stopSchedulerPolling();
-
-        // First update our component state
-        this.isOpen = false;
         try {
-            const modalEl = document.getElementById('settingsModal');
-            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
-            if (overlay) overlay.style.removeProperty('display');
+            this.resolvePromise({ status: 'cancelled', data: null });
         } catch(_) {}
-
-        // Then safely update the store
-        const store = Alpine.store('root');
-        if (store) {
-            // Use a slight delay to avoid reactivity issues
-            setTimeout(() => {
-                store.isOpen = false;
-            }, 10);
-        }
+        this.forceClose();
     },
 
     // Add a helper method to stop scheduler polling
