@@ -217,7 +217,11 @@ services:
       DISABLE_CONVERSATION_POLICY: "true"
       # Enforce centralized credentialing and routing via Gateway; no dev fallbacks
       SOMA_AGENT_MODE: LOCAL
-      # Worker never calls providers directly; LLM routing and credentials are controlled by Gateway model profiles and credentials store.
+      # Use real LLM (OpenAI-compatible). In DEV, env override is allowed; in non‑DEV the worker ignores env and fetches from Gateway.
+      SLM_BASE_URL: "${SLM_BASE_URL:-https://api.groq.com/openai/v1}"
+      # Default to a valid Groq model; can be overridden via env or UI model profile
+      SLM_MODEL: "${SLM_MODEL:-llama-3.1-8b-instant}"
+      SLM_API_KEY: "${SLM_API_KEY}"
       # Conversation policy enforcement configured centrally; no local mock SLM allowed
       # Point worker at the locally running Gateway on the host for credential fetch
       WORKER_GATEWAY_BASE: "http://host.docker.internal:${GATEWAY_PORT:-21016}"
@@ -339,7 +343,9 @@ services:
       # Enable write-through to SomaBrain in dev so WAL is emitted immediately.
       GATEWAY_WRITE_THROUGH: "true"
       GATEWAY_WRITE_THROUGH_ASYNC: "true"
-      # Provider metadata is configured centrally via Gateway settings/credentials
+      # OpenRouter header hints (prevent 401s due to missing metadata). Override in staging/prod.
+      OPENROUTER_REFERER: "${OPENROUTER_REFERER:-http://localhost}"
+      OPENROUTER_TITLE: "${OPENROUTER_TITLE:-SomaAgent01 Dev}"
     ports:
       - "${GATEWAY_PORT:-21016}:8010"
     networks:
