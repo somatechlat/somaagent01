@@ -12,19 +12,18 @@ This document explains how the Gateway resolves model settings, normalizes provi
 
 ## Model Profile and Credentials
 
-Endpoints used by the Web UI and operators:
+Endpoints used by the Web UI and operators (centralized settings-only flow):
 
 - GET `/v1/ui/settings` → returns the effective UI agent config, model profile, and credential presence map.
-- PUT `/v1/ui/settings` → accepts `model_profile`, `agent`, and optionally `llm_credentials` payloads.
-- GET `/v1/ui/settings/credentials` → presence map of stored provider secrets (never returns actual secrets).
-- POST `/v1/llm/credentials` → store/update a provider secret. Body:
-  ```json
-  { "provider": "groq", "secret": "<api_key>" }
-  ```
-- POST `/v1/llm/test` → resolves the active profile for the role (e.g., `dialogue`), detects provider, checks that credentials exist, and performs a quick reachability probe.
+- PUT `/v1/ui/settings` → accepts `model_profile` and `agent` payloads (legacy direct `llm_credentials` removed; use sections).
+- GET `/v1/ui/settings/sections` → full modal sections schema for the SPA.
+- POST `/v1/ui/settings/sections` → single writer: persists agent settings, model profile, and any `api_key_*` credential fields (encrypted). This replaces legacy `/v1/llm/credentials`.
+- GET `/v1/ui/settings/credentials` → status map of stored provider secrets (`present` + `updated_at`; never returns actual secrets).
+- POST `/v1/llm/test` → resolves the active profile for the role (e.g., `dialogue`), detects provider, checks that credentials exist, and performs a reachability probe.
 
 Notes:
-- Workers call internal Gateway endpoints with `X-Internal-Token` to read the canonical runtime settings. External callers must use the public UI Settings APIs above.
+- Workers no longer fetch credentials via internal endpoints; they only invoke `/v1/llm/invoke` and let the Gateway inject secrets.
+- Legacy endpoints `/v1/llm/credentials` and `/v1/llm/credentials/{provider}` have been removed; documentation and scripts should use the sections save path exclusively.
 
 ## Base URL Normalization
 
@@ -67,7 +66,7 @@ Callers cannot override the profile’s base URL. The Gateway always uses the va
 
 - 401 Unauthorized from provider
   - Cause: Invalid/expired API key or lack of access to the selected model.
-  - Fix: Re‑enter the provider key via the Settings modal (or POST `/v1/llm/credentials`).
+  - Fix: Re‑enter the provider key via the Settings modal and Save (sections flow persists + encrypts the key).
   - Verify: POST `/v1/llm/test` should show `credentials_present: true` and the provider host.
 
 - 405 Method Not Allowed on OpenRouter
@@ -112,12 +111,21 @@ curl -s -X PUT http://localhost:21016/v1/ui/settings \
       }'
 ```
 
-Store Groq API key (UI or API):
+Store Groq API key via Settings sections (centralized):
 
 ```bash
-curl -s -X POST http://localhost:21016/v1/llm/credentials \
+curl -s -X POST http://localhost:21016/v1/ui/settings/sections \
   -H 'Content-Type: application/json' \
-  -d '{"provider":"groq","secret":"<GROQ_API_KEY>"}'
+  -d '{
+        "sections": [
+          {"id":"llm","fields":[
+            {"id":"chat_model_provider","value":"groq"},
+            {"id":"chat_model_name","value":"llama-3.1-8b-instant"},
+            {"id":"chat_model_api_base","value":"https://api.groq.com/openai/v1"},
+            {"id":"api_key_groq","value":"<GROQ_API_KEY>"}
+          ]}
+        ]
+      }'
 ```
 
 Validate and invoke:

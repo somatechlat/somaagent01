@@ -115,12 +115,24 @@ const settingsModalProxy = {
                 "sections": set.settings.sections
             }
 
-            // Fetch credentials presence and annotate API key fields for clarity
+            // Fetch credentials status and annotate API key fields for clarity (presence + updated_at)
             try {
                 const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
                 if (credResp.ok) {
                     const credMap = await credResp.json().catch(() => null);
-                    const has = credMap && credMap.has_secret ? credMap.has_secret : {};
+                    // Support new shape { credentials: {prov: {present, updated_at}} } and legacy { has_secret: {prov: true} }
+                    let has = {};
+                    let updated = {};
+                    if (credMap && credMap.credentials) {
+                        try {
+                            for (const [prov, obj] of Object.entries(credMap.credentials)) {
+                                has[prov] = !!(obj && obj.present);
+                                if (obj && obj.updated_at) updated[prov] = obj.updated_at;
+                            }
+                        } catch(_) {}
+                    } else if (credMap && credMap.has_secret) {
+                        has = credMap.has_secret;
+                    }
                     if (settings.sections && has) {
                         for (const sec of settings.sections) {
                             for (const f of (sec.fields || [])) {
@@ -128,10 +140,19 @@ const settingsModalProxy = {
                                 if (fid.startsWith('api_key_')) {
                                     const prov = fid.substring('api_key_'.length).toLowerCase();
                                     const present = !!has[prov];
-                                    // Append a tiny hint without relying on CSS badges
-                                    const hint = present ? ' (saved on server)' : ' (not set)';
+                                    // Append a tiny hint; include last-updated when available
+                                    let hint = present ? ' (saved on server' : ' (not set';
+                                    try {
+                                        const ts = updated[prov];
+                                        if (present && ts) {
+                                            const when = new Date(Number(ts) * 1000);
+                                            const pretty = when.toLocaleString();
+                                            hint += ` • updated ${pretty}`;
+                                        }
+                                    } catch(_) {}
+                                    hint += ')';
                                     if (typeof f.description === 'string' && f.description.length) {
-                                        if (!f.description.includes('(saved on server)') && !f.description.includes('(not set)')) {
+                                        if (!f.description.includes('(saved on server') && !f.description.includes('(not set')) {
                                             f.description += hint;
                                         }
                                     } else {
@@ -247,23 +268,12 @@ const settingsModalProxy = {
                 if (window.toastFrontendInfo) {
                     window.toastFrontendInfo('Saving settings…', 'Settings', 2, 'settings-save');
                 }
-                // Save sections back to canonical endpoint
-                // Mask ALL api_key_* fields to avoid persistence via sections
-                const masked = JSON.parse(JSON.stringify(modalAD.settings.sections || []));
-                try {
-                    for (const sec of masked) {
-                        for (const f of (sec.fields || [])) {
-                            const fid = String(f.id || '');
-                            if (fid.startsWith('api_key_')) {
-                                f.value = (typeof f.value === 'string' && f.value.trim()) ? '************' : '';
-                            }
-                        }
-                    }
-                } catch(_) {}
+                // Save sections back to canonical endpoint.
+                // Do NOT pre-mask api_key_* here; server will mask on response.
                 const resp = await fetchApi('/ui/settings/sections', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sections: masked })
+                    body: JSON.stringify({ sections: modalAD.settings.sections || [] })
                 });
                 if (!resp.ok) throw new Error(await resp.text());
                 try { savedJson = await resp.json(); } catch (_) { savedJson = null; }
@@ -277,36 +287,7 @@ const settingsModalProxy = {
                 return
             }
 
-            // Persist any provided provider secrets via credentials endpoint (one POST per provider)
-            try {
-                const sections = modalAD.settings.sections || [];
-                const creds = [];
-                for (const sec of sections) {
-                    for (const f of sec.fields || []) {
-                        const id = String(f.id || '').toLowerCase();
-                        if (id.startsWith('api_key_')) {
-                            const provider = id.replace('api_key_', '').trim();
-                            const secret = String(f.value || '').trim();
-                            if (provider && secret && secret !== '************') {
-                                creds.push({ provider, secret });
-                            }
-                        }
-                    }
-                }
-                for (const c of creds) {
-                    try {
-                        await fetchApi('/llm/credentials', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(c)
-                        });
-                    } catch (e) {
-                        console.warn('Credential save failed for', c.provider, e?.message || e);
-                    }
-                }
-            } catch (e) {
-                console.warn('LLM credentials processing skipped:', e?.message || e);
-            }
+            // Credentials now saved solely via sections payload; no extra POSTs.
             // Success toast replaces progress toast
             if (window.toastFrontendSuccess) {
                 window.toastFrontendSuccess('Settings saved successfully', 'Settings', 3, 'settings-save');
@@ -321,16 +302,36 @@ const settingsModalProxy = {
                         try {
                             const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
                             const credMap = credResp.ok ? await credResp.json().catch(() => null) : null;
-                            const has = credMap && credMap.has_secret ? credMap.has_secret : {};
+                            let has = {};
+                            let updated = {};
+                            if (credMap && credMap.credentials) {
+                                try {
+                                    for (const [prov, obj] of Object.entries(credMap.credentials)) {
+                                        has[prov] = !!(obj && obj.present);
+                                        if (obj && obj.updated_at) updated[prov] = obj.updated_at;
+                                    }
+                                } catch(_) {}
+                            } else if (credMap && credMap.has_secret) {
+                                has = credMap.has_secret;
+                            }
                             for (const sec of (fresh.settings.sections || [])) {
                                 for (const f of (sec.fields || [])) {
                                     const fid = String(f.id || '');
                                     if (fid.startsWith('api_key_')) {
                                         const prov = fid.substring('api_key_'.length).toLowerCase();
                                         const present = !!has[prov];
-                                        const hint = present ? ' (saved on server)' : ' (not set)';
+                                        let hint = present ? ' (saved on server' : ' (not set';
+                                        try {
+                                            const ts = updated[prov];
+                                            if (present && ts) {
+                                                const when = new Date(Number(ts) * 1000);
+                                                const pretty = when.toLocaleString();
+                                                hint += ` • updated ${pretty}`;
+                                            }
+                                        } catch(_) {}
+                                        hint += ')';
                                         if (typeof f.description === 'string' && f.description.length) {
-                                            if (!f.description.includes('(saved on server)') && !f.description.includes('(not set)')) {
+                                            if (!f.description.includes('(saved on server') && !f.description.includes('(not set')) {
                                                 f.description += hint;
                                             }
                                         } else {
@@ -571,16 +572,36 @@ document.addEventListener('alpine:init', function () {
                                 const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
                                 if (credResp.ok) {
                                     const credMap = await credResp.json().catch(() => null);
-                                    const has = credMap && credMap.has_secret ? credMap.has_secret : {};
+                                    let has = {};
+                                    let updated = {};
+                                    if (credMap && credMap.credentials) {
+                                        try {
+                                            for (const [prov, obj] of Object.entries(credMap.credentials)) {
+                                                has[prov] = !!(obj && obj.present);
+                                                if (obj && obj.updated_at) updated[prov] = obj.updated_at;
+                                            }
+                                        } catch(_) {}
+                                    } else if (credMap && credMap.has_secret) {
+                                        has = credMap.has_secret;
+                                    }
                                     for (const sec of (this.settingsData.sections || [])) {
                                         for (const f of (sec.fields || [])) {
                                             const fid = String(f.id || '');
                                             if (fid.startsWith('api_key_')) {
                                                 const prov = fid.substring('api_key_'.length).toLowerCase();
                                                 const present = !!has[prov];
-                                                const hint = present ? ' (saved on server)' : ' (not set)';
+                                                let hint = present ? ' (saved on server' : ' (not set';
+                                                try {
+                                                    const ts = updated[prov];
+                                                    if (present && ts) {
+                                                        const when = new Date(Number(ts) * 1000);
+                                                        const pretty = when.toLocaleString();
+                                                        hint += ` • updated ${pretty}`;
+                                                    }
+                                                } catch(_) {}
+                                                hint += ')';
                                                 if (typeof f.description === 'string' && f.description.length) {
-                                                    if (!f.description.includes('(saved on server)') && !f.description.includes('(not set)')) {
+                                                    if (!f.description.includes('(saved on server') && !f.description.includes('(not set')) {
                                                         f.description += hint;
                                                     }
                                                 } else {
@@ -666,23 +687,12 @@ document.addEventListener('alpine:init', function () {
                         }
                     } catch (_) {}
 
-                    // Mask api_key_* fields to avoid persisting secrets via sections
-                    const maskedSections = JSON.parse(JSON.stringify(this.settingsData.sections || []));
-                    try {
-                        for (const sec of maskedSections) {
-                            for (const f of (sec.fields || [])) {
-                                const fid = String(f.id || '');
-                                if (fid.startsWith('api_key_')) {
-                                    f.value = (typeof f.value === 'string' && f.value.trim()) ? '************' : '';
-                                }
-                            }
-                        }
-                    } catch(_) {}
-
+                    // Send raw values; server will handle masking post-save.
+                    const sectionsToSave = this.settingsData.sections || [];
                     const response = await fetchApi('/ui/settings/sections', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sections: maskedSections })
+                        body: JSON.stringify({ sections: sectionsToSave })
                     });
 
                     if (response.ok) {
@@ -695,33 +705,7 @@ document.addEventListener('alpine:init', function () {
                             const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
                             if (overlay) overlay.style.removeProperty('display');
                         } catch (_) {}
-                        // Persist provider credentials via dedicated endpoint for any provided keys
-                        try {
-                            const creds = [];
-                            for (const sec of (this.settingsData.sections || [])) {
-                                for (const f of (sec.fields || [])) {
-                                    const fid = String(f.id || '').toLowerCase();
-                                    if (fid.startsWith('api_key_')) {
-                                        const provider = fid.replace('api_key_', '').trim();
-                                        const secret = String(f.value || '').trim();
-                                        if (provider && secret && secret !== '************') {
-                                            creds.push({ provider, secret });
-                                        }
-                                    }
-                                }
-                            }
-                            for (const c of creds) {
-                                try {
-                                    await fetchApi('/llm/credentials', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(c)
-                                    });
-                                } catch (e) {
-                                    console.warn('Credential save failed for', c.provider, e?.message || e);
-                                }
-                            }
-                        } catch (_) {}
+                        // Provider credentials persisted already; no separate endpoint calls.
                         // Refresh settings sections to pick up normalized base_url and masked secrets
                         await this.fetchSettings();
                         // Broadcast for other components/tabs

@@ -11,7 +11,7 @@ What it does:
 Requirements:
 - The Gateway must be running and reachable (default http://127.0.0.1:21016)
 - OpenAI credentials must already be saved in the Gateway's credentials store
-  (POST /v1/llm/credentials with provider=openai beforehand), or set externally
+    (set provider key via Settings UI beforehand; legacy /v1/llm/credentials removed)
   so your deployment has them.
 - aiortc and av must be installed. This test is SKIPPED unless
   the env var OPENAI_REALTIME_E2E=1 is set and aiortc can be imported.

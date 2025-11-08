@@ -483,8 +483,10 @@ Why this is needed
 - During audits we found model/profile information and base_url normalization logic duplicated across services (workers, Gateway, local config files). This causes validation errors (eg. "invalid model/base_url after normalization"), runtime surprises, and operational friction. Centralization reduces surface area for mistakes, makes credential management secure, and simplifies rollout of provider changes.
 
 Design decisions (summary)
-- Gateway owns: ModelProfileStore reads/writes, `_normalize_llm_base_url` rules, provider detection, and credential lookup. It exposes a CRUD API for profiles and a secure credentials endpoint. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send `base_url`.
-- Gateway exposes `/v1/model-profiles` (CRUD), `/v1/llm/credentials/{provider}` (internal credential access), and an admin `/v1/llm/test` to validate profile connectivity.
+- Gateway owns: ModelProfileStore reads/writes, `_normalize_llm_base_url` rules, provider detection, and credential lookup. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send `base_url`.
+- Centralized Settings: UI saves all agent/model settings and provider secrets via `/v1/ui/settings/sections` (single writer path). Provider secrets are encrypted (mandatory `GATEWAY_ENC_KEY`) and surfaced only as presence + `updated_at` via `/v1/ui/settings/credentials`.
+- Gateway exposes `/v1/model-profiles` (CRUD), `/v1/ui/settings/*` (settings reads/writes), and `/v1/llm/test` for profile connectivity validation.
+- Legacy credentials endpoints (`/v1/llm/credentials`, `/v1/llm/credentials/{provider}`) removed; callers must use Settings sections save flow.
 - Callers cannot override `base_url`; the Gateway always uses the profile’s value.
 
 Acceptance criteria

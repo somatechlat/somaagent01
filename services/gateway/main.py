@@ -5502,7 +5502,13 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
             except Exception:
                 LOGGER.debug("telemetry emit failed (sse close)", exc_info=True)
 
-    headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    # Advise reverse proxies and browsers to avoid buffering or transforming SSE
+    headers = {
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        # Disable proxy buffering when running behind nginx/traefik variants
+        "X-Accel-Buffering": "no",
+    }
     return StreamingResponse(event_iter(), media_type="text/event-stream", headers=headers)
 
 
@@ -6496,7 +6502,8 @@ async def ui_sections_get() -> dict[str, Any]:
                         val = agent_cfg.get(fid)
                         if val:
                             fld["value"] = val
-        # Overlay additional UI-stored settings (utility/embed/browser, litellm, browser headers)
+        # Overlay additional UI-stored settings (utility/embed/browser, litellm, browser headers,
+        # dev/RFC values, mcp/a2a toggles and parameters, variables/secrets, root password placeholder)
         if isinstance(agent_cfg, dict) and agent_cfg:
             for sec in sections:
                 for fld in sec.get("fields", []):
@@ -6531,6 +6538,33 @@ async def ui_sections_get() -> dict[str, Any]:
                                 fld["value"] = val
                         else:
                             fld["value"] = val
+                    # Dev/RFC and shell settings
+                    if fid in {"rfc_url", "rfc_port_http", "rfc_port_ssh", "shell_interface"} and fid in agent_cfg:
+                        fld["value"] = agent_cfg.get(fid)
+                    if fid == "rfc_password":
+                        # never reveal, show placeholder when set
+                        try:
+                            fld["value"] = "************" if agent_cfg.get("rfc_password") else ""
+                            if fld.get("type") != "password":
+                                fld["type"] = "password"
+                        except Exception:
+                            pass
+                    # Root password – placeholder only
+                    if fid == "root_password":
+                        try:
+                            fld["value"] = "************" if agent_cfg.get("root_password") else ""
+                            if fld.get("type") != "password":
+                                fld["type"] = "password"
+                        except Exception:
+                            pass
+                    # MCP / A2A
+                    if fid in {"mcp_client_init_timeout", "mcp_client_tool_timeout", "mcp_server_enabled", "mcp_server_token", "a2a_server_enabled"} and fid in agent_cfg:
+                        fld["value"] = agent_cfg.get(fid)
+                    if fid == "mcp_servers" and fid in agent_cfg:
+                        fld["value"] = agent_cfg.get(fid)
+                    # Variables/secrets (raw text)
+                    if fid in {"variables", "secrets"} and fid in agent_cfg:
+                        fld["value"] = agent_cfg.get(fid) or ""
         # Model overlays
         if profile:
             provider = ""
@@ -6611,6 +6645,118 @@ async def ui_sections_get() -> dict[str, Any]:
                             fld["value"] = memory_cfg[fid]
                         except Exception:
                             pass
+        # Dev overlay (stored under dev)
+        try:
+            dev_cfg = agent_cfg.get("dev") if isinstance(agent_cfg, dict) else None
+        except Exception:
+            dev_cfg = None
+        if isinstance(dev_cfg, dict) and dev_cfg:
+            for sec in sections:
+                if (sec.get("id") or "") != "dev":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if isinstance(fid, str) and fid in dev_cfg:
+                        try:
+                            # Never echo rfc_password plaintext
+                            if fid == "rfc_password" and dev_cfg.get(fid):
+                                fld["value"] = "************"
+                            else:
+                                fld["value"] = dev_cfg[fid]
+                        except Exception:
+                            pass
+        # MCP client overlay
+        try:
+            mcp_client_cfg = agent_cfg.get("mcp_client") if isinstance(agent_cfg, dict) else None
+        except Exception:
+            mcp_client_cfg = None
+        if isinstance(mcp_client_cfg, dict) and mcp_client_cfg:
+            for sec in sections:
+                if (sec.get("id") or "") != "mcp_client":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if isinstance(fid, str) and fid in mcp_client_cfg:
+                        try:
+                            fld["value"] = mcp_client_cfg[fid]
+                        except Exception:
+                            pass
+        # MCP server overlay
+        try:
+            mcp_server_cfg = agent_cfg.get("mcp_server") if isinstance(agent_cfg, dict) else None
+        except Exception:
+            mcp_server_cfg = None
+        if isinstance(mcp_server_cfg, dict) and mcp_server_cfg:
+            for sec in sections:
+                if (sec.get("id") or "") != "mcp_server":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if isinstance(fid, str) and fid in mcp_server_cfg:
+                        try:
+                            if fid == "mcp_server_token" and mcp_server_cfg.get(fid):
+                                fld["value"] = "************"
+                            else:
+                                fld["value"] = mcp_server_cfg[fid]
+                        except Exception:
+                            pass
+        # A2A server overlay
+        try:
+            a2a_cfg = agent_cfg.get("a2a_server") if isinstance(agent_cfg, dict) else None
+        except Exception:
+            a2a_cfg = None
+        if isinstance(a2a_cfg, dict) and a2a_cfg:
+            for sec in sections:
+                if (sec.get("id") or "") != "a2a_server":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if isinstance(fid, str) and fid in a2a_cfg:
+                        try:
+                            fld["value"] = a2a_cfg[fid]
+                        except Exception:
+                            pass
+        # Variables & secrets overlay (flat fields in external secrets section)
+        try:
+            if isinstance(agent_cfg, dict):
+                vars_val = agent_cfg.get("variables")
+                secs_val = agent_cfg.get("secrets")
+            else:
+                vars_val = None
+                secs_val = None
+        except Exception:
+            vars_val = None
+            secs_val = None
+        if vars_val is not None or secs_val is not None:
+            for sec in sections:
+                if (sec.get("id") or "") != "secrets":
+                    continue
+                for fld in sec.get("fields", []):
+                    fid = fld.get("id")
+                    if fid == "variables" and isinstance(vars_val, str):
+                        fld["value"] = vars_val
+                    elif fid == "secrets" and isinstance(secs_val, str):
+                        # Mask each non-empty secret value line with *** while preserving comments
+                        try:
+                            from python.helpers.secrets import SecretsManager
+                            sm = SecretsManager.get_instance()
+                            # Save raw to allow masking logic to work; do not expose plaintext values
+                            # We temporarily write and read masked to reuse existing masking utility.
+                            sm.save_secrets_with_merge(secs_val)
+                            fld["value"] = sm.get_masked_secrets()
+                        except Exception:
+                            fld["value"] = ""
+        # Root password overlay (show placeholder if hash present)
+        try:
+            if isinstance(agent_cfg, dict) and agent_cfg.get("root_password_hash"):
+                for sec in sections:
+                    if (sec.get("id") or "") != "auth":
+                        continue
+                    for fld in sec.get("fields", []):
+                        if fld.get("id") == "root_password":
+                            fld["value"] = "************"
+        except Exception:
+            pass
     except Exception:
         LOGGER.debug("Failed to overlay UI sections", exc_info=True)
 
@@ -6743,6 +6889,18 @@ async def ui_sections_set(
     memory_cfg: Dict[str, Any] = {}
     # LiteLLM globals
     litellm_cfg: Dict[str, Any] = {}
+    # Development / RFC settings
+    dev_cfg: Dict[str, Any] = {}
+    # MCP client/server settings
+    mcp_client_cfg: Dict[str, Any] = {}
+    mcp_server_cfg: Dict[str, Any] = {}
+    # A2A server settings
+    a2a_cfg: Dict[str, Any] = {}
+    # Variables & secrets (non-sensitive variables; secrets masked on output)
+    variables_val: str | None = None
+    secrets_val: str | None = None
+    # Auth/root password (stored masked; do not return plaintext)
+    root_password_plain: str | None = None
 
     def _as_env_kv(text: str) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -6763,6 +6921,17 @@ async def ui_sections_set(
                 continue
             if fid in {"agent_profile", "agent_memory_subdir", "agent_knowledge_subdir"} and val:
                 agent[fid] = val
+            # Development / shell / RFC related fields (centralize)
+            elif fid in {"rfc_url", "rfc_port_http", "rfc_port_ssh", "shell_interface"}:
+                agent[fid] = val
+            elif fid == "rfc_password" and isinstance(val, str) and val:
+                # Skip placeholder values
+                if val.strip() not in {"************", "****PSWD****"}:
+                    agent[fid] = val
+            # Root password (dockerized) – skip placeholder
+            elif fid == "root_password" and isinstance(val, str) and val:
+                if val.strip() not in {"************", "****PSWD****"}:
+                    agent[fid] = val
             elif fid == "chat_model_provider" and isinstance(val, str):
                 explicit_provider = val.strip().lower() or None
             elif fid == "chat_model_name" and isinstance(val, str):
@@ -6850,6 +7019,34 @@ async def ui_sections_set(
             # Memory settings (persist as a nested group)
             elif fid.startswith("memory_"):
                 memory_cfg[fid] = val
+            # Dev / RFC fields
+            elif fid in {"shell_interface", "rfc_url", "rfc_password", "rfc_port_http", "rfc_port_ssh"}:
+                dev_cfg[fid] = val
+            # MCP client fields
+            elif fid in {"mcp_client_init_timeout", "mcp_client_tool_timeout", "mcp_servers"}:
+                mcp_client_cfg[fid] = val
+            # MCP server fields
+            elif fid in {"mcp_server_enabled", "mcp_server_token"}:
+                mcp_server_cfg[fid] = val
+            # A2A server fields
+            elif fid in {"a2a_server_enabled"}:
+                a2a_cfg[fid] = val
+            # Variables & secrets plain textarea fields
+            elif fid == "variables":
+                variables_val = val if isinstance(val, str) else None
+            elif fid == "secrets":
+                secrets_val = val if isinstance(val, str) else None
+            # Root password (auth section) – do not echo back plaintext; persist masked
+            elif fid == "root_password" and isinstance(val, str) and val.strip():
+                root_password_plain = val.strip()
+            # MCP client/server + A2A server related fields
+            elif fid in {"mcp_client_init_timeout", "mcp_client_tool_timeout", "mcp_server_enabled", "mcp_server_token", "a2a_server_enabled"}:
+                agent[fid] = val
+            elif fid == "mcp_servers":
+                agent[fid] = val
+            # Secrets / variables store (raw text areas)
+            elif fid in {"variables", "secrets"}:
+                agent[fid] = val
 
     # Persist settings (merge with existing document)
     ui_store = get_ui_settings_store()
@@ -6885,6 +7082,31 @@ async def ui_sections_set(
         current_doc["speech"] = {**dict(current_doc.get("speech") or {}), **coerced}
     if memory_cfg:
         current_doc["memory"] = {**dict(current_doc.get("memory") or {}), **memory_cfg}
+    # Merge dev config
+    if dev_cfg:
+        current_doc["dev"] = {**dict(current_doc.get("dev") or {}), **dev_cfg}
+    # Merge MCP client/server config
+    if mcp_client_cfg:
+        current_doc["mcp_client"] = {**dict(current_doc.get("mcp_client") or {}), **mcp_client_cfg}
+    if mcp_server_cfg:
+        current_doc["mcp_server"] = {**dict(current_doc.get("mcp_server") or {}), **mcp_server_cfg}
+    # Merge A2A config
+    if a2a_cfg:
+        current_doc["a2a_server"] = {**dict(current_doc.get("a2a_server") or {}), **a2a_cfg}
+    # Variables & secrets (store raw; secrets will be masked on GET overlay)
+    if variables_val is not None:
+        current_doc["variables"] = variables_val
+    if secrets_val is not None:
+        current_doc["secrets"] = secrets_val
+    # Root password – store hashed placeholder only (never plaintext)
+    if root_password_plain:
+        try:
+            # Best-effort: store a SHA256 hash prefix rather than raw password
+            import hashlib
+            h = hashlib.sha256(root_password_plain.encode()).hexdigest()[:12]
+            current_doc["root_password_hash"] = h
+        except Exception:
+            current_doc["root_password_hash"] = "set"
     # Merge extra model configs (util/embed/browser) at top-level keys
     if extra_models_cfg:
         for k, v in extra_models_cfg.items():
@@ -6927,6 +7149,12 @@ async def ui_sections_set(
             elif "openai" in host:
                 provider = "openai"
 
+        # Resolve UI alias names to provider-specific model IDs before provider-specific handling
+        try:
+            model_name, _alias_changed = _resolve_model_alias(model_name)
+        except Exception:
+            pass
+
         # Provider-specific normalization/safety rails
         # Groq requires the OpenAI-compatible path segment "/openai" in its base URL.
         # If users enter just https://api.groq.com we silently correct it to include "/openai"
@@ -6968,7 +7196,7 @@ async def ui_sections_set(
                 if explicit_provider == "groq":
                     # Replace obviously foreign model identifiers (contain a provider prefix)
                     # with a widely available Groq default.
-                    if "/" in mn or mn.startswith("openai/") or mn.startswith("openrouter/"):
+                    if "/" in mn or mn.startswith("openai/") or mn.startswith("openrouter/") or mn.startswith("gpt-oss") or mn.replace(" ","").startswith("gptoss"):
                         model_name = "llama-3.1-8b-instant"
                 elif explicit_provider == "openrouter":
                     # OpenRouter accepts many vendor-prefixed names; leave as-is unless empty.
@@ -7083,6 +7311,12 @@ async def ui_sections_set(
                 "agent_profile",
                 "agent_memory_subdir",
                 "agent_knowledge_subdir",
+                # Dev / shell / RFC
+                "rfc_url",
+                "rfc_password",
+                "rfc_port_http",
+                "rfc_port_ssh",
+                "shell_interface",
                 "litellm_global_kwargs",
                 # util/embed/browser config and extras
                 "util_model_provider",
@@ -7109,6 +7343,18 @@ async def ui_sections_set(
                 "browser_model_rl_output",
                 "browser_model_kwargs",
                 "browser_http_headers",
+                # MCP / A2A
+                "mcp_client_init_timeout",
+                "mcp_client_tool_timeout",
+                "mcp_server_enabled",
+                "mcp_server_token",
+                "mcp_servers",
+                "a2a_server_enabled",
+                # Secrets / variables (do not include secrets unless masking applied downstream)
+                "variables",
+                "secrets",
+                # Root password (internal use only; avoid exposing externally where not needed)
+                "root_password",
             ):
                 if k in doc_for_flat:
                     flat[k] = doc_for_flat[k]
@@ -7244,9 +7490,18 @@ async def ui_settings_credentials() -> dict[str, Any]:
     try:
         store = get_llm_credentials_store()
         providers = await store.list_providers()
+        meta = await store.metadata()
     except Exception:
         providers = []
-    return {"has_secret": {p: True for p in providers}}
+        meta = {}
+    # Compose provider status objects with presence + updated_at (epoch seconds)
+    status: dict[str, Any] = {}
+    for p in providers:
+        status[p] = {
+            "present": True,
+            "updated_at": meta.get(p),
+        }
+    return {"credentials": status}
 
 
 @app.get("/v1/av/test")
@@ -7673,31 +7928,8 @@ async def reprocess_dlq_item(
 # LLM credentials management
 # -----------------------------
 
-class LlmCredPayload(BaseModel):
-    provider: str
-    secret: str
-
-
-@app.post("/v1/llm/credentials")
-async def upsert_llm_credentials(
-    payload: LlmCredPayload,
-    request: Request,
-    store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)],
-) -> dict:
-    # Require admin scope when auth is enabled
-    auth = await authorize_request(request, payload.model_dump())
-    _require_admin_scope(auth)
-    provider = payload.provider.strip().lower()
-    if not provider or not payload.secret:
-        raise HTTPException(status_code=400, detail="provider and secret required")
-    await store.set(provider, payload.secret)
-    # Broadcast config update so workers may refresh
-    try:
-        publisher: DurablePublisher = app.state.publisher
-        await publisher.publish("config_updates", {"type": "llm.credentials.updated", "provider": provider})
-    except Exception:
-        LOGGER.debug("Failed to publish config update (llm credentials)", exc_info=True)
-    return {"ok": True}
+## Removed legacy credentials write endpoint. Credentials are saved exclusively
+## via the Settings sections payload (api_key_* fields) to the encrypted store.
 
 
 def _internal_token_ok(request: Request) -> bool:
@@ -7773,18 +8005,7 @@ def _resolve_model_alias(model: str) -> tuple[str, bool]:
         return model, False
 
 
-@app.get("/v1/llm/credentials/{provider}")
-async def get_llm_credentials(provider: str, request: Request, store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)]) -> dict:
-    # Only allow internal calls with X-Internal-Token; do not expose via normal auth
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
-    provider = (provider or "").strip().lower()
-    if not provider:
-        raise HTTPException(status_code=400, detail="missing provider")
-    secret = await store.get(provider)
-    if not secret:
-        raise HTTPException(status_code=404, detail="not found")
-    return {"provider": provider, "secret": secret}
+## Removed legacy internal credentials read endpoint. No API returns raw secrets.
 
 
 class LlmTestRequest(BaseModel):

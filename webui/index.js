@@ -650,7 +650,7 @@ function connectEventStream(sessionId) {
             const now = Date.now();
             const shouldThrottle = !isFinal;
             if (!globalThis._lastAssistantRenderAtMs) globalThis._lastAssistantRenderAtMs = 0;
-            const due = (now - globalThis._lastAssistantRenderAtMs) >= 33; // ~30fps
+            const due = (now - globalThis._lastAssistantRenderAtMs) >= 16; // ~60fps when possible
 
             if (isFinal) {
               const prevPlain = currentAssistantBuffer; // keep a copy to guard against transient shrink on final
@@ -659,8 +659,14 @@ function connectEventStream(sessionId) {
               try { injectShadowText(currentAssistantMsgId, prevPlain, 3000); } catch(_e) {}
               globalThis._lastAssistantRenderAtMs = now;
             } else if (!shouldThrottle || due) {
-              setMessage(currentAssistantMsgId, "response_stream", "", currentAssistantBuffer, false, payload.metadata || {});
-              globalThis._lastAssistantRenderAtMs = now;
+              // Only push an incremental DOM update when content grew by a few chars or time budget elapsed
+              const lastLen = globalThis._lastAssistantRenderLen || 0;
+              const grewEnough = (currentAssistantBuffer.length - lastLen) >= 4; // micro-throttle
+              if (!shouldThrottle || grewEnough || due) {
+                setMessage(currentAssistantMsgId, "response_stream", "", currentAssistantBuffer, false, payload.metadata || {});
+                globalThis._lastAssistantRenderLen = currentAssistantBuffer.length;
+                globalThis._lastAssistantRenderAtMs = now;
+              }
             }
           }
           if (isFinal) {
@@ -963,6 +969,7 @@ globalThis.resetChat = async function (id) {
       resetCounter++;
       // Ensure we fully rotate the stream and drop any stale events after reset
       try { if (eventSource) { eventSource.close(); eventSource = null; } } catch(_e) {}
+      try { hideThinkingBubble(); setThinking(""); } catch(_e) {}
       connectEventStream(context);
     }
     justToast("Chat reset", "success", 1200, "chat-reset");
@@ -995,6 +1002,13 @@ globalThis.toggleAutoScroll = async function (_autoScroll) {
 };
 
 globalThis.toggleJson = async function (showJson) {
+  try {
+    const el = document.querySelector("li [data-test='toggle-json']");
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      try { el.focus(); } catch(_) {}
+    }
+  } catch(_) {}
   css.toggleCssProperty(".msg-json", "display", showJson ? "block" : "none");
   try {
     uiPrefs.show_json = !!showJson;
@@ -1003,6 +1017,13 @@ globalThis.toggleJson = async function (showJson) {
 };
 
 globalThis.toggleThoughts = async function (showThoughts) {
+  try {
+    const el = document.querySelector("li [data-test='toggle-thoughts']");
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      try { el.focus(); } catch(_) {}
+    }
+  } catch(_) {}
   css.toggleCssProperty(
     ".msg-thoughts",
     "display",
@@ -1019,6 +1040,13 @@ globalThis.toggleThoughts = async function (showThoughts) {
 };
 
 globalThis.toggleUtils = async function (showUtils) {
+  try {
+    const el = document.querySelector("li [data-test='toggle-utils']");
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      try { el.focus(); } catch(_) {}
+    }
+  } catch(_) {}
   css.toggleCssProperty(
     ".message-util",
     "display",
@@ -1028,6 +1056,18 @@ globalThis.toggleUtils = async function (showUtils) {
     uiPrefs.show_utils = !!showUtils;
     await saveUiPreferences();
     if (showUtils) {
+      // Ensure a session exists so the util bubble can be emitted via SSE
+      if (!context) {
+        try { newContext(); } catch(_) {}
+      }
+      // Ensure we are listening for events on this session, even if it's a draft
+      try { if (context) connectEventStream(context); } catch(_) {}
+      try { await sleep(100); } catch(_) {}
+      // Only inject an immediate util bubble when this is a user action, not during initial UI pref bootstrap
+      try { if (!initializingUiPrefs) {
+        const id = generateGUID();
+        setMessage(id, "util", "Utility", "Searching memories…", false, { query: 'No relevant memory query generated, skipping search' });
+      } } catch(_) {}
       maybeShowUtilitiesGreeting();
     }
   } catch(_e) {}
@@ -1189,6 +1229,8 @@ function maybeShowUtilitiesGreeting() {
   try {
     const sid = context || "";
     if (!sid) return;
+    // Do not emit during initial UI preference bootstrap to avoid polluting empty chats
+    try { if (initializingUiPrefs) return; } catch(_) {}
     const shownKey = `utilitiesGreetingShown:${sid}`;
     if (localStorage.getItem(shownKey) === "1") return;
 
@@ -1517,6 +1559,12 @@ async function initUiPreferences() {
     // Allow subsequent user interactions to persist preferences
     initializingUiPrefs = false;
   }
+
+  // Ensure the preferences list is scrolled into view so header toggles are interactable
+  try {
+    const prefList = document.getElementById('pref-list');
+    if (prefList) prefList.scrollIntoView({ block: 'center', inline: 'nearest' });
+  } catch(_) {}
 }
 
 async function saveUiPreferences() {

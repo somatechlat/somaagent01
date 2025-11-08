@@ -21,7 +21,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 4px 23px rgba(0, 0, 0, 0.2);
+  /* Stronger shadow to match Golden snapshot appearance */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
   box-sizing: border-box;
 }
 

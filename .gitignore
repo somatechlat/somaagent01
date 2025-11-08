@@ -58,6 +58,9 @@ logs/
 temp/
 tmp/
 
+# Ignore parity CSS overrides used during UI parity testing
+webui/css/a0-parity-overrides.css
+
 # Test files under webui
 webui/test/
 webui/tests/
@@ -75,3 +78,7 @@ node_modules/
 
 # Project-specific ignores
 CODEXROADMAP.md
+llm-key-new.pem
+.gitignore
+.gitignore
+llm-key.pem

@@ -116,6 +116,18 @@ class KafkaEventBus:
             "enable_auto_commit": False,
             "security_protocol": settings.security_protocol,
         }
+        # Low-latency fetch settings for near‑real‑time UI streaming. Defaults are conservative;
+        # allow tuning via environment variables without code changes.
+        try:
+            fetch_wait_ms = int(os.getenv("KAFKA_FETCH_MAX_WAIT_MS", "20"))  # default 20ms
+            fetch_min_bytes = int(os.getenv("KAFKA_FETCH_MIN_BYTES", "1"))   # default 1 byte
+            kwargs.update({
+                "fetch_max_wait_ms": max(1, fetch_wait_ms),
+                "fetch_min_bytes": max(1, fetch_min_bytes),
+            })
+        except Exception:
+            # Fall back silently if envs are invalid
+            pass
         if settings.sasl_mechanism:
             kwargs.update(
                 {
