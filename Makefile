@@ -168,6 +168,13 @@ dev-down:
 	else \
 	  echo "No leftover dev containers found."; \
 	fi
+	@# Additional fallback: if the stack was started without the dev project name, also clear default project containers
+	@echo "Checking for default project containers (somaagent01) ...";
+	@ids=$$(docker ps -aq --filter "label=com.docker.compose.project=somaagent01"); \
+	if [ -n "$$ids" ]; then \
+	  echo "Removing default project containers (somaagent01): $$ids"; \
+	  docker rm -f $$ids >/dev/null 2>&1 || true; \
+	fi
 	@if [ "$(DEV_REMOVE_NETWORK)" = "1" ]; then \
 	  echo "Removing dev network 'somaagent01_dev'..."; \
 	  docker network rm somaagent01_dev >/dev/null 2>&1 || true; \
