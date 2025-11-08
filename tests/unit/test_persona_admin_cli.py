@@ -1,5 +1,6 @@
-import json
 import argparse
+import json
+
 import pytest
 
 from scripts import persona_admin as cli
@@ -8,6 +9,7 @@ from scripts import persona_admin as cli
 class FakeClient:
     def __init__(self):
         import asyncio
+
         self._loop = asyncio.new_event_loop()
 
     def _get_loop(self):
@@ -25,7 +27,9 @@ class FakeClient:
     async def delete_persona(self, persona_id):
         return {"id": persona_id, "deleted": True}
 
-    async def _request(self, method, path, *, json=None, params=None, headers=None, allow_404=False):  # noqa: WPS211
+    async def _request(
+        self, method, path, *, json=None, params=None, headers=None, allow_404=False
+    ):  # noqa: WPS211
         # Simulate ETag precondition for DELETE
         if method == "DELETE" and headers and headers.get("If-Match") == "bad-etag":
             raise RuntimeError("412 Precondition Failed: ETag mismatch")

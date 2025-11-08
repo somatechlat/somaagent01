@@ -1,5 +1,4 @@
 import json
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,6 +39,7 @@ async def test_llm_invoke_audit_success(monkeypatch):
 
     # Fake creds store and SLM client factory (patch module-level functions)
     from services import gateway as gw_pkg  # type: ignore
+
     monkeypatch.setattr(gw_pkg.main, "get_llm_credentials_store", lambda: _FakeCreds())
     monkeypatch.setattr(gw_pkg.main, "_gateway_slm_client", lambda: _FakeSLMClient())
 
@@ -49,15 +49,13 @@ async def test_llm_invoke_audit_success(monkeypatch):
         "role": "dialogue",
         "session_id": "sess-llm-1",
         "tenant": "public",
-        "messages": [
-            {"role": "user", "content": "hi"}
-        ],
+        "messages": [{"role": "user", "content": "hi"}],
         "overrides": {
             "model": "gpt-4o-mini",
             "base_url": "https://api.openai.com/v1",
             "temperature": 0.1,
-            "kwargs": {"top_p": 1.0}
-        }
+            "kwargs": {"top_p": 1.0},
+        },
     }
 
     r = client.post("/v1/llm/invoke", json=payload, headers={"X-Internal-Token": "itok"})
@@ -72,4 +70,7 @@ async def test_llm_invoke_audit_success(monkeypatch):
     lines = [ln for ln in r2.text.splitlines() if ln.strip()]
     assert len(lines) >= 1
     records = [json.loads(ln) for ln in lines]
-    assert any(rec.get("action") == "llm.invoke" and rec.get("details", {}).get("status") == "ok" for rec in records)
+    assert any(
+        rec.get("action") == "llm.invoke" and rec.get("details", {}).get("status") == "ok"
+        for rec in records
+    )

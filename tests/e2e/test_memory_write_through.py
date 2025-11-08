@@ -3,9 +3,8 @@ import time
 import uuid
 from typing import Any, Dict, List
 
-import pytest
 import httpx
-
+import pytest
 
 BASE_URL = os.getenv("GATEWAY_BASE_URL", os.getenv("BASE_URL", "http://localhost:21016"))
 TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
@@ -83,7 +82,9 @@ def test_chat_message_persists_to_somabrain() -> None:
         resp = client.post(f"{BASE_URL}/v1/session/message", json=payload)
         assert resp.status_code == 200, f"message send failed: HTTP {resp.status_code} {resp.text}"
         body = resp.json() or {}
-        assert body.get("session_id") == session_id and body.get("event_id"), "malformed message response"
+        assert body.get("session_id") == session_id and body.get(
+            "event_id"
+        ), "malformed message response"
 
         # 3) Poll the memory replica until the user conversation_event appears
         deadline = time.time() + POLL_TIMEOUT
@@ -97,7 +98,9 @@ def test_chat_message_persists_to_somabrain() -> None:
             mem = client.get(f"{BASE_URL}/v1/admin/memory", params=params)
             # If the admin endpoint is protected with auth, surface a skip with guidance
             if mem.status_code in {401, 403}:
-                pytest.skip("/v1/admin/memory requires admin auth in this environment; cannot verify proof.")
+                pytest.skip(
+                    "/v1/admin/memory requires admin auth in this environment; cannot verify proof."
+                )
             assert mem.status_code == 200, f"admin memory failed: HTTP {mem.status_code} {mem.text}"
             items: List[Dict[str, Any]] = mem.json().get("items", [])
 
@@ -110,7 +113,10 @@ def test_chat_message_persists_to_somabrain() -> None:
                         atts = payload.get("attachments") or []
                         if isinstance(atts, list):
                             # Accept any string path that matches our uploaded id
-                            matches = any(isinstance(a, str) and a.startswith("/v1/attachments/") for a in atts)
+                            matches = any(
+                                isinstance(a, str) and a.startswith("/v1/attachments/")
+                                for a in atts
+                            )
                         else:
                             matches = False
                         found = {"content": content, "attachments": atts, "matches": matches}

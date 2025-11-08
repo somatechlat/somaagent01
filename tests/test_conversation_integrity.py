@@ -11,9 +11,10 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from services.common.session_repository import PostgresSessionStore, ensure_schema
+from services.common.session_repository import ensure_schema, PostgresSessionStore
 
 GATEWAY_BASE = "http://localhost:21016"
+
 
 @pytest_asyncio.fixture()
 async def pg_pool() -> AsyncIterator[asyncpg.Pool]:
@@ -35,6 +36,7 @@ async def pg_pool() -> AsyncIterator[asyncpg.Pool]:
         finally:
             await pool.close()
 
+
 @pytest_asyncio.fixture()
 async def store(pg_pool: asyncpg.Pool) -> AsyncIterator[PostgresSessionStore]:
     repo = PostgresSessionStore()
@@ -44,50 +46,80 @@ async def store(pg_pool: asyncpg.Pool) -> AsyncIterator[PostgresSessionStore]:
     finally:
         await repo.close()
 
+
 @pytest.mark.asyncio
 async def test_event_deduplicate(store: PostgresSessionStore):
     sid = str(uuid.uuid4())
     eid = str(uuid.uuid4())
-    payload = {"event_id": eid, "session_id": sid, "role": "user", "type": "user", "message": "Hello"}
+    payload = {
+        "event_id": eid,
+        "session_id": sid,
+        "role": "user",
+        "type": "user",
+        "message": "Hello",
+    }
     await store.append_event(sid, payload)
     # Second append with same event_id should result in second row only if dedupe not enforced; we enforce via unique index
     dup_exists = await store.event_exists(sid, eid)
     assert dup_exists is True
-    # Attempt duplicate append should raise due to unique index
-    with pytest.raises(Exception):
+    # Attempt duplicate append should raise due to unique index (narrow to Postgres errors)
+    with pytest.raises(asyncpg.PostgresError):
         await store.append_event(sid, payload)
+
 
 @pytest.mark.asyncio
 async def test_error_normalization_read_upgrade(store: PostgresSessionStore):
     sid = str(uuid.uuid4())
-    raw_error = {"event_id": str(uuid.uuid4()), "session_id": sid, "type": "error", "message": "", "role": None}
+    raw_error = {
+        "event_id": str(uuid.uuid4()),
+        "session_id": sid,
+        "type": "error",
+        "message": "",
+        "role": None,
+    }
     # Try direct insert bypassing normalization; skip if cannot
     try:
         pool = await store._ensure_pool()
         async with pool.acquire() as conn:
-            await conn.execute("INSERT INTO session_events (session_id, payload) VALUES ($1, $2)", sid, json.dumps(raw_error))
+            await conn.execute(
+                "INSERT INTO session_events (session_id, payload) VALUES ($1, $2)",
+                sid,
+                json.dumps(raw_error),
+            )
     except Exception:
         pytest.skip("direct raw insert not possible (constraint or auth)")
     events = await store.list_events_after(sid, limit=10)
     assert events, "expected events list"
     raw = [e for e in events if e["payload"].get("type") == "error"]
-    assert raw, "raw error should be present prior to read-time normalization path (direct DB access)"
+    assert (
+        raw
+    ), "raw error should be present prior to read-time normalization path (direct DB access)"
     # Gateway /v1/sessions/{sid}/events endpoint should upgrade type; call only if gateway running
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{GATEWAY_BASE}/v1/sessions/{sid}/events?limit=25")
         if resp.status_code == 200:
-            upgraded = [p for p in resp.json().get("events", []) if p.get("payload", {}).get("type", "").endswith(".error")]
+            upgraded = [
+                p
+                for p in resp.json().get("events", [])
+                if p.get("payload", {}).get("type", "").endswith(".error")
+            ]
             assert upgraded, "expected upgraded *.error event via API normalization"
     except Exception:
         pytest.skip("gateway not reachable for normalization test")
+
 
 @pytest.mark.asyncio
 async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
     # This test assumes gateway streaming endpoint transforms tokens to assistant.delta and final
     # We invoke a minimal /v1/session/message then read SSE for a short duration.
     sid = str(uuid.uuid4())
-    message_body = {"session_id": sid, "message": "Ping stream transform", "persona_id": None, "metadata": {}}
+    message_body = {
+        "session_id": sid,
+        "message": "Ping stream transform",
+        "persona_id": None,
+        "metadata": {},
+    }
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(f"{GATEWAY_BASE}/v1/session/message", json=message_body)
@@ -99,8 +131,8 @@ async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
     url = f"{GATEWAY_BASE}/v1/session/{sid}/events"
     try:
         async with httpx.AsyncClient(timeout=None) as client:
-            with pytest.raises(Exception):
-                # We expect eventual disconnect due to test harness; read a few lines
+            # Expect timeout/read error due to test harness; narrow exception types
+            with pytest.raises((httpx.TimeoutException, httpx.ReadError)):
                 r = await client.get(url, headers={"Accept": "text/event-stream"}, timeout=10.0)
                 # Fallback: if not streaming, skip
                 if r.status_code != 200:
@@ -114,8 +146,11 @@ async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
             data = resp.json().get("events", [])
             for ev in data:
                 types.add(ev.get("payload", {}).get("type"))
-            assert any(t == "assistant.final" for t in types), "expected assistant.final in events list"
+            assert any(
+                t == "assistant.final" for t in types
+            ), "expected assistant.final in events list"
     # Cannot reliably assert assistant.delta without provider streaming; ensure final present only
+
 
 @pytest.mark.asyncio
 async def test_raw_error_constraint(store: PostgresSessionStore):
@@ -125,7 +160,11 @@ async def test_raw_error_constraint(store: PostgresSessionStore):
         pool = await store._ensure_pool()
         async with pool.acquire() as conn:
             try:
-                await conn.execute("INSERT INTO session_events (session_id, payload) VALUES ($1, $2)", sid, json.dumps(raw_error))
+                await conn.execute(
+                    "INSERT INTO session_events (session_id, payload) VALUES ($1, $2)",
+                    sid,
+                    json.dumps(raw_error),
+                )
             except Exception:
                 return  # Constraint enforced or insert blocked
     except Exception:

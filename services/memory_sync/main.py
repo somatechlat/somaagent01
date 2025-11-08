@@ -7,25 +7,23 @@ publishes memory.wal on success to keep the replica in sync.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import time
-from typing import Optional, Any, Mapping, Sequence
-import json
+from typing import Any, Mapping, Sequence
 
-import httpx
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.publisher import DurablePublisher
-from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
-from services.common.memory_write_outbox import (
-    MemoryWriteOutbox,
-    ensure_schema as ensure_mw_schema,
-)
-from services.common.tracing import setup_tracing
 from python.integrations.soma_client import SomaClient, SomaClientError
-
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.memory_write_outbox import (
+    ensure_schema as ensure_mw_schema,
+    MemoryWriteOutbox,
+)
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.publisher import DurablePublisher
+from services.common.tracing import setup_tracing
 
 LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +74,9 @@ class MemorySyncWorker:
             LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
         metrics_port = int(os.getenv("MEMORY_SYNC_METRICS_PORT", "9471"))
         start_http_server(metrics_port)
-        LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
+        LOGGER.info(
+            "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}
+        )
         while not self._stopping.is_set():
             pending = await self.store.count_pending()
             BACKLOG.set(pending)
@@ -200,4 +200,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         LOGGER.info("memory_sync stopped")
-

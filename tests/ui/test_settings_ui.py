@@ -1,8 +1,12 @@
 import os
-import pytest
+
 
 def test_settings_modal_opens_and_loads_sections(page):
-    base_url = os.getenv("WEB_UI_BASE_URL") or os.getenv("SA01_BASE_URL") or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}/ui"
+    base_url = (
+        os.getenv("WEB_UI_BASE_URL")
+        or os.getenv("SA01_BASE_URL")
+        or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}/ui"
+    )
     # Load UI
     page.goto(base_url, wait_until="domcontentloaded")
 
@@ -34,4 +38,3 @@ def test_settings_modal_opens_and_loads_sections(page):
     # If scheduler is default, skip this assertion gracefully
     if page.locator("#settings-sections nav ul li").count() > 0:
         assert page.locator("#settings-sections nav ul li").count() > 0
-

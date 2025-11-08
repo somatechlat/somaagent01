@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple
 
@@ -74,7 +73,9 @@ class SLMClient:
         if response.is_error:
             try:
                 body = response.text
-                LOGGER.error("SLM error response", extra={"status": response.status_code, "body": body[:800]})
+                LOGGER.error(
+                    "SLM error response", extra={"status": response.status_code, "body": body[:800]}
+                )
             except Exception:
                 pass
             response.raise_for_status()
@@ -125,7 +126,13 @@ class SLMClient:
             if response.is_error:
                 try:
                     body = await response.aread()
-                    LOGGER.error("SLM stream error response", extra={"status": response.status_code, "body": body.decode("utf-8", errors="ignore")[:800]})
+                    LOGGER.error(
+                        "SLM stream error response",
+                        extra={
+                            "status": response.status_code,
+                            "body": body.decode("utf-8", errors="ignore")[:800],
+                        },
+                    )
                 except Exception:
                     pass
                 response.raise_for_status()

@@ -23,7 +23,9 @@ async def test_ui_settings_sections_uploads_roundtrip(monkeypatch):
     assert resp.status_code == 200
     data = resp.json().get("settings", {})
     assert isinstance(data, dict)
-    assert any(sec.get("id") == "uploads" for sec in data.get("sections", [])), "uploads section present"
+    assert any(
+        sec.get("id") == "uploads" for sec in data.get("sections", [])
+    ), "uploads section present"
 
     # Build a payload with updated uploads settings
     uploads_updates = {

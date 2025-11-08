@@ -1,5 +1,6 @@
 import asyncio
 import os
+
 import pytest
 
 from services.conversation_worker.main import ConversationWorker
@@ -48,7 +49,9 @@ async def test_background_recall_uses_sse_when_enabled(monkeypatch):
     )
 
     # Expect context.update events with status == recall_sse
-    sse_updates = [e for (topic, e) in worker.publisher.events if (e or {}).get("type") == "context.update"]
+    sse_updates = [
+        e for (topic, e) in worker.publisher.events if (e or {}).get("type") == "context.update"
+    ]
     assert sse_updates, "expected SSE-driven context updates"
     statuses = [((ev.get("metadata") or {}).get("status")) for ev in sse_updates]
     assert any(s == "recall_sse" for s in statuses)

@@ -18,7 +18,6 @@ from typing import Optional
 
 import httpx
 
-
 # Resolve canonical base from environment when available (VIBE: prefer existing env vars)
 BASE = (
     sys.argv[1]

@@ -1,4 +1,5 @@
 import os
+
 import pytest
 from httpx import AsyncClient
 
@@ -10,7 +11,11 @@ async def test_tool_events_skip_friendly(monkeypatch):
     """
     monkeypatch.setenv("SA01_ENABLE_TOOL_EVENTS", "true")
     # Require a provider to avoid indefinite waits
-    if not (os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or os.getenv("AZURE_OPENAI_ENDPOINT")):
+    if not (
+        os.getenv("OPENAI_API_KEY")
+        or os.getenv("ANTHROPIC_API_KEY")
+        or os.getenv("AZURE_OPENAI_ENDPOINT")
+    ):
         pytest.skip("No LLM provider configured for tool events test")
     try:
         from services.gateway.main import app  # type: ignore
@@ -22,9 +27,7 @@ async def test_tool_events_skip_friendly(monkeypatch):
             "session_id": "tool-events-test-session",
             "persona_id": "persona-x",
             "model": "dummy",
-            "messages": [
-                {"role": "user", "content": "Use a tool if needed for 2+2"}
-            ],
+            "messages": [{"role": "user", "content": "Use a tool if needed for 2+2"}],
         }
         try:
             resp = await client.post("/v1/llm/invoke/stream", json=payload, timeout=6)

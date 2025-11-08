@@ -18,8 +18,12 @@ from cryptography.fernet import Fernet, InvalidToken
 
 
 class LlmCredentialsStore:
-    def __init__(self, *, redis_url: Optional[str] = None, namespace: str = "gateway:llm_credentials") -> None:
-        self._r: redis.Redis = redis.from_url(redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
+    def __init__(
+        self, *, redis_url: Optional[str] = None, namespace: str = "gateway:llm_credentials"
+    ) -> None:
+        self._r: redis.Redis = redis.from_url(
+            redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True
+        )
         self._ns = namespace
         self._fernet = self._load_fernet()
         # Track metadata (updated_at epoch seconds) in a sibling hash for status endpoint.
@@ -39,7 +43,9 @@ class LlmCredentialsStore:
                 k = base64.urlsafe_b64encode(key.encode("utf-8"))
                 return Fernet(k)
             except Exception as exc:
-                raise RuntimeError("Invalid GATEWAY_ENC_KEY; must be 32-byte urlsafe base64") from exc
+                raise RuntimeError(
+                    "Invalid GATEWAY_ENC_KEY; must be 32-byte urlsafe base64"
+                ) from exc
 
     async def set(self, provider: str, secret: str) -> None:
         provider = provider.strip().lower()
@@ -47,6 +53,7 @@ class LlmCredentialsStore:
         await self._r.hset(self._ns, provider, token)
         try:
             import time
+
             await self._r.hset(self._meta_ns, provider, str(int(time.time())))
         except Exception:
             # Non-fatal: metadata update best-effort

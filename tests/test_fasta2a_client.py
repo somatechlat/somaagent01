@@ -92,7 +92,9 @@ def print_troubleshooting():
     print("=" * 40)
     print()
     print("1. Server not running:")
-    print("   - Make sure the Gateway is running. Set GATEWAY_BASE_URL and start the dev stack (make stack-up).")
+    print(
+        "   - Make sure the Gateway is running. Set GATEWAY_BASE_URL and start the dev stack (make stack-up)."
+    )
     print("   - Check the correct port (default: 50101)")
     print()
 
@@ -162,7 +164,9 @@ async def test_server_connectivity():
                 return True
             except httpx.ConnectError:
                 print("❌ Cannot connect to expected server (Agent services)")
-                print("   Ensure the Gateway and services are running (make stack-up) and GATEWAY_BASE_URL is set.")
+                print(
+                    "   Ensure the Gateway and services are running (make stack-up) and GATEWAY_BASE_URL is set."
+                )
                 return False
             except Exception as e:
                 print(f"❌ Server connectivity error: {e}")

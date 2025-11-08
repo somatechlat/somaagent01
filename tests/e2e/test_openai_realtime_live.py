@@ -26,18 +26,17 @@ Note: We generate a synthetic audio track (sine wave) from this machine and
 
 from __future__ import annotations
 
-import os
 import asyncio
 import contextlib
+import os
 from pathlib import Path
 
 import pytest
 
-
 try:
-    from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
-    from aiortc.contrib.media import MediaRecorder
     import av
+    from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription
+    from aiortc.contrib.media import MediaRecorder
 
     HAVE_AIORTC = True
 except Exception:  # pragma: no cover
@@ -50,6 +49,7 @@ OUT_WAV = Path("tmp/openai_realtime_out.wav")
 
 
 if HAVE_AIORTC:
+
     class SineAudioTrack(MediaStreamTrack):
         kind = "audio"
 
@@ -64,6 +64,7 @@ if HAVE_AIORTC:
             samples = int(self.sample_rate * frame_duration)
             # Generate a simple sine wave in float32 then convert to s16
             import math
+
             import numpy as np
 
             t = (self._t + (1 / self.sample_rate) * np.arange(samples)).astype(np.float32)

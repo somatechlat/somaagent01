@@ -1,10 +1,9 @@
-import asyncio
 import json
 import os
 import time
 
-import pytest
 import httpx
+import pytest
 
 
 @pytest.mark.asyncio
@@ -18,13 +17,21 @@ async def test_sse_api_contract_smoke():
     cannot issue the initial POST or if no assistant event appears within the timeout.
     """
 
-    BASE = os.environ.get("BASE_URL") or os.environ.get("WEB_UI_BASE_URL") or "http://127.0.0.1:21016"
+    BASE = (
+        os.environ.get("BASE_URL") or os.environ.get("WEB_UI_BASE_URL") or "http://127.0.0.1:21016"
+    )
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         # Post a message (use the lightweight message shape used by scripts/e2e_quick.py)
         payload = {"message": "smoke-test: hello from pytest"}
-        r = await client.post(f"{BASE}/v1/session/message", headers={"Content-Type": "application/json"}, json=payload)
-        assert r.status_code in (200, 201, 202), f"POST /v1/session/message failed: {r.status_code} {r.text[:200]}"
+        r = await client.post(
+            f"{BASE}/v1/session/message", headers={"Content-Type": "application/json"}, json=payload
+        )
+        assert r.status_code in (
+            200,
+            201,
+            202,
+        ), f"POST /v1/session/message failed: {r.status_code} {r.text[:200]}"
         data = {}
         try:
             data = r.json()

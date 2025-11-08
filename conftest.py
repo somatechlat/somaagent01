@@ -113,6 +113,7 @@ def pytest_collection_modifyitems(config, items):
     import os
 
     import pytest
+
     run_integration = os.getenv("RUN_INTEGRATION") in {"1", "true", "yes"}
     if run_integration:
         return

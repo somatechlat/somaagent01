@@ -1,12 +1,13 @@
 import os
 import time
 import uuid
-import pytest
-import asyncio
 
-from services.common.memory_replica_store import MemoryReplicaStore, ensure_schema
+import pytest
+
+from services.common.memory_replica_store import ensure_schema, MemoryReplicaStore
 
 pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_memory_replica_payload_is_dict():
@@ -49,5 +50,6 @@ async def test_memory_replica_payload_is_dict():
 
     # Verify list_memories also yields dict payload
     rows = await store.list_memories(limit=5, session_id=session_id)
-    assert any(isinstance(r.payload, dict) for r in rows), "list_memories returned non-dict payloads"
-
+    assert any(
+        isinstance(r.payload, dict) for r in rows
+    ), "list_memories returned non-dict payloads"

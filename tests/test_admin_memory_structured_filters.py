@@ -4,8 +4,11 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from services.common.memory_replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
 from services.gateway.main import app
-from services.common.memory_replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 
 
 @pytest.mark.asyncio
@@ -25,7 +28,11 @@ async def test_admin_memory_structured_filters(monkeypatch):
         "role": "user",
         "session_id": "s-1",
         "tenant": "t-1",
-        "payload": {"id": "m-1", "content": "u1-ns-wm", "metadata": {"universe_id": "u-1", "namespace": "wm"}},
+        "payload": {
+            "id": "m-1",
+            "content": "u1-ns-wm",
+            "metadata": {"universe_id": "u-1", "namespace": "wm"},
+        },
         "result": {},
         "timestamp": time.time(),
     }
@@ -34,7 +41,12 @@ async def test_admin_memory_structured_filters(monkeypatch):
         "role": "user",
         "session_id": "s-2",
         "tenant": "t-1",
-        "payload": {"id": "m-2", "content": "u1-ns-ltm", "namespace": "ltm", "metadata": {"universe_id": "u-1"}},
+        "payload": {
+            "id": "m-2",
+            "content": "u1-ns-ltm",
+            "namespace": "ltm",
+            "metadata": {"universe_id": "u-1"},
+        },
         "result": {},
         "timestamp": time.time(),
     }
@@ -59,7 +71,9 @@ async def test_admin_memory_structured_filters(monkeypatch):
     items = resp.json()["items"]
     assert any("u1-ns-wm" in (it.get("payload", {}).get("content", "")) for it in items)
     assert any("u1-ns-ltm" in (it.get("payload", {}).get("content", "")) for it in items)
-    assert all(((it.get("payload") or {}).get("metadata", {}).get("universe_id") == "u-1") for it in items)
+    assert all(
+        ((it.get("payload") or {}).get("metadata", {}).get("universe_id") == "u-1") for it in items
+    )
 
     # Filter by namespace wm
     resp2 = client.get("/v1/admin/memory", params={"tenant": "t-1", "namespace": "wm"})
@@ -73,4 +87,3 @@ async def test_admin_memory_structured_filters(monkeypatch):
         )
         for it in items2
     )
-

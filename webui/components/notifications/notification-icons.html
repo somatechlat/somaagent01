@@ -1,26 +1,27 @@
 <html>
 <head>
     <script type="module">
-        import { store } from "/components/notifications/notification-store.js";
+        // Legacy store still loaded by index.js; bindings use Alpine bridge 'notificationSse'
     </script>
 </head>
 <body>
     <div x-data>
-        <template x-if="$store.notificationStore">
+        <template x-if="$store.notificationSse">
             <!-- Notification Toggle Button -->
             <div class="notification-toggle"
                  :class="{
-                     'has-unread': $store.notificationStore.unreadPrioCount > 0,
-                     'has-notifications': $store.notificationStore.notifications.length > 0
+                     'has-unread': $store.notificationSse.unreadCount > 0,
+                     'has-notifications': $store.notificationSse.count > 0
                  }"
-                 @click="$store.notificationStore.openModal()"
+                 @click="$store.notificationStore?.openModal && $store.notificationStore.openModal()"
                  title="View Notifications">
                 <div class="notification-icon">
                     <span class="material-symbols-outlined">notifications</span>
                 </div>
-                <span x-show="$store.notificationStore.unreadPrioCount > 0"
+                <span id="notification-badge"
+                      x-show="$store.notificationSse.unreadCount > 0"
                       class="notification-badge"
-                      x-text="$store.notificationStore.unreadPrioCount"></span>
+                      x-text="$store.notificationSse.unreadCount"></span>
             </div>
         </template>
     </div>

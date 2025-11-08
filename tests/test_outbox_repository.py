@@ -1,5 +1,3 @@
- 
-
 import asyncpg
 import pytest
 from testcontainers.postgres import PostgresContainer

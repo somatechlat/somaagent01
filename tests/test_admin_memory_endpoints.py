@@ -4,8 +4,11 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from services.common.memory_replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
 from services.gateway.main import app
-from services.common.memory_replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 
 
 @pytest.mark.asyncio
@@ -46,4 +49,3 @@ async def test_admin_memory_list_and_detail(monkeypatch):
     assert resp2.status_code == 200
     detail = resp2.json()
     assert detail.get("event_id") == "ev-123"
-

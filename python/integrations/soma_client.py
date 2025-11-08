@@ -35,13 +35,23 @@ instead of instantiating the class directly.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 import os
 import time
 from dataclasses import dataclass
-import hashlib
-import json
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, AsyncIterator
+from typing import (
+    Any,
+    AsyncIterator,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+)
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
@@ -423,7 +433,9 @@ class SomaClient:
                 return None
 
             # Retry on 5xx and 429 (Too Many Requests); honor Retry-After if present
-            if (response.status_code >= 500 or response.status_code == 429) and attempt < self._max_retries:
+            if (
+                response.status_code >= 500 or response.status_code == 429
+            ) and attempt < self._max_retries:
                 attempt += 1
                 # Baseline exponential backoff with jitter
                 backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
@@ -437,11 +449,12 @@ class SomaClient:
                     except ValueError:
                         # Fallback: parse HTTP-date to seconds delta (simple/lenient)
                         try:
-                            import email.utils as _eutils, time as _time
+                            import email.utils as _eutils
+                            import time as _time
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:
-                                delta = (ts.timestamp() - _time.time())
+                                delta = ts.timestamp() - _time.time()
                                 ra_s = max(0.0, float(delta))
                             else:
                                 ra_s = 0.0
@@ -527,11 +540,7 @@ class SomaClient:
         )
 
         # Determine the logical universe. Prefer explicit arg, then metadata.universe_id, then client default.
-        derived_universe = (
-            universe
-            or metadata_dict.get("universe_id")
-            or self.universe
-        )
+        derived_universe = universe or metadata_dict.get("universe_id") or self.universe
 
         # Derive a stable key: prefer payload.id, then explicit/idempotency keys, else a short hash of the value
         candidate_key: Optional[str] = None
@@ -541,16 +550,16 @@ class SomaClient:
             candidate_key = str(payload_dict.get("idempotency_key"))
         elif isinstance(metadata_dict.get("idempotency_key"), (str, int)):
             candidate_key = str(metadata_dict.get("idempotency_key"))
-        elif isinstance(payload_dict.get("session_id"), (str, int)) and isinstance(payload_dict, Mapping):
+        elif isinstance(payload_dict.get("session_id"), (str, int)) and isinstance(
+            payload_dict, Mapping
+        ):
             # Combine session_id with value for stability if available
             try:
                 blob = json.dumps(payload_dict, sort_keys=True, ensure_ascii=False).encode("utf-8")
             except Exception:
                 blob = repr(payload_dict).encode("utf-8")
             candidate_key = (
-                str(payload_dict.get("session_id"))
-                + ":"
-                + hashlib.sha256(blob).hexdigest()[:16]
+                str(payload_dict.get("session_id")) + ":" + hashlib.sha256(blob).hexdigest()[:16]
             )
         else:
             try:
@@ -686,7 +695,9 @@ class SomaClient:
         # Spec prefers a query parameter named "payload" which may be a JSON string/object; send compact JSON string first
         params_payload = None
         try:
-            params_payload = json.dumps({k: v for k, v in body.items() if v is not None}, separators=(",", ":"))
+            params_payload = json.dumps(
+                {k: v for k, v in body.items() if v is not None}, separators=(",", ":")
+            )
         except Exception:
             params_payload = None
 
@@ -732,7 +743,9 @@ class SomaClient:
         response = None
         if params_payload is not None:
             try:
-                response = await self._request("POST", "/memory/recall/stream", params={"payload": params_payload})
+                response = await self._request(
+                    "POST", "/memory/recall/stream", params={"payload": params_payload}
+                )
             except SomaClientError:
                 response = None
         if response is None:
@@ -851,7 +864,9 @@ class SomaClient:
         etag: Optional[str] = None,
     ) -> Any:
         headers = {"If-Match": etag} if etag else None
-        return await self._request("PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers)
+        return await self._request(
+            "PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers
+        )
 
     async def get_persona(self, persona_id: str) -> Mapping[str, Any]:
         return await self._request("GET", f"/persona/{persona_id}")

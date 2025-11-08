@@ -5,20 +5,19 @@ from __future__ import annotations
 import json
 import logging
 import os
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from time import perf_counter
 from typing import Any, Optional
 from uuid import UUID
-import uuid
-from services.common import masking as _masking
-from services.common import error_classifier as _errclass
 
-import os
 import asyncpg
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
+
+from services.common import error_classifier as _errclass, masking as _masking
 
 LOGGER = logging.getLogger(__name__)
 
@@ -187,7 +186,9 @@ class PostgresSessionStore(SessionStore):
         if self._pool is None:
             min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
             max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     @staticmethod
@@ -263,18 +264,32 @@ class PostgresSessionStore(SessionStore):
                         "persona_id": event.get("persona_id"),
                         "role": role,
                         "message": "An internal error occurred while processing your request.",
-                        "metadata": {"source": event.get("metadata", {}).get("source", "system"), "error": str(details)[:400]},
-                        "type": f"{role}.error" if role in {"assistant", "tool", "system"} else "assistant.error",
+                        "metadata": {
+                            "source": event.get("metadata", {}).get("source", "system"),
+                            "error": str(details)[:400],
+                        },
+                        "type": (
+                            f"{role}.error"
+                            if role in {"assistant", "tool", "system"}
+                            else "assistant.error"
+                        ),
                         "version": event.get("version", "sa01-v1"),
                     }
                     # Error classification (flag-driven)
-                    if os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {"true","1","yes","on"}:
+                    if os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {
+                        "true",
+                        "1",
+                        "yes",
+                        "on",
+                    }:
                         meta = event.get("metadata") or {}
                         em = _errclass.classify(message=str(details))
-                        meta.update({
-                            "error_code": em.error_code,
-                            "retriable": em.retriable,
-                        })
+                        meta.update(
+                            {
+                                "error_code": em.error_code,
+                                "retriable": em.retriable,
+                            }
+                        )
                         if em.retry_after is not None:
                             meta["retry_after"] = em.retry_after
                         event["metadata"] = meta
@@ -282,7 +297,12 @@ class PostgresSessionStore(SessionStore):
                 pass
 
             # Optional masking (only for assistant/tool/system roles and user-visible message)
-            if os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {"true","1","yes","on"}:
+            if os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {
+                "true",
+                "1",
+                "yes",
+                "on",
+            }:
                 try:
                     masked_event, hits = _masking.mask_event_payload(event)
                     if hits:
@@ -863,6 +883,7 @@ async def ensure_schema(store: PostgresSessionStore) -> None:
             )
         else:
             LOGGER.info("Ensured session_events and session_envelopes tables exist")
+
 
 async def ensure_constraints(store: PostgresSessionStore) -> None:
     """Ensure optional runtime constraints that can't be safely added pre-backfill.

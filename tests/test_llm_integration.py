@@ -16,13 +16,12 @@ The test will skip if GATEWAY_INTERNAL_TOKEN is not set.
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
-import os
 
-import pytest
 import httpx
-
+import pytest
 
 GATEWAY_BASE = os.getenv("GATEWAY_BASE_URL", "http://127.0.0.1:21016")
 GATEWAY_INTERNAL_TOKEN = os.getenv("GATEWAY_INTERNAL_TOKEN")
@@ -66,7 +65,9 @@ def test_llm_invoke_stream_smoke():
     # Use a sync client and stream to avoid adding async test deps
     with httpx.Client(timeout=None) as client:
         with client.stream("POST", url, json=payload, headers=_headers()) as resp:
-            assert resp.status_code == 200, f"invoke/stream returned {resp.status_code}: {resp.text}"
+            assert (
+                resp.status_code == 200
+            ), f"invoke/stream returned {resp.status_code}: {resp.text}"
             received = []
             start = time.time()
             for raw in resp.iter_lines():
@@ -91,7 +92,9 @@ def test_llm_invoke_stream_smoke():
                 if time.time() - start > 10:
                     break
 
-            assert len(received) > 0, f"No stream chunks received within timeout; last status {resp.status_code}"
+            assert (
+                len(received) > 0
+            ), f"No stream chunks received within timeout; last status {resp.status_code}"
             first = received[0]
             if isinstance(first, dict) and first.get("error"):
                 pytest.fail(f"Provider returned error chunk: {first}")

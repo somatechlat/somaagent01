@@ -9,53 +9,56 @@ from __future__ import annotations
 
 # Standard library imports (alphabetical)
 import asyncio
+import base64
+import contextlib
+import copy
+import hashlib
 import json
 import logging
 import os
+import secrets
+import tempfile
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
-import base64
-import tempfile
-import secrets
-from typing import Annotated, Any, AsyncIterator, Dict, Optional, List
+from pathlib import Path
+from typing import Annotated, Any, AsyncIterator, Dict, List, Optional
+from urllib.parse import ParseResult, urlencode, urlparse, urlunparse
 
 import httpx
 
 # Third‑party imports (alphabetical by top‑level package name)
 from fastapi import (
+    Body,
     Depends,
     FastAPI,
-    HTTPException,
     File,
-    UploadFile,
     Form,
-    Body,
+    HTTPException,
     Query,
     Request,
+    UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from jsonschema import ValidationError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
+from prometheus_client import Counter, Gauge, Histogram, REGISTRY, start_http_server
 from pydantic import BaseModel, Field, field_validator
-from jsonschema import ValidationError
 from werkzeug.utils import secure_filename
-import hashlib
-from pathlib import Path
-from contextlib import asynccontextmanager
-import subprocess
-import socket
-import contextlib
-from urllib.parse import urlencode
-import copy
-from urllib.parse import urlparse, urlunparse, ParseResult
 
 SERVICE_NAME = "gateway"
 
@@ -68,71 +71,55 @@ except ImportError:
     )
 
 # Local package imports (alphabetical)
-from python.helpers.settings import set_settings
-from python.helpers.settings import convert_out as ui_convert_out, get_default_settings as ui_get_defaults
 from python.helpers.dotenv import get_dotenv_value
+from python.helpers.settings import (
+    convert_out as ui_convert_out,
+    get_default_settings as ui_get_defaults,
+    set_settings,
+)
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common import error_classifier as _errclass, masking as _masking
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
+from services.common.attachments_store import AttachmentsStore
+from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
+from services.common.export_job_store import (
+    ensure_schema as ensure_export_jobs_schema,
+    ExportJobStore,
+)
+from services.common.idempotency import generate_for_memory_payload
+from services.common.llm_credentials_store import LlmCredentialsStore
 from services.common.logging_config import setup_logging
-from services.common.memory_replica_store import MemoryReplicaStore
-from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
-from services.common.attachments_store import AttachmentsStore
-from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
-from services.common.memory_write_outbox import MemoryWriteOutbox
-from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
+from services.common.memory_replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
+from services.common.memory_write_outbox import (
+    ensure_schema as ensure_mw_outbox_schema,
+    MemoryWriteOutbox,
+)
 from services.common.model_profiles import ModelProfile, ModelProfileStore
-from services.common.tool_catalog import ToolCatalogStore, ToolCatalogEntry
-from services.common.ui_settings_store import UiSettingsStore
-from services.common.ui_settings_store import UiSettingsStore
+from services.common.notifications_store import NotificationsStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
-from services.common.llm_credentials_store import LlmCredentialsStore
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema, ensure_constraints as ensure_session_constraints
-from services.common import masking as _masking
-from services.common import error_classifier as _errclass
+from services.common.session_repository import (
+    ensure_constraints as ensure_session_constraints,
+    ensure_schema as ensure_session_schema,
+    PostgresSessionStore,
+    RedisSessionCache,
+)
 from services.common.settings_sa01 import SA01Settings
-from services.common.telemetry_store import TelemetryStore
-from services.common.tracing import setup_tracing
-from services.common.vault_secrets import load_kv_secret
-from services.common.idempotency import generate_for_memory_payload
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common.memory_write_outbox import MemoryWriteOutbox
-from services.common.slm_client import SLMClient, ChatMessage
+from services.common.slm_client import ChatMessage, SLMClient
 from services.common.telemetry import TelemetryPublisher
-from services.common.dlq_store import DLQStore
-from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
-from services.common.memory_replica_store import MemoryReplicaStore
-from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
-from services.common.attachments_store import AttachmentsStore
-from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
-from services.common.memory_write_outbox import MemoryWriteOutbox
-from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
-from services.common.model_profiles import ModelProfile, ModelProfileStore
-from services.common.tool_catalog import ToolCatalogStore, ToolCatalogEntry
-from services.common.ui_settings_store import UiSettingsStore
-from services.common.ui_settings_store import UiSettingsStore
-from services.common.openfga_client import OpenFGAClient
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
-from services.common.llm_credentials_store import LlmCredentialsStore
-from services.common.publisher import DurablePublisher
-from services.common.requeue_store import RequeueStore
-from services.common.schema_validator import validate_event
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
-from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry_store import TelemetryStore
+from services.common.tool_catalog import ToolCatalogEntry, ToolCatalogStore
 from services.common.tracing import setup_tracing
+from services.common.ui_settings_store import UiSettingsStore
 from services.common.vault_secrets import load_kv_secret
-from services.common.idempotency import generate_for_memory_payload
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common.memory_write_outbox import MemoryWriteOutbox
-from services.common.slm_client import SLMClient, ChatMessage
 
 # Import PyJWT properly - no fallbacks or shims allowed in production
 try:
@@ -182,6 +169,7 @@ HTTPXClientInstrumentor().instrument()
 # --- Optional ML dependencies (STT) ---
 try:  # lazy import guard to avoid failing when ML deps aren’t installed
     from faster_whisper import WhisperModel  # type: ignore
+
     _HAVE_FASTER_WHISPER = True
 except Exception:  # pragma: no cover - optional dependency path
     WhisperModel = None  # type: ignore
@@ -190,9 +178,12 @@ except Exception:  # pragma: no cover - optional dependency path
 # Simple in-process cache for STT model (size keyed)
 _STT_MODEL_CACHE: dict[str, WhisperModel] = {}  # type: ignore[name-defined]
 
+
 def _get_stt_model(model_size: str) -> "WhisperModel":  # type: ignore[name-defined]
     if not _HAVE_FASTER_WHISPER:
-        raise HTTPException(status_code=501, detail="speech_to_text_unavailable: faster-whisper not installed")
+        raise HTTPException(
+            status_code=501, detail="speech_to_text_unavailable: faster-whisper not installed"
+        )
     size = (model_size or "tiny").strip().lower()
     # Reuse cached model if available
     m = _STT_MODEL_CACHE.get(size)
@@ -207,9 +198,12 @@ def _get_stt_model(model_size: str) -> "WhisperModel":  # type: ignore[name-defi
         LOGGER.exception("Failed to initialize faster-whisper model: %s", size)
         raise HTTPException(status_code=500, detail=f"stt_model_init_error: {type(e).__name__}")
 
+
 # Global exception handler to surface unexpected errors (helps during dev)
 @app.exception_handler(Exception)
-async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:  # pragma: no cover
+async def _unhandled_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:  # pragma: no cover
     """Global handler for unexpected exceptions.
 
     Logs the exception details and returns a generic 500 JSON response.
@@ -227,7 +221,10 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
     except Exception:
         # Defensive: ensure logging failures do not mask the original error handling
         pass
-    return JSONResponse({"detail": "internal error", "error_type": type(exc).__name__}, status_code=500)
+    return JSONResponse(
+        {"detail": "internal error", "error_type": type(exc).__name__}, status_code=500
+    )
+
 
 # Defer mounting the Web UI to later in the file to ensure explicit routes like
 # /ui/config.json take precedence over the static mount.
@@ -236,6 +233,7 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
 # -----------------------------
 # CORS configuration (env-driven)
 # -----------------------------
+
 
 def _csv_list(value: str | None) -> list[str]:
     if not value:
@@ -248,7 +246,12 @@ def _setup_cors() -> None:
     methods = _csv_list(os.getenv("GATEWAY_CORS_METHODS"))
     headers = _csv_list(os.getenv("GATEWAY_CORS_HEADERS"))
     expose = _csv_list(os.getenv("GATEWAY_CORS_EXPOSE_HEADERS"))
-    allow_credentials = os.getenv("GATEWAY_CORS_CREDENTIALS", "false").lower() in {"true", "1", "yes", "on"}
+    allow_credentials = os.getenv("GATEWAY_CORS_CREDENTIALS", "false").lower() in {
+        "true",
+        "1",
+        "yes",
+        "on",
+    }
 
     # Defaults: permissive in dev, explicit in prod via env
     if not origins:
@@ -273,7 +276,10 @@ _setup_cors()
 # Legacy UI proxy router is intentionally not included here to enforce SSE-only UI paths.
 # The Web UI must use canonical /v1 endpoints directly; polling shims are removed.
 
-def _get_or_create_counter(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Counter:
+
+def _get_or_create_counter(
+    name: str, documentation: str, *, labelnames: tuple[str, ...] = ()
+) -> Counter:
     try:
         return Counter(name, documentation, labelnames=labelnames)
     except ValueError:
@@ -284,7 +290,9 @@ def _get_or_create_counter(name: str, documentation: str, *, labelnames: tuple[s
         raise
 
 
-def _get_or_create_gauge(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Gauge:
+def _get_or_create_gauge(
+    name: str, documentation: str, *, labelnames: tuple[str, ...] = ()
+) -> Gauge:
     try:
         return Gauge(name, documentation, labelnames=labelnames)
     except ValueError:
@@ -294,7 +302,9 @@ def _get_or_create_gauge(name: str, documentation: str, *, labelnames: tuple[str
         raise
 
 
-def _get_or_create_histogram(name: str, documentation: str, *, labelnames: tuple[str, ...] = ()) -> Histogram:
+def _get_or_create_histogram(
+    name: str, documentation: str, *, labelnames: tuple[str, ...] = ()
+) -> Histogram:
     try:
         return Histogram(name, documentation, labelnames=labelnames)
     except ValueError:
@@ -339,11 +349,13 @@ EXPORT_JOB_SECONDS = _get_or_create_histogram(
     "Export job processing time (seconds)",
 )
 
+
 # --- Speech (STT) endpoint models ---
 class TranscribeRequest(BaseModel):
     audio: str = Field(..., description="Base64-encoded WAV audio data")
     language: Optional[str] = Field(default=None, description="e.g., 'en'")
     model_size: Optional[str] = Field(default=None, description="e.g., 'tiny', 'base', ...")
+
 
 # Upload metrics
 GATEWAY_UPLOADS = _get_or_create_counter(
@@ -416,7 +428,11 @@ GATEWAY_RATE_LIMIT_RESULTS = _get_or_create_counter(
 LLM_TEST_RESULTS = _get_or_create_counter(
     "gateway_llm_test_results_total",
     "LLM test outcomes",
-    labelnames=("provider", "validated", "result"),  # validated:true|false, result: ok|auth_failed|unreachable|error
+    labelnames=(
+        "provider",
+        "validated",
+        "result",
+    ),  # validated:true|false, result: ok|auth_failed|unreachable|error
 )
 LLM_INVOKE_RESULTS = _get_or_create_counter(
     "gateway_llm_invoke_results_total",
@@ -443,8 +459,39 @@ GATEWAY_TOOL_EVENTS = _get_or_create_counter(
     labelnames=("provider", "type"),  # type: started|delta|final
 )
 
+# Assistant streaming metrics
+# Histogram for time-to-first-token during streaming responses.
+ASSISTANT_FIRST_TOKEN_SECONDS = _get_or_create_histogram(
+    "assistant_first_token_seconds",
+    "Seconds from request start to first assistant token",
+    labelnames=("provider",),
+)
+# Counter for streamed token chunks emitted by the assistant.
+ASSISTANT_TOKENS_TOTAL = _get_or_create_counter(
+    "assistant_tokens_total",
+    "Assistant streamed token chunks (approximation of output tokens)",
+    labelnames=("provider", "phase"),  # phase: answer
+)
+
+# Notifications metrics
+UI_NOTIFICATIONS = _get_or_create_counter(
+    "ui_notifications_total",
+    "UI notifications events",
+    labelnames=("event", "severity", "type"),  # event: created|read|cleared
+)
+
 # Simple sensitive data scrubber for audit details payloads
-SENSITIVE_KEYS = {"authorization", "auth", "token", "api_key", "apikey", "secret", "password", "credentials"}
+SENSITIVE_KEYS = {
+    "authorization",
+    "auth",
+    "token",
+    "api_key",
+    "apikey",
+    "secret",
+    "password",
+    "credentials",
+}
+
 
 def _scrub(obj: Any, depth: int = 0) -> Any:
     if depth > 6:
@@ -491,10 +538,14 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
     except Exception:
         speech_cfg = {}
     model_size = (
-        (req.model_size or "").strip()
-        or str((speech_cfg.get("stt_model_size") or "")).strip()
-        or os.getenv("STT_MODEL_SIZE", "tiny")
-    ).strip().lower()
+        (
+            (req.model_size or "").strip()
+            or str((speech_cfg.get("stt_model_size") or "")).strip()
+            or os.getenv("STT_MODEL_SIZE", "tiny")
+        )
+        .strip()
+        .lower()
+    )
     try:
         model = _get_stt_model(model_size)
     except HTTPException:
@@ -534,7 +585,9 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
             raise
         except Exception as e:  # pragma: no cover
             LOGGER.exception("STT transcription error")
-            raise HTTPException(status_code=500, detail=f"stt_transcription_error: {type(e).__name__}")
+            raise HTTPException(
+                status_code=500, detail=f"stt_transcription_error: {type(e).__name__}"
+            )
 
     return JSONResponse({"text": out or ""}, status_code=200)
 
@@ -595,6 +648,7 @@ async def v1_speech_tts_kokoro(req: KokoroSynthesizeRequest) -> JSONResponse:
 # Realtime speech: session + WS (scaffold)
 # -----------------------------
 
+
 class RealtimeSessionRequest(BaseModel):
     locale: Optional[str] = None
     device: Optional[str] = None
@@ -636,7 +690,9 @@ def _build_ws_url(request: Request, path: str, query: str) -> str:
 
 
 @app.post("/v1/speech/realtime/session", response_model=RealtimeSessionResponse)
-async def v1_speech_realtime_session(payload: RealtimeSessionRequest, request: Request) -> RealtimeSessionResponse:
+async def v1_speech_realtime_session(
+    payload: RealtimeSessionRequest, request: Request
+) -> RealtimeSessionResponse:
     """Mint a short-lived realtime speech session and return WS URL.
 
     This is a scaffold endpoint. When realtime is disabled, returns 503 to let
@@ -686,7 +742,9 @@ async def v1_speech_realtime_ws(websocket: WebSocket, session_id: str | None = N
     await websocket.accept()
     try:
         if not session_id:
-            await websocket.send_json({"type": "error", "code": "missing_session_id", "message": "Missing session id"})
+            await websocket.send_json(
+                {"type": "error", "code": "missing_session_id", "message": "Missing session id"}
+            )
             await websocket.close(code=4401)
             return
         try:
@@ -698,36 +756,54 @@ async def v1_speech_realtime_ws(websocket: WebSocket, session_id: str | None = N
         except Exception:
             item = None
         if not item:
-            await websocket.send_json({"type": "error", "code": "invalid_session", "message": "Session is invalid or expired"})
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "code": "invalid_session",
+                    "message": "Session is invalid or expired",
+                }
+            )
             await websocket.close(code=4403)
             return
 
         # If the feature is disabled mid-flight, notify and close
         if not _realtime_enabled():
-            await websocket.send_json({"type": "error", "code": "realtime_unavailable", "message": "Realtime service is not available"})
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "code": "realtime_unavailable",
+                    "message": "Realtime service is not available",
+                }
+            )
             await websocket.close(code=1013)  # Try again later
             return
 
         # Placeholder behavior: immediately notify not-implemented and close
         await websocket.send_json({"type": "ready", "caps": _realtime_cfg()})
-        await websocket.send_json({"type": "error", "code": "not_implemented", "message": "Realtime pipeline coming soon"})
+        await websocket.send_json(
+            {"type": "error", "code": "not_implemented", "message": "Realtime pipeline coming soon"}
+        )
         await websocket.close(code=1000)
     except WebSocketDisconnect:
         return
     except Exception as exc:
         try:
-            await websocket.send_json({"type": "error", "code": "internal_error", "message": str(exc)})
+            await websocket.send_json(
+                {"type": "error", "code": "internal_error", "message": str(exc)}
+            )
         except Exception:
             pass
         with contextlib.suppress(Exception):
             await websocket.close(code=1011)
     finally:
-        return
+        # Avoid returning from finally to prevent silencing exceptions (Ruff B012)
+        pass
 
 
 # -----------------------------
 # OpenAI Realtime (browser WebRTC via Gateway offer proxy)
 # -----------------------------
+
 
 class OpenAIRealtimeOffer(BaseModel):
     model: Optional[str] = None
@@ -760,7 +836,9 @@ def _normalize_openai_realtime_base(endpoint: str | None) -> str:
 
 
 @app.post("/v1/speech/openai/realtime/offer", response_model=OpenAIRealtimeAnswer)
-async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request: Request) -> OpenAIRealtimeAnswer:
+async def v1_speech_openai_realtime_offer(
+    payload: OpenAIRealtimeOffer, request: Request
+) -> OpenAIRealtimeAnswer:
     """Accept a browser WebRTC SDP offer and return OpenAI's SDP answer.
 
     This keeps OpenAI API keys on the server (single point of configuration). The media
@@ -771,7 +849,9 @@ async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request:
 
     # Resolve model and endpoint from settings overlay
     speech_cfg = _realtime_cfg()
-    model = (payload.model or speech_cfg.get("speech_realtime_model") or "gpt-4o-realtime-preview").strip()
+    model = (
+        payload.model or speech_cfg.get("speech_realtime_model") or "gpt-4o-realtime-preview"
+    ).strip()
     endpoint_cfg = speech_cfg.get("speech_realtime_endpoint")
     base_url = _normalize_openai_realtime_base(endpoint_cfg)
 
@@ -779,7 +859,9 @@ async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request:
     try:
         secret = await get_llm_credentials_store().get("openai")
     except Exception as exc:
-        LOGGER.error("LLM credentials retrieval failed", extra={"provider": "openai", "error": str(exc)})
+        LOGGER.error(
+            "LLM credentials retrieval failed", extra={"provider": "openai", "error": str(exc)}
+        )
         raise HTTPException(status_code=500, detail="credentials_error")
     if not secret:
         raise HTTPException(status_code=404, detail="credentials_not_found")
@@ -802,7 +884,9 @@ async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request:
 
     if resp.status_code != 200:
         detail = (resp.text or "").strip()[:400]
-        LOGGER.warning("OpenAI realtime offer error", extra={"status": resp.status_code, "detail": detail})
+        LOGGER.warning(
+            "OpenAI realtime offer error", extra={"status": resp.status_code, "detail": detail}
+        )
         # Map common errors
         if resp.status_code in (401, 403):
             raise HTTPException(status_code=502, detail="upstream_auth_failed")
@@ -857,6 +941,7 @@ def _mime_allowed(mime: str) -> bool:
     cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
     raw_allowed = cfg.get("uploads_allowed_mime") if isinstance(cfg, dict) else None
     raw_denied = cfg.get("uploads_denied_mime") if isinstance(cfg, dict) else None
+
     def _parse_list(val: Any) -> set[str]:
         if not isinstance(val, str) or not val.strip():
             return set()
@@ -866,6 +951,7 @@ def _mime_allowed(mime: str) -> bool:
             if part:
                 items.append(part.lower())
         return set(items)
+
     allowed = _parse_list(raw_allowed) or _csv_env("GATEWAY_UPLOAD_ALLOWED_MIME")
     denied = _parse_list(raw_denied) or _csv_env("GATEWAY_UPLOAD_DENIED_MIME")
     if denied and mime in denied:
@@ -914,8 +1000,11 @@ async def _clamav_scan(path: Path) -> tuple[str, str]:
         # Fallback to clamdscan CLI
         try:
             proc = await asyncio.create_subprocess_exec(
-                "clamdscan", "--no-summary", str(path),
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                "clamdscan",
+                "--no-summary",
+                str(path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
             out = (stdout or b"").decode("utf-8", errors="ignore").strip()
@@ -939,11 +1028,13 @@ async def _clamav_scan_bytes(data: bytes) -> tuple[str, str]:
     try:
         try:
             import clamd  # type: ignore
+
             host = os.getenv("CLAMAV_HOST", "clamav")
             port = int(os.getenv("CLAMAV_PORT", "3310"))
             cd = clamd.ClamdNetworkSocket(host=host, port=port)
             # clamd expects a file-like object; wrap bytes
             import io
+
             bio = io.BytesIO(data)
             resp = await asyncio.to_thread(cd.instream, bio)
             # resp like {'stream': ('OK'|'FOUND'|'ERROR', detail)}
@@ -958,7 +1049,9 @@ async def _clamav_scan_bytes(data: bytes) -> tuple[str, str]:
     except Exception as exc:
         return "error", str(exc)
 
+
 # (Removed dev-only Kafka admin endpoints)
+
 
 # -----------------------------
 # DLQ depth refresher settings
@@ -979,7 +1072,9 @@ def _dlq_topics_from_env() -> list[str]:
 
 
 # Helper to construct a CircuitBreaker in a backward-compatible way.
-def _make_circuit_breaker(*, fail_max: int = 5, reset_timeout: int = 60, expected_exception: type | None = None):
+def _make_circuit_breaker(
+    *, fail_max: int = 5, reset_timeout: int = 60, expected_exception: type | None = None
+):
     """Create a pybreaker.CircuitBreaker while accepting older pybreaker
     versions that don't support the `expected_exception` keyword.
 
@@ -1022,6 +1117,7 @@ def _classify_wt_error(exc: Exception) -> str:
         return "server_error"
     return "exception"
 
+
 # ---------------------------------------------------------------------------
 # Feature‑flag hot‑reload background task
 # ---------------------------------------------------------------------------
@@ -1048,7 +1144,8 @@ async def _config_update_listener() -> None:
                 "Failed to apply config update",
                 extra={"error": str(exc), "payload_type": type(payload).__name__},
             )
-    return HISTOGRAM
+    # No explicit return value; this is a background listener coroutine.
+    return None
 
 
 # Startup tasks (migrated from deprecated on_event to lifespan)
@@ -1061,7 +1158,9 @@ async def start_background_services() -> None:
     try:
         await event_bus.healthcheck()
     except Exception:
-        LOGGER.debug("Kafka event bus healthcheck failed at startup (will retry on demand)", exc_info=True)
+        LOGGER.debug(
+            "Kafka event bus healthcheck failed at startup (will retry on demand)", exc_info=True
+        )
     app.state.event_bus = event_bus
 
     # Initialize durable publisher with Outbox fallback
@@ -1098,7 +1197,10 @@ async def start_background_services() -> None:
 
     # Initialize export jobs store and schema, then start worker (controlled by env flags)
     # Enable with: EXPORT_JOBS_ENABLED=true and DISABLE_FILE_SAVING=false
-    if _flag_truthy(os.getenv("EXPORT_JOBS_ENABLED", "false"), False) and not _file_saving_disabled():
+    if (
+        _flag_truthy(os.getenv("EXPORT_JOBS_ENABLED", "false"), False)
+        and not _file_saving_disabled()
+    ):
         try:
             export_store = get_export_job_store()
             await ensure_export_jobs_schema(export_store)
@@ -1168,6 +1270,31 @@ async def start_background_services() -> None:
     except Exception:
         LOGGER.debug("Session schema ensure failed", exc_info=True)
 
+    # Ensure notifications schema (best-effort)
+    try:
+        await get_notifications_store().ensure_schema()
+    except Exception:
+        LOGGER.debug("Notifications schema ensure failed", exc_info=True)
+
+    # Start notifications TTL janitor (periodic expiry cleanup)
+    async def _notifications_ttl_janitor():
+        interval = int(os.getenv("NOTIFICATIONS_JANITOR_INTERVAL_SECONDS", "60"))
+        store = get_notifications_store()
+        while True:
+            try:
+                deleted = await store.delete_expired()
+                if deleted:
+                    LOGGER.info("notifications ttl janitor", extra={"deleted": deleted})
+            except Exception:
+                LOGGER.debug("notifications ttl janitor error", exc_info=True)
+            await asyncio.sleep(interval)
+
+    try:
+        if os.getenv("NOTIFICATIONS_JANITOR_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
+            asyncio.create_task(_notifications_ttl_janitor())
+    except Exception:
+        LOGGER.debug("Failed to start notifications janitor", exc_info=True)
+
 
 # ---------------------------------------------------------------------------
 # Sprint 2 – Self‑service UI for API‑key management & policy overview
@@ -1235,7 +1362,12 @@ async def ui_policy_overview(request: Request) -> HTMLResponse:
 # port (default 8000) and exposes the default prometheus_client metrics.
 def _start_metrics_server() -> None:
     # Skip in pytest to avoid port binding and background tasks
-    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {"1", "true", "yes", "on"}:
+    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
         LOGGER.debug("Test mode: skipping metrics server startup and aux services")
         return
     port = int(os.getenv("GATEWAY_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
@@ -1274,6 +1406,8 @@ def _start_metrics_server() -> None:
 # CORS is configured via _setup_cors above
 
 API_VERSION = os.getenv("GATEWAY_API_VERSION", "v1")
+
+
 def _flag_truthy(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
@@ -1311,11 +1445,17 @@ def _sse_disabled() -> bool:
 def _masking_enabled() -> bool:
     return os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {"true", "1", "yes", "on"}
 
+
 def _sequence_enabled() -> bool:
     return os.getenv("SA01_ENABLE_SEQUENCE", "true").lower() in {"true", "1", "yes", "on"}
 
+
 def _token_metrics_enabled() -> bool:
     return os.getenv("SA01_ENABLE_TOKEN_METRICS", "true").lower() in {"true", "1", "yes", "on"}
+
+
+def _notifications_topic() -> str:
+    return os.getenv("UI_NOTIFICATIONS_TOPIC", "ui.notifications")
 
 
 def _error_classifier_enabled() -> bool:
@@ -1325,13 +1465,16 @@ def _error_classifier_enabled() -> bool:
 def _reasoning_enabled() -> bool:
     return os.getenv("SA01_ENABLE_REASONING_STREAM", "false").lower() in {"true", "1", "yes", "on"}
 
+
 def _tool_events_enabled() -> bool:
     return os.getenv("SA01_ENABLE_TOOL_EVENTS", "false").lower() in {"true", "1", "yes", "on"}
 
-def _rate_limit_enabled() -> bool:
-    return os.getenv("GATEWAY_RATE_LIMIT_ENABLED", "false").lower() in {"true","1","yes","on"}
 
-def _rate_limit_params() -> tuple[int,int]:
+def _rate_limit_enabled() -> bool:
+    return os.getenv("GATEWAY_RATE_LIMIT_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+
+
+def _rate_limit_params() -> tuple[int, int]:
     # window_seconds, max_requests
     try:
         window = int(os.getenv("GATEWAY_RATE_LIMIT_WINDOW_SECONDS", "60"))
@@ -1354,7 +1497,9 @@ _ATTACHMENTS_STORE: AttachmentsStore | None = None
 def get_attachments_store() -> AttachmentsStore:
     global _ATTACHMENTS_STORE
     if _ATTACHMENTS_STORE is None:
-        _ATTACHMENTS_STORE = AttachmentsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+        _ATTACHMENTS_STORE = AttachmentsStore(
+            dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+        )
     return _ATTACHMENTS_STORE
 
 
@@ -1448,14 +1593,148 @@ async def get_ui_settings_sections() -> JSONResponse:
         fields_in = sec.get("fields") or []
         fields_out = []
         for f in fields_in:
-            fields_out.append({
-                "id": f.get("id") or f.get("name"),
-                "title": f.get("title") or f.get("label") or f.get("id") or "Field",
-                "value": f.get("value"),
-            })
+            fields_out.append(
+                {
+                    "id": f.get("id") or f.get("name"),
+                    "title": f.get("title") or f.get("label") or f.get("id") or "Field",
+                    "value": f.get("value"),
+                }
+            )
         norm_sections.append({"title": title, "tab": tab, "fields": fields_out})
 
     return JSONResponse({"sections": norm_sections})
+
+
+# -----------------------------
+# Notifications REST API (/v1/ui/notifications)
+# -----------------------------
+class NotificationCreateRequest(BaseModel):
+    type: str = Field(..., description="Domain/type code e.g. system.update")
+    title: str
+    body: str
+    severity: str = Field(..., description="info|success|warning|error")
+    ttl_seconds: Optional[int] = Field(default=None, description="Optional TTL in seconds")
+    meta: Optional[Dict[str, Any]] = Field(default=None)
+
+
+@app.get("/v1/ui/notifications")
+async def list_notifications(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    severity: Optional[str] = None,
+    unread_only: bool = False,
+    cursor_created_at: Optional[str] = None,
+    cursor_id: Optional[str] = None,
+) -> JSONResponse:
+    # Auth & tenant context
+    auth_meta = await authorize_request(request, {"action": "notifications.list"})
+    tenant = auth_meta.get("tenant")
+    if not tenant:
+        raise HTTPException(status_code=401, detail="tenant_missing")
+    subject = auth_meta.get("subject")
+    # Parse cursor timestamp if provided
+    dt = None
+    if cursor_created_at:
+        try:
+            dt = datetime.fromisoformat(cursor_created_at.replace("Z", "+00:00"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="invalid_cursor_created_at")
+    store = get_notifications_store()
+    try:
+        rows = await store.list(
+            tenant_id=tenant,
+            user_id=subject,
+            limit=limit,
+            severity=severity,
+            unread_only=unread_only,
+            cursor_created_at=dt,
+            cursor_id=cursor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return JSONResponse({"notifications": rows, "count": len(rows)})
+
+
+@app.post("/v1/ui/notifications")
+async def create_notification(request: Request, payload: NotificationCreateRequest) -> JSONResponse:
+    auth_meta = await authorize_request(
+        request, {"action": "notifications.create", "severity": payload.severity}
+    )
+    tenant = auth_meta.get("tenant")
+    if not tenant:
+        raise HTTPException(status_code=401, detail="tenant_missing")
+    subject = auth_meta.get("subject")
+    store = get_notifications_store()
+    try:
+        row = await store.create(
+            tenant_id=tenant,
+            user_id=None,  # broadcast; future: restrict to subject
+            ntype=payload.type.strip(),
+            title=payload.title.strip(),
+            body=payload.body.strip(),
+            severity=payload.severity.strip(),
+            ttl_seconds=payload.ttl_seconds,
+            meta=payload.meta or {},
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    # Emit Kafka notification event for SSE stream merge
+    try:
+        evt = {
+            "type": "ui.notification",
+            "action": "created",
+            "tenant_id": tenant,
+            "notification": row,
+        }
+        await get_publisher().publish(_notifications_topic(), evt, tenant=tenant, fallback=True)
+        UI_NOTIFICATIONS.labels("created", row.get("severity"), row.get("type")).inc()
+    except Exception as exc:
+        LOGGER.debug("notification publish failed", extra={"error": str(exc)})
+    return JSONResponse({"notification": row}, status_code=201)
+
+
+@app.post("/v1/ui/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str, request: Request) -> JSONResponse:
+    auth_meta = await authorize_request(request, {"action": "notifications.read"})
+    tenant = auth_meta.get("tenant")
+    if not tenant:
+        raise HTTPException(status_code=401, detail="tenant_missing")
+    subject = auth_meta.get("subject")
+    store = get_notifications_store()
+    ok = await store.mark_read(tenant_id=tenant, notif_id=notif_id, user_id=subject)
+    if not ok:
+        raise HTTPException(status_code=404, detail="not_found_or_already_read")
+    # Emit read event
+    try:
+        evt = {"type": "ui.notification", "action": "read", "tenant_id": tenant, "id": notif_id}
+        await get_publisher().publish(_notifications_topic(), evt, tenant=tenant, fallback=True)
+        UI_NOTIFICATIONS.labels("read", "", "").inc()
+    except Exception:
+        pass
+    return JSONResponse({"success": True})
+
+
+@app.delete("/v1/ui/notifications/clear")
+async def clear_notifications(request: Request) -> JSONResponse:
+    auth_meta = await authorize_request(request, {"action": "notifications.clear"})
+    tenant = auth_meta.get("tenant")
+    if not tenant:
+        raise HTTPException(status_code=401, detail="tenant_missing")
+    subject = auth_meta.get("subject")
+    store = get_notifications_store()
+    deleted = await store.clear(tenant_id=tenant, user_id=subject)
+    try:
+        evt = {
+            "type": "ui.notification",
+            "action": "cleared",
+            "tenant_id": tenant,
+            "count": deleted,
+        }
+        await get_publisher().publish(_notifications_topic(), evt, tenant=tenant, fallback=True)
+        UI_NOTIFICATIONS.labels("cleared", "", "").inc()
+    except Exception:
+        pass
+    return JSONResponse({"success": True, "deleted": deleted})
 
 
 # SSE-only UI with same-origin and token-based auth is used.
@@ -1466,6 +1745,7 @@ _REPLICA_STORE: Optional[MemoryReplicaStore] = None
 _LLM_CRED_STORE: Optional[LlmCredentialsStore] = None
 _UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
 _UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
+_NOTIF_STORE: Optional[NotificationsStore] = None
 
 
 @app.middleware("http")
@@ -1480,6 +1760,7 @@ async def add_version_header(request: Request, call_next):
 # Security headers (env-driven)
 # -----------------------------
 
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -1489,10 +1770,14 @@ async def add_security_headers(request: Request, call_next):
 
     # X-Frame-Options
     if os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper() in {"DENY", "SAMEORIGIN"}:
-        response.headers.setdefault("X-Frame-Options", os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper())
+        response.headers.setdefault(
+            "X-Frame-Options", os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper()
+        )
 
     # Referrer-Policy
-    response.headers.setdefault("Referrer-Policy", os.getenv("GATEWAY_REFERRER_POLICY", "no-referrer"))
+    response.headers.setdefault(
+        "Referrer-Policy", os.getenv("GATEWAY_REFERRER_POLICY", "no-referrer")
+    )
 
     # Permissions-Policy (string, optional)
     perm = os.getenv("GATEWAY_PERMISSIONS_POLICY")
@@ -1507,11 +1792,23 @@ async def add_security_headers(request: Request, call_next):
     # HSTS (enable only when TLS is terminated upstream)
     if os.getenv("GATEWAY_HSTS", "false").lower() in {"true", "1", "yes", "on"}:
         max_age = os.getenv("GATEWAY_HSTS_MAX_AGE", "15552000")  # ~180 days
-        inc_sub = "; includeSubDomains" if os.getenv("GATEWAY_HSTS_INCLUDE_SUBDOMAINS", "true").lower() in {"true", "1", "yes", "on"} else ""
-        preload = "; preload" if os.getenv("GATEWAY_HSTS_PRELOAD", "false").lower() in {"true", "1", "yes", "on"} else ""
-        response.headers.setdefault("Strict-Transport-Security", f"max-age={max_age}{inc_sub}{preload}")
+        inc_sub = (
+            "; includeSubDomains"
+            if os.getenv("GATEWAY_HSTS_INCLUDE_SUBDOMAINS", "true").lower()
+            in {"true", "1", "yes", "on"}
+            else ""
+        )
+        preload = (
+            "; preload"
+            if os.getenv("GATEWAY_HSTS_PRELOAD", "false").lower() in {"true", "1", "yes", "on"}
+            else ""
+        )
+        response.headers.setdefault(
+            "Strict-Transport-Security", f"max-age={max_age}{inc_sub}{preload}"
+        )
 
     return response
+
 
 # Rate limiting middleware (Redis-based fixed-window) inserted early (after security headers)
 @app.middleware("http")
@@ -1542,7 +1839,7 @@ async def rate_limit_guard(request: Request, call_next):
                 )
             except Exception:
                 LOGGER.debug("telemetry emit failed (rate limit blocked)", exc_info=True)
-            return JSONResponse({"detail":"rate_limited","retry_after":window}, status_code=429)
+            return JSONResponse({"detail": "rate_limited", "retry_after": window}, status_code=429)
         GATEWAY_RATE_LIMIT_RESULTS.labels("allowed").inc()
         try:
             await get_telemetry().emit_generic_metric(
@@ -1594,7 +1891,9 @@ def _session_claims_from_cookie(request: Request) -> dict[str, Any] | None:
             key = JWT_SECRET or env_secret or JWT_PUBLIC_KEY or env_pub
         if not key:
             return None
-        claims = jwt.decode(token, key=key, algorithms=[alg] if alg else (JWT_ALGORITHMS or ["HS256"]))
+        claims = jwt.decode(
+            token, key=key, algorithms=[alg] if alg else (JWT_ALGORITHMS or ["HS256"])
+        )
         return dict(claims)
     except Exception:
         return None
@@ -1628,16 +1927,23 @@ async def ui_auth_guard(request: Request, call_next):
 # Minimal Login UI and OIDC login/logout
 # -----------------------------
 
+
 def _oidc_enabled() -> bool:
     return os.getenv("OIDC_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _oidc_client() -> dict[str, Any]:
     return {
-        "issuer": os.getenv("OIDC_ISSUER", os.getenv("GOOGLE_ISSUER", "https://accounts.google.com")),
+        "issuer": os.getenv(
+            "OIDC_ISSUER", os.getenv("GOOGLE_ISSUER", "https://accounts.google.com")
+        ),
         "client_id": os.getenv("OIDC_CLIENT_ID", os.getenv("GOOGLE_CLIENT_ID", "")),
         "client_secret": os.getenv("OIDC_CLIENT_SECRET", os.getenv("GOOGLE_CLIENT_SECRET", "")),
-        "redirect_uri": os.getenv("OIDC_REDIRECT_URI", os.getenv("GATEWAY_BASE_URL", "http://localhost:8080").rstrip("/") + "/v1/auth/callback"),
+        "redirect_uri": os.getenv(
+            "OIDC_REDIRECT_URI",
+            os.getenv("GATEWAY_BASE_URL", "http://localhost:8080").rstrip("/")
+            + "/v1/auth/callback",
+        ),
         "scopes": os.getenv("OIDC_SCOPES", "openid email profile"),
         "provider": os.getenv("OIDC_PROVIDER", "google"),
     }
@@ -1668,7 +1974,12 @@ def _jwt_cookie_flags(request: Request) -> dict[str, Any]:
     forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
     secure_env = os.getenv("GATEWAY_COOKIE_SECURE", "false").lower() in {"true", "1", "yes", "on"}
     secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
-    http_only_env = os.getenv("GATEWAY_JWT_COOKIE_HTTPONLY", "true").lower() in {"true", "1", "yes", "on"}
+    http_only_env = os.getenv("GATEWAY_JWT_COOKIE_HTTPONLY", "true").lower() in {
+        "true",
+        "1",
+        "yes",
+        "on",
+    }
     path = os.getenv("GATEWAY_JWT_COOKIE_PATH", "/")
     domain = os.getenv("GATEWAY_JWT_COOKIE_DOMAIN")
     max_age = os.getenv("GATEWAY_JWT_COOKIE_MAX_AGE")
@@ -1705,7 +2016,11 @@ async def login_page(request: Request) -> HTMLResponse:
             return HTMLResponse(content=content)
     except Exception:
         LOGGER.debug("Failed to serve webui/login.html; falling back to inline", exc_info=True)
-    btn = "<button disabled>SSO not configured</button>" if not enabled else f"<a href=\"/v1/auth/login?provider={provider}\"><button>Continue with {provider.title()}</button></a>"
+    btn = (
+        "<button disabled>SSO not configured</button>"
+        if not enabled
+        else f'<a href="/v1/auth/login?provider={provider}"><button>Continue with {provider.title()}</button></a>'
+    )
     html = f"""
     <html><head><title>Sign in</title></head><body>
     <h1>Sign in</h1>
@@ -1746,7 +2061,9 @@ async def auth_login(request: Request, provider: str = "google") -> RedirectResp
 
 
 @app.get("/v1/auth/callback")
-async def auth_callback(request: Request, code: str | None = None, state: str | None = None) -> Response:
+async def auth_callback(
+    request: Request, code: str | None = None, state: str | None = None
+) -> Response:
     if not _oidc_enabled():
         raise HTTPException(status_code=503, detail="OIDC not enabled")
     if not code or not state:
@@ -1782,7 +2099,10 @@ async def auth_callback(request: Request, code: str | None = None, state: str | 
         try:
             resp.raise_for_status()
         except Exception as exc:
-            LOGGER.warning("OIDC token exchange failed", extra={"status": getattr(resp, 'status_code', None), "error": str(exc)})
+            LOGGER.warning(
+                "OIDC token exchange failed",
+                extra={"status": getattr(resp, "status_code", None), "error": str(exc)},
+            )
             raise HTTPException(status_code=502, detail="OIDC token exchange failed")
         token = resp.json()
     id_token = token.get("id_token")
@@ -1842,7 +2162,9 @@ async def auth_callback(request: Request, code: str | None = None, state: str | 
     token_ttl = int(os.getenv("GATEWAY_JWT_TTL_SECONDS", "3600"))
     now = int(time.time())
     session_claims.update({"iat": now, "exp": now + token_ttl})
-    session_jwt = jwt.encode(session_claims, JWT_SECRET, algorithm=(JWT_ALGORITHMS[0] if JWT_ALGORITHMS else "HS256"))
+    session_jwt = jwt.encode(
+        session_claims, JWT_SECRET, algorithm=(JWT_ALGORITHMS[0] if JWT_ALGORITHMS else "HS256")
+    )
 
     # After successful login, send the user to the root UI entrypoint
     resp = RedirectResponse(url="/")
@@ -2010,6 +2332,13 @@ def get_api_key_store() -> ApiKeyStore:
     return _API_KEY_STORE
 
 
+def get_notifications_store() -> NotificationsStore:
+    global _NOTIF_STORE
+    if _NOTIF_STORE is None:
+        _NOTIF_STORE = NotificationsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    return _NOTIF_STORE
+
+
 def get_dlq_store() -> DLQStore:
     global _DLQ_STORE
     if _DLQ_STORE is not None:
@@ -2080,7 +2409,12 @@ class AdminMemoryListResponse(BaseModel):
     next_cursor: int | None
 
 
-@app.get("/v1/admin/memory", response_model=AdminMemoryListResponse, tags=["admin"], summary="List memory replica rows")
+@app.get(
+    "/v1/admin/memory",
+    response_model=AdminMemoryListResponse,
+    tags=["admin"],
+    summary="List memory replica rows",
+)
 async def list_admin_memory(
     request: Request,
     tenant: str | None = Query(None, description="Filter by tenant"),
@@ -2092,7 +2426,9 @@ async def list_admin_memory(
     q: str | None = Query(None, description="Case-insensitive search in payload JSON text"),
     min_ts: float | None = Query(None, description="Minimum wal_timestamp (epoch seconds)"),
     max_ts: float | None = Query(None, description="Maximum wal_timestamp (epoch seconds)"),
-    after: int | None = Query(None, ge=0, description="Return items with database id less than this cursor (paging)"),
+    after: int | None = Query(
+        None, ge=0, description="Return items with database id less than this cursor (paging)"
+    ),
     limit: int = Query(50, ge=1, le=200),
     *,
     store: Annotated[MemoryReplicaStore, Depends(get_replica_store)],
@@ -2104,12 +2440,15 @@ async def list_admin_memory(
     """
     await _enforce_admin_rate_limit(request)
     # Require admin scope when auth is enabled
-    auth = await authorize_request(request, {
-        "tenant": tenant,
-        "persona_id": persona_id,
-        "role": role,
-        "session_id": session_id,
-    })
+    auth = await authorize_request(
+        request,
+        {
+            "tenant": tenant,
+            "persona_id": persona_id,
+            "role": role,
+            "session_id": session_id,
+        },
+    )
     _require_admin_scope(auth)
 
     rows = await store.list_memories(
@@ -2157,7 +2496,12 @@ async def list_admin_memory(
     return AdminMemoryListResponse(items=items, next_cursor=next_cursor)
 
 
-@app.get("/v1/admin/memory/{event_id}", response_model=AdminMemoryItem, tags=["admin"], summary="Get memory by event_id")
+@app.get(
+    "/v1/admin/memory/{event_id}",
+    response_model=AdminMemoryItem,
+    tags=["admin"],
+    summary="Get memory by event_id",
+)
 async def get_admin_memory_item(
     event_id: str,
     request: Request,
@@ -2198,8 +2542,11 @@ async def get_admin_memory_item(
 # Memory batch/write + delete + export
 # -----------------------------
 
+
 class MemoryBatchPayload(BaseModel):
-    items: list[dict[str, Any]] = Field(default_factory=list, description="Memory payloads to persist")
+    items: list[dict[str, Any]] = Field(
+        default_factory=list, description="Memory payloads to persist"
+    )
 
 
 @app.post("/v1/memory/batch")
@@ -2324,16 +2671,22 @@ async def memory_export(
     bounded by a semaphore; optional rate limits can also apply.
     """
     await _enforce_admin_rate_limit(request)
-    auth = await authorize_request(request, {
-        "tenant": tenant,
-        "persona_id": persona_id,
-        "role": role,
-        "session_id": session_id,
-    })
+    auth = await authorize_request(
+        request,
+        {
+            "tenant": tenant,
+            "persona_id": persona_id,
+            "role": role,
+            "session_id": session_id,
+        },
+    )
     _require_admin_scope(auth)
 
     # Optionally enforce tenant scoping for exports
-    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not tenant:
+    if (
+        os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"}
+        and not tenant
+    ):
         raise HTTPException(status_code=400, detail="tenant parameter required for export")
 
     max_rows = int(os.getenv("MEMORY_EXPORT_MAX_ROWS", "100000"))
@@ -2387,6 +2740,7 @@ async def memory_export(
         "Content-Type": "application/x-ndjson",
         "Content-Disposition": f"attachment; filename={filename}",
     }
+
     # Bound concurrency with a semaphore (simple rate-limiting)
     async def guarded_streamer():
         sem = _export_semaphore()
@@ -2400,6 +2754,7 @@ async def memory_export(
 # -----------------------------
 # Asynchronous export jobs
 # -----------------------------
+
 
 class ExportJobCreate(BaseModel):
     tenant: str | None = None
@@ -2429,21 +2784,31 @@ def _exports_dir() -> str:
     return path
 
 
-@app.post("/v1/memory/export/jobs", response_model=dict, tags=["admin"], summary="Create async export job")
+@app.post(
+    "/v1/memory/export/jobs", response_model=dict, tags=["admin"], summary="Create async export job"
+)
 async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict:
     if _file_saving_disabled():
         raise HTTPException(status_code=403, detail="File export is disabled")
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
-    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not payload.tenant:
+    if (
+        os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"}
+        and not payload.tenant
+    ):
         raise HTTPException(status_code=400, detail="tenant parameter required for export jobs")
 
     job_id = await get_export_job_store().create(params=payload.model_dump(), tenant=payload.tenant)
     return {"job_id": job_id, "status": "queued"}
 
 
-@app.get("/v1/memory/export/jobs/{job_id}", response_model=ExportJobStatus, tags=["admin"], summary="Get export job status")
+@app.get(
+    "/v1/memory/export/jobs/{job_id}",
+    response_model=ExportJobStatus,
+    tags=["admin"],
+    summary="Get export job status",
+)
 async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
     if _file_saving_disabled():
         raise HTTPException(status_code=403, detail="File export is disabled")
@@ -2466,7 +2831,9 @@ async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
     )
 
 
-@app.get("/v1/memory/export/jobs/{job_id}/download", tags=["admin"], summary="Download export result")
+@app.get(
+    "/v1/memory/export/jobs/{job_id}/download", tags=["admin"], summary="Download export result"
+)
 async def export_jobs_download(job_id: int, request: Request):
     if _file_saving_disabled():
         raise HTTPException(status_code=403, detail="File export is disabled")
@@ -2513,7 +2880,9 @@ async def export_jobs_download(job_id: int, request: Request):
 @app.get("/constitution/version", tags=["admin"], summary="Get SomaBrain constitution version")
 async def constitution_version(request: Request) -> JSONResponse:
     # Require authorization + admin scope; evaluate OPA with a specific action
-    auth = await authorize_request(request, {"action": "constitution.manage", "resource": "somabrain"})
+    auth = await authorize_request(
+        request, {"action": "constitution.manage", "resource": "somabrain"}
+    )
     _require_admin_scope(auth)
     soma = SomaBrainClient.get()
     try:
@@ -2525,7 +2894,9 @@ async def constitution_version(request: Request) -> JSONResponse:
 
 @app.post("/constitution/validate", tags=["admin"], summary="Validate a constitution document")
 async def constitution_validate(payload: dict[str, Any], request: Request) -> JSONResponse:  # type: ignore[valid-type]
-    auth = await authorize_request(request, {"action": "constitution.manage", "resource": "somabrain"})
+    auth = await authorize_request(
+        request, {"action": "constitution.manage", "resource": "somabrain"}
+    )
     _require_admin_scope(auth)
     soma = SomaBrainClient.get()
     try:
@@ -2537,7 +2908,9 @@ async def constitution_validate(payload: dict[str, Any], request: Request) -> JS
 
 @app.post("/constitution/load", tags=["admin"], summary="Load a constitution document")
 async def constitution_load(payload: dict[str, Any], request: Request) -> JSONResponse:  # type: ignore[valid-type]
-    auth = await authorize_request(request, {"action": "constitution.manage", "resource": "somabrain"})
+    auth = await authorize_request(
+        request, {"action": "constitution.manage", "resource": "somabrain"}
+    )
     _require_admin_scope(auth)
     soma = SomaBrainClient.get()
     try:
@@ -2754,7 +3127,6 @@ class SessionEventsResponse(BaseModel):
     events: list[SessionEventEntry]
     next_cursor: int | None
 
-
     # (AdminMemoryItem/AdminMemoryListResponse moved above their usage)
 
 
@@ -2780,6 +3152,7 @@ class ToolsListResponse(BaseModel):
 # -----------------------------
 # Sessions import/export models
 # -----------------------------
+
 
 class SessionsImportPayload(BaseModel):
     chats: list[dict[str, Any]] = Field(default_factory=list)
@@ -2849,6 +3222,7 @@ _OIDC_DISCOVERY_TS: float | None = None
 # -----------------------------
 # Optional admin rate limiter (token bucket)
 # -----------------------------
+
 
 class _TokenBucketLimiter:
     """Simple token bucket limiter keyed by an arbitrary string.
@@ -2989,7 +3363,9 @@ def _apply_auth_metadata(metadata: Dict[str, str], auth_ctx: Dict[str, str]) -> 
     return merged
 
 
-def _apply_header_metadata(request: Request, metadata: Dict[str, Any]) -> tuple[Dict[str, Any], Optional[str]]:
+def _apply_header_metadata(
+    request: Request, metadata: Dict[str, Any]
+) -> tuple[Dict[str, Any], Optional[str]]:
     """Hydrate metadata/persona_id from ingress headers.
 
     - X-Agent-Profile -> metadata.agent_profile_id
@@ -3046,7 +3422,9 @@ async def _get_jwks_keys() -> list[dict[str, Any]]:
         return cached[0]
 
     # Use circuit breaker to protect JWKS fetches (mandatory for production)
-    breaker = _make_circuit_breaker(fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError)
+    breaker = _make_circuit_breaker(
+        fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError
+    )
 
     async def _fetch_jwks() -> list[dict[str, Any]]:
         async with httpx.AsyncClient(timeout=JWKS_TIMEOUT_SECONDS) as client:
@@ -3108,13 +3486,16 @@ def _current_trace_id_hex() -> str | None:
     """Return current OpenTelemetry trace id in 32-hex form if available."""
     try:
         from opentelemetry import trace as _trace
+
         ctx = _trace.get_current_span().get_span_context()
         return f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
     except Exception:
         return None
 
 
-async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any] | None:
+async def _evaluate_opa(
+    request: Request, payload: Dict[str, Any], claims: Dict[str, Any]
+) -> Dict[str, Any] | None:
     """Evaluate OPA policy and return a decision receipt.
 
     Returns a dict with fields { allow, url, status_code, decision } when OPA is configured.
@@ -3139,7 +3520,9 @@ async def _evaluate_opa(request: Request, payload: Dict[str, Any], claims: Dict[
             return await client.post(decision_url, json={"input": opa_input})
 
     # Apply circuit breaker to protect OPA service (mandatory for production)
-    breaker = _make_circuit_breaker(fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError)
+    breaker = _make_circuit_breaker(
+        fail_max=5, reset_timeout=60, expected_exception=httpx.HTTPError
+    )
 
     try:
         response = await _post_opa()
@@ -3353,7 +3736,9 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
                 AUTH_FGA_DECISIONS.labels("true", "error").inc()
             except Exception:
                 pass
-            raise HTTPException(status_code=502, detail="Authorization service unavailable") from exc
+            raise HTTPException(
+                status_code=502, detail="Authorization service unavailable"
+            ) from exc
         # Emit decision receipt (best-effort; ignore failures)
         try:
             req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
@@ -3478,7 +3863,10 @@ async def enqueue_message(
                 "topic": "conversation.inbound",
                 "session_id": session_id,
                 "event_id": event_id,
-                "result": {k: bool(v) if isinstance(v, (bool, int)) else v for k, v in (result or {}).items()},
+                "result": {
+                    k: bool(v) if isinstance(v, (bool, int)) else v
+                    for k, v in (result or {}).items()
+                },
             },
         )
     except Exception:
@@ -3489,6 +3877,7 @@ async def enqueue_message(
     # Audit: message enqueued (best-effort; do not block request)
     try:
         from opentelemetry import trace as _trace
+
         ctx = _trace.get_current_span().get_span_context()
         trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
     except Exception:
@@ -3546,7 +3935,11 @@ async def enqueue_message(
             "persona_id": event.get("persona_id"),
             "role": "assistant",
             "message": "",
-            "metadata": {"status": "started", "source": "gateway", "tenant": metadata.get("tenant")},
+            "metadata": {
+                "status": "started",
+                "source": "gateway",
+                "tenant": metadata.get("tenant"),
+            },
             "version": "sa01-v1",
             "type": "assistant.started",
         }
@@ -3562,6 +3955,7 @@ async def enqueue_message(
 
     # Optional write-through to SomaBrain with WAL emission
     if _write_through_enabled():
+
         async def _write_through() -> None:
             try:
                 soma = SomaBrainClient.get()
@@ -3577,7 +3971,8 @@ async def enqueue_message(
                     "metadata": {
                         **dict(metadata or {}),
                         "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                        "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                        "universe_id": (metadata or {}).get("universe_id")
+                        or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
                 mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -3593,7 +3988,8 @@ async def enqueue_message(
                         "tenant": (metadata or {}).get("tenant"),
                         "payload": mem_payload,
                         "result": {
-                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "coord": (result or {}).get("coordinate")
+                            or (result or {}).get("coord"),
                             "trace_id": (result or {}).get("trace_id"),
                             "request_id": (result or {}).get("request_id"),
                         },
@@ -3627,7 +4023,9 @@ async def enqueue_message(
                             session_id=session_id,
                             persona_id=event.get("persona_id"),
                             idempotency_key=mem_payload.get("idempotency_key"),
-                            dedupe_key=str(mem_payload.get("id")) if mem_payload.get("id") else None,
+                            dedupe_key=(
+                                str(mem_payload.get("id")) if mem_payload.get("id") else None
+                            ),
                         )
                 except Exception:
                     LOGGER.debug("Failed to enqueue memory write for retry", exc_info=True)
@@ -3674,7 +4072,10 @@ async def init_chunked_upload(
         raise HTTPException(status_code=415, detail=f"MIME type not allowed: {mime}")
 
     # Simple auth/policy evaluation (request-level; file-level at finalize)
-    auth_meta = await authorize_request(request, {"action": "attachments.upload.init", "filename": filename, "size": size, "mime": mime})
+    auth_meta = await authorize_request(
+        request,
+        {"action": "attachments.upload.init", "filename": filename, "size": size, "mime": mime},
+    )
     tenant = auth_meta.get("tenant") or "public"
 
     # Negotiate chunk size (configurable; default 4MB)
@@ -3708,13 +4109,15 @@ async def init_chunked_upload(
         "created_at": time.time(),
     }
 
-    return JSONResponse({
-        "upload_id": upload_id,
-        "chunk_size": chunk_size,
-        "size_expected": size,
-        "limits": {"max_bytes": max_bytes},
-        "mode": "chunked",
-    })
+    return JSONResponse(
+        {
+            "upload_id": upload_id,
+            "chunk_size": chunk_size,
+            "size_expected": size,
+            "limits": {"max_bytes": max_bytes},
+            "mode": "chunked",
+        }
+    )
 
 
 @app.post("/v1/uploads/{upload_id}/chunk")
@@ -3798,13 +4201,15 @@ async def upload_chunk(
     except Exception:
         LOGGER.debug("Failed to publish uploads.progress (chunked)", exc_info=True)
 
-    return JSONResponse({
-        "upload_id": upload_id,
-        "bytes_received": entry.get("size_received"),
-        "bytes_total": entry.get("size_expected"),
-        "done": entry.get("size_received") >= entry.get("size_expected"),
-        "mode": "chunked",
-    })
+    return JSONResponse(
+        {
+            "upload_id": upload_id,
+            "bytes_received": entry.get("size_received"),
+            "bytes_total": entry.get("size_expected"),
+            "done": entry.get("size_received") >= entry.get("size_expected"),
+            "mode": "chunked",
+        }
+    )
 
 
 @app.post("/v1/uploads/{upload_id}/finalize")
@@ -3860,7 +4265,14 @@ async def finalize_chunked_upload(
         if REQUIRE_AUTH and OPA_URL:
             await _evaluate_opa(
                 request,
-                {"action": "attachments.upload.file", "tenant": tenant, "session_id": sess, "filename": filename, "mime": mime, "size": size},
+                {
+                    "action": "attachments.upload.file",
+                    "tenant": tenant,
+                    "session_id": sess,
+                    "filename": filename,
+                    "mime": mime,
+                    "size": size,
+                },
                 {},
             )
     except HTTPException:
@@ -3895,7 +4307,9 @@ async def finalize_chunked_upload(
             content=data,
         )
     except Exception as exc:
-        LOGGER.error("Attachment persist failed (chunked)", extra={"file": filename, "error": str(exc)})
+        LOGGER.error(
+            "Attachment persist failed (chunked)", extra={"file": filename, "error": str(exc)}
+        )
         GATEWAY_UPLOADS.labels("error").inc()
         raise HTTPException(status_code=500, detail="Unable to persist attachment")
 
@@ -3950,6 +4364,7 @@ async def finalize_chunked_upload(
 
     # Optional write-through
     if _write_through_enabled():
+
         async def _wt_upload() -> None:
             try:
                 soma = SomaBrainClient.get()
@@ -3973,7 +4388,12 @@ async def finalize_chunked_upload(
                     "attachments": [attachment_info],
                     "session_id": str(sess),
                     "persona_id": entry.get("auth_meta", {}).get("persona_id"),
-                    "metadata": {"tenant": tenant, "filename": filename, "mime": mime, "upload_mode": "chunked"},
+                    "metadata": {
+                        "tenant": tenant,
+                        "filename": filename,
+                        "mime": mime,
+                        "upload_mode": "chunked",
+                    },
                 }
                 mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
                 result = await soma.remember(mem_payload)
@@ -3988,7 +4408,8 @@ async def finalize_chunked_upload(
                         "tenant": tenant,
                         "payload": mem_payload,
                         "result": {
-                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "coord": (result or {}).get("coordinate")
+                            or (result or {}).get("coord"),
                             "trace_id": (result or {}).get("trace_id"),
                             "request_id": (result or {}).get("request_id"),
                         },
@@ -4008,13 +4429,18 @@ async def finalize_chunked_upload(
             except SomaClientError as exc:
                 LOGGER.warning(
                     "Gateway write-through remember failed (chunked)",
-                    extra={"attachment_id": str(att_id), "session_id": str(sess), "error": str(exc)},
+                    extra={
+                        "attachment_id": str(att_id),
+                        "session_id": str(sess),
+                        "error": str(exc),
+                    },
                 )
                 label = _classify_wt_error(exc)
                 GATEWAY_WT_RESULTS.labels("/v1/uploads.finalize", label).inc()
             except Exception as exc:
                 LOGGER.debug("Gateway write-through unexpected error (chunked)", exc_info=True)
                 GATEWAY_WT_RESULTS.labels("/v1/uploads.finalize", _classify_wt_error(exc)).inc()
+
         if _write_through_async():
             asyncio.create_task(_wt_upload())
         else:
@@ -4059,7 +4485,9 @@ async def upload_files(
         raise HTTPException(status_code=400, detail=f"Too many files (max {max_files})")
 
     # Validate auth and (if enabled) policy at request-level
-    auth_meta = await authorize_request(request, {"action": "attachments.upload", "count": len(files)})
+    auth_meta = await authorize_request(
+        request, {"action": "attachments.upload", "count": len(files)}
+    )
     tenant = auth_meta.get("tenant") or "public"
     sess = (session_id or "").strip() or "unspecified"
 
@@ -4254,7 +4682,23 @@ async def upload_files(
 
         # Optional write-through to SomaBrain for attachment metadata (image/file persistence)
         if _write_through_enabled():
-            async def _wt_upload() -> None:
+
+            async def _wt_upload(
+                *,
+                # Bind loop/request variables to avoid late binding in closure (Ruff B023)
+                att_id=att_id,
+                safe_name=safe_name,
+                mime=mime,
+                size=size,
+                sha=sha,
+                quarantined=quarantined,
+                sess=sess,
+                idx=idx,
+                tenant=tenant,
+                request=request,
+                auth_meta=auth_meta,
+                publisher=publisher,
+            ) -> None:
                 try:
                     soma = SomaBrainClient.get()
                     GATEWAY_WT_ATTEMPTS.labels("/v1/uploads").inc()
@@ -4288,7 +4732,8 @@ async def upload_files(
                             "mime": mime,
                             "upload_index": idx,
                             # Ensure universe is set for proper memory partitioning
-                            "universe_id": (header_meta or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                            "universe_id": (header_meta or {}).get("universe_id")
+                            or os.getenv("SOMA_NAMESPACE"),
                         },
                     }
                     mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -4305,7 +4750,8 @@ async def upload_files(
                             "tenant": tenant,
                             "payload": mem_payload,
                             "result": {
-                                "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                                "coord": (result or {}).get("coordinate")
+                                or (result or {}).get("coord"),
                                 "trace_id": (result or {}).get("trace_id"),
                                 "request_id": (result or {}).get("request_id"),
                             },
@@ -4320,12 +4766,18 @@ async def upload_files(
                         )
                         GATEWAY_WT_WAL_RESULTS.labels("/v1/uploads", "ok").inc()
                     except Exception:
-                        LOGGER.debug("Gateway failed to publish memory WAL (uploads)", exc_info=True)
+                        LOGGER.debug(
+                            "Gateway failed to publish memory WAL (uploads)", exc_info=True
+                        )
                         GATEWAY_WT_WAL_RESULTS.labels("/v1/uploads", "error").inc()
                 except SomaClientError as exc:
                     LOGGER.warning(
                         "Gateway write-through remember failed (uploads)",
-                        extra={"attachment_id": str(att_id), "session_id": str(sess), "error": str(exc)},
+                        extra={
+                            "attachment_id": str(att_id),
+                            "session_id": str(sess),
+                            "error": str(exc),
+                        },
                     )
                     label = _classify_wt_error(exc)
                     GATEWAY_WT_RESULTS.labels("/v1/uploads", label).inc()
@@ -4339,10 +4791,14 @@ async def upload_files(
                                 session_id=str(sess),
                                 persona_id=auth_meta.get("persona_id"),
                                 idempotency_key=mem_payload.get("idempotency_key"),
-                                dedupe_key=str(mem_payload.get("id")) if mem_payload.get("id") else None,
+                                dedupe_key=(
+                                    str(mem_payload.get("id")) if mem_payload.get("id") else None
+                                ),
                             )
                     except Exception:
-                        LOGGER.debug("Failed to enqueue memory write for retry (uploads)", exc_info=True)
+                        LOGGER.debug(
+                            "Failed to enqueue memory write for retry (uploads)", exc_info=True
+                        )
                 except Exception as exc:
                     LOGGER.debug("Gateway write-through unexpected error (uploads)", exc_info=True)
                     GATEWAY_WT_RESULTS.labels("/v1/uploads", _classify_wt_error(exc)).inc()
@@ -4414,7 +4870,12 @@ async def enqueue_quick_action(
             "persona_id": event.get("persona_id"),
             "role": "assistant",
             "message": "",
-            "metadata": {"status": "started", "source": "gateway", "tenant": metadata.get("tenant"), "action": payload.action},
+            "metadata": {
+                "status": "started",
+                "source": "gateway",
+                "tenant": metadata.get("tenant"),
+                "action": payload.action,
+            },
             "version": "sa01-v1",
             "type": "assistant.started",
         }
@@ -4430,6 +4891,7 @@ async def enqueue_quick_action(
 
     # Optional write-through for quick actions as user messages
     if _write_through_enabled():
+
         async def _write_through() -> None:
             try:
                 soma = SomaBrainClient.get()
@@ -4444,8 +4906,11 @@ async def enqueue_quick_action(
                     "persona_id": event.get("persona_id"),
                     "metadata": {
                         **dict(event.get("metadata", {})),
-                        "agent_profile_id": (event.get("metadata", {}) or {}).get("agent_profile_id"),
-                        "universe_id": (event.get("metadata", {}) or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                        "agent_profile_id": (event.get("metadata", {}) or {}).get(
+                            "agent_profile_id"
+                        ),
+                        "universe_id": (event.get("metadata", {}) or {}).get("universe_id")
+                        or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
                 mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -4461,7 +4926,8 @@ async def enqueue_quick_action(
                         "tenant": (event.get("metadata") or {}).get("tenant"),
                         "payload": mem_payload,
                         "result": {
-                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "coord": (result or {}).get("coordinate")
+                            or (result or {}).get("coord"),
                             "trace_id": (result or {}).get("trace_id"),
                             "request_id": (result or {}).get("request_id"),
                         },
@@ -4476,7 +4942,9 @@ async def enqueue_quick_action(
                     )
                     GATEWAY_WT_WAL_RESULTS.labels("/v1/session/action", "ok").inc()
                 except Exception:
-                    LOGGER.debug("Gateway failed to publish memory WAL (quick_action)", exc_info=True)
+                    LOGGER.debug(
+                        "Gateway failed to publish memory WAL (quick_action)", exc_info=True
+                    )
                     GATEWAY_WT_WAL_RESULTS.labels("/v1/session/action", "error").inc()
             except SomaClientError as exc:
                 LOGGER.warning(
@@ -4495,10 +4963,14 @@ async def enqueue_quick_action(
                             session_id=session_id,
                             persona_id=event.get("persona_id"),
                             idempotency_key=mem_payload.get("idempotency_key"),
-                            dedupe_key=str(mem_payload.get("id")) if mem_payload.get("id") else None,
+                            dedupe_key=(
+                                str(mem_payload.get("id")) if mem_payload.get("id") else None
+                            ),
                         )
                 except Exception:
-                    LOGGER.debug("Failed to enqueue memory write for retry (quick_action)", exc_info=True)
+                    LOGGER.debug(
+                        "Failed to enqueue memory write for retry (quick_action)", exc_info=True
+                    )
             except Exception as exc:
                 LOGGER.debug("Gateway write-through unexpected error (quick_action)", exc_info=True)
                 GATEWAY_WT_RESULTS.labels("/v1/session/action", _classify_wt_error(exc)).inc()
@@ -4529,6 +5001,7 @@ async def list_sessions_endpoint(
     if not envelopes and tenant is None:
         try:
             from uuid import uuid4
+
             sid = str(uuid4())
             welcome_event = {
                 "session_id": sid,
@@ -4549,6 +5022,7 @@ async def list_sessions_endpoint(
         if isinstance(md, str):
             try:
                 from json import loads as _loads
+
                 parsed = _loads(md)
                 md = parsed if isinstance(parsed, dict) else {}
             except Exception:
@@ -4560,6 +5034,7 @@ async def list_sessions_endpoint(
         if isinstance(an, str):
             try:
                 from json import loads as _loads
+
                 parsed = _loads(an)
                 an = parsed if isinstance(parsed, dict) else {}
             except Exception:
@@ -4598,9 +5073,11 @@ async def import_sessions_endpoint(
                 return None
             if isinstance(value, (int, float)):
                 from datetime import datetime as _dt
+
                 return _dt.fromtimestamp(float(value))
             if isinstance(value, str):
                 from datetime import datetime as _dt
+
                 try:
                     return _dt.fromisoformat(value)
                 except Exception:
@@ -4716,6 +5193,8 @@ async def export_session_endpoint(
         # Fallback minimal content
         content = json.dumps({"session_id": payload.session_id, "events": timeline_payloads})
     return SessionExportResponse(ctxid=payload.session_id, content=content)
+
+
 @app.delete("/v1/sessions/{session_id}")
 async def delete_session_endpoint(
     session_id: str,
@@ -4733,6 +5212,7 @@ async def delete_session_endpoint(
         LOGGER.debug("Failed to delete session cache key", exc_info=True)
     return {"status": "deleted", "result": result}
 
+
 @app.post("/v1/sessions/{session_id}/reset")
 async def reset_session_endpoint(
     session_id: str,
@@ -4743,6 +5223,7 @@ async def reset_session_endpoint(
     _ = auth_metadata
     result = await store.reset_session(session_id)
     return {"status": "reset", "result": result}
+
 
 @app.post("/v1/sessions/{session_id}/pause")
 async def pause_session_endpoint(
@@ -4767,6 +5248,7 @@ async def pause_session_endpoint(
         raise HTTPException(status_code=500, detail="failed to update pause state")
     return {"status": "ok", "paused": paused}
 
+
 @app.post("/v1/tool/request")
 async def request_tool_execution(
     payload: ToolRequestPayload,
@@ -4787,6 +5269,7 @@ async def request_tool_execution(
         # Audit denial best-effort
         try:
             from opentelemetry import trace as _trace
+
             ctx = _trace.get_current_span().get_span_context()
             trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
         except Exception:
@@ -4835,6 +5318,7 @@ async def request_tool_execution(
     # Audit enqueue (best-effort)
     try:
         from opentelemetry import trace as _trace
+
         ctx = _trace.get_current_span().get_span_context()
         trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
     except Exception:
@@ -4905,13 +5389,18 @@ async def list_tools() -> ToolsListResponse:
         except Exception:
             allowed = True
         if allowed:
-            tools.append(ToolInfo(name=t.name, description=getattr(t, "description", None), parameters=schema))
+            tools.append(
+                ToolInfo(
+                    name=t.name, description=getattr(t, "description", None), parameters=schema
+                )
+            )
     return ToolsListResponse(tools=tools, count=len(tools))
 
 
 # -----------------------------
 # Tool Catalog admin/runtime endpoints (minimal)
 # -----------------------------
+
 
 class ToolCatalogItem(BaseModel):
     name: str
@@ -4934,14 +5423,18 @@ async def get_tool_catalog() -> ToolCatalogListResponse:
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"tool catalog unavailable: {exc}")
     items = [
-        ToolCatalogItem(name=e.name, enabled=e.enabled, description=e.description, params=e.params or {})
+        ToolCatalogItem(
+            name=e.name, enabled=e.enabled, description=e.description, params=e.params or {}
+        )
         for e in entries
     ]
     return ToolCatalogListResponse(items=items, count=len(items))
 
+
 # -----------------------------
 # UI/Utility messages (UI/system hints)
 # -----------------------------
+
 
 class UtilityEventIn(BaseModel):
     session_id: str | None = None
@@ -5042,13 +5535,20 @@ class ToolCatalogUpsertPayload(BaseModel):
 
 
 @app.put("/v1/tool-catalog/{name}")
-async def upsert_tool_catalog_item(name: str, payload: ToolCatalogUpsertPayload, request: Request) -> dict[str, Any]:
+async def upsert_tool_catalog_item(
+    name: str, payload: ToolCatalogUpsertPayload, request: Request
+) -> dict[str, Any]:
     # Enforce policy; treat as admin-level change via OPA
     try:
         tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
         await _evaluate_opa(
             request,
-            {"action": "tool.catalog.update", "resource": "tool.catalog", "tenant": tenant, "name": name},
+            {
+                "action": "tool.catalog.update",
+                "resource": "tool.catalog",
+                "tenant": tenant,
+                "name": name,
+            },
             {},
         )
     except HTTPException:
@@ -5059,7 +5559,12 @@ async def upsert_tool_catalog_item(name: str, payload: ToolCatalogUpsertPayload,
 
     try:
         await CATALOG_STORE.ensure_schema()
-        entry = ToolCatalogEntry(name=name, enabled=bool(payload.enabled), description=payload.description, params=payload.params)
+        entry = ToolCatalogEntry(
+            name=name,
+            enabled=bool(payload.enabled),
+            description=payload.description,
+            params=payload.params,
+        )
         await CATALOG_STORE.upsert(entry)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"failed to update tool catalog: {exc}")
@@ -5120,7 +5625,6 @@ async def revoke_api_key(
     await store.revoke_key(key_id)
     return Response(status_code=204)
 
-
     # (Removed unused WebSocket stream endpoint; SSE is the supported mechanism.)
 
 
@@ -5134,7 +5638,9 @@ removed to prevent duplicate mechanisms and shared consumer groups across client
 async def list_session_events(
     session_id: str,
     store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-    after: int | None = Query(None, ge=0, description="Return events with database id greater than this cursor"),
+    after: int | None = Query(
+        None, ge=0, description="Return events with database id greater than this cursor"
+    ),
     limit: int = Query(100, ge=1, le=500),
 ) -> SessionEventsResponse:
     events = await store.list_events_after(session_id, after_id=after, limit=limit)
@@ -5147,12 +5653,19 @@ async def list_session_events(
                 details = p.get("details") or p.get("message") or "Unexpected error"
                 meta = dict(p.get("metadata") or {})
                 if "error" not in meta:
-                    meta.update({"error": str(details)[:400], "source": meta.get("source", "system")})
+                    meta.update(
+                        {"error": str(details)[:400], "source": meta.get("source", "system")}
+                    )
                 p = {
                     **p,
                     "role": role,
-                    "type": f"{role}.error" if role in {"assistant","tool","system"} else "assistant.error",
-                    "message": p.get("message") or "An internal error occurred while processing your request.",
+                    "type": (
+                        f"{role}.error"
+                        if role in {"assistant", "tool", "system"}
+                        else "assistant.error"
+                    ),
+                    "message": p.get("message")
+                    or "An internal error occurred while processing your request.",
                     "metadata": meta,
                 }
         except Exception:
@@ -5167,6 +5680,7 @@ async def list_session_events(
 # Session history and context-window (UI helpers)
 # -----------------------------
 
+
 @app.get("/v1/sessions/{session_id}/history")
 async def get_session_history(
     session_id: str,
@@ -5180,7 +5694,9 @@ async def get_session_history(
     try:
         events = await store.list_events(session_id, limit=limit)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"failed to load history: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"failed to load history: {type(exc).__name__}: {exc}"
+        )
 
     # list_events returns newest-first; reverse to chronological
     events = list(reversed(events))
@@ -5232,15 +5748,21 @@ async def get_session_context_window(
     if env is not None:
         try:
             meta_lines.append("## Envelope metadata\n")
-            meta_lines.append(json.dumps({
-                "session_id": str(env.session_id),
-                "persona_id": env.persona_id,
-                "tenant": env.tenant,
-                "subject": env.subject,
-                "issuer": env.issuer,
-                "scope": env.scope,
-                "metadata": env.metadata,
-            }, ensure_ascii=False, indent=2))
+            meta_lines.append(
+                json.dumps(
+                    {
+                        "session_id": str(env.session_id),
+                        "persona_id": env.persona_id,
+                        "tenant": env.tenant,
+                        "subject": env.subject,
+                        "issuer": env.issuer,
+                        "scope": env.scope,
+                        "metadata": env.metadata,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             if env.analysis:
                 meta_lines.append("\n\n## Analysis\n")
                 meta_lines.append(json.dumps(env.analysis, ensure_ascii=False, indent=2))
@@ -5269,6 +5791,7 @@ async def get_session_context_window(
 # Periodic legacy error backfill loop
 # -----------------------------
 
+
 async def _legacy_error_backfill_loop(stop_evt: asyncio.Event) -> None:
     interval = int(os.getenv("LEGACY_ERROR_BACKFILL_SECONDS", "900"))  # 15 min default
     store = get_session_store()
@@ -5288,27 +5811,31 @@ async def _legacy_error_backfill_loop(stop_evt: asyncio.Event) -> None:
 # Workdir endpoints (UI Files modal)
 # -----------------------------
 
+
 def _workdir_base() -> Path:
     base = os.getenv("TOOL_WORK_DIR", "work_dir")
     return Path(base).expanduser().resolve()
+
 
 def _resolve_workdir(path_str: str | None) -> Path:
     base = _workdir_base()
     if not path_str or path_str in ("$WORK_DIR", "/", "."):
         return base
-    candidate = (base / path_str.lstrip("/"))
+    candidate = base / path_str.lstrip("/")
     resolved = candidate.resolve()
     if str(resolved).startswith(str(base)):
         return resolved
     raise HTTPException(status_code=400, detail="invalid path")
 
+
 def _entry_type(name: str, is_dir: bool) -> str:
     if is_dir:
         return "dir"
     ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-    if ext in {"zip","tar","gz","rar","7z"}:
+    if ext in {"zip", "tar", "gz", "rar", "7z"}:
         return "archive"
     return "file" if ext else "unknown"
+
 
 def _list_dir_payload(cur: Path) -> dict:
     entries = []
@@ -5316,14 +5843,16 @@ def _list_dir_payload(cur: Path) -> dict:
         for entry in os.scandir(cur):
             try:
                 stat = entry.stat()
-                entries.append({
-                    "name": entry.name,
-                    "path": str(Path(entry.path).resolve()),
-                    "is_dir": entry.is_dir(),
-                    "size": 0 if entry.is_dir() else int(stat.st_size),
-                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    "type": _entry_type(entry.name, entry.is_dir()),
-                })
+                entries.append(
+                    {
+                        "name": entry.name,
+                        "path": str(Path(entry.path).resolve()),
+                        "is_dir": entry.is_dir(),
+                        "size": 0 if entry.is_dir() else int(stat.st_size),
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "type": _entry_type(entry.name, entry.is_dir()),
+                    }
+                )
             except Exception:
                 continue
     except FileNotFoundError:
@@ -5360,7 +5889,9 @@ async def workdir_delete(request: Request) -> JSONResponse:
         try:
             target.unlink()
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"delete failed: {type(exc).__name__}: {exc}")
+            raise HTTPException(
+                status_code=500, detail=f"delete failed: {type(exc).__name__}: {exc}"
+            )
     return JSONResponse(_list_dir_payload(cur))
 
 
@@ -5369,7 +5900,7 @@ async def workdir_upload(request: Request) -> JSONResponse:
     form = await request.form()
     path = form.get("path")
     cur = _resolve_workdir(str(path) if path else None)
-    failed: list[dict[str,str]] = []
+    failed: list[dict[str, str]] = []
     os.makedirs(cur, exist_ok=True)
     for key, file in form.items():
         if key != "files[]":
@@ -5400,12 +5931,10 @@ async def workdir_download(path: str) -> FileResponse:
     return FileResponse(str(target), filename=target.name)
 
 
-
-
-
 # -----------------------------
 # UI runtime config endpoint (must be defined BEFORE mounting /ui StaticFiles)
 # -----------------------------
+
 
 @app.get("/ui/config.json")
 async def ui_config_json() -> JSONResponse:
@@ -5467,6 +5996,7 @@ try:
         # Serve the UI at root path as the default entrypoint
         index_html = UI_DIR / "index.html"
         if index_html.exists():
+
             @app.get("/", include_in_schema=False)
             @app.get("/index.html", include_in_schema=False)
             async def _root_ui() -> Response:  # type: ignore
@@ -5479,11 +6009,14 @@ try:
             subdir = UI_DIR / sub
             if subdir.exists():
                 # Do not use html=True for asset folders
-                app.mount(f"/{sub}", StaticFiles(directory=str(subdir), html=False), name=f"ui-{sub}")
+                app.mount(
+                    f"/{sub}", StaticFiles(directory=str(subdir), html=False), name=f"ui-{sub}"
+                )
 
         # Serve root-level index.js for absolute imports (e.g., import "/index.js") used by some modules
         index_js = UI_DIR / "index.js"
         if index_js.exists():
+
             @app.get("/index.js", include_in_schema=False)
             async def _index_js() -> FileResponse:  # type: ignore
                 # Force fresh fetch to avoid browsers using a cached legacy copy that still calls /poll
@@ -5496,6 +6029,7 @@ try:
         # Serve root-level index.css so the homepage styles load when UI is mounted at root
         index_css = UI_DIR / "index.css"
         if index_css.exists():
+
             @app.get("/index.css", include_in_schema=False)
             async def _index_css() -> FileResponse:  # type: ignore
                 return FileResponse(
@@ -5522,12 +6056,14 @@ try:
         # Optional: serve common root-level pages and their styles if present
         login_html = UI_DIR / "login.html"
         if login_html.exists():
+
             @app.get("/login.html", include_in_schema=False)
             async def _login_html() -> FileResponse:  # type: ignore
                 return FileResponse(str(login_html), media_type="text/html")
 
         login_css = UI_DIR / "login.css"
         if login_css.exists():
+
             @app.get("/login.css", include_in_schema=False)
             async def _login_css() -> FileResponse:  # type: ignore
                 return FileResponse(str(login_css), media_type="text/css")
@@ -5546,6 +6082,7 @@ except Exception:
 # -----------------------------
 # Optional tunnel proxy compatibility
 # -----------------------------
+
 
 @app.post("/tunnel_proxy")
 async def tunnel_proxy(request: Request) -> JSONResponse:  # type: ignore
@@ -5583,7 +6120,9 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
         try:
             cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
             try:
-                ttl_days = float(cfg.get("uploads_ttl_days", os.getenv("GATEWAY_UPLOAD_TTL_DAYS", "7")))
+                ttl_days = float(
+                    cfg.get("uploads_ttl_days", os.getenv("GATEWAY_UPLOAD_TTL_DAYS", "7"))
+                )
             except Exception:
                 ttl_days = 7.0
             if ttl_days <= 0:
@@ -5601,7 +6140,12 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
         try:
             cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
             try:
-                interval = float(cfg.get("uploads_janitor_interval_seconds", os.getenv("GATEWAY_UPLOAD_JANITOR_INTERVAL_SECONDS", "3600")))
+                interval = float(
+                    cfg.get(
+                        "uploads_janitor_interval_seconds",
+                        os.getenv("GATEWAY_UPLOAD_JANITOR_INTERVAL_SECONDS", "3600"),
+                    )
+                )
             except Exception:
                 interval = 3600.0
             await asyncio.wait_for(stop_event.wait(), timeout=interval)
@@ -5611,7 +6155,12 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
 
 async def _start_uploads_janitor() -> None:
     # Skip background janitor in pytest
-    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {"1", "true", "yes", "on"}:
+    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
         LOGGER.debug("Test mode: skipping uploads janitor startup")
         return
     try:
@@ -5627,6 +6176,7 @@ async def _stop_uploads_janitor() -> None:
             app.state._uploads_stop.set()
     except Exception:
         pass
+
 
 async def shutdown_background_services() -> None:
     """Ensure all shared resources are properly closed on shutdown."""
@@ -5647,6 +6197,7 @@ async def shutdown_background_services() -> None:
     # Stop DLQ refresher
     if hasattr(app.state, "_dlq_refresher_stop"):
         app.state._dlq_refresher_stop.set()
+
 
 # Lifespan handler replacing deprecated on_event startup/shutdown
 @asynccontextmanager
@@ -5685,11 +6236,13 @@ async def _gateway_lifespan(fastapi_app: FastAPI):
         except Exception:
             pass
 
+
 # Register lifespan
 try:
     app.router.lifespan_context = _gateway_lifespan  # type: ignore[attr-defined]
 except Exception:
     LOGGER.debug("Failed to register lifespan context", exc_info=True)
+
 
 @app.get("/v1/health")
 async def health_check(
@@ -5758,7 +6311,10 @@ async def health_check(
         else:
             components["memory_replicator"] = {"status": "degraded", "detail": "no WAL observed"}
     except Exception as exc:
-        components["memory_replicator"] = {"status": "degraded", "detail": f"{type(exc).__name__}: {exc}"}
+        components["memory_replicator"] = {
+            "status": "degraded",
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
 
     try:
         dlq_topic = f"{os.getenv('MEMORY_WAL_TOPIC', 'memory.wal')}.dlq"
@@ -5787,7 +6343,7 @@ async def health_check(
 
 
 @app.get("/v1/session/{session_id}/events")
-async def sse_session_events(session_id: str) -> StreamingResponse:
+async def sse_session_events(session_id: str, request: Request) -> StreamingResponse:
     """Server-Sent Events stream of outbound conversation events for a session.
 
     Streams events from the Kafka topic configured as CONVERSATION_OUTBOUND and
@@ -5796,11 +6352,48 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
     if _sse_disabled():
         raise HTTPException(status_code=503, detail="SSE disabled")
     topic = os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound")
+    notif_topic = _notifications_topic()
     group_base = f"sse-{session_id}"
+    # Attempt to extract tenant for notifications filtering (best-effort; unauth -> stream none scoped notifications)
+    try:
+        auth_meta = await authorize_request(
+            request, {"action": "sse.connect", "session_id": session_id}
+        )
+    except Exception:
+        auth_meta = {}
+    tenant = auth_meta.get("tenant")
 
     async def event_iter() -> AsyncIterator[bytes]:
         # Use a unique consumer group per connection to avoid inter-client interference
         group_id = f"{group_base}-{uuid.uuid4().hex[:8]}"
+        notif_group_id = f"{group_base}-n-{uuid.uuid4().hex[:6]}"
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=500)
+
+        async def _pump_conversation():
+            async for payload in iterate_topic(
+                topic=topic, group_id=group_id, settings=_kafka_settings()
+            ):
+                try:
+                    await queue.put(payload)
+                except Exception:
+                    continue
+
+        async def _pump_notifications():
+            # Stream notifications for matching tenant only
+            async for payload in iterate_topic(
+                topic=notif_topic, group_id=notif_group_id, settings=_kafka_settings()
+            ):
+                try:
+                    if tenant and payload.get("tenant_id") != tenant:
+                        continue
+                    # Normalize to ui.notification shape if not already
+                    if isinstance(payload, dict) and payload.get("type") == "ui.notification":
+                        await queue.put(payload)
+                except Exception:
+                    continue
+
+        convo_task = asyncio.create_task(_pump_conversation())
+        notif_task = asyncio.create_task(_pump_notifications())
         try:
             # Emit a connection increment
             try:
@@ -5819,10 +6412,17 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                 LOGGER.debug("telemetry emit failed (sse open)", exc_info=True)
             last_beat = 0.0
             heartbeat_secs = float(os.getenv("SSE_HEARTBEAT_SECONDS", "20"))
-            async for payload in iterate_topic(topic=topic, group_id=group_id, settings=_kafka_settings()):
+            while True:
                 try:
-                    sid = payload.get("session_id") or (payload.get("payload") or {}).get("session_id")
-                    if sid != session_id:
+                    payload = await queue.get()
+                except Exception:
+                    break
+                try:
+                    sid = payload.get("session_id") or (payload.get("payload") or {}).get(
+                        "session_id"
+                    )
+                    # Conversation events filtered by session id; notifications do not include session id.
+                    if (payload.get("type") != "ui.notification") and sid != session_id:
                         continue
                     # Coalesce away empty assistant stubs to ensure first assistant chunk carries content
                     try:
@@ -5837,15 +6437,29 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                     try:
                         if isinstance(payload, dict) and payload.get("type") == "error":
                             role = (payload.get("role") or "assistant").lower()
-                            details = payload.get("details") or payload.get("message") or "Unexpected error"
+                            details = (
+                                payload.get("details")
+                                or payload.get("message")
+                                or "Unexpected error"
+                            )
                             meta = dict(payload.get("metadata") or {})
                             if "error" not in meta:
-                                meta.update({"error": str(details)[:400], "source": meta.get("source", "system")})
+                                meta.update(
+                                    {
+                                        "error": str(details)[:400],
+                                        "source": meta.get("source", "system"),
+                                    }
+                                )
                             payload = {
                                 **payload,
                                 "role": role,
-                                "type": f"{role}.error" if role in {"assistant","tool","system"} else "assistant.error",
-                                "message": payload.get("message") or "An internal error occurred while processing your request.",
+                                "type": (
+                                    f"{role}.error"
+                                    if role in {"assistant", "tool", "system"}
+                                    else "assistant.error"
+                                ),
+                                "message": payload.get("message")
+                                or "An internal error occurred while processing your request.",
                                 "metadata": meta,
                             }
                     except Exception:
@@ -5853,14 +6467,21 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
 
                     # Optional error classification enrichment when already '*.error'
                     try:
-                        if _error_classifier_enabled() and isinstance(payload, dict) and isinstance(payload.get("type"), str) and payload["type"].endswith(".error"):
+                        if (
+                            _error_classifier_enabled()
+                            and isinstance(payload, dict)
+                            and isinstance(payload.get("type"), str)
+                            and payload["type"].endswith(".error")
+                        ):
                             meta = dict(payload.get("metadata") or {})
                             basis = meta.get("error") or payload.get("message") or ""
                             em = _errclass.classify(message=str(basis))
-                            meta.update({
-                                "error_code": em.error_code,
-                                "retriable": em.retriable,
-                            })
+                            meta.update(
+                                {
+                                    "error_code": em.error_code,
+                                    "retriable": em.retriable,
+                                }
+                            )
                             if em.retry_after is not None:
                                 meta["retry_after"] = em.retry_after
                             payload["metadata"] = meta
@@ -5878,6 +6499,11 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                                 payload = masked
                     except Exception:
                         pass
+                    # Notifications pass through directly
+                    if payload.get("type") == "ui.notification":
+                        data = json.dumps(payload, ensure_ascii=False)
+                        yield (f"data: {data}\n\n").encode("utf-8")
+                        continue
                     data = json.dumps(payload, ensure_ascii=False)
                     # Optional sequence number
                     try:
@@ -5898,15 +6524,33 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                         if isinstance(payload, dict):
                             ptype = str(payload.get("type") or "").lower()
                             # When a tool result or assistant final references a scheduler task, emit task.list.update
-                            if ptype.startswith("task.") or ptype in {"tool.result", "assistant.final"}:
+                            if ptype.startswith("task.") or ptype in {
+                                "tool.result",
+                                "assistant.final",
+                            }:
                                 # Best-effort heuristic: metadata.task_id present
                                 md = payload.get("metadata") or {}
                                 if md.get("task_id"):
-                                    hint = json.dumps({"type":"task.list.update","session_id":session_id,"metadata":{"task_id":md.get("task_id"),"source":ptype}})
+                                    hint = json.dumps(
+                                        {
+                                            "type": "task.list.update",
+                                            "session_id": session_id,
+                                            "metadata": {
+                                                "task_id": md.get("task_id"),
+                                                "source": ptype,
+                                            },
+                                        }
+                                    )
                                     yield (f"data: {hint}\n\n").encode("utf-8")
                             # Memory dashboard invalidations (memory.* events)
                             if ptype.startswith("memory."):
-                                hint2 = json.dumps({"type":"memory.list.update","session_id":session_id,"metadata":{"source":ptype}})
+                                hint2 = json.dumps(
+                                    {
+                                        "type": "memory.list.update",
+                                        "session_id": session_id,
+                                        "metadata": {"source": ptype},
+                                    }
+                                )
                                 yield (f"data: {hint2}\n\n").encode("utf-8")
                     except Exception:
                         pass
@@ -5915,7 +6559,9 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                     # Periodic heartbeat to keep idle connections alive
                     now = time.time()
                     if heartbeat_secs > 0 and (now - last_beat) >= heartbeat_secs:
-                        hb = json.dumps({"type":"system.keepalive","role":"system","session_id":session_id})
+                        hb = json.dumps(
+                            {"type": "system.keepalive", "role": "system", "session_id": session_id}
+                        )
                         yield (f"data: {hb}\n\n").encode("utf-8")
                         last_beat = now
                 except Exception:
@@ -5929,6 +6575,11 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                 GATEWAY_SSE_CONNECTIONS.dec()
             except Exception:
                 pass
+            for t in (convo_task, notif_task):
+                try:
+                    t.cancel()
+                except Exception:
+                    pass
             # Persist SSE connection close
             try:
                 await get_telemetry().emit_generic_metric(
@@ -5953,6 +6604,7 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
 # -----------------------------
 # Canonical Memory Dashboard APIs (/v1/memories/...)
 # -----------------------------
+
 
 async def _current_memory_subdir() -> str:
     try:
@@ -5994,7 +6646,9 @@ def _format_memory_row(row: Any) -> dict[str, Any]:
         "id": row.id,
         "event_id": row.event_id,
         "area": _row_area(row),
-        "timestamp": (row.created_at.isoformat() if getattr(row, "created_at", None) else "unknown"),
+        "timestamp": (
+            row.created_at.isoformat() if getattr(row, "created_at", None) else "unknown"
+        ),
         "content": payload.get("content") or payload.get("message") or "",
         "content_full": payload.get("content") or payload.get("message") or "",
         "tags": md.get("tags") or [],
@@ -6042,7 +6696,9 @@ async def api_memories_search(
         replica = get_replica_store()
         rows = await replica.list_memories(limit=lim, namespace=namespace, q=(q or None))
     except Exception as exc:
-        return JSONResponse({"success": False, "error": f"search failed: {type(exc).__name__}"}, status_code=200)
+        return JSONResponse(
+            {"success": False, "error": f"search failed: {type(exc).__name__}"}, status_code=200
+        )
 
     mems: list[dict[str, Any]] = []
     for r in rows:
@@ -6053,15 +6709,17 @@ async def api_memories_search(
     total = len(mems)
     knowledge_count = sum(1 for m in mems if m.get("knowledge_source"))
     conversation_count = total - knowledge_count
-    return JSONResponse({
-        "success": True,
-        "memories": mems,
-        "total_count": total,
-        "total_db_count": total,
-        "knowledge_count": knowledge_count,
-        "conversation_count": conversation_count,
-        "message": None,
-    })
+    return JSONResponse(
+        {
+            "success": True,
+            "memories": mems,
+            "total_count": total,
+            "total_db_count": total,
+            "knowledge_count": knowledge_count,
+            "conversation_count": conversation_count,
+            "message": None,
+        }
+    )
 
 
 @app.delete("/v1/memories/{memory_id}")
@@ -6219,11 +6877,13 @@ async def internal_runtime_settings(request: Request) -> JSONResponse:
     # Never include secrets here; keep api_keys empty
     flat["api_keys"] = {}
 
-    return JSONResponse({
-        "version": 1,
-        "format": "runtime_settings",
-        "settings": flat,
-    })
+    return JSONResponse(
+        {
+            "version": 1,
+            "format": "runtime_settings",
+            "settings": flat,
+        }
+    )
 
 
 @app.post("/memory_dashboard")
@@ -6288,9 +6948,13 @@ async def ui_memory_dashboard(request: Request) -> JSONResponse:
         rows = []
         try:
             replica = get_replica_store()
-            rows = await replica.list_memories(limit=min(max(limit, 1), 5000), namespace=namespace, q=search)
+            rows = await replica.list_memories(
+                limit=min(max(limit, 1), 5000), namespace=namespace, q=search
+            )
         except Exception as exc:
-            return JSONResponse({"success": False, "error": f"search failed: {type(exc).__name__}"}, status_code=200)
+            return JSONResponse(
+                {"success": False, "error": f"search failed: {type(exc).__name__}"}, status_code=200
+            )
 
         def _area_of(row: Any) -> str:
             try:
@@ -6305,31 +6969,37 @@ async def ui_memory_dashboard(request: Request) -> JSONResponse:
                 continue
             payload = r.payload or {}
             md = payload.get("metadata") or {}
-            mems.append({
-                "id": r.id,
-                "event_id": r.event_id,
-                "area": _area_of(r),
-                "timestamp": (r.created_at.isoformat() if getattr(r, "created_at", None) else "unknown"),
-                "content": payload.get("content") or payload.get("message") or "",
-                "content_full": payload.get("content") or payload.get("message") or "",
-                "tags": md.get("tags") or [],
-                "knowledge_source": bool(md.get("source") == "knowledge"),
-                "source_file": md.get("source_file") or None,
-                "metadata": md,
-            })
+            mems.append(
+                {
+                    "id": r.id,
+                    "event_id": r.event_id,
+                    "area": _area_of(r),
+                    "timestamp": (
+                        r.created_at.isoformat() if getattr(r, "created_at", None) else "unknown"
+                    ),
+                    "content": payload.get("content") or payload.get("message") or "",
+                    "content_full": payload.get("content") or payload.get("message") or "",
+                    "tags": md.get("tags") or [],
+                    "knowledge_source": bool(md.get("source") == "knowledge"),
+                    "source_file": md.get("source_file") or None,
+                    "metadata": md,
+                }
+            )
         # Basic counts for UI
         total = len(mems)
         knowledge_count = sum(1 for m in mems if m.get("knowledge_source"))
         conversation_count = total - knowledge_count
-        return JSONResponse({
-            "success": True,
-            "memories": mems,
-            "total_count": total,
-            "total_db_count": total,
-            "knowledge_count": knowledge_count,
-            "conversation_count": conversation_count,
-            "message": None,
-        })
+        return JSONResponse(
+            {
+                "success": True,
+                "memories": mems,
+                "total_count": total,
+                "total_db_count": total,
+                "knowledge_count": knowledge_count,
+                "conversation_count": conversation_count,
+                "message": None,
+            }
+        )
 
     if action == "delete":
         try:
@@ -6374,7 +7044,9 @@ async def ui_memory_dashboard(request: Request) -> JSONResponse:
             pool = await store._ensure_pool()  # type: ignore[attr-defined]
             async with pool.acquire() as conn:
                 # Fetch current payload
-                row = await conn.fetchrow("SELECT payload FROM memory_replica WHERE id = $1", mem_id)
+                row = await conn.fetchrow(
+                    "SELECT payload FROM memory_replica WHERE id = $1", mem_id
+                )
                 if not row:
                     return JSONResponse({"success": False, "error": "not found"})
                 payload = row["payload"] or {}
@@ -6387,17 +7059,24 @@ async def ui_memory_dashboard(request: Request) -> JSONResponse:
                         md = dict(new_payload.get("metadata") or {})
                         md.update(edited["metadata"])  # type: ignore[arg-type]
                         new_payload["metadata"] = md
-                await conn.execute("UPDATE memory_replica SET payload = $1::jsonb WHERE id = $2", json.dumps(new_payload, ensure_ascii=False), mem_id)
+                await conn.execute(
+                    "UPDATE memory_replica SET payload = $1::jsonb WHERE id = $2",
+                    json.dumps(new_payload, ensure_ascii=False),
+                    mem_id,
+                )
             return JSONResponse({"success": True})
         except Exception as exc:
             return JSONResponse({"success": False, "error": str(exc)})
 
-    return JSONResponse({"success": False, "error": f"unknown action: {action or 'none'}"}, status_code=200)
+    return JSONResponse(
+        {"success": False, "error": f"unknown action: {action or 'none'}"}, status_code=200
+    )
 
 
 # -----------------------------
 # DLQ depth refresher (background)
 # -----------------------------
+
 
 async def _refresh_dlq_depth_once(topics: list[str]) -> dict[str, int]:
     results: dict[str, int] = {}
@@ -6429,7 +7108,10 @@ async def _dlq_depth_refresher() -> None:
         pass
     while True:
         try:
-            if getattr(app.state, "_dlq_refresher_stop", None) and app.state._dlq_refresher_stop.is_set():
+            if (
+                getattr(app.state, "_dlq_refresher_stop", None)
+                and app.state._dlq_refresher_stop.is_set()
+            ):
                 break
             await _refresh_dlq_depth_once(topics)
         except Exception:
@@ -6445,7 +7127,12 @@ async def _process_export_job(job_id: int) -> None:
         return
     params = job.params or {}
     # Enforce tenant requirement if configured
-    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not (params.get("tenant")):
+    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {
+        "true",
+        "1",
+        "yes",
+        "on",
+    } and not (params.get("tenant")):
         await store.mark_failed(job_id, error="tenant required by policy")
         EXPORT_JOBS.labels("rejected").inc()
         return
@@ -6506,7 +7193,9 @@ async def _process_export_job(job_id: int) -> None:
                     if sent >= max_rows:
                         break
             os.replace(tmp_path, final_path)
-            await store.mark_complete(job_id, file_path=final_path, rows=rows_written, byte_size=bytes_written)
+            await store.mark_complete(
+                job_id, file_path=final_path, rows=rows_written, byte_size=bytes_written
+            )
             EXPORT_JOBS.labels("ok").inc()
         except Exception as exc:
             try:
@@ -6531,7 +7220,10 @@ async def _export_jobs_runner() -> None:
         pass
     while True:
         try:
-            if getattr(app.state, "_export_runner_stop", None) and app.state._export_runner_stop.is_set():
+            if (
+                getattr(app.state, "_export_runner_stop", None)
+                and app.state._export_runner_stop.is_set()
+            ):
                 break
             job_id = await get_export_job_store().claim_next()
             if not job_id:
@@ -6739,6 +7431,7 @@ async def get_ui_settings() -> dict[str, Any]:
     if profile:
         # Normalise kwargs to a dict (DB may return JSON as text depending on driver settings)
         from json import loads as _json_loads
+
         kwargs: dict[str, Any] | None
         if isinstance(profile.kwargs, dict):
             kwargs = profile.kwargs
@@ -6793,6 +7486,7 @@ def _normalize_llm_base_url(raw: str) -> str:
         return s
     try:
         from urllib.parse import urlparse, urlunparse
+
         parsed = urlparse(s)
         scheme = (parsed.scheme or "").lower()
         netloc = parsed.netloc
@@ -6827,10 +7521,12 @@ def _normalize_llm_base_url(raw: str) -> str:
             s = s.rstrip("/")
         return s
 
+
 def _detect_provider_from_base(base_url: str) -> str:
     host = ""
     try:
         from urllib.parse import urlparse
+
         host = (urlparse(base_url).netloc or "").lower()
     except Exception:
         host = base_url.lower()
@@ -6839,6 +7535,7 @@ def _detect_provider_from_base(base_url: str) -> str:
     if "openai" in host:
         return "openai"
     return "other"
+
 
 def _default_base_url_for_provider(provider: str) -> str | None:
     """Return a sensible OpenAI-compatible base URL for a known provider.
@@ -6880,6 +7577,7 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
         if isinstance(extra, str):
             try:
                 from json import loads as _loads
+
                 loaded = _loads(extra)
                 extra = loaded if isinstance(loaded, dict) else None
             except Exception:
@@ -6959,7 +7657,9 @@ async def ui_sections_get() -> dict[str, Any]:
                         if fid in agent_cfg:
                             val = agent_cfg.get(fid)
                             # Render dict-like *_kwargs/http_headers back to KEY=VALUE lines for textarea fields
-                            if isinstance(val, dict) and (fid.endswith("_kwargs") or fid == "browser_http_headers"):
+                            if isinstance(val, dict) and (
+                                fid.endswith("_kwargs") or fid == "browser_http_headers"
+                            ):
                                 try:
                                     fld["value"] = "\n".join(f"{k}={v}" for k, v in val.items())
                                 except Exception:
@@ -6977,7 +7677,10 @@ async def ui_sections_get() -> dict[str, Any]:
                         else:
                             fld["value"] = val
                     # Dev/RFC and shell settings
-                    if fid in {"rfc_url", "rfc_port_http", "rfc_port_ssh", "shell_interface"} and fid in agent_cfg:
+                    if (
+                        fid in {"rfc_url", "rfc_port_http", "rfc_port_ssh", "shell_interface"}
+                        and fid in agent_cfg
+                    ):
                         fld["value"] = agent_cfg.get(fid)
                     if fid == "rfc_password":
                         # never reveal, show placeholder when set
@@ -6996,7 +7699,17 @@ async def ui_sections_get() -> dict[str, Any]:
                         except Exception:
                             pass
                     # MCP / A2A
-                    if fid in {"mcp_client_init_timeout", "mcp_client_tool_timeout", "mcp_server_enabled", "mcp_server_token", "a2a_server_enabled"} and fid in agent_cfg:
+                    if (
+                        fid
+                        in {
+                            "mcp_client_init_timeout",
+                            "mcp_client_tool_timeout",
+                            "mcp_server_enabled",
+                            "mcp_server_token",
+                            "a2a_server_enabled",
+                        }
+                        and fid in agent_cfg
+                    ):
                         fld["value"] = agent_cfg.get(fid)
                     if fid == "mcp_servers" and fid in agent_cfg:
                         fld["value"] = agent_cfg.get(fid)
@@ -7039,7 +7752,7 @@ async def ui_sections_get() -> dict[str, Any]:
                     try:
                         fid = fld.get("id") or ""
                         if isinstance(fid, str) and fid.startswith("api_key_"):
-                            prov = fid[len("api_key_"):].strip().lower()
+                            prov = fid[len("api_key_") :].strip().lower()
                             if prov in providers_with_keys:
                                 # Use the same placeholder the UI expects
                                 fld["value"] = "************"
@@ -7177,6 +7890,7 @@ async def ui_sections_get() -> dict[str, Any]:
                         # Mask each non-empty secret value line with *** while preserving comments
                         try:
                             from python.helpers.secrets import SecretsManager
+
                             sm = SecretsManager.get_instance()
                             # Save raw to allow masking logic to work; do not expose plaintext values
                             # We temporarily write and read masked to reuse existing masking utility.
@@ -7244,20 +7958,92 @@ async def ui_sections_get() -> dict[str, Any]:
             "description": "Configure file upload behavior and limits.",
             "tab": "agent",
             "fields": [
-                {"id": "uploads_enabled", "title": "Enable Uploads", "type": "switch", "value": uploads_vals["uploads_enabled"]},
-                {"id": "uploads_max_mb", "title": "Max File Size (MB)", "type": "number", "value": uploads_vals["uploads_max_mb"]},
-                {"id": "uploads_max_files", "title": "Max Files Per Message", "type": "number", "value": uploads_vals["uploads_max_files"]},
-                {"id": "uploads_allowed_mime", "title": "Allowed MIME Types (CSV/lines)", "type": "textarea", "value": uploads_vals["uploads_allowed_mime"]},
-                {"id": "uploads_denied_mime", "title": "Denied MIME Types (CSV/lines)", "type": "textarea", "value": uploads_vals["uploads_denied_mime"]},
-                {"id": "uploads_dir", "title": "Storage Backend", "type": "text", "value": uploads_vals["uploads_dir"], "readonly": True},
-                {"id": "uploads_ttl_days", "title": "Retention TTL (days)", "type": "number", "value": uploads_vals["uploads_ttl_days"]},
-                {"id": "uploads_janitor_interval_seconds", "title": "Janitor Interval (seconds)", "type": "number", "value": uploads_vals["uploads_janitor_interval_seconds"]},
-                {"id": "uploads_inline_max_mb", "title": "Inline Cap (MB)", "type": "number", "value": uploads_vals["uploads_inline_max_mb"]},
-                {"id": "uploads_allow_external_ref", "title": "Allow External References (URLs)", "type": "switch", "value": uploads_vals["uploads_allow_external_ref"]},
-                {"id": "uploads_external_ref_allowlist", "title": "External URL Allowlist (CSV domains)", "type": "textarea", "value": uploads_vals["uploads_external_ref_allowlist"]},
-                {"id": "uploads_dedup_sha256", "title": "Enable SHA256 Dedup (per tenant)", "type": "switch", "value": uploads_vals["uploads_dedup_sha256"]},
-                {"id": "uploads_quarantine_policy", "title": "Quarantine Policy", "type": "select", "options": ["store_and_block", "drop_bytes_keep_meta"], "value": uploads_vals["uploads_quarantine_policy"]},
-                {"id": "uploads_download_token_ttl_seconds", "title": "Signed Download Token TTL (seconds)", "type": "number", "value": uploads_vals["uploads_download_token_ttl_seconds"]},
+                {
+                    "id": "uploads_enabled",
+                    "title": "Enable Uploads",
+                    "type": "switch",
+                    "value": uploads_vals["uploads_enabled"],
+                },
+                {
+                    "id": "uploads_max_mb",
+                    "title": "Max File Size (MB)",
+                    "type": "number",
+                    "value": uploads_vals["uploads_max_mb"],
+                },
+                {
+                    "id": "uploads_max_files",
+                    "title": "Max Files Per Message",
+                    "type": "number",
+                    "value": uploads_vals["uploads_max_files"],
+                },
+                {
+                    "id": "uploads_allowed_mime",
+                    "title": "Allowed MIME Types (CSV/lines)",
+                    "type": "textarea",
+                    "value": uploads_vals["uploads_allowed_mime"],
+                },
+                {
+                    "id": "uploads_denied_mime",
+                    "title": "Denied MIME Types (CSV/lines)",
+                    "type": "textarea",
+                    "value": uploads_vals["uploads_denied_mime"],
+                },
+                {
+                    "id": "uploads_dir",
+                    "title": "Storage Backend",
+                    "type": "text",
+                    "value": uploads_vals["uploads_dir"],
+                    "readonly": True,
+                },
+                {
+                    "id": "uploads_ttl_days",
+                    "title": "Retention TTL (days)",
+                    "type": "number",
+                    "value": uploads_vals["uploads_ttl_days"],
+                },
+                {
+                    "id": "uploads_janitor_interval_seconds",
+                    "title": "Janitor Interval (seconds)",
+                    "type": "number",
+                    "value": uploads_vals["uploads_janitor_interval_seconds"],
+                },
+                {
+                    "id": "uploads_inline_max_mb",
+                    "title": "Inline Cap (MB)",
+                    "type": "number",
+                    "value": uploads_vals["uploads_inline_max_mb"],
+                },
+                {
+                    "id": "uploads_allow_external_ref",
+                    "title": "Allow External References (URLs)",
+                    "type": "switch",
+                    "value": uploads_vals["uploads_allow_external_ref"],
+                },
+                {
+                    "id": "uploads_external_ref_allowlist",
+                    "title": "External URL Allowlist (CSV domains)",
+                    "type": "textarea",
+                    "value": uploads_vals["uploads_external_ref_allowlist"],
+                },
+                {
+                    "id": "uploads_dedup_sha256",
+                    "title": "Enable SHA256 Dedup (per tenant)",
+                    "type": "switch",
+                    "value": uploads_vals["uploads_dedup_sha256"],
+                },
+                {
+                    "id": "uploads_quarantine_policy",
+                    "title": "Quarantine Policy",
+                    "type": "select",
+                    "options": ["store_and_block", "drop_bytes_keep_meta"],
+                    "value": uploads_vals["uploads_quarantine_policy"],
+                },
+                {
+                    "id": "uploads_download_token_ttl_seconds",
+                    "title": "Signed Download Token TTL (seconds)",
+                    "type": "number",
+                    "value": uploads_vals["uploads_download_token_ttl_seconds"],
+                },
             ],
         }
     )
@@ -7269,10 +8055,30 @@ async def ui_sections_get() -> dict[str, Any]:
             "description": "Scan uploaded files with ClamAV (disabled by default).",
             "tab": "agent",
             "fields": [
-                {"id": "av_enabled", "title": "Enable Antivirus", "type": "switch", "value": av_vals["av_enabled"]},
-                {"id": "av_strict", "title": "Strict Mode (block on AV error)", "type": "switch", "value": av_vals["av_strict"]},
-                {"id": "av_host", "title": "ClamAV Host", "type": "text", "value": av_vals["av_host"]},
-                {"id": "av_port", "title": "ClamAV Port", "type": "number", "value": av_vals["av_port"]},
+                {
+                    "id": "av_enabled",
+                    "title": "Enable Antivirus",
+                    "type": "switch",
+                    "value": av_vals["av_enabled"],
+                },
+                {
+                    "id": "av_strict",
+                    "title": "Strict Mode (block on AV error)",
+                    "type": "switch",
+                    "value": av_vals["av_strict"],
+                },
+                {
+                    "id": "av_host",
+                    "title": "ClamAV Host",
+                    "type": "text",
+                    "value": av_vals["av_host"],
+                },
+                {
+                    "id": "av_port",
+                    "title": "ClamAV Port",
+                    "type": "number",
+                    "value": av_vals["av_port"],
+                },
                 {"id": "av_test", "title": "Test Scan", "type": "button", "value": "Test Scan"},
             ],
         }
@@ -7304,7 +8110,11 @@ async def ui_sections_set(
     if REQUIRE_AUTH and OPA_URL:
         try:
             tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
-            await _evaluate_opa(request, {"action": "settings.update", "resource": "ui.settings", "tenant": tenant}, {})
+            await _evaluate_opa(
+                request,
+                {"action": "settings.update", "resource": "ui.settings", "tenant": tenant},
+                {},
+            )
         except HTTPException:
             # Bubble up policy decision (403/5xx)
             raise
@@ -7393,7 +8203,7 @@ async def ui_sections_set(
                     placeholder = {"************", "****PSWD****"}
                     if val.strip() in placeholder:
                         continue
-                    prov = fid[len("api_key_"):].strip().lower()
+                    prov = fid[len("api_key_") :].strip().lower()
                     if prov:
                         creds.append((prov, val.strip()))
                 except Exception:
@@ -7444,7 +8254,9 @@ async def ui_sections_set(
                 or fid == "browser_http_headers"
             ):
                 # Parse textarea env-like fields for *_kwargs and browser_http_headers
-                if isinstance(val, str) and (fid.endswith("_kwargs") or fid == "browser_http_headers"):
+                if isinstance(val, str) and (
+                    fid.endswith("_kwargs") or fid == "browser_http_headers"
+                ):
                     extra_models_cfg[fid] = _as_env_kv(val)
                 else:
                     extra_models_cfg[fid] = val
@@ -7458,7 +8270,13 @@ async def ui_sections_set(
             elif fid.startswith("memory_"):
                 memory_cfg[fid] = val
             # Dev / RFC fields
-            elif fid in {"shell_interface", "rfc_url", "rfc_password", "rfc_port_http", "rfc_port_ssh"}:
+            elif fid in {
+                "shell_interface",
+                "rfc_url",
+                "rfc_password",
+                "rfc_port_http",
+                "rfc_port_ssh",
+            }:
                 dev_cfg[fid] = val
             # MCP client fields
             elif fid in {"mcp_client_init_timeout", "mcp_client_tool_timeout", "mcp_servers"}:
@@ -7478,7 +8296,13 @@ async def ui_sections_set(
             elif fid == "root_password" and isinstance(val, str) and val.strip():
                 root_password_plain = val.strip()
             # MCP client/server + A2A server related fields
-            elif fid in {"mcp_client_init_timeout", "mcp_client_tool_timeout", "mcp_server_enabled", "mcp_server_token", "a2a_server_enabled"}:
+            elif fid in {
+                "mcp_client_init_timeout",
+                "mcp_client_tool_timeout",
+                "mcp_server_enabled",
+                "mcp_server_token",
+                "a2a_server_enabled",
+            }:
                 agent[fid] = val
             elif fid == "mcp_servers":
                 agent[fid] = val
@@ -7507,6 +8331,7 @@ async def ui_sections_set(
                 return cast(x)
             except Exception:
                 return x
+
         # Copy and coerce some known numeric types for stability
         coerced: Dict[str, Any] = dict(speech_cfg)
         if "stt_silence_threshold" in coerced:
@@ -7541,6 +8366,7 @@ async def ui_sections_set(
         try:
             # Best-effort: store a SHA256 hash prefix rather than raw password
             import hashlib
+
             h = hashlib.sha256(root_password_plain.encode()).hexdigest()[:12]
             current_doc["root_password_hash"] = h
         except Exception:
@@ -7600,6 +8426,7 @@ async def ui_sections_set(
         if provider == "groq" and normalized_base:
             try:
                 from urllib.parse import urlparse, urlunparse
+
                 _p = urlparse(normalized_base)
                 _path = (_p.path or "").rstrip("/")
                 # If path doesn't already end with "/openai", set it explicitly
@@ -7634,7 +8461,13 @@ async def ui_sections_set(
                 if explicit_provider == "groq":
                     # Replace obviously foreign model identifiers (contain a provider prefix)
                     # with a widely available Groq default.
-                    if "/" in mn or mn.startswith("openai/") or mn.startswith("openrouter/") or mn.startswith("gpt-oss") or mn.replace(" ","").startswith("gptoss"):
+                    if (
+                        "/" in mn
+                        or mn.startswith("openai/")
+                        or mn.startswith("openrouter/")
+                        or mn.startswith("gpt-oss")
+                        or mn.replace(" ", "").startswith("gptoss")
+                    ):
                         model_name = "llama-3.1-8b-instant"
                 elif explicit_provider == "openrouter":
                     # OpenRouter accepts many vendor-prefixed names; leave as-is unless empty.
@@ -7663,7 +8496,9 @@ async def ui_sections_set(
             temp = 0.2
 
         # Merge any extra kwargs and persist provider hint so invoke can prefer it over base_url heuristics
-        _kwargs = model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else {}
+        _kwargs = (
+            model_profile.get("kwargs") if isinstance(model_profile.get("kwargs"), dict) else {}
+        )
         if explicit_provider:
             try:
                 _kwargs = dict(_kwargs)
@@ -7691,11 +8526,17 @@ async def ui_sections_set(
                     await store.set(prov, secret)
                     # Broadcast config update for each stored credential
                     try:
-                        await publisher.publish("config_updates", {"type": "llm.credentials.updated", "provider": prov})
+                        await publisher.publish(
+                            "config_updates", {"type": "llm.credentials.updated", "provider": prov}
+                        )
                     except Exception:
-                        LOGGER.debug("Failed to publish config update (llm credentials)", exc_info=True)
+                        LOGGER.debug(
+                            "Failed to publish config update (llm credentials)", exc_info=True
+                        )
                 except Exception:
-                    LOGGER.debug("Failed to persist LLM credential via settings save", exc_info=True)
+                    LOGGER.debug(
+                        "Failed to persist LLM credential via settings save", exc_info=True
+                    )
         except Exception:
             LOGGER.debug("Credentials store unavailable during settings save", exc_info=True)
 
@@ -7707,9 +8548,17 @@ async def ui_sections_set(
         up = dict(current_doc.get("uploads") or {}) if isinstance(current_doc, dict) else {}
         # Respect global file-saving disable switches
         try:
-            if os.getenv("DISABLE_FILE_SAVING", "true").lower() in {"true", "1", "yes", "on"} or os.getenv(
-                "GATEWAY_DISABLE_FILE_SAVING", "true"
-            ).lower() in {"true", "1", "yes", "on"}:
+            if os.getenv("DISABLE_FILE_SAVING", "true").lower() in {
+                "true",
+                "1",
+                "yes",
+                "on",
+            } or os.getenv("GATEWAY_DISABLE_FILE_SAVING", "true").lower() in {
+                "true",
+                "1",
+                "yes",
+                "on",
+            }:
                 up["uploads_enabled"] = False
         except Exception:
             pass
@@ -7844,11 +8693,14 @@ async def ui_sections_set(
 
     # Emit audit log (masking secrets) – best-effort
     try:
+
         def _mask_value(k: str, v: Any) -> Any:
             if not isinstance(k, str):
                 return v
             k_lower = k.lower()
-            if k_lower.startswith("api_key_") or any(s in k_lower for s in ("secret", "password", "token")):
+            if k_lower.startswith("api_key_") or any(
+                s in k_lower for s in ("secret", "password", "token")
+            ):
                 return "************"
             return v
 
@@ -7869,6 +8721,7 @@ async def ui_sections_set(
         # Trace id from current span
         try:
             from opentelemetry import trace as _trace
+
             ctx = _trace.get_current_span().get_span_context()
             trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
         except Exception:
@@ -7947,7 +8800,11 @@ async def av_test() -> dict[str, Any]:
     """Connectivity check to ClamAV daemon using current settings (or env defaults)."""
     # Determine current AV config (merge store values on top of defaults)
     doc = await get_ui_settings_store().get()
-    cfg = dict(doc.get("antivirus")) if isinstance(doc, dict) and isinstance(doc.get("antivirus"), dict) else {}
+    cfg = (
+        dict(doc.get("antivirus"))
+        if isinstance(doc, dict) and isinstance(doc.get("antivirus"), dict)
+        else {}
+    )
     host = str(cfg.get("av_host") or os.getenv("CLAMAV_HOST", "clamav"))
     try:
         port = int(cfg.get("av_port") or int(os.getenv("CLAMAV_PORT", "3310")))
@@ -8335,9 +9192,7 @@ async def reprocess_dlq_item(
     dedupe_key = None
     try:
         dedupe_key = (
-            payload.get("payload", {}).get("id")
-            or payload.get("event_id")
-            or payload.get("id")
+            payload.get("payload", {}).get("id") or payload.get("event_id") or payload.get("id")
         )
     except Exception:
         dedupe_key = None
@@ -8346,7 +9201,11 @@ async def reprocess_dlq_item(
     tenant = (
         payload.get("tenant")
         or (payload.get("metadata", {}) or {}).get("tenant")
-        or (payload.get("payload", {}).get("metadata", {}) if isinstance(payload.get("payload"), dict) else {}).get("tenant")
+        or (
+            payload.get("payload", {}).get("metadata", {})
+            if isinstance(payload.get("payload"), dict)
+            else {}
+        ).get("tenant")
     )
 
     result = await publisher.publish(
@@ -8359,7 +9218,12 @@ async def reprocess_dlq_item(
     # Delete DLQ entry upon successful publish or enqueue
     if result.get("published") or result.get("enqueued"):
         await store.delete_by_id(id=item_id)
-    return {"status": "reprocessed", "target": target, "published": bool(result.get("published")), "enqueued": bool(result.get("enqueued"))}
+    return {
+        "status": "reprocessed",
+        "target": target,
+        "published": bool(result.get("published")),
+        "enqueued": bool(result.get("enqueued")),
+    }
 
 
 # -----------------------------
@@ -8393,7 +9257,11 @@ def _coerce_model_for_provider(provider: str, model: str) -> tuple[str, bool]:
             # Groq expects OpenAI-compatible schema with Groq-supported model names (no vendor prefixes)
             # Allow explicit Groq-supported OpenAI-style OSS aliases
             _allow_set = {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}
-            if not ml or ("/" in ml or ml.startswith("openai/") or ml.startswith("openrouter/")) and (ml not in _allow_set):
+            if (
+                not ml
+                or ("/" in ml or ml.startswith("openai/") or ml.startswith("openrouter/"))
+                and (ml not in _allow_set)
+            ):
                 m = "llama-3.1-8b-instant"
                 changed = True
         elif p == "openai":
@@ -8425,7 +9293,9 @@ def _resolve_model_alias(model: str) -> tuple[str, bool]:
             return model, False
         # Normalize hyphen-like characters and lowercase for matching
         alias_key = (
-            model.replace("–", "-").replace("—", "-").replace("‑", "-")  # en/em/non-breaking hyphens
+            model.replace("–", "-")
+            .replace("—", "-")
+            .replace("‑", "-")  # en/em/non-breaking hyphens
             .strip()
             .lower()
         )
@@ -8451,7 +9321,9 @@ class LlmTestRequest(BaseModel):
 
 
 @app.post("/v1/llm/test")
-async def llm_test(payload: LlmTestRequest, request: Request, validate_auth: bool = Query(False)) -> dict:
+async def llm_test(
+    payload: LlmTestRequest, request: Request, validate_auth: bool = Query(False)
+) -> dict:
     """Admin/test endpoint: validate profile resolution, credentials presence, and perform a lightweight connectivity check.
 
     Access control:
@@ -8517,7 +9389,9 @@ async def llm_test(payload: LlmTestRequest, request: Request, validate_auth: boo
 
     # Emit metrics
     try:
-        LLM_TEST_RESULTS.labels(provider or "unknown", str(bool(validate_auth)).lower(), result_label).inc()
+        LLM_TEST_RESULTS.labels(
+            provider or "unknown", str(bool(validate_auth)).lower(), result_label
+        ).inc()
     except Exception:
         pass
 
@@ -8551,7 +9425,9 @@ class LlmStatusResponse(BaseModel):
 
 
 @app.get("/v1/llm/status", response_model=LlmStatusResponse)
-async def llm_status(request: Request, role: str = Query("dialogue", pattern="^(dialogue|escalation)$")) -> LlmStatusResponse:
+async def llm_status(
+    request: Request, role: str = Query("dialogue", pattern="^(dialogue|escalation)$")
+) -> LlmStatusResponse:
     """Return a snapshot of the active model profile, provider, and credential state.
 
     Includes whether model coercion would apply for the selected provider/model and
@@ -8573,7 +9449,9 @@ async def llm_status(request: Request, role: str = Query("dialogue", pattern="^(
     base_url = _normalize_llm_base_url(str(profile.base_url or ""))
     provider_hint = None
     try:
-        provider_hint = (profile.kwargs or {}).get("provider") if isinstance(profile.kwargs, dict) else None
+        provider_hint = (
+            (profile.kwargs or {}).get("provider") if isinstance(profile.kwargs, dict) else None
+        )
     except Exception:
         provider_hint = None
     provider = provider_hint or _detect_provider_from_base(base_url)
@@ -8591,7 +9469,9 @@ async def llm_status(request: Request, role: str = Query("dialogue", pattern="^(
     _alias_resolved, _alias_changed = _resolve_model_alias(_orig_model)
     _coerced_after_alias, _coerce_changed = _coerce_model_for_provider(provider, _alias_resolved)
     coerced_model = _coerced_after_alias
-    changed = bool(_alias_changed or _coerce_changed) and (_orig_model.strip() != (coerced_model or "").strip())
+    changed = bool(_alias_changed or _coerce_changed) and (
+        _orig_model.strip() != (coerced_model or "").strip()
+    )
 
     # Reachability
     reachable = False
@@ -8656,18 +9536,22 @@ async def audit_export(
     Filters are optional; when absent, returns recent events in ascending id order.
     """
     await _enforce_admin_rate_limit(request)
-    auth = await authorize_request(request, {
-        "request_id": request_id,
-        "session_id": session_id,
-        "tenant": tenant,
-        "action": action,
-    })
+    auth = await authorize_request(
+        request,
+        {
+            "request_id": request_id,
+            "session_id": session_id,
+            "tenant": tenant,
+            "action": action,
+        },
+    )
     _require_admin_scope(auth)
 
     store = get_audit_store()
 
     async def _streamer():
         import json as _json
+
         after_id: Optional[int] = None
         yielded = 0
         # simple bounded window to avoid infinite streams
@@ -8709,12 +9593,14 @@ async def audit_export(
                 after_id = r.id
             if len(rows) < 500:
                 break
+
     try:
         ADMIN_AUDIT_EXPORT.labels("ok").inc()
         return StreamingResponse(_streamer(), headers={"Content-Type": "application/x-ndjson"})
     except Exception:
         ADMIN_AUDIT_EXPORT.labels("error").inc()
         raise
+
 
 # List decision receipts (auth.decision) in JSON for quick ops inspection
 class AuditDecisionItem(BaseModel):
@@ -8745,7 +9631,9 @@ async def audit_list_decisions(
     subject: Optional[str] = Query(None, description="Filter by subject (sub)"),
     from_ts: Optional[datetime] = Query(None, description="Start timestamp (inclusive)"),
     to_ts: Optional[datetime] = Query(None, description="End timestamp (inclusive)"),
-    after: Optional[int] = Query(None, ge=0, description="Return items with database id greater than this cursor"),
+    after: Optional[int] = Query(
+        None, ge=0, description="Return items with database id greater than this cursor"
+    ),
     limit: int = Query(100, ge=1, le=200),
 ) -> AuditDecisionListResponse:
     """List recent authorization decision receipts (action == 'auth.decision').
@@ -8756,7 +9644,12 @@ async def audit_list_decisions(
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(
         request,
-        {"action": "audit.read", "resource": "auth.decision", "tenant": tenant, "session_id": session_id},
+        {
+            "action": "audit.read",
+            "resource": "auth.decision",
+            "tenant": tenant,
+            "session_id": session_id,
+        },
     )
     _require_admin_scope(auth)
 
@@ -8797,6 +9690,7 @@ async def audit_list_decisions(
         ADMIN_DECISIONS_LIST.labels("error").inc()
         raise
 
+
 class LlmInvokeMessage(BaseModel):
     role: str
     content: str
@@ -8823,7 +9717,9 @@ def _gateway_slm_client() -> SLMClient:
     return SLMClient()
 
 
-async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, str, str | None, float, dict[str, Any]]:
+async def _resolve_profile_and_creds(
+    payload: LlmInvokeRequest,
+) -> tuple[str, str, str | None, float, dict[str, Any]]:
     """Return (model, base_url, api_path, temperature, extra_kwargs) after applying overrides and normalization.
 
     Raises HTTPException on config/credentials errors.
@@ -8833,7 +9729,11 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
     if not profile and not payload.overrides:
         raise HTTPException(status_code=400, detail="model profile not configured for role")
 
-    model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+    model = (
+        payload.overrides.model
+        if payload.overrides and payload.overrides.model
+        else (profile.model if profile else "")
+    ).strip()
 
     # Determine base_url. Ignore any provided override and use profile value only.
     override_base_raw = None
@@ -8846,7 +9746,11 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
 
     base_url = _normalize_llm_base_url(str(base_url_raw))
     try:
-        temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+        temperature = (
+            float(payload.overrides.temperature)
+            if (payload.overrides and payload.overrides.temperature is not None)
+            else (float(profile.temperature) if profile else 0.2)
+        )
     except Exception:
         temperature = 0.2
     extra_kwargs: dict[str, Any] = {}
@@ -8863,7 +9767,9 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
     store = get_llm_credentials_store()
     secret = await store.get(provider)
     if not secret:
-        raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+        raise HTTPException(
+            status_code=404, detail=f"credentials not found for provider: {provider}"
+        )
 
     meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
     api_path = profile.api_path if profile else None
@@ -8884,12 +9790,20 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
         if not profile and not payload.overrides:
             raise HTTPException(status_code=400, detail="model profile not configured for role")
-        model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+        model = (
+            payload.overrides.model
+            if payload.overrides and payload.overrides.model
+            else (profile.model if profile else "")
+        ).strip()
         # Ignore any overrides.base_url; use profile base_url only
         base_url_raw = profile.base_url if profile else ""
         base_url = _normalize_llm_base_url(str(base_url_raw))
         try:
-            temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+            temperature = (
+                float(payload.overrides.temperature)
+                if (payload.overrides and payload.overrides.temperature is not None)
+                else (float(profile.temperature) if profile else 0.2)
+            )
         except Exception:
             temperature = 0.2
         extra_kwargs: dict[str, Any] = {}
@@ -8898,10 +9812,16 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         if payload.overrides and isinstance(payload.overrides.kwargs, dict):
             extra_kwargs.update(payload.overrides.kwargs)
         if not model or not base_url:
-            raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
+            raise HTTPException(
+                status_code=400, detail="invalid model/base_url after normalization"
+            )
         # Prefer provider explicitly stored in profile.extra (set by UI) over base_url heuristics
         try:
-            provider_hint = (profile.kwargs or {}).get("provider") if profile and isinstance(profile.kwargs, dict) else None
+            provider_hint = (
+                (profile.kwargs or {}).get("provider")
+                if profile and isinstance(profile.kwargs, dict)
+                else None
+            )
         except Exception:
             provider_hint = None
         provider = provider_hint or _detect_provider_from_base(base_url)
@@ -8917,9 +9837,11 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             _model_coerced = False
         secret = await get_llm_credentials_store().get(provider)
         if not secret:
-            raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+            raise HTTPException(
+                status_code=404, detail=f"credentials not found for provider: {provider}"
+            )
         meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
-        
+
         api_path = profile.api_path if profile else None
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=f"debug:resolve {exc}")
@@ -8938,6 +9860,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     # Audit/tracing context
     try:
         from opentelemetry import trace as _trace
+
         ctx = _trace.get_current_span().get_span_context()
         trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
     except Exception:
@@ -8963,6 +9886,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         # Attempt a direct fetch and return tool_calls so the worker can orchestrate tools.
         try:
             import httpx as _httpx
+
             payload_json = {
                 "model": model,
                 "messages": [m.__dict__ for m in messages],
@@ -8970,7 +9894,10 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                 "stream": False,
                 **{k: v for k, v in meta.items() if not k.startswith("_")},
             }
-            _headers = {"Content-Type": "application/json", "Authorization": f"Bearer {meta.get('_secret','')}"}
+            _headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {meta.get('_secret','')}",
+            }
             _path = api_path or "/v1/chat/completions"
             _url = f"{base_url.rstrip('/')}{_path}"
             async with _httpx.AsyncClient(timeout=30.0) as _client:
@@ -9002,7 +9929,11 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                         if not _resp2.is_error:
                             _data2 = _resp2.json()
                             try:
-                                _content2 = (_data2.get("choices") or [{}])[0].get("message", {}).get("content")
+                                _content2 = (
+                                    (_data2.get("choices") or [{}])[0]
+                                    .get("message", {})
+                                    .get("content")
+                                )
                             except Exception:
                                 _content2 = None
                             if _content2:
@@ -9034,14 +9965,23 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                             "response_kind": "content_after_tools_stripped",
                                         },
                                         diff=None,
-                                        ip=getattr(request.client, "host", None) if request.client else None,
+                                        ip=(
+                                            getattr(request.client, "host", None)
+                                            if request.client
+                                            else None
+                                        ),
                                         user_agent=request.headers.get("user-agent"),
                                     )
                                 except Exception:
-                                    LOGGER.debug("Failed to write audit log for llm.invoke content after tools stripped", exc_info=True)
+                                    LOGGER.debug(
+                                        "Failed to write audit log for llm.invoke content after tools stripped",
+                                        exc_info=True,
+                                    )
                                 # Metrics: success (content after tools stripped)
                                 try:
-                                    LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "ok").inc()
+                                    LLM_INVOKE_RESULTS.labels(
+                                        meta.get("_provider", "unknown"), "false", "ok"
+                                    ).inc()
                                 except Exception:
                                     pass
                                 try:
@@ -9061,7 +10001,10 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                         },
                                     )
                                 except Exception:
-                                    LOGGER.debug("telemetry emit failed (llm_invoke ok: content_after_tools_stripped)", exc_info=True)
+                                    LOGGER.debug(
+                                        "telemetry emit failed (llm_invoke ok: content_after_tools_stripped)",
+                                        exc_info=True,
+                                    )
                                 # Token usage metrics (non‑stream)
                                 try:
                                     GATEWAY_TOKENS_TOTAL.labels(
@@ -9075,9 +10018,17 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                         "output",
                                     ).inc(usage.get("output_tokens", 0))
                                 except Exception:
-                                    LOGGER.debug("token metric emit failed (content after tools)", exc_info=True)
+                                    LOGGER.debug(
+                                        "token metric emit failed (content after tools)",
+                                        exc_info=True,
+                                    )
                                 return JSONResponse(
-                                    {"content": _content2, "usage": usage, "model": model, "base_url": base_url},
+                                    {
+                                        "content": _content2,
+                                        "usage": usage,
+                                        "model": model,
+                                        "base_url": base_url,
+                                    },
                                     headers=headers_out,
                                 )
                         # Fallback: return tool_calls to let worker orchestrate if available
@@ -9107,16 +10058,24 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                     "response_kind": "tool_calls",
                                 },
                                 diff=None,
-                                ip=getattr(request.client, "host", None) if request.client else None,
+                                ip=(
+                                    getattr(request.client, "host", None)
+                                    if request.client
+                                    else None
+                                ),
                                 user_agent=request.headers.get("user-agent"),
                             )
                         except Exception:
-                            LOGGER.debug("Failed to write audit log for llm.invoke tool_calls", exc_info=True)
+                            LOGGER.debug(
+                                "Failed to write audit log for llm.invoke tool_calls", exc_info=True
+                            )
 
                         headers_out: dict[str, str] = {}
                         # Metrics: success (tool_calls response)
                         try:
-                            LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "false", "ok").inc()
+                            LLM_INVOKE_RESULTS.labels(
+                                meta.get("_provider", "unknown"), "false", "ok"
+                            ).inc()
                         except Exception:
                             pass
                         try:
@@ -9136,7 +10095,9 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                 },
                             )
                         except Exception:
-                            LOGGER.debug("telemetry emit failed (llm_invoke ok: tool_calls)", exc_info=True)
+                            LOGGER.debug(
+                                "telemetry emit failed (llm_invoke ok: tool_calls)", exc_info=True
+                            )
                         # Token usage metrics (non‑stream tool_calls)
                         try:
                             GATEWAY_TOKENS_TOTAL.labels(
@@ -9152,7 +10113,12 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                         except Exception:
                             LOGGER.debug("token metric emit failed (tool_calls)", exc_info=True)
                         return JSONResponse(
-                            {"tool_calls": _tc, "usage": usage, "model": model, "base_url": base_url},
+                            {
+                                "tool_calls": _tc,
+                                "usage": usage,
+                                "model": model,
+                                "base_url": base_url,
+                            },
                             headers=headers_out,
                         )
                 except Exception:
@@ -9174,10 +10140,12 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             # Optional classification enrichment
             if _error_classifier_enabled():
                 em = _errclass.classify(message=str(exc))
-                details.update({
-                    "error_code": em.error_code,
-                    "retriable": em.retriable,
-                })
+                details.update(
+                    {
+                        "error_code": em.error_code,
+                        "retriable": em.retriable,
+                    }
+                )
                 if em.retry_after is not None:
                     details["retry_after"] = em.retry_after
             await get_audit_store().log(
@@ -9234,10 +10202,12 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
             }
             if _error_classifier_enabled():
                 em = _errclass.classify(message=str(exc))
-                details.update({
-                    "error_code": em.error_code,
-                    "retriable": em.retriable,
-                })
+                details.update(
+                    {
+                        "error_code": em.error_code,
+                        "retriable": em.retriable,
+                    }
+                )
                 if em.retry_after is not None:
                     details["retry_after"] = em.retry_after
             await get_audit_store().log(
@@ -9422,12 +10392,20 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
         if not profile and not payload.overrides:
             raise HTTPException(status_code=400, detail="model profile not configured for role")
-        model = (payload.overrides.model if payload.overrides and payload.overrides.model else (profile.model if profile else "")).strip()
+        model = (
+            payload.overrides.model
+            if payload.overrides and payload.overrides.model
+            else (profile.model if profile else "")
+        ).strip()
         # Ignore any overrides.base_url; use profile base_url only
         base_url_raw = profile.base_url if profile else ""
         base_url = _normalize_llm_base_url(str(base_url_raw))
         try:
-            temperature = float(payload.overrides.temperature) if (payload.overrides and payload.overrides.temperature is not None) else (float(profile.temperature) if profile else 0.2)
+            temperature = (
+                float(payload.overrides.temperature)
+                if (payload.overrides and payload.overrides.temperature is not None)
+                else (float(profile.temperature) if profile else 0.2)
+            )
         except Exception:
             temperature = 0.2
         extra_kwargs: dict[str, Any] = {}
@@ -9436,10 +10414,16 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         if payload.overrides and isinstance(payload.overrides.kwargs, dict):
             extra_kwargs.update(payload.overrides.kwargs)
         if not model or not base_url:
-            raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
+            raise HTTPException(
+                status_code=400, detail="invalid model/base_url after normalization"
+            )
         # Prefer provider explicitly stored in profile.extra (set by UI) over base_url heuristics
         try:
-            provider_hint = (profile.kwargs or {}).get("provider") if profile and isinstance(profile.kwargs, dict) else None
+            provider_hint = (
+                (profile.kwargs or {}).get("provider")
+                if profile and isinstance(profile.kwargs, dict)
+                else None
+            )
         except Exception:
             provider_hint = None
         provider = provider_hint or _detect_provider_from_base(base_url)
@@ -9455,7 +10439,9 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
             _model_coerced = False
         secret = await get_llm_credentials_store().get(provider)
         if not secret:
-            raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+            raise HTTPException(
+                status_code=404, detail=f"credentials not found for provider: {provider}"
+            )
         meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
         api_path = profile.api_path if profile else None
     except Exception:
@@ -9468,6 +10454,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
     # Audit/tracing context
     try:
         from opentelemetry import trace as _trace
+
         ctx = _trace.get_current_span().get_span_context()
         trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
     except Exception:
@@ -9495,6 +10482,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         canonical = mode != "openai"
         buffer: list[str] = []
         import json as _json
+
         # Initialize streaming state variables
         first_emitted = False
         thinking_started = False
@@ -9517,7 +10505,9 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                         if _choices and isinstance(_choices, list) and _choices:
                             _delta = (_choices[0] or {}).get("delta", {})
                             _has_content = bool(_delta.get("content"))
-                            _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(_delta.get("tool_calls"))
+                            _has_tool_calls = isinstance(_delta.get("tool_calls"), list) and bool(
+                                _delta.get("tool_calls")
+                            )
                             LOGGER.debug(
                                 "LLM stream chunk (legacy)",
                                 extra={
@@ -9539,11 +10529,13 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 if not _choices or not isinstance(_choices, list) or not _choices:
                     # Ignore non-choice fragments and move to next chunk
                     continue
-                primary = (_choices[0] or {})
+                primary = _choices[0] or {}
                 delta = primary.get("delta", {}) if isinstance(primary.get("delta"), dict) else {}
                 content_piece = str(delta.get("content") or "")
                 finish_reason = primary.get("finish_reason")
-                tool_calls = delta.get("tool_calls") if isinstance(delta.get("tool_calls"), list) else None
+                tool_calls = (
+                    delta.get("tool_calls") if isinstance(delta.get("tool_calls"), list) else None
+                )
                 # Emit optional thinking.started once before first content
                 if _reasoning_enabled() and not thinking_started:
                     thinking_started = True
@@ -9569,26 +10561,43 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                         except Exception:
                             pass
                     try:
-                        GATEWAY_REASONING_EVENTS.labels(meta.get("_provider", "unknown"), "started").inc()
+                        GATEWAY_REASONING_EVENTS.labels(
+                            meta.get("_provider", "unknown"), "started"
+                        ).inc()
                     except Exception:
                         pass
                     # Persist generic metric for reasoning start
                     try:
                         await get_telemetry().emit_generic_metric(
                             metric_name="reasoning_events",
-                            labels={"phase": "started", "provider": meta.get("_provider"), "model": model},
+                            labels={
+                                "phase": "started",
+                                "provider": meta.get("_provider"),
+                                "model": model,
+                            },
                             value=1,
-                            metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                            metadata={
+                                "session_id": payload.session_id,
+                                "persona_id": payload.persona_id,
+                            },
                         )
                     except Exception:
                         LOGGER.debug("telemetry emit failed (reasoning started)", exc_info=True)
-                    yield ("data: " + _json.dumps(thinking_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
+                    yield (
+                        "data: " + _json.dumps(thinking_evt, ensure_ascii=False) + "\n\n"
+                    ).encode("utf-8")
                 # Tool events scaffolding (started/delta) before content deltas
                 if _tool_events_enabled() and tool_calls:
                     sanitized_calls: list[dict[str, Any]] = []
                     for tc in tool_calls:
                         if isinstance(tc, dict):
-                            sanitized_calls.append({k: v for k, v in tc.items() if k in {"id", "type", "function", "name", "arguments"}})
+                            sanitized_calls.append(
+                                {
+                                    k: v
+                                    for k, v in tc.items()
+                                    if k in {"id", "type", "function", "name", "arguments"}
+                                }
+                            )
                     tool_calls_buffer.extend(sanitized_calls)
                     if not emitted_tool_started:
                         emitted_tool_started = True
@@ -9615,19 +10624,30 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                             except Exception:
                                 pass
                         try:
-                            GATEWAY_TOOL_EVENTS.labels(meta.get("_provider", "unknown"), "started").inc()
+                            GATEWAY_TOOL_EVENTS.labels(
+                                meta.get("_provider", "unknown"), "started"
+                            ).inc()
                         except Exception:
                             pass
                         try:
                             await get_telemetry().emit_generic_metric(
                                 metric_name="tool_events",
-                                labels={"type": "started", "provider": meta.get("_provider"), "model": model},
+                                labels={
+                                    "type": "started",
+                                    "provider": meta.get("_provider"),
+                                    "model": model,
+                                },
                                 value=len(sanitized_calls) or 1,
-                                metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                                metadata={
+                                    "session_id": payload.session_id,
+                                    "persona_id": payload.persona_id,
+                                },
                             )
                         except Exception:
                             LOGGER.debug("telemetry emit failed (tool started)", exc_info=True)
-                        yield ("data: " + _json.dumps(started_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
+                        yield (
+                            "data: " + _json.dumps(started_evt, ensure_ascii=False) + "\n\n"
+                        ).encode("utf-8")
                     else:
                         delta_evt = {
                             "event_id": str(uuid.uuid4()),
@@ -9652,19 +10672,30 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                             except Exception:
                                 pass
                         try:
-                            GATEWAY_TOOL_EVENTS.labels(meta.get("_provider", "unknown"), "delta").inc()
+                            GATEWAY_TOOL_EVENTS.labels(
+                                meta.get("_provider", "unknown"), "delta"
+                            ).inc()
                         except Exception:
                             pass
                         try:
                             await get_telemetry().emit_generic_metric(
                                 metric_name="tool_events",
-                                labels={"type": "delta", "provider": meta.get("_provider"), "model": model},
+                                labels={
+                                    "type": "delta",
+                                    "provider": meta.get("_provider"),
+                                    "model": model,
+                                },
                                 value=len(sanitized_calls) or 1,
-                                metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                                metadata={
+                                    "session_id": payload.session_id,
+                                    "persona_id": payload.persona_id,
+                                },
                             )
                         except Exception:
                             LOGGER.debug("telemetry emit failed (tool delta)", exc_info=True)
-                        yield ("data: " + _json.dumps(delta_evt, ensure_ascii=False) + "\n\n").encode("utf-8")
+                        yield (
+                            "data: " + _json.dumps(delta_evt, ensure_ascii=False) + "\n\n"
+                        ).encode("utf-8")
                         if content_piece:
                             buffer.append(content_piece)
                             event_delta = {
@@ -9697,21 +10728,35 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                                 try:
                                     if not first_emitted:
                                         first_emitted = True
-                                        ASSISTANT_FIRST_TOKEN_SECONDS.labels(meta.get("_provider", "unknown")).observe(max(0.0, time.time() - start))
+                                        ASSISTANT_FIRST_TOKEN_SECONDS.labels(
+                                            meta.get("_provider", "unknown")
+                                        ).observe(max(0.0, time.time() - start))
                                         # Persist first-token latency metric
                                         try:
                                             await get_telemetry().emit_generic_metric(
                                                 metric_name="assistant_first_token_seconds",
-                                                labels={"provider": meta.get("_provider"), "model": model},
+                                                labels={
+                                                    "provider": meta.get("_provider"),
+                                                    "model": model,
+                                                },
                                                 value=max(0.0, time.time() - start),
-                                                metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                                                metadata={
+                                                    "session_id": payload.session_id,
+                                                    "persona_id": payload.persona_id,
+                                                },
                                             )
                                         except Exception:
-                                            LOGGER.debug("telemetry emit failed (first token)", exc_info=True)
-                                    ASSISTANT_TOKENS_TOTAL.labels(meta.get("_provider", "unknown"), "answer").inc()
+                                            LOGGER.debug(
+                                                "telemetry emit failed (first token)", exc_info=True
+                                            )
+                                    ASSISTANT_TOKENS_TOTAL.labels(
+                                        meta.get("_provider", "unknown"), "answer"
+                                    ).inc()
                                 except Exception:
                                     pass
-                            yield ("data: " + _json.dumps(event_delta, ensure_ascii=False) + "\n\n").encode("utf-8")
+                            yield (
+                                "data: " + _json.dumps(event_delta, ensure_ascii=False) + "\n\n"
+                            ).encode("utf-8")
                         # If finish_reason appears before [DONE] sentinel, we'll emit final after loop end
                         if finish_reason:
                             LOGGER.debug(
@@ -9739,9 +10784,17 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                     "version": "sa01-v1",
                     "type": "assistant.error",
                 }
-                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode(
+                    "utf-8"
+                )
             else:
-                msg = "data: " + "{\"error\": \"debug:stream " + str(exc).replace("\n", " ") + "\"}" + "\n\n"
+                msg = (
+                    "data: "
+                    + '{"error": "debug:stream '
+                    + str(exc).replace("\n", " ")
+                    + '"}'
+                    + "\n\n"
+                )
                 yield msg.encode("utf-8")
             return
         except httpx.HTTPStatusError as exc:
@@ -9830,9 +10883,11 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                             err_event = masked
                 except Exception:
                     pass
-                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode(
+                    "utf-8"
+                )
             else:
-                msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
+                msg = "data: " + '{"error": "' + detail.replace("\n", " ") + '"}' + "\n\n"
                 yield msg.encode("utf-8")
         except httpx.RequestError as exc:
             detail = f"provider_timeout: {exc}"
@@ -9858,7 +10913,9 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                     user_agent=request.headers.get("user-agent"),
                 )
             except Exception:
-                LOGGER.debug("Failed to write audit log for llm.invoke.stream timeout", exc_info=True)
+                LOGGER.debug(
+                    "Failed to write audit log for llm.invoke.stream timeout", exc_info=True
+                )
             try:
                 LLM_INVOKE_RESULTS.labels(meta.get("_provider", "unknown"), "true", "timeout").inc()
             except Exception:
@@ -9917,9 +10974,11 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                             err_event = masked
                 except Exception:
                     pass
-                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+                yield ("data: " + _json.dumps(err_event, ensure_ascii=False) + "\n\n").encode(
+                    "utf-8"
+                )
             else:
-                msg = "data: " + "{\"error\": \"" + detail.replace("\n", " ") + "\"}" + "\n\n"
+                msg = "data: " + '{"error": "' + detail.replace("\n", " ") + '"}' + "\n\n"
                 yield msg.encode("utf-8")
         finally:
             try:
@@ -9999,19 +11058,30 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                         except Exception:
                             pass
                     try:
-                        GATEWAY_REASONING_EVENTS.labels(meta.get("_provider", "unknown"), "final").inc()
+                        GATEWAY_REASONING_EVENTS.labels(
+                            meta.get("_provider", "unknown"), "final"
+                        ).inc()
                     except Exception:
                         pass
                     try:
                         await get_telemetry().emit_generic_metric(
                             metric_name="reasoning_events",
-                            labels={"phase": "final", "provider": meta.get("_provider"), "model": model},
+                            labels={
+                                "phase": "final",
+                                "provider": meta.get("_provider"),
+                                "model": model,
+                            },
                             value=1,
-                            metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                            metadata={
+                                "session_id": payload.session_id,
+                                "persona_id": payload.persona_id,
+                            },
                         )
                     except Exception:
                         LOGGER.debug("telemetry emit failed (reasoning final)", exc_info=True)
-                    yield ("data: " + _json.dumps(thinking_final, ensure_ascii=False) + "\n\n").encode("utf-8")
+                    yield (
+                        "data: " + _json.dumps(thinking_final, ensure_ascii=False) + "\n\n"
+                    ).encode("utf-8")
                 final_event = {
                     "event_id": str(uuid.uuid4()),
                     "session_id": payload.session_id,
@@ -10057,13 +11127,22 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                     try:
                         await get_telemetry().emit_generic_metric(
                             metric_name="tool_events",
-                            labels={"type": "final", "provider": meta.get("_provider"), "model": model},
+                            labels={
+                                "type": "final",
+                                "provider": meta.get("_provider"),
+                                "model": model,
+                            },
                             value=len(tool_calls_buffer) or 0,
-                            metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                            metadata={
+                                "session_id": payload.session_id,
+                                "persona_id": payload.persona_id,
+                            },
                         )
                     except Exception:
                         LOGGER.debug("telemetry emit failed (tool final)", exc_info=True)
-                    yield ("data: " + _json.dumps(tool_final, ensure_ascii=False) + "\n\n").encode("utf-8")
+                    yield ("data: " + _json.dumps(tool_final, ensure_ascii=False) + "\n\n").encode(
+                        "utf-8"
+                    )
                 # Emit token usage for streaming output (approximate token count based on buffer length)
                 try:
                     output_tokens_est = len(buffer)
@@ -10073,13 +11152,22 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                     # Generic metric for token usage
                     await get_telemetry().emit_generic_metric(
                         metric_name="token_usage",
-                        labels={"provider": meta.get("_provider"), "model": model, "direction": "output"},
+                        labels={
+                            "provider": meta.get("_provider"),
+                            "model": model,
+                            "direction": "output",
+                        },
                         value=output_tokens_est,
-                        metadata={"session_id": payload.session_id, "persona_id": payload.persona_id},
+                        metadata={
+                            "session_id": payload.session_id,
+                            "persona_id": payload.persona_id,
+                        },
                     )
                 except Exception:
                     LOGGER.debug("token metric emit failed (stream output)", exc_info=True)
-                yield ("data: " + _json.dumps(final_event, ensure_ascii=False) + "\n\n").encode("utf-8")
+                yield ("data: " + _json.dumps(final_event, ensure_ascii=False) + "\n\n").encode(
+                    "utf-8"
+                )
                 # Preserve sentinel for any generic SSE client
                 yield b"data: [DONE]\n\n"
             else:

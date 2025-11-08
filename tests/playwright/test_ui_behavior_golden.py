@@ -1,50 +1,51 @@
 import asyncio
 import os
 import time
+
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 
 async def run_behavior(url: str) -> int:
     async with async_playwright() as p:
-        headless_env = os.environ.get('HEADLESS', '1').lower()
-        headless = not (headless_env in ('0', 'false', 'no'))
+        headless_env = os.environ.get("HEADLESS", "1").lower()
+        headless = headless_env not in ("0", "false", "no")
         browser = await p.chromium.launch(headless=headless)
         context = await browser.new_context()
         page = await context.new_page()
 
-        await page.goto(url, wait_until='load', timeout=60000)
+        await page.goto(url, wait_until="load", timeout=60000)
         await page.wait_for_timeout(500)
 
         # Basic boot: chat input appears
         try:
-            await page.wait_for_selector('#chat-input', timeout=15000)
-            await page.wait_for_selector('#send-button', timeout=15000)
+            await page.wait_for_selector("#chat-input", timeout=15000)
+            await page.wait_for_selector("#send-button", timeout=15000)
         except PlaywrightTimeoutError:
             await browser.close()
             return 1
 
         # Welcome message (any message in history counts)
         try:
-            await page.wait_for_selector('#chat-history .message', timeout=8000)
+            await page.wait_for_selector("#chat-history .message", timeout=8000)
         except PlaywrightTimeoutError:
             # Not fatal; continue
             pass
 
         # Send a tiny message
-        chat = await page.query_selector('#chat-input')
+        chat = await page.query_selector("#chat-input")
         if chat:
-            await chat.fill('ping')
-            await chat.press('Enter')
+            await chat.fill("ping")
+            await chat.press("Enter")
         else:
             await browser.close()
             return 2
 
         # Expect thinking indicator to appear soon
         async def progress_nonempty() -> bool:
-            el = await page.query_selector('#progress-bar')
+            el = await page.query_selector("#progress-bar")
             if not el:
                 return False
-            txt = (await el.inner_text()) or ''
+            txt = (await el.inner_text()) or ""
             return len(txt.strip()) > 0
 
         appeared = False
@@ -62,7 +63,7 @@ async def run_behavior(url: str) -> int:
         ai_text = None
         end = time.time() + 45
         while time.time() < end:
-            els = await page.query_selector_all('#chat-history .message-ai')
+            els = await page.query_selector_all("#chat-history .message-ai")
             if els:
                 try:
                     ai_text = await els[-1].inner_text()
@@ -74,19 +75,21 @@ async def run_behavior(url: str) -> int:
         # Indicator should eventually clear after completion; allow a small window
         cleared = False
         for _ in range(30):  # up to ~15s
-            el = await page.query_selector('#progress-bar')
-            txt = (await el.inner_text()) if el else ''
-            if not (txt or '').strip():
+            el = await page.query_selector("#progress-bar")
+            txt = (await el.inner_text()) if el else ""
+            if not (txt or "").strip():
                 cleared = True
                 break
             await page.wait_for_timeout(500)
 
         # Try the Show thoughts toggle only if thoughts rows exist
-        thoughts = await page.query_selector_all('.msg-thoughts')
+        thoughts = await page.query_selector_all(".msg-thoughts")
         if thoughts:
             # Find the Show thoughts switch and turn it off
             # The switch is in Preferences; locate by the label text then find the input nearby
-            btns = await page.query_selector_all("xpath=//li[.//span[contains(., 'Show thoughts')]]//input[@type='checkbox']")
+            btns = await page.query_selector_all(
+                "xpath=//li[.//span[contains(., 'Show thoughts')]]//input[@type='checkbox']"
+            )
             if btns:
                 # Turn off
                 await btns[0].check()
@@ -96,7 +99,7 @@ async def run_behavior(url: str) -> int:
                 # Verify at least the first thoughts row is hidden via computed style
                 disp = await thoughts[0].evaluate("(el) => getComputedStyle(el).display")
                 # In our UI, hiding sets display: none; treat non-visible as pass
-                if disp != 'none':
+                if disp != "none":
                     # Not a hard failure; environments may style differently
                     pass
 
@@ -106,7 +109,7 @@ async def run_behavior(url: str) -> int:
 
 
 async def main():
-    base = os.environ.get('GOLDEN_UI_BASE_URL') or 'http://127.0.0.1:7001'
+    base = os.environ.get("GOLDEN_UI_BASE_URL") or "http://127.0.0.1:7001"
     try:
         code = await run_behavior(base)
     except Exception as e:  # pragma: no cover
@@ -118,5 +121,5 @@ async def main():
         raise SystemExit(code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

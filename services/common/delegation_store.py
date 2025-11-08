@@ -21,7 +21,9 @@ class DelegationStore:
         if self._pool is None:
             min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
             max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
             await self.ensure_schema()
         return self._pool
 

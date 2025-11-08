@@ -1,213 +1,113 @@
-# Canonical Roadmap
+## 📚 Integration of Celery into somaagent01 (Canonical)
 
-## Vision & Principles
-- Centralize all LLM traffic through the Gateway; workers never hold provider secrets or override base URLs.
-- Settings UI is the single source of truth for runtime-tunable config; ENV only for non-centralizable/bootstrap items (and DEV fallback when no UI key exists).
-- Show all providers in UI; Groq is the default, but not special-cased in UX.
-- Secrets are stored server-side, encrypted at rest; UI never echoes secrets, only placeholders.
-- No seed scripts. All changes flow via the Settings UI save.
+Version: 1.0 – 2025‑11‑08
+Audience: Developers, DevOps engineers, and security auditors working on the somaagent01 code‑base.
 
-## Architecture
-- Call path: UI → Gateway → Worker → Gateway `/v1/llm/invoke(/stream)` → Provider → stream to UI.
-- Control plane:
-  - UI settings: `GET|POST /v1/ui/settings/sections`
-  - Model profiles: stored in Gateway; normalized base URL defaults per provider.
-  - Credentials store: encrypted Redis-backed `LlmCredentialsStore`.
-- Admin/diagnostics:
-  - `/v1/llm/status`: snapshot of provider, model, creds, reachability, and any coercion applied.
-  - `/v1/llm/test`: minimal connectivity probe; optional authenticated upstream ping.
+Table of Contents
+Why Celery?
+High‑Level Architecture
+Prerequisites & Dependencies
+Code Layout & Core Components
+FastAPI Scheduler API
+LLM Tool – schedule_task_celery
+Security – JWT Middleware & Scope Enforcement
+Observability – Prometheus Metrics
+Docker‑Compose Deployment
+Feature‑Flag Switching (APScheduler ↔ Celery)
+Migration from APScheduler to Celery
+Testing Strategy
+Roll‑out Checklist
+Appendix – Example Payloads & cURL snippets
 
-## Settings & Credentials
-- Save: Single POST to `/v1/ui/settings/sections` persists all fields, including API keys in External → API Keys.
-- Masking: On GET, secrets return as placeholders; never echo raw values.
-- Multiple keys: API key fields support comma-separated values.
-- Precedence: UI value > DEV fallback > default. DEV fallback (e.g., `GROQ_API_KEY`) only applies if UI key is missing; disabled outside DEV.
-- Non-centralizable ENV: Keep sensitive bootstrap (e.g., `GATEWAY_ENC_KEY`, internal token, datastore URLs) in ENV only.
+1️⃣ Why Celery?
+Reason	Benefit for somaagent01
+Distributed workers	Heavy or long‑running tasks (model inference, large downloads) run in separate processes, keeping the LLM‑agent responsive.
+Reliable delivery & retries	Guarantees at‑least‑once execution, automatic exponential back‑off, dead‑letter queues – essential for production automation.
+Cron / periodic jobs	Celery Beat provides a robust, persistent scheduler that survives container restarts.
+Task chaining & workflows	Canvas primitives (chains, groups, chords) enable multi‑step pipelines (e.g., fetch → process → store).
+Horizontal scalability	Adding more workers is just a new container – linear scaling.
+Existing stack compatibility	The project already uses Redis for other services; Celery works natively with Redis as broker + backend.
 
-## Providers & Models
-- UI dropdowns: show full provider lists for chat/util/browser (OpenAI, Groq, Azure, Mistral, DeepSeek, xAI, HuggingFace, LM Studio, Ollama, Other).
-- Default: Groq selected initially; user can choose any provider at a time (single-select).
-- Normalization: sensible defaults for base URLs; no OpenRouter-specific special cases; prevent cross-provider mismatch.
-- Model alias registry: UI label like “GPT‑OSS‑120B” mapped to exact provider model names (pass-through when no alias exists).
+When to adopt?
 
-## UI Parity & UX Enhancements
-- Toggles: persist “showThoughts/showJSON/showUtils”; restore Utilities bubble, Notifications modal, and visual diffs parity.
-- Settings modal: Make save hot-apply; ensure tabs include Constitution and Decisions; provide connectivity “Test” and “Status” feedback.
-- External → API Keys: show all `api_key_*` fields; allow editing many providers’ keys; mask on reload.
-- Theme pre-paint: Apply `.dark-mode`/`.light-mode` before first paint to eliminate initial flicker; mirror to body on `DOMContentLoaded`.
+When you have long‑running or CPU‑heavy jobs.
+When you need retries, dead‑letter handling, or task chaining.
+When you anticipate scaling the system horizontally.
+For simple low‑frequency cron jobs you can keep using APScheduler (lighter).
 
-## Memory (SomaBrain) Integration
-- Map remember/recall/context endpoints to Gateway; ensure Memory button surfaces recalled content across conversation stages.
-- Constitution endpoints exposed under Settings tabs; allow edits and hot-apply.
-- Ensure recall flows are optional AI-assisted (query prep/post-filter) with configurable thresholds.
+2️⃣ High‑Level Architecture
++-------------------+      +-------------------+      +-------------------+
+|   FastAPI (agent)   | → |   Celery Beat      | → |   Celery Workers   |
++-------------------+      +-------------------+      +-------------------+
+        ^                         ^                         ^
+        |                         |                         |
+        |   Redis broker (queues)  |   Redis result store    |
+        +-----------------------------------------------------+
 
-## LLM Centralization Details
-- Internal token gate for invoke/test; workers pass role/messages/limited kwargs only (no secrets/base_url).
-- Gateway resolves model profile, provider, base URL, and credentials on each call.
-- SSE streaming from Gateway to UI; attachments handled via Gateway endpoints only.
+FastAPI (the existing agent server) exposes a /api/celery/* REST API for job CRUD.
+Celery Beat enqueues periodic jobs; Celery Workers execute tasks and post results.
+Redis acts as broker and optional result backend.
 
-## Security & AuthZ
-- Secrets at rest encrypted via `GATEWAY_ENC_KEY` (mandatory).
-- Admin scope or internal token required for `/v1/llm/status` and `/v1/llm/test`.
-- OPA (if enabled) guards settings updates; fail-closed on policy errors when configured.
-- Audit logs omit secret values; config_updates topic notifies workers on changes without exposing secrets.
+3️⃣ Prerequisites & Dependencies
+- Redis available for broker + result backend
+- Celery 5.x, celery[redis]
+- FastAPI and Pydantic (already present)
+- Prometheus client for metrics
 
-## Observability & Diagnostics
-- `/v1/llm/status`: include provider, model, base_url normalized, creds presence, reachability code, and coercion flags.
-- Metrics for llm test results by provider and auth mode.
-- Banner guidance in Settings if credentials missing or connectivity fails.
+4️⃣ Code Layout & Core Components
+- celery_app/: Celery application factory and tasks registration
+- scheduler/: API adapters for APScheduler and Celery modes
+- extensions/: `schedule_task_celery` tool wrapper for LLM-triggered tasks
+- services/gateway/main.py: feature-flag wiring, runtime-config surface, API router include
 
-## Migration & Rollout
-- Remove all seeding scripts and doc references; rely solely on Settings UI saves.
-- On first open after upgrade, show “Missing provider key” banner with quick link to External → API Keys.
-- Document ENV-only items, DEV fallback scope, and data precedence.
-- No downtime; hot-apply on save; broadcast via `config_updates`.
+5️⃣ FastAPI Scheduler API (Unified)
+- GET /v1/ui/scheduler/jobs – list
+- POST /v1/ui/scheduler/jobs – create
+- PUT /v1/ui/scheduler/jobs/{id} – update
+- POST /v1/ui/scheduler/jobs/{id}/run – run now
+- DELETE /v1/ui/scheduler/jobs/{id} – delete
+- GET /v1/ui/scheduler/runs?job_id=&cursor= – history
 
-## Validation & Tests
-- Unit: settings round-trip (masking), provider normalization, credential store encrypt/decrypt.
-- API: `/v1/ui/settings/sections` save/read, `/v1/llm/status`, `/v1/llm/test`.
-- E2E/Playwright: open Settings → choose provider/model → set API key(s) → Save → Test → send chat and verify streaming.
-- SSE reliability checks; attachment upload/download flows.
+6️⃣ LLM Tool – schedule_task_celery
+- Thin wrapper selecting APScheduler or Celery implementation based on feature flag
+- Validates payload, enqueues job, returns job id and trace
 
-## Decisions & Risks
-- Decision: UI shows all providers; Groq is default, not special in UX.
-- Decision: No seeders; Settings UI is the only save surface for provider secrets.
-- Risk: ENV fallbacks can drift; mitigated by DEV-only fallback and clear precedence docs.
-- Risk: Provider/model mismatch; mitigated by normalization and coercion with explicit status flags.
+7️⃣ Security – JWT Middleware & Scope Enforcement
+- Scopes: scheduler:read, scheduler:write, scheduler:run
+- Optional OPA tenant policies
+- Audit log for CRUD and run-now actions
 
-## Milestones
-- M1: UI save accepts all fields; secrets masked; hot-apply; `/v1/llm/status` live.
-- M2: Full provider lists in dropdowns; Groq default; base URL normalization; alias registry.
-- M3: Memory UI parity with SomaBrain; Constitution/Decisions tabs wired.
-- M4: Observability metrics and Settings banners; E2E tests pass; no seeders left.
+8️⃣ Observability – Prometheus Metrics
+- scheduler_jobs_total
+- scheduler_runs_started_total / success_total / failure_total
+- scheduler_run_duration_seconds (histogram)
+- Celery queue depth gauge (broker)
 
-## Acceptance Criteria
-- All Settings fields round-trip through `/v1/ui/settings/sections` in one save path.
-- External → API Keys displays all providers’ keys; supports multiple values and masks after save.
-- Streaming chat works immediately after save with chosen provider/model.
-- Status/Test endpoints reflect true state; no secrets leak in responses or logs.
-- No seed scripts; docs align with UI-first credential management.
-- First render matches saved theme with no flicker; Playwright UI suite green.
-<!-- Canonical roadmap for somaAgent01 — generated/updated 2025-10-30 by GitHub Copilot -->
-# SomaAgent01 Canonical Roadmap (Canonical)
+9️⃣ Docker‑Compose Deployment
+- Add celery_worker and celery_beat services
+- Configure USE_CELERY/SCHEDULER_USE_CELERY, Redis URL, concurrency
 
-Last updated: 2025-10-30
+🔟 Feature‑Flag Switching (APScheduler ↔ Celery)
+- Env/config flag `SCHEDULER_USE_CELERY`
+- Runtime-config projects `scheduler.enabled` and `scheduler.use_celery` to UI
 
-This document is the canonical roadmap for the somaAgent01 project. It consolidates the project's vision, the implemented components, the gaps vs the canonical vision, and the prioritized tasks to reach parity with the Agent Zero UI and the canonical streaming transport.
+1️⃣1️⃣ Migration from APScheduler to Celery
+- Export current jobs → JSON, transform → Celery Beat entries
+- Validate counts, enable flag, rollback path documented
 
-Summary
-- Vision: a developer-first, production-ready multi-service agent platform exposing a single, predictable Gateway surface for UI and integrators. The Gateway provides secure same-origin UI serving, cookie/session or header-token auth, SSE streaming for real-time message updates, uploads, tool invocation endpoints, and credential management. Workers (Conversation Worker, Tool Executor) are event-driven and consume/publish to the message backbone.
-- Canonical transport: Server-Sent Events (SSE) via GET /v1/session/{id}/events from the Gateway. Polling is deprecated and only supported for legacy clients via an adapter layer. Websockets are optional as a later enhancement.
+1️⃣2️⃣ Testing Strategy
+- Unit (validators, wrapper), Integration (API + Celery), E2E (compose), Load, Security
 
-Core Components (current state)
-- Gateway (edge API)
-  - Responsibilities: HTTP surface for clients, session creation, message ingress, SSE streaming endpoint (/v1/session/{id}/events), upload endpoint, tool request endpoint, and credential endpoints.
-  - State: Implemented. Health endpoint validated (local probe returned 200 during analysis).
+1️⃣3️⃣ Roll‑out Checklist
+- Code review, CI, staging with flag off → on, smoke tests, security audit, observability check, migration run, rollback tested, production deploy, post‑deploy review
 
-- Conversation Worker
-  - Responsibilities: consume conversation.inbound, orchestrate LLM calls, detect tools, emit tool.requests, write memory WALs to SomaBrain or memory store, publish session events.
-  - State: Implemented and present.
+📎 Appendix – Example Payloads & cURL snippets
+- Job creation payload, cURL for create/list/run
 
-- Tool Executor
-  - Responsibilities: consume tool.requests, run tools in a sandbox, enforce policy (OPA), publish tool.results, and emit structured outputs for memory capture.
-  - State: Implemented and present.
+📌 Final notes
+- Feature‑flag enables gradual rollout; code is modular to swap Celery if needed later.
 
-- Session Repository
-  - Responsibilities: durable session event store (Postgres-backed), migration SQL present.
-  - State: Implemented.
-
-- LLM Credentials Store
-  - Responsibilities: store LLM provider credentials (Redis + Fernet encryption) and supply them to Gateway/Workers.
-  - State: Implemented; GATEWAY_ENC_KEY required by deployments.
-
-- Web UI
-  - `webui/` in-repo: modernized SSE-first UI that maps to the Gateway SSE contract.
-  - `tmp/webui/` (Agent Zero copy): provided by user; used as UX reference. It contains some legacy polling code and vendor bundles.
-
-Canonical Decisions
-- Use Gateway SSE (/v1/session/{id}/events) as the single production transport.
-- Serve the Web UI from the Gateway (same-origin) to preserve cookie/session semantics—do not run a standalone `run_ui.py` server in production.
-- Provide small adapter endpoints for legacy/polling UI copies while migrating clients to SSE.
-- Tool catalog lives in Postgres and is exposed via Gateway endpoints; tool invocation uses POST /v1/tool/request and emits results via SSE events tied to sessions.
-
-Gaps vs Roadmap (prioritized)
-1. Acceptance testing and API contract tests (HIGH)
-  - Missing: automated Playwright smoke tests and API contract probes for: SSE subscribe & receive, message send (POST /v1/session/message), file upload round-trip, tool request -> tool result flow, and credential flows.
-   - Action: add Playwright smoke tests, pytest API contract tests, and CI workflows to run them.
-
-2. Deployment manifest alignment (HIGH)
-  - Canonicalize on a single compose file: `docker-compose.yaml`. Remove legacy scripts/manifests. Use Makefile profiles only.
-
-3. Documentation references and stale scripts (MEDIUM)
-  - Issues: Legacy artifacts and references existed (`run_ui.py`, `deploy-optimized.sh`, `tmp/webui`).
-  - Action: Remove legacy artifacts and clean references; docs point to Gateway serving the UI.
-
-4. UI parity tasks (MEDIUM)
-   - Items: port progressive token rendering, tool-panel UX, upload-progress UI, reconnect/backoff for SSE, and UX polish from Agent Zero (error handling and offline UX).
-   - Action: migrate selective components from `tmp/webui` into `webui/` and add Playwright tests for UX behaviors.
-
-5. Adapter endpoints for legacy clients (LOW)
-   - Action: small Gateway adapter layer to accept legacy poll shapes and transform them to canonical flows; mark deprecated and remove after clients migrate.
-
-Acceptance Criteria (per feature)
-- SSE streaming: UI subscribes to `GET /v1/session/{id}/events` and receives event types: session.open, message.chunk, message.complete, tool.requested, tool.result, memory.write, and session.close. SSE reconnects must resume from last event id where supported.
-- Message send: `POST /v1/session/message` returns 202 with the session/event envelope; message appears via SSE within acceptable latency (configurable threshold, default 5s in dev).
-- Tool invocation: `POST /v1/tool/request` accepts structured tool payloads, publishes to Kafka, Tool Executor consumes and emits `tool.result` events visible to the subscribing client via SSE.
-- Uploads: client uploads to `POST /v1/uploads` which returns a resource URL; uploaded content must be available to workers for tool processing and memory ingestion.
-
-Roadmap: Next 3 sprints (high level)
-- Sprint 1 (2 weeks): API contract tests + CI; clean legacy references; add basic Playwright smoke test for UI SSE subscribe health.
-- Sprint 2 (2 weeks): Migrate key UX from `tmp/webui` into `webui/`: streaming token rendering, tool panel, upload progress. Add Playwright tests for UX flows. Implement small Gateway adapter for legacy poll endpoints (backwards compatibility) — mark deprecated.
-- Sprint 3 (2 weeks): Harden deployments (resource tuning), add OPA policy verification in CI, end-to-end tests for tool executor and memory WAL capture, finalize removal of legacy adapters post migration.
-
-Appendix: Quick API contract samples
-- SSE subscribe
-  - GET /v1/session/{id}/events
-  - Events: id:<event-id>\n event:message.chunk\n data: {"session_id":"...","chunk":"...","cursor":42}\n
-- Send message
-  - POST /v1/session/message
-  - Body: {"role":"user","content":"Hello"}
-  - Response: 202 Accepted {"envelope_id":"...","status":"queued"}
-
-- Tool request
-  - POST /v1/tool/request
-  - Body: {"session_id":"...","tool_id":"calculator","inputs":{...}}
-
-Verification & Quality gates
-- Build: ensure `docker-compose.yaml` and `Dockerfile` build locally.
-- Lint/Typecheck: run project linters and Python type checks if configured (e.g., mypy, flake8); add minimal pre-commit hooks if absent.
-- Tests: run newly added Playwright smoke and pytest API contract tests in CI; pass locally in dev before merging.
-
-Notes and assumptions
-- Assumed that Gateway SSE contract is the single canonical streaming transport; websockets may be added later for higher-throughput clients.
-- Assumed Postgres, Kafka, Redis are available in dev (docker compose). The deploy script references ports different from dev defaults; confirm during deploy manifest creation.
-- All destructive repo edits should be performed on a backup branch; archival is preferred to immediate deletion.
-
-If you accept this canonical roadmap I will also create the sprinted roadmap file with sprint-level tickets and specific test tasks.
-
----
-
-Delta update — 2025-10-31
-
-Scope: finalize Agent Zero Web UI parity using SSE-only transport, wire any remaining legacy UI actions to canonical /v1 endpoints, add import/export and nudge routes (done), and stop accidental “auto new chat” creation.
-
-What changed today
-- UI: SSE-only path enforced; unified renderer used for history and live events; session history loads before SSE to avoid races; default selection stabilized; restart UX corrected.
-- UI actions wired to canonical endpoints: nudge (/v1/session/action), sessions import/export (POST /v1/sessions/import, POST /v1/sessions/export).
-- Error surfacing: red toasts and offline/memory-degraded banners added; subpath (/ui) import-map fixed.
-- Pending items converted into explicit tasks for the next sprint (see sprinted roadmap):
-  - Stop auto new chat creation by making default selection idempotent and not creating provisional chats on empty list.
-  - Add history/context-window endpoints under /v1 and rewire the UI modal buttons.
-  - Add /v1/workdir/* endpoints and rewire the Files modal.
-  - Expand Playwright parity tests (thinking/tool lifecycle, uploads progress, history/context/files) and stabilize timeouts.
-
-Acceptance gates targeted
-- Build: PASS
-- Lint/Typecheck: PASS
-- Tests: Gateway health, E2E tool flow, and UI smoke PASS; new Playwright parity specs to be added next.
-
-Notes
-- “No legacy” principle reaffirmed: any non-/v1 calls in the UI are considered regressions and must be migrated or disabled.
+End of documentation.
 
 
 ========================

@@ -88,7 +88,9 @@ def cmd_delete(args: argparse.Namespace) -> int:
             # The client.delete_persona doesn't accept headers; add a lightweight method here via client._request
             # without altering the shared client. We'll use a private call for now.
             data = client._get_loop().run_until_complete(
-                client._request("DELETE", f"/persona/{args.persona_id}", headers={"If-Match": args.etag})
+                client._request(
+                    "DELETE", f"/persona/{args.persona_id}", headers={"If-Match": args.etag}
+                )
             )
         else:
             data = client._get_loop().run_until_complete(client.delete_persona(args.persona_id))

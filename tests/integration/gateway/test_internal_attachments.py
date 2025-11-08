@@ -1,11 +1,10 @@
-import os
 import uuid
-import pytest
-from httpx import AsyncClient
-from httpx import ASGITransport
 
-from services.gateway import main as gateway_main
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from services.common.attachments_store import AttachmentsStore
+from services.gateway import main as gateway_main
 
 
 @pytest.mark.asyncio

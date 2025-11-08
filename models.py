@@ -32,6 +32,7 @@ if _enable_ai:
         import litellm
         import openai
         from litellm import acompletion, completion, embedding
+
         litellm_exceptions = getattr(litellm, "exceptions", None)
     except Exception:
         # Import failed; keep None values so code can detect absence.
@@ -47,6 +48,7 @@ if _enable_ai:
 try:
     from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter
 except Exception:
+
     class ChatGoogle:  # lightweight fallback
         def _fix_gemini_schema(self, s):
             return s
@@ -94,11 +96,12 @@ except Exception:
 import time
 import uuid
 
-from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
+from python.helpers import browser_use_monkeypatch, dirty_json, settings
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
+
 try:
     # Pydantic v2 configuration helper; safe fallback if unavailable
     from pydantic import ConfigDict  # type: ignore
@@ -125,12 +128,11 @@ llm_logger = logging.getLogger("agent_zero.llm")
 if not llm_logger.handlers:
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
-        "{\"timestamp\": \"%(asctime)s\", \"level\": \"%(levelname)s\", \"logger\": \"%(name)s\", \"message\": %(message)s}"
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": %(message)s}'
     )
     handler.setFormatter(formatter)
     llm_logger.addHandler(handler)
     llm_logger.setLevel(logging.INFO)
-
 
 
 # init
@@ -411,6 +413,7 @@ def _get_provider_secret_sync(provider: str) -> str:
     try:
         import asyncio
         import threading
+
         from services.common.llm_credentials_store import LlmCredentialsStore  # type: ignore
 
         async def _fetch() -> str:
@@ -832,7 +835,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 start_ts = time.time()
                 try:
                     # log a truncated preview (no secrets)
-                    preview = msgs_conv[-1]["content"] if msgs_conv and isinstance(msgs_conv[-1], dict) else ""
+                    preview = (
+                        msgs_conv[-1]["content"]
+                        if msgs_conv and isinstance(msgs_conv[-1], dict)
+                        else ""
+                    )
                     preview = (preview[:200] + "...") if len(preview) > 200 else preview
                     llm_logger.info(
                         "LLM unified_call start: id=%s provider=%s model=%s preview=%s",
@@ -913,7 +920,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     try:
                         llm_logger.exception(
                             "LLM unified_call error: id=%s provider=%s model=%s error=%s",
-                            req_id if 'req_id' in locals() else '<na>',
+                            req_id if "req_id" in locals() else "<na>",
                             getattr(self, "provider", "unknown"),
                             getattr(self, "model_name", "unknown"),
                             str(e),

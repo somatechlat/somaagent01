@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 from services.common.policy_client import PolicyClient, PolicyRequest
-import os
 
 
 class ConversationPolicyEnforcer:

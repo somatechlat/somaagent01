@@ -124,7 +124,11 @@ def cmd_load(args: argparse.Namespace) -> int:
             # so automation can detect the side effect without breaking prior consumers.
             meta = {}
             if isinstance(policy, dict):
-                meta = {k: policy.get(k) for k in ("policy_hash", "updated_at", "version") if k in policy}
+                meta = {
+                    k: policy.get(k)
+                    for k in ("policy_hash", "updated_at", "version")
+                    if k in policy
+                }
             print(f"opa_policy_updated: true {json.dumps(meta)}", file=sys.stderr)
         except Exception as _e:
             # Non-fatal; surface a hint for operators
@@ -148,7 +152,11 @@ def cmd_status(_args: argparse.Namespace) -> int:
             policy = {}
         out = {
             "constitution": version,
-            "policy": {k: policy.get(k) for k in ("policy_hash", "updated_at", "version") if isinstance(policy, dict)},
+            "policy": {
+                k: policy.get(k)
+                for k in ("policy_hash", "updated_at", "version")
+                if isinstance(policy, dict)
+            },
         }
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0
@@ -173,7 +181,9 @@ def main() -> int:
     p3.add_argument("--force", action="store_true", help="Confirm you intend to load")
     p3.set_defaults(func=cmd_load)
 
-    p4 = sub.add_parser("status", help="Show constitution checksum/version and current OPA policy hash")
+    p4 = sub.add_parser(
+        "status", help="Show constitution checksum/version and current OPA policy hash"
+    )
     p4.set_defaults(func=cmd_status)
 
     args = parser.parse_args()

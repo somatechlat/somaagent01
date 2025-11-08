@@ -1,6 +1,4 @@
 import pathlib
-import re
-
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 

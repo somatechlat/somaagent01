@@ -4,13 +4,16 @@ import os
 import time
 
 import pytest
-from testcontainers.postgres import PostgresContainer
-from testcontainers.kafka import KafkaContainer
 from aiokafka import AIOKafkaProducer
+from testcontainers.kafka import KafkaContainer
+from testcontainers.postgres import PostgresContainer
 
-from services.memory_replicator.main import MemoryReplicator
-from services.common.memory_replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
+from services.common.memory_replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
+from services.memory_replicator.main import MemoryReplicator
 
 
 @pytest.mark.asyncio
@@ -114,4 +117,3 @@ async def test_replicator_error_routes_to_dlq_unit(monkeypatch):
 
     depth = await store.count(topic=f"{worker.wal_topic}.dlq")
     assert depth >= 1
-

@@ -1,10 +1,6 @@
-import json
-import types
 import argparse
-import builtins
-import io
-import os
-import sys
+import json
+
 import pytest
 
 from scripts import constitution_admin as cli
@@ -13,6 +9,7 @@ from scripts import constitution_admin as cli
 class FakeClient:
     def __init__(self):
         import asyncio
+
         self._loop = asyncio.new_event_loop()
         self._policy_updates = 0
 

@@ -59,7 +59,9 @@ class InMemoryStore:
         else:
             sess.updated_at = entry["occurred_at"]
 
-    async def list_events_after(self, session_id: str, after_id: int | None = None, limit: int = 100):
+    async def list_events_after(
+        self, session_id: str, after_id: int | None = None, limit: int = 100
+    ):
         items = [e for sid, e in self._events if sid == session_id]
         if after_id is not None:
             items = [e for e in items if e["id"] > after_id]

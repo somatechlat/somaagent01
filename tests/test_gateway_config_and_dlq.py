@@ -1,11 +1,8 @@
-import asyncio
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 
 import services.gateway.main as gw
-from services.gateway.main import app, _refresh_dlq_depth_once, GATEWAY_DLQ_DEPTH
+from services.gateway.main import _refresh_dlq_depth_once, app, GATEWAY_DLQ_DEPTH
 
 
 class _StubDLQ:
@@ -26,7 +23,11 @@ def test_ui_runtime_config_endpoint(monkeypatch):
     assert data.get("api_base", "").startswith("/")
     assert data.get("universe_default") == "univ-1"
     assert data.get("namespace_default") == "wm"
-    assert set(data.get("features", {}).keys()) >= {"write_through", "write_through_async", "require_auth"}
+    assert set(data.get("features", {}).keys()) >= {
+        "write_through",
+        "write_through_async",
+        "require_auth",
+    }
 
 
 @pytest.mark.asyncio
@@ -42,4 +43,3 @@ async def test_refresh_dlq_depth_once_sets_gauge(monkeypatch):
     # Verify gauge is updated (best-effort; uses internal prom API)
     assert int(GATEWAY_DLQ_DEPTH.labels("memory.wal.dlq")._value.get()) == 5  # type: ignore[attr-defined]
     assert int(GATEWAY_DLQ_DEPTH.labels("tool.results.dlq")._value.get()) == 2  # type: ignore[attr-defined]
-

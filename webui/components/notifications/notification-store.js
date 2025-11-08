@@ -512,7 +512,19 @@ const model = {
     // open modal
     await openModal("notifications/notification-modal.html");
     // mark all as read when modal closes
-    this.markAllAsRead();
+    try {
+      if (globalThis.notificationsSse && typeof globalThis.notificationsSse.state === 'object') {
+        // Mark all currently listed SSE notifications as read
+        const unread = (globalThis.notificationsSse.state.list || []).filter(n => !n.read_at);
+        for (const n of unread) {
+          try { await globalThis.notificationsSse.markRead(n.id); } catch {}
+        }
+      } else {
+        this.markAllAsRead();
+      }
+    } catch {
+      this.markAllAsRead();
+    }
   },
 
   // Legacy method for backward compatibility

@@ -1,5 +1,4 @@
 import io
-import os
 import uuid
 from typing import Any, Dict, Optional
 
@@ -34,7 +33,9 @@ class StubPublisher:
 
 
 class StubCache:
-    async def write_context(self, session_id: str, persona_id: Optional[str], metadata: Dict[str, Any]) -> None:
+    async def write_context(
+        self, session_id: str, persona_id: Optional[str], metadata: Dict[str, Any]
+    ) -> None:
         return None
 
     async def ping(self) -> None:

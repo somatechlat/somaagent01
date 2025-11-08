@@ -1,10 +1,13 @@
 import os
-import pytest
 
+import pytest
 from playwright.sync_api import expect
 
-
-BASE_URL = os.getenv("WEB_UI_BASE_URL") or os.getenv("UI_BASE_URL") or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}/ui"
+BASE_URL = (
+    os.getenv("WEB_UI_BASE_URL")
+    or os.getenv("UI_BASE_URL")
+    or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}/ui"
+)
 
 
 @pytest.mark.smoke

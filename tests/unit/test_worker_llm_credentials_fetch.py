@@ -1,7 +1,3 @@
-import asyncio
-import os
-import types
-
 import pytest
 
 
@@ -13,4 +9,3 @@ async def test_worker_no_longer_fetches_llm_key(monkeypatch):
     worker.slm.api_key = "should-be-cleared"
     await worker._ensure_llm_key()
     assert worker.slm.api_key is None
-

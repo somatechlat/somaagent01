@@ -57,6 +57,7 @@ _RULES: List[MaskRule] | None = None
 _MASK_RULE_HITS: Any = None  # type: ignore
 _MASK_EVENTS_TOTAL: Any = None  # type: ignore
 
+
 def _init_metrics() -> None:
     global _MASK_RULE_HITS, _MASK_EVENTS_TOTAL
     if Counter is None:
