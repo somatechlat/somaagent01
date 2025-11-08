@@ -562,6 +562,17 @@ const model = {
       }
     }
 
+    // Persist a durable record so the Notifications modal always shows it
+    try {
+      // Add to the front (most recent first)
+      this.notifications.unshift({ ...notification });
+      // Enforce max list length
+      if (this.notifications.length > maxNotifications) {
+        this.notifications = this.notifications.slice(0, maxNotifications);
+      }
+      this.updateUnreadCount();
+    } catch (_) {}
+
     // Create toast object with auto-dismiss timer
     const toast = {
       ...notification,
@@ -581,12 +592,34 @@ const model = {
       }
     }
 
-    // Set auto-dismiss timer
+    // Set auto-dismiss timer (can be paused on hover)
     toast.autoRemoveTimer = setTimeout(() => {
       this.removeFromToastStack(toast.toastId);
     }, notification.display_time * 1000);
 
     return notification.id;
+  },
+
+  // Pause auto-dismiss for a specific toast (e.g., when hovered)
+  pauseToast(toastId) {
+    const t = this.toastStack.find((x) => x.toastId === toastId);
+    if (!t) return;
+    if (t.autoRemoveTimer) {
+      clearTimeout(t.autoRemoveTimer);
+      t.autoRemoveTimer = null;
+    }
+  },
+
+  // Resume auto-dismiss after hover leaves
+  resumeToast(toastId) {
+    const t = this.toastStack.find((x) => x.toastId === toastId);
+    if (!t) return;
+    if (!t.autoRemoveTimer) {
+      const remaining = Math.max(1000, (t.display_time || 5) * 1000);
+      t.autoRemoveTimer = setTimeout(() => {
+        this.removeFromToastStack(t.toastId);
+      }, remaining);
+    }
   },
 
   // NEW: Frontend toast (no backend attempt to avoid 404 noise)
