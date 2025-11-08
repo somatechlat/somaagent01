@@ -11,7 +11,8 @@ export async function callJsonApi(endpoint, data) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data ?? {}),
+    credentials: "same-origin",
+    body: JSON.stringify(data),
   });
 
   if (!response.ok) {
@@ -23,27 +24,44 @@ export async function callJsonApi(endpoint, data) {
 }
 
 /**
- * Minimal fetch wrapper for Gateway /v1 APIs (same-origin)
- * - Prefixes relative API paths with /v1
- * - Does not use CSRF; relies on same-origin cookies or bearer tokens
+ * Fetch wrapper for A0 APIs that ensures token exchange
+ * Automatically adds CSRF token to request headers
  * @param {string} url - The URL to fetch
  * @param {Object} [request] - The fetch request options
  * @returns {Promise<Response>} The fetch response
  */
 export async function fetchApi(url, request) {
-  const finalRequest = request ? { ...request } : {};
-  finalRequest.headers = finalRequest.headers || {};
+  async function _wrap(retry) {
+    // create a new request object if none was provided
+    const finalRequest = request || {};
 
-  // Resolve absolute URL or prefix with /v1
-  let target = url || "";
-  const isAbsolute = /^https?:\/\//i.test(target);
-  const isV1 = target.startsWith("/v1/");
-  if (!isAbsolute && !isV1) {
-    if (!target.startsWith("/")) target = "/" + target;
-    target = "/v1" + target;
+    // ensure headers object exists
+    finalRequest.headers = finalRequest.headers || {};
+
+    // perform the fetch with the provided request
+    const response = await fetch(url, finalRequest);
+
+    // If the server returned Forbidden once, allow a single retry (no CSRF token flow)
+    if (response.status === 403 && retry) {
+      return await _wrap(false);
+    } else if (response.redirected && response.url.endsWith("/login")) {
+      // redirect to login
+      window.location.href = response.url;
+      return;
+    }
+
+    // return the response
+    return response;
   }
 
-  return await fetch(target, finalRequest);
+  // perform the request
+  const response = await _wrap(true);
+
+  // return the response
+  return response;
 }
 
-// No CSRF token logic; same-origin cookies or Authorization headers should be configured by the platform
+// csrf token stored locally
+// CSRF token flow removed to avoid legacy/session CSRF handling.
+// All API calls use same-origin credentials where required and do not rely
+// on a separate /csrf_token endpoint.

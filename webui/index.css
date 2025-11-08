@@ -167,7 +167,6 @@ img {
   color: var(--color-text);
   box-shadow: 1px 0 5px rgba(0, 0, 0, 0.3);
   user-select: none;
-  overflow-y: auto; /* ensure preferences are scrollable into viewport */
 }
 
 #left-panel.hidden {
@@ -180,8 +179,7 @@ img {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* Allow settings/preferences to scroll so toggles are always reachable */
-  overflow-y: auto;
+  overflow: hidden;
   margin-top: 3.5rem;
   padding: var(--spacing-md) var(--spacing-md) 0 var(--spacing-md);
 }
@@ -200,16 +198,9 @@ img {
   flex-shrink: 0;
 }
 
-/* Match baseline left-panel footer behavior unless enhanced-ui is enabled */
 .left-panel-bottom {
+  position: relative;
   flex-shrink: 0;
-  background: var(--color-panel);
-  z-index: 1;
-  border-top: 1px solid var(--color-border);
-}
-.enhanced-ui .left-panel-bottom {
-  position: sticky;
-  bottom: 0;
 }
 
 /* Sidebar Toggle Button */
@@ -409,7 +400,6 @@ img {
 .version-info {
   line-height: 0.8rem;
   position: relative;
-  /* Match Golden: margin 0 var(--spacing-md) 1rem var(--spacing-md); padding-top 10px; border-top only */
   margin: 0 var(--spacing-md) 1rem var(--spacing-md);
   padding-top: 10px;
   border-top: 1px solid var(--color-border);
@@ -831,13 +821,6 @@ h4 {
   margin-top: 0;
 }
 
-/* Parity: hide admin-only quick actions by default on the landing UI */
-#memory-dash,
-#decisions-dash,
-#constitution-dash {
-  display: none;
-}
-
 .config-list {
   list-style-type: none;
   margin: 0;
@@ -851,7 +834,6 @@ h4 {
   display: flex;
   justify-content: space-between;
   padding: 0.35rem 0;
-  margin: 4px 0;
 }
 
 .config-list > *:first-child {
@@ -1704,17 +1686,6 @@ input:checked + .slider:before {
 a {
   color: inherit;
   /* text-decoration: none; */
-}
-
-/* Streaming stability: minimize layout thrash during assistant deltas */
-.message-agent-response.streaming .message-body {
-  contain: content;
-  content-visibility: auto;
-}
-
-.message-agent-response.streaming .message-body *,
-.message-agent-response.streaming {
-  transition: none !important;
 }
 
 a:visited {

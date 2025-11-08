@@ -1,11 +1,57 @@
 <!-- Sprinted roadmap derived from canonical roadmap — generated 2025-10-30 -->
 # SomaAgent01 Roadmap (Sprinted)
 
-Last updated: 2025-10-31
+Last updated: 2025-11-08
 Branch: INTEGRATION-ZERO
 
 Overview
 This file breaks the canonical roadmap into sprint-sized deliverables, with acceptance tests, owners (placeholder), and estimated effort.
+
+## Sprint Now — Streaming Centralization (Event Bus) & No‑Poll Migration (2 weeks)
+
+Why now
+- Chat is already on SSE; remaining panels (scheduler, memory dashboard) still poll. We need a single client stream and event bus with production-grade reconnect/heartbeat to meet the “No polls, no CSRF” directive end-to-end.
+
+Goals
+- Create a shared `stream.js` client with jittered backoff, `Last-Event-ID`, heartbeat stall detection, and frame-coalesced rendering.
+- Introduce `event-bus.js` and refactor UI modules to subscribe to canonical UI events (progress, paused, notifications, list updates).
+- Migrate scheduler and memory dashboard off polling to SSE-driven updates.
+
+Tasks
+1) Implement client event bus
+  - Add `webui/js/event-bus.js` minimal pub/sub (on/off/emit).
+  - Unit-test with a simple subscriber sequence (optional if not currently testable in repo).
+2) Implement stream client
+  - Add `webui/js/stream.js` that wraps `EventSource` with: jittered backoff, `Last-Event-ID`, heartbeat tracking, stall detection, and unified dispatch to bus.
+  - Move current SSE handling out of `webui/index.js` to this module; keep index thin.
+3) Canonical UI events & domain stores
+  - Define and handle: `ui.status.progress`, `ui.status.paused`, `ui.notification`, `session.list.update`, `task.list.update`.
+  - Create/extend stores: `notificationsStore`, `progressStore`, `sessionsStore`, `tasksStore` to consume events.
+4) Gateway events (server)
+  - Ensure the SSE endpoint emits the canonical UI events above where applicable; keep `heartbeat` cadence consistent.
+  - Support `Last-Event-ID` resume if not already enabled.
+5) Migrate legacy polling modules
+  - Scheduler store: remove polling; subscribe to `task.list.update` and explicit refresh actions.
+  - Memory dashboard store: remove polling; subscribe to SSE invalidations.
+6) Reliability UX
+  - Add offline banner on heartbeat stall; auto-recover; manual retry button.
+  - Coalesce progress updates; throttle DOM writes (~10–20Hz) and use rAF.
+7) Tests
+  - Playwright: `no-poll.anywhere.spec.ts`, `stream.reconnect.and.banner.spec.ts`, `scheduler.memory.bus.spec.ts`.
+  - Pytest: contract tests for new UI events and SSE resume.
+
+Acceptance
+- No polling requests from any UI module (assert via Playwright’s network logs).
+- Reconnect/backoff with jitter; heartbeat stall triggers a banner and auto-recovery.
+- Scheduler and memory dashboard update via SSE; manual refresh remains but is not required.
+- Long histories remain responsive (trimming or virtualization in place if needed).
+
+Notes
+- Keep edits surgical; do not regress existing chat SSE behavior. Ensure new modules follow existing `webui/` style.
+
+Done in prep for this sprint
+- Removed CSRF fetches in `webui/js/api.js`.
+- Replaced chat polling with SSE in `webui/index.js`; confirmed no `/poll` references in chat path.
 
 ## Milestone — Golden-first behavior capture (pre‑SA01 parity)
 

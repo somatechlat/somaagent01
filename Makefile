@@ -27,6 +27,12 @@ COMPOSE_FILE ?= docker-compose.yaml
 # Profiles to activate
 PROFILES ?= core,dev
 
+# When non-empty and set to 1, pre-up cleanup will force-remove any existing
+# containers matching the compose project. Set to 0 to require manual cleanup
+# (safer for shared/docker-host environments). Default 1 preserves prior
+# behaviour to keep dev bring-ups reliable.
+FORCE_CLEAN ?= 1
+
 # Expand comma-separated PROFILES into multiple --profile flags for docker compose
 # Use shell `tr` to convert commas to spaces robustly, then prefix each with --profile
 DOCKER_PROFILES := $(foreach p,$(shell echo $(PROFILES) | tr ',' ' '),--profile $(p))
@@ -117,6 +123,30 @@ up:
 	# Expand comma-separated PROFILES into multiple --profile flags for docker compose
 	$(MAKE) ensure-env
 	$(MAKE) ensure-networks
+	# Pre-up cleanup: detect any existing containers for this project and
+	# either remove them automatically (default) or require manual removal
+	# depending on `FORCE_CLEAN`.
+	@echo "Checking for existing project-prefixed containers for $(COMPOSE_PROJECT_NAME)..."
+	@# First try to find containers by the compose project label (reliable)
+	@existing_ids=$$(docker ps -a --filter "label=com.docker.compose.project=$(COMPOSE_PROJECT_NAME)" -q 2>/dev/null || true); \
+	# If none found via label, fallback to a case-insensitive name match (handles legacy/mixed-case names)
+	@if [ -z "$$existing_ids" ]; then \
+		existing_ids=$$(docker ps -a --format '{{.ID}} {{.Names}}' 2>/dev/null | grep -i "$(COMPOSE_PROJECT_NAME)_" | awk '{print $$1}' || true;); \
+	fi; \
+	if [ -n "$$existing_ids" ]; then \
+		echo "Found existing containers: $$existing_ids"; \
+		if [ "$(FORCE_CLEAN)" = "1" ]; then \
+			echo "FORCE_CLEAN=1: stopping and removing them to avoid name conflicts..."; \
+			docker rm -f $$existing_ids >/dev/null 2>&1 || true; \
+		else \
+			echo "Found existing containers would block compose up."; \
+			echo "Run 'make up FORCE_CLEAN=1' to allow automatic cleanup, or remove containers manually."; \
+			exit 1; \
+		fi; \
+	else \
+		echo "No existing project-prefixed containers found."; \
+	fi
+	# Start the compose stack
 	docker compose -p $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE) $(DOCKER_PROFILES) up -d
 
 down:
@@ -282,20 +312,15 @@ dev-logs-svc:
 dev-ps:
 	$(DEV_DOCKER) ps
 
-.PHONY: helm-dev-up helm-dev-down
-
-helm-dev-up:
-	@echo "Installing Helm charts for dev (infra + app)..."
-	bash scripts/bootstrap-dev.sh
-
-helm-dev-down:
-	@echo "Uninstalling Helm charts for dev (infra + app)..."
-	bash scripts/destroy-dev.sh
+## Helm targets removed: keep repository Makefile focused on local dev & docker compose.
+## If you need Helm integration, use the scripts in `scripts/` directly or re-add
+## these targets. Removal keeps the Makefile concise for a typical developer workflow.
 # ------------------------------------------------------------------------------
 # Load / Soak testing helpers (Wave C)
 # ------------------------------------------------------------------------------
 
-.PHONY: load-smoke load-soak
+
+.PHONY: load-smoke
 
 # Quick smoke: 5 RPS for 15s, concurrency 20
 load-smoke:
@@ -304,10 +329,9 @@ load-smoke:
 	RPS=5 DURATION=15 CONCURRENCY=20 \
 	python scripts/load/soak_gateway.py
 
-# Longer soak: override RPS/DURATION/CONCURRENCY via env
-load-soak:
-	@echo "Running configurable soak load against Gateway..."
-	python scripts/load/soak_gateway.py
+# Note: the longer soak target was removed to keep the Makefile focused on
+# common developer workflows. Use `scripts/load/soak_gateway.py` directly for
+# more advanced soak tests.
  
 
 # ------------------------------------------------------------------------------

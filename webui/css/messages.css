@@ -206,11 +206,6 @@
   background-color: #af2222;
 }
 
-/* Info bubble padding parity */
-.message.message-info {
-  padding: 10px 12px;
-}
-
 .message-code-exe .message-body {
   min-height: 5em;
   width: 100%;
@@ -344,7 +339,6 @@
   display: none;
 }
 
-/* Thoughts rows */
 .msg-thoughts {
   display: auto;
 }
@@ -498,8 +492,6 @@
   max-height: 100em;
 }
 
-
-
 .msg-content h1 {
   font-size: 1.25em;
   font-weight: 800;
@@ -595,24 +587,12 @@
   grid-auto-rows: auto;
   max-width: 100%;
   width: fit-content;
-  /* Align inter-bubble spacing with Golden UI */
   gap: var(--spacing-xs);
-}
-
-/* Streaming stability: contain layout for streaming assistant responses */
-.message-agent-response.streaming {
-  contain: content;
 }
 
 .message-group > * {
   grid-column: 1;
 } /* both children sit in the same column */
-
-/* Reasoning / tool stream accents */
-/* Gate enhanced accents behind .enhanced-ui for strict baseline parity */
-.enhanced-ui .message.tool-progress .message-body { border-left: 4px solid var(--color-primary); padding-left: 0.5em; }
-.enhanced-ui .message-thinking { animation: thinkingPulse 1.4s ease-in-out infinite; }
-@keyframes thinkingPulse { 0% { opacity:.5;} 50% {opacity:1;} 100% {opacity:.5;} }
 
 .message-group-right {
   width: 100%;

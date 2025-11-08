@@ -3,6 +3,7 @@ import { getContext } from "/index.js";
 import * as API from "/js/api.js";
 import { openModal, closeModal } from "/js/modals.js";
 import { store as notificationStore } from "/components/notifications/notification-store.js";
+import * as bus from "/js/event-bus.js";
 
 // Helper function for toasts
 function justToast(text, type = "info", timeout = 5000) {
@@ -48,7 +49,7 @@ const memoryDashboardStore = {
   editMode: false,
   editMemoryBackup: null,
 
-  // Polling
+  // Polling (deprecated; SSE bus will drive updates)
   pollingInterval: null,
   pollingEnabled: false,
 
@@ -64,7 +65,21 @@ const memoryDashboardStore = {
     await this.getCurrentMemorySubdir();
     await this.loadMemorySubdirs();
     await this.searchMemories();
-    // SSE-only mandate: no polling here; refresh on user actions only
+    // Subscribe to SSE/bus events for memory invalidations
+    if (!this._busInited) {
+      this._busInited = true;
+      this._unsubs = [];
+      this._unsubs.push(bus.on("memory.list.update", () => this.searchMemories(true)));
+      this._unsubs.push(bus.on("sse:event", (ev) => {
+        try {
+          const t = (ev?.type || '').toLowerCase();
+          if (t.startsWith('memory.') || t === 'assistant.final') {
+            // Silent refresh retains pagination & selections
+            this.searchMemories(true);
+          }
+        } catch {}
+      }));
+    }
   },
 
   async initialize() {
@@ -89,13 +104,16 @@ const memoryDashboardStore = {
 
   async getCurrentMemorySubdir() {
     try {
-      // Try to get current memory subdirectory from the backend (canonical endpoint)
-      const resp = await API.fetchApi("/v1/memories/current-subdir", { method: "GET" });
-      if (!resp.ok) throw new Error(await resp.text());
-      const json = await resp.json();
-      if (json.success && json.memory_subdir) {
-        this.selectedMemorySubdir = json.memory_subdir;
+      // Try to get current memory subdirectory from the backend
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "get_current_memory_subdir",
+        context_id: getContext(),
+      });
+
+      if (response.success && response.memory_subdir) {
+        this.selectedMemorySubdir = response.memory_subdir;
       } else {
+        // Fallback to default
         this.selectedMemorySubdir = "default";
       }
     } catch (error) {
@@ -109,9 +127,9 @@ const memoryDashboardStore = {
     this.error = null;
 
     try {
-      const resp = await API.fetchApi("/v1/memories/subdirs", { method: "GET" });
-      if (!resp.ok) throw new Error(await resp.text());
-      const response = await resp.json();
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "get_memory_subdirs",
+      });
 
       if (response.success) {
         let subdirs = response.subdirs || ["default"];
@@ -168,15 +186,14 @@ const memoryDashboardStore = {
     }
 
     try {
-      const params = new URLSearchParams();
-      if (this.selectedMemorySubdir) params.set("memory_subdir", this.selectedMemorySubdir);
-      if (this.areaFilter) params.set("area", this.areaFilter);
-      if (this.searchQuery) params.set("q", this.searchQuery);
-      if (this.limit) params.set("limit", String(this.limit));
-      const url = `/v1/memories?${params.toString()}`;
-      const resp = await API.fetchApi(url, { method: "GET" });
-      if (!resp.ok) throw new Error(await resp.text());
-      const response = await resp.json();
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "search",
+        memory_subdir: this.selectedMemorySubdir,
+        area: this.areaFilter,
+        search: this.searchQuery,
+        limit: this.limit,
+        threshold: this.threshold,
+      });
 
       if (response.success) {
         // Preserve existing selections when updating memories during polling
@@ -326,13 +343,11 @@ const memoryDashboardStore = {
 
     try {
       this.loading = true;
-      const resp = await API.fetchApi("/v1/memories/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedMemories.map((m) => m.id) }),
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "bulk_delete",
+        memory_subdir: this.selectedMemorySubdir,
+        memory_ids: selectedMemories.map((memory) => memory.id),
       });
-      if (!resp.ok) throw new Error(await resp.text());
-      const response = await resp.json();
 
       if (response.success) {
         justToast(
@@ -566,9 +581,11 @@ ${memory.content_full}
       const isViewingThisMemory =
         this.detailMemory && this.detailMemory.id === memory.id;
 
-      const resp = await API.fetchApi(`/v1/memories/${memory.id}`, { method: "DELETE" });
-      if (!resp.ok) throw new Error(await resp.text());
-      const response = await resp.json();
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "delete",
+        memory_subdir: this.selectedMemorySubdir,
+        memory_id: memory.id,
+      });
 
       if (response.success) {
         justToast("Memory deleted successfully", "success");
@@ -635,14 +652,11 @@ ${memory.content_full}
   },
 
   startPolling() {
-    if (!this.pollingEnabled || this.pollingInterval) {
-      return; // Already polling or disabled
+    // Disabled to enforce SSE-only transport; keep for compatibility.
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
     }
-
-    this.pollingInterval = setInterval(async () => {
-      // Silently refresh using existing search logic
-      await this.searchMemories(true); // silent = true
-    }, 2000); // Poll every 3 seconds - reasonable for active user interactions
   },
 
   stopPolling() {
@@ -655,6 +669,10 @@ ${memory.content_full}
   // Call this when the dialog/component is closed or destroyed
   cleanup() {
     this.stopPolling();
+    if (Array.isArray(this._unsubs)) {
+      this._unsubs.forEach((u) => { try { u(); } catch {} });
+      this._unsubs = [];
+    }
     // Clear data without triggering a new search (component is being destroyed)
     this.areaFilter = "";
     this.searchQuery = "";
@@ -681,14 +699,13 @@ ${memory.content_full}
 
   async confirmEditMode() {
     try {
-      const memoryId = this.detailMemory?.id;
-      const resp = await API.fetchApi(`/v1/memories/${memoryId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ edited: this.detailMemory }),
+
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "update",
+        memory_subdir: this.selectedMemorySubdir,
+        original: JSON.parse(this.editMemoryBackup),
+        edited: this.detailMemory,
       });
-      if (!resp.ok) throw new Error(await resp.text());
-      const response = await resp.json();
 
       if(response.success){
         justToast("Memory updated successfully", "success");

@@ -70,31 +70,6 @@ const settingsModalProxy = {
         }, 10);
     },
 
-    // Force-close helper to consolidate all close paths (save/cancel/overlay/escape)
-    forceClose() {
-        try {
-            // Stop any scheduler polling before closing
-            this.stopSchedulerPolling();
-        } catch (_) {}
-        try {
-            this.isOpen = false;
-        } catch (_) {}
-        try {
-            const store = window.Alpine ? Alpine.store('root') : null;
-            if (store) store.isOpen = false;
-        } catch (_) {}
-        try {
-            const modalEl = document.getElementById('settingsModal');
-            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
-            if (overlay) {
-                // Ensure overlay is hidden even if an earlier 'display: flex !important' was set
-                overlay.style.setProperty('display', 'none', 'important');
-                // Give Alpine a tick to reconcile x-show, then clear inline style
-                setTimeout(() => { try { overlay.style.removeProperty('display'); } catch(_) {} }, 30);
-            }
-        } catch (_) {}
-    },
-
     async openModal() {
         console.log('Settings modal opening');
         const modalEl = document.getElementById('settingsModal');
@@ -106,20 +81,10 @@ const settingsModalProxy = {
             // Set isOpen first to ensure proper state
             store.isOpen = true;
         }
-        // Also set the component state so x-show binds render immediately
-        try { this.isOpen = true; } catch(_) {}
-        try { if (modalAD) modalAD.isOpen = true; } catch(_) {}
-        // Hard-show overlay immediately in case Alpine reactivity is late
-        try {
-            const overlay = modalEl.querySelector('.modal-overlay');
-            if (overlay) overlay.style.setProperty('display','flex','important');
-        } catch(_) {}
 
-        //get settings from backend (canonical /v1)
+        //get settings from backend
         try {
-            const resp = await fetchApi('/ui/settings/sections', { method: 'GET' });
-            if (!resp.ok) throw new Error(await resp.text());
-            const set = await resp.json();
+            const set = await sendJsonData("/settings_get", null);
 
             // First load the settings data without setting the active tab
             const settings = {
@@ -139,56 +104,6 @@ const settingsModalProxy = {
                 ],
                 "sections": set.settings.sections
             }
-
-            // Fetch credentials status and annotate API key fields for clarity (presence + updated_at)
-            try {
-                const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
-                if (credResp.ok) {
-                    const credMap = await credResp.json().catch(() => null);
-                    // Support new shape { credentials: {prov: {present, updated_at}} } and legacy { has_secret: {prov: true} }
-                    let has = {};
-                    let updated = {};
-                    if (credMap && credMap.credentials) {
-                        try {
-                            for (const [prov, obj] of Object.entries(credMap.credentials)) {
-                                has[prov] = !!(obj && obj.present);
-                                if (obj && obj.updated_at) updated[prov] = obj.updated_at;
-                            }
-                        } catch(_) {}
-                    } else if (credMap && credMap.has_secret) {
-                        has = credMap.has_secret;
-                    }
-                    if (settings.sections && has) {
-                        for (const sec of settings.sections) {
-                            for (const f of (sec.fields || [])) {
-                                const fid = String(f.id || '');
-                                if (fid.startsWith('api_key_')) {
-                                    const prov = fid.substring('api_key_'.length).toLowerCase();
-                                    const present = !!has[prov];
-                                    // Append a tiny hint; include last-updated when available
-                                    let hint = present ? ' (saved on server' : ' (not set';
-                                    try {
-                                        const ts = updated[prov];
-                                        if (present && ts) {
-                                            const when = new Date(Number(ts) * 1000);
-                                            const pretty = when.toLocaleString();
-                                            hint += ` • updated ${pretty}`;
-                                        }
-                                    } catch(_) {}
-                                    hint += ')';
-                                    if (typeof f.description === 'string' && f.description.length) {
-                                        if (!f.description.includes('(saved on server') && !f.description.includes('(not set')) {
-                                            f.description += hint;
-                                        }
-                                    } else {
-                                        f.description = hint;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch(_) {}
 
             // Update modal data
             modalAD.isOpen = true;
@@ -287,112 +202,57 @@ const settingsModalProxy = {
 
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
-            let savedJson = null;
             try {
-                // Progress toast (replaced by success/error via group)
-                if (window.toastFrontendInfo) {
-                    window.toastFrontendInfo('Saving settings…', 'Settings', 2, 'settings-save');
-                }
-                // Save sections back to canonical endpoint.
-                // Do NOT pre-mask api_key_* here; server will mask on response.
-                const resp = await fetchApi('/ui/settings/sections', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sections: modalAD.settings.sections || [] })
-                });
-                if (!resp.ok) throw new Error(await resp.text());
-                try { savedJson = await resp.json(); } catch (_) { savedJson = null; }
+                resp = await window.sendJsonData("/settings_set", modalAD.settings);
             } catch (e) {
-                if (window.toastFrontendError) {
-                    const msg = (e && e.message) ? e.message : String(e);
-                    window.toastFrontendError(`Failed to save settings: ${msg}`, 'Settings', 6, 'settings-save');
-                } else {
-                    window.toastFetchError("Error saving settings", e)
-                }
+                window.toastFetchError("Error saving settings", e)
                 return
             }
-
-            // Credentials now saved solely via sections payload; no extra POSTs.
-            // Success toast replaces progress toast
-            if (window.toastFrontendSuccess) {
-                window.toastFrontendSuccess('Settings saved successfully', 'Settings', 3, 'settings-save');
-            }
-            // Immediately re-fetch sections to pick up masked credentials and normalized URLs
-            try {
-                const ref = await fetchApi('/ui/settings/sections', { method: 'GET' });
-                if (ref.ok) {
-                    const fresh = await ref.json().catch(() => null);
-                    if (fresh && fresh.settings) {
-                        // Also annotate with credential presence
-                        try {
-                            const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
-                            const credMap = credResp.ok ? await credResp.json().catch(() => null) : null;
-                            let has = {};
-                            let updated = {};
-                            if (credMap && credMap.credentials) {
-                                try {
-                                    for (const [prov, obj] of Object.entries(credMap.credentials)) {
-                                        has[prov] = !!(obj && obj.present);
-                                        if (obj && obj.updated_at) updated[prov] = obj.updated_at;
-                                    }
-                                } catch(_) {}
-                            } else if (credMap && credMap.has_secret) {
-                                has = credMap.has_secret;
-                            }
-                            for (const sec of (fresh.settings.sections || [])) {
-                                for (const f of (sec.fields || [])) {
-                                    const fid = String(f.id || '');
-                                    if (fid.startsWith('api_key_')) {
-                                        const prov = fid.substring('api_key_'.length).toLowerCase();
-                                        const present = !!has[prov];
-                                        let hint = present ? ' (saved on server' : ' (not set';
-                                        try {
-                                            const ts = updated[prov];
-                                            if (present && ts) {
-                                                const when = new Date(Number(ts) * 1000);
-                                                const pretty = when.toLocaleString();
-                                                hint += ` • updated ${pretty}`;
-                                            }
-                                        } catch(_) {}
-                                        hint += ')';
-                                        if (typeof f.description === 'string' && f.description.length) {
-                                            if (!f.description.includes('(saved on server') && !f.description.includes('(not set')) {
-                                                f.description += hint;
-                                            }
-                                        } else {
-                                            f.description = hint;
-                                        }
-                                    }
-                                }
-                            }
-                        } catch(_) {}
-                        modalAD.settings = fresh.settings;
-                    }
-                }
-            } catch(_e) {}
-            // Update modal data with server-returned shape when available
-            if (savedJson && savedJson.settings) {
-                modalAD.settings = savedJson.settings;
-            }
-            document.dispatchEvent(new CustomEvent('settings-updated', { detail: (savedJson && savedJson.settings) ? savedJson.settings : modalAD.settings }));
+            document.dispatchEvent(new CustomEvent('settings-updated', { detail: resp.settings }));
             this.resolvePromise({
                 status: 'saved',
-                data: modalAD.settings
+                data: resp.settings
             });
-            // Close on successful save
-            this.forceClose();
-            return;
         } else if (buttonId === 'cancel') {
             this.handleCancel();
-            return;
+        }
+
+        // Stop scheduler polling if it's running
+        this.stopSchedulerPolling();
+
+        // First update our component state
+        this.isOpen = false;
+
+        // Then safely update the store
+        const store = Alpine.store('root');
+        if (store) {
+            // Use a slight delay to avoid reactivity issues
+            setTimeout(() => {
+                store.isOpen = false;
+            }, 10);
         }
     },
 
     async handleCancel() {
-        try {
-            this.resolvePromise({ status: 'cancelled', data: null });
-        } catch(_) {}
-        this.forceClose();
+        this.resolvePromise({
+            status: 'cancelled',
+            data: null
+        });
+
+        // Stop scheduler polling if it's running
+        this.stopSchedulerPolling();
+
+        // First update our component state
+        this.isOpen = false;
+
+        // Then safely update the store
+        const store = Alpine.store('root');
+        if (store) {
+            // Use a slight delay to avoid reactivity issues
+            setTimeout(() => {
+                store.isOpen = false;
+            }, 10);
+        }
     },
 
     // Add a helper method to stop scheduler polling
@@ -423,25 +283,6 @@ const settingsModalProxy = {
             openModal("settings/external/api-examples.html");
         } else if (field.id === "memory_dashboard") {
             openModal("settings/memory/memory-dashboard.html");
-        } else if (field.id === "av_test") {
-            try {
-                const oldVal = field.value;
-                field.value = 'Testing…';
-                const resp = await fetchApi('/v1/av/test', { method: 'GET' });
-                const data = await resp.json().catch(() => ({}));
-                field.value = oldVal;
-                const status = (data && data.status) || 'unknown';
-                if (status === 'ok') {
-                    showToast(`Antivirus reachable at ${data.host}:${data.port}`, 'success');
-                } else if (status === 'disabled') {
-                    showToast(`Antivirus is disabled (configured ${data.host}:${data.port})`, 'info');
-                } else {
-                    const detail = (data && data.detail) ? `: ${data.detail}` : '';
-                    showToast(`Antivirus error${detail}`, 'error');
-                }
-            } catch (e) {
-                showToast(`Antivirus test failed: ${e?.message || e}`, 'error');
-            }
         }
     }
 };
@@ -462,43 +303,6 @@ const settingsModalProxy = {
 // document.addEventListener('alpine:init', () => {
 //     Alpine.store('settingsModal', initSettingsModal());
 // });
-
-// Expose for Alpine expressions in markup (e.g., @click="settingsModalProxy.openModal()")
-try { globalThis.settingsModalProxy = settingsModalProxy; } catch (_) {}
-
-// Fallback: bind Settings button click after DOM is ready in case Alpine event parsing fails
-try {
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('settings');
-    if (btn) {
-      btn.addEventListener('click', (e) => {
-        try { e.preventDefault(); } catch(_) {}
-        try { settingsModalProxy.openModal(); } catch(_) {}
-      });
-    }
-  });
-} catch(_) {}
-
-// Live-refresh settings in any open modal when another tab/process saves settings.
-// Listens for 'settings-updated' (also dispatched from SSE handler in index.js).
-document.addEventListener('settings-updated', async function () {
-  try {
-    const modalEl = document.getElementById('settingsModal');
-    if (!modalEl) return;
-    const ad = window.Alpine ? Alpine.$data(modalEl) : null;
-    const needsRefresh = ad && (ad.settings !== undefined || ad.settingsData !== undefined);
-    if (!needsRefresh) return;
-    const resp = await fetchApi('/ui/settings/sections', { method: 'GET' });
-    if (!resp.ok) return;
-    const json = await resp.json().catch(() => null);
-    if (!json || !json.settings) return;
-    if (ad.settings !== undefined) ad.settings = json.settings;
-    if (ad.settingsData !== undefined) ad.settingsData = json.settings;
-    if (typeof ad.updateFilteredSections === 'function') {
-      try { ad.updateFilteredSections(); } catch (_) {}
-    }
-  } catch (_) {}
-});
 
 document.addEventListener('alpine:init', function () {
     // Initialize the root store first to ensure it exists before components try to access it
@@ -551,56 +355,17 @@ document.addEventListener('alpine:init', function () {
             async fetchSettings() {
                 try {
                     this.isLoading = true;
-                    const response = await fetchApi('/ui/settings/sections', { method: 'GET' });
+                    const response = await fetchApi('/api/settings_get', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
                     if (response.ok) {
                         const data = await response.json();
                         if (data && data.settings) {
                             this.settingsData = data.settings;
-                            // Annotate API key fields with credential presence map
-                            try {
-                                const credResp = await fetchApi('/ui/settings/credentials', { method: 'GET' });
-                                if (credResp.ok) {
-                                    const credMap = await credResp.json().catch(() => null);
-                                    let has = {};
-                                    let updated = {};
-                                    if (credMap && credMap.credentials) {
-                                        try {
-                                            for (const [prov, obj] of Object.entries(credMap.credentials)) {
-                                                has[prov] = !!(obj && obj.present);
-                                                if (obj && obj.updated_at) updated[prov] = obj.updated_at;
-                                            }
-                                        } catch(_) {}
-                                    } else if (credMap && credMap.has_secret) {
-                                        has = credMap.has_secret;
-                                    }
-                                    for (const sec of (this.settingsData.sections || [])) {
-                                        for (const f of (sec.fields || [])) {
-                                            const fid = String(f.id || '');
-                                            if (fid.startsWith('api_key_')) {
-                                                const prov = fid.substring('api_key_'.length).toLowerCase();
-                                                const present = !!has[prov];
-                                                let hint = present ? ' (saved on server' : ' (not set';
-                                                try {
-                                                    const ts = updated[prov];
-                                                    if (present && ts) {
-                                                        const when = new Date(Number(ts) * 1000);
-                                                        const pretty = when.toLocaleString();
-                                                        hint += ` • updated ${pretty}`;
-                                                    }
-                                                } catch(_) {}
-                                                hint += ')';
-                                                if (typeof f.description === 'string' && f.description.length) {
-                                                    if (!f.description.includes('(saved on server') && !f.description.includes('(not set')) {
-                                                        f.description += hint;
-                                                    }
-                                                } else {
-                                                    f.description = hint;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch(_) {}
                         } else {
                             console.error('Invalid settings data format');
                         }
@@ -647,61 +412,37 @@ document.addEventListener('alpine:init', function () {
                     // First validate
                     for (const section of this.settingsData.sections) {
                         for (const field of section.fields) {
-                            if (field.required && (!field.value || (typeof field.value === 'string' && field.value.trim() === ''))) {
+                            if (field.required && (!field.value || field.value.trim() === '')) {
                                 showToast(`${field.title} in ${section.title} is required`, 'error');
                                 return;
                             }
                         }
                     }
 
-                    // If provider changed but base_url points to another provider, blank it so Gateway applies provider default.
-                    try {
-                        let provider = '';
-                        let apiBaseField = null;
-                        for (const sec of this.settingsData.sections) {
-                            for (const f of sec.fields || []) {
-                                const id = String(f.id || '').toLowerCase();
-                                if (id === 'chat_model_provider') provider = String(f.value || '').trim().toLowerCase();
-                                if (id === 'chat_model_api_base') apiBaseField = f;
-                            }
+                    // Prepare data
+                    const formData = {};
+                    for (const section of this.settingsData.sections) {
+                        for (const field of section.fields) {
+                            formData[field.id] = field.value;
                         }
-                        if (provider && apiBaseField && typeof apiBaseField.value === 'string' && apiBaseField.value.trim()) {
-                            const v = apiBaseField.value.trim().toLowerCase();
-                            const mismatched = (provider === 'groq' && v.includes('openrouter')) ||
-                                               (provider === 'openrouter' && v.includes('groq')) ||
-                                               (provider === 'openai' && (v.includes('openrouter') || v.includes('groq')));
-                            if (mismatched) {
-                                apiBaseField.value = '';
-                            }
-                        }
-                    } catch (_) {}
+                    }
 
-                    // Send raw values; server will handle masking post-save.
-                    const sectionsToSave = this.settingsData.sections || [];
-                    const response = await fetchApi('/ui/settings/sections', {
+                    // Send request
+                    const response = await fetchApi('/api/settings_save', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sections: sectionsToSave })
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
                     });
 
                     if (response.ok) {
                         showToast('Settings saved successfully', 'success');
-                        // Auto-close modal on success (legacy path)
-                        try {
-                            const store = window.Alpine ? Alpine.store('root') : null;
-                            if (store) store.isOpen = false;
-                            const modalEl = document.getElementById('settingsModal');
-                            const overlay = modalEl ? modalEl.querySelector('.modal-overlay') : null;
-                            if (overlay) overlay.style.removeProperty('display');
-                        } catch (_) {}
-                        // Provider credentials persisted already; no separate endpoint calls.
-                        // Refresh settings sections to pick up normalized base_url and masked secrets
+                        // Refresh settings
                         await this.fetchSettings();
-                        // Broadcast for other components/tabs
-                        try { document.dispatchEvent(new CustomEvent('settings-updated', { detail: this.settingsData })); } catch(_) {}
                     } else {
-                        const errorText = await response.text();
-                        throw new Error(errorText || 'Failed to save settings');
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to save settings');
                     }
                 } catch (error) {
                     console.error('Error saving settings:', error);
@@ -722,33 +463,46 @@ document.addEventListener('alpine:init', function () {
                 }
             },
 
-            // Test LLM connection (admin): uses /v1/llm/test
+            // Test API connection
             async testConnection(field) {
                 try {
                     field.testResult = 'Testing...';
                     field.testStatus = 'loading';
 
-                    // Determine role under test (dialogue|escalation); default to dialogue
-                    const role = (field?.service === 'escalation' || field?.role === 'escalation') ? 'escalation' : 'dialogue';
+                    // Find the API key field
+                    let apiKey = '';
+                    for (const section of this.settingsData.sections) {
+                        for (const f of section.fields) {
+                            if (f.id === field.target) {
+                                apiKey = f.value;
+                                break;
+                            }
+                        }
+                    }
 
-                    const response = await fetchApi('/llm/test', {
+                    if (!apiKey) {
+                        throw new Error('API key is required');
+                    }
+
+                    // Send test request
+                    const response = await fetchApi('/api/test_connection', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ role })
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            service: field.service,
+                            api_key: apiKey
+                        })
                     });
 
                     const data = await response.json();
 
-                    if (response.ok && data.ok) {
-                        const parts = [];
-                        if (data.provider) parts.push(`provider: ${data.provider}`);
-                        if (data.base_url) parts.push(`base: ${data.base_url}`);
-                        parts.push(`credentials: ${data.credentials_present ? 'present' : 'missing'}`);
-                        parts.push(`reachable: ${data.reachable ? 'yes' : 'no'}`);
-                        field.testResult = `OK (${parts.join(', ')})`;
-                        field.testStatus = data.reachable && data.credentials_present ? 'success' : 'warning';
+                    if (response.ok && data.success) {
+                        field.testResult = 'Connection successful!';
+                        field.testStatus = 'success';
                     } else {
-                        throw new Error(data.detail || data.error || 'Connection failed');
+                        throw new Error(data.error || 'Connection failed');
                     }
                 } catch (error) {
                     console.error('Connection test failed:', error);
@@ -813,7 +567,6 @@ document.addEventListener('alpine:init', function () {
     });
 });
 
-// Global helper to run provider connectivity test and surface provider/host/reachability
 // Show toast notification - now uses new notification system
 function showToast(message, type = 'info') {
     // Use new frontend notification system based on type

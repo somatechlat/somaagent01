@@ -5,26 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Agent Zero</title>
-    <script>
-        // Apply theme & enhancement classes before CSS loads to prevent first-paint flicker
-        (function () {
-            try {
-                var isDark = localStorage.getItem('darkMode') !== 'false';
-                var enhancedUI = localStorage.getItem('enhancedUI') === 'true';
-                var root = document.documentElement;
-                root.classList.remove('light-mode','dark-mode');
-                root.classList.add(isDark ? 'dark-mode' : 'light-mode');
-                if (enhancedUI) root.classList.add('enhanced-ui'); else root.classList.remove('enhanced-ui');
-                document.addEventListener('DOMContentLoaded', function () {
-                    var body = document.body;
-                    if (!body) return;
-                    body.classList.remove('light-mode','dark-mode');
-                    body.classList.add(isDark ? 'dark-mode' : 'light-mode');
-                    if (enhancedUI) body.classList.add('enhanced-ui'); else body.classList.remove('enhanced-ui');
-                });
-            } catch (_) { /* non-fatal */ }
-        })();
-    </script>
     <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="css/messages.css">
@@ -38,7 +18,6 @@
     <link rel="stylesheet" href="css/history.css">
     <link rel="stylesheet" href="css/scheduler-datepicker.css">
     <link rel="stylesheet" href="css/notification.css">
-    
 
     <!-- Flatpickr for datetime picker -->
     <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css">
@@ -117,9 +96,6 @@
         };
     </script>
 
-    <!-- Ensure Settings model is defined before Alpine starts -->
-    <script type="text/javascript" src="js/settings.js"></script>
-
     <!-- Load module scripts first -->
     <script type="module" src="js/scheduler.js"></script>
     <script type="module" src="js/history.js"></script>
@@ -132,7 +108,6 @@
     <script type="module" src="js/initFw.js"></script>
 
     <script src="vendor/ace-min/ace.js"></script>
-    <!-- Ace editor shipped without a CSS file in this bundle; remove broken link to avoid MIME/type errors -->
     <link href="vendor/ace-min/ace.min.css" rel="stylesheet">
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="vendor/katex/katex.min.css" crossorigin="anonymous">
@@ -151,6 +126,7 @@
     <link rel="manifest" href="js/manifest.json">
 
     <!-- Non-module scripts after Alpine.js -->
+    <script type="text/javascript" src="js/settings.js"></script>
     <script type="text/javascript" src="js/file_browser.js"></script>
     <script type="text/javascript" src="js/modal.js"></script>
 </head>
@@ -182,12 +158,12 @@
             <!--Sidebar upper elements-->
             <div class="left-panel-top">
                 <div class="config-section" x-data="{ showQuickActions: true }">
-                    <button class="config-button" id="resetChat" data-test="reset-chat" @click="resetChat()">Reset Chat</button>
-                    <button class="config-button" id="newChat" data-test="new-chat" @click="newChat()">New Chat</button>
+                    <button class="config-button" id="resetChat" @click="resetChat()">Reset Chat</button>
+                    <button class="config-button" id="newChat" @click="newChat()">New Chat</button>
                     <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
                     <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
                     <button class="config-button" id="restart" @click="restart()">Restart</button>
-                        <button class="config-button" id="settings" data-testid="settings-button" @click="settingsModalProxy.openModal()"><svg
+                    <button class="config-button" id="settings" @click="settingsModalProxy.openModal()"><svg
                             xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-5.0 -17.0 110.0 135.0"
                             fill="currentColor" width="24" height="24">
                             <path
@@ -199,10 +175,6 @@
                         </svg>Settings</button>
                     <button class="config-button" id="memory-dash"
                         @click="openModal('settings/memory/memory-dashboard.html');">Memory</button>
-                    <button class="config-button" id="decisions-dash"
-                        @click="openModal('admin/decisions.html');">Decisions</button>
-                    <button class="config-button" id="constitution-dash"
-                        @click="openModal('admin/constitution.html');">Constitution</button>
 
 
                 </div>
@@ -220,7 +192,7 @@
                     x-show="contexts.length > 0 || true">
                     <div class="chats-list-container">
                         <ul class="config-list" x-show="contexts.length > 0">
-                            <template x-for="(context, idx) in contexts" :key="context.id || context.no || idx">
+                            <template x-for="context in contexts">
                                 <li>
                                     <div :class="{'chat-list-button': true, 'font-bold': context.id === selected}"
                                         @click="selected = context.id; selectChat(context.id)">
@@ -228,7 +200,7 @@
                                             :title="context.name ? context.name : 'Chat #' + context.no"
                                             x-text="context.name ? context.name : 'Chat #' + context.no"></span>
                                     </div>
-                                    <button class="edit-button" data-test="delete-chat" @click="killChat(context.id)">X</button>
+                                    <button class="edit-button" @click="killChat(context.id)">X</button>
                                 </li>
                             </template>
                         </ul>
@@ -248,7 +220,7 @@
                 }" style="display: none;">
                     <div class="tasks-list-container">
                         <ul class="config-list" x-show="tasks.length > 0">
-                            <template x-for="(task, idx) in tasks" :key="task.id || task.no || idx">
+                            <template x-for="task in tasks">
                                 <li>
                                     <div :class="{'chat-list-button': true, 'font-bold': task.id === selected, 'has-task-container': true}"
                                         @click="selected = task.id; selectChat(task.id)">
@@ -317,7 +289,6 @@
                         </h3>
                         <ul class="config-list" id="pref-list" x-show="prefOpen" x-collapse x-transition>
                             <!-- Preferences Items -->
-                            <!-- Baseline defaults adjusted for parity: autoScroll true, darkMode true, speech false, showThoughts true, showJson false, showUtils false -->
                             <li x-data="{ autoScroll: true }">
                                 <span>Autoscroll</span>
                                 <label class="switch">
@@ -342,39 +313,27 @@
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showThoughts: (localStorage.getItem('showThoughts') === 'true') }">
+                            <li x-data="{ showThoughts: true }">
                                 <span>Show thoughts</span>
                                 <label class="switch">
-                                    <input type="checkbox" data-test="toggle-thoughts" x-model="showThoughts"
-                                        x-effect="globalThis.safeCall('toggleThoughts',showThoughts); localStorage.setItem('showThoughts', showThoughts ? 'true' : 'false')"
-                                        @change="globalThis.safeCall('toggleThoughts',showThoughts); localStorage.setItem('showThoughts', showThoughts ? 'true' : 'false')">
+                                    <input type="checkbox" x-model="showThoughts"
+                                        x-effect="globalThis.safeCall('toggleThoughts',showThoughts)">
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showJson: (localStorage.getItem('showJson') === null) ? true : (localStorage.getItem('showJson') === 'true') }">
+                            <li x-data="{ showJson: false }">
                                 <span>Show JSON</span>
                                 <label class="switch">
-                                    <input type="checkbox" data-test="toggle-json" x-model="showJson"
-                                        x-effect="globalThis.safeCall('toggleJson',showJson); localStorage.setItem('showJson', showJson ? 'true' : 'false')"
-                                        @change="globalThis.safeCall('toggleJson',showJson); localStorage.setItem('showJson', showJson ? 'true' : 'false')">
+                                    <input type="checkbox" x-model="showJson"
+                                        x-effect="globalThis.safeCall('toggleJson',showJson)">
                                     <span class="slider"></span>
                                 </label>
                             </li>
-                            <li x-data="{ showUtils: (localStorage.getItem('showUtils') === null) ? true : (localStorage.getItem('showUtils') === 'true') }">
+                            <li x-data="{ showUtils: false }">
                                 <span>Show utility messages</span>
                                 <label class="switch">
-                                    <input type="checkbox" data-test="toggle-utils" x-model="showUtils"
-                                        x-effect="globalThis.safeCall('toggleUtils',showUtils); localStorage.setItem('showUtils', showUtils ? 'true' : 'false')"
-                                        @change="globalThis.safeCall('toggleUtils',showUtils); localStorage.setItem('showUtils', showUtils ? 'true' : 'false')">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                            <!-- Optional enhancement toggle (hidden for strict pixel parity) -->
-                            <li x-data="{ enhancedUI: localStorage.getItem('enhancedUI') === 'true' }" style="display:none;">
-                                <span>Enhanced stream accents</span>
-                                <label class="switch">
-                                    <input type="checkbox" x-model="enhancedUI"
-                                        @change="(enhancedUI?document.body.classList.add('enhanced-ui'):document.body.classList.remove('enhanced-ui')); localStorage.setItem('enhancedUI', enhancedUI ? 'true' : 'false')">
+                                    <input type="checkbox" x-model="showUtils"
+                                        x-effect="globalThis.safeCall('toggleUtils',showUtils)">
                                     <span class="slider"></span>
                                 </label>
                             </li>
@@ -391,7 +350,7 @@
             <!--Chat-->
             <div id="time-date-container">
                 <div id="time-date"></div>
-                <div id="status-indicator" class="status-icon" x-data="{ connected: true }" data-testid="status-indicator">
+                <div class="status-icon" x-data="{ connected: true }">
                     <svg viewBox="0 0 30 30">
                         <!-- Connected State (filled circle) -->
                         <circle class="connected-circle" cx="15" cy="15" r="8"
@@ -461,7 +420,7 @@
 
                     <!-- Container for textarea and button -->
                     <div id="chat-input-container" style="position: relative;">
-                        <textarea id="chat-input" data-testid="chat-input" placeholder="Type your message here..." rows="1"></textarea>
+                        <textarea id="chat-input" placeholder="Type your message here..." rows="1"></textarea>
 
                         <!-- Expand button inside the textarea container -->
                         <button id="expand-button" @click="$store.fullScreenInputModal.openModal()"
@@ -476,7 +435,7 @@
                     <div id="chat-buttons-wrapper">
 
                         <!-- Send button -->
-                        <button class="chat-button" id="send-button" data-testid="send-button" aria-label="Send message">
+                        <button class="chat-button" id="send-button" aria-label="Send message">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
                                 <path d="M25 20 L75 50 L25 80" fill="none" stroke="currentColor" stroke-width="15">
                                 </path>
@@ -580,11 +539,12 @@
         </div>
     </div>
     <div id="settingsModal" x-data="settingsModalProxy">
+        <template x-teleport="body">
             <div x-show="isOpen" class="modal-overlay" @click.self="handleCancel()"
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
                 <div class="modal-container">
                     <div class="modal-header">
-                        <h2 x-text="settings.title" data-testid="settings-modal-title"></h2>
+                        <h2 x-text="settings.title"></h2>
                         <button class="modal-close" @click="handleCancel()">&times;</button>
                     </div>
 
@@ -611,7 +571,7 @@
                         <div id="settings-sections" x-show="activeTab !== 'scheduler'">
                             <nav>
                                 <ul>
-                                    <template x-for="(section, index) in filteredSections" :key="section.id || section.title || index">
+                                    <template x-for="(section, index) in filteredSections" :key="section.title">
                                         <li>
                                             <a :href="'#section' + (index + 1)">
                                                 <img :src="'/public/' + section.id +'.svg'" :alt="section.title">
@@ -629,13 +589,13 @@
                                 </ul>
                             </nav>
 
-                            <template x-for="(section, sectionIndex) in filteredSections" :key="section.id || sectionIndex">
+                            <template x-for="(section, sectionIndex) in filteredSections" :key="sectionIndex">
                                 <div :id="'section' + (sectionIndex + 1)" class="section">
                                     <div class="section-title" x-text="section.title"></div>
                                     <div class="section-description" x-html="section.description"></div>
 
                                     <template x-for="(field, fieldIndex) in section.fields.filter(f => !f.hidden)"
-                                        :key="field.id || field.name || field.title || field.key || fieldIndex">
+                                        :key="fieldIndex">
                                         <div :class="{'field': true, 'field-full': field.type === 'textarea'}">
                                             <div class="field-label" x-show="field.title || field.description">
                                                 <div class="field-title" x-text="field.title" x-show="field.title">
@@ -647,37 +607,41 @@
                                             <div class="field-control">
                                                 <!-- Input field -->
                                                 <template x-if="field.type === 'text'">
-                                                    <input type="text" :class="field.classes" x-model="field.value"
-                                                        :readonly="field.readonly === true">
+                                                    <input type="text" :class="field.classes" :value="field.value"
+                                                        :readonly="field.readonly === true"
+                                                        @input="field.value = $event.target.value">
                                                 </template>
 
                                                 <!-- Number field -->
                                                 <template x-if="field.type === 'number'">
-                                                    <input type="number" :class="field.classes" x-model="field.value"
-                                                        :readonly="field.readonly === true" :min="field.min"
+                                                    <input type="number" :class="field.classes" :value="field.value"
+                                                        :readonly="field.readonly === true"
+                                                        @input="field.value = $event.target.value" :min="field.min"
                                                         :max="field.max" :step="field.step">
                                                 </template>
 
 
                                                 <!-- Password field -->
                                                 <template x-if="field.type === 'password'">
-                                                    <input type="password" :class="field.classes" x-model="field.value"
+                                                    <input type="password" :class="field.classes" :value="field.value"
                                                         :readonly="field.readonly === true" :id="field.id"
-                                                        autocomplete="off">
+                                                        autocomplete="off" @input="field.value = $event.target.value">
                                                 </template>
 
                                                 <!-- Textarea field -->
                                                 <template x-if="field.type === 'textarea'">
-                                                    <textarea :class="field.classes" x-model="field.value"
+                                                    <textarea :class="field.classes" :value="field.value"
                                                         :readonly="field.readonly === true"
+                                                        @input="field.value = $event.target.value"
                                                         :style="field.style"></textarea>
                                                 </template>
 
                                                 <!-- Switch field -->
                                                 <template x-if="field.type === 'switch'">
                                                     <label class="toggle">
-                                                        <input type="checkbox" x-model="field.value"
-                                                            :disabled="field.readonly === true">
+                                                        <input type="checkbox" :checked="field.value"
+                                                            :disabled="field.readonly === true"
+                                                            @change="field.value = $event.target.checked">
                                                         <span class="toggler"></span>
                                                     </label>
                                                 </template>
@@ -686,8 +650,9 @@
                                                 <template x-if="field.type === 'range'">
                                                     <div class="field-control">
                                                         <input type="range" :min="field.min" :max="field.max"
-                                                            :step="field.step" x-model="field.value"
+                                                            :step="field.step" :value="field.value"
                                                             :disabled="field.readonly === true"
+                                                            @input="field.value = $event.target.value"
                                                             :class="field.classes">
                                                         <span class="range-value" x-text="field.value"></span>
                                                     </div>
@@ -1569,6 +1534,7 @@
                     </div>
                 </div>
             </div>
+        </template>
     </div>
 
     <!-- work_dir Browser Modal -->
@@ -1631,28 +1597,17 @@
                                     <template x-for="file in sortFiles(browser.entries)" :key="file.path">
                                         <div class="file-item" :data-is-dir="file.is_dir">
                                             <div class="file-name"
-                                                @click="!file.uploading && (file.is_dir ? navigateToFolder(file.path) : downloadFile(file))">
+                                                @click="file.is_dir ? navigateToFolder(file.path) : downloadFile(file)">
                                                 <img :src="'/public/' + (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type)) + '.svg'"
                                                     class="file-icon" :alt="file.type">
                                                 <span x-text="file.name"></span>
-                                                <!-- Inline upload progress for temporary entries -->
-                                                <template x-if="file.uploading">
-                                                    <div class="inline-progress">
-                                                        <div class="progress-bar"><div class="progress-fill" :style="{ width: (file.progress||0) + '%' }"></div></div>
-                                                        <span class="progress-label" x-text="(file.progress||0) + '%' "></span>
-                                                        <button class="progress-cancel" @click.stop="cancelUpload(file)">Cancel</button>
-                                                    </div>
-                                                </template>
-                                                <template x-if="file.uploadError">
-                                                    <span class="progress-error">Upload failed</span>
-                                                </template>
                                             </div>
                                             <div class="file-size" x-text="formatFileSize(file.size)"></div>
                                             <div class="file-date" x-text="formatDate(file.modified)"></div>
 
                                             <div class="file-actions">
                                                 <button class="action-button download-button"
-                                                    @click.stop="downloadFile(file)" :disabled="file.uploading">
+                                                    @click.stop="downloadFile(file)">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.5 19.5">
                                                         <path
                                                             d="m.75,14.25v2.25c0,1.24,1.01,2.25,2.25,2.25h13.5c1.24,0,2.25-1.01,2.25-2.25v-2.25m-4.5-4.5l-4.5,4.5m0,0l-4.5-4.5m4.5,4.5V.75"
@@ -1660,7 +1615,7 @@
                                                             stroke-linejoin="round" stroke-width="1.5"></path>
                                                     </svg>
                                                 </button>
-                                                <button class="delete-button" @click.stop="deleteFile(file)" :disabled="file.uploading">
+                                                <button class="delete-button" @click.stop="deleteFile(file)">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.03 22.53"
                                                         fill="currentColor">
                                                         <path

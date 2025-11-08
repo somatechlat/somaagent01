@@ -1,9 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import * as Sleep from "/js/sleep.js";
 
-// Feature flag: Tunnel backend not available by default; disable network calls to avoid 404 noise
-const TUNNEL_ENABLED = false;
-
 // define the model object holding data and functions
 const model = {
   isLoading: false,
@@ -14,10 +11,7 @@ const model = {
   provider: "cloudflared",
 
   init() {
-    // Don't check status on load when backend isn't enabled; keep clean console
-    if (TUNNEL_ENABLED) {
-      this.checkTunnelStatus();
-    }
+    this.checkTunnelStatus();
   },
 
   generateQRCode() {
@@ -47,10 +41,6 @@ const model = {
   },
 
   async checkTunnelStatus() {
-    if (!TUNNEL_ENABLED) {
-      // No-op while disabled; show status only when user explicitly interacts
-      return;
-    }
     try {
       const response = await fetchApi("/tunnel_proxy", {
         method: "POST",
@@ -112,10 +102,6 @@ const model = {
   },
 
   async refreshLink() {
-    if (!TUNNEL_ENABLED) {
-      window.toastFrontendWarning("Tunnel is disabled in this build.", "Tunnel");
-      return;
-    }
     // Call generate but with a confirmation first
     if (
       confirm(
@@ -168,10 +154,6 @@ const model = {
   },
 
   async generateLink() {
-    if (!TUNNEL_ENABLED) {
-      window.toastFrontendWarning("Tunnel is disabled in this build.", "Tunnel");
-      return;
-    }
     // First check if authentication is enabled
     try {
       const authCheckResponse = await fetchApi("/settings_get");
@@ -332,10 +314,6 @@ const model = {
   },
 
   async stopTunnel() {
-    if (!TUNNEL_ENABLED) {
-      window.toastFrontendWarning("Tunnel is disabled in this build.", "Tunnel");
-      return;
-    }
     if (
       confirm(
         "Are you sure you want to stop the tunnel? The URL will no longer be accessible."

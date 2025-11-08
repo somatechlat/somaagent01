@@ -5,6 +5,7 @@
 
 import { formatDateTime, getUserTimezone } from './time-utils.js';
 import { switchFromContext } from '../index.js';
+import * as bus from '/js/event-bus.js';
 
 // Ensure the showToast function is available
 // if (typeof window.showToast !== 'function') {
@@ -83,22 +84,11 @@ const showToast = function(message, type = 'info') {
     }
 };
 
-// Feature flag: backend APIs for scheduler are not available yet
-const SCHEDULER_ENABLED = false;
-
-function ensureSchedulerAvailable(action = 'this action') {
-    if (!SCHEDULER_ENABLED) {
-        showToast(`Scheduler backend not available yet. ${action} is disabled.`, 'warning');
-        return false;
-    }
-    return true;
-}
-
 // Define the full component implementation
 const fullComponentImplementation = function() {
     return {
         tasks: [],
-        isLoading: false,
+        isLoading: true,
         selectedTask: null,
         expandedTaskId: null,
         sortField: 'name',
@@ -106,7 +96,7 @@ const fullComponentImplementation = function() {
         filterType: 'all',  // all, scheduled, adhoc, planned
         filterState: 'all',  // all, idle, running, disabled, error
         pollingInterval: null,
-        pollingActive: false, // Track if polling is currently active
+        pollingActive: false, // Deprecated: polling removed; kept for compatibility
         editingTask: {
             name: '',
             type: 'scheduled',
@@ -151,8 +141,8 @@ const fullComponentImplementation = function() {
             this.pollingInterval = null;
             this.pollingActive = false;
 
-            // Start polling for tasks
-            this.startPolling();
+            // Polling removed: rely on SSE/bus invalidations
+            this.startPolling(); // no-op to preserve compatibility
 
             // Refresh initial data
             this.fetchTasks();
@@ -220,10 +210,32 @@ const fullComponentImplementation = function() {
                 }, 100);
             });
 
+            // Subscribe to SSE/bus for task updates
+            this._busUnsubs = [];
+            this._busUnsubs.push(
+                bus.on('task.list.update', () => {
+                    this.fetchTasks();
+                })
+            );
+            this._busUnsubs.push(
+                bus.on('sse:event', (ev) => {
+                    try {
+                        const t = (ev?.type || '').toLowerCase();
+                        if (t.startsWith('task.') || t === 'tool.result' || t === 'assistant.final') {
+                            this.fetchTasks();
+                        }
+                    } catch {}
+                })
+            );
+
             // Cleanup on component destruction
             this.$cleanup = () => {
                 console.log('Cleaning up schedulerSettings component');
                 this.stopPolling();
+                if (Array.isArray(this._busUnsubs)) {
+                    this._busUnsubs.forEach((u) => { try { u(); } catch {} });
+                    this._busUnsubs = [];
+                }
 
                 // Clean up any Flatpickr instances
                 const createInput = document.getElementById('newPlannedTime-create');
@@ -238,17 +250,19 @@ const fullComponentImplementation = function() {
             };
         },
 
-        // Start polling for task updates
+        // Start polling for task updates (deprecated/no-op)
         startPolling() {
-            // Scheduler backend is not available yet; disable polling to avoid console errors
+            // Intentionally disabled to comply with SSE-only directive
             this.pollingActive = false;
             if (this.pollingInterval) {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = null;
             }
+            // Still fetch once to populate
+            this.fetchTasks();
         },
 
-        // Stop polling when tab is inactive
+        // Stop polling when tab is inactive (compatibility)
         stopPolling() {
             console.log('Stopping task polling');
             this.pollingActive = false;
@@ -262,10 +276,82 @@ const fullComponentImplementation = function() {
         // Fetch tasks from API
         async fetchTasks() {
             // Don't fetch if polling is inactive (prevents race conditions)
-            this.isLoading = false;
-            this.tasks = [];
-            this.updateTasksUI();
-            return;
+            if (!this.pollingActive && this.pollingInterval) {
+                return;
+            }
+
+            // Don't fetch while creating/editing a task
+            if (this.isCreating || this.isEditing) {
+                return;
+            }
+
+            this.isLoading = true;
+            try {
+                const response = await fetchApi('/scheduler_tasks_list', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        timezone: getUserTimezone()
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch tasks');
+                }
+
+                const data = await response.json();
+
+                // Check if data.tasks exists and is an array
+                if (!data || !data.tasks) {
+                    console.error('Invalid response: data.tasks is missing', data);
+                    this.tasks = [];
+                } else if (!Array.isArray(data.tasks)) {
+                    console.error('Invalid response: data.tasks is not an array', data.tasks);
+                    this.tasks = [];
+                } else {
+                    // Verify each task has necessary properties
+                    const validTasks = data.tasks.filter(task => {
+                        if (!task || typeof task !== 'object') {
+                            console.error('Invalid task (not an object):', task);
+                            return false;
+                        }
+                        if (!task.uuid) {
+                            console.error('Task missing uuid:', task);
+                            return false;
+                        }
+                        if (!task.name) {
+                            console.error('Task missing name:', task);
+                            return false;
+                        }
+                        if (!task.type) {
+                            console.error('Task missing type:', task);
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    if (validTasks.length !== data.tasks.length) {
+                        console.warn(`Filtered out ${data.tasks.length - validTasks.length} invalid tasks`);
+                    }
+
+                    this.tasks = validTasks;
+
+                    // Update UI using the shared function
+                    this.updateTasksUI();
+                }
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                // Only show toast for errors on manual refresh, not during polling
+                if (!this.pollingInterval) {
+                    showToast('Failed to fetch tasks: ' + error.message, 'error');
+                }
+                // Reset tasks to empty array on error
+                this.tasks = [];
+            } finally {
+                this.isLoading = false;
+            }
         },
 
         // Change sort field/direction
@@ -605,13 +691,6 @@ const fullComponentImplementation = function() {
             }
 
             try {
-                if (!ensureSchedulerAvailable('Saving tasks')) {
-                    // Exit edit mode gracefully even when disabled
-                    this.isCreating = false;
-                    this.isEditing = false;
-                    document.querySelector('[x-data="schedulerSettings"]')?.removeAttribute('data-editing-state');
-                    return;
-                }
                 let apiEndpoint, taskData;
 
                 // Prepare task data
@@ -826,7 +905,6 @@ const fullComponentImplementation = function() {
         // Run a task
         async runTask(taskId) {
             try {
-                if (!ensureSchedulerAvailable('Running tasks')) return;
                 const response = await fetchApi('/scheduler_task_run', {
                     method: 'POST',
                     headers: {
@@ -856,7 +934,6 @@ const fullComponentImplementation = function() {
         // Reset a task's state
         async resetTaskState(taskId) {
             try {
-                if (!ensureSchedulerAvailable('Resetting task state')) return;
                 const task = this.tasks.find(t => t.uuid === taskId);
                 if (!task) {
                     showToast('Task not found', 'error');
@@ -909,7 +986,6 @@ const fullComponentImplementation = function() {
             }
 
             try {
-                if (!ensureSchedulerAvailable('Deleting tasks')) return;
 
                 // if we delete selected context, switch to another first
                 switchFromContext(taskId);

@@ -634,3 +634,49 @@ Quality gates snapshot
 - Lint/Typecheck: PASS (no new issues introduced by spec edits).
 - Tests: Local UI suite PASS; Golden subset PASS; E2E tool flow: FAIL (to be triaged).
 
+
+---
+
+## 2025-11-08 Update — Streaming Centralization (Event Bus) & SSE Hardening
+
+Scope
+- Consolidate all UI real-time updates behind a single client stream and event bus; eliminate residual polling (scheduler, memory dashboard) and ship production-grade reconnection, heartbeats, and backpressure.
+
+What changed (current state)
+- Chat: migrated from legacy polling to SSE in `webui/index.js`. CSRF fetch removed from `webui/js/api.js`. Confirmed no `/poll` references in chat code.
+- Gap: other panels (scheduler, memory dashboard) still use polling; no shared client event bus; reconnect/backoff minimal; no heartbeat stall detection.
+
+Design decisions
+- Single stream client: `webui/js/stream.js` wraps `EventSource` with jittered backoff, Last-Event-ID, heartbeat tracking, and stall detection → emits standardized UI events onto a bus.
+- Central event bus: `webui/js/event-bus.js` is a minimal pub/sub with topic strings; domain stores subscribe and update state.
+- Canonical UI event schema (additive on top of existing assistant/tool events):
+  - `ui.status.progress` — progress updates for long-running work (payload: { id, label?, pct?, stage?, details? }).
+  - `ui.status.paused` — conversation/session paused/resumed state (payload: { session_id, paused, reason? }).
+  - `ui.notification` — transient notifications/toasts (payload: { level: info|warn|error, message, code?, href? }).
+  - `session.list.update` — session/task list invalidations or diffs (payload: { added?, removed?, changed? }).
+  - `task.list.update` — task/scheduler invalidations or diffs (payload mirrors above).
+- Domain stores: `messagesStore`, `notificationsStore`, `progressStore`, `sessionsStore`, `tasksStore` consume bus events; views bind to stores. Messages continue to handle `assistant.delta/complete`, `tool.start/result`.
+
+Server updates (Gateway)
+- Extend SSE publisher to include the canonical UI events above where applicable (progress/paused/notifications and list invalidations). Continue emitting `heartbeat` at a fixed cadence.
+- Support `Last-Event-ID` to help reconnect resume. Expose `X-Accel-Buffering: no` and appropriate cache headers.
+
+Reliability
+- Reconnect/backoff: full jitter exponential backoff with max cap; fast-path on immediate user action (send message) to force a quick reconnect attempt.
+- Heartbeat stall detection: UI banner after N missed heartbeats; auto-retry in background; allow manual retry button.
+- Backpressure: coalesce frequent progress updates (throttle to ~10–20Hz) and only re-render at animation frames.
+
+Testing
+- Playwright: `stream.reconnect.and.banner.spec.ts` (disconnect → banner → auto-recover), `no-poll.anywhere.spec.ts` (assert no network calls to legacy/poll endpoints), `scheduler.memory.bus.spec.ts` (live updates via SSE, no polling), long-stream remains green.
+- Pytest API: contract tests for new UI event types (`ui.status.progress`, `ui.notification`) and `Last-Event-ID` resume.
+
+Acceptance criteria
+- No polling in any UI module (chat, scheduler, memory dashboard, settings), verified via Playwright network assertions.
+- Stream client reconnects with jittered backoff; heartbeat stall triggers an offline banner and recovers automatically.
+- Session/task/memory views update via SSE invalidations or diffs; manual refresh still available but not required.
+- Large histories remain responsive: either virtualization or message trimming is enabled without breaking grouping.
+
+Status / Next steps
+- Done: chat SSE, CSRF removal. In progress: planning and roadmap consolidation for central event bus.
+- Next: implement `event-bus.js` and `stream.js`, refactor `index.js` to use the bus, extend Gateway to emit canonical UI events, migrate scheduler and memory dashboard stores, add tests.
+

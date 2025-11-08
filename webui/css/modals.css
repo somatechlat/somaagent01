@@ -3,26 +3,27 @@
 /* Overlay */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2001; /* match Agent Zero layering */
+  z-index: 2001;
 }
 
 /* Modal Container */
 .modal-container {
   background-color: var(--color-panel);
   border-radius: 12px;
-  width: 1100px; /* match Agent Zero */
-  max-width: 1100px;
+  width: 1100px; /* Reduced from 1200px to 1100px */
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Stronger shadow to match Golden snapshot appearance */
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+  box-shadow: 0 4px 23px rgba(0, 0, 0, 0.2);
   box-sizing: border-box;
 }
 
@@ -33,9 +34,9 @@
 /* Mobile Viewport Behavior */
 @media (max-width: 1280px) {
   .modal-container {
-    width: 95%;
-    min-width: unset;
-    max-width: 95%;
+    width: 95%; /* Take up most of the screen on mobile */
+    min-width: unset; /* Remove min-width constraints */
+    max-width: 95%; /* Ensure consistent width */
   }
 
   /* Ensure section content can scroll horizontally */

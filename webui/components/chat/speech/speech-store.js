@@ -97,11 +97,9 @@ const model = {
   // Load settings from server
   async loadSettings() {
     try {
-      // Unified UI settings endpoint
-      const response = await fetchApi("/ui/settings/sections", { method: "GET" });
+      const response = await fetchApi("/settings_get", { method: "POST" });
       const data = await response.json();
-      const sections = data.sections || (data.settings && data.settings.sections) || [];
-      const speechSection = sections.find(
+      const speechSection = data.settings.sections.find(
         (s) => s.title === "Speech"
       );
 

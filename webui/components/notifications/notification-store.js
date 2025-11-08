@@ -376,7 +376,7 @@ const model = {
     return `<span class="material-symbols-outlined">${iconName}</span>`;
   },
 
-  // Create notification (frontend-only; backend path removed to avoid 404)
+  // Create notification via backend (will appear via polling)
   async createNotification(
     type,
     message,
@@ -386,8 +386,27 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    // No backend notifications in this build. Use frontend-only toast stack.
-    return this.addFrontendToastOnly(type, message, title, display_time, group, priority);
+    try {
+      const response = await globalThis.sendJsonData("/notification_create", {
+        type: type,
+        message: message,
+        title: title,
+        detail: detail,
+        display_time: display_time,
+        group: group,
+        priority: priority,
+      });
+
+      if (response.success) {
+        return response.notification_id;
+      } else {
+        console.error("Failed to create notification:", response.error);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      return null;
+    }
   },
 
   // Convenience methods for different notification types
@@ -562,17 +581,6 @@ const model = {
       }
     }
 
-    // Persist a durable record so the Notifications modal always shows it
-    try {
-      // Add to the front (most recent first)
-      this.notifications.unshift({ ...notification });
-      // Enforce max list length
-      if (this.notifications.length > maxNotifications) {
-        this.notifications = this.notifications.slice(0, maxNotifications);
-      }
-      this.updateUnreadCount();
-    } catch (_) {}
-
     // Create toast object with auto-dismiss timer
     const toast = {
       ...notification,
@@ -592,7 +600,7 @@ const model = {
       }
     }
 
-    // Set auto-dismiss timer (can be paused on hover)
+    // Set auto-dismiss timer
     toast.autoRemoveTimer = setTimeout(() => {
       this.removeFromToastStack(toast.toastId);
     }, notification.display_time * 1000);
@@ -600,29 +608,7 @@ const model = {
     return notification.id;
   },
 
-  // Pause auto-dismiss for a specific toast (e.g., when hovered)
-  pauseToast(toastId) {
-    const t = this.toastStack.find((x) => x.toastId === toastId);
-    if (!t) return;
-    if (t.autoRemoveTimer) {
-      clearTimeout(t.autoRemoveTimer);
-      t.autoRemoveTimer = null;
-    }
-  },
-
-  // Resume auto-dismiss after hover leaves
-  resumeToast(toastId) {
-    const t = this.toastStack.find((x) => x.toastId === toastId);
-    if (!t) return;
-    if (!t.autoRemoveTimer) {
-      const remaining = Math.max(1000, (t.display_time || 5) * 1000);
-      t.autoRemoveTimer = setTimeout(() => {
-        this.removeFromToastStack(t.toastId);
-      }, remaining);
-    }
-  },
-
-  // NEW: Frontend toast (no backend attempt to avoid 404 noise)
+  // NEW: Enhanced frontend toast that tries backend first, falls back to frontend-only
   async addFrontendToast(
     type,
     message,
@@ -631,6 +617,34 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
+    // Try to send to backend first if connected
+    if (this.isConnected()) {
+      try {
+        const notificationId = await this.createNotification(
+          type,
+          message,
+          title,
+          "",
+          display_time,
+          group,
+          priority
+        );
+        if (notificationId) {
+          // Backend handled it, notification will arrive via polling
+          return notificationId;
+        }
+      } catch (error) {
+        console.log(
+          `Backend unavailable for notification, showing as frontend-only: ${
+            error.message || error
+          }`
+        );
+      }
+    } else {
+      console.log("Backend disconnected, showing as frontend-only toast");
+    }
+
+    // Fallback to frontend-only toast
     return this.addFrontendToastOnly(
       type,
       message,

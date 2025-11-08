@@ -1,12 +1,28 @@
 import { getContext } from "../index.js";
 
 export async function openHistoryModal() {
-    // Legacy endpoint disabled: present an informative gating message instead of calling unknown APIs
-    window.toastFrontendWarning("History viewer is not available in this build.", "Chat History");
+    try {
+        const hist = await window.sendJsonData("/history_get", { context: getContext() });
+        // const data = JSON.stringify(hist.history, null, 4);
+        const data = hist.history
+        const size = hist.tokens
+        await showEditorModal(data, "markdown", `History ~${size} tokens`, "Conversation history visible to the LLM. History is compressed to fit into the context window over time.");
+    } catch (e) {
+        window.toastFrontendError("Error fetching history: " + e.message, "Chat History Error");
+        return
+    }
 }
 
 export async function openCtxWindowModal() {
-    window.toastFrontendWarning("Context window viewer is not available in this build.", "Chat Context");
+    try {
+        const win = await window.sendJsonData("/ctx_window_get", { context: getContext() });
+        const data = win.content
+        const size = win.tokens
+        await showEditorModal(data, "markdown", `Context window ~${size} tokens`, "Data passed to the LLM during last interaction. Contains system message, conversation history and RAG.");
+    } catch (e) {
+        window.toastFrontendError("Error fetching context: " + e.message, "Context Error");
+        return
+    }
 }
 
 async function showEditorModal(data, type = "json", title, description = "") {
