@@ -97,18 +97,16 @@ const model = {
   // Load settings from server
   async loadSettings() {
     try {
-      const response = await fetchApi("/settings_get", { method: "POST" });
+      const response = await fetchApi("/v1/ui/settings/sections", { method: "GET" });
       const data = await response.json();
-      const speechSection = data.settings.sections.find(
-        (s) => s.title === "Speech"
-      );
-
-      if (speechSection) {
-        speechSection.fields.forEach((field) => {
-          if (this.hasOwnProperty(field.id)) {
+      const sections = data?.sections || [];
+      const speechSection = sections.find((s) => s.title === "Speech");
+      if (speechSection && Array.isArray(speechSection.fields)) {
+        for (const field of speechSection.fields) {
+          if (Object.prototype.hasOwnProperty.call(this, field.id)) {
             this[field.id] = field.value;
           }
-        });
+        }
       }
     } catch (error) {
       window.toastFetchError("Failed to load speech settings", error);

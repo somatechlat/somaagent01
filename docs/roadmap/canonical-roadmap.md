@@ -660,6 +660,10 @@ Design decisions
 Server updates (Gateway)
 - Extend SSE publisher to include the canonical UI events above where applicable (progress/paused/notifications and list invalidations). Continue emitting `heartbeat` at a fixed cadence.
 - Support `Last-Event-ID` to help reconnect resume. Expose `X-Accel-Buffering: no` and appropriate cache headers.
+ - Emit lightweight invalidation hints alongside normal payloads:
+   - `task.list.update` when task-related events occur (e.g., `task.*`, or `tool.result`/`assistant.final` with `metadata.task_id`).
+   - `memory.list.update` for `memory.*` events.
+   These hints allow SSE-driven UI list refreshes without polling.
 
 Reliability
 - Reconnect/backoff: full jitter exponential backoff with max cap; fast-path on immediate user action (send message) to force a quick reconnect attempt.
@@ -669,6 +673,7 @@ Reliability
 Testing
 - Playwright: `stream.reconnect.and.banner.spec.ts` (disconnect → banner → auto-recover), `no-poll.anywhere.spec.ts` (assert no network calls to legacy/poll endpoints), `scheduler.memory.bus.spec.ts` (live updates via SSE, no polling), long-stream remains green.
 - Pytest API: contract tests for new UI event types (`ui.status.progress`, `ui.notification`) and `Last-Event-ID` resume.
+ - Pytest API: assert presence of `task.list.update`/`memory.list.update` hint events during representative flows.
 
 Acceptance criteria
 - No polling in any UI module (chat, scheduler, memory dashboard, settings), verified via Playwright network assertions.

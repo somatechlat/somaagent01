@@ -730,7 +730,7 @@ function drawKvps(container, kvps, latex) {
         if (typeof value === "string" && value.startsWith("img://")) {
           const imgElement = document.createElement("img");
           imgElement.classList.add("kvps-img");
-          imgElement.src = value.replace("img://", "/image_get?path=");
+          imgElement.src = mapImgUrl(value);
           imgElement.alt = "Image Attachment";
           tdiv.appendChild(imgElement);
 
@@ -845,7 +845,7 @@ function drawKvpsIncremental(container, kvps, latex) {
       if (typeof value === "string" && value.startsWith("img://")) {
         const imgElement = document.createElement("img");
         imgElement.classList.add("kvps-img");
-        imgElement.src = value.replace("img://", "/image_get?path=");
+        imgElement.src = mapImgUrl(value);
         imgElement.alt = "Image Attachment";
         tdiv.appendChild(imgElement);
 
@@ -919,8 +919,18 @@ function convertHTML(str) {
   return result;
 }
 
+function mapImgUrl(val) {
+  try {
+    const raw = String(val).slice("img://".length);
+    const id = raw.replace(/^attachment\/?|^att:|^att\//, "");
+    // If id looks like UUID, map to attachments endpoint
+    if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return `/v1/attachments/${id}`;
+    // Fallback: do not attempt legacy pathing; return as-is to prevent 404 noise
+    return `/v1/attachments/${encodeURIComponent(id)}`;
+  } catch { return ""; }
+}
 function convertImgFilePaths(str) {
-  return str.replace(/img:\/\//g, "/image_get?path=");
+  return str.replace(/img:\/\/(\S+)/g, (_m, p1) => `/v1/attachments/${p1}`);
 }
 
 export function convertIcons(str) {

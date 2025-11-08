@@ -100,69 +100,53 @@ document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 export async function sendMessage() {
   try {
     const message = chatInput.value.trim();
-    const attachmentsWithUrls = attachmentsStore.getAttachmentsForSending();
-    const hasAttachments = attachmentsWithUrls.length > 0;
+    const hasLocalAttachments = (attachmentsStore.attachments || []).length > 0;
 
-    if (message || hasAttachments) {
+    if (message || hasLocalAttachments) {
       let response;
       const messageId = generateGUID();
 
-      // Clear input and attachments
+      // Clear input immediately (keep attachments until uploaded)
       chatInput.value = "";
-      attachmentsStore.clearAttachments();
       adjustTextareaHeight();
 
-      // Include attachments in the user message
-      if (hasAttachments) {
-        const heading =
-          attachmentsWithUrls.length > 0
-            ? "Uploading attachments..."
-            : "User message";
+      // Render the user message immediately (attachments will appear as uploaded)
+      setMessage(messageId, "user", null, message, false, null);
 
-        // Render user message with attachments
-        setMessage(messageId, "user", heading, message, false, {
-          // attachments: attachmentsWithUrls, // skip here, let the backend properly log them
-        });
-
-        // sleep one frame to render the message before upload starts - better UX
-        sleep(0);
-
-        const formData = new FormData();
-        formData.append("text", message);
-        formData.append("context", context);
-        formData.append("message_id", messageId);
-
-        for (let i = 0; i < attachmentsWithUrls.length; i++) {
-          formData.append("attachments", attachmentsWithUrls[i].file);
+      // If we have local attachments, upload them first to /v1/uploads
+      let attachmentIds = [];
+      if (hasLocalAttachments) {
+        try {
+          await sleep(0); // one frame for UX
+          const descriptors = await attachmentsStore.uploadAll(context);
+          attachmentIds = (descriptors || []).map(d => d.id);
+        } catch (e) {
+          toastFetchError("Attachment upload failed", e);
+          // proceed with message without attachments
         }
-
-        response = await api.fetchApi("/message_async", {
-          method: "POST",
-          body: formData,
-        });
-      } else {
-        // For text-only messages
-        const data = {
-          text: message,
-          context,
-          message_id: messageId,
-        };
-        response = await api.fetchApi("/message_async", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
       }
 
-      // Handle response
-      const jsonResponse = await response.json();
-      if (!jsonResponse) {
-        toast("No response returned.", "error");
-      } else {
-        setContext(jsonResponse.context);
+      // Enqueue the message via canonical endpoint
+      const payload = {
+        session_id: context || null,
+        persona_id: null,
+        message,
+        attachments: attachmentIds,
+        metadata: {},
+      };
+      response = await api.fetchApi("/v1/session/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(txt || "Failed to enqueue message");
       }
+      const json = await response.json();
+      if (json?.session_id) setContext(json.session_id);
+      // Clear attachments only after we attempted to send
+      attachmentsStore.clearAttachments();
     }
   } catch (e) {
     toastFetchError("Error sending message", e); // Will use new notification system
@@ -192,11 +176,19 @@ globalThis.toastFetchError = toastFetchError;
 chatInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
     e.preventDefault();
+    if (!getConnectionStatus()) {
+      stream.requestReconnect();
+    }
     sendMessage();
   }
 });
 
-sendButton.addEventListener("click", sendMessage);
+sendButton.addEventListener("click", () => {
+  if (!getConnectionStatus()) {
+    stream.requestReconnect();
+  }
+  sendMessage();
+});
 
 export function updateChatInput(text) {
   console.log("updateChatInput called with:", text);
@@ -350,6 +342,17 @@ bus.on("stream.offline", (info) => {
 });
 bus.on("stream.heartbeat", () => {
   // could update a timestamp for stall detection later
+});
+bus.on("stream.reconnecting", (info) => {
+  try {
+    notificationStore.addFrontendToastOnly(
+      "info",
+      `Reconnecting stream (attempt ${info.attempt || 1})...`,
+      "",
+      Math.min(3, ((info.delay || 1000) / 1000) + 0.5),
+      "connection"
+    );
+  } catch {}
 });
 bus.on("sse:event", (ev) => {
   if (ev && (!ev.session_id || ev.session_id === context)) {

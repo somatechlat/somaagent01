@@ -156,8 +156,9 @@ const model = {
   async generateLink() {
     // First check if authentication is enabled
     try {
-      const authCheckResponse = await fetchApi("/settings_get");
-      const authData = await authCheckResponse.json();
+      const authCheckResponse = await fetchApi("/v1/ui/settings/sections");
+      const authDataRaw = await authCheckResponse.json();
+      const authData = { settings: { sections: authDataRaw.sections || [] } };
 
       // Find the auth_login and auth_password in the settings
       let hasAuth = false;
