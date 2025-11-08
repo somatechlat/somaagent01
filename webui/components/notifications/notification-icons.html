@@ -1,29 +1,27 @@
 <html>
 <head>
     <script type="module">
-        // Legacy store still loaded by index.js; bindings use Alpine bridge 'notificationSse'
+        // Uses Alpine bridge '$store.notificationSse' exposed by index.js
     </script>
 </head>
 <body>
     <div x-data>
-        <template x-if="$store.notificationSse">
-            <!-- Notification Toggle Button -->
-            <div class="notification-toggle"
-                 :class="{
-                     'has-unread': $store.notificationSse.unreadCount > 0,
-                     'has-notifications': $store.notificationSse.count > 0
-                 }"
-                 @click="$store.notificationStore?.openModal && $store.notificationStore.openModal()"
-                 title="View Notifications">
-                <div class="notification-icon">
-                    <span class="material-symbols-outlined">notifications</span>
-                </div>
-                <span id="notification-badge"
-                      x-show="$store.notificationSse.unreadCount > 0"
-                      class="notification-badge"
-                      x-text="$store.notificationSse.unreadCount"></span>
+        <!-- Always render; bindings update once Alpine store present -->
+        <div class="notification-toggle" style="display:inline-flex;align-items:center;cursor:pointer;position:relative;"
+             :class="{
+                 'has-unread': ($store.notificationSse?.unreadCount || 0) > 0,
+                 'has-notifications': ($store.notificationSse?.count || 0) > 0
+             }"
+             @click="openModal('notifications/notification-modal.html')"
+             title="View Notifications">
+            <div class="notification-icon">
+                <span class="material-symbols-outlined">notifications</span>
             </div>
-        </template>
+            <span id="notification-badge"
+                  x-show="($store.notificationSse?.unreadCount || 0) > 0"
+                  class="notification-badge"
+                  x-text="$store.notificationSse?.unreadCount || 0"></span>
+        </div>
     </div>
 </body>
 </html>

@@ -7,8 +7,7 @@ import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
 // Legacy notification store (toast + polling-era compatibility)
-import { store as notificationStore } from "/components/notifications/notification-store.js";
-// New SSE + REST notifications store
+// Consolidated SSE + REST notifications store (legacy polling/ toast removed)
 import { store as notificationsSseStore } from "/components/notifications/notificationsStore.js";
 import { createStore as createAlpineStore } from "/js/AlpineStore.js";
 
@@ -159,21 +158,11 @@ export async function sendMessage() {
 
 function toastFetchError(text, error) {
   console.error(text, error);
-  // Use new frontend error notification system (async, but we don't need to wait)
   const errorMessage = error?.message || error?.toString() || "Unknown error";
-
-  if (getConnectionStatus()) {
-    // Backend is connected, just show the error
-    toastFrontendError(`${text}: ${errorMessage}`).catch((e) =>
-      console.error("Failed to show error toast:", e)
-    );
-  } else {
-    // Backend is disconnected, show connection error
-    toastFrontendError(
-      `${text} (backend appears to be disconnected): ${errorMessage}`,
-      "Connection Error"
-    ).catch((e) => console.error("Failed to show connection error toast:", e));
-  }
+  // Emit an SSE-style notification creation; fallback to console only
+  try {
+    notificationsSseStore.create({ type: "error", title: text, body: errorMessage, severity: "error", ttl_seconds: 8 });
+  } catch {}
 }
 globalThis.toastFetchError = toastFetchError;
 
@@ -335,28 +324,17 @@ let currentAssistantId = null;
 let assistantBuffer = "";
 
 // Subscribe to stream lifecycle & events
-bus.on("stream.online", (info) => {
+bus.on("stream.online", () => {
   setConnectionStatus(true);
-  try { notificationStore.addFrontendToastOnly("success", "Connected", "", 2, "connection"); } catch {}
+  try { notificationsSseStore.create({ type: "system", title: "Connected", body: "Streaming online", severity: "success", ttl_seconds: 3 }); } catch {}
 });
-bus.on("stream.offline", (info) => {
+bus.on("stream.offline", () => {
   setConnectionStatus(false);
-  // Future: emit banner via notifications store
-  try { notificationStore.addFrontendToastOnly("warning", "Backend disconnected", "", 9999, "connection"); } catch {}
+  try { notificationsSseStore.create({ type: "system", title: "Disconnected", body: "Backend stream offline", severity: "warning", ttl_seconds: 15 }); } catch {}
 });
-bus.on("stream.heartbeat", () => {
-  // could update a timestamp for stall detection later
-});
+bus.on("stream.heartbeat", () => { /* reserved for future diagnostics */ });
 bus.on("stream.reconnecting", (info) => {
-  try {
-    notificationStore.addFrontendToastOnly(
-      "info",
-      `Reconnecting stream (attempt ${info.attempt || 1})...`,
-      "",
-      Math.min(3, ((info.delay || 1000) / 1000) + 0.5),
-      "connection"
-    );
-  } catch {}
+  try { notificationsSseStore.create({ type: "system", title: "Reconnecting", body: `Attempt ${info.attempt || 1}`, severity: "info", ttl_seconds: 4 }); } catch {}
 });
 bus.on("sse:event", (ev) => {
   if (ev && (!ev.session_id || ev.session_id === context)) {
@@ -834,21 +812,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Expose for debugging
     globalThis.notificationsSse = notificationsSseStore;
+    // Back-compat toast helpers routed through unified notifications store
+    globalThis.toastFrontendInfo = function(message, title = "Info", display_time = 3, group = "", priority) {
+      try { notificationsSseStore.create({ type: "info", title, body: message, severity: "info", ttl_seconds: display_time }); } catch {}
+    };
+    globalThis.toastFrontendSuccess = function(message, title = "Success", display_time = 3, group = "", priority) {
+      try { notificationsSseStore.create({ type: "success", title, body: message, severity: "success", ttl_seconds: display_time }); } catch {}
+    };
+    globalThis.toastFrontendWarning = function(message, title = "Warning", display_time = 5, group = "", priority) {
+      try { notificationsSseStore.create({ type: "warning", title, body: message, severity: "warning", ttl_seconds: display_time }); } catch {}
+    };
+    globalThis.toastFrontendError = function(message, title = "Error", display_time = 8, group = "", priority) {
+      try { notificationsSseStore.create({ type: "error", title, body: message, severity: "error", ttl_seconds: display_time }); } catch {}
+    };
   } catch (e) { console.warn("Failed to init SSE notifications store", e); }
 
   // Bridge SSE notifications to an Alpine store for UI bindings
   try {
-    const notifBridge = createAlpineStore("notificationSse", { unreadCount: 0, count: 0, list: [] });
+    const notifBridge = createAlpineStore("notificationSse", { unreadCount: 0, count: 0, list: [], toastStack: [] });
     // Seed initial values if already loaded
     if (notificationsSseStore?.state) {
       notifBridge.unreadCount = notificationsSseStore.state.unreadCount || 0;
       notifBridge.count = (notificationsSseStore.state.list || []).length;
       notifBridge.list = notificationsSseStore.state.list || [];
+      notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
     }
     bus.on("notifications.updated", ({ unread, count }) => {
       notifBridge.unreadCount = unread || 0;
       notifBridge.count = count || 0;
       notifBridge.list = notificationsSseStore.state.list || [];
+      notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
     });
   } catch (e) { console.warn("Failed to create Alpine notifications bridge", e); }
 
@@ -977,34 +970,13 @@ function removeClassFromElement(element, className) {
   element.classList.remove(className);
 }
 
-function justToast(text, type = "info", timeout = 5000, group = "") {
-  notificationStore.addFrontendToastOnly(
-    type,
-    text,
-    "",
-    timeout / 1000,
-    group
-  )
+function justToast(text, type = "info", timeout = 5000) {
+  try { notificationsSseStore.create({ type, title: text, body: "", severity: type, ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
 }
   
 
 function toast(text, type = "info", timeout = 5000) {
-  // Convert timeout from milliseconds to seconds for new notification system
-  const display_time = Math.max(timeout / 1000, 1); // Minimum 1 second
-
-  // Use new frontend notification system based on type
-    switch (type.toLowerCase()) {
-      case "error":
-        return notificationStore.frontendError(text, "Error", display_time);
-      case "success":
-        return notificationStore.frontendInfo(text, "Success", display_time);
-      case "warning":
-        return notificationStore.frontendWarning(text, "Warning", display_time);
-      case "info":
-      default:
-        return notificationStore.frontendInfo(text, "Info", display_time);
-    }
-
+  try { notificationsSseStore.create({ type, title: text, body: "", severity: type.toLowerCase(), ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
 }
 globalThis.toast = toast;
 

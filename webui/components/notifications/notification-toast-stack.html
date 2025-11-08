@@ -2,26 +2,26 @@
 <head>
     <title>Notification Toast Stack</title>
     <script type="module">
-        import { store } from "/components/notifications/notification-store.js";
+        // Uses unified notifications SSE store (notificationsStore.js) bridged via Alpine as $store.notificationSse
     </script>
 </head>
 <body>
     <div x-data>
-        <template x-if="$store.notificationStore">
+        <template x-if="$store.notificationSse">
             <!-- Toast Stack Container -->
             <div class="toast-stack-container"
-                 x-show="$store.notificationStore.toastStack.length > 0">
+                 x-show="$store.notificationSse.toastStack && $store.notificationSse.toastStack.length > 0">
 
-            <template x-for="(toast, index) in $store.notificationStore.toastStack" :key="toast.toastId">
+            <template x-for="(toast, index) in $store.notificationSse.toastStack" :key="toast.toastId">
                 <div class="toast-item"
-                     :class="$store.notificationStore.getNotificationClass(toast.type)"
-                     @click="$store.notificationStore.handleToastClick(toast.toastId)"
+                     :class="'notification-' + (toast.severity || toast.type || 'info')"
+                     @click="globalThis.notificationsSse?.openModal && globalThis.notificationsSse.openModal()"
                      x-transition:enter="toast-enter"
                      x-transition:leave="toast-leave">
 
                     <!-- Toast Icon -->
-                    <div class="toast-icon"
-                         x-html="$store.notificationStore.getNotificationIcon(toast.type)">
+                    <div class="toast-icon">
+                        <span class="material-symbols-outlined" x-text="toast.type === 'error' ? 'error' : (toast.type === 'warning' ? 'warning' : (toast.type === 'success' ? 'check_circle' : 'info'))"></span>
                     </div>
 
                     <!-- Toast Content -->
@@ -40,7 +40,7 @@
 
                     <!-- Toast Dismiss -->
                     <button class="toast-dismiss"
-                            @click.stop="$store.notificationStore.dismissToast(toast.toastId)"
+                            @click.stop="globalThis.notificationsSse?.dismissToast && globalThis.notificationsSse.dismissToast(toast.toastId)"
                             title="Dismiss">
                         <span class="material-symbols-outlined">close</span>
                     </button>
