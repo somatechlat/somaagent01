@@ -30,6 +30,7 @@ from fastapi import (
     File,
     UploadFile,
     Form,
+    Body,
     Query,
     Request,
     WebSocket,
@@ -1423,6 +1424,38 @@ async def get_runtime_config() -> dict[str, Any]:
         "somabrain": somabrain,
         "tools": {"enabled_count": tool_count},
     }
+
+
+@app.get("/v1/ui/settings/sections")
+async def get_ui_settings_sections() -> JSONResponse:
+    """Return structured UI settings sections for SPA consumption.
+
+    Normalizes underlying UiSettingsStore document to a stable schema.
+    Legacy /settings_get is deprecated and replaced by this endpoint.
+    """
+    try:
+        store = get_ui_settings_store()
+        doc = await store.get()
+    except Exception:
+        doc = {}
+
+    # Source sections may already be normalized; fall back to helper defaults
+    raw_sections = (doc or {}).get("sections") or []
+    norm_sections: list[dict[str, Any]] = []
+    for sec in raw_sections:
+        title = sec.get("title") or sec.get("name") or "Untitled"
+        tab = sec.get("tab") or "agent"
+        fields_in = sec.get("fields") or []
+        fields_out = []
+        for f in fields_in:
+            fields_out.append({
+                "id": f.get("id") or f.get("name"),
+                "title": f.get("title") or f.get("label") or f.get("id") or "Field",
+                "value": f.get("value"),
+            })
+        norm_sections.append({"title": title, "tab": tab, "fields": fields_out})
+
+    return JSONResponse({"sections": norm_sections})
 
 
 # SSE-only UI with same-origin and token-based auth is used.
@@ -3613,6 +3646,390 @@ async def enqueue_message(
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
 
+@app.post("/v1/uploads/init")
+async def init_chunked_upload(
+    request: Request,
+    payload: dict[str, Any] = Body(...),
+):
+    """Initialize a resumable (chunked) upload.
+
+    Returns an `upload_id` and negotiated `chunk_size` along with limits.
+    The client will POST chunks to /v1/uploads/{upload_id}/chunk and finalize via /v1/uploads/{upload_id}/finalize.
+    """
+    # Enforce uploads enabled & limits
+    max_bytes, _max_files = _upload_limits()
+    uploads_cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+    if isinstance(uploads_cfg, dict) and uploads_cfg.get("uploads_enabled") is False:
+        raise HTTPException(status_code=403, detail="Uploads are disabled by administrator")
+
+    filename = (payload or {}).get("filename") or "file"
+    mime = (payload or {}).get("mime") or "application/octet-stream"
+    size = int((payload or {}).get("size") or 0)
+    session_id = ((payload or {}).get("session_id") or "").strip() or "unspecified"
+    if size <= 0:
+        raise HTTPException(status_code=400, detail="Missing or invalid size")
+    if size > max_bytes:
+        raise HTTPException(status_code=413, detail="File too large")
+    if not _mime_allowed(mime):
+        raise HTTPException(status_code=415, detail=f"MIME type not allowed: {mime}")
+
+    # Simple auth/policy evaluation (request-level; file-level at finalize)
+    auth_meta = await authorize_request(request, {"action": "attachments.upload.init", "filename": filename, "size": size, "mime": mime})
+    tenant = auth_meta.get("tenant") or "public"
+
+    # Negotiate chunk size (configurable; default 4MB)
+    try:
+        cfg_chunk = int(uploads_cfg.get("uploads_chunk_size_bytes") or (4 * 1024 * 1024))
+    except Exception:
+        cfg_chunk = 4 * 1024 * 1024
+    chunk_size = max(256 * 1024, min(cfg_chunk, 8 * 1024 * 1024))  # clamp
+
+    # Prepare mutable in-memory state (ephemeral until finalize)
+    upload_id = str(uuid.uuid4())
+    if not hasattr(app.state, "chunked_uploads"):
+        app.state.chunked_uploads = {}
+    tmp_dir = os.getenv("UPLOAD_TMP_DIR", "/tmp/soma_chunk_uploads")
+    os.makedirs(tmp_dir, exist_ok=True)
+    tmp_path = os.path.join(tmp_dir, f"{upload_id}.part")
+
+    app.state.chunked_uploads[upload_id] = {
+        "id": upload_id,
+        "filename": secure_filename(filename) or "file",
+        "mime": mime,
+        "size_expected": size,
+        "size_received": 0,
+        "sha": hashlib.sha256(),
+        "session_id": session_id,
+        "tenant": tenant,
+        "path": tmp_path,
+        "quarantined": False,
+        "quarantine_reason": None,
+        "auth_meta": auth_meta,
+        "created_at": time.time(),
+    }
+
+    return JSONResponse({
+        "upload_id": upload_id,
+        "chunk_size": chunk_size,
+        "size_expected": size,
+        "limits": {"max_bytes": max_bytes},
+        "mode": "chunked",
+    })
+
+
+@app.post("/v1/uploads/{upload_id}/chunk")
+async def upload_chunk(
+    upload_id: str,
+    request: Request,
+    offset: str = Form(...),
+    chunk: UploadFile = File(...),
+    session_id: str | None = Form(default=None),
+    *,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+):
+    """Append a chunk to a previously initialized upload.
+
+    Validates offset, size caps, and emits best-effort progress events.
+    """
+    state = getattr(app.state, "chunked_uploads", {})
+    entry = state.get(upload_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Unknown upload_id")
+    expected_session = entry.get("session_id")
+    sess = (session_id or expected_session or "unspecified").strip() or "unspecified"
+    # Offset validation
+    try:
+        off = int(offset)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid offset")
+    if off != entry.get("size_received"):
+        raise HTTPException(status_code=409, detail="Offset mismatch")
+
+    max_bytes, _max_files = _upload_limits()
+    data = await chunk.read()
+    size_inc = len(data)
+    if entry.get("size_received") + size_inc > entry.get("size_expected"):
+        raise HTTPException(status_code=413, detail="Exceeds declared size")
+    if entry.get("size_received") + size_inc > max_bytes:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    # Append to temp file
+    try:
+        with open(entry.get("path"), "ab") as fh:
+            fh.write(data)
+    except Exception as exc:
+        LOGGER.error("Chunk write failed", extra={"upload_id": upload_id, "error": str(exc)})
+        raise HTTPException(status_code=500, detail="Chunk write failed")
+
+    # Update metadata
+    entry["size_received"] += size_inc
+    sha: hashlib.sha256 = entry.get("sha")
+    sha.update(data)
+
+    # Emit progress SSE event
+    try:
+        progress_event = {
+            "event_id": str(uuid.uuid4()),
+            "session_id": str(sess),
+            "persona_id": entry.get("auth_meta", {}).get("persona_id"),
+            "role": "system",
+            "message": "",
+            "metadata": {
+                "status": "uploading",
+                "source": "gateway",
+                "tenant": entry.get("tenant"),
+                "filename": entry.get("filename"),
+                "mime": entry.get("mime"),
+                "bytes_uploaded": entry.get("size_received"),
+                "bytes_total": entry.get("size_expected"),
+                "upload_id": upload_id,
+                "mode": "chunked",
+            },
+            "version": "sa01-v1",
+            "type": "uploads.progress",
+        }
+        await publisher.publish(
+            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            progress_event,
+            dedupe_key=progress_event.get("event_id"),
+            session_id=str(sess),
+            tenant=entry.get("tenant"),
+        )
+    except Exception:
+        LOGGER.debug("Failed to publish uploads.progress (chunked)", exc_info=True)
+
+    return JSONResponse({
+        "upload_id": upload_id,
+        "bytes_received": entry.get("size_received"),
+        "bytes_total": entry.get("size_expected"),
+        "done": entry.get("size_received") >= entry.get("size_expected"),
+        "mode": "chunked",
+    })
+
+
+@app.post("/v1/uploads/{upload_id}/finalize")
+async def finalize_chunked_upload(
+    upload_id: str,
+    request: Request,
+    session_id: str | None = Body(default=None),
+    *,
+    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
+):
+    """Finalize a chunked upload: perform AV scan, optional OPA, persist attachment, emit final progress, and memory write-through."""
+    state = getattr(app.state, "chunked_uploads", {})
+    entry = state.get(upload_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Unknown upload_id")
+    if entry.get("size_received") != entry.get("size_expected"):
+        raise HTTPException(status_code=400, detail="Upload incomplete")
+    sess = (session_id or entry.get("session_id") or "unspecified").strip() or "unspecified"
+    filename = entry.get("filename")
+    mime = entry.get("mime")
+    size = entry.get("size_received")
+    tenant = entry.get("tenant")
+    sha_hex = entry.get("sha").hexdigest() if entry.get("sha") else None
+
+    # Read full bytes (inline cap enforcement mirrors single upload)
+    try:
+        with open(entry.get("path"), "rb") as fh:
+            data = fh.read()
+    except Exception as exc:
+        LOGGER.error("Finalize read failed", extra={"upload_id": upload_id, "error": str(exc)})
+        raise HTTPException(status_code=500, detail="Finalize read failed")
+
+    # Antivirus scan
+    quarantined = False
+    quarantine_reason = None
+    if _clamav_enabled():
+        status, detail = await _clamav_scan_bytes(data)
+        GATEWAY_AV_SCANS.labels(status).inc()
+        if status == "infected":
+            quarantined = True
+            quarantine_reason = "infected"
+        elif status == "error":
+            LOGGER.warning("AV scan error (chunked)", extra={"file": filename, "detail": detail})
+            if _clamav_strict():
+                GATEWAY_UPLOADS.labels("blocked").inc()
+                raise HTTPException(status_code=502, detail="Antivirus error (strict mode)")
+            else:
+                quarantined = True
+                quarantine_reason = "av_error"
+
+    # Per-file OPA evaluation
+    try:
+        if REQUIRE_AUTH and OPA_URL:
+            await _evaluate_opa(
+                request,
+                {"action": "attachments.upload.file", "tenant": tenant, "session_id": sess, "filename": filename, "mime": mime, "size": size},
+                {},
+            )
+    except HTTPException:
+        GATEWAY_UPLOADS.labels("blocked").inc()
+        raise
+
+    # Inline cap enforcement (reuse logic from single upload)
+    max_bytes, _mf = _upload_limits()
+    try:
+        cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
+        inline_mb = float(cfg.get("uploads_inline_max_mb", min(max_bytes / (1024 * 1024), 16)))
+    except Exception:
+        inline_mb = min(max_bytes / (1024 * 1024), 16)
+    inline_cap = int(inline_mb * 1024 * 1024)
+    if size > inline_cap:
+        GATEWAY_UPLOADS.labels("blocked").inc()
+        raise HTTPException(status_code=413, detail="Attachment exceeds inline cap")
+
+    # Persist
+    try:
+        att_store = get_attachments_store()
+        att_id = await att_store.insert(
+            tenant=tenant,
+            session_id=sess,
+            persona_id=entry.get("auth_meta", {}).get("persona_id"),
+            filename=filename,
+            mime=mime,
+            size=size,
+            sha256=sha_hex,
+            status="quarantined" if quarantined else "clean",
+            quarantine_reason=quarantine_reason,
+            content=data,
+        )
+    except Exception as exc:
+        LOGGER.error("Attachment persist failed (chunked)", extra={"file": filename, "error": str(exc)})
+        GATEWAY_UPLOADS.labels("error").inc()
+        raise HTTPException(status_code=500, detail="Unable to persist attachment")
+
+    descriptor = {
+        "id": str(att_id),
+        "filename": filename,
+        "mime": mime,
+        "size": size,
+        "sha256": sha_hex,
+        "created_at": time.time(),
+        "tenant": tenant,
+        "session_id": sess,
+        "status": "quarantined" if quarantined else "clean",
+        "quarantine_reason": quarantine_reason if quarantined else None,
+        "path": f"/v1/attachments/{str(att_id)}",
+        "mode": "chunked",
+    }
+    GATEWAY_UPLOADS.labels("ok" if not quarantined else "blocked").inc()
+
+    # Final progress event
+    try:
+        final_event = {
+            "event_id": str(uuid.uuid4()),
+            "session_id": str(sess),
+            "persona_id": entry.get("auth_meta", {}).get("persona_id"),
+            "role": "system",
+            "message": "",
+            "metadata": {
+                "status": "uploaded",
+                "source": "gateway",
+                "tenant": tenant,
+                "filename": filename,
+                "mime": mime,
+                "bytes_uploaded": size,
+                "bytes_total": size,
+                "attachment_id": str(att_id),
+                "upload_id": upload_id,
+                "mode": "chunked",
+            },
+            "version": "sa01-v1",
+            "type": "uploads.progress",
+        }
+        await publisher.publish(
+            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            final_event,
+            dedupe_key=final_event.get("event_id"),
+            session_id=str(sess),
+            tenant=tenant,
+        )
+    except Exception:
+        LOGGER.debug("Failed to publish uploads.progress (chunked final)", exc_info=True)
+
+    # Optional write-through
+    if _write_through_enabled():
+        async def _wt_upload() -> None:
+            try:
+                soma = SomaBrainClient.get()
+                GATEWAY_WT_ATTEMPTS.labels("/v1/uploads.finalize").inc()
+                attachment_info = {
+                    "id": str(att_id),
+                    "filename": filename,
+                    "mime": mime,
+                    "size": size,
+                    "sha256": sha_hex,
+                    "path": f"/v1/attachments/{str(att_id)}",
+                    "status": "quarantined" if quarantined else "clean",
+                    "session_id": str(sess),
+                    "tenant": tenant,
+                }
+                mem_payload = {
+                    "id": f"att:{str(att_id)}",
+                    "type": "attachment",
+                    "role": "user",
+                    "content": "",
+                    "attachments": [attachment_info],
+                    "session_id": str(sess),
+                    "persona_id": entry.get("auth_meta", {}).get("persona_id"),
+                    "metadata": {"tenant": tenant, "filename": filename, "mime": mime, "upload_mode": "chunked"},
+                }
+                mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
+                result = await soma.remember(mem_payload)
+                GATEWAY_WT_RESULTS.labels("/v1/uploads.finalize", "ok").inc()
+                try:
+                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_event = {
+                        "type": "memory.write",
+                        "role": "user",
+                        "session_id": str(sess),
+                        "persona_id": entry.get("auth_meta", {}).get("persona_id"),
+                        "tenant": tenant,
+                        "payload": mem_payload,
+                        "result": {
+                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "trace_id": (result or {}).get("trace_id"),
+                            "request_id": (result or {}).get("request_id"),
+                        },
+                        "timestamp": time.time(),
+                    }
+                    await publisher.publish(
+                        wal_topic,
+                        wal_event,
+                        dedupe_key=str(mem_payload.get("id")),
+                        session_id=str(sess),
+                        tenant=tenant,
+                    )
+                    GATEWAY_WT_WAL_RESULTS.labels("/v1/uploads.finalize", "ok").inc()
+                except Exception:
+                    LOGGER.debug("Gateway failed to publish memory WAL (chunked)", exc_info=True)
+                    GATEWAY_WT_WAL_RESULTS.labels("/v1/uploads.finalize", "error").inc()
+            except SomaClientError as exc:
+                LOGGER.warning(
+                    "Gateway write-through remember failed (chunked)",
+                    extra={"attachment_id": str(att_id), "session_id": str(sess), "error": str(exc)},
+                )
+                label = _classify_wt_error(exc)
+                GATEWAY_WT_RESULTS.labels("/v1/uploads.finalize", label).inc()
+            except Exception as exc:
+                LOGGER.debug("Gateway write-through unexpected error (chunked)", exc_info=True)
+                GATEWAY_WT_RESULTS.labels("/v1/uploads.finalize", _classify_wt_error(exc)).inc()
+        if _write_through_async():
+            asyncio.create_task(_wt_upload())
+        else:
+            await _wt_upload()
+
+    # Cleanup state (best-effort)
+    try:
+        state.pop(upload_id, None)
+    except Exception:
+        pass
+    # Do not delete temp file immediately in case of async read-after-finalize; optional cleanup could be scheduled.
+
+    return JSONResponse(descriptor)
+
+
 @app.post("/v1/uploads")
 async def upload_files(
     request: Request,
@@ -3688,6 +4105,8 @@ async def upload_files(
                                 "mime": mime,
                                 "file_index": idx,
                                 "bytes_uploaded": size,
+                                "bytes_total": None,
+                                "mode": "single",
                             },
                             "version": "sa01-v1",
                             "type": "uploads.progress",
@@ -3817,6 +4236,7 @@ async def upload_files(
                         "file_index": idx,
                         "bytes_uploaded": size,
                         "bytes_total": size,
+                        "mode": "single",
                         "attachment_id": str(att_id),
                     },
                     "version": "sa01-v1",
@@ -5473,6 +5893,24 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                                 pass
                     except Exception:
                         pass
+                    # Emit task/memory list update hints for UI consumers (lightweight invalidation events)
+                    try:
+                        if isinstance(payload, dict):
+                            ptype = str(payload.get("type") or "").lower()
+                            # When a tool result or assistant final references a scheduler task, emit task.list.update
+                            if ptype.startswith("task.") or ptype in {"tool.result", "assistant.final"}:
+                                # Best-effort heuristic: metadata.task_id present
+                                md = payload.get("metadata") or {}
+                                if md.get("task_id"):
+                                    hint = json.dumps({"type":"task.list.update","session_id":session_id,"metadata":{"task_id":md.get("task_id"),"source":ptype}})
+                                    yield (f"data: {hint}\n\n").encode("utf-8")
+                            # Memory dashboard invalidations (memory.* events)
+                            if ptype.startswith("memory."):
+                                hint2 = json.dumps({"type":"memory.list.update","session_id":session_id,"metadata":{"source":ptype}})
+                                yield (f"data: {hint2}\n\n").encode("utf-8")
+                    except Exception:
+                        pass
+
                     yield (f"data: {data}\n\n").encode("utf-8")
                     # Periodic heartbeat to keep idle connections alive
                     now = time.time()

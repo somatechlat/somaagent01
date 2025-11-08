@@ -84,7 +84,8 @@ const settingsModalProxy = {
 
         //get settings from backend
         try {
-            const set = await sendJsonData("/settings_get", null);
+            const resp = await fetchApi('/v1/ui/settings/sections');
+            const set = { settings: await resp.json() };
 
             // First load the settings data without setting the active tab
             const settings = {
@@ -355,17 +356,11 @@ document.addEventListener('alpine:init', function () {
             async fetchSettings() {
                 try {
                     this.isLoading = true;
-                    const response = await fetchApi('/api/settings_get', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
+                    const response = await fetchApi('/v1/ui/settings/sections');
                     if (response.ok) {
                         const data = await response.json();
-                        if (data && data.settings) {
-                            this.settingsData = data.settings;
+                        if (data && data.sections) {
+                            this.settingsData = { sections: data.sections };
                         } else {
                             console.error('Invalid settings data format');
                         }
