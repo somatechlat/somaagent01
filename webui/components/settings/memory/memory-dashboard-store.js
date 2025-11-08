@@ -2,12 +2,13 @@ import { createStore } from "/js/AlpineStore.js";
 import { getContext } from "/index.js";
 import * as API from "/js/api.js";
 import { openModal, closeModal } from "/js/modals.js";
-import { store as notificationStore } from "/components/notifications/notification-store.js";
+// Unified notifications (SSE + REST)
+import { store as notificationsSse } from "/components/notifications/notificationsStore.js";
 import * as bus from "/js/event-bus.js";
 
 // Helper function for toasts
 function justToast(text, type = "info", timeout = 5000) {
-  notificationStore.addFrontendToastOnly(type, text, "", timeout / 1000);
+  try { notificationsSse.create({ type, title: text, body: "", severity: type, ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
 }
 
 // Memory Dashboard Store

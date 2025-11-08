@@ -43,7 +43,7 @@ These events are emitted on the same SSE stream as chat events: `GET /v1/session
 - Alpine bridge: `webui/index.js` bridges store -> `$store.notificationSse` for templates (badge + modal) and exposes `globalThis.notificationsSse` helpers.
 - Badge: `webui/components/notifications/notification-icons.html` binds to `$store.notificationSse.unreadCount` and shows `#notification-badge`.
 - Modal: `webui/components/notifications/notification-modal.html` lists `$store.notificationSse.list` and uses `globalThis.notificationsSse.markRead/clearAll`.
-- Toasts: existing `notification-store.js` provides frontend-only toast stack and falls back to REST when available. It marks SSE notifications read upon modal open for parity.
+- Toasts: the unified `notificationsStore.js` also manages a lightweight toast stack (frontend) and mirrors actions to REST where possible. Modal open will mark unread as read via the SSE-backed store.
 
 ## Observability
 - Prometheus counter `ui_notifications_total{event,severity,type}` increments on create/read/clear.

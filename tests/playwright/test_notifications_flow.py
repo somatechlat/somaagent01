@@ -16,16 +16,14 @@ async def wait_for_badge_value(page, expected: int, timeout_ms: int = 5000):
 
 async def create_notification(page, title: str, body: str, severity: str = "info"):
 	return await page.evaluate(
-		"async (t,b,s) => { const resp = await fetch('/v1/ui/notifications', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ type:'test', title:t, body:b, severity:s }) }); if(!resp.ok) throw new Error('create failed '+resp.status); return (await resp.json()).notification; }",
-		title,
-		body,
-		severity,
+		"async (args) => { const {t,b,s} = args; const resp = await fetch('/v1/ui/notifications', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ type:'test', title:t, body:b, severity:s }) }); if(!resp.ok) throw new Error('create failed '+resp.status); return (await resp.json()).notification; }",
+		{"t": title, "b": body, "s": severity},
 	)
 
 async def mark_read(page, nid: str):
 	await page.evaluate(
-		"async (id) => { const resp = await fetch(`/v1/ui/notifications/${encodeURIComponent(id)}/read`, { method:'POST' }); if(!resp.ok) throw new Error('read failed '+resp.status); }",
-		nid,
+		"async (args) => { const {id} = args; const resp = await fetch(`/v1/ui/notifications/${encodeURIComponent(id)}/read`, { method:'POST' }); if(!resp.ok) throw new Error('read failed '+resp.status); }",
+		{"id": nid},
 	)
 
 async def clear_all(page):
