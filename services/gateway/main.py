@@ -59,15 +59,36 @@ from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, REGISTRY, start_http_server
 
 # Config update & lifecycle metrics
-CONFIG_UPDATE_RESULTS = Counter(
-    "config_update_apply_total", "Config update results", labelnames=("result",)
-)
-SERVICE_STARTUP_SECONDS = Histogram(
-    "service_startup_seconds", "Service startup duration (seconds)", labelnames=("service",)
-)
-SERVICE_SHUTDOWN_SECONDS = Histogram(
-    "service_shutdown_seconds", "Service shutdown duration (seconds)", labelnames=("service",)
-)
+try:
+    CONFIG_UPDATE_RESULTS = Counter(
+        "config_update_apply_total", "Config update results", labelnames=("result",)
+    )
+except ValueError:
+    existing = getattr(REGISTRY, "_names_to_collectors", {}).get("config_update_apply_total")  # type: ignore[attr-defined]
+    if isinstance(existing, Counter):
+        CONFIG_UPDATE_RESULTS = existing
+    else:
+        raise
+try:
+    SERVICE_STARTUP_SECONDS = Histogram(
+        "service_startup_seconds", "Service startup duration (seconds)", labelnames=("service",)
+    )
+except ValueError:
+    existing = getattr(REGISTRY, "_names_to_collectors", {}).get("service_startup_seconds")  # type: ignore[attr-defined]
+    if isinstance(existing, Histogram):
+        SERVICE_STARTUP_SECONDS = existing
+    else:
+        raise
+try:
+    SERVICE_SHUTDOWN_SECONDS = Histogram(
+        "service_shutdown_seconds", "Service shutdown duration (seconds)", labelnames=("service",)
+    )
+except ValueError:
+    existing = getattr(REGISTRY, "_names_to_collectors", {}).get("service_shutdown_seconds")  # type: ignore[attr-defined]
+    if isinstance(existing, Histogram):
+        SERVICE_SHUTDOWN_SECONDS = existing
+    else:
+        raise
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.utils import secure_filename
 
@@ -187,6 +208,7 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 
 # Import health endpoints
 from services.gateway.health import router as health_router, health_checker
+from services.common.readiness import readiness_summary
 from services.common.config_registry import ConfigRegistry
 import json as _json
 
@@ -196,11 +218,11 @@ app.include_router(health_router)
 # Lightweight top-level readiness/liveness aliases for K8s probes
 @app.get("/ready")
 async def ready_alias():
-    health = await health_checker.check_health()
-    if health.get("status") == "healthy":
-        return {"status": "ready", "timestamp": health.get("timestamp")}
+    summary = await readiness_summary()
+    if summary.get("status") == "ready":
+        return {"status": "ready", "timestamp": summary.get("timestamp")}
     from fastapi import HTTPException as _HTTPException  # local import to avoid polluting globals
-    raise _HTTPException(status_code=503, detail=health)
+    raise _HTTPException(status_code=503, detail=summary)
 
 
 @app.get("/live")
@@ -416,6 +438,33 @@ def _get_or_create_gauge(
         if isinstance(existing, Gauge):
             return existing
         raise
+# ---------------------------------------------------------------------------
+# Feature state diagnostics metrics
+# ---------------------------------------------------------------------------
+FEATURE_STATE_INFO = _get_or_create_gauge(
+    "feature_state_info",
+    "Feature state indicator (1 for current state)",
+    labelnames=("feature", "state"),
+)
+FEATURE_PROFILE_INFO = _get_or_create_gauge(
+    "feature_profile_info",
+    "Active feature profile (presence gauge)",
+    labelnames=("profile",),
+)
+
+def _update_feature_metrics() -> None:
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        # Profile presence
+        FEATURE_PROFILE_INFO.labels(reg.profile).set(1)
+        # Feature states
+        for d in reg.describe():
+            st = reg.state(d.key)
+            FEATURE_STATE_INFO.labels(d.key, st).set(1)
+    except Exception:
+        # Metrics are best-effort; avoid breaking request paths
+        pass
 
 
 def _get_or_create_histogram(
@@ -1492,6 +1541,15 @@ async def start_background_services() -> None:
         SERVICE_STARTUP_SECONDS.labels(SERVICE_NAME).observe(max(0.0, time.perf_counter() - _startup_t0))
     except Exception:
         pass
+    # Initialize semantic recall index (prototype) if feature enabled
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        if reg.is_enabled("semantic_recall"):
+            from services.common.semantic_recall import get_index
+            app.state.semantic_recall_index = get_index()
+    except Exception:
+        LOGGER.debug("Semantic recall index init failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1641,7 +1699,12 @@ def _sse_disabled() -> bool:
 
 
 def _masking_enabled() -> bool:
-    return os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {"true", "1", "yes", "on"}
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        return reg.is_enabled("content_masking")
+    except Exception:
+        return os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _sequence_enabled() -> bool:
@@ -1649,7 +1712,12 @@ def _sequence_enabled() -> bool:
 
 
 def _token_metrics_enabled() -> bool:
-    return os.getenv("SA01_ENABLE_TOKEN_METRICS", "true").lower() in {"true", "1", "yes", "on"}
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        return reg.is_enabled("token_metrics")
+    except Exception:
+        return os.getenv("SA01_ENABLE_TOKEN_METRICS", "true").lower() in {"true", "1", "yes", "on"}
 
 
 def _notifications_topic() -> str:
@@ -1657,15 +1725,30 @@ def _notifications_topic() -> str:
 
 
 def _error_classifier_enabled() -> bool:
-    return os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {"true", "1", "yes", "on"}
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        return reg.is_enabled("error_classifier")
+    except Exception:
+        return os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _reasoning_enabled() -> bool:
-    return os.getenv("SA01_ENABLE_REASONING_STREAM", "false").lower() in {"true", "1", "yes", "on"}
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        return reg.is_enabled("reasoning_stream")
+    except Exception:
+        return os.getenv("SA01_ENABLE_REASONING_STREAM", "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _tool_events_enabled() -> bool:
-    return os.getenv("SA01_ENABLE_TOOL_EVENTS", "false").lower() in {"true", "1", "yes", "on"}
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        return reg.is_enabled("tool_events")
+    except Exception:
+        return os.getenv("SA01_ENABLE_TOOL_EVENTS", "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _rate_limit_enabled() -> bool:
@@ -1767,6 +1850,65 @@ async def get_runtime_config() -> dict[str, Any]:
         "somabrain": somabrain,
         "tools": {"enabled_count": tool_count},
     }
+
+
+@app.get("/v1/features")
+async def get_features() -> JSONResponse:
+    """Return feature profile and per-feature states.
+
+    Provides a stable JSON surface for UI diagnostics and automation. Uses the
+    central FeatureRegistry; falls back gracefully if unavailable.
+    """
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        _update_feature_metrics()
+        items = []
+        for d in reg.describe():
+            items.append(
+                {
+                    "key": d.key,
+                    "state": reg.state(d.key),
+                    "enabled": reg.is_enabled(d.key),
+                    "profile_default": d.profiles.get(reg.profile, d.default_enabled),
+                    "dependencies": d.dependencies,
+                    "stability": d.stability,
+                    "tags": d.tags,
+                }
+            )
+        return JSONResponse({"profile": reg.profile, "features": items})
+    except Exception as exc:
+        return JSONResponse({"error": "registry_unavailable", "detail": str(exc)}, status_code=500)
+
+
+class SemanticRecallQuery(BaseModel):
+    text: str
+    k: int = 5
+    min_score: float = 0.0
+
+
+@app.post("/v1/recall/semantic")
+async def semantic_recall_endpoint(payload: SemanticRecallQuery) -> JSONResponse:
+    """Perform semantic recall for the provided query text.
+
+    Prototype: in-memory index; will evolve to persisted vector store.
+    Returns 503 when feature disabled.
+    """
+    try:
+        from services.common.features import build_default_registry
+        reg = build_default_registry()
+        if not reg.is_enabled("semantic_recall"):
+            return JSONResponse({"error": "semantic_recall_disabled"}, status_code=503)
+        from services.common.embeddings import maybe_embed
+        from services.common.semantic_recall import get_index
+        vec = await maybe_embed(payload.text)
+        if not vec:
+            return JSONResponse({"results": [], "count": 0})
+        idx = get_index()
+        results = idx.recall(vec, k=max(1, payload.k), min_score=max(0.0, payload.min_score))
+        return JSONResponse({"results": results, "count": len(results)})
+    except Exception as exc:
+        return JSONResponse({"error": "semantic_recall_error", "detail": str(exc)}, status_code=500)
 
 
 @app.get("/v1/ui/settings/sections")
@@ -7650,6 +7792,10 @@ def _default_ui_agent() -> dict[str, str]:
 
 @app.get("/v1/ui/settings")
 async def get_ui_settings() -> dict[str, Any]:
+    try:
+        metrics_collector.track_settings_read("ui.settings")
+    except Exception:
+        pass
     ui_store = get_ui_settings_store()
     agent_cfg = await ui_store.get()
     if not agent_cfg:
@@ -7795,9 +7941,21 @@ def _default_base_url_for_provider(provider: str) -> str | None:
 
 @app.put("/v1/ui/settings")
 async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
+    t0 = time.perf_counter()
+    result = "success"
+    details_err = None
+    # Snapshot for audit diff
+    try:
+        before = await get_ui_settings_store().get()
+    except Exception:
+        before = {}
     if payload.agent:
         agent_cfg = _default_ui_agent() | payload.agent
-        await get_ui_settings_store().set(agent_cfg)
+        try:
+            await get_ui_settings_store().set(agent_cfg)
+        except Exception as exc:
+            result = "error"
+            details_err = str(exc)
 
     if payload.model_profile:
         mp = payload.model_profile
@@ -7823,16 +7981,69 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
             temperature=float(mp.get("temperature", 0.2)),
             kwargs=extra if isinstance(extra, dict) else None,
         )
-        await PROFILE_STORE.upsert(to_save)
+        try:
+            await PROFILE_STORE.upsert(to_save)
+        except Exception as exc:
+            result = "error"
+            details_err = str(exc)
 
     if payload.llm_credentials and isinstance(payload.llm_credentials.get("provider"), str):
         provider = payload.llm_credentials.get("provider", "").strip().lower()
         secret = payload.llm_credentials.get("secret", "")
         if provider and secret:
             store = get_llm_credentials_store()
-            await store.set(provider, secret)
+            try:
+                await store.set(provider, secret)
+            except Exception as exc:
+                result = "error"
+                details_err = str(exc)
+    # Metrics and audit diff
+    try:
+        metrics_collector.track_settings_write("ui.settings", result, max(0.0, time.perf_counter() - t0))
+    except Exception:
+        pass
+    try:
+        after = await get_ui_settings_store().get()
+        diff = _diff_dicts(before or {}, after or {})
+        if diff:
+            await get_audit_store().log(
+                action="settings.update",
+                resource="ui.settings",
+                details={"result": result, "error": details_err} if result != "success" else {"result": result},
+                diff=diff,
+            )
+    except Exception:
+        LOGGER.debug("settings audit logging failed", exc_info=True)
+    return {"ok": result == "success"}
 
-    return {"ok": True}
+
+def _diff_dicts(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+    """Compute a simple JSON-pointer-like diff structure.
+
+    Output shape matches schemas/config/audit.v1.schema.json.
+    """
+    changes: list[dict[str, Any]] = []
+    def walk(o, n, path: str):
+        ok = set(o.keys()) if isinstance(o, dict) else set()
+        nk = set(n.keys()) if isinstance(n, dict) else set()
+        for k in sorted(ok - nk):
+            changes.append({"path": f"{path}/{k}", "action": "removed", "old": o[k]})
+        for k in sorted(nk - ok):
+            changes.append({"path": f"{path}/{k}", "action": "added", "new": n[k]})
+        for k in sorted(ok & nk):
+            ov = o[k]
+            nv = n[k]
+            if isinstance(ov, dict) and isinstance(nv, dict):
+                walk(ov, nv, f"{path}/{k}")
+            elif ov != nv:
+                changes.append({"path": f"{path}/{k}", "action": "updated", "old": ov, "new": nv})
+    walk(old, new, "")
+    if not changes:
+        return {}
+    return {
+        "version": "v1",
+        "changes": changes,
+    }
 
 
 # -----------------------------

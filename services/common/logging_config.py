@@ -9,6 +9,8 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+from observability.log_redaction import install_redaction_filter
+
 _LOGGING_INITIALISED = False
 
 
@@ -81,5 +83,13 @@ def setup_logging(default_level: str | None = None) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())
     root.addHandler(handler)
+
+    # Optional redaction (enabled by default for safety)
+    if os.getenv("LOG_REDACT_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
+        try:
+            install_redaction_filter(root)
+        except Exception:
+            # Defensive: never fail setup due to filter issues
+            pass
 
     _LOGGING_INITIALISED = True

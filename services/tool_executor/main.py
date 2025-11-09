@@ -31,6 +31,7 @@ from services.common.session_repository import PostgresSessionStore
 from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
+from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.tool_executor.execution_engine import ExecutionEngine
@@ -65,6 +66,10 @@ TOOL_INFLIGHT = Gauge(
     "tool_executor_inflight",
     "Current number of in-flight tool executions",
     labelnames=("tool",),
+)
+TOOL_SANDBOX_IN_USE = Gauge(
+    "tool_executor_sandbox_in_use",
+    "Number of active sandboxes allocated by the executor",
 )
 REQUEUE_EVENTS = Counter(
     "tool_executor_requeue_total",
@@ -209,6 +214,11 @@ class ToolExecutor:
         return self._audit_store
 
     async def start(self) -> None:
+        # Record startup time from constructor to entering consume loop
+        try:
+            _st = _lm_now()
+        except Exception:
+            _st = None
         await self.resources.initialize()
         await self.sandbox.initialize()
         await self.tool_registry.load_all_tools()
@@ -230,6 +240,8 @@ class ToolExecutor:
             self.streams["group"],
             self._handle_request,
         )
+        if _st is not None:
+            _lm_start("tool-executor", _st)
 
     async def _handle_request(self, event: dict[str, Any]) -> None:
         session_id = event.get("session_id")
@@ -421,6 +433,16 @@ class ToolExecutor:
 
         try:
             TOOL_INFLIGHT.labels(tool_label).inc()
+            try:
+                # If ResourceManager exposes active count, prefer it; otherwise count sandbox sessions
+                n = 0
+                try:
+                    n = int(getattr(self.sandbox, "active_count", 0))
+                except Exception:
+                    n = 0
+                TOOL_SANDBOX_IN_USE.set(max(0, n))
+            except Exception:
+                pass
             result = await self.execution_engine.execute(tool, args, default_limits())
         except ToolExecutionError as exc:
             LOGGER.error("Tool execution failed", extra={"tool": tool_name, "error": str(exc)})
@@ -495,6 +517,15 @@ class ToolExecutor:
             return
         else:
             TOOL_INFLIGHT.labels(tool_label).dec()
+            try:
+                n = 0
+                try:
+                    n = int(getattr(self.sandbox, "active_count", 0))
+                except Exception:
+                    n = 0
+                TOOL_SANDBOX_IN_USE.set(max(0, n))
+            except Exception:
+                pass
             TOOL_EXECUTION_LATENCY.labels(tool_label).observe(result.execution_time)
             TOOL_REQUEST_COUNTER.labels(tool_label, result.status).inc()
 
@@ -697,6 +728,19 @@ class ToolExecutor:
             },
             "status": result_event.get("status"),
         }
+        # Optional embedding for tool result content
+        try:
+            from services.common.embeddings import maybe_embed as _maybe_embed
+
+            emb = await _maybe_embed(content)
+            if emb is not None:
+                try:
+                    max_dims = int(os.getenv("EMBEDDING_STORE_DIM_TRUNC", "128"))
+                except ValueError:
+                    max_dims = 128
+                memory_payload.setdefault("metadata", {})["embedding"] = emb[:max_dims]
+        except Exception:
+            LOGGER.debug("embedding generation failed (tool result)", exc_info=True)
         memory_payload["idempotency_key"] = generate_for_memory_payload(memory_payload)
         try:
             # Fail-closed by default
@@ -839,12 +883,18 @@ class ToolExecutor:
 
 
 async def main() -> None:
+    service_name = "tool-executor"
     executor = ToolExecutor()
     try:
         await executor.start()
     finally:
+        # Measure shutdown duration covering resource cleanup
+        _shutdown_ts = _lm_now()
         await executor.policy.close()
         await executor.soma.close()
+        _lm_stop(service_name, _shutdown_ts)
+
+    # Startup metric is recorded within start() upon entering the consume loop.
 
 
 if __name__ == "__main__":

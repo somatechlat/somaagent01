@@ -9,8 +9,22 @@ import asyncio
 from prometheus_client import Counter, Histogram, Gauge, Info, start_http_server
 from prometheus_client.core import CollectorRegistry
 
-# Registry for canonical backend metrics
+# Registry for canonical backend metrics (must be defined before metric declarations)
 registry = CollectorRegistry()
+
+# Feature profile/state gauges (mirrors gateway local collectors)
+feature_profile_info = Gauge(
+    'feature_profile_info',
+    'Active feature profile (presence gauge)',
+    ['profile'],
+    registry=registry
+)
+feature_state_info = Gauge(
+    'feature_state_info',
+    'Feature state indicator (1 for current state)',
+    ['feature', 'state'],
+    registry=registry
+)
 
 # Core application metrics
 app_info = Info('somaagent01_app_info', 'Application information', registry=registry)
@@ -341,6 +355,17 @@ class MetricsCollector:
         """Track a settings write operation with result and latency."""
         settings_write_total.labels(endpoint=endpoint, result=result).inc()
         settings_write_latency_seconds.labels(endpoint=endpoint, result=result).observe(duration)
+
+    def update_feature_metrics(self) -> None:
+        """Refresh feature profile/state metrics via FeatureRegistry."""
+        try:
+            from services.common.features import build_default_registry
+            reg = build_default_registry()
+            feature_profile_info.labels(reg.profile).set(1)
+            for d in reg.describe():
+                feature_state_info.labels(d.key, reg.state(d.key)).set(1)
+        except Exception:
+            pass
 
 
 # Global metrics collector

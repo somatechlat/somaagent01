@@ -14,6 +14,7 @@ import time
 from typing import Any, Mapping, Sequence
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
+from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 
 from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.event_bus import KafkaEventBus, KafkaSettings
@@ -67,6 +68,10 @@ class MemorySyncWorker:
         self._stopping = asyncio.Event()
 
     async def start(self) -> None:
+        try:
+            _st = _lm_now()
+        except Exception:
+            _st = None
         await ensure_mw_schema(self.store)
         try:
             await ensure_outbox_schema(self.outbox)
@@ -77,6 +82,9 @@ class MemorySyncWorker:
         LOGGER.info(
             "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}
         )
+        # Startup considered complete once we enter the processing loop.
+        if _st is not None:
+            _lm_start("memory-sync", _st)
         while not self._stopping.is_set():
             pending = await self.store.count_pending()
             BACKLOG.set(pending)
@@ -89,6 +97,7 @@ class MemorySyncWorker:
                     await self._process(item)
 
     async def stop(self) -> None:
+        _lm_stop("memory-sync", _lm_now())
         self._stopping.set()
         await self.bus.close()
         try:

@@ -15,6 +15,7 @@ import asyncio
 import logging
 import signal
 from typing import Awaitable, Callable, Optional
+from services.common.lifecycle_metrics import observe_shutdown as _lm_stop, now as _lm_now
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,7 +68,9 @@ def run_service(
         finally:
             if shutdown_coro is not None:
                 try:
+                    ts = _lm_now()
                     await shutdown_coro()
+                    _lm_stop(service_name, ts)
                 except Exception:
                     LOGGER.debug("Shutdown coroutine failed", exc_info=True)
             LOGGER.info("Service stopped", extra={"service": service_name})

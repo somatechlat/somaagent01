@@ -1,0 +1,5 @@
+apiVersion: v2
+name: delegation
+version: 0.1.0
+appVersion: "0.1.0"
+description: SomaAgent01 Delegation Gateway Helm chart

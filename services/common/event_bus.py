@@ -99,6 +99,17 @@ class KafkaEventBus:
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
 
+    async def close(self) -> None:
+        """Close underlying producer if started.
+
+        Safe to call multiple times. Intended for tests and graceful shutdowns.
+        """
+        if self._producer is not None:
+            try:
+                await self._producer.stop()
+            finally:
+                self._producer = None
+
     async def publish(self, topic: str, payload: Any) -> None:
         producer = await self._ensure_producer()
         with TRACER.start_as_current_span(

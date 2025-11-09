@@ -227,6 +227,25 @@ class OutboxStore:
             )
         OUTBOX_EVENTS.labels("nack", "failed").inc()
 
+    async def count_pending(self) -> int:
+        """Return count of pending outbox rows eligible for publishing.
+
+        Only counts rows whose next_attempt_at is due. Errors are surfaced so callers
+        can decide whether to skip metric update or log.
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            try:
+                val = await conn.fetchval(
+                    """
+                    SELECT COUNT(*) FROM message_outbox
+                    WHERE status = 'pending' AND next_attempt_at <= NOW()
+                    """
+                )
+                return int(val) if val is not None else 0
+            except Exception:
+                raise
+
 
 MIGRATION_SQL = """
 CREATE TABLE IF NOT EXISTS message_outbox (

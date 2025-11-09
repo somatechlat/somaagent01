@@ -1,0 +1,26 @@
+replicaCount: 1
+
+image:
+  repository: somaagent01
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8010
+
+resources: {}
+
+env:
+  - name: LOG_LEVEL
+    value: INFO
+  - name: GATEWAY_REQUIRE_AUTH
+    value: "false"
+
+podAnnotations: {}
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
