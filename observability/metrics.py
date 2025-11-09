@@ -263,6 +263,26 @@ settings_write_latency_seconds = Histogram(
     registry=registry
 )
 
+# Runtime config metrics (C2)
+runtime_config_updates_total = Counter(
+    'runtime_config_updates_total',
+    'Number of runtime config updates applied',
+    ['source'],  # source: default|dynamic|tenant
+    registry=registry
+)
+
+runtime_config_info = Info(
+    'runtime_config_info',
+    'Current runtime config snapshot info',
+    registry=registry
+)
+
+runtime_config_last_applied_ts = Gauge(
+    'runtime_config_last_applied_timestamp_seconds',
+    'Unix timestamp when runtime config was last applied',
+    registry=registry
+)
+
 
 def record_memory_persistence(duration: float, operation: str, status: str, tenant: str) -> None:
     """Record memory persistence duration for SLA tracking."""
@@ -367,6 +387,15 @@ class MetricsCollector:
         except Exception:
             pass
 
+    # C2: Runtime config instrumentation helpers
+    def record_runtime_config_update(self, *, version: str, checksum: str, source: str) -> None:
+        try:
+            runtime_config_updates_total.labels(source=source).inc()
+            runtime_config_info.info({'version': version, 'checksum': checksum, 'source': source})
+            runtime_config_last_applied_ts.set(time.time())
+        except Exception:
+            pass
+
 
 # Global metrics collector
 metrics_collector = MetricsCollector()
@@ -414,16 +443,23 @@ def measure_duration(metric_name: str):
 def get_metrics_snapshot() -> Dict[str, Any]:
     """Get current metrics snapshot for health checks."""
     from prometheus_client import generate_latest
-    
+    # Best-effort extraction; internal attributes vary across versions.
+    def _safe_total(counter: Counter) -> float:
+        try:
+            return float(sum(s.samples[0].value for s in counter.collect()))
+        except Exception:
+            return 0.0
+    def _safe_gauge(g: Gauge) -> float:
+        try:
+            return float(next(iter(g.collect())).samples[0].value)
+        except Exception:
+            return 0.0
     return {
         'metrics_endpoint': '/metrics',
         'port': 9090,
-        'active_connections': float(sse_connections._value.get()),
-        'total_messages_sent': float(sse_messages_sent._value.get()),
-        'settings_reads': float(settings_read_total._value.get()),
-        'singleton_health': {
-            name: float(gauge._value.get()) 
-            for name, gauge in singleton_health._metrics.items()
-        },
-        'raw_metrics': generate_latest(registry).decode('utf-8')
+        'active_connections': _safe_gauge(sse_connections),
+        'total_messages_sent': _safe_total(sse_messages_sent),
+        'settings_reads': _safe_total(settings_read_total),
+        'runtime_config_last_applied': _safe_gauge(runtime_config_last_applied_ts),
+        'raw_metrics': generate_latest(registry).decode('utf-8'),
     }

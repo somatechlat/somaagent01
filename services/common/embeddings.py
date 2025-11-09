@@ -74,13 +74,9 @@ async def maybe_embed(text: str) -> list[float] | None:
     - If enabled but provider is misconfigured (e.g., missing key), raises error (fail-fast).
     - Respects EMBEDDINGS_MAX_CHARS limit before sending to provider.
     """
-    # Feature toggle via FeatureRegistry with env-compat fallback
-    use_feature = False
-    try:
-        from services.common.features import build_default_registry
-        use_feature = build_default_registry().is_enabled("embeddings_ingest")
-    except Exception:
-        use_feature = os.getenv("ENABLE_EMBED_ON_INGEST", "false").lower() in {"1", "true", "yes", "on"}
+    # Centralized feature toggle via runtime_config facade (C1 migration)
+    from services.common import runtime_config as cfg
+    use_feature = cfg.flag("embeddings_ingest")
     if not use_feature:
         return None
     if not isinstance(text, str) or not text.strip():

@@ -38,6 +38,37 @@ class DurablePublisher:
         self.bus = bus
         self.outbox = outbox
 
+    def _build_headers(
+        self,
+        *,
+        payload: dict[str, Any],
+        session_id: Optional[str],
+        tenant: Optional[str],
+        provided: Optional[dict[str, Any]],
+    ) -> dict[str, Any]:
+        hdr: dict[str, Any] = dict(provided or {})
+        # Prefer explicit args, fall back to payload metadata
+        meta = payload.get("metadata") if isinstance(payload, dict) else None
+        eff_tenant = tenant or (meta.get("tenant") if isinstance(meta, dict) else None)
+        eff_session = session_id or payload.get("session_id")
+        eff_persona = payload.get("persona_id")
+        schema = payload.get("version") or "sa01-v1"
+        event_type = payload.get("type")
+        event_id = payload.get("event_id")
+        if eff_tenant:
+            hdr.setdefault("tenant_id", str(eff_tenant))
+        if eff_session:
+            hdr.setdefault("session_id", str(eff_session))
+        if eff_persona:
+            hdr.setdefault("persona_id", str(eff_persona))
+        if schema:
+            hdr.setdefault("schema", str(schema))
+        if event_type:
+            hdr.setdefault("event_type", str(event_type))
+        if event_id:
+            hdr.setdefault("event_id", str(event_id))
+        return hdr
+
     async def publish(
         self,
         topic: str,
@@ -60,8 +91,12 @@ class DurablePublisher:
             timeout_s = float(os.getenv("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0"))
         except Exception:
             timeout_s = 2.0
+        # Compute unified headers for Kafka and (if needed) for outbox persistence
+        hdrs = self._build_headers(
+            payload=payload, session_id=session_id, tenant=tenant, provided=headers
+        )
         try:
-            await asyncio.wait_for(self.bus.publish(topic, payload), timeout=timeout_s)
+            await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:
@@ -73,7 +108,7 @@ class DurablePublisher:
                 topic=topic,
                 payload=payload,
                 partition_key=partition_key,
-                headers=headers,
+                headers=hdrs,
                 dedupe_key=dedupe_key,
                 session_id=session_id,
                 tenant=tenant,

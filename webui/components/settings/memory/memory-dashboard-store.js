@@ -50,9 +50,7 @@ const memoryDashboardStore = {
   editMode: false,
   editMemoryBackup: null,
 
-  // Polling (deprecated; SSE bus will drive updates)
-  pollingInterval: null,
-  pollingEnabled: false,
+  // SSE only: no polling retained (legacy fields removed)
 
   async openModal() {
     await openModal("settings/memory/memory-dashboard.html");
@@ -99,8 +97,7 @@ const memoryDashboardStore = {
     //   await this.searchMemories();
     // }
 
-    // // Start polling for live updates as soon as dashboard is open
-    // this.startPolling();
+    // SSE subscriptions already established in onOpen(); no polling
   },
 
   async getCurrentMemorySubdir() {
@@ -197,15 +194,10 @@ const memoryDashboardStore = {
       });
 
       if (response.success) {
-        // Preserve existing selections when updating memories during polling
+        // Preserve existing selections during SSE-driven silent refresh
         const existingSelections = {};
         if (silent && this.memories) {
-          // Build a map of existing selections by memory ID
-          this.memories.forEach((memory) => {
-            if (memory.selected) {
-              existingSelections[memory.id] = true;
-            }
-          });
+          this.memories.forEach((memory) => { if (memory.selected) existingSelections[memory.id] = true; });
         }
 
         // Add selected property to each memory item for mass selection
@@ -237,7 +229,7 @@ const memoryDashboardStore = {
           this.message = null;
         } else {
           // For silent updates, just log the error but don't break the UI
-          console.warn("Memory dashboard polling failed:", response.error);
+          console.warn("Memory dashboard silent refresh failed:", response.error);
         }
       }
     } catch (error) {
@@ -248,7 +240,7 @@ const memoryDashboardStore = {
         console.error("Memory search error:", error);
       } else {
         // For silent updates, just log the error but don't break the UI
-        console.warn("Memory dashboard polling error:", error);
+        console.warn("Memory dashboard silent refresh error:", error);
       }
     } finally {
       if (!silent) {
@@ -268,8 +260,8 @@ const memoryDashboardStore = {
   },
 
   async onMemorySubdirChange() {
-    // Clear current results when subdirectory changes
-    await this.clearSearch(); // Polling continues with new subdirectory
+    // Clear current results when subdirectory changes then refresh
+    await this.clearSearch();
   },
 
   // Pagination
@@ -652,24 +644,11 @@ ${memory.content_full}
     }
   },
 
-  startPolling() {
-    // Disabled to enforce SSE-only transport; keep for compatibility.
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
-    }
-  },
-
-  stopPolling() {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
-    }
-  },
+  // Removed polling methods; SSE provides update triggers
 
   // Call this when the dialog/component is closed or destroyed
   cleanup() {
-    this.stopPolling();
+    // No polling to stop; clean SSE subscriptions
     if (Array.isArray(this._unsubs)) {
       this._unsubs.forEach((u) => { try { u(); } catch {} });
       this._unsubs = [];

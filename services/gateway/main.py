@@ -110,13 +110,16 @@ from python.helpers.settings import (
     set_settings,
 )
 from python.integrations.somabrain_client import (
-    get_weights,
-    update_weights,
-    build_context,
     get_tenant_flag,
     SomaClientError,
     SomaBrainClient,
 )
+from services.common.learning import (
+    get_weights as learning_get_weights,
+    build_context as learning_build_context,
+    publish_reward as learning_publish_reward,
+)
+from services.common.features import build_default_registry
 # Import the EnforcePolicy middleware class directly.
 from python.integrations.opa_middleware import EnforcePolicy
 from services.common import error_classifier as _errclass, masking as _masking
@@ -154,6 +157,7 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
+from services.common import runtime_config as cfg
 from services.common.slm_client import ChatMessage, SLMClient
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
@@ -178,7 +182,8 @@ except ImportError:
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-APP_SETTINGS = SA01Settings.from_env()
+# Prefer centralized runtime settings (C0 facade); fallback to direct env if needed
+APP_SETTINGS = cfg.settings()
 tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
 
 # --- Consolidated service stores (moved in-process to the gateway) ---
@@ -229,6 +234,15 @@ async def ready_alias():
 async def live_alias():
     from datetime import datetime as _dt
     return {"status": "alive", "timestamp": _dt.utcnow().isoformat()}
+
+# Simple /healthz alias returning 200 only when overall healthy
+@app.get("/healthz")
+async def healthz_alias():
+    summary = await readiness_summary()
+    if summary.get("status") == "ready":
+        return {"status": "ok", "timestamp": summary.get("timestamp")}
+    from fastapi import HTTPException as _HTTPException
+    raise _HTTPException(status_code=503, detail=summary)
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
@@ -362,7 +376,7 @@ async def api_get_weights() -> JSONResponse:
     endpoint = "/v1/weights"
     method = "GET"
     try:
-        result = get_weights()
+        result = await learning_get_weights()
         SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="200").inc()
         return JSONResponse(result)
     except SomaClientError as exc:
@@ -380,7 +394,42 @@ async def api_build_context(payload: Dict[str, Any]) -> JSONResponse:
     endpoint = "/v1/context"
     method = "POST"
     try:
-        result = build_context(payload)
+        session_id = str(payload.get("session_id") or payload.get("session") or "")
+        messages = payload.get("messages") or []
+        if not session_id or not isinstance(messages, list):
+            raise HTTPException(status_code=400, detail="invalid_context_payload")
+        result = await learning_build_context(session_id=session_id, messages=messages)
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="200").inc()
+        return JSONResponse(result)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="502").inc()
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.post("/v1/learning/reward")
+async def api_publish_reward(payload: Dict[str, Any]) -> JSONResponse:
+    """Publish learning reward/feedback to Somabrain.
+
+    Body: {session_id: str, signal: str, value: float, meta?: object}
+    Returns 202 on accepted.
+    """
+    try:
+        session_id = str(payload.get("session_id") or "")
+        signal = str(payload.get("signal") or "")
+        value = float(payload.get("value"))
+        meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else None
+        if not session_id or not signal:
+            raise HTTPException(status_code=400, detail="invalid_reward_payload")
+        ok = await learning_publish_reward(session_id=session_id, signal=signal, value=value, meta=meta)
+        if not ok:
+            raise HTTPException(status_code=502, detail="reward_publish_failed")
+        return JSONResponse({"status": "accepted"}, status_code=202)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
         SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="200").inc()
         return JSONResponse(result)
     except SomaClientError as exc:
@@ -456,12 +505,16 @@ def _update_feature_metrics() -> None:
     try:
         from services.common.features import build_default_registry
         reg = build_default_registry()
-        # Profile presence
-        FEATURE_PROFILE_INFO.labels(reg.profile).set(1)
-        # Feature states
-        for d in reg.describe():
-            st = reg.state(d.key)
-            FEATURE_STATE_INFO.labels(d.key, st).set(1)
+        try:
+            # Profile presence
+            FEATURE_PROFILE_INFO.labels(reg.profile).set(1)
+            # Feature states
+            for d in reg.describe():
+                st = reg.state(d.key)
+                FEATURE_STATE_INFO.labels(d.key, st).set(1)
+        except Exception:
+            # Handle any exceptions that occur during feature metrics update
+            pass
     except Exception:
         # Metrics are best-effort; avoid breaking request paths
         pass
@@ -619,6 +672,18 @@ LLM_INVOKE_RESULTS = _get_or_create_counter(
     "gateway_llm_invoke_results_total",
     "LLM invoke outcomes",
     labelnames=("provider", "stream", "result"),  # stream:true|false, result: ok|error|timeout
+)
+
+# Feature flag remote fetch metrics
+FLAG_REMOTE_REQUESTS_TOTAL = _get_or_create_counter(
+    "gateway_flag_remote_requests_total",
+    "Remote feature-flag fetch results",
+    labelnames=("status",),  # ok|error
+)
+FLAG_REMOTE_LATENCY_SECONDS = _get_or_create_histogram(
+    "gateway_flag_remote_latency_seconds",
+    "Latency of remote feature-flag fetches",
+    labelnames=(),
 )
 
 # Token usage counters – track input and output token volumes per provider/model
@@ -1543,9 +1608,8 @@ async def start_background_services() -> None:
         pass
     # Initialize semantic recall index (prototype) if feature enabled
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        if reg.is_enabled("semantic_recall"):
+        from services.common import runtime_config as cfg
+        if cfg.flag("semantic_recall"):
             from services.common.semantic_recall import get_index
             app.state.semantic_recall_index = get_index()
     except Exception:
@@ -1699,25 +1763,27 @@ def _sse_disabled() -> bool:
 
 
 def _masking_enabled() -> bool:
+    from services.common import runtime_config as cfg
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        return reg.is_enabled("content_masking")
+        return cfg.flag("content_masking")
     except Exception:
-        return os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {"true", "1", "yes", "on"}
+        return False
 
 
 def _sequence_enabled() -> bool:
-    return os.getenv("SA01_ENABLE_SEQUENCE", "true").lower() in {"true", "1", "yes", "on"}
+    from services.common import runtime_config as cfg
+    try:
+        return cfg.flag("sequence")
+    except Exception:
+        return True
 
 
 def _token_metrics_enabled() -> bool:
+    from services.common import runtime_config as cfg
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        return reg.is_enabled("token_metrics")
+        return cfg.flag("token_metrics")
     except Exception:
-        return os.getenv("SA01_ENABLE_TOKEN_METRICS", "true").lower() in {"true", "1", "yes", "on"}
+        return False
 
 
 def _notifications_topic() -> str:
@@ -1725,30 +1791,27 @@ def _notifications_topic() -> str:
 
 
 def _error_classifier_enabled() -> bool:
+    from services.common import runtime_config as cfg
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        return reg.is_enabled("error_classifier")
+        return cfg.flag("error_classifier")
     except Exception:
-        return os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {"true", "1", "yes", "on"}
+        return False
 
 
 def _reasoning_enabled() -> bool:
+    from services.common import runtime_config as cfg
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        return reg.is_enabled("reasoning_stream")
+        return cfg.flag("reasoning_stream")
     except Exception:
-        return os.getenv("SA01_ENABLE_REASONING_STREAM", "false").lower() in {"true", "1", "yes", "on"}
+        return False
 
 
 def _tool_events_enabled() -> bool:
+    from services.common import runtime_config as cfg
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        return reg.is_enabled("tool_events")
+        return cfg.flag("tool_events")
     except Exception:
-        return os.getenv("SA01_ENABLE_TOOL_EVENTS", "false").lower() in {"true", "1", "yes", "on"}
+        return False
 
 
 def _rate_limit_enabled() -> bool:
@@ -1791,26 +1854,21 @@ def get_attachments_store() -> AttachmentsStore:
 
 @app.get("/v1/runtime-config")
 async def get_runtime_config() -> dict[str, Any]:
-    """Return a UI-safe snapshot of runtime config flags and env-derived state.
+    """Return a UI-safe snapshot sourced from centralized runtime_config facade.
 
-    This helps the SPA adapt behavior (e.g., SSE switched off, auth required, tool counts)
-    without exposing secrets.
+    Adds checksum when dynamic config registry is available so the UI can
+    detect changes efficiently. Falls back gracefully when components are
+    unavailable.
     """
-    # Auth flags
-    auth_cfg = {
-        "require_auth": REQUIRE_AUTH,
-        "opa_configured": bool(OPA_URL),
-    }
+    from services.common import runtime_config as cfg
 
-    # SSE flag
+    snap = cfg.config_snapshot()
+    checksum = snap.checksum if snap else None
+
+    auth_cfg = {"require_auth": REQUIRE_AUTH, "opa_configured": bool(OPA_URL)}
     sse_cfg = {"enabled": not _sse_disabled()}
 
-    # Uploads basics (merge with defaults)
-    uploads_defaults = {
-        "uploads_enabled": True,
-        "uploads_max_mb": 25,
-        "uploads_max_files": 10,
-    }
+    uploads_defaults = {"uploads_enabled": True, "uploads_max_mb": 25, "uploads_max_files": 10}
     try:
         ui_doc = await get_ui_settings_store().get()
         uploads_cfg = dict((ui_doc.get("uploads") or {})) if isinstance(ui_doc, dict) else {}
@@ -1819,18 +1877,15 @@ async def get_runtime_config() -> dict[str, Any]:
     uploads = dict(uploads_defaults)
     uploads.update({k: v for k, v in uploads_cfg.items() if k in uploads})
 
-    # SomaBrain info
     try:
         soma = SomaBrainClient.get()
         somabrain = {"base_url": soma.base_url}
     except Exception:
         somabrain = {"base_url": os.getenv("SOMA_BASE_URL", "http://localhost:9696")}
 
-    # Tools: enabled count
     tool_count = 0
     try:
         from services.tool_executor.tool_registry import ToolRegistry  # lazy import
-
         reg = ToolRegistry()
         await reg.load_all_tools()
         for t in reg.list():
@@ -1838,7 +1893,7 @@ async def get_runtime_config() -> dict[str, Any]:
                 if await CATALOG_STORE.is_enabled(t.name):
                     tool_count += 1
             except Exception:
-                tool_count += 1  # default enabled
+                tool_count += 1
     except Exception:
         pass
 
@@ -1849,6 +1904,7 @@ async def get_runtime_config() -> dict[str, Any]:
         "uploads": uploads,
         "somabrain": somabrain,
         "tools": {"enabled_count": tool_count},
+        "config": {"checksum": checksum},
     }
 
 
@@ -1881,6 +1937,70 @@ async def get_features() -> JSONResponse:
         return JSONResponse({"error": "registry_unavailable", "detail": str(exc)}, status_code=500)
 
 
+# ---------------------------------------------------------------------------
+# Merged feature flags endpoint (registry + tenant remote overrides)
+# ---------------------------------------------------------------------------
+
+_FLAG_CACHE: dict[str, dict[str, Any]] = {}
+_FLAG_CACHE_TTL_SECONDS = int(os.getenv("FEATURE_FLAGS_TTL_SECONDS", "30") or "30")
+
+def _flag_cache_key(tenant_id: str, profile: str) -> str:
+    return f"{tenant_id}:{profile}"
+
+def _now_seconds() -> float:
+    return time.time()
+
+@app.get("/v1/feature-flags")
+async def list_feature_flags(request: Request) -> JSONResponse:
+    tenant_id = request.headers.get("X-Tenant-Id", "default")
+    reg = build_default_registry()
+    profile = reg.profile
+    cache_key = _flag_cache_key(tenant_id, profile)
+    cached = _FLAG_CACHE.get(cache_key)
+    if cached and cached.get("expires_at", 0) > _now_seconds():
+        return JSONResponse(cached["payload"])  # serve cached merged view
+
+    descriptors = reg.describe()
+
+    async def _fetch_remote(desc) -> tuple[str, Any]:
+        start = time.time()
+        try:
+            remote_enabled = get_tenant_flag(tenant_id, desc.key)
+            FLAG_REMOTE_REQUESTS_TOTAL.labels("ok").inc()
+            FLAG_REMOTE_LATENCY_SECONDS.observe(time.time() - start)
+            return desc.key, bool(remote_enabled)
+        except Exception:
+            FLAG_REMOTE_REQUESTS_TOTAL.labels("error").inc()
+            FLAG_REMOTE_LATENCY_SECONDS.observe(time.time() - start)
+            return desc.key, None  # treat failures as no override
+
+    remote_results: dict[str, Any] = {}
+    for d in descriptors:
+        k, v = await _fetch_remote(d)
+        remote_results[k] = v
+
+    merged: dict[str, dict[str, Any]] = {}
+    for d in descriptors:
+        local_on = reg.is_enabled(d.key)
+        remote_override = remote_results.get(d.key)
+        effective = local_on if remote_override is None else bool(remote_override)
+        merged[d.key] = {
+            "local": local_on,
+            "remote": remote_override,
+            "effective": effective,
+            "source": "remote" if remote_override is not None else "local",
+        }
+
+    payload = {
+        "profile": profile,
+        "tenant_id": tenant_id,
+        "ttl_seconds": _FLAG_CACHE_TTL_SECONDS,
+        "flags": merged,
+    }
+    _FLAG_CACHE[cache_key] = {"expires_at": _now_seconds() + _FLAG_CACHE_TTL_SECONDS, "payload": payload}
+    return JSONResponse(payload)
+
+
 class SemanticRecallQuery(BaseModel):
     text: str
     k: int = 5
@@ -1895,9 +2015,8 @@ async def semantic_recall_endpoint(payload: SemanticRecallQuery) -> JSONResponse
     Returns 503 when feature disabled.
     """
     try:
-        from services.common.features import build_default_registry
-        reg = build_default_registry()
-        if not reg.is_enabled("semantic_recall"):
+        from services.common import runtime_config as cfg
+        if not cfg.flag("semantic_recall"):
             return JSONResponse({"error": "semantic_recall_disabled"}, status_code=503)
         from services.common.embeddings import maybe_embed
         from services.common.semantic_recall import get_index

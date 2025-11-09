@@ -1,3 +1,59 @@
+# Central Configuration Architecture (Planned Consolidation)
+
+Objective: Eliminate scattered environment variable access and ad‑hoc flag checks by introducing a single, layered configuration access surface consumed everywhere (gateway, workers, UI support code). No direct `os.getenv` calls remain in business logic after migration – only within the configuration loader.
+
+Layers & Precedence (highest wins):
+1. Dynamic Overrides: Runtime config documents delivered via Kafka (or future Somabrain config endpoint) and applied through `ConfigRegistry.apply_update()`.
+2. Environment Variables: 12‑factor compliance; provide non-secret overrides at container start.
+3. Defaults: Versioned static defaults derived from `SA01Settings.environment_defaults()` and seed config documents.
+
+Core Components:
+- `SA01Settings` (static/base): Environment‑aware service connection defaults (Postgres/Kafka/Redis/OPA/metrics). Provides stable base and environment mapping.
+- `ConfigRegistry` (dynamic): Validates and stores a JSONSchema-backed snapshot (`registry.v1.schema.json`), notifies subscribers, and exposes consistent shape for application consumption.
+- `FeatureRegistry`: Pure in‑memory projection of feature descriptors + profile; will be driven by dynamic overrides (e.g., profile change, forced enable/disable list) once merged with `ConfigRegistry`.
+- `RuntimeConfigFacade` (new planned module): Single import point (`from services.common.runtime_config import cfg`) exposing read‑only helper methods: `cfg.db()`, `cfg.kafka()`, `cfg.redis()`, `cfg.feature('token_metrics')`, `cfg.flag('embeddings_ingest')`, `cfg.policy()`, `cfg.somabrain()`, `cfg.profile()`. Internally composes SA01Settings + registry snapshot + computed feature states.
+- Metrics Layer: Prometheus gauges/counters updated from a single periodic refresher (`cfg.refresh_metrics()`), replacing per‑module self‑updates.
+
+Design Principles:
+- Fail‑Closed for Sensitive Domains: If dynamic override layer is unavailable, security‑critical values (policy fail‑open, masking enablement) revert to conservative defaults explicitly defined in SA01Settings.
+- Immutable Read Surface: Callers cannot mutate configuration dictionaries; updates only occur via validated registry documents.
+- Deterministic Hashing: Each effective merged snapshot publishes a `config_effective_checksum` metric for change detection and alerting.
+- Single Path for Flags: All feature/flag queries route through `cfg.flag()` which first resolves remote tenant override cache → registry descriptor → fallback default.
+- Zero Direct Env Access: A linter rule (planned) prohibits `os.getenv(` outside configuration and bootstrap modules.
+
+Access Flow:
+```
+Incoming Kafka config event → deserialize → ConfigRegistry.apply_update() → recompute merged snapshot (defaults + env + dynamic) → update FeatureRegistry overlay → emit metrics + trigger subscribers → RuntimeConfigFacade exposes new view.
+```
+
+Planned Migration Steps:
+1. Inventory all `os.getenv` usages (gateway, session_repository, embeddings, features, tool executor).
+2. Introduce `runtime_config.py` with facade & merge logic (no behavior change yet; shadow reads).
+3. Replace direct env reads with facade methods (batch by domain: database, kafka, redis, feature flags, masking, policy, embeddings).
+4. Integrate dynamic overrides (config update listener) and publish `config_effective_checksum` metric.
+5. Enforce linter rule + add unit test `test_no_direct_getenv.py` blocking straggler `os.getenv` references.
+6. Update `/v1/runtime-config` endpoint to source exclusively from facade (deprecate internal recomputation).
+
+Metrics To Add:
+- `config_effective_checksum` (Gauge – last applied checksum)
+- `config_layer_source_total{layer}` (Counter – counts of accesses hitting dynamic|env|default)
+- `feature_flag_resolution_total{source}` (Counter – local|remote|cache_miss|cache_hit)
+- `config_update_latency_seconds` (Histogram – time from receipt to facade publication)
+
+Risk & Mitigations:
+- Stale Overrides: Use checksum comparison + optional monotonic `version` to reject regressions.
+- Partial Documents: JSONSchema requires explicit fields; missing keys fall back to defaults predictably.
+- Tenant Explosion (flag cache size): Introduce size‑bounded LRU for per‑tenant overrides with eviction metric.
+- Deployment Drift: Print merged snapshot summary at startup and include checksum in `/health/summary` for observability.
+
+Acceptance Criteria (Centralization Complete):
+- Grep for `os.getenv(` outside allowed modules returns zero.
+- `/v1/feature-flags` effective states match facade outputs for sampled features (golden test).
+- Dynamic config update triggers metric change and subscriber callback without error.
+- Single import `cfg` used in all new code paths for settings/flags.
+
+Next Sprint Integration: This architecture underpins L2 (Learning & Context) by enabling remote toggles for experimental learning weight adjustments and context build heuristics without re-deploy.
+
 # 📍 Canonical Roadmap – somaAgent01
 *Merged with Agent-Zero architectural insights – 2025-11-08*
 

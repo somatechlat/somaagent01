@@ -276,17 +276,8 @@ class PostgresSessionStore(SessionStore):
                         "version": event.get("version", "sa01-v1"),
                     }
                     # Error classification (flag-driven)
-                    use_classifier = False
-                    try:
-                        from services.common.features import build_default_registry
-                        use_classifier = build_default_registry().is_enabled("error_classifier")
-                    except Exception:
-                        use_classifier = os.getenv("SA01_ENABLE_ERROR_CLASSIFIER", "false").lower() in {
-                            "true",
-                            "1",
-                            "yes",
-                            "on",
-                        }
+                    from services.common import runtime_config as cfg
+                    use_classifier = cfg.flag("error_classifier")
                     if use_classifier:
                         meta = event.get("metadata") or {}
                         em = _errclass.classify(message=str(details))
@@ -303,17 +294,8 @@ class PostgresSessionStore(SessionStore):
                 pass
 
             # Optional masking (only for assistant/tool/system roles and user-visible message)
-            masking = False
-            try:
-                from services.common.features import build_default_registry
-                masking = build_default_registry().is_enabled("content_masking")
-            except Exception:
-                masking = os.getenv("SA01_ENABLE_CONTENT_MASKING", "false").lower() in {
-                    "true",
-                    "1",
-                    "yes",
-                    "on",
-                }
+            from services.common import runtime_config as cfg
+            masking = cfg.flag("content_masking")
             if masking:
                 try:
                     masked_event, hits = _masking.mask_event_payload(event)

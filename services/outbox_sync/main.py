@@ -214,7 +214,9 @@ class OutboxSyncWorker:
                         except Exception:
                             # Fall back to wrapping string payload
                             payload = {"payload": str(msg.payload)}
-                    await self.bus.publish(msg.topic, payload)
+                    # Rehydrate headers stored as JSON; ensure dict for KafkaEventBus
+                    hdrs = msg.headers if isinstance(msg.headers, dict) else {}
+                    await self.bus.publish(msg.topic, payload, headers=hdrs)
             except KafkaError as kerr:
                 failures += 1
                 await self._handle_failure(msg, kerr)
