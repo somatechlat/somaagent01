@@ -1,3 +1,142 @@
+# 📍 Canonical Roadmap – somaAgent01
+*Merged with Agent-Zero architectural insights – 2025-11-08*
+
+---
+
+## 0️⃣ Executive Summary
+This is the **single source of truth** for the post-merge, centralised architecture of **somaAgent01** after integrating the best patterns from *Agent-Zero*.  
+We now have **zero import-time side-effects**, **deterministic middleware**, **test-friendly singletons**, and a **clear separation of concerns**.
+
+---
+
+## 1️⃣ Vision & Success Criteria
+| Goal | Description | Success Metric |
+|------|-------------|----------------|
+| **Single source of truth** | All external services (Somabrain, OPA, Kafka, Postgres, etc.) are accessed through **registry singletons** that live in a dedicated `integrations/` package. | Every module imports `from integrations.service> import singleton>`; no direct `httpx`, `kafka-python`, `psycopg2` usage outside the registry. |
+| **Zero import-time side-effects** | Background workers, DB pools, Kafka producers, and Prometheus metrics are **lazy-initialised** in FastAPI startup hooks or explicit `init()` calls. | Test suite runs with `settings.testing=True` without “event loop already running” or connection errors. |
+| **Deterministic middleware stack** | OPA, auth, request-id, and observability middleware are registered **once** and configured from the central `settings` object. | No `NameError` for stale factories; auth tests receive the expected `HTTPException`. |
+| **Observability-first** | All request/response paths emit structured logs, request-id correlation, and Prometheus metrics defined in a single `observability/metrics.py`. | Prometheus endpoint `/metrics` contains `somabrain_requests_total`, `gateway_http_requests_total`, etc. |
+| **Test-friendly & extensible** | The architecture supports unit- and integration-testing with simple monkey-patching of the singleton objects. | All existing tests (≈ 300) pass after the refactor. |
+| **Clear documentation & diagram** | A single markdown file (`docs/roadmap/canonical-roadmap.md`) describes the whole system, the layers, and the data-flow. | New contributors can read the file and understand where to add a feature in 5 minutes. |
+
+---
+
+## 2️⃣ Target State – Layered Architecture
+```
+src/
+├─ config/
+│   ├─ __init__.py               # expose `settings`
+│   └─ settings.py               # Pydantic BaseSettings – immutable singleton
+├─ integrations/
+│   ├─ __init__.py               # expose public singletons
+│   ├─ somabrain/
+│   │   ├─ __init__.py           # `client = SomabrainClient()`
+│   │   └─ client.py             # async httpx wrapper
+│   ├─ opa/
+│   │   ├─ __init__.py           # `policy = EnforcePolicy(...)`
+│   │   └─ middleware.py         # class EnforcePolicy
+│   ├─ kafka/
+│   │   └─ producer.py           # lazy-init KafkaProducer singleton
+│   └─ postgres/
+│       └─ pool.py               # asyncpg pool singleton
+├─ observability/
+│   ├─ __init__.py
+│   ├─ metrics.py                # factories + all metric objects
+│   └─ logging.py                # structured logger with request-id
+├─ services/
+│   └─ gateway/
+│       ├─ __init__.py
+│       ├─ app.py                # FastAPI instance, routes, startup/shutdown
+│       └─ dependencies.py       # FastAPI Depends helpers
+├─ main.py                       # uvicorn services.gateway.app:app
+└─ docs/
+    └─ roadmap/
+        └─ canonical-roadmap.md  # ← this file
+```
+
+---
+
+## 3️⃣ Key Patterns & Communication
+| Pattern | Where used | Description |
+|---------|------------|-------------|
+| **Configuration singleton** | `config/settings.py` | `settings = Settings()` loaded once; all env vars typed & validated. |
+| **Integration registry** | `integrations/__init__.py` | Exposes `somabrain_client`, `opa_policy`, `kafka_producer`, `pg_pool`. |
+| **Lazy startup hooks** | `services/gateway/app.py` | Background services start only when `settings.testing=False`. |
+| **Deterministic middleware** | `app.add_middleware(opa_policy.__class__, fail_open=settings.policy_fail_open)` | Registered **once**, no duplicate factories. |
+| **Observability layer** | `observability/metrics.py` | Centralised Prometheus metrics; `request-id` propagated in logs. |
+| **Test isolation** | `pytest.ini` sets `TESTING=1` | Background services skipped; singletons can be monkey-patched. |
+| **Event bus** | `services/common/event_bus.py` (existing) | Decoupled domain events between workers. |
+
+---
+
+## 4️⃣ Detailed Implementation Roadmap
+| Milestone | Description | Owner | Duration | Acceptance Criteria |
+|-----------|-------------|-------|----------|---------------------|
+| **M0 – Baseline** | Freeze current `main` branch, ensure CI passes. | – | 0 d | CI green on `prune/auto-cleanup` (expected failures noted). |
+| **M1 – Config Layer** | Create `config/settings.py`, replace all `os.getenv` with `settings`. | Senior Backend | 1 d | No `os.getenv` left; `settings` imported everywhere. |
+| **M2 – Integration Registry** | Move Somabrain client, OPA middleware, Kafka producer, Postgres pool into `integrations/` singletons. | Senior Backend | 2 d | Every module imports from `integrations.service>`; tests can `monkeypatch` singleton. |
+| **M3 – Observability Core** | Create `observability/metrics.py` with factories first, then metric objects. | Observability Engineer | 1 d | Importing any module no longer raises `NameError`. |
+| **M4 – FastAPI Refactor** | Rewrite `services/gateway/app.py` to use singletons, clean middleware, add startup/shutdown. | Senior Backend | 2 d | `uvicorn services.gateway.app:app` starts; `/docs` & `/metrics` work. |
+| **M5 – Test-Mode Guard** | Add `settings.testing` flag; guard background service startup. | QA Engineer | 1 d | `pytest -q` runs without external services; no “event loop” errors. |
+| **M6 – Auth & OPA Alignment** | Adjust `EnforcePolicy` to respect `settings.require_auth` and `settings.policy_fail_open`. | Security Engineer | 1 d | `tests/unit/test_gateway_authorization.py` passes with expected `HTTPException`. |
+| **M7 – Documentation Overhaul** | Populate this file with diagram, layer description, and step-by-step guide. | Technical Writer | 1 d | New contributors can locate `integrations.somabrain.client` in 5 min. |
+| **M7.5 – Pixel-Perfect UI Parity** | Copy golden CSS, fonts, spacing, icons; map canonical SSE events to golden DOM structure; dual-mode Playwright suite. | Frontend + QA | 3 d | Playwright `parity.spec.ts` passes both `GATEWAY_BASE_URL` and `http://localhost:7001` modes with 1px diffs. |
+| **M8 – Full Test Run & Fixes** | Run entire suite, fix residual import errors, update mocks. | QA Engineer | 2 d | **0 failures** (unit + integration tests). |
+| **M9 – CI/CD Integration** | Add lint (`ruff`), type-check (`mypy`), and startup verification. | DevOps Engineer | 1 d | GitHub Actions passes on every PR. |
+| **M10 – Release** | Tag `v0.1.0-centralised`; push to `master`. | Release Manager | 0.5 d | Release notes include “centralised integration registry”. |
+
+**Total estimated effort:** ~ 12 person-days.
+
+---
+
+## 5️⃣ Communication & Data Flow
+```
+┌────────────┐     ┌──────────────────────┐
+│   Client   │────▶│  FastAPI Gateway     │
+└────────────┘     │   (app.py)           │
+                   │  – middleware        │
+                   │  – routes            │
+                   └──────────┬───────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │  integrations singletons      │
+              │  - somabrain_client           │
+              │  - opa_policy                 │
+              │  - kafka_producer             │
+              │  - pg_pool                    │
+              └───────────────┬───────────────┘
+                              │
+                   ┌──────────┴───────────┐
+                   │ External Services    │
+                   │ - Somabrain Brain    │
+                   │ - OPA Service        │
+                   │ - Kafka Cluster      │
+                   │ - Postgres           │
+                   └──────────────────────┘
+```
+
+---
+
+## 6️⃣ Post-Merge Checklist (tick when done)
+- [ ] `config/settings.py` created and all env reads migrated.  
+- [ ] `integrations/` folder created; all singletons exposed via `__init__.py`.  
+- [ ] `observability/metrics.py` centralises all metric creation.  
+- [ ] `services/gateway/app.py` uses only public singletons; no import-time side-effects.  
+- [ ] CI passes (`pytest -q`, `ruff`, `mypy`, Docker build).  
+- [ ] Documentation (this file) reflects final state and is peer-reviewed.
+
+---
+
+## 7️⃣ Next Steps
+1. Create the new folder structure (`config/`, `integrations/`, `observability/`).  
+2. Move the first integration (`somabrain`) and run the test suite.  
+3. Iterate per milestone until M10 is complete.  
+4. Tag release `v0.1.0-centralised` and merge to `master`.
+
+---
+
+*This canonical roadmap supersedes any prior partial roadmaps and should be the only living document describing the overall architecture.*
+
 ## 📚 Integration of Celery into somaagent01 (Canonical)
 
 Version: 1.0 – 2025‑11‑08

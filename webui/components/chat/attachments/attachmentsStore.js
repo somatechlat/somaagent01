@@ -565,20 +565,22 @@ const model = {
     }
   },
 
-  async downloadAttachment(filename) {
-   async downloadAttachment(item) {
-     try {
-       const url = (item && item.path) ? item.path : null;
-       if (!url) {
-         window.toastFetchError("Attachment not downloadable", "No path available");
-         return;
-       }
-       const a = document.createElement("a");
-       a.href = url; a.target = "_blank"; a.rel = "noopener"; a.click();
-     } catch (error) {
-       window.toastFetchError("Error downloading file", error);
-     }
-   },
+  // Download an attachment (item has .path produced by backend)
+  async downloadAttachment(item) {
+    try {
+      const url = (item && item.path) ? item.path : null;
+      if (!url) {
+        window.toastFetchError("Attachment not downloadable", "No path available");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.click();
+    } catch (error) {
+      window.toastFetchError("Error downloading file", error);
+    }
   },
 
   // Generate GUID for unique filenames
