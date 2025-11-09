@@ -724,3 +724,142 @@ Status / Next steps
 - Done: chat SSE, CSRF removal. In progress: planning and roadmap consolidation for central event bus.
 - Next: implement `event-bus.js` and `stream.js`, refactor `index.js` to use the bus, extend Gateway to emit canonical UI events, migrate scheduler and memory dashboard stores, add tests.
 
+---
+
+## 2025-11-09 Addition — Unified Configuration / Security / Secrets Hardening Roadmap (M0–M12)
+
+This section merges prior architectural, security, and settings analyses into a single phased plan. It focuses on eliminating schema ambiguity, centralizing provider credentials, enforcing policy gates, and delivering auditable, deterministic configuration flows.
+
+### Guiding Principles
+- Single authoritative write path for UI + runtime settings (no scattered direct table writes).
+- Provider credentials encrypted at rest; rotation possible without code changes.
+- All settings changes produce masked audit diffs and Kafka `config_updates` events.
+- Read paths are cached, versioned, and fail closed when invariants break.
+- Strict separation of concerns: registry (metadata), store (persistence), resolver (runtime projection), policy (OPA/OpenFGA), secrets backend (encryption / rotation).
+
+### Milestone Overview
+| Milestone | Focus | Key Artifacts | Primary Risks | Acceptance Snapshot |
+|-----------|-------|---------------|---------------|---------------------|
+| M0 | Instrument & Inventory | Route catalog, metrics, audit diff schema | Blind spots may hide unsafe flows | All settings endpoints mapped & emitting metrics; audit diff schema validated |
+| M1 | Read-only Registry | `SettingsRegistry` (in-memory typed view) | Drift between registry & DB snapshot | Registry stable across test runs; no write methods |
+| M2 | Typed Schemas & Validation | Pydantic models per domain (`ui`, `llm`, `tooling`, `auth`, `limits`) | Legacy untyped writes break | All incoming writes validated; invalid payload → 422 with field map |
+| M3 | Transactional Write Path | Single POST `/v1/ui/settings/sections` → domain split + audit diff | Race conditions, partial writes | Atomic commit; audit diff includes masked secrets; event published |
+| M4 | Secrets Backend & Rotation | `SecretsBackend` with key version, Fernet or AES-GCM envelope | Lost key = unusable creds | Key version recorded; rotation script passes canary test |
+| M5 | Auth Hardening | Enforce `REQUIRE_AUTH`, internal token depreciation, JWT scopes | Lock-out on misconfig | All protected endpoints reject unauthenticated calls in strict mode |
+| M6 | Provider Normalization Service | `_normalize_llm_base_url` extracted & consolidated | Hidden divergence in workers | Workers no longer attempt normalization; 0 base_url overrides |
+| M7 | Drift Detection & Health | Compare registry vs DB vs cache, expose `/v1/config/drift` | False positives cause noise | p95 drift check < 50ms; health gating accurate |
+| M8 | Observability Expansion | Structured logs, span attributes for config writes | PII leakage risk | No secrets in logs; span shows domain + diff hash |
+| M9 | Key Rotation Automation | Cron/CI pipeline rotates + re-encrypts stale versions | Rotation failure mid-cycle | Dry-run validation; rollback key retained until success |
+| M10 | Multi-Tenant Partitioning | Tenant-specific overrides with fallback precedence | Cross-tenant bleed | Override precedence documented; tests prove isolation |
+| M11 | Policy-Driven Dynamic Limits | Per-tenant rate/tool limits enforced via OPA / FGA | Policy latency | Cache TTL ensures p95 policy check < 10ms |
+| M12 | Externalized Config Packages | Export minimal config bundle for air-gapped analysis | Incomplete masking | Bundle excludes raw secrets; diffs stored with masked placeholders |
+
+### Critical Path (Why This Order)
+1. M0–M2 build visibility & strong typing before altering write mechanics.
+2. M3 introduces atomic writes; must land before secrets centralization (M4) so secrecy is applied once.
+3. M4–M5 secure sensitive data & enforce auth; prevents later expansions from amplifying risk.
+4. M6 removes normalization duplication to avoid drift when registry evolves.
+5. M7–M8 deepen detection & traceability; required before adding rotation cadence (M9).
+6. M10–M11 extend multi-tenancy & dynamic policy safely atop hardened core.
+7. M12 packages external consumption after stability and security layers mature.
+
+### Detailed Milestones & Acceptance Criteria
+
+#### M0 – Inventory & Instrumentation
+Scope: Enumerate every settings/credentials route, add Prometheus counters/histograms, define audit diff schema (`old`, `new`, `mask`, `domain`, `changed_at`).
+Acceptance:
+- Route catalog file (`docs/technical-manual/settings-routes.md`) lists all verbs & auth scopes.
+- Metrics: `settings_write_total`, `settings_write_latency_seconds`, `settings_read_total` present.
+- Audit diff emitted for each write with masked secret fields (pattern: value replaced by `****` length-preserving mask).
+
+#### M1 – Read-only Registry
+Scope: Implement `SettingsRegistry` that loads typed domains on startup and caches them (ETag + version integer).
+Acceptance:
+- Registry object accessible via dependency injection; no mutation methods.
+- Unit test ensures repeated access returns same instance; mismatch between DB & registry triggers warning.
+
+#### M2 – Domain Schemas & Validation
+Scope: Introduce domain Pydantic models; convert loose JSON sections into structured `UiSettings`, `LlmSettings`, `ToolingSettings`, `AuthSettings`, `LimitsSettings`.
+Acceptance:
+- Invalid field triggers 422 with `detail: [{loc, msg, type}]`.
+- 100% coverage for schema conversions; legacy untyped write path blocked.
+
+#### M3 – Transactional Write Path
+Scope: Replace multi-endpoint writes with single sectioned POST; perform domain validation, diff generation, atomic commit, event publish.
+Acceptance:
+- Single commit covers all domains; partial failure rollback test passes.
+- Kafka `config_updates` event includes `version`, `domains_changed`, `diff_hash`.
+
+#### M4 – Secrets Backend & Rotation
+Scope: Implement encryption with key versioning; support key rotation CLI (`rotate_key.py`) that re-encrypts values.
+Acceptance:
+- Secret record stores `{ciphertext, key_version, updated_at}`.
+- Rotation increases key version and preserves decrypt ability; canary decrypt test passes.
+
+#### M5 – Auth Hardening
+Scope: Enforce token validation even if `REQUIRE_AUTH` previously false; remove deprecated internal token bypass for non-critical endpoints; scope-based access.
+Acceptance:
+- Auth off path removed (except explicitly flagged health endpoints).
+- Restricted endpoint test unauthorized returns 401/403 with structured body.
+
+#### M6 – Provider Normalization Service
+Scope: Centralize model/base_url normalization logic; workers send only high-level model identifiers.
+Acceptance:
+- No calls in codebase to legacy normalization helper outside service.
+- LLM invoke logs contain normalized provider fields.
+
+#### M7 – Drift Detection
+Scope: Periodic comparison between DB snapshot, registry cache, and last event version.
+Acceptance:
+- `/v1/config/drift` returns status `ok|warning|critical` and counts of mismatches.
+- Simulated drift triggers `warning` and publishes alert metric.
+
+#### M8 – Observability Expansion
+Scope: Add structured logging fields `config_version`, `domains_changed` to write spans; propagate trace context.
+Acceptance:
+- Logs verified free of secret raw values; diff hashes present.
+- Trace viewer shows `config.write` span with attributes.
+
+#### M9 – Key Rotation Automation
+Scope: Scheduled job or pipeline step rotates keys monthly; dry-run mode and rollback support.
+Acceptance:
+- Dry-run outputs prospective new key version mapping.
+- Rotation job updates all rows; post-rotation decrypt validation 100%.
+
+#### M10 – Multi-Tenant Partitioning
+Scope: Per-tenant overrides layered on global base; precedence (tenant → global) enforced.
+Acceptance:
+- Tenant override read returns merged settings; removing override reverts to global.
+- Cross-tenant access attempt blocked & audited.
+
+#### M11 – Policy-Driven Dynamic Limits
+Scope: Limits (rate, tool concurrency) enforced via cached policy decisions; registry updates invalidate caches.
+Acceptance:
+- Limit breaches return 429 with structured detail.
+- p95 policy check latency < 10ms under load test.
+
+#### M12 – Externalized Config Bundle
+Scope: Export sanitized config bundle (`config_bundle_v<version>.tar.gz`) for air-gapped review.
+Acceptance:
+- Bundle excludes secrets; masked placeholders present; signature file SHA256 verified.
+- Import tool validates signature and reconstructs registry snapshot.
+
+### Risks & Mitigations
+- Schema Migration Complexity (M2): Provide dual-read fallback for one release; log warnings for legacy format.
+- Rotation Failures (M4/M9): Canary encryption + staged rollout; keep previous key version until success metrics confirmed.
+- Policy Latency (M11): Cache decisions with TTL + event-driven invalidation; circuit breaker on policy backend.
+- Drift False Positives (M7): Multi-source hash comparison and threshold before alerting.
+
+### Metrics to Track Throughout
+- `settings_validation_errors_total`
+- `config_updates_events_total`
+- `secrets_rotation_success_total` / `secrets_rotation_failure_total`
+- `config_drift_checks_total` and `config_drift_mismatches_total`
+- `policy_decision_latency_seconds`
+- `settings_write_audit_masked_total`
+
+### Immediate Next Action (You are here)
+Proceed with M0: add route catalog + baseline metrics in code. After merging this section, implement instrumentation and open a short PR if required.
+
+---
+
