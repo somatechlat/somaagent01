@@ -171,6 +171,12 @@ def _redis_url() -> str:
 
 app = FastAPI(title="SomaAgent 01 Gateway")
 
+# Import health endpoints
+from services.gateway.health import router as health_router
+
+# Include health endpoints
+app.include_router(health_router)
+
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
