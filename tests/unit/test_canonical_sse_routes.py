@@ -12,10 +12,10 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from services.gateway.app import app
-from integrations.somabrain import client as somabrain_client
-from integrations.postgres import pool as postgres_pool
-from integrations.opa import policy as opa_client
+from services.gateway.main import app
+from python.integrations.somabrain_client import somabrain_client
+from python.integrations.postgres_client import postgres_pool
+from python.integrations.opa_middleware import opa_client
 
 
 class TestCanonicalSseRoutes:

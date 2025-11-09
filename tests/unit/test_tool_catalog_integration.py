@@ -8,8 +8,8 @@ from typing import Dict, Any
 
 import pytest
 
-from integrations.tool_catalog import catalog
-from integrations.tool_catalog.models import ToolDefinition, ToolParameter
+from python.tools.catalog import ToolCatalog
+from python.tools.models import ToolDefinition, ToolParameter
 
 
 class TestToolCatalogIntegration:
