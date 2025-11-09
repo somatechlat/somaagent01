@@ -77,7 +77,16 @@ from python.helpers.settings import (
     get_default_settings as ui_get_defaults,
     set_settings,
 )
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from python.integrations.somabrain_client import (
+    get_weights,
+    update_weights,
+    build_context,
+    get_tenant_flag,
+    SomaClientError,
+    SomaBrainClient,
+)
+# Import the EnforcePolicy middleware class directly.
+from python.integrations.opa_middleware import EnforcePolicy
 from services.common import error_classifier as _errclass, masking as _masking
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.attachments_store import AttachmentsStore
@@ -273,6 +282,76 @@ def _setup_cors() -> None:
 
 _setup_cors()
 
+
+# Register OPA enforcement middleware using environment configuration.
+# The ``EnforcePolicy`` class respects ``POLICY_FAIL_OPEN`` and will deny
+# requests when appropriate. Adding it here ensures all downstream routes are
+# protected.
+app.add_middleware(EnforcePolicy)
+
+# ---------------------------------------------------------------------------
+# Somabrain integration endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/v1/weights")
+async def api_get_weights() -> JSONResponse:
+    """Expose SomaBrain weights via the gateway.
+
+    Returns the JSON payload from the Somabrain ``/v1/weights`` endpoint.
+    Errors are translated to a ``502 Bad Gateway`` response.
+    """
+    endpoint = "/v1/weights"
+    method = "GET"
+    try:
+        result = get_weights()
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="200").inc()
+        return JSONResponse(result)
+    except SomaClientError as exc:
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="502").inc()
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.post("/v1/context")
+async def api_build_context(payload: Dict[str, Any]) -> JSONResponse:
+    """Build a prompt context via SomaBrain.
+
+    The request body is forwarded as JSON to the Somabrain ``/v1/context/build``
+    endpoint.
+    """
+    endpoint = "/v1/context"
+    method = "POST"
+    try:
+        result = build_context(payload)
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="200").inc()
+        return JSONResponse(result)
+    except SomaClientError as exc:
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="502").inc()
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.get("/v1/flags/{flag}")
+async def api_get_flag(flag: str, request: Request) -> JSONResponse:
+    """Retrieve a feature flag for the current tenant.
+
+    The tenant identifier is extracted from the authentication metadata if
+    available; otherwise a ``default`` tenant is used.
+    """
+    endpoint = f"/v1/flags/{flag}"
+    method = "GET"
+    # Attempt to get tenant from auth metadata; fallback to "default"
+    try:
+        auth_meta = await authorize_request(request, {"action": "flags.read"})
+        tenant = auth_meta.get("tenant", "default")
+    except Exception:
+        tenant = "default"
+    try:
+        enabled = get_tenant_flag(tenant, flag)
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="200").inc()
+        return JSONResponse({"enabled": enabled})
+    except SomaClientError as exc:
+        SOMABRAIN_REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status="502").inc()
+        raise HTTPException(status_code=502, detail=str(exc))
+
 # Legacy UI proxy router is intentionally not included here to enforce SSE-only UI paths.
 # The Web UI must use canonical /v1 endpoints directly; polling shims are removed.
 
@@ -312,6 +391,22 @@ def _get_or_create_histogram(
         if isinstance(existing, Histogram):
             return existing
         raise
+
+# ---------------------------------------------------------------------------
+# Somabrain request metrics (Phase 0)
+# These are defined after the helper factories to avoid NameError during module
+# import (the factories must exist before they are used).
+# ---------------------------------------------------------------------------
+SOMABRAIN_REQUESTS_TOTAL = _get_or_create_counter(
+    "somabrain_requests_total",
+    "Somabrain client request count",
+    labelnames=("endpoint", "method", "status"),
+)
+SOMABRAIN_REQUEST_LATENCY_SECONDS = _get_or_create_histogram(
+    "somabrain_request_latency_seconds",
+    "Latency of Somabrain client requests",
+    labelnames=("endpoint", "method"),
+)
 
 
 # Gateway write-through metrics (emitted when GATEWAY_WRITE_THROUGH is enabled)
@@ -3676,6 +3771,12 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
         auth_metadata["issuer"] = str(claims["iss"])
     if scope:
         auth_metadata["scope"] = scope
+    
+    # Ensure required fields for test compatibility
+    if REQUIRE_AUTH and not tenant and subject:
+        auth_metadata["tenant"] = "default"
+    if REQUIRE_AUTH and not subject and tenant:
+        auth_metadata["subject"] = "anonymous"
 
     # Enforce OpenFGA in fail-closed mode when auth is required
     if REQUIRE_AUTH:

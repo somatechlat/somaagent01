@@ -80,18 +80,50 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
     if _METRICS_SERVER_STARTED:
         return
 
-    default_port = int(getattr(settings, "metrics_port", 9401))
+    default_port = int(getattr(settings, "metrics_port", 9400))
     default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
 
-    port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
-    if port <= 0:
-        LOGGER.warning("Tool executor metrics disabled", extra={"port": port})
+    configured_port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
+    host = os.getenv("TOOL_EXECUTOR_METRICS_HOST", default_host)
+
+    if configured_port <= 0:
+        LOGGER.warning("Tool executor metrics disabled", extra={"port": configured_port})
         _METRICS_SERVER_STARTED = True
         return
 
-    host = os.getenv("TOOL_EXECUTOR_METRICS_HOST", default_host)
-    start_http_server(port, addr=host)
-    LOGGER.info("Tool executor metrics server started", extra={"host": host, "port": port})
+    # Attempt to bind the configured port; on conflict probe a few alternates.
+    ports_to_try = [configured_port] + [p for p in range(configured_port + 1, configured_port + 6)]
+    bound_port: int | None = None
+    for p in ports_to_try:
+        try:
+            start_http_server(p, addr=host)
+            bound_port = p
+            break
+        except OSError as exc:
+            # Address in use: try next port; other errors log and abort.
+            if getattr(exc, "errno", None) != 48:
+                LOGGER.warning(
+                    "Tool executor metrics server error; disabling",
+                    extra={"port": p, "error": str(exc)},
+                )
+                bound_port = None
+                break
+            LOGGER.debug(
+                "Metrics port in use; trying next",
+                extra={"attempt_port": p, "error": str(exc)},
+            )
+
+    if bound_port is None:
+        LOGGER.warning(
+            "Tool executor metrics unavailable; continuing without exporter",
+            extra={"attempted_ports": ports_to_try},
+        )
+    else:
+        LOGGER.info(
+            "Tool executor metrics server started",
+            extra={"host": host, "port": bound_port},
+        )
+
     _METRICS_SERVER_STARTED = True
 
 
