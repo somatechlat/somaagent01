@@ -49,6 +49,10 @@ from services.common.tracing import setup_tracing
 from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.tool_executor.tool_registry import ToolRegistry
+from services.common.learning import (
+    build_context as learning_build_context,
+    publish_reward as learning_publish_reward,
+)
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -2263,6 +2267,66 @@ class ConversationWorker:
                 except Exception:
                     LOGGER.debug("Failed to inject curated prompt", exc_info=True)
 
+            # L2: Learning context enrichment (prepend and append best-effort messages)
+            try:
+                # Convert current ChatMessage list to dicts for learning module
+                raw_msgs = [m.__dict__ for m in messages]
+                extra_ctx = await learning_build_context(session_id=session_id, messages=raw_msgs)
+                if extra_ctx:
+                    # Prepend system-role messages first preserving relative order
+                    prepend: list[ChatMessage] = []
+                    append: list[ChatMessage] = []
+                    for ctx_msg in extra_ctx:
+                        try:
+                            role = ctx_msg.get("role")
+                            content = ctx_msg.get("content")
+                        except Exception:
+                            role = None
+                            content = None
+                        if not (role and content):
+                            continue
+                        # Heuristic: system messages go first, others (assistant/user) appended
+                        if role == "system":
+                            prepend.append(ChatMessage(role=role, content=str(content)))
+                        else:
+                            append.append(ChatMessage(role=role, content=str(content)))
+                    if prepend:
+                        messages = prepend + messages
+                    if append:
+                        messages = messages + append
+                    # Emit a lightweight context.update to surface learning_context injection
+                    try:
+                        learn_meta = _compose_outbound_metadata(
+                            session_metadata,
+                            source="memory",
+                            status="learning_context",
+                            analysis=analysis_dict,
+                            extra={"learning_context": extra_ctx[:5]},  # limit payload size
+                        )
+                        learn_meta = self._clamp_context_metadata(learn_meta)
+                        learn_evt = {
+                            "event_id": str(uuid.uuid4()),
+                            "session_id": session_id,
+                            "persona_id": persona_id,
+                            "role": "system",
+                            "message": "",
+                            "metadata": learn_meta,
+                            "version": "sa01-v1",
+                            "type": "context.update",
+                        }
+                        validate_event(learn_evt, "conversation_event")
+                        await self.publisher.publish(
+                            self.settings["outbound"],
+                            learn_evt,
+                            dedupe_key=learn_evt.get("event_id"),
+                            session_id=session_id,
+                            tenant=(learn_evt.get("metadata") or {}).get("tenant"),
+                        )
+                    except Exception:
+                        LOGGER.debug("Failed to publish learning_context update", exc_info=True)
+            except Exception:
+                LOGGER.debug("learning_build_context failed", exc_info=True)
+
             model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
             slm_kwargs: dict[str, Any] = {}
             if model_profile:
@@ -2756,31 +2820,23 @@ class ConversationWorker:
                     asyncio.create_task(self.soma.context_feedback(fb_req))
                 except Exception:
                     LOGGER.debug("context.feedback scheduling failed", exc_info=True)
-                else:
-                    LOGGER.info(
-                        "memory.write denied by policy",
-                        extra={"session_id": session_id, "event_id": payload.get("id")},
-                    )
-            except SomaClientError as exc:
-                LOGGER.warning(
-                    "SomaBrain remember failed for assistant message",
-                    extra={"session_id": session_id, "error": str(exc)},
-                )
-                try:
-                    await self.mem_outbox.enqueue(
-                        payload=payload,
-                        tenant=tenant,
-                        session_id=session_id,
-                        persona_id=event.get("persona_id"),
-                        idempotency_key=payload.get("idempotency_key"),
-                        dedupe_key=str(payload.get("id")) if payload.get("id") else None,
-                    )
-                except Exception:
-                    LOGGER.debug(
-                        "Failed to enqueue memory write for retry (assistant)", exc_info=True
-                    )
+                # No else branch here; memory.write deny is logged earlier
+            # L2: Publish a basic reward signal (best-effort)
+            try:
+                # Simple heuristic: reward utility based on length & presence of escalation
+                base_signal = "response.delivered"
+                length_score = min(1.0, max(0.0, len((response_text or '').strip()) / 1200.0))
+                escalation_penalty = 0.1 if path == "escalation" else 0.0
+                value = max(0.0, length_score - escalation_penalty)
+                meta = {
+                    "escalated": path == "escalation",
+                    "input_tokens": usage.get("input_tokens", 0),
+                    "output_tokens": usage.get("output_tokens", 0),
+                    "model": model_used,
+                }
+                asyncio.create_task(learning_publish_reward(session_id=session_id, signal=base_signal, value=value, meta=meta))
             except Exception:
-                LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
+                LOGGER.debug("learning_publish_reward scheduling failed", exc_info=True)
             record_metrics(result_label, path)
 
         # Execute the processing pipeline and ensure metrics are recorded on unexpected errors

@@ -6,7 +6,6 @@
 class HealthBanner {
     constructor(container) {
         this.container = container;
-        this.healthCheckInterval = null;
         this.currentHealth = {};
         this.lastCheck = 0;
         
@@ -28,9 +27,10 @@ class HealthBanner {
         // Listen for visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                this.stopHealthCheck();
+                // no-op; no polling to stop
             } else {
-                this.startHealthCheck();
+                // Trigger a one-shot refresh when tab becomes visible
+                this.performHealthCheck();
             }
         });
     }
@@ -69,22 +69,8 @@ class HealthBanner {
     }
     
     async startHealthCheck() {
-        if (this.healthCheckInterval) return;
-        
-        // Initial check
+        // One-shot initial check; no periodic polling (SSE-only directive)
         await this.performHealthCheck();
-        
-        // Set up interval (every 30 seconds)
-        this.healthCheckInterval = setInterval(() => {
-            this.performHealthCheck();
-        }, 30000);
-    }
-    
-    stopHealthCheck() {
-        if (this.healthCheckInterval) {
-            clearInterval(this.healthCheckInterval);
-            this.healthCheckInterval = null;
-        }
     }
     
     async performHealthCheck() {

@@ -110,7 +110,7 @@ class KafkaEventBus:
             finally:
                 self._producer = None
 
-    async def publish(self, topic: str, payload: Any) -> None:
+    async def publish(self, topic: str, payload: Any, headers: Optional[dict[str, Any]] = None) -> None:
         producer = await self._ensure_producer()
         with TRACER.start_as_current_span(
             "kafka.publish",
@@ -136,22 +136,34 @@ class KafkaEventBus:
             # Capture current span context for lightweight logging / troubleshooting.
             try:
                 span_ctx = trace.get_current_span().get_span_context()
-                headers = _build_trace_headers(span_ctx)
-                if headers:
-                    # Mirror identifiers into payload for downstream processors lacking header access
+                trace_hdrs = _build_trace_headers(span_ctx)
+                # Merge provided headers (if any) with trace headers; convert to list[tuple[str, bytes]]
+                hdr_list: list[tuple[str, bytes]] = []
+                if isinstance(headers, dict):
+                    for k, v in headers.items():
+                        try:
+                            b = (str(v)).encode("utf-8")
+                        except Exception:
+                            b = b""
+                        hdr_list.append((str(k), b))
+                # Ensure trace headers are present and take precedence for trace keys
+                seen = {k for k, _ in hdr_list}
+                for k, v in trace_hdrs:
+                    if k not in seen:
+                        hdr_list.append((k, v))
+                # Mirror identifiers into payload for downstream processors lacking header access
+                if trace_hdrs:
                     payload.setdefault("trace", {})
-                    # First two headers are trace_id/span_id by construction
-                    for k, v in headers:
+                    for k, v in trace_hdrs:
                         if k in {"trace_id", "span_id"}:
                             payload["trace"].setdefault(k, v.decode("utf-8", errors="ignore"))
-                    # Include full traceparent for debugging if desired
-                    tp = next((v.decode("utf-8", errors="ignore") for k, v in headers if k == "traceparent"), None)
+                    tp = next((v.decode("utf-8", errors="ignore") for k, v in trace_hdrs if k == "traceparent"), None)
                     if tp:
                         payload["trace"].setdefault("traceparent", tp)
             except Exception:  # pragma: no cover - never fail publish on logging concerns
-                headers = []
+                hdr_list = []
             message = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            await producer.send_and_wait(topic, message, headers=headers)
+            await producer.send_and_wait(topic, message, headers=hdr_list)
         try:
             # Log minimal trace identifiers (do not log full payload in production to reduce PII risk)
             tinfo = payload.get("trace") or {}

@@ -95,8 +95,7 @@ const fullComponentImplementation = function() {
         sortDirection: 'asc',
         filterType: 'all',  // all, scheduled, adhoc, planned
         filterState: 'all',  // all, idle, running, disabled, error
-        pollingInterval: null,
-        pollingActive: false, // Deprecated: polling removed; kept for compatibility
+        // polling removed; rely on SSE-driven invalidations
         editingTask: {
             name: '',
             type: 'scheduled',
@@ -138,11 +137,9 @@ const fullComponentImplementation = function() {
             this.filterState = 'all';
             this.sortField = 'name';
             this.sortDirection = 'asc';
-            this.pollingInterval = null;
-            this.pollingActive = false;
+            // no polling state
 
-            // Polling removed: rely on SSE/bus invalidations
-            this.startPolling(); // no-op to preserve compatibility
+            // Polling removed: rely on SSE/bus invalidations only
 
             // Refresh initial data
             this.fetchTasks();
@@ -231,7 +228,6 @@ const fullComponentImplementation = function() {
             // Cleanup on component destruction
             this.$cleanup = () => {
                 console.log('Cleaning up schedulerSettings component');
-                this.stopPolling();
                 if (Array.isArray(this._busUnsubs)) {
                     this._busUnsubs.forEach((u) => { try { u(); } catch {} });
                     this._busUnsubs = [];
@@ -250,36 +246,10 @@ const fullComponentImplementation = function() {
             };
         },
 
-        // Start polling for task updates (deprecated/no-op)
-        startPolling() {
-            // Intentionally disabled to comply with SSE-only directive
-            this.pollingActive = false;
-            if (this.pollingInterval) {
-                clearInterval(this.pollingInterval);
-                this.pollingInterval = null;
-            }
-            // Still fetch once to populate
-            this.fetchTasks();
-        },
-
-        // Stop polling when tab is inactive (compatibility)
-        stopPolling() {
-            console.log('Stopping task polling');
-            this.pollingActive = false;
-
-            if (this.pollingInterval) {
-                clearInterval(this.pollingInterval);
-                this.pollingInterval = null;
-            }
-        },
+        // Polling removed: no periodic network calls
 
         // Fetch tasks from API
         async fetchTasks() {
-            // Don't fetch if polling is inactive (prevents race conditions)
-            if (!this.pollingActive && this.pollingInterval) {
-                return;
-            }
-
             // Don't fetch while creating/editing a task
             if (this.isCreating || this.isEditing) {
                 return;
@@ -343,10 +313,7 @@ const fullComponentImplementation = function() {
                 }
             } catch (error) {
                 console.error('Error fetching tasks:', error);
-                // Only show toast for errors on manual refresh, not during polling
-                if (!this.pollingInterval) {
-                    showToast('Failed to fetch tasks: ' + error.message, 'error');
-                }
+                showToast('Failed to fetch tasks: ' + error.message, 'error');
                 // Reset tasks to empty array on error
                 this.tasks = [];
             } finally {
@@ -1695,12 +1662,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             schedulerData.fetchTasks();
                         } else {
                             console.error('fetchTasks is not a function on scheduler component');
-                        }
-
-                        if (typeof schedulerData.startPolling === 'function') {
-                            schedulerData.startPolling();
-                        } else {
-                            console.error('startPolling is not a function on scheduler component');
                         }
                     } else {
                         console.error('Could not find scheduler component element');
