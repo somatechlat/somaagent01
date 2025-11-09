@@ -159,6 +159,32 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/ready")
+async def ready() -> dict[str, str]:
+    """Kubernetes-style readiness check.
+
+    Best-effort probes Postgres outbox and Kafka connectivity. Returns 503 on failure.
+    """
+    # Postgres outbox lightweight probe
+    try:
+        store = DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
+        await store.ensure_schema()  # idempotent, quick when already applied
+    except Exception as exc:
+        return Response(status_code=503, content=str({"status": "unready", "error": str(exc)}))
+    # Kafka producer health via a transient bus (non-blocking if unreachable)
+    try:
+        bus = get_bus()
+        await bus.healthcheck()
+    except Exception as exc:
+        return Response(status_code=503, content=str({"status": "unready", "error": str(exc)}))
+    return {"status": "ready"}
+
+
+@app.get("/live")
+async def live() -> dict[str, str]:
+    return {"status": "alive"}
+
+
 @app.post("/v1/delegation/task")
 async def create_delegation_task(
     request: DelegationRequest,

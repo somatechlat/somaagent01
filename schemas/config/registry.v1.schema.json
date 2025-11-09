@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/config/registry.v1.schema.json",
+  "title": "SomaAgent01 Config Registry v1",
+  "type": "object",
+  "required": ["version", "overlays"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "overlays": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "uploads": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "uploads_enabled": { "type": "boolean" },
+            "uploads_max_mb": { "type": "number", "minimum": 0 },
+            "uploads_max_files": { "type": "integer", "minimum": 0 },
+            "uploads_allowed_mime": { "type": "string" },
+            "uploads_denied_mime": { "type": "string" },
+            "uploads_ttl_days": { "type": "number", "minimum": 0 }
+          }
+        },
+        "antivirus": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "av_enabled": { "type": "boolean" },
+            "av_strict": { "type": "boolean" }
+          }
+        },
+        "speech": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stt_model_size": { "type": "string" },
+            "stt_language": { "type": "string" },
+            "speech_realtime_enabled": { "type": "boolean" },
+            "speech_realtime_endpoint": { "type": "string" }
+          }
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "description": "Reference-by-key indirection; values are logical names, not raw secrets",
+      "additionalProperties": { "type": "string" }
+    },
+    "feature_flags": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" }
+    }
+  }
+}

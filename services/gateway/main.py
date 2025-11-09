@@ -57,6 +57,17 @@ from jsonschema import ValidationError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, REGISTRY, start_http_server
+
+# Config update & lifecycle metrics
+CONFIG_UPDATE_RESULTS = Counter(
+    "config_update_apply_total", "Config update results", labelnames=("result",)
+)
+SERVICE_STARTUP_SECONDS = Histogram(
+    "service_startup_seconds", "Service startup duration (seconds)", labelnames=("service",)
+)
+SERVICE_SHUTDOWN_SECONDS = Histogram(
+    "service_shutdown_seconds", "Service shutdown duration (seconds)", labelnames=("service",)
+)
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.utils import secure_filename
 
@@ -175,10 +186,27 @@ def _redis_url() -> str:
 app = FastAPI(title="SomaAgent 01 Gateway")
 
 # Import health endpoints
-from services.gateway.health import router as health_router
+from services.gateway.health import router as health_router, health_checker
+from services.common.config_registry import ConfigRegistry
+import json as _json
 
 # Include health endpoints
 app.include_router(health_router)
+
+# Lightweight top-level readiness/liveness aliases for K8s probes
+@app.get("/ready")
+async def ready_alias():
+    health = await health_checker.check_health()
+    if health.get("status") == "healthy":
+        return {"status": "ready", "timestamp": health.get("timestamp")}
+    from fastapi import HTTPException as _HTTPException  # local import to avoid polluting globals
+    raise _HTTPException(status_code=503, detail=health)
+
+
+@app.get("/live")
+async def live_alias():
+    from datetime import datetime as _dt
+    return {"status": "alive", "timestamp": _dt.utcnow().isoformat()}
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
@@ -1242,7 +1270,37 @@ async def _config_update_listener() -> None:
         settings=_kafka_settings(),
     ):
         try:
-            set_settings(payload)  # type: ignore[arg-type]
+            # Apply incoming config via registry if present, else route to legacy setter
+            registry = getattr(app.state, "config_registry", None)
+            if isinstance(payload, dict) and registry is not None:
+                try:
+                    snap = registry.apply_update(payload)
+                    try:
+                        CONFIG_UPDATE_RESULTS.labels("ok").inc()
+                    except Exception:
+                        pass
+                    # Optionally emit ack via DurablePublisher when available
+                    try:
+                        ack = registry.build_ack("ok")
+                        await get_publisher().publish(
+                            os.getenv("CONFIG_ACK_TOPIC", "config_updates.ack"), ack, fallback=True
+                        )
+                    except Exception:
+                        LOGGER.debug("config ack publish failed", exc_info=True)
+                except Exception as exc:
+                    try:
+                        CONFIG_UPDATE_RESULTS.labels("rejected").inc()
+                    except Exception:
+                        pass
+                    try:
+                        ack = registry.build_ack("rejected", error=str(exc))
+                        await get_publisher().publish(
+                            os.getenv("CONFIG_ACK_TOPIC", "config_updates.ack"), ack, fallback=True
+                        )
+                    except Exception:
+                        LOGGER.debug("config ack publish failed (reject)", exc_info=True)
+            else:
+                set_settings(payload)  # type: ignore[arg-type]
         except Exception as exc:
             LOGGER.error(
                 "Failed to apply config update",
@@ -1255,6 +1313,19 @@ async def _config_update_listener() -> None:
 # Startup tasks (migrated from deprecated on_event to lifespan)
 async def start_background_services() -> None:
     """Initialize shared resources and background services."""
+    _startup_t0 = time.perf_counter()
+    # Initialize ConfigRegistry with defaults (best-effort)
+    try:
+        schema_path = os.path.join(os.getcwd(), "schemas/config/registry.v1.schema.json")
+        with open(schema_path, "r", encoding="utf-8") as fh:
+            _schema = _json.load(fh)
+        registry = ConfigRegistry(_schema)
+        # Minimal defaults – overlays object present per schema; version 0
+        defaults = {"version": "0", "overlays": {}, "secrets": {}, "feature_flags": {}}
+        registry.load_defaults(defaults)
+        app.state.config_registry = registry
+    except Exception:
+        LOGGER.debug("ConfigRegistry initialization failed", exc_info=True)
     # Initialize shared event bus for reuse across requests
     event_bus = KafkaEventBus(_kafka_settings())
     # No explicit start() on our KafkaEventBus; producer is initialized lazily.
@@ -1289,8 +1360,25 @@ async def start_background_services() -> None:
         timeout=30.0, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
     )
 
-    # Start config update listener in background
-    asyncio.create_task(_config_update_listener())
+    # Start config update listener in background and keep handle for shutdown
+    try:
+        app.state._config_listener_task = asyncio.create_task(_config_update_listener())
+    except Exception:
+        LOGGER.debug("Failed to start config update listener", exc_info=True)
+
+    # Metrics for config registry version if available
+    try:
+        from prometheus_client import Gauge as _Gauge
+        app.state._config_version_gauge = _Gauge(
+            "config_registry_version_info",
+            "Current configuration registry version (presence gauge)",
+            labelnames=("version",),
+        )
+        snap = getattr(getattr(app.state, "config_registry", None), "get", lambda: None)()
+        if snap:
+            app.state._config_version_gauge.labels(snap.version).set(1)
+    except Exception:
+        LOGGER.debug("Config version gauge init failed", exc_info=True)
 
     # Start DLQ depth refresher in background
     try:
@@ -1312,7 +1400,7 @@ async def start_background_services() -> None:
             LOGGER.debug("Export jobs schema ensure failed", exc_info=True)
         try:
             app.state._export_runner_stop = asyncio.Event()
-            asyncio.create_task(_export_jobs_runner())
+            app.state._export_runner_task = asyncio.create_task(_export_jobs_runner())
         except Exception:
             LOGGER.debug("Failed to start export jobs runner", exc_info=True)
 
@@ -1395,9 +1483,15 @@ async def start_background_services() -> None:
 
     try:
         if os.getenv("NOTIFICATIONS_JANITOR_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
-            asyncio.create_task(_notifications_ttl_janitor())
+            app.state._notifications_janitor_task = asyncio.create_task(_notifications_ttl_janitor())
     except Exception:
         LOGGER.debug("Failed to start notifications janitor", exc_info=True)
+
+    # Record startup duration
+    try:
+        SERVICE_STARTUP_SECONDS.labels(SERVICE_NAME).observe(max(0.0, time.perf_counter() - _startup_t0))
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -6294,6 +6388,7 @@ async def _stop_uploads_janitor() -> None:
 
 async def shutdown_background_services() -> None:
     """Ensure all shared resources are properly closed on shutdown."""
+    _shutdown_t0 = time.perf_counter()
 
     # Close shared event bus
     if hasattr(app.state, "event_bus"):
@@ -6311,6 +6406,27 @@ async def shutdown_background_services() -> None:
     # Stop DLQ refresher
     if hasattr(app.state, "_dlq_refresher_stop"):
         app.state._dlq_refresher_stop.set()
+
+    # Stop export runner
+    try:
+        if hasattr(app.state, "_export_runner_stop"):
+            app.state._export_runner_stop.set()
+    except Exception:
+        pass
+
+    # Cancel background tasks (config listener, notifications janitor, export runner task)
+    for attr in ("_config_listener_task", "_notifications_janitor_task", "_export_runner_task"):
+        try:
+            task = getattr(app.state, attr, None)
+            if task is not None:
+                task.cancel()
+        except Exception:
+            pass
+
+    try:
+        SERVICE_SHUTDOWN_SECONDS.labels(SERVICE_NAME).observe(max(0.0, time.perf_counter() - _shutdown_t0))
+    except Exception:
+        pass
 
 
 # Lifespan handler replacing deprecated on_event startup/shutdown
