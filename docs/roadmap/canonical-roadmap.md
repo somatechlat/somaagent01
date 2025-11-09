@@ -862,4 +862,325 @@ Acceptance:
 Proceed with M0: add route catalog + baseline metrics in code. After merging this section, implement instrumentation and open a short PR if required.
 
 ---
+## 2025-11-09 Update — Master Roadmap Consolidation & Parallel Sprint Plan
+
+This section consolidates the architectural roadmap with feature-flag strategy, streaming hardening, semantic recall, unified configuration/security, and release cadence. It defines parallel sprint execution. This document remains the single source of truth.
+
+### Integrated Master Tracks
+1. Capability Registry & Best Mode (feature flags → descriptors, profiles, health-aware degrade)
+2. Streaming & UI Parity (single SSE stream, client event bus, zero polling, reconnection robustness)
+3. Semantic Memory & Recall (embeddings ingestion, query-time similarity ranking, caching, recall metrics)
+4. Unified Config & Secrets (M0–M12 milestones: instrumentation, schemas, transactional writes, encryption, rotation, drift, policy limits)
+5. Tool Catalog & Runtime Config (Gateway-owned definitions, per-tenant flags, audited changes)
+6. Reliability & Backpressure (consumer lag gauges, circuit breakers, alert templates)
+7. LLM Model/Profile Centralization (Gateway sole authority; workers stop sending base_url)
+8. Auditing & Compliance (masked diff events, traceability, export tooling)
+
+### Capability Descriptor Schema (to be implemented)
+Fields: `key`, `description`, `default_enabled`, `profiles: {minimal|standard|enhanced|max}`, `dependencies`, `degrade_strategy (auto|manual|none)`, `cost_impact (low|medium|high)`, `metrics_key`, `tags (observability|security|performance)`. State machine: `enabled` → (`degraded` | `disabled`). Transitions audited.
+
+### Profiles (Default = enhanced)
+minimal: critical path only (chat, memory write-through).  
+standard: + basic tools, metrics, auth hardening.  
+enhanced (default): all production features including embeddings ingestion and scheduler.  
+max: enhanced + experimental (semantic recall, advanced caching) gated behind stability checks.
+
+### Parallel Sprint Plan
+Sprint 0 (Planning & Instrumentation, 2–3 days, parallel)
+- Feature descriptor schema & examples documented.
+- Unified Config M0: route inventory + metrics/audit diff schema.
+- SSE event bus interface + canonical UI event list (progress, notification, list updates, heartbeat).
+Exit: Documentation merged; no code side-effects; acceptance criteria clarified.
+
+Sprint 1 (Enable Best Mode Safely, 4–6 days)
+- Implement `features` registry module + metrics + `/v1/features` diagnostics.
+- Refactor env flag lookups to registry (gateway, session_repository, embeddings helper).
+- Implement SSE client bus (chat only) with jittered reconnect + heartbeat stall banner.
+- Semantic recall design & cache strategy (vector similarity approach, LRU/hash plan).
+- Docs + tests (registry unit tests, Playwright no-poll chat spec).
+Exit: Enhanced profile active by default; registry metrics visible; chat polling eliminated.
+
+Sprint 2 (Semantic Recall & Full Streaming, 1–2 weeks)
+- Implement recall API (embed query → top-k memory slice). Hybrid filters (session, recency).
+- Embedding cache implementation (LRU + normalized hash key).
+- Migrate scheduler & memory dashboard to SSE bus (remove all polling).
+- Add consumer lag gauges & circuit breakers; alert rule templates drafted.
+Exit: Zero UI polling; recall latency & hit metrics published; alert templates ready.
+
+Sprint 3 (Config & Secrets Hardening, 1–2 weeks)
+- M1–M4: Typed domain schemas, transactional writes, secrets encryption, rotation CLI.
+- Centralize LLM profile normalization; workers stop sending base_url.
+Exit: Atomic masked writes; secrets encrypted; normalized profile flow validated.
+
+Sprint 4 (Policy, Multi-Tenancy, Limits, 2 weeks)
+- Auth hardening (REQUIRE_AUTH); OPA/OpenFGA gates for conversation/tool/memory.
+- Multi-tenant override precedence; dynamic limits (rate/tool concurrency).
+- Drift detection endpoint & health gating.
+Exit: Policy decisions fast (<10ms p95); tenant isolation tests green; drift checks stable.
+
+Sprint 5 (Parity Polish & Release Cadence, 1 week)
+- Golden vs canonical UI screenshot diff optional gating.
+- CI matrices (canonical + golden mode); release tagging & automated changelog.
+- Observability dashboards updated (feature states, recall metrics, circuit breaker status).
+Exit: CI green across matrices; v0.3.0 (semantic recall) tagged; dashboards live.
+
+### Immediate Action Items (Start Now)
+- Write feature descriptor schema doc (registry definitions & examples).
+- Begin Unified Config M0 metrics & audit diff instrumentation design.
+- Draft SSE event bus module interfaces (client & server publish contract).
+
+### Key Success Metrics
+- 0 raw `os.getenv` feature lookups after Sprint 1 (lint rule enforcement).
+- UI network log shows no polling endpoints after Sprint 2.
+- Recall p95 latency < 150ms local; cache hit-rate > 70% for repeated similar queries.
+- Secrets encryption coverage 100%; rotation dry-run passes monthly.
+- Policy decision latency p95 < 10ms; drift false positives < 1/week.
+
+### Risk Mitigations Snapshot
+- Registry Rollout: dual path (env var fallback) until Sprint 1 exit.
+- Recall Accuracy: shadow evaluation before enabling for all profiles.
+- Secrets Rotation: staged rotation with canary decrypt & rollback key retention.
+- Policy Latency: local cache TTL + event-driven invalidation; circuit breaker fallback to deny with clear error.
+
+### Release Cadence & Versioning
+- v0.1.0-centralised (architecture) → v0.2.0-streaming-bus → v0.3.0-semantic-recall → v0.4.0-config-secrets → v0.5.0-multi-tenancy.
+- Each release: automated changelog (diff of feature states + schema versions) & audit snapshot.
+
+### Governance Note
+All roadmap modifications must update this file first; PRs referencing roadmap changes include a diff of this section. Sprint exit reviews confirm metrics & acceptance criteria before advancing profile defaults.
+
+— End of 2025-11-09 consolidation.
+
+
+## 2025-11-09 Update — No‑Legacy Mandate & Somabrain Alignment (Authoritative)
+
+This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles the Somabrain integration blueprint with the current implementation. It defines what “legacy” means, inventories gaps, and lays out a sprinted, prioritized plan to remove every legacy pathway and align all interactions through the Somabrain HTTP surface.
+
+### Zero‑Legacy Definition (non‑negotiable)
+- No stub/shim code paths that bypass real policy/security (e.g., placeholder OPA that always allows).
+- No duplicate or competing implementations of the same concern (feature flags, Kafka producer, config normalization, health endpoints).
+- No direct environment flag checks outside the central Feature Registry and Settings.
+- No deprecated endpoints, polling loops, or hidden fallbacks; SSE‑only real‑time; one canonical API surface.
+- No ambiguous integration boundaries: all SomaBrain interactions occur via its HTTP API at `SOMA_BASE_URL`.
+
+### Somabrain Integration Boundary (final)
+- Boundary: HTTP only. Do not import Somabrain internal Python modules in‑process; use the HTTP service surface consistently.
+- Required endpoints (contract):
+  - Health: `GET {SOMA_BASE_URL}/healthz` (primary), `GET /health` accepted as legacy alias.
+  - Learning/Weights: `GET /v1/weights`, `POST /v1/weights/update`.
+  - Context Builder: `POST /v1/context/build`.
+  - Tenant Feature Flags: `GET /v1/flags/{tenant}/{flag}`.
+  - Memory: `POST /v1/memory/remember`, `POST /v1/memory/link`, `POST /v1/plan/suggest` (where applicable).
+  - Recall: `POST /v1/recall/query` (tenant‑scoped).
+
+### Legacy Inventory (to be removed or unified)
+- OPA placeholder middleware (`python/integrations/opa_middleware.py`) that never talks to real OPA/Somabrain policy → replace with HTTP adapter that evaluates policy remotely and enforces fail‑closed when configured.
+- Duplicate health endpoints (`/health`, `/healthz`) and mixed targets (`/health` vs `/healthz`) → converge to `/healthz` in Gateway; probe Somabrain `/healthz` first; keep `/health` as alias only.
+- Env‑flag checks scattered across code (`os.getenv("SA01_ENABLE_*"`, `ENABLE_*`) → replace with Feature Registry lookups; add lint rule to forbid direct getenv for flags.
+- Dual outbox/Kafka producers across services vs Somabrain’s producer → keep local outbox pattern but unify headers/schema and health adaptation; centralize Kafka publisher behind one adapter (no competing producers).
+- Local feature flags vs tenant flags in Somabrain Redis → add tenant override layer calling Somabrain `GET /v1/flags/{tenant}/{flag}` with TTL cache; registry provides defaults only.
+- Any unused legacy modules (gRPC memory client references, polling UI calls, legacy credentials routes) → delete.
+
+### Enforcement Principles
+- Single source per concern: one place to evaluate policy, one publisher API, one feature flag gateway, one health probe path.
+- Fail‑closed by default for security‑relevant flows (policy/memory/tool writes); surface clear denies and audit entries.
+- Observability for every removed legacy pathway: add counters to ensure it stays at zero usage.
+
+### Prioritized Sprint Plan (Legacy Eradication)
+
+Sprint L0 — Policy & Health Hardening (3 days)
+- Replace OPA stub with HTTP policy adapter calling Somabrain policy endpoint; wire into Gateway middleware; measure with `auth_requests_total`, `auth_duration_seconds`.
+- Standardize health: Gateway serves `/healthz`; probes Somabrain `{SOMA_BASE_URL}/healthz` (fallback `/health`); UI banner uses `/v1/health` aggregate with Somabrain status folded in.
+- Acceptance: Real denies produce 403 with structured reason; `/healthz` green only when Somabrain healthy; tests cover allow/deny and degrade.
+
+Sprint L1 — Feature Flags Unification (3 days)
+- Add tenant override path: Gateway resolves feature flags by calling Somabrain `GET /v1/flags/{tenant}/{flag}` with 1–2s TTL cache; Feature Registry provides profile defaults only.
+- Add `/v1/feature-flags?tenant=...` endpoint returning merged view; UI and services consume only this path.
+- Add lint rule forbidding `os.getenv("SA01_ENABLE_"` and direct env gating outside the registry.
+- Acceptance: No direct getenv flag checks; per‑tenant flags effective and observable; tests verify TTL cache and fallback behavior.
+
+Sprint L2 — Context & Learning Hooks (4 days)
+- Inject `get_weights()` and `build_context()` into the chat prompt assembly path; record `learning_updates_total`, `learning_context_build_duration_seconds`.
+- Hook reward/TD updates via `POST /v1/weights/update` on tool outcomes; ensure idempotency and backoff.
+- Acceptance: Prompts include current weights and Somabrain‑built context; rewards post without raising; metrics present.
+
+Sprint L3 — Eventing & Outbox Alignment (4 days)
+- Centralize Kafka publisher behind one adapter; ensure uniform headers `{trace_id, request_id, tenant}`; align topics with Somabrain naming; keep durable Postgres outbox.
+- Add trace injection/extraction on publish/consume flows; expose `trace_propagation_errors_total`.
+- Acceptance: WAL/outbox publish path unified; traces link across Gateway↔Workers; no duplicate producer classes remain.
+
+Sprint L4 — UI/Streaming Cleanup & Endpoint Purge (3 days)
+- Verify UI uses SSE only, no polling; remove any legacy `/poll`, CSRF routes, and deprecated credential endpoints; align to `/v1/*` and `/ui/config.json` exclusively.
+- Remove duplicate/obsolete endpoints and modules; add “legacy usage” counters to confirm zero usage in CI.
+- Acceptance: Playwright `no-legacy-network` passes; counters stay zero; grep for legacy routes returns none.
+
+### Definition of Done (No‑Legacy)
+- Zero stub or dead code for policy, health, flags, eventing, or memory; any former shims deleted.
+- No direct `os.getenv` feature checks; registry + tenant override only.
+- Single health path (`/healthz`) in Gateway; Somabrain probed at `/healthz`.
+- All Somabrain interactions through HTTP client; no internal module imports from Somabrain.
+- UI/network tests show no polling or legacy endpoints; only `/v1/*` and `/ui/*` used.
+
+### Acceptance & Metrics
+- Security: 100% of protected routes pass through real policy adapter; `auth_requests_total{result="deny"}` increments on policy failure.
+- Availability: `/healthz` reflects Somabrain state; outbox/backpressure adapts when Somabrain degrades; alerts fire accordingly.
+- Observability: new metrics present — `learning_updates_total`, `learning_context_build_duration_seconds`, `trace_propagation_errors_total`, `feature_flag_remote_requests_total`.
+- Hygiene: CI job runs `grep`/lint to forbid legacy patterns and fails if found.
+
+### Risks & Mitigations
+- Policy latency: cache allow/deny with short TTL; add circuit breaker → deny with reason if backend unavailable (configurable fail‑open in dev only).
+- Flag staleness: small TTL cache + proactive refresh on write paths; degrade to defaults with audit.
+- Eventing drift: publish contract and headers standardized; add contract tests for topics and headers.
+
+### Immediate Next Actions (to schedule)
+- Implement OPA HTTP adapter + middleware swap (L0).
+- Add `/v1/feature-flags` merged endpoint + tenant override via Somabrain (L1).
+- Wire `get_weights`/`build_context` + reward updates into chat/tool flows (L2).
+
+This section is now part of the canonical roadmap. Any refactor or removal tied to the No‑Legacy mandate must first update this document with scope, acceptance, metrics, and tests, then proceed to implementation.
+
+## 2025-11-09 Integration Summary — Somabrain Full Alignment (Clarification)
+
+This summary captures the clarified objective: SomaAgent01 fully integrates Somabrain as the upstream AI brain over HTTP while retaining all valuable existing subsystems (gateway, workers, outbox/WAL, Kafka, UI, metrics, auditing). We eliminate only genuine legacy shims or duplicates; we do not discard functioning architecture components.
+
+### Core Understanding
+1. Somabrain is the authoritative service for: learning (weights/reward updates), context building, recall, tenant feature flags, policy enforcement, and memory graph operations.
+2. SomaAgent01 remains authoritative for: durable message persistence (Postgres + WAL/outbox), event publishing (Kafka with standardized headers), session orchestration, tool execution sandbox, UI delivery, and composite observability.
+3. Interaction mode: strictly HTTP (`SOMA_BASE_URL`) — no in‑process imports of Somabrain internals to preserve service boundary and upgrade independence.
+
+### Retained Subsystems (Not Removed)
+- Postgres durability (sessions, outbox, WAL, audit, settings).
+- Redis/Kafka usage for caching and event bus.
+- Existing Gateway + Workers patterns (routes, SSE streaming, tool executor) with refactors only where integration demands.
+- Observability stack (Prometheus metrics, alerting templates, structured logging, tracing propagation) extended to include Somabrain call metrics.
+
+### Removed / Replaced Items (True Legacy Only)
+- Placeholder OPA middleware (local no‑op) → replaced by real HTTP policy adapter against Somabrain policy endpoint.
+- Direct scattered `os.getenv` feature flag checks → replaced by Feature Registry + Somabrain tenant overrides.
+- Duplicate health endpoints / inconsistent probes → converge on unified `/healthz` logic with Somabrain upstream probe.
+- Any residual polling or deprecated endpoints (CSRF, legacy /poll) in UI → SSE-only pattern enforced.
+
+### Integration Surface Mapping
+| Concern | Somabrain Endpoint | SomaAgent01 Call Site | Notes |
+|---------|--------------------|-----------------------|-------|
+| Health | `GET /healthz` (fallback `/health`) | Gateway `/healthz`, outbox sync health probe | Classify normal/degraded/down; propagate metrics |
+| Weights (read) | `GET /v1/weights` | Conversation prompt assembly pre-invoke | Embed weights into LLM context |
+| Weights (update) | `POST /v1/weights/update` | Tool/result feedback handler | Reward/TD adjustments; idempotent key |
+| Context build | `POST /v1/context/build` | Conversation loop before LLM invoke | Includes τ temperature & segmentation |
+| Recall | `POST /v1/recall/query` | Optional recall enrichment stage | Tenant/session scoping & top‑k memory slice |
+| Feature flags | `GET /v1/flags/{tenant}/{flag}` | Registry tenant override layer & `/v1/feature-flags` endpoint | TTL cache + fallback to profile defaults |
+| Policy (OPA) | policy evaluate endpoint (exact path from Somabrain) | Gateway middleware & workers (memory/tool actions) | Fail‑closed unless configured fail‑open dev |
+| Memory write | `POST /v1/memory/remember` | Tool executor & conversation worker write-through | Local WAL/outbox remains for durability |
+| Memory link | `POST /v1/memory/link` | Async post-write linking task | Non-blocking; logs failures |
+| Plan suggest | `POST /v1/plan/suggest` | Optional background suggestion trigger | Best-effort enhancement |
+
+### Data Flow (Updated)
+User → Gateway → (Policy check via Somabrain) → Conversation Worker → Context + Weights from Somabrain → LLM Invoke → Tool Executor (tool calls) → Memory write-through (Somabrain) + local WAL → Kafka publish (standard headers) → UI SSE stream.
+
+### Observability Extensions
+- New metrics: `somabrain_request_duration_seconds{endpoint,method}`, `somabrain_requests_total{endpoint,status}`, `learning_updates_total{outcome}`, `learning_context_build_duration_seconds`, `feature_flag_remote_requests_total{flag,tenant,result}`.
+- Alerts: Somabrain error rate spike, policy denial surge, recall latency p95 > threshold.
+
+### Reliability & Degrade Strategy
+- If Somabrain recall or context build fails → degrade: skip enrichment but continue chat; feature state reported as `degraded`.
+- If policy endpoint unavailable and fail‑closed → deny write/tool ops with clear error; if fail‑open (dev only) → proceed and metric logs decision.
+- If memory write fails upstream → enqueue in local outbox for retry while preserving local persistence.
+
+### Security Enforcement
+- All memory writes/tool executions behind real policy evaluation; audit includes decision, tenant, action, resource.
+- Feature flags controlling sensitive features (masking, error classification) originate from Somabrain overrides; local defaults only apply when remote unreachable (audited).
+
+### Incremental Sprint Execution (High-Level)
+- L0: Real policy adapter + health unification.
+- L1: Tenant feature flag override integration + registry lint enforcement.
+- L2: Weights/context injection + reward updates instrumentation.
+- L3: Eventing/Kafka header standardization + trace linking.
+- L4: UI hygiene and endpoint purge (legacy removal confirmation).
+
+### Acceptance Summary
+Upon completion of L4: all Somabrain responsibilities are exercised via HTTP endpoints; no stubbed legacy code remains; traces span entire request lifecycle; feature flags reflect tenant overrides; UI streams exclusively over SSE with enriched context and recall (when enabled).
+
+### Next Immediate Action (Post-Append)
+Start Sprint L0 implementation: swap OPA stub for HTTP adapter, centralized `/healthz` aggregator including Somabrain classification and new metrics.
+
+This integration summary is now appended to the canonical roadmap and governs subsequent implementation decisions.
+
+## 2025-11-09 Feature Expansion – Somabrain-Driven Additions & Readiness Matrix
+
+This section enumerates net-new features that leverage Somabrain’s actual HTTP capabilities while preserving SomaAgent01’s durable, evented architecture. Each item lists readiness (Ready / Needs Instrumentation / Needs Extension), dependencies, and target metrics. These augment existing sprints and inform rapid development prioritization.
+
+### Capability Reference (Somabrain HTTP Endpoints)
+- Weights: `GET /v1/weights`, `POST /v1/weights/update`
+- Context: `POST /v1/context/build`
+- Feature Flags (tenant): `GET /v1/flags/{tenant}/{flag}`
+- Recall: `POST /v1/recall/query`
+- Policy: policy evaluate endpoint (OPA remote)
+- Memory Ops: `POST /v1/memory/remember`, `POST /v1/memory/link`
+- Planning: `POST /v1/plan/suggest`
+
+### Feature Slate & Readiness
+| Feature | Description | Readiness | Key Dependencies | Primary Metric |
+|---------|-------------|-----------|------------------|----------------|
+| Adaptive Context Orchestration | Dynamic prompt shaping using current weights + τ | Ready | weights, context.build | context_build_duration p95 |
+| Reward-Driven Tuning | Tool/LLM outcomes → weights.update | Ready | weights.update | learning_updates_total |
+| Proactive Semantic Suggestions | Background recall nudges for low-confidence turns | Ready (instrument) | recall.query | suggestion_latency p95 |
+| Policy-Gated Auto-Actions | Safe auto-execution of low-risk plan steps | Instrument | policy evaluate, plan.suggest | auto_action_denied_total |
+| Policy Explainability Console | View allow/deny trace details | Instrument | policy endpoint trace | policy_trace_latency |
+| Learning KPI Dashboard | Surfacing reward volume & precision impact | Instrument | weights.update logs | recall_precision_delta |
+| Recall Drift & Vector Health | Drift detection & re-embed trigger | Extension | recall.query + local stats | drift_events_total |
+| Real-Time Tenant Flag Console | Merged effective flags per tenant | Ready | flags endpoint | flag_remote_latency p95 |
+| Domain Profiles & Routing | Domain-based context/recall partitioning | Extension | context.build (tags) | domain_hit_ratio |
+| Memory Graph Explorer | Visualize linked memory graph | Ready | memory.link | graph_nodes_rendered |
+| Grounded Citations | Provenance inline with recall results | Instrument (verify payload) | recall.query metadata | citation_presence_rate |
+| Cross-Session Surfacing | Suggest similar sessions for continuity | Instrument | recall.query (tenant scope) | session_overlap_suggestions |
+| Safety Red Teaming Suite | Scheduled adversarial prompt tests | Ready | policy evaluate | redteam_findings_total |
+| SLA-Aware Backpressure 2.0 | Dynamic outbox/WAL scaling via health & latency budgets | Ready | healthz, existing WAL | backpressure_activation_total |
+| Data Retention & Privacy Zones | TTL & domain masking enforcement | Extension | policy + memory.write | retention_expiry_success_total |
+| Delegated Sub-Tasks (Multi-Agent) | Plan decomposition into Celery task chains | Ready | plan.suggest + Celery | delegated_chain_duration |
+| Experimentation Framework (A/B weights) | Variant weights evaluation + auto promote | Extension | weights.update (variant tagging) | variant_win_rate |
+
+### Rapid Development Priority (Impact × Feasibility)
+P0 (Ship first – core value, minimal friction): Adaptive Context, Reward Tuning, Real-Time Tenant Flag Console, SLA-Aware Backpressure 2.0, Proactive Semantic Suggestions (basic), Policy-Gated Auto-Actions (baseline deny/allow).
+P1: Policy Explainability Console, Learning KPI Dashboard, Grounded Citations, Delegated Sub-Tasks.
+P2: Recall Drift & Vector Health, Cross-Session Surfacing, Memory Graph Explorer, Data Retention & Privacy Zones.
+P3: Domain Profiles & Routing, Experimentation Framework.
+
+### Metrics to Add
+- `somabrain_request_duration_seconds{endpoint,method}`
+- `learning_updates_total{outcome}`
+- `context_build_duration_seconds`
+- `recall_query_duration_seconds` / `recall_results_total{hit}`
+- `auto_actions_total{decision}`
+- `policy_trace_requests_total` / `policy_trace_duration_seconds`
+- `flag_remote_requests_total{flag,tenant,result}`
+- `drift_events_total{cause}`
+
+### Cross-Cutting Concerns
+- **Tracing:** Ensure spans cover remote Somabrain calls with attributes (endpoint, tenant, status). Link Celery tasks via trace headers.
+- **Security:** Auto-action feature always policy-gated + audit; never executes without explicit allow.
+- **Degrade Modes:** Context build failure → fallback minimal prompt; recall failure → skip enrichment and mark feature degraded.
+- **Caching:** Tenant flag lookups cached (TTL 1–2s); context and recall not cached (real-time relevance) except optional embedding LRU.
+
+### Extension Requirements (Somabrain)
+- Domain tagging in context/recall responses (for domain profile routing).
+- Recall result provenance completeness (source type, id, created_at, confidence score).
+- Policy trace endpoint providing decision path (rules matched, reasons) for explainability.
+- Variant key in weights update payloads to support experimentation.
+
+### Integration Risk Matrix
+| Risk | Impact | Mitigation |
+|------|--------|-----------|
+| Policy latency spike | Auto-actions stall | Local cache + circuit breaker |
+| Recall cost growth | Token spend increases | Adaptive threshold & sampling |
+| Drift false positives | Unnecessary re-embeds | Statistical smoothing (EWMA) |
+| Flag endpoint instability | Feature gating inconsistency | TTL fallback + profile default audit |
+
+### Immediate Follow-Up (Pre-Implementation)
+1. Verify Somabrain recall payload includes provenance fields.
+2. Confirm available policy trace capabilities; if absent, spec new endpoint.
+3. Define reward mapping (tool result → scalar/feature vector) for weights updates.
+4. Draft metrics additions & gauge cardinality review (avoid high-cardinality labels).
+
+This feature expansion is now part of the canonical roadmap; future development must reference readiness classification and priority tiers before implementation.
+
 

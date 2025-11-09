@@ -30,6 +30,7 @@ from services.common.outbox_repository import (
     OutboxStore,
 )
 from services.common.tracing import setup_tracing
+from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +50,16 @@ HEALTH_STATE = Gauge(
 EFFECTIVE_BATCH = Gauge(
     "outbox_sync_effective_batch_size",
     "Effective batch size used by outbox sync based on health state",
+)
+
+OUTBOX_BACKLOG = Gauge(
+    "outbox_sync_backlog",
+    "Number of pending outbox rows eligible for publishing",
+)
+
+OUTBOX_FAILURE_RATIO = Gauge(
+    "outbox_sync_failure_ratio",
+    "Recent failure ratio (failed / (failed+success)) observed by this worker",
 )
 
 
@@ -88,15 +99,27 @@ class OutboxSyncWorker:
         EFFECTIVE_BATCH.set(self.batch_size)
 
     async def start(self) -> None:
+        try:
+            _st = _lm_now()
+        except Exception:
+            _st = None
         await ensure_schema(self.store)
         LOGGER.info(
             "Outbox sync worker started",
             extra={"batch_size": self.batch_size, "interval": self.interval},
         )
+        if _st is not None:
+            _lm_start("outbox-sync", _st)
         while not self._stopping.is_set():
             await self._maybe_probe_health()
             effective_batch, effective_interval = self._compute_effective_limits()
             EFFECTIVE_BATCH.set(effective_batch)
+            # Update backlog gauge from store
+            try:
+                OUTBOX_BACKLOG.set(await self.store.count_pending())
+            except Exception:
+                # Non-fatal: keep loop healthy even if metrics query fails
+                pass
             # Note: Even if SomaBrain is down, continue publishing Kafka outbox messages.
             # Health only adjusts batch/interval; do not pause publishes entirely.
             msgs = await self.store.claim_batch(limit=effective_batch)
@@ -106,6 +129,7 @@ class OutboxSyncWorker:
             await self._publish_batch(msgs)
 
     async def stop(self) -> None:
+        _lm_stop("outbox-sync", _lm_now())
         self._stopping.set()
         with suppress(Exception):
             await self.bus.close()
@@ -175,6 +199,8 @@ class OutboxSyncWorker:
             return "down"
 
     async def _publish_batch(self, messages: list[OutboxMessage]) -> None:
+        successes = 0
+        failures = 0
         for msg in messages:
             try:
                 with OUTBOX_PUBLISH_LATENCY.time():
@@ -190,12 +216,21 @@ class OutboxSyncWorker:
                             payload = {"payload": str(msg.payload)}
                     await self.bus.publish(msg.topic, payload)
             except KafkaError as kerr:
+                failures += 1
                 await self._handle_failure(msg, kerr)
             except Exception as exc:  # safety net
+                failures += 1
                 await self._handle_failure(msg, exc)
             else:
                 await self.store.mark_sent(msg.id)
                 PUBLISH_OK.labels("success").inc()
+                successes += 1
+        try:
+            total = successes + failures
+            ratio = (failures / total) if total > 0 else 0.0
+            OUTBOX_FAILURE_RATIO.set(ratio)
+        except Exception:
+            pass
 
     async def _handle_failure(self, msg: OutboxMessage, exc: Exception) -> None:
         retry = msg.retry_count + 1

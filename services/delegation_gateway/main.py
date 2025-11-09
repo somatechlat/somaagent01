@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from starlette.responses import Response
 
 from services.common.delegation_store import DelegationStore
+from services.common.readiness import readiness_summary
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
@@ -161,23 +162,10 @@ async def health() -> dict[str, str]:
 
 @app.get("/ready")
 async def ready() -> dict[str, str]:
-    """Kubernetes-style readiness check.
-
-    Best-effort probes Postgres outbox and Kafka connectivity. Returns 503 on failure.
-    """
-    # Postgres outbox lightweight probe
-    try:
-        store = DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
-        await store.ensure_schema()  # idempotent, quick when already applied
-    except Exception as exc:
-        return Response(status_code=503, content=str({"status": "unready", "error": str(exc)}))
-    # Kafka producer health via a transient bus (non-blocking if unreachable)
-    try:
-        bus = get_bus()
-        await bus.healthcheck()
-    except Exception as exc:
-        return Response(status_code=503, content=str({"status": "unready", "error": str(exc)}))
-    return {"status": "ready"}
+    summary = await readiness_summary()
+    if summary.get("status") == "ready":
+        return {"status": "ready"}
+    return Response(status_code=503, content=str(summary))
 
 
 @app.get("/live")

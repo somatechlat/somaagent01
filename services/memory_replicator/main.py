@@ -24,6 +24,7 @@ from services.common.memory_replica_store import (
 )
 from services.common.settings_sa01 import SA01Settings
 from services.common.tracing import setup_tracing
+from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -46,6 +47,11 @@ REPL_LATENCY = Histogram(
 REPL_LAG = Gauge(
     "memory_replicator_lag_seconds",
     "Replication lag computed from wal_timestamp",
+)
+
+REPL_LAG_STATE = Gauge(
+    "memory_replicator_lag_state",
+    "State classification of replication lag (0=normal,1=degraded,2=critical)",
 )
 
 
@@ -89,6 +95,10 @@ class MemoryReplicator:
 
     async def start(self) -> None:
         try:
+            _st = _lm_now()
+        except Exception:
+            _st = None
+        try:
             await ensure_replica_schema(self.replica)
         except Exception:
             LOGGER.debug("Replica schema ensure failed", exc_info=True)
@@ -96,6 +106,8 @@ class MemoryReplicator:
             await ensure_dlq_schema(self.dlq_store)
         except Exception:
             LOGGER.debug("DLQ schema ensure failed", exc_info=True)
+        if _st is not None:
+            _lm_start("memory-replicator", _st)
         await self.bus.consume(self.wal_topic, self.group_id, self._handle_wal)
 
     async def _handle_wal(self, event: dict[str, Any]) -> None:
@@ -125,7 +137,17 @@ class MemoryReplicator:
             try:
                 wal_ts = float(event.get("timestamp") or 0.0)
                 if wal_ts > 0:
-                    REPL_LAG.set(max(0.0, time.time() - wal_ts))
+                    lag = max(0.0, time.time() - wal_ts)
+                    REPL_LAG.set(lag)
+                    # Classify lag using env thresholds (seconds)
+                    degraded = float(os.getenv("MEMORY_REPLICATOR_LAG_DEGRADED", "5"))
+                    critical = float(os.getenv("MEMORY_REPLICATOR_LAG_CRITICAL", "20"))
+                    state = 0
+                    if lag >= critical:
+                        state = 2
+                    elif lag >= degraded:
+                        state = 1
+                    REPL_LAG_STATE.set(state)
             except Exception:
                 # Ignore malformed timestamps
                 pass
@@ -139,6 +161,10 @@ async def main() -> None:
 async def _shutdown() -> None:  # best-effort cleanup
     try:
         LOGGER.info("memory-replicator shutting down")
+    except Exception:
+        pass
+    try:
+        _lm_stop("memory-replicator", _lm_now())
     except Exception:
         pass
 

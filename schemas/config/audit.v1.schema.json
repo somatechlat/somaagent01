@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/config/audit.v1.schema.json",
+  "title": "SomaAgent01 Config Audit Diff v1",
+  "type": "object",
+  "required": ["version", "changes"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "previous_checksum": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "current_checksum": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "action"],
+        "properties": {
+          "path": { "type": "string", "description": "JSON pointer path e.g. /overlays/uploads/uploads_max_mb" },
+          "action": { "type": "string", "enum": ["added", "removed", "updated"] },
+          "old": {},
+          "new": {}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

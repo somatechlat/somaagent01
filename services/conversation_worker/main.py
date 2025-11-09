@@ -46,6 +46,7 @@ from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
+from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.tool_executor.tool_registry import ToolRegistry
 
@@ -1685,6 +1686,11 @@ class ConversationWorker:
         return text, usage, latency, model_used, base_url_used
 
     async def start(self) -> None:
+        # Capture startup timing until we enter the consume loop
+        try:
+            _st = _lm_now()
+        except Exception:
+            _st = None
         await ensure_schema(self.store)
         try:
             await ensure_outbox_schema(self.outbox)
@@ -1721,6 +1727,8 @@ class ConversationWorker:
             self.settings["group"],
             self._handle_event,
         )
+        if _st is not None:
+            _lm_start("conversation-worker", _st)
 
     async def _handle_event(self, event: dict[str, Any]) -> None:
         start_time = time.perf_counter()
@@ -1864,6 +1872,20 @@ class ConversationWorker:
                         or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
+                # Optional embedding (user message)
+                try:
+                    from services.common.embeddings import maybe_embed as _maybe_embed
+
+                    emb = await _maybe_embed(payload.get("content", ""))
+                    if emb is not None:
+                        # Truncate to configurable dimension to avoid oversized rows
+                        try:
+                            max_dims = int(os.getenv("EMBEDDING_STORE_DIM_TRUNC", "128"))
+                        except ValueError:
+                            max_dims = 128
+                        payload.setdefault("metadata", {})["embedding"] = emb[:max_dims]
+                except Exception:
+                    LOGGER.debug("embedding generation failed (user)", exc_info=True)
                 # Enrich metadata with persona summary if available
                 try:
                     persona_data = await self._get_persona_cached(event.get("persona_id"))
@@ -2648,6 +2670,19 @@ class ConversationWorker:
                         or os.getenv("SOMA_NAMESPACE"),
                     },
                 }
+                # Optional embedding (assistant message)
+                try:
+                    from services.common.embeddings import maybe_embed as _maybe_embed
+
+                    emb = await _maybe_embed(payload.get("content", ""))
+                    if emb is not None:
+                        try:
+                            max_dims = int(os.getenv("EMBEDDING_STORE_DIM_TRUNC", "128"))
+                        except ValueError:
+                            max_dims = 128
+                        payload.setdefault("metadata", {})["embedding"] = emb[:max_dims]
+                except Exception:
+                    LOGGER.debug("embedding generation failed (assistant)", exc_info=True)
                 # Enrich metadata with persona fields
                 try:
                     persona_data = await self._get_persona_cached(event.get("persona_id"))
@@ -2762,16 +2797,17 @@ class ConversationWorker:
 
 
 async def main() -> None:
+    service_name = "conversation-worker"
     worker = ConversationWorker()
     try:
         await worker.start()
     finally:
+        _shutdown_ts = _lm_now()
         await worker.soma.close()
         await worker.router.close()
         await worker.policy_client.close()
+        _lm_stop(service_name, _shutdown_ts)
 
+if __name__ == "__main__":
     from services.common.service_lifecycle import run_service
-
     run_service(lambda: main(), service_name="conversation-worker")
-    except KeyboardInterrupt:
-        LOGGER.info("Conversation worker stopped")
