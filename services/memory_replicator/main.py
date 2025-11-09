@@ -136,8 +136,15 @@ async def main() -> None:
     await worker.start()
 
 
-if __name__ == "__main__":
+async def _shutdown() -> None:  # best-effort cleanup
     try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        LOGGER.info("Memory replicator stopped")
+        LOGGER.info("memory-replicator shutting down")
+    except Exception:
+        pass
+
+
+if __name__ == "__main__":
+    # Use lifecycle helper for graceful SIGINT/SIGTERM handling.
+    from services.common.service_lifecycle import run_service
+
+    run_service(lambda: main(), service_name="memory-replicator", shutdown_coro=_shutdown)

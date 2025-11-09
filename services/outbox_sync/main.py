@@ -229,4 +229,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    from services.common.service_lifecycle import run_service
+
+    run_service(lambda: main(), service_name="outbox-sync")

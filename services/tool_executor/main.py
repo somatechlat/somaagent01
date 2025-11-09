@@ -848,7 +848,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        LOGGER.info("Tool executor stopped")
+    from services.common.service_lifecycle import run_service
+
+    run_service(lambda: main(), service_name="tool-executor")

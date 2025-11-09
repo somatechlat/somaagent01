@@ -2770,9 +2770,8 @@ async def main() -> None:
         await worker.router.close()
         await worker.policy_client.close()
 
+    from services.common.service_lifecycle import run_service
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
+    run_service(lambda: main(), service_name="conversation-worker")
     except KeyboardInterrupt:
         LOGGER.info("Conversation worker stopped")
