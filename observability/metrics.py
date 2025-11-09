@@ -151,6 +151,138 @@ system_cpu_usage = Gauge(
     registry=registry
 )
 
+# Phase 3: Memory Guarantees & WAL Lag Metrics
+memory_write_outbox_pending = Gauge(
+    'memory_write_outbox_pending_total',
+    'Number of pending memory writes in outbox',
+    ['tenant', 'session_id'],
+    registry=registry
+)
+
+memory_wal_lag_seconds = Gauge(
+    'memory_wal_lag_seconds',
+    'WAL replication lag in seconds',
+    ['tenant'],
+    registry=registry
+)
+
+memory_persistence_sla = Histogram(
+    'memory_persistence_duration_seconds',
+    'Duration of memory persistence operations',
+    ['operation', 'status', 'tenant'],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+    registry=registry
+)
+
+memory_retry_attempts = Counter(
+    'memory_retry_attempts_total',
+    'Number of memory write retry attempts',
+    ['tenant', 'session_id', 'operation'],
+    registry=registry
+)
+
+memory_policy_decisions = Counter(
+    'memory_policy_decisions_total',
+    'Number of memory policy decisions',
+    ['action', 'resource', 'tenant', 'decision'],
+    registry=registry
+)
+
+# Outbox processing metrics
+outbox_processing_duration = Histogram(
+    'outbox_processing_duration_seconds',
+    'Duration of outbox message processing',
+    ['status', 'operation'],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
+    registry=registry
+)
+
+outbox_batch_size = Gauge(
+    'outbox_batch_size',
+    'Number of messages in outbox processing batch',
+    ['operation'],
+    registry=registry
+)
+
+# Chaotic recovery metrics
+chaos_recovery_duration = Histogram(
+    'chaos_recovery_duration_seconds',
+    'Duration of system recovery from chaos events',
+    ['chaos_type', 'component'],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
+    registry=registry
+)
+
+chaos_events_total = Counter(
+    'chaos_events_total',
+    'Number of chaos events triggered',
+    ['component', 'chaos_type'],
+    registry=registry
+)
+
+# SLA metrics
+sla_violations_total = Counter(
+    'sla_violations_total',
+    'Number of SLA violations',
+    ['metric', 'tenant', 'threshold_type'],
+    registry=registry
+)
+
+# Settings configuration metrics (M0 instrumentation)
+settings_read_total = Counter(
+    'settings_read_total',
+    'Total settings read operations',
+    ['endpoint'],
+    registry=registry
+)
+settings_write_total = Counter(
+    'settings_write_total',
+    'Total settings write attempts',
+    ['endpoint', 'result'],  # result: success|error
+    registry=registry
+)
+settings_write_latency_seconds = Histogram(
+    'settings_write_latency_seconds',
+    'Latency of settings write operations',
+    ['endpoint', 'result'],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0],
+    registry=registry
+)
+
+
+def record_memory_persistence(duration: float, operation: str, status: str, tenant: str) -> None:
+    """Record memory persistence duration for SLA tracking."""
+    memory_persistence_sla.observe(duration, {'operation': operation, 'status': status, 'tenant': tenant})
+    
+    # Check SLA violations
+    if operation == 'write' and status == 'success' and duration > 5.0:
+        sla_violations_total.labels(
+            metric='memory_persistence',
+            tenant=tenant,
+            threshold_type='p95_5s'
+        ).inc()
+
+def record_wal_lag(lag_seconds: float, tenant: str) -> None:
+    """Record WAL lag for monitoring."""
+    memory_wal_lag_seconds.set(lag_seconds, {'tenant': tenant})
+    
+    # Check SLA violations
+    if lag_seconds > 30.0:
+        sla_violations_total.labels(
+            metric='wal_lag',
+            tenant=tenant,
+            threshold_type='max_30s'
+        ).inc()
+
+def record_policy_decision(action: str, resource: str, tenant: str, decision: str) -> None:
+    """Record policy enforcement decisions."""
+    memory_policy_decisions.labels(
+        action=action,
+        resource=resource,
+        tenant=tenant,
+        decision=decision
+    ).inc()
+
 
 class MetricsCollector:
     """Centralized metrics collection for SomaAgent01."""
@@ -200,6 +332,15 @@ class MetricsCollector:
     def track_tool_call(self, tool_name: str, success: bool) -> None:
         """Track tool catalog call."""
         tool_calls.labels(tool_name=tool_name, result='success' if success else 'error').inc()
+
+    def track_settings_read(self, endpoint: str) -> None:
+        """Track a settings read operation."""
+        settings_read_total.labels(endpoint=endpoint).inc()
+
+    def track_settings_write(self, endpoint: str, result: str, duration: float) -> None:
+        """Track a settings write operation with result and latency."""
+        settings_write_total.labels(endpoint=endpoint, result=result).inc()
+        settings_write_latency_seconds.labels(endpoint=endpoint, result=result).observe(duration)
 
 
 # Global metrics collector
@@ -254,6 +395,7 @@ def get_metrics_snapshot() -> Dict[str, Any]:
         'port': 9090,
         'active_connections': float(sse_connections._value.get()),
         'total_messages_sent': float(sse_messages_sent._value.get()),
+        'settings_reads': float(settings_read_total._value.get()),
         'singleton_health': {
             name: float(gauge._value.get()) 
             for name, gauge in singleton_health._metrics.items()

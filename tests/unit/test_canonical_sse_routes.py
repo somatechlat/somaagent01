@@ -13,7 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.gateway.main import app
-from python.integrations.somabrain_client import somabrain_client
+from python.integrations.somabrain_client import SomaClient
 from python.integrations.postgres_client import postgres_pool
 from python.integrations.opa_middleware import opa_client
 
