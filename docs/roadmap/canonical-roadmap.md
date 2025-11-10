@@ -118,7 +118,7 @@ src/
 | **Configuration singleton** | `config/settings.py` | `settings = Settings()` loaded once; all env vars typed & validated. |
 | **Integration registry** | `integrations/__init__.py` | Exposes `somabrain_client`, `opa_policy`, `kafka_producer`, `pg_pool`. |
 | **Lazy startup hooks** | `services/gateway/app.py` | Background services start only when `settings.testing=False`. |
-| **Deterministic middleware** | `app.add_middleware(opa_policy.__class__, fail_open=settings.policy_fail_open)` | Registered **once**, no duplicate factories. |
+| **Deterministic middleware** | `app.add_middleware(opa_policy.__class__)` | Registered **once**, no duplicate factories. |
 | **Observability layer** | `observability/metrics.py` | Centralised Prometheus metrics; `request-id` propagated in logs. |
 | **Test isolation** | `pytest.ini` sets `TESTING=1` | Background services skipped; singletons can be monkey-patched. |
 | **Event bus** | `services/common/event_bus.py` (existing) | Decoupled domain events between workers. |
@@ -134,7 +134,7 @@ src/
 | **M3 – Observability Core** | Create `observability/metrics.py` with factories first, then metric objects. | Observability Engineer | 1 d | Importing any module no longer raises `NameError`. |
 | **M4 – FastAPI Refactor** | Rewrite `services/gateway/app.py` to use singletons, clean middleware, add startup/shutdown. | Senior Backend | 2 d | `uvicorn services.gateway.app:app` starts; `/docs` & `/metrics` work. |
 | **M5 – Test-Mode Guard** | Add `settings.testing` flag; guard background service startup. | QA Engineer | 1 d | `pytest -q` runs without external services; no “event loop” errors. |
-| **M6 – Auth & OPA Alignment** | Adjust `EnforcePolicy` to respect `settings.require_auth` and `settings.policy_fail_open`. | Security Engineer | 1 d | `tests/unit/test_gateway_authorization.py` passes with expected `HTTPException`. |
+| **M6 – Auth & OPA Alignment** | Adjust `EnforcePolicy` to respect `settings.require_auth`. | Security Engineer | 1 d | `tests/unit/test_gateway_authorization.py` passes with expected `HTTPException`. |
 | **M7 – Documentation Overhaul** | Populate this file with diagram, layer description, and step-by-step guide. | Technical Writer | 1 d | New contributors can locate `integrations.somabrain.client` in 5 min. |
 | **M7.5 – Pixel-Perfect UI Parity** | Copy golden CSS, fonts, spacing, icons; map canonical SSE events to golden DOM structure; dual-mode Playwright suite. | Frontend + QA | 3 d | Playwright `parity.spec.ts` passes both `GATEWAY_BASE_URL` and `http://localhost:7001` modes with 1px diffs. |
 | **M8 – Full Test Run & Fixes** | Run entire suite, fix residual import errors, update mocks. | QA Engineer | 2 d | **0 failures** (unit + integration tests). |
@@ -227,6 +227,64 @@ Governance
 ---
 
 *This canonical roadmap supersedes any prior partial roadmaps and should be the only living document describing the overall architecture.*
+
+## 7.2️⃣ Deployment Modes Consolidation (LOCAL vs PROD)
+
+We collapse legacy / inconsistent deployment identifiers (DEV, STAGING, TEST, PRODUCTION, LOCAL) into two canonical modes used uniformly across configuration, model profiles, feature gating, and operational behaviour.
+
+Canonical Modes
+- LOCAL: Full-capacity local development environment. Mirrors production feature set (tools, recall, learning, write-through) while respecting local resource constraints. All services run in a single compose stack; secrets are dev-safe; encryption keys may use development defaults. Observability and policy run in fail-closed posture except where explicitly overridden for developer velocity.
+- PROD: Production (includes former STAGING / PRODUCTION). High-reliability posture, strict auth/policy enforcement, encrypted secrets, scaled infra (Kafka cluster, Redis persistence, Postgres HA), full auditing.
+
+Mapping Rules
+- ENV value `SOMA_AGENT_ENV` in {DEV, LOCAL} → LOCAL.
+- Values in {STAGING, PROD, PRODUCTION} → PROD.
+- TEST maps to LOCAL unless explicitly overridden by CI profile selection.
+- Model profile selection now uses only LOCAL and PROD buckets (see `conf/model_profiles.yaml`). STAGING reuses PROD profiles to avoid drift.
+
+Central Accessors
+- `runtime_config.deployment_mode()` returns canonical mode (LOCAL|PROD) for all callers (workers, gateway, tools) replacing scattered `os.getenv("SOMA_AGENT_MODE")` checks.
+- `SA01Settings.deployment_mode` is normalized at initialization (DEV→LOCAL, STAGING→PROD).
+
+Behavioural Guarantees
+- Feature flags and profile resolution depend only on canonical mode; introducing new raw mode strings requires roadmap update first.
+- LOCAL enables rapid iteration: lower pool sizes, optional policy bypass ONLY via explicit documented flag (`DISABLE_CONVERSATION_POLICY`) slated for removal once stable dev fixtures exist.
+- PROD enforces: policy checks fail-closed, auth required (GATEWAY_REQUIRE_AUTH=true), secrets encrypted (mandatory `GATEWAY_ENC_KEY`), no bypass flags.
+
+Deprecated / To Remove
+- Direct reads of `SOMA_AGENT_MODE` outside initialization / telemetry (replace with `deployment_mode()` accessor).
+- Legacy mode strings in model profile store (e.g. TEST separate from LOCAL) – unify into LOCAL or PROD only.
+- Bypass flag `DISABLE_CONVERSATION_POLICY` (target removal after policy adapter maturity); track usage metric prior to removal.
+- `POLICY_FAIL_OPEN` environment variable (already ignored in code) – remove from compose and docs.
+
+Adoption Steps
+1. Introduce canonical accessor (DONE).
+2. Adjust `SA01Settings` mapping (DONE: DEV→LOCAL, STAGING→PROD).
+3. Migrate model profile seeding to use LOCAL/PROD only (DONE via settings mapping; verify DB contents and prune orphan roles for DEV/STAGING).
+4. Grep/code audit: replace residual `os.getenv("SOMA_AGENT_MODE")` logic with `deployment_mode()` (IN PROGRESS – conversation worker path to be updated next sprint).
+5. Remove deprecated env vars from `docker-compose.yaml` and roadmap after confirming zero usage counters.
+6. Add lint/test `test_no_direct_mode_env.py` asserting no direct `SOMA_AGENT_MODE` reads outside settings/runtime_config bootstrap.
+
+Metrics / Observability
+- `deployment_mode` label added to key process metrics (gateway requests, conversation worker messages) in a later instrumentation sprint.
+- Counter `legacy_mode_env_reads_total` (temporary) to confirm elimination; removed when stable at zero.
+
+Acceptance Criteria (Modes Consolidation)
+- Only LOCAL|PROD appear in model_profiles table deployment_mode column post-migration.
+- No direct `os.getenv("SOMA_AGENT_MODE")` calls outside bootstrap modules; lint + test enforce.
+- Gateway and workers log startup line: `deployment_mode=LOCAL` or `deployment_mode=PROD`.
+- Compose / Helm values reference canonical modes exclusively.
+
+Risks & Mitigations
+- Orphaned profiles (DEV/STAGING) – mitigation: migration script to re-map or delete after verification.
+- Hidden conditional behaviour tied to old strings – mitigation: grep + runtime smoke verifying tool catalog, recall, learning remain enabled where expected.
+
+Next Sprint Actions
+- Patch conversation worker and gateway to consume `runtime_config.deployment_mode()`.
+- Add startup metric `deployment_mode_info{mode="LOCAL"|"PROD"}=1`.
+- Remove `POLICY_FAIL_OPEN` and document fail-closed default explicitly.
+
+Status: Initial normalization implemented; remaining direct env accesses queued for removal.
 
 ## 📚 Integration of Celery into somaagent01 (Canonical)
 

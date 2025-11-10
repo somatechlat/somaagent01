@@ -51,11 +51,8 @@ os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
 os.environ.setdefault("OTEL_LOGS_EXPORTER", "none")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 
-# Force policy middleware to fail-open during tests to avoid external OPA dependency
-# when an example .env sets POLICY_FAIL_OPEN=false. This prevents 503 responses
-# from EnforcePolicy when the policy service is unreachable.
-# Force override even if .env set it to false
-os.environ["POLICY_FAIL_OPEN"] = "true"
+# Note: POLICY_FAIL_OPEN is deprecated and ignored (fail-closed default).
+# No override is set here; tests rely on local fixtures and bypass gating.
 
 # Also inform our internal tracing helper to skip creating an OTLP exporter.
 # This prevents attempts to connect to Jaeger during tests when modules import

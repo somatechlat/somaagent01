@@ -289,9 +289,14 @@ class IngestDocumentTool(BaseTool):
             raise ToolExecutionError("'attachment_id' is required")
 
         base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        # Harden internal token handling: only default in DEV, require explicit in non-DEV
-        mode = (os.getenv("SOMA_AGENT_MODE") or "DEV").upper()
-        default_token = "dev-internal-token" if mode == "DEV" else ""
+        # Harden internal token handling: only default in LOCAL, require explicit in PROD
+        try:
+            from services.common.runtime_config import deployment_mode as _dep_mode
+            mode = _dep_mode()
+        except Exception:
+            # Fallback to LOCAL without reading deprecated env vars
+            mode = "LOCAL"
+        default_token = "dev-internal-token" if mode == "LOCAL" else ""
         token = os.getenv("GATEWAY_INTERNAL_TOKEN", default_token)
         if not token:
             raise ToolExecutionError("Internal token not configured for attachment fetch")

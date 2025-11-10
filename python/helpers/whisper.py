@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import logging
-import os
 import tempfile
 import warnings
 
@@ -19,20 +18,26 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Whisper is optional in lightweight developer builds – only require the
 # package when audio support is explicitly enabled.
 LOGGER = logging.getLogger(__name__)
-_feature_audio = os.getenv("FEATURE_AUDIO", "none").lower()
+try:
+    from services.common import runtime_config as _cfg
+    _feature_audio_enabled = bool(_cfg.flag("audio_support"))
+except Exception:
+    # Fallback to env when runtime_config is unavailable
+    import os as _os
+    _feature_audio_enabled = _os.getenv("FEATURE_AUDIO", "none").lower() not in {"none", "0", "false", "off"}
 
 try:
-    if _feature_audio in {"none", "0", "false", "off"}:
+    if not _feature_audio_enabled:
         raise ImportError("audio features disabled")
     import whisper  # type: ignore
 except ImportError as exc:  # pragma: no cover - exercised in developer builds
-    if _feature_audio not in {"none", "0", "false", "off"}:
+    if _feature_audio_enabled:
         raise ImportError(
             "Whisper library is required for production audio transcription. "
             "Install with: pip install openai-whisper"
         ) from exc
     whisper = None  # type: ignore
-    LOGGER.info("Skipping Whisper preload – FEATURE_AUDIO disabled or package missing")
+    LOGGER.info("Skipping Whisper preload – audio support disabled or package missing")
 
 _model = None
 _model_name = ""

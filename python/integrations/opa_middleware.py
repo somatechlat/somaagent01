@@ -1,14 +1,8 @@
-"""Somabrain policy enforcement middleware.
+"""Somabrain policy enforcement middleware (deprecated shim).
 
-Production-grade services should delegate authorization decisions to a
-centralized policy engine. This middleware forwards request context to the
-Somabrain policy evaluator over HTTP and enforces the returned decision.
-
-Environment variables:
-- ``POLICY_EVALUATE_URL``: Full URL to the policy evaluate endpoint.
-    Defaults to ``${SOMA_BASE_URL}/v1/policy/evaluate``.
-- ``POLICY_FAIL_OPEN``: If true, allow requests when the policy service is
-    unavailable (default: true). If false, deny on errors (fail-closed).
+Use the centralized policy client and Gateway wiring. This module remains as a
+compatibility wrapper for legacy imports but does not honor any legacy
+environment toggles. It enforces fail-closed by default.
 """
 
 from __future__ import annotations
@@ -36,7 +30,8 @@ class EnforcePolicy(BaseHTTPMiddleware):
             or os.getenv("POLICY_EVALUATE_URL")
             or f"{base}/v1/policy/evaluate"
         )
-        self.fail_open = os.getenv("POLICY_FAIL_OPEN", "true").lower() in {"true", "1", "yes", "on"}
+        # Deprecated: always enforce fail-closed to avoid security bypass via env
+        self.fail_open = False
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         # Fast-path allow for health and metrics to avoid boot loops

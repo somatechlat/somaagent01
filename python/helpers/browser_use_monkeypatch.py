@@ -1,15 +1,20 @@
 import logging
-import os
 from typing import Any
 
 from python.helpers import dirty_json
 
 LOGGER = logging.getLogger(__name__)
-_FEATURE_BROWSER = os.getenv("FEATURE_BROWSER", "false").strip().lower()
+try:
+    from services.common import runtime_config as _cfg
+    _FEATURE_BROWSER_ENABLED = bool(_cfg.flag("browser_support"))
+except Exception:
+    # Fallback when runtime_config not available (early tooling import)
+    import os as _os
+    _FEATURE_BROWSER_ENABLED = _os.getenv("FEATURE_BROWSER", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _feature_enabled() -> bool:
-    return _FEATURE_BROWSER in {"1", "true", "yes", "on"}
+    return _FEATURE_BROWSER_ENABLED
 
 
 # ------------------------------------------------------------------------------

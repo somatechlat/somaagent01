@@ -41,6 +41,8 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
+from services.common.runtime_config import deployment_mode as cfg_deployment_mode
+from services.common import runtime_config as cfg
 from services.common.slm_client import ChatMessage
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
@@ -246,17 +248,17 @@ class ConversationWorker:
         self.mem_outbox = MemoryWriteOutbox(dsn=APP_SETTINGS.postgres_dsn)
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
-        self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
+        # Canonical deployment mode (LOCAL | PROD)
+        self.deployment_mode = cfg_deployment_mode()
         self.preprocessor = ConversationPreprocessor()
-        self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
-        self.escalation_fallback_enabled = os.getenv(
-            "ESCALATION_FALLBACK_ENABLED", "false"
-        ).lower() in {"1", "true", "yes", "on"}
+        try:
+            self.escalation_enabled = bool(cfg.flag("escalation"))
+        except Exception:
+            self.escalation_enabled = True
+        try:
+            self.escalation_fallback_enabled = bool(cfg.flag("escalation_fallback"))
+        except Exception:
+            self.escalation_fallback_enabled = False
 
         # Tool registry for model-led orchestration (no network hop)
         self.tool_registry = ToolRegistry()

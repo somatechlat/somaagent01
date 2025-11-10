@@ -36,7 +36,7 @@ class PolicyClient:
         self.data_path = os.getenv("POLICY_DATA_PATH", "/v1/data/soma/policy/allow")
         self._client = httpx.AsyncClient(timeout=10.0)
         self.cache_ttl = float(os.getenv("POLICY_CACHE_TTL", "2"))
-        # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored
+        # Fail-closed by default
         self.fail_open_default = False
         self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}
         self.tenant_config = tenant_config or TenantConfig()

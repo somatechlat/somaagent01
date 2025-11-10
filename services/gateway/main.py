@@ -1383,10 +1383,12 @@ async def v1_speech_openai_realtime_offer(
 
 def _uploads_root() -> Path:
     # Respect global file-saving disable switch; never create directories when disabled
-    if os.getenv("DISABLE_FILE_SAVING", "true").lower() in {"true", "1", "yes", "on"} or os.getenv(
-        "GATEWAY_DISABLE_FILE_SAVING", "true"
-    ).lower() in {"true", "1", "yes", "on"}:
-        return Path("/")  # dummy path; callers should have short-circuited already
+    try:
+        from services.common import runtime_config as cfg
+        if cfg.flag("file_saving_disabled"):
+            return Path("/")  # dummy path; callers should have short-circuited already
+    except Exception:
+        return Path("/")
     base = os.getenv("GATEWAY_UPLOAD_DIR", "/git/agent-zero/tmp/uploads")
     p = Path(base)
     try:
@@ -1979,15 +1981,16 @@ def _write_through_async() -> bool:
 
 
 def _file_saving_disabled() -> bool:
-    """Global guard to disable any on-disk writes from the gateway by default.
+    """Global guard to disable any on-disk writes from the gateway.
 
-    Controlled via either DISABLE_FILE_SAVING or GATEWAY_DISABLE_FILE_SAVING env vars.
-    Defaults to True (disabled) to honor strict no-file-saving mode.
+    Centralized via runtime_config flag("file_saving_disabled"). Defaults to True
+    (disabled) to honor strict no-file-saving mode.
     """
-    # This flag disables local filesystem writes, not database persistence.
-    return _flag_truthy(os.getenv("DISABLE_FILE_SAVING", "true"), True) or _flag_truthy(
-        os.getenv("GATEWAY_DISABLE_FILE_SAVING", "true"), True
-    )
+    try:
+        from services.common import runtime_config as cfg
+        return bool(cfg.flag("file_saving_disabled"))
+    except Exception:
+        return True
 
 
 def _sse_disabled() -> bool:
@@ -9344,17 +9347,8 @@ async def ui_sections_set(
         up = dict(current_doc.get("uploads") or {}) if isinstance(current_doc, dict) else {}
         # Respect global file-saving disable switches
         try:
-            if os.getenv("DISABLE_FILE_SAVING", "true").lower() in {
-                "true",
-                "1",
-                "yes",
-                "on",
-            } or os.getenv("GATEWAY_DISABLE_FILE_SAVING", "true").lower() in {
-                "true",
-                "1",
-                "yes",
-                "on",
-            }:
+            from services.common import runtime_config as cfg
+            if cfg.flag("file_saving_disabled"):
                 up["uploads_enabled"] = False
         except Exception:
             pass

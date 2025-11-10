@@ -19,7 +19,7 @@ configMapGenerator:
   - name: somaagent-config
     behavior: merge
     literals:
-      - SOMA_AGENT_MODE=DEVELOPMENT
+      - SOMA_AGENT_ENV=DEV
       - LOG_LEVEL=DEBUG
 
 secretGenerator:

@@ -23,7 +23,7 @@ configMapGenerator:
   - name: somaagent-config
     behavior: merge
     literals:
-      - SOMA_AGENT_MODE=PRODUCTION
+      - SOMA_AGENT_ENV=PROD
       - LOG_LEVEL=INFO
 
 generatorOptions:
