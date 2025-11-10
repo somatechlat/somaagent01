@@ -51,6 +51,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+kafka-logs/
 
 # Temporary files
 *.tmp

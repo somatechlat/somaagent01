@@ -427,6 +427,7 @@ Logs:
 
 - AuthN: session cookies or OIDC; browser calls use same-origin cookies or header/bearer tokens. No custom CSRF endpoint.
 - AuthZ: OpenFGA for resource relations; OPA for policy gates (e.g., tool allowlist, PII egress checks).
+  - OperationsAdministration: privileged operator endpoints (DLQ, audit, memory export/metrics, migrations, constitution) are selectively policy‑gated using `authorize()` with resource `OperationsAdministration` and `ops.*` actions.
 - Secrets: provider API keys stored centrally; never logged; access via internal credentials endpoint with internal token.
 - Transport: HTTPS/TLS; internal mTLS optional; WAF headers and strict CORS for UI.
 - Data protection: PII minimization, column-level encryption for sensitive fields, backup/restore tested.
@@ -1030,7 +1031,7 @@ This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles t
   - Recall: `POST /v1/recall/query` (tenant‑scoped).
 
 ### Legacy Inventory (to be removed or unified)
-- OPA placeholder middleware (`python/integrations/opa_middleware.py`) that never talks to real OPA/Somabrain policy → replace with HTTP adapter that evaluates policy remotely and enforces fail‑closed when configured.
+- (Removed) Legacy OPA placeholder middleware (`python/integrations/opa_middleware.py`) has been excised. Future policy enforcement will use a real HTTP adapter with selective authorization semantics.
 - Duplicate health endpoints (`/health`, `/healthz`) and mixed targets (`/health` vs `/healthz`) → converge to `/healthz` in Gateway; probe Somabrain `/healthz` first; keep `/health` as alias only.
 - Env‑flag checks scattered across code (`os.getenv("SA01_ENABLE_*"`, `ENABLE_*`) → replace with Feature Registry lookups; add lint rule to forbid direct getenv for flags.
 - Dual outbox/Kafka producers across services vs Somabrain’s producer → keep local outbox pattern but unify headers/schema and health adaptation; centralize Kafka publisher behind one adapter (no competing producers).

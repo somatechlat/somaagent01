@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from httpx import AsyncClient
+import httpx
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,8 @@ async def test_persist_generic_metric_via_stream_or_direct(monkeypatch):
             app = None
         if app is None:
             pytest.skip("Gateway app unavailable")
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             payload = {
                 "session_id": "metrics-persist-session",
                 "persona_id": "persona-metrics",

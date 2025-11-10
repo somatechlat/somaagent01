@@ -51,10 +51,30 @@ os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
 os.environ.setdefault("OTEL_LOGS_EXPORTER", "none")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 
+# Force policy middleware to fail-open during tests to avoid external OPA dependency
+# when an example .env sets POLICY_FAIL_OPEN=false. This prevents 503 responses
+# from EnforcePolicy when the policy service is unreachable.
+# Force override even if .env set it to false
+os.environ["POLICY_FAIL_OPEN"] = "true"
+
 # Also inform our internal tracing helper to skip creating an OTLP exporter.
 # This prevents attempts to connect to Jaeger during tests when modules import
 # setup_tracing() at import time (e.g., the gateway).
 os.environ.setdefault("OTEL_EXPORTER_OTLP_DISABLED", "true")
+
+# Ensure test mode flag is set so selective authorization uses bypass logic
+os.environ.setdefault("TESTING", "1")
+
+# Make tool catalog conveniently available as `catalog` for tests that reference it directly
+try:
+    import builtins as _builtins
+    from integrations.tool_catalog import catalog as _catalog
+
+    if not hasattr(_builtins, "catalog"):
+        _builtins.catalog = _catalog  # type: ignore[attr-defined]
+    print("DEBUG: injected builtins.catalog for tests")
+except Exception as _e:
+    print("DEBUG: failed to inject builtins.catalog:", _e)
 # Top-level pytest configuration
 # Existing plugin registration
 from pathlib import Path

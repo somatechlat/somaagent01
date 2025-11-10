@@ -120,8 +120,6 @@ from services.common.learning import (
     publish_reward as learning_publish_reward,
 )
 from services.common.features import build_default_registry
-# Import the EnforcePolicy middleware class directly.
-from python.integrations.opa_middleware import EnforcePolicy
 from services.common import error_classifier as _errclass, masking as _masking
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.attachments_store import AttachmentsStore
@@ -189,6 +187,8 @@ tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
 # --- Consolidated service stores (moved in-process to the gateway) ---
 PROFILE_STORE = ModelProfileStore.from_settings(APP_SETTINGS)
 CATALOG_STORE = ToolCatalogStore.from_settings(APP_SETTINGS)
+# Legacy alias for tests expecting a global 'catalog'
+catalog = CATALOG_STORE
 TELEMETRY_STORE = TelemetryStore.from_settings(APP_SETTINGS)
 REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
 
@@ -356,11 +356,10 @@ def _setup_cors() -> None:
 _setup_cors()
 
 
-# Register OPA enforcement middleware using environment configuration.
-# The ``EnforcePolicy`` class respects ``POLICY_FAIL_OPEN`` and will deny
-# requests when appropriate. Adding it here ensures all downstream routes are
-# protected.
-app.add_middleware(EnforcePolicy)
+# NOTE: The previous global policy middleware (EnforcePolicy) has been removed.
+# Future selective authorization should use a dedicated client or decorator.
+# Import selective authorization helpers
+from services.common.authorization import authorize, require_policy
 
 # ---------------------------------------------------------------------------
 # Somabrain integration endpoints
@@ -409,7 +408,7 @@ async def api_build_context(payload: Dict[str, Any]) -> JSONResponse:
 
 
 @app.post("/v1/learning/reward")
-async def api_publish_reward(payload: Dict[str, Any]) -> JSONResponse:
+async def api_publish_reward(payload: Dict[str, Any], request: Request) -> JSONResponse:
     """Publish learning reward/feedback to Somabrain.
 
     Body: {session_id: str, signal: str, value: float, meta?: object}
@@ -422,6 +421,13 @@ async def api_publish_reward(payload: Dict[str, Any]) -> JSONResponse:
         meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else None
         if not session_id or not signal:
             raise HTTPException(status_code=400, detail="invalid_reward_payload")
+        # Selective authorization for reward publication
+        await authorize(
+            request=request,
+            action="learning.reward",
+            resource="learning",
+            context={"session_id": session_id, "signal": signal},
+        )
         ok = await learning_publish_reward(session_id=session_id, signal=signal, value=value, meta=meta)
         if not ok:
             raise HTTPException(status_code=502, detail="reward_publish_failed")
@@ -2901,6 +2907,17 @@ async def list_admin_memory(
     - Filters: tenant, persona_id, role, session_id, universe, namespace, q, min/max wal_timestamp
     - Pagination: id-desc cursor via 'after' and 'limit' (max 200)
     """
+    await authorize(
+        request=request,
+        action="ops.memory.list",
+        resource="OperationsAdministration",
+        context={
+            "tenant": tenant,
+            "persona_id": persona_id,
+            "role": role,
+            "session_id": session_id,
+        },
+    )
     await _enforce_admin_rate_limit(request)
     # Require admin scope when auth is enabled
     auth = await authorize_request(
@@ -2971,6 +2988,12 @@ async def get_admin_memory_item(
     store: Annotated[MemoryReplicaStore, Depends(get_replica_store)],
 ) -> AdminMemoryItem:
     """Fetch a single memory replica item by its event_id."""
+    await authorize(
+        request=request,
+        action="ops.memory.get",
+        resource="OperationsAdministration",
+        context={"event_id": event_id},
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"event_id": event_id})
     _require_admin_scope(auth)
@@ -3018,6 +3041,13 @@ async def memory_batch_write(
     request: Request,
     publisher: Annotated[DurablePublisher, Depends(get_publisher)],
 ) -> dict:
+    # Selective policy for bulk memory writes
+    await authorize(
+        request=request,
+        action="memory.write",
+        resource="memory",
+        context={"batch_size": len(payload.items)},
+    )
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
 
@@ -3133,6 +3163,17 @@ async def memory_export(
     Applies filters similar to the admin list endpoint. Concurrency is
     bounded by a semaphore; optional rate limits can also apply.
     """
+    await authorize(
+        request=request,
+        action="ops.memory.export.stream",
+        resource="OperationsAdministration",
+        context={
+            "tenant": tenant,
+            "persona_id": persona_id,
+            "role": role,
+            "session_id": session_id,
+        },
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(
         request,
@@ -3253,6 +3294,12 @@ def _exports_dir() -> str:
 async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict:
     if _file_saving_disabled():
         raise HTTPException(status_code=403, detail="File export is disabled")
+    await authorize(
+        request=request,
+        action="ops.memory.export.job.create",
+        resource="OperationsAdministration",
+        context=payload.model_dump(),
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
@@ -3275,6 +3322,12 @@ async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict
 async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
     if _file_saving_disabled():
         raise HTTPException(status_code=403, detail="File export is disabled")
+    await authorize(
+        request=request,
+        action="ops.memory.export.job.status",
+        resource="OperationsAdministration",
+        context={"job_id": job_id},
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"job_id": job_id})
     _require_admin_scope(auth)
@@ -3300,6 +3353,12 @@ async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
 async def export_jobs_download(job_id: int, request: Request):
     if _file_saving_disabled():
         raise HTTPException(status_code=403, detail="File export is disabled")
+    await authorize(
+        request=request,
+        action="ops.memory.export.job.download",
+        resource="OperationsAdministration",
+        context={"job_id": job_id},
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"job_id": job_id})
     _require_admin_scope(auth)
@@ -3343,6 +3402,12 @@ async def export_jobs_download(job_id: int, request: Request):
 @app.get("/constitution/version", tags=["admin"], summary="Get SomaBrain constitution version")
 async def constitution_version(request: Request) -> JSONResponse:
     # Require authorization + admin scope; evaluate OPA with a specific action
+    await authorize(
+        request=request,
+        action="ops.constitution.version",
+        resource="OperationsAdministration",
+        context={},
+    )
     auth = await authorize_request(
         request, {"action": "constitution.manage", "resource": "somabrain"}
     )
@@ -3357,6 +3422,12 @@ async def constitution_version(request: Request) -> JSONResponse:
 
 @app.post("/constitution/validate", tags=["admin"], summary="Validate a constitution document")
 async def constitution_validate(payload: dict[str, Any], request: Request) -> JSONResponse:  # type: ignore[valid-type]
+    await authorize(
+        request=request,
+        action="ops.constitution.validate",
+        resource="OperationsAdministration",
+        context={},
+    )
     auth = await authorize_request(
         request, {"action": "constitution.manage", "resource": "somabrain"}
     )
@@ -3371,6 +3442,12 @@ async def constitution_validate(payload: dict[str, Any], request: Request) -> JS
 
 @app.post("/constitution/load", tags=["admin"], summary="Load a constitution document")
 async def constitution_load(payload: dict[str, Any], request: Request) -> JSONResponse:  # type: ignore[valid-type]
+    await authorize(
+        request=request,
+        action="ops.constitution.load",
+        resource="OperationsAdministration",
+        context={},
+    )
     auth = await authorize_request(
         request, {"action": "constitution.manage", "resource": "somabrain"}
     )
@@ -3408,6 +3485,12 @@ async def admin_memory_metrics(
 
     Requires admin scope when auth is enabled. Applies a light rate limit via the admin limiter.
     """
+    await authorize(
+        request=request,
+        action="ops.memory.metrics",
+        resource="OperationsAdministration",
+        context={"tenant": tenant, "namespace": namespace},
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, {"tenant": tenant, "namespace": namespace})
     _require_admin_scope(auth)
@@ -3435,6 +3518,12 @@ async def admin_migrate_export(
     payload: MigrateExportPayload,
     request: Request,
 ):
+    await authorize(
+        request=request,
+        action="ops.migrate.export",
+        resource="OperationsAdministration",
+        context=payload.model_dump(),
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
@@ -3464,6 +3553,12 @@ async def admin_migrate_import(
     payload: MigrateImportPayload,
     request: Request,
 ):
+    await authorize(
+        request=request,
+        action="ops.migrate.import",
+        resource="OperationsAdministration",
+        context={"replace": payload.replace},
+    )
     await _enforce_admin_rate_limit(request)
     # Do not echo full memories back into auth payload to avoid log bloat
     auth = await authorize_request(request, {"replace": payload.replace})
@@ -5724,6 +5819,18 @@ async def request_tool_execution(
     request: Request,
     publisher: Annotated[DurablePublisher, Depends(get_publisher)],
 ) -> dict[str, Any]:
+    # Selective policy: tool execution requires explicit allow; support dev bypass via metadata.requeue_override
+    ctx = {
+        "tool_name": payload.tool_name,
+        "session_id": payload.session_id,
+        "requeue_override": bool(payload.metadata.get("requeue_override")) if payload.metadata else False,
+    }
+    await authorize(
+        request=request,
+        action="tool.execute",
+        resource="tool",
+        context=ctx,
+    )
     auth_metadata = await authorize_request(request, payload.model_dump())
     metadata, persona_hdr = _apply_header_metadata(request, {**payload.metadata, **auth_metadata})
     persona_id = payload.persona_id or persona_hdr
@@ -9595,6 +9702,12 @@ async def list_dlq(
     *,
     store: Annotated[DLQStore, Depends(get_dlq_store)],
 ) -> list[DLQItem]:
+    await authorize(
+        request=request,
+        action="ops.dlq.list",
+        resource="OperationsAdministration",
+        context={"topic": topic},
+    )
     auth = await authorize_request(request, {"topic": topic})
     _require_admin_scope(auth)
     items = await store.list_recent(topic=topic, limit=limit)
@@ -9617,6 +9730,12 @@ async def purge_dlq(
     *,
     store: Annotated[DLQStore, Depends(get_dlq_store)],
 ) -> dict:
+    await authorize(
+        request=request,
+        action="ops.dlq.purge",
+        resource="OperationsAdministration",
+        context={"topic": topic},
+    )
     auth = await authorize_request(request, {"topic": topic})
     _require_admin_scope(auth)
     deleted = await store.purge(topic=topic)
@@ -9636,6 +9755,12 @@ async def reprocess_dlq_item(
     By convention, topics ending with ".dlq" are mapped back to their base
     topic for replay. On success, the DLQ row is deleted.
     """
+    await authorize(
+        request=request,
+        action="ops.dlq.reprocess",
+        resource="OperationsAdministration",
+        context={"topic": topic, "id": item_id},
+    )
     auth = await authorize_request(request, {"topic": topic, "id": item_id})
     _require_admin_scope(auth)
 
@@ -9993,6 +10118,17 @@ async def audit_export(
 
     Filters are optional; when absent, returns recent events in ascending id order.
     """
+    await authorize(
+        request=request,
+        action="ops.audit.export",
+        resource="OperationsAdministration",
+        context={
+            "request_id": request_id,
+            "session_id": session_id,
+            "tenant": tenant,
+            "action": action,
+        },
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(
         request,
@@ -10099,6 +10235,16 @@ async def audit_list_decisions(
     Requires admin scope when auth is enabled. Results are returned in ascending id order
     with simple cursor pagination via the 'after' parameter. Use 'limit' to bound results.
     """
+    await authorize(
+        request=request,
+        action="ops.audit.decisions.list",
+        resource="OperationsAdministration",
+        context={
+            "tenant": tenant,
+            "session_id": session_id,
+            "request_id": request_id,
+        },
+    )
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(
         request,

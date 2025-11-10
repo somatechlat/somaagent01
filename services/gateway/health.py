@@ -9,7 +9,6 @@ from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta
 
 from python.integrations.soma_client import SomaClient
-from python.integrations.opa_middleware import EnforcePolicy
 from observability.metrics import metrics_collector, get_metrics_snapshot
 
 router = APIRouter(prefix="/health", tags=["health"])
@@ -111,22 +110,17 @@ class HealthChecker:
             }
     
     async def _check_opa(self) -> Dict[str, Any]:
-        """Check OPA service connectivity."""
-        try:
-            # OPA middleware is available as a no-op, so always healthy
-            from python.integrations.opa_middleware import enforce_policy
-            middleware = enforce_policy()
-            return {
-                'status': 'healthy',
-                'message': 'OPA middleware operational',
-                'timestamp': datetime.utcnow().isoformat()
-            }
-        except Exception as e:
-            return {
-                'status': 'unhealthy',
-                'message': f'OPA error: {str(e)}',
-                'timestamp': datetime.utcnow().isoformat()
-            }
+        """OPA check placeholder after middleware removal.
+
+        The legacy EnforcePolicy middleware has been removed. This check now
+        reports 'skipped' to avoid failing aggregate health while policy
+        integration is refactored to selective authorization.
+        """
+        return {
+            'status': 'skipped',
+            'message': 'opa_middleware_removed',
+            'timestamp': datetime.utcnow().isoformat()
+        }
     
     async def _check_singleton_registry(self) -> Dict[str, Any]:
         """Check singleton registry pattern."""

@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from httpx import AsyncClient
+import httpx
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,8 @@ async def test_tool_events_skip_friendly(monkeypatch):
     except Exception:
         pytest.skip("Gateway app unavailable")
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         payload = {
             "session_id": "tool-events-test-session",
             "persona_id": "persona-x",
