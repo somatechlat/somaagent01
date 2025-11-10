@@ -360,7 +360,7 @@ def deabsolute_path(path: str):
 
 
 def fix_dev_path(path: str):
-    "Convert legacy /a0/ paths to modern /git/agent-zero/ paths"
+    "Convert older /a0/ paths to modern /git/agent-zero/ paths"
     from python.helpers.runtime import is_development
 
     if is_development():

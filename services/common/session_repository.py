@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from services.common import runtime_config as cfg
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -82,13 +83,13 @@ class SessionCache(ABC):
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
-        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        raw_url = url or cfg.env("REDIS_URL", "redis://localhost:6379/0")
         self.url = os.path.expandvars(raw_url)
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
         if ttl is None:
             try:
-                ttl = int(os.getenv("SESSION_CACHE_TTL_SECONDS", "900"))
+                ttl = int(cfg.env("SESSION_CACHE_TTL_SECONDS", "900"))
             except ValueError:
                 ttl = 900
         self.default_ttl = ttl if ttl and ttl > 0 else 0
@@ -176,7 +177,7 @@ class SessionEnvelope:
 
 class PostgresSessionStore(SessionStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv(
+        raw_dsn = dsn or cfg.env(
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
         self.dsn = os.path.expandvars(raw_dsn)
@@ -184,8 +185,8 @@ class PostgresSessionStore(SessionStore):
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

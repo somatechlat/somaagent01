@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from services.common import runtime_config as cfg
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
@@ -37,16 +38,16 @@ class MemoryReplicaRow:
 
 class MemoryReplicaStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv(
+        raw_dsn = dsn or cfg.env(
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
-        )
+        ) or "postgresql://soma:soma@localhost:5432/somaagent01"
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
 
             async def _init_conn(conn: asyncpg.Connection) -> None:  # type: ignore[name-defined]
                 """Ensure JSON/JSONB are decoded to Python objects.

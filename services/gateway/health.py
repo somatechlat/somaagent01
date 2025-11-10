@@ -51,8 +51,9 @@ class HealthChecker:
         try:
             import os
             from kafka import KafkaProducer
-            
-            bootstrap_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+            from services.common import runtime_config as cfg
+
+            bootstrap_servers = cfg.env('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092') or 'localhost:9092'
             producer = KafkaProducer(
                 bootstrap_servers=bootstrap_servers,
                 value_serializer=lambda x: str(x).encode('utf-8'),

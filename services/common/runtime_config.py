@@ -127,7 +127,7 @@ def settings() -> SA01Settings:  # type: ignore[override]
 def deployment_mode() -> str:
     """Return the canonical deployment mode (LOCAL | PROD).
 
-    Collapses legacy values (DEV/STAGING/PRODUCTION) into two modes for
+    Collapses historical values (DEV/STAGING/PRODUCTION) into two modes for
     simplified profile selection and conditional behaviour.
     """
     return state().deployment_mode
@@ -174,6 +174,19 @@ def flag(key: str, tenant_id: Optional[str] = None) -> bool:
         if ov is not None:
             return bool(ov)
     return st.features.is_enabled(key)
+
+
+def env(key: str, default: Optional[str] = None) -> str:
+    """Centralized environment access.
+
+    Business logic modules should use this instead of calling os.getenv directly.
+    Only settings/bootstrap modules may access os.getenv themselves.
+    Returns default (or empty string if default is None) when not set.
+    """
+    val = os.getenv(key)
+    if val is None:
+        return "" if default is None else str(default)
+    return val
 
 
 def config_snapshot() -> Optional[ConfigSnapshot]:
