@@ -191,6 +191,41 @@ src/
 
 ---
 
+## 7.1️⃣ Single Entry Surface — Centralization Charter (Authoritative)
+
+Goal: architect the platform with a single public entry surface and single configuration/feature read surface. All external traffic and provider interactions pass through one gateway; all runtime decisions read from one facade.
+
+Scope of “Single Entry Surface”
+- Public HTTP: exactly one public service — the FastAPI Gateway at `GATEWAY_BASE_URL` (canonical port `21016`), serving UI under `/ui` and APIs under `/v1/*`.
+- Streaming: a single SSE stream per session at `/v1/session/{id}/events` powering all real‑time updates (chat, tool, notifications, invalidations). No polling anywhere.
+- Provider mediation: LLM, tools, memory, and Somabrain calls are brokered by Gateway. Workers never hold raw provider credentials or call providers directly.
+- Configuration: one read surface via `services.common.runtime_config` (`cfg.settings()`, `cfg.flag()`, `cfg.config_*` helpers). No direct `os.getenv(` outside bootstrap/settings.
+- Tooling/Models: Gateway owns Tool Catalog and Model Profiles CRUD and resolution. Workers retrieve read‑only projections.
+- Health & Observability: `/v1/health` and `/healthz` exposed only by Gateway; metrics scraped from the single metrics endpoint; traces originate at Gateway.
+
+Enforcement (build‑time and runtime)
+- Lint/Test: a repo‑level test forbids `os.getenv(` outside allowlisted modules (settings/bootstrap) and blocks introducing new HTTP servers outside Gateway.
+- Network tests: Playwright/pytest assert that UI uses only `/v1/*` and `/ui/*`; no legacy or alternate ports/hosts.
+- Provider path: unit/integration tests ensure workers never send `base_url` or provider secrets; Gateway resolves model→provider→base_url and audits.
+- Dependency boundaries: policy, feature flags, and Somabrain are accessed via HTTP clients from Gateway (and designated service clients), never by importing foreign service internals.
+
+Acceptance Criteria (Single Entry Surface)
+- One listening public port in dev/prod (`GATEWAY_PORT=21016`); UI reachable at `WEB_UI_BASE_URL=http://localhost:21016/ui`.
+- `/v1` endpoints exercised by UI and tests only via Gateway; grep shows no additional `uvicorn.run` or public `FastAPI()` apps bound in other services.
+- Grep for `os.getenv(` outside `services/common/settings_*`, `services/common/runtime_config.py`, and explicit bootstrap modules returns zero.
+- Workers do not include provider `base_url`/credentials in any inter‑service payload; Gateway audit logs show resolved provider and normalized base_url per invoke.
+- SSE‑only real‑time; no `/poll`/CSRF endpoints present; reconnection with jittered backoff validated.
+
+Verification Steps
+- Dev up: `make dev-up && curl -sf http://localhost:21016/healthz` → ok.
+- UI smoke: `WEB_UI_BASE_URL=http://localhost:21016/ui` tests pass; network log contains only `/v1/*` and `/ui/*`.
+- Lint/test: `test_no_direct_getenv.py` passes; `grep` checks for stray servers and getenv are enforced in CI.
+
+Governance
+- Any change adding a new public surface, alternative port, or direct provider call must update this section first and provide a migration plan; otherwise the change is rejected at review.
+
+---
+
 *This canonical roadmap supersedes any prior partial roadmaps and should be the only living document describing the overall architecture.*
 
 ## 📚 Integration of Celery into somaagent01 (Canonical)

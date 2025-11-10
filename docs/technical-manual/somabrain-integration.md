@@ -6,7 +6,7 @@ This document describes how SomaAgent01 integrates with SomaBrain across memory,
 
 ## Overview
 
-- Client: `python/integrations/soma_client.py` (aliased as `SomaBrainClient`) implements spec-compliant calls with defensive fallbacks and metrics.
+- Client: `python/integrations/somabrain_client.py` (re-exported via `integrations/somabrain.py`) implements spec-compliant calls with defensive fallbacks and metrics.
 - Runtime: Conversation Worker enriches memory writes with persona metadata; Gateway performs write-through when configured.
 - Policy: Gateway evaluates OPA and (when configured) OpenFGA; decision receipts are recorded to the audit store.
 - Ops: Admin endpoints expose SomaBrain memory metrics and migration (export/import) passthroughs.
@@ -121,14 +121,14 @@ File: `services/tool_executor/main.py`
 - After successful tool result memory write, optional calls to SomaBrain `link` and `plan_suggest` are performed.
 - Guarded by `SOMABRAIN_ENABLE_LINK_PLAN` environment flag; failures do not affect main flow.
 
-## CLI Enhancements (Previously Landed)
+## CLI Enhancements (where present)
 
-- `scripts/constitution_admin.py`
+- `scripts/constitution_admin.py` (if present)
   - Payload dual-shape for validate/load: `{ input: doc, document: doc }`
   - `load` triggers OPA policy regeneration via `POST /opa/policy`
   - New `status` command shows constitution version and OPA policy hash.
 
-- `scripts/persona_admin.py`
+- `scripts/persona_admin.py` (if present)
   - Persona CAS CLI for GET/PUT/DELETE with ETag/If-Match support and conflict handling.
 
 ## Testing

@@ -228,13 +228,22 @@ curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
 curl http://localhost:${GATEWAY_PORT:-21016}/v1/health/live
 # Response: 200 OK
 
+### Prometheus Endpoints
+
+- Gateway: `/metrics` on `GATEWAY_METRICS_PORT` (default 8000)
+- Other services: `/metrics` on their `*_METRICS_PORT` env (see service code). Example defaults observed in-code:
+  - Outbox Sync: `${OUTBOX_SYNC_METRICS_PORT:-9469}`
+  - Memory Sync: `${MEMORY_SYNC_METRICS_PORT:-9471}`
+  - Replicator: `${REPLICATOR_METRICS_PORT}` (env-driven)
+  - Circuit Breakers exporter: `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`
 # Readiness (K8s)
 curl http://localhost:${GATEWAY_PORT:-21016}/v1/health/ready
 # Response: 200 OK (if Kafka/PostgreSQL accessible)
-```
-
-### Health Check Script
-
+**Gateway (canonical names implemented)**:
+- `gateway_requests_total{method,endpoint,status_code}` – Request counts
+- `gateway_request_duration_seconds{method,endpoint}` – Request latency
+- `gateway_sse_connections` – Active SSE connections
+- `sse_messages_sent_total{message_type,session_id}` – SSE message counts
 ```bash
 #!/bin/bash
 # scripts/check_stack.sh
@@ -251,6 +260,17 @@ for service in "${services[@]}"; do
   port="${service##*:}"
   
   if nc -z localhost $port 2>/dev/null; then
+### Health Checks
+
+```bash
+# Comprehensive health
+curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
+
+# K8s style aliases exposed at root
+curl http://localhost:${GATEWAY_PORT:-21016}/live     # liveness
+curl http://localhost:${GATEWAY_PORT:-21016}/ready    # readiness
+curl http://localhost:${GATEWAY_PORT:-21016}/healthz  # health alias
+```
     echo "✅ $name: healthy"
   else
     echo "❌ $name: unhealthy"

@@ -10,20 +10,18 @@
 - **Storage**: 10GB available space
 - **OS**: macOS, Linux, or Windows with WSL2
 
-## Quick Start (Docker)
+## Quick Start (Docker Compose)
 
 ```bash
-# Pull the image
-docker pull agent0ai/agent-zero
+# From the repo root, start the minimal developer stack
+make dev-up
 
-# Run the container
-docker run -p 50001:80 agent0ai/agent-zero
-
-# Verify
-curl -f http://localhost:50001/health || echo "❌ Health check failed"
+# Tail logs or check health
+make dev-logs
+curl -f http://localhost:${GATEWAY_PORT:-21016}/v1/health || echo "❌ Health check failed"
 ```
 
-**Result**: Visit `http://localhost:50001` to access the UI.
+Visit `http://localhost:${GATEWAY_PORT:-21016}/ui` to access the UI.
 
 ## Local Development Setup
 
@@ -42,20 +40,17 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
+### 3. Configure Environment (optional)
+
+Use the provided example as a minimal starting point:
 
 ```bash
-# Copy example environment file
 cp .env.example .env
-
-# Edit with your API keys
-nano .env  # or use your preferred editor
 ```
 
-Required variables:
-- `OPENROUTER_API_KEY` - LLM provider API key
-- `AUTH_PASSWORD` - UI authentication password
-- `SOMABRAIN_BASE_URL` - Memory service URL (default: http://localhost:9696)
+Notes:
+- Provider API keys and model selection are managed via the Gateway UI Settings and stored centrally (do not place provider secrets in `.env`).
+- Infrastructure DSNs and ports may be adjusted via `.env` if needed.
 
 ### 4. Start Infrastructure
 
@@ -77,13 +72,10 @@ make stack-up
 curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
 ```
 
-### 6. Start UI
+### 6. Start UI (local dev option)
 
 ```bash
-# In a new terminal
 make ui
-
-# Verify UI is accessible
 open http://127.0.0.1:3000
 ```
 
@@ -91,7 +83,6 @@ open http://127.0.0.1:3000
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| UI | 20015 | Web interface (Docker) |
 | UI | 3000 | Web interface (local dev) |
 | Gateway | 21016 | API endpoint (configurable via GATEWAY_PORT) |
 | Kafka | 20000 | Event streaming |
