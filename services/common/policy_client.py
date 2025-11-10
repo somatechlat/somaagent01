@@ -31,7 +31,9 @@ class PolicyClient:
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
         self.base_url = base_url or os.getenv("POLICY_BASE_URL", "http://opa:8181")
-        self.data_path = os.getenv("POLICY_DATA_PATH", "/v1/data/soma/allow")
+        # Default to the same decision path used by the gateway's OPA integration
+        # so selective authorize() calls evaluate the canonical rule.
+        self.data_path = os.getenv("POLICY_DATA_PATH", "/v1/data/soma/policy/allow")
         self._client = httpx.AsyncClient(timeout=10.0)
         self.cache_ttl = float(os.getenv("POLICY_CACHE_TTL", "2"))
         # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored

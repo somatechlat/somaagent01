@@ -55,7 +55,35 @@ async def run_test():
 
         page.on("requestfailed", on_request_failed)
 
-        # Open UI (wait for full load, longer timeout)
+        # Optional dev bootstrap (mint JWT) BEFORE loading UI when enabled
+        if os.getenv("DEV_AUTO_JWT", "false").lower() in {"true", "1", "yes", "on"}:
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(url)
+                origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else url.rstrip("/")
+                bootstrap_url = origin + "/v1/auth/dev/bootstrap"
+                # Simple readiness probe (best-effort)
+                try:
+                    await page.request.get(origin + "/healthz", timeout=15000)
+                except Exception:
+                    pass
+                resp = await page.request.post(bootstrap_url, timeout=30000)
+                if resp.ok:
+                    data = await resp.json()
+                    token = data.get("token")
+                    if token:
+                        # Inject token before any UI scripts run
+                        await page.goto("about:blank")
+                        await page.add_init_script(
+                            f"(() => {{ try {{ localStorage.setItem('gateway_jwt', '{token}'); }} catch(e){{}} }})();"
+                        )
+                        print("Dev bootstrap token stored")
+                else:
+                    print("Dev bootstrap request failed status", resp.status)
+            except Exception as e:
+                print("Dev bootstrap error", repr(e))
+
+        # Open UI (wait for full load, longer timeout) after bootstrap
         await page.goto(url, wait_until="load", timeout=60000)
         # Give the app a moment to boot and poll health
         await page.wait_for_timeout(800)

@@ -115,6 +115,33 @@ allow {
   input.context.is_admin
 }
 
+# --- Scheduler Management (UI) ---
+allow {
+  # List tasks within the tenant boundary
+  input.action == "scheduler.task.list"
+  tenant_allows(input)
+}
+
+allow {
+  input.action == "scheduler.task.create"
+  tenant_allows(input)
+}
+
+allow {
+  input.action == "scheduler.task.update"
+  tenant_allows(input)
+}
+
+allow {
+  input.action == "scheduler.task.run"
+  tenant_allows(input)
+}
+
+allow {
+  input.action == "scheduler.task.delete"
+  tenant_allows(input)
+}
+
 # ==============================
 # UTILITY FUNCTIONS
 # ==============================
@@ -153,4 +180,13 @@ exceeds_file_size(size_bytes, max_bytes) {
 # Sensitive settings detection
 is_sensitive_setting(key) {
   key in ["api_key", "secret_key", "password", "token", "private_key"]
+}
+
+# Tenant boundary helper used by scheduler rules
+tenant_allows(input) {
+  some t
+  # Prefer context.allowed_tenant when provided by gateway endpoint
+  t := input.context.allowed_tenant
+  t != ""
+  input.tenant == t
 }
