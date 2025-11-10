@@ -1,178 +1,61 @@
 # Local Development Setup
 
-**Standards**: ISO/IEC 29148§5.2
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
-## One-Page Setup Guide
+## Prerequisites
 
-### Prerequisites Check
+- Python 3.11+
+- Docker & Docker Compose
+- Git
+- Make
+
+## Setup Steps
+
+### 1. Clone Repository
 
 ```bash
-# Python 3.11+
-python3.11 --version
-
-# Docker 20.10+
-docker --version
-
-# Make
-make --version
-
-# Git
-git --version
+git clone https://github.com/agent0ai/agent-zero.git
+cd agent-zero
 ```
 
-### Quick Setup (5 minutes)
+### 2. Create Virtual Environment
 
 ```bash
-# 1. Clone
-git clone https://github.com/somatechlat/somaagent01.git
-cd somaagent01
+python3.11 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+```
 
-# 2. Virtual environment
-python3.11 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+### 3. Install Dependencies
 
-# 3. Install dependencies
+```bash
 pip install -r requirements.txt
+```
 
-# 4. Configure
-cp .env.example .env
-nano .env  # Add your OPENROUTER_API_KEY
+### 4. Start Infrastructure
 
-# 5. Start infrastructure
+```bash
 make deps-up
+```
 
-# 6. Start services
+This starts:
+- Kafka (port 21000)
+- Redis (port 20001)
+- PostgreSQL (port 20002)
+- OPA (port 20009)
+
+### 5. Run Services Locally
+
+```bash
 make stack-up
-
-# 7. Start UI (new terminal)
-make ui
 ```
 
-### Verification
+This runs:
+- Gateway (port 21016)
+- Conversation Worker
+- Tool Executor
+- Memory services
 
-```bash
-# Health check (Gateway)
-curl -fsS http://127.0.0.1:21016/v1/health -D - -o /dev/null
-
-# Open UI
-open http://127.0.0.1:3000
-```
-
-## Detailed Setup
-
-### 1. Python Environment
-
-```bash
-# Create virtual environment
-python3.11 -m venv venv
-
-# Activate
-source venv/bin/activate  # macOS/Linux
-venv\Scripts\activate     # Windows
-
-# Upgrade pip
-pip install --upgrade pip
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install dev dependencies
-pip install -r requirements-dev.txt  # if exists
-```
-
-### 2. Environment Configuration
-
-```bash
-# Copy example
-cp .env.example .env
-
-# Edit configuration
-nano .env
-```
-
-**Required variables**:
-```bash
-# LLM Provider
-OPENROUTER_API_KEY=sk-or-v1-your-key-here
-
-# Authentication
-AUTH_PASSWORD=your-secure-password
-
-# Deployment
-DEPLOYMENT_MODE=DEV
-```
-
-**Optional variables**:
-```bash
-# Ports (defaults shown)
-GATEWAY_PORT=21016
-KAFKA_PORT=21000
-REDIS_PORT=21001
-POSTGRES_PORT=21002
-OPA_PORT=21009
-
-# Logging
-LOG_LEVEL=DEBUG  # DEV mode: DEBUG, PROD: INFO
-
-# Memory
-SOMA_BASE_URL=http://localhost:9696
-```
-
-### 3. Infrastructure Services
-
-```bash
-# Start Kafka, Redis, PostgreSQL, OPA
-make deps-up
-
-# Verify services
-docker compose ps
-
-# Check logs
-docker compose logs kafka
-docker compose logs postgres
-docker compose logs redis
-```
-
-**Wait for services to be ready** (30-60 seconds):
-```bash
-# Kafka ready when you see:
-# "Kafka Server started"
-
-# PostgreSQL ready when you see:
-# "database system is ready to accept connections"
-```
-
-### 4. Database Schema
-
-```bash
-# Schema is auto-created on first gateway start
-# Or manually initialize:
-python scripts/ensure_outbox_schema.py
-```
-
-### 5. Start Services
-
-```bash
-# Terminal 1: Gateway + Workers
-make stack-up
-
-# This starts:
-# - Gateway (port 21016)
-# - Conversation Worker
-# - Tool Executor
-# - Memory Replicator
-# - Memory Sync
-# - Outbox Sync
-```
-
-### 6. Start UI
-
-```bash
-# Terminal 2: UI
-make ui
-
-# UI runs on http://127.0.0.1:3000
-```
+Press `Ctrl+C` to stop.
 
 ## Development Workflow
 
@@ -180,137 +63,129 @@ make ui
 
 ```bash
 # Gateway only
-python -m services.gateway.main
+python -m uvicorn services.gateway.main:app --reload --host 0.0.0.0 --port 8010
 
-# Conversation worker only
+# Conversation Worker only
 python -m services.conversation_worker.main
 
-# With environment variables
-GATEWAY_PORT=8080 python -m services.gateway.main
+# Tool Executor only
+python -m services.tool_executor.main
+```
+
+### Environment Variables
+
+Create `.env`:
+
+```bash
+GATEWAY_PORT=21016
+GATEWAY_INTERNAL_TOKEN=dev-internal-token
+GATEWAY_ENC_KEY=O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=
+KAFKA_BOOTSTRAP_SERVERS=localhost:21000
+REDIS_URL=redis://localhost:20001/0
+POSTGRES_DSN=postgresql://soma:soma@localhost:20002/somaagent01
+OPA_URL=http://localhost:20009
+SOMA_BASE_URL=http://localhost:9696
 ```
 
 ### Hot Reload
 
-Services auto-reload on code changes when running via `make stack-up`.
+Gateway supports `--reload` for live code changes:
 
-To disable:
 ```bash
-# Edit Makefile, remove --reload flag
+make stack-up-reload
 ```
 
-### Database Access
+### Testing
 
 ```bash
-# Connect to PostgreSQL
-docker compose exec postgres psql -U somauser -d somadb
+# Unit tests
+pytest tests/unit/
 
-# Run queries
-SELECT * FROM sessions LIMIT 10;
-SELECT * FROM memory_replica ORDER BY created_at DESC LIMIT 10;
-```
+# Integration tests
+pytest tests/integration/
 
-### Redis Access
+# E2E tests
+make test-e2e
 
-```bash
-# Connect to Redis
-docker compose exec redis redis-cli
-
-# Check keys
-KEYS *
-GET session:abc123:meta
-```
-
-### Kafka Access
-
-```bash
-# List topics
-docker compose exec kafka kafka-topics.sh \
-  --bootstrap-server localhost:9092 \
-  --list
-
-# Consume messages
-docker compose exec kafka kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic conversation.inbound \
-  --from-beginning
-```
-
-## Troubleshooting
-
-### Port Conflicts
-
-```bash
-# Find process using port
-lsof -i :21016
-
-# Kill process
-kill -9 <PID>
-
-# Or change port in .env
-GATEWAY_PORT=8080
-```
-
-### Import Errors
-
-```bash
-# Ensure virtual environment is activated
-which python  # Should show venv path
-
-# Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
-```
-
-### Database Connection Errors
-
-```bash
-# Check PostgreSQL is running
-docker compose ps postgres
-
-# Check logs
-docker compose logs postgres
-
-# Restart
-docker compose restart postgres
-```
-
-### Kafka Not Ready
-
-```bash
-# Check Kafka logs
-docker compose logs kafka
-
-# Wait longer (Kafka takes 30-60s to start)
-sleep 30
-
-# Restart if needed
-docker compose restart kafka
+# All tests
+pytest
 ```
 
 ## IDE Configuration
 
-### VS Code
+### VSCode
+
+`.vscode/settings.json`:
 
 ```json
-// .vscode/settings.json
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "python.linting.enabled": true,
-  "python.linting.pylintEnabled": false,
-  "python.linting.flake8Enabled": true,
-  "python.formatting.provider": "black",
-  "editor.formatOnSave": true
+  "python.linting.ruffEnabled": true,
+  "python.formatting.provider": "black"
 }
 ```
 
 ### PyCharm
 
 1. File → Settings → Project → Python Interpreter
-2. Add Interpreter → Existing Environment
-3. Select `venv/bin/python`
-4. Enable "Black" formatter in Tools → Black
+2. Add Interpreter → Existing environment
+3. Select `.venv/bin/python`
+
+## Debugging
+
+### Gateway
+
+```bash
+# Run with debugger
+python -m debugpy --listen 5678 --wait-for-client -m uvicorn services.gateway.main:app --reload
+```
+
+### Logs
+
+```bash
+# Gateway logs
+docker logs -f somaAgent01_gateway
+
+# All services
+make dev-logs
+
+# Specific service
+docker logs -f somaAgent01_conversation-worker
+```
+
+## Common Tasks
+
+### Reset Database
+
+```bash
+make dev-down-hard
+make dev-up
+```
+
+### Clear Redis Cache
+
+```bash
+docker exec somaAgent01_redis redis-cli FLUSHALL
+```
+
+### View Kafka Topics
+
+```bash
+docker exec somaAgent01_kafka kafka-topics --bootstrap-server localhost:9092 --list
+```
+
+### Consume Kafka Messages
+
+```bash
+docker exec somaAgent01_kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic conversation.inbound \
+  --from-beginning
+```
 
 ## Next Steps
 
-- [Contribution Workflow](./contribution-workflow.md)
 - [Coding Standards](./coding-standards.md)
 - [Testing Guidelines](./testing-guidelines.md)
+- [API Reference](./api-reference.md)

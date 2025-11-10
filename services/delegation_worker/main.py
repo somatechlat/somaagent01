@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Any
 
 from jsonschema import ValidationError
@@ -26,6 +25,7 @@ setup_tracing("delegation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
 class DelegationWorker:
     def __init__(self) -> None:
         from services.common import runtime_config as cfg
+
         self.topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
         self.group = cfg.env("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(

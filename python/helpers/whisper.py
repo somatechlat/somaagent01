@@ -20,11 +20,18 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 LOGGER = logging.getLogger(__name__)
 try:
     from services.common import runtime_config as _cfg
+
     _feature_audio_enabled = bool(_cfg.flag("audio_support"))
 except Exception:
     # Fallback to env when runtime_config is unavailable
     import os as _os
-    _feature_audio_enabled = _os.getenv("FEATURE_AUDIO", "none").lower() not in {"none", "0", "false", "off"}
+
+    _feature_audio_enabled = _os.getenv("FEATURE_AUDIO", "none").lower() not in {
+        "none",
+        "0",
+        "false",
+        "off",
+    }
 
 try:
     if not _feature_audio_enabled:

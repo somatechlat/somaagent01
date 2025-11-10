@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from services.common import runtime_config as cfg
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
 import asyncpg
 from prometheus_client import Counter, Histogram
+
+from services.common import runtime_config as cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +53,10 @@ class OutboxMessage:
 
 class OutboxStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or (cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01") or "postgresql://soma:soma@localhost:5432/somaagent01")
+        self.dsn = dsn or (
+            cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:

@@ -1,10 +1,10 @@
-import os
 import pytest
 
 from services.common.embedding_cache import EmbeddingCache
 from services.common.embeddings import maybe_embed
 
 pytestmark = pytest.mark.asyncio
+
 
 async def test_embedding_cache_basic(monkeypatch):
     monkeypatch.setenv("ENABLE_EMBED_ON_INGEST", "true")
@@ -14,6 +14,7 @@ async def test_embedding_cache_basic(monkeypatch):
     v2 = await maybe_embed("hello world")
     assert v1 == v2
     assert isinstance(v1, list) and len(v1) > 8
+
 
 async def test_embedding_cache_eviction(monkeypatch):
     monkeypatch.setenv("ENABLE_EMBED_ON_INGEST", "true")

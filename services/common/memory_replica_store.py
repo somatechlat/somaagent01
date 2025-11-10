@@ -10,12 +10,13 @@ from __future__ import annotations
 import json
 import logging
 import os
-from services.common import runtime_config as cfg
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
 import asyncpg
+
+from services.common import runtime_config as cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,9 +39,11 @@ class MemoryReplicaRow:
 
 class MemoryReplicaStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or cfg.env(
-            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
-        ) or "postgresql://soma:soma@localhost:5432/somaagent01"
+        raw_dsn = (
+            dsn
+            or cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

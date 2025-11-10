@@ -1,142 +1,219 @@
 # Installation Guide
 
-**Standards**: ISO/IEC 12207§6.4
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
 ## Prerequisites
 
-- **Docker**: 20.10+ (for containerized deployment)
-- **Python**: 3.11+ (for local development)
-- **Memory**: 8GB RAM minimum
-- **Storage**: 10GB available space
-- **OS**: macOS, Linux, or Windows with WSL2
+- **Docker** 20.10+ and **Docker Compose** 2.0+
+- **Python** 3.11+ (for local development)
+- **Git**
+- **Make** (optional, for convenience commands)
+- **8GB RAM minimum** (16GB recommended)
 
-## Quick Start (Docker Compose)
+## Quick Start (Docker)
 
 ```bash
-# From the repo root, start the minimal developer stack
+# Clone the repository
+git clone https://github.com/agent0ai/agent-zero.git
+cd agent-zero
+
+# Start the stack
 make dev-up
 
-# Tail logs or check health
+# Wait for health check
+make health-wait
+
+# Access the UI
+open http://localhost:21016/ui
+```
+
+## Environment Setup
+
+### 1. Create `.env` File
+
+The Makefile auto-creates a minimal `.env`. For custom configuration:
+
+```bash
+# Gateway
+GATEWAY_PORT=21016
+GATEWAY_BASE_URL=http://localhost:21016
+WEB_UI_BASE_URL=http://localhost:21016/ui
+
+# Encryption key for LLM credentials (Fernet urlsafe base64)
+GATEWAY_ENC_KEY=O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=
+
+# Internal token for service-to-service calls
+GATEWAY_INTERNAL_TOKEN=dev-internal-token
+
+# SomaBrain
+SOMA_BASE_URL=http://host.docker.internal:9696
+SOMA_TENANT_ID=public
+SOMA_NAMESPACE=somabrain_ns:public
+
+# Kafka
+KAFKA_PORT=21000
+
+# Redis
+REDIS_PORT=20001
+
+# PostgreSQL
+POSTGRES_PORT=20002
+
+# OPA
+OPA_PORT=20009
+```
+
+### 2. Configure LLM Provider (via UI)
+
+1. Start the stack: `make dev-up`
+2. Open UI: http://localhost:21016/ui
+3. Navigate to **Settings → Model**
+4. Set **Provider**: `groq` (or `openai`, `openrouter`, etc.)
+5. Set **Model**: `llama-3.1-8b-instant`
+6. Navigate to **Settings → API Keys**
+7. Add key: `api_key_groq` with your Groq API key
+8. Click **Save**
+
+**Note**: Credentials are encrypted in Redis. Never put API keys in `.env`.
+
+## Installation Methods
+
+### Method 1: Docker Compose (Recommended)
+
+```bash
+# Start all services
+make dev-up
+
+# Check status
+docker compose -p somaagent01_dev ps
+
+# View logs
 make dev-logs
-curl -f http://localhost:${GATEWAY_PORT:-21016}/v1/health || echo "❌ Health check failed"
+
+# Stop services
+make dev-down
 ```
 
-Visit `http://localhost:${GATEWAY_PORT:-21016}/ui` to access the UI.
-
-## Local Development Setup
-
-### 1. Clone Repository
+### Method 2: Local Development (Python)
 
 ```bash
-git clone https://github.com/somatechlat/somaagent01.git
-cd somaagent01
-```
-
-### 2. Create Virtual Environment
-
-```bash
-python3.11 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment (optional)
-
-Use the provided example as a minimal starting point:
-
-```bash
-cp .env.example .env
-```
-
-Notes:
-- Provider API keys and model selection are managed via the Gateway UI Settings and stored centrally (do not place provider secrets in `.env`).
-- Infrastructure DSNs and ports may be adjusted via `.env` if needed.
-
-### 4. Start Infrastructure
-
-```bash
-# Start Kafka, Redis, PostgreSQL, OPA
+# 1. Start infrastructure only
 make deps-up
 
-# Verify services are healthy
-docker ps | grep -E "kafka|redis|postgres|opa"
-```
+# 2. Create virtual environment
+python3.11 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-### 5. Start Services
+# 3. Install dependencies
+pip install -r requirements.txt
 
-```bash
-# Launch gateway + workers
+# 4. Start services locally
 make stack-up
 
-# Verify gateway is running
-curl http://localhost:${GATEWAY_PORT:-21016}/v1/health
+# 5. In another terminal, run UI (optional)
+make ui
 ```
 
-### 6. Start UI (local dev option)
+### Method 3: Hybrid (Infra in Docker, Services Local)
 
 ```bash
-make ui
-open http://127.0.0.1:3000
+# Start Kafka/Redis/Postgres/OPA
+make deps-up
+
+# Run gateway + workers locally (Ctrl+C to stop)
+make stack-up
+```
+
+## Verification
+
+### Health Checks
+
+```bash
+# Gateway health
+curl http://localhost:21016/v1/health
+
+# Expected response:
+# {"status":"healthy","timestamp":"2025-01-24T...","services":{...}}
+```
+
+### UI Smoke Test
+
+```bash
+make ui-smoke
+```
+
+### E2E Tests
+
+```bash
+make test-e2e
 ```
 
 ## Port Reference
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| UI | 3000 | Web interface (local dev) |
-| Gateway | 21016 | API endpoint (configurable via GATEWAY_PORT) |
-| Kafka | 20000 | Event streaming |
-| Redis | 20001 | Cache |
-| PostgreSQL | 20002 | Database |
-| OPA | 20009 | Policy engine |
-| SomaBrain | 9696 | Memory service |
-
-## Verification
-
-```bash
-# Check all services
-make check-stack
-
-# Expected output:
-# ✅ Kafka: healthy
-# ✅ Redis: healthy
-# ✅ PostgreSQL: healthy
-# ✅ Gateway: healthy
-```
+| Service | Port | URL |
+|---------|------|-----|
+| Gateway + UI | 21016 | http://localhost:21016/ui |
+| Kafka (external) | 21000 | localhost:21000 |
+| Redis | 20001 | localhost:20001 |
+| PostgreSQL | 20002 | localhost:20002 |
+| OPA | 20009 | http://localhost:20009 |
+| Gateway Metrics | 8000 | http://localhost:8000/metrics |
+| Conversation Worker Metrics | 9410 | http://localhost:9410/metrics |
+| Tool Executor Metrics | 9411 | http://localhost:9411/metrics |
 
 ## Troubleshooting
 
-### Port Already in Use
+### Port Conflicts
+
+If ports are already in use, override in `.env`:
 
 ```bash
-# Find process using port
-lsof -i :21016
-
-# Kill process
-kill -9 <PID>
+GATEWAY_PORT=8080
+KAFKA_PORT=9092
 ```
 
-### Docker Compose Fails
+### Container Name Conflicts
 
 ```bash
-# Clean up and restart
-make down
-docker system prune -f
-make up
+# Force cleanup
+make dev-down-clean
+
+# Restart
+make dev-up
 ```
 
-### Database Connection Errors
+### Kafka Not Ready
 
 ```bash
-# Reset database
-docker compose down -v
-docker compose up -d postgres
-sleep 5
-make stack-up
+# Check Kafka health
+docker logs somaAgent01_kafka
+
+# Wait for "Kafka Server started"
 ```
+
+### Gateway 502 Errors
+
+```bash
+# Check if Kafka is reachable
+docker exec somaAgent01_gateway curl -f http://kafka:9092
+
+# Check Gateway logs
+docker logs somaAgent01_gateway
+```
+
+### SomaBrain Connection Failed
+
+Ensure SomaBrain is running on port 9696:
+
+```bash
+curl http://localhost:9696/health
+```
+
+If not running, start SomaBrain separately or adjust `SOMA_BASE_URL`.
 
 ## Next Steps
 
 - [Quick Start Tutorial](./quick-start-tutorial.md)
 - [Features Overview](./features.md)
-- [FAQ](./faq.md)
+- [Troubleshooting Guide](./troubleshooting.md)
+- [Development Setup](../development-manual/local-setup.md)

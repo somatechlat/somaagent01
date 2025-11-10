@@ -81,7 +81,9 @@ async def wait_for_event(
         await consumer.stop()
 
 
-async def wait_for(predicate: Callable[[], Any], *, timeout: float = 5.0, interval: float = 0.05) -> Any:
+async def wait_for(
+    predicate: Callable[[], Any], *, timeout: float = 5.0, interval: float = 0.05
+) -> Any:
     """Generic async wait helper replacing ad-hoc sleep polling.
 
     Calls ``predicate`` repeatedly until it returns a truthy value or timeout.

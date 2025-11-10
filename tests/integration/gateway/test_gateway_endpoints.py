@@ -2,8 +2,8 @@ import asyncio
 from datetime import datetime
 from types import SimpleNamespace
 
-import pytest
 import httpx
+import pytest
 
 from services.gateway import main as gateway_main
 

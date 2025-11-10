@@ -1,8 +1,8 @@
 import os
+
 import pytest
 
 from services.common.embeddings import OpenAIEmbeddings
-
 
 pytestmark = pytest.mark.asyncio
 

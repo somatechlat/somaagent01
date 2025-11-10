@@ -9,15 +9,18 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import time
 from typing import Any, Mapping, Sequence
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
-from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 
 from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.lifecycle_metrics import (
+    now as _lm_now,
+    observe_shutdown as _lm_stop,
+    observe_startup as _lm_start,
+)
 from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_schema,
     MemoryWriteOutbox,
@@ -40,6 +43,7 @@ def _kafka_settings() -> KafkaSettings:
 
 def _env_float(name: str, default: float) -> float:
     from services.common import runtime_config as cfg
+
     try:
         return float(cfg.env(name, str(default)))
     except ValueError:
@@ -48,6 +52,7 @@ def _env_float(name: str, default: float) -> float:
 
 def _env_int(name: str, default: int) -> int:
     from services.common import runtime_config as cfg
+
     try:
         return int(cfg.env(name, str(default)))
     except ValueError:
@@ -57,6 +62,7 @@ def _env_int(name: str, default: int) -> int:
 class MemorySyncWorker:
     def __init__(self) -> None:
         from services.common import runtime_config as cfg
+
         self.store = MemoryWriteOutbox(dsn=cfg.env("POSTGRES_DSN"))
         self.bus = KafkaEventBus(_kafka_settings())
         # Durable publisher requires an OutboxStore for reliability
@@ -170,6 +176,7 @@ class MemorySyncWorker:
         # Success: publish WAL and mark sent
         try:
             from services.common import runtime_config as cfg
+
             wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             wal_event = {
                 "type": "memory.write",
@@ -200,6 +207,7 @@ class MemorySyncWorker:
 
 async def main() -> None:
     from services.common import runtime_config as cfg
+
     logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
     setup_tracing("memory-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
     worker = MemorySyncWorker()

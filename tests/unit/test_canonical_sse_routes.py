@@ -2,19 +2,17 @@
 Perfect canonical backend route tests - testing real SSE endpoints with no mocks.
 These tests verify the new canonical FastAPI endpoints work correctly with real services.
 """
-import asyncio
+
 import json
 import os
 import uuid
-from typing import Dict, Any, List
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from services.gateway.main import app
-from python.integrations.somabrain_client import SomaClient
 from python.integrations.postgres_client import postgres_pool
+from services.gateway.main import app
 
 
 class TestCanonicalSseRoutes:
@@ -33,7 +31,7 @@ class TestCanonicalSseRoutes:
         assert isinstance(data["models"], dict)
         # Verify we have at least one real model
         assert len(data["models"]) > 0
-        
+
         # Check structure of first model
         first_model_key = next(iter(data["models"]))
         model_info = data["models"][first_model_key]
@@ -109,11 +107,11 @@ class TestCanonicalSseRoutes:
     def test_sse_heartbeat_real_services(self):
         """Test SSE heartbeat events from real services."""
         session_id = str(uuid.uuid4())
-        
+
         with self.client.stream("GET", f"/v1/sessions/{session_id}/events") as response:
             assert response.status_code == 200
             assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
-            
+
             # Look for heartbeat event
             events = []
             for chunk in response.iter_lines():
@@ -123,7 +121,7 @@ class TestCanonicalSseRoutes:
                         events.append(json.loads(data))
                     if len(events) >= 2:  # Allow time for heartbeat
                         break
-            
+
             # Should have at least system.keepalive; skip if absent
             heartbeat_events = [e for e in events if e.get("type") == "system.keepalive"]
             if len(heartbeat_events) < 1:
@@ -134,7 +132,7 @@ class TestCanonicalSseRoutes:
         # Test unauthorized access
         response = self.client.get("/v1/weights", headers={"Authorization": "invalid"})
         assert response.status_code == 401
-        
+
         # Test authorized access (assuming we have a valid token setup)
         # This would require proper JWT setup in real environment
         response = self.client.get("/v1/weights")
@@ -143,17 +141,15 @@ class TestCanonicalSseRoutes:
 
     def test_singleton_registry_no_duplicates(self):
         """Test that singleton registry doesn't create duplicate instances."""
-        from integrations.somabrain import client as soma_client_1
-        from integrations.somabrain import client as soma_client_2
-        
+        from integrations.somabrain import client as soma_client_1, client as soma_client_2
+
         # Both imports should return the exact same instance
         assert soma_client_1 is soma_client_2
 
     def test_postgres_connection_reuse(self):
         """Test that Postgres connections are properly reused via singleton."""
-        from integrations.postgres import pool as pool_1
-        from integrations.postgres import pool as pool_2
-        
+        from integrations.postgres import pool as pool_1, pool as pool_2
+
         # Both should be the same pool instance
         assert pool_1 is pool_2
 
@@ -163,13 +159,13 @@ class TestCanonicalSseRoutes:
     async def test_async_sse_flow_real(self):
         """Test async SSE flow with real services."""
         session_id = str(uuid.uuid4())
-        
+
         # Use httpx async client for real async testing
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             async with client.stream("GET", f"/v1/sessions/{session_id}/events") as response:
                 assert response.status_code == 200
-                
+
                 # Collect events
                 events = []
                 async for line in response.aiter_lines():
@@ -179,6 +175,6 @@ class TestCanonicalSseRoutes:
                             events.append(json.loads(data))
                         if len(events) >= 1:
                             break
-                
+
                 if len(events) < 1:
                     pytest.skip("No SSE events observed in test environment")

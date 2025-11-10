@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Any, Optional
 
 from aiokafka.errors import KafkaError
@@ -89,6 +88,7 @@ class DurablePublisher:
         timeout_s: float
         try:
             from services.common import runtime_config as cfg
+
             timeout_s = float(cfg.env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0") or "2.0")
         except Exception:
             timeout_s = 2.0
@@ -97,7 +97,9 @@ class DurablePublisher:
             payload=payload, session_id=session_id, tenant=tenant, provided=headers
         )
         try:
-            await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
+            await asyncio.wait_for(
+                self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s
+            )
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:

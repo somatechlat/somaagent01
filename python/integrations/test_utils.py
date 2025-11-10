@@ -1,4 +1,5 @@
 import pytest
+
 from services.gateway import main as gateway_main
 
 
@@ -7,7 +8,7 @@ def _make_request(
 ) -> pytest.Request:
     """Create a mock request for testing."""
     from starlette.requests import Request
-    
+
     header_list = [
         (key.lower().encode("latin-1"), value.encode("latin-1"))
         for key, value in (headers or {}).items()
@@ -35,8 +36,7 @@ def _stub_jwt_module(
     claims: dict[str, str] | None = None,
 ):
     """Patch jwt helpers to provide deterministic behavior for tests."""
-    import jwt
-    
+
     header = header or {"alg": "HS256"}
     claims = claims or {"sub": "user-123", "tenant": "tenant-42", "scope": "read"}
 

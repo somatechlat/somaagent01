@@ -24,7 +24,7 @@ class BudgetManager:
     ) -> None:
         from services.common import runtime_config as cfg
 
-        raw_url = url or cfg.env("REDIS_URL", "redis://localhost:6379/0")
+        raw_url = url or cfg.settings().redis_url or "redis://localhost:6379/0"
         self.url = os.path.expandvars(raw_url)
         self.prefix = cfg.env("BUDGET_PREFIX", "budget:tokens")
         self.limit = int(cfg.env("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
@@ -67,8 +67,10 @@ class BudgetManager:
         persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
         if persona_key in os.environ:
             from services.common import runtime_config as cfg
+
             return int(cfg.env(persona_key, "0")) or None
         from services.common import runtime_config as cfg
+
         limit = int(cfg.env(env_key, "0"))
         if limit == 0:
             limit = self.limit

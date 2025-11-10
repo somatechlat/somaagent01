@@ -31,6 +31,7 @@ class DLQMessage:
 class DLQStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         from services.common import runtime_config as cfg
+
         raw_dsn = dsn or cfg.env(
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )

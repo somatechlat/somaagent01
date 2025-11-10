@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import json
 import os
-from services.common import runtime_config as cfg
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
 import asyncpg
+
+from services.common import runtime_config as cfg
 
 
 @dataclass(slots=True)
@@ -35,9 +36,11 @@ class MemoryWriteItem:
 
 class MemoryWriteOutbox:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or cfg.env(
-            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
-        ) or "postgresql://soma:soma@localhost:5432/somaagent01"
+        raw_dsn = (
+            dsn
+            or cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -279,20 +282,22 @@ class MemoryWriteOutbox:
                     WHERE created_at >= NOW() - INTERVAL '1 hour'
                     """
                 )
-                
+
                 compliance_rate = 0.0
                 if sla_data["total_sent"] and sla_data["total_sent"] > 0:
-                    compliance_rate = float(sla_data["sla_compliant"] or 0) / float(sla_data["total_sent"])
-                
+                    compliance_rate = float(sla_data["sla_compliant"] or 0) / float(
+                        sla_data["total_sent"]
+                    )
+
                 return {
                     "sla_compliance_rate": compliance_rate,
                     "avg_latency_seconds": float(sla_data["avg_latency"] or 0),
                     "max_latency_seconds": float(sla_data["max_latency"] or 0),
-                    "total_processed": int(sla_data["total_sent"] or 0)
+                    "total_processed": int(sla_data["total_sent"] or 0),
                 }
         except Exception as e:
             return {"error": str(e), "sla_compliance_rate": 0.0}
-    
+
     async def cleanup_stale_retries(self, max_age_hours: int = 24) -> int:
         """Clean up stale retry attempts to prevent infinite loops."""
         try:
@@ -305,13 +310,14 @@ class MemoryWriteOutbox:
                     AND retry_count >= 10
                     AND updated_at < NOW() - INTERVAL '%s hours'
                     RETURNING 1
-                    """ % max_age_hours
+                    """
+                    % max_age_hours
                 )
                 return len(result)
         except Exception as e:
             print(f"Cleanup failed: {e}")
             return 0
-    
+
     async def get_tenant_metrics(self, tenant: str) -> dict[str, Any]:
         """Get per-tenant memory metrics for monitoring."""
         try:
@@ -329,9 +335,9 @@ class MemoryWriteOutbox:
                     FROM memory_write_outbox 
                     WHERE tenant = $1
                     """,
-                    tenant
+                    tenant,
                 )
-                
+
                 return {
                     "tenant": tenant,
                     "total_messages": int(tenant_data["total_messages"] or 0),
@@ -339,7 +345,7 @@ class MemoryWriteOutbox:
                     "failed": int(tenant_data["failed"] or 0),
                     "sent": int(tenant_data["sent"] or 0),
                     "avg_retries": float(tenant_data["avg_retries"] or 0),
-                    "latest_message": str(tenant_data["latest_message"] or "")
+                    "latest_message": str(tenant_data["latest_message"] or ""),
                 }
         except Exception as e:
             return {"tenant": tenant, "error": str(e)}
@@ -350,43 +356,52 @@ class MemoryWriteOutbox:
         for field in required_fields:
             if field not in payload:
                 raise ValueError(f"Missing required field: {field}")
-        
+
         # Validate tenant/session consistency
         tenant = payload.get("tenant") or (payload.get("metadata") or {}).get("tenant")
         session_id = payload.get("session_id") or (payload.get("metadata") or {}).get("session_id")
-        
+
         if not tenant:
             raise ValueError("Tenant is required for memory operations")
-        
+
         if not session_id:
             raise ValueError("Session ID is required for memory operations")
 
-    async def safe_enqueue(self, *, payload: dict[str, Any], tenant: str, session_id: str, 
-                          persona_id: str | None = None, idempotency_key: str | None = None) -> int | None:
+    async def safe_enqueue(
+        self,
+        *,
+        payload: dict[str, Any],
+        tenant: str,
+        session_id: str,
+        persona_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> int | None:
         """Enqueue with full validation and safety checks."""
         try:
             # Validate payload
             self._validate_payload(payload)
-            
+
             # Ensure idempotency key if missing
             if not idempotency_key:
                 from services.common.idempotency import generate_for_memory_payload
+
                 idempotency_key = generate_for_memory_payload(payload)
-            
+
             # Rate limit check
             if await self._check_rate_limit(tenant, session_id):
                 raise RuntimeError(f"Rate limit exceeded for tenant {tenant}")
-            
+
             return await self.enqueue(
                 payload=payload,
                 tenant=tenant,
                 session_id=session_id,
                 persona_id=persona_id,
-                idempotency_key=idempotency_key
+                idempotency_key=idempotency_key,
             )
         except Exception as e:
             # Log error and return None
             import logging
+
             logging.error(f"Failed to enqueue memory write: {e}")
             return None
 
@@ -401,11 +416,13 @@ class MemoryWriteOutbox:
                     WHERE tenant = $1 AND session_id = $2
                     AND created_at > NOW() - INTERVAL '1 minute'
                     """,
-                    tenant, session_id
+                    tenant,
+                    session_id,
                 )
                 return int(recent_count or 0) >= 100  # 100 messages per minute per session
         except Exception:
             return False
+
 
 MIGRATION_SQL = """
 CREATE TABLE IF NOT EXISTS memory_write_outbox (

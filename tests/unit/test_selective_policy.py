@@ -6,15 +6,11 @@ without performing real HTTP calls.
 
 from __future__ import annotations
 
-import asyncio
-import types
-from typing import Any
-
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from services.common.authorization import authorize, require_policy, get_policy_client
+from services.common.authorization import authorize
 from services.common.policy_client import PolicyClient
 
 

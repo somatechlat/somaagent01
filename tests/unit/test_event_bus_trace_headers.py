@@ -1,4 +1,3 @@
-import pytest
 from opentelemetry.trace import SpanContext, TraceFlags, TraceState
 
 from services.common.event_bus import _build_trace_headers

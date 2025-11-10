@@ -33,12 +33,10 @@ probes so Kubernetes can rely on current state.
 from __future__ import annotations
 
 import asyncio
-import os
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 import asyncpg
-from fastapi import HTTPException  # only imported for docstrings / examples
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import RedisSessionCache
@@ -49,6 +47,7 @@ COMPONENTS = ["postgres", "kafka", "redis"]
 
 def _timeout_seconds() -> float:
     from services.common import runtime_config as cfg
+
     try:
         return float(cfg.env("READINESS_CHECK_TIMEOUT", "2.0"))
     except ValueError:
@@ -57,9 +56,8 @@ def _timeout_seconds() -> float:
 
 async def _check_postgres() -> Dict[str, Any]:
     from services.common import runtime_config as cfg
-    dsn = cfg.env(
-        "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
-    )
+
+    dsn = cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
     try:
         pool = await asyncpg.create_pool(dsn, min_size=0, max_size=1)
         async with pool.acquire() as conn:
@@ -77,6 +75,7 @@ async def _check_postgres() -> Dict[str, Any]:
 async def _check_kafka() -> Dict[str, Any]:
     # Allow tests to disable Kafka probe to avoid noisy resource warnings when broker absent
     from services.common import runtime_config as cfg
+
     if cfg.env("READINESS_DISABLE_KAFKA", "false").lower() in {"true", "1", "yes", "on"}:
         return {"status": "healthy", "message": "Kafka probe disabled"}
     bus = None
@@ -97,7 +96,8 @@ async def _check_kafka() -> Dict[str, Any]:
 async def _check_redis() -> Dict[str, Any]:
     try:
         from services.common import runtime_config as cfg
-        cache = RedisSessionCache(url=cfg.env("REDIS_URL", "redis://localhost:6379/0"))
+
+        cache = RedisSessionCache(url=cfg.settings().redis_url or "redis://localhost:6379/0")
         await cache.ping()
         return {"status": "healthy", "message": "Redis PING ok"}
     except Exception as exc:  # pragma: no cover
@@ -126,9 +126,12 @@ async def readiness_summary() -> Dict[str, Any]:
     A component marked *unhealthy* causes overall status `unready`.
     """
     timeout = _timeout_seconds()
-    tasks = [asyncio.create_task(asyncio.wait_for(_CHECK_MAP[name](), timeout=timeout)) for name in COMPONENTS]
+    tasks = [
+        asyncio.create_task(asyncio.wait_for(_CHECK_MAP[name](), timeout=timeout))
+        for name in COMPONENTS
+    ]
     results: Dict[str, Dict[str, Any]] = {}
-    for name, task in zip(COMPONENTS, tasks):
+    for name, task in zip(COMPONENTS, tasks, strict=False):
         try:
             results[name] = await task
         except Exception as exc:  # timeout or unexpected

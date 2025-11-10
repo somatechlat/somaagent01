@@ -1,171 +1,131 @@
-# Architecture
+# System Architecture
 
-**Standards**: ISO/IEC 42010
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
-## System Context
+## Overview
 
-SomaAgent01 is a distributed conversational AI platform using microservices architecture with event-driven communication via Kafka.
+SomaAgent01 is a microservices-based conversational AI platform built on event-driven architecture with perfect memory persistence via SomaBrain.
 
-## Components
+## Core Services
 
 ### Gateway (`services/gateway/main.py`)
-
-**Purpose**: Public-facing HTTP API with SSE streaming
-
-**Responsibilities**:
-- Accept user messages via POST /v1/session/message
-- Publish to conversation.inbound topic
-- Stream responses from conversation.outbound via SSE (WebSocket may be added later)
-- Authenticate requests (JWT/API keys)
-- Enforce OPA policies
-- Manage sessions in PostgreSQL
-- Cache session metadata in Redis
-
-**Technology**: FastAPI, aiokafka, asyncpg, redis-py
-
-**Ports**:
-- HTTP: 21016 (default; configurable via `GATEWAY_PORT`)
-- Metrics: 9600 (Prometheus)
+- **Port**: 21016 (default)
+- **Role**: FastAPI edge API handling HTTP/WebSocket/SSE
+- **Responsibilities**:
+  - User message ingestion (`POST /v1/session/message`)
+  - SSE streaming (`GET /v1/session/{session_id}/events`)
+  - Settings management (UI-driven, encrypted in Redis)
+  - LLM credential storage (encrypted with `GATEWAY_ENC_KEY`)
+  - Write-through to SomaBrain
+  - Rate limiting, JWT auth, OPA/OpenFGA policy enforcement
 
 ### Conversation Worker (`services/conversation_worker/main.py`)
-
-**Purpose**: Process user messages and generate responses
-
-**Responsibilities**:
-- Consume conversation.inbound topic
-- Analyze message intent/sentiment
-- Fetch conversation history from PostgreSQL
-- Call SLM (OpenAI-compatible API) for response generation
-- Publish response to conversation.outbound
-- Write user and assistant messages to SomaBrain via HTTP
-- Emit memory.wal events
-- Handle escalation to larger models
-- Track token budgets per tenant/persona
-
-**Technology**: aiokafka, httpx, asyncpg
-
-**Metrics**: 9601
+- **Kafka Topics**: Consumes `conversation.inbound`, publishes to `conversation.outbound`
+- **Role**: Orchestrates LLM calls and tool execution
+- **Responsibilities**:
+  - Process user messages from Kafka
+  - Call Gateway `/v1/llm/invoke/stream` with stored credentials
+  - Emit tool requests to `tool.requests` topic
+  - Stream assistant responses to `conversation.outbound`
+  - Write memories to SomaBrain
 
 ### Tool Executor (`services/tool_executor/main.py`)
+- **Kafka Topics**: Consumes `tool.requests`, publishes to `tool.results`
+- **Role**: Deterministic tool execution
+- **Responsibilities**:
+  - Execute registered tools (code execution, search, memory, etc.)
+  - Sandbox management
+  - Resource limits enforcement
+  - Audit logging
 
-**Purpose**: Execute tools requested by conversation worker
+### Memory Services
+- **Memory Replicator** (`services/memory_replicator/main.py`): Consumes `memory.wal`, replicates to Postgres
+- **Memory Sync** (`services/memory_sync/main.py`): Retry failed SomaBrain writes from outbox
+- **Outbox Sync** (`services/outbox_sync/main.py`): Ensures at-least-once Kafka delivery
 
-**Responsibilities**:
-- Consume tool.requests topic
-- Execute tool functions (code execution, web search, etc.)
-- Publish results to tool.results topic
-- Sandbox execution environment
+## Infrastructure
 
-**Technology**: aiokafka, subprocess
-
-**Metrics**: 9602
-
-### Memory Replicator (`services/memory_replicator/main.py`)
-
-**Purpose**: Replicate memory events to PostgreSQL
-
-**Responsibilities**:
-- Consume memory.wal topic
-- Insert events into memory_replica table
-- Track replication lag
-- Send failed events to memory.wal.dlq
-
-**Technology**: aiokafka, asyncpg
-
-**Metrics**: 9603
-
-### Memory Sync (`services/memory_sync/main.py`)
-
-**Purpose**: Retry failed memory writes
-
-**Responsibilities**:
-- Poll memory_write_outbox table
-- Retry SomaBrain HTTP calls
-- Emit memory.wal on success
-- Exponential backoff for retries
-
-**Technology**: asyncpg, httpx
-
-**Metrics**: 9604
-
-### Outbox Sync (`services/outbox_sync/main.py`)
-
-**Purpose**: Retry failed Kafka publishes
-
-**Responsibilities**:
-- Poll outbox table
-- Retry Kafka publish
-- Delete on success
-- Exponential backoff
-
-**Technology**: aiokafka, asyncpg
-
-**Metrics**: 9415
-
-## Data Stores
-
-### PostgreSQL
-
-**Schema**:
-- `sessions`: session_id, persona_id, tenant, metadata, created_at, updated_at
-- `session_events`: id, session_id, occurred_at, payload
-- `outbox`: id, topic, payload, dedupe_key, created_at, published_at
-- `memory_replica`: id, event_id, session_id, persona_id, tenant, role, payload, wal_timestamp, created_at
-- `memory_write_outbox`: id, payload, tenant, session_id, persona_id, idempotency_key, created_at, retry_count
-- `dlq`: id, topic, event, error, created_at
-- `model_profiles`: role, deployment_mode, model, base_url, temperature, kwargs
-- `ui_settings`: id, document (JSONB)
-- `attachments`: id, tenant, session_id, filename, mime, size, sha256, status, content, created_at
+### Kafka (KRaft mode)
+- **Internal**: `kafka:9092` (PLAINTEXT)
+- **External**: `localhost:21000` (EXTERNAL)
+- **Topics**: `conversation.inbound`, `conversation.outbound`, `tool.requests`, `tool.results`, `memory.wal`
+- **Partitions**: 3 (default)
 
 ### Redis
+- **Port**: 20001
+- **Usage**: Session cache, LLM credentials (encrypted), rate limiting
 
-**Keys**:
-- `session:{session_id}:meta`: Session metadata cache
-- `api_key:{key_id}`: API key details
-- `llm_cred:{provider}`: Encrypted LLM credentials (Fernet)
-- `budget:{tenant}:{persona_id}`: Token usage counters
+### PostgreSQL
+- **Port**: 20002
+- **Databases**: `somaagent01`, `openfga`
+- **Tables**: `sessions`, `session_events`, `memory_replica`, `attachments`, `outbox`, `audit_log`
 
-### Kafka
+### OPA (Open Policy Agent)
+- **Port**: 20009
+- **Policy**: `policy/tool_policy.rego`
+- **Decision Path**: `/v1/data/soma/policy/allow`
 
-**Configuration**:
-- Mode: KRaft (no Zookeeper)
-- Partitions: 3 per topic
-- Replication: 1 (single broker)
-- Retention: 168 hours (7 days)
+### SomaBrain
+- **URL**: `http://host.docker.internal:9696`
+- **Role**: Perfect memory storage and recall
+- **Endpoints**: `/remember`, `/recall`, `/constitution/*`
 
-## Communication Patterns
+## Data Flow
 
-### Request-Response (HTTP)
+1. **User Message Ingestion**:
+   ```
+   UI → Gateway POST /v1/session/message → Kafka (conversation.inbound)
+   ```
 
-```
-Client → Gateway → SomaBrain HTTP API
-```
+2. **Conversation Processing**:
+   ```
+   Conversation Worker ← Kafka (conversation.inbound)
+   → Gateway /v1/llm/invoke/stream (with credentials)
+   → Kafka (tool.requests) if tools needed
+   → Kafka (conversation.outbound) for streaming
+   → SomaBrain /remember for persistence
+   ```
 
-### Event-Driven (Kafka)
+3. **Tool Execution**:
+   ```
+   Tool Executor ← Kafka (tool.requests)
+   → Execute tool in sandbox
+   → Kafka (tool.results)
+   ```
 
-```
-Gateway → conversation.inbound → Conversation Worker → conversation.outbound → Gateway
-```
+4. **Memory Persistence**:
+   ```
+   Gateway/Worker → SomaBrain /remember
+   → Kafka (memory.wal)
+   → Memory Replicator → Postgres (memory_replica)
+   ```
 
-### Outbox Pattern
+5. **SSE Streaming**:
+   ```
+   UI ← Gateway SSE /v1/session/{session_id}/events
+   ← Kafka (conversation.outbound)
+   ```
 
-```
-Service → PostgreSQL outbox → Outbox Sync → Kafka
-```
+## Security
 
-## Deployment Modes
-
-- **DEV**: Local development, env-based LLM keys
-- **STAGING**: Pre-production, Gateway-managed credentials
-- **PROD**: Production, Gateway-managed credentials, strict auth
+- **Authentication**: JWT (cookie or Bearer token)
+- **Authorization**: OPA policy + OpenFGA tenant access
+- **Secrets**: Encrypted in Redis with Fernet (`GATEWAY_ENC_KEY`)
+- **Rate Limiting**: Redis-based fixed-window (configurable)
+- **Audit**: All actions logged to `audit_log` table
 
 ## Observability
 
-- **Metrics**: Prometheus (per-service ports 9600-9610)
-- **Tracing**: OpenTelemetry (OTLP endpoint configurable)
-- **Logging**: Structured JSON logs to stdout
+- **Metrics**: Prometheus on port 8000 (Gateway), 9410-9413 (workers)
+- **Tracing**: OpenTelemetry with W3C Trace Context
+- **Logging**: Structured JSON logs
+- **Health**: `/v1/health`, `/ready`, `/live` endpoints
 
-## Standards Compliance
+## Configuration
 
-- **ISO/IEC 42010**: Architecture viewpoints (functional, deployment, information)
-- **ISO/IEC 12207§6.3.3**: Software architectural design
+- **Runtime Config**: `services.common.runtime_config` (centralized env facade)
+- **Feature Flags**: `SA01_ENABLE_*` environment variables
+- **Model Profiles**: Managed via UI Settings → Model
+- **Tool Catalog**: Centralized in Gateway, distributed to workers
+
+See `architecture.puml` for C4 diagram.

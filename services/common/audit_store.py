@@ -84,13 +84,19 @@ class AuditStore:
 class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
         from services.common import runtime_config as cfg
-        raw_dsn = dsn or cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01") or "postgresql://soma:soma@localhost:5432/somaagent01"
+
+        raw_dsn = (
+            dsn
+            or cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
             from services.common import runtime_config as cfg
+
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(
@@ -282,6 +288,7 @@ class InMemoryAuditStore(AuditStore):
 
 def from_env() -> AuditStore:
     from services.common import runtime_config as cfg
+
     mode = (cfg.env("AUDIT_STORE_MODE", "postgres") or "postgres").lower()
     if mode == "memory":
         return InMemoryAuditStore()

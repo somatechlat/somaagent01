@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -18,6 +17,7 @@ class RouteDecision:
 class RouterClient:
     def __init__(self, base_url: Optional[str] = None) -> None:
         from services.common import runtime_config as cfg
+
         self.base_url = base_url or cfg.env("ROUTER_URL")
         self._client = httpx.AsyncClient(timeout=5.0) if self.base_url else None
 

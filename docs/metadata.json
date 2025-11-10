@@ -1,0 +1,16 @@
+{
+  "title": "somaStackPropagation Documentation",
+  "version": "1.0.0",
+  "last_updated": "2025-01-XX",
+  "owner": "Documentation Team",
+  "project": "somaAgent01",
+  "standards": [
+    "ISO/IEC 12207",
+    "ISO/IEC 26512",
+    "ISO/IEC 26514",
+    "ISO/IEC 26515",
+    "ISO/IEC 42010",
+    "ISO 21500"
+  ],
+  "badge": "![Version](https://img.shields.io/badge/version-1.0.0-blue)"
+}

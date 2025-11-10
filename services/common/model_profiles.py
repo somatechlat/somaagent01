@@ -32,6 +32,7 @@ class ModelProfileStore:
         # (set by docker-compose) over any baked settings. Fall back to provided
         # dsn or a localhost dev default.
         from services.common import runtime_config as cfg
+
         raw_dsn = cfg.env(
             "POSTGRES_DSN",
             dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
@@ -44,11 +45,13 @@ class ModelProfileStore:
         # Respect the same POSTGRES_DSN env override here too to avoid mismatches
         # when SA01_POSTGRES_DSN is set in .env but docker provides POSTGRES_DSN.
         from services.common import runtime_config as cfg
+
         return cls(dsn=cfg.env("POSTGRES_DSN", settings.postgres_dsn))
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
             from services.common import runtime_config as cfg
+
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
             self._pool = await asyncpg.create_pool(

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import time
-from prometheus_client import Histogram, CollectorRegistry, REGISTRY
+
+from prometheus_client import Histogram, REGISTRY
 
 # Centralized lifecycle histograms used by all services/workers
 _startup = None
 _shutdown = None
+
 
 def _ensure_metrics():
     global _startup, _shutdown
@@ -13,9 +15,9 @@ def _ensure_metrics():
         return _startup, _shutdown
     # Avoid duplicate registration errors in test runs by checking existing collectors
     for c in list(REGISTRY._collector_to_names.keys()):  # type: ignore[attr-defined]
-        if getattr(c, '_name', '') == 'service_startup_seconds':
+        if getattr(c, "_name", "") == "service_startup_seconds":
             _startup = c
-        if getattr(c, '_name', '') == 'service_shutdown_seconds':
+        if getattr(c, "_name", "") == "service_shutdown_seconds":
             _shutdown = c
     if _startup is None:
         _startup = Histogram(

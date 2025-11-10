@@ -1,10 +1,13 @@
-import asyncio
-import pytest
 from types import SimpleNamespace
-from services.common.authorization import authorize, get_policy_client
+
+import pytest
+
+from services.common.authorization import authorize
+
 
 class DummyRequest(SimpleNamespace):
     headers: dict
+
 
 @pytest.mark.asyncio
 async def test_operations_admin_allow(monkeypatch):
@@ -19,7 +22,13 @@ async def test_operations_admin_allow(monkeypatch):
     # Reset internal singleton if present
     auth_mod._POLICY_CLIENT = None  # type: ignore[attr-defined]
     req = DummyRequest(headers={})
-    await authorize(request=req, action="ops.memory.list", resource="OperationsAdministration", context={"tenant": "t1"})
+    await authorize(
+        request=req,
+        action="ops.memory.list",
+        resource="OperationsAdministration",
+        context={"tenant": "t1"},
+    )
+
 
 @pytest.mark.asyncio
 async def test_operations_admin_deny(monkeypatch):
@@ -31,4 +40,9 @@ async def test_operations_admin_deny(monkeypatch):
     monkeypatch.setattr(auth_mod.PolicyClient, "evaluate", deny_eval)
     req = DummyRequest(headers={})
     with pytest.raises(Exception):
-        await authorize(request=req, action="ops.memory.list", resource="OperationsAdministration", context={"tenant": "t1"})
+        await authorize(
+            request=req,
+            action="ops.memory.list",
+            resource="OperationsAdministration",
+            context={"tenant": "t1"},
+        )

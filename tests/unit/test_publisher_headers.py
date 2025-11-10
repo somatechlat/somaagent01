@@ -1,5 +1,5 @@
 import asyncio
-import types
+
 import pytest
 
 pytestmark = pytest.mark.asyncio
@@ -22,6 +22,7 @@ class DummyProducer:
 class DummyKafkaBus:
     def __init__(self):
         from services.common.event_bus import KafkaEventBus
+
         self._producer = DummyProducer()
         # Reuse settings but bypass start logic
         self._bus = KafkaEventBus()
@@ -88,7 +89,12 @@ async def test_durable_publisher_outbox_fallback(monkeypatch):
 
     outbox = DummyOutbox()
     pub = DurablePublisher(bus=FailingBus(), outbox=outbox)
-    payload = {"event_id": "e999", "type": "system.event", "session_id": "sX", "metadata": {"tenant": "tY"}}
+    payload = {
+        "event_id": "e999",
+        "type": "system.event",
+        "session_id": "sX",
+        "metadata": {"tenant": "tY"},
+    }
     res = await pub.publish("sys", payload, session_id="sX", tenant="tY", fallback=True)
     assert res["published"] is False and res["enqueued"] is True
     # Headers persisted to outbox

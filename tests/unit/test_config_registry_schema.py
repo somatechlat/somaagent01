@@ -2,10 +2,9 @@ import json
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator, ValidationError
+from jsonschema import ValidationError
 
 from services.common.config_registry import ConfigRegistry
-
 
 SCHEMA_PATH = Path("schemas/config/registry.v1.schema.json")
 

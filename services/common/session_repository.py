@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-from services.common import runtime_config as cfg
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -18,7 +17,11 @@ import asyncpg
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
 
-from services.common import error_classifier as _errclass, masking as _masking
+from services.common import (
+    error_classifier as _errclass,
+    masking as _masking,
+    runtime_config as cfg,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +86,7 @@ class SessionCache(ABC):
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
-        raw_url = url or cfg.env("REDIS_URL", "redis://localhost:6379/0")
+        raw_url = url or cfg.settings().redis_url or "redis://localhost:6379/0"
         self.url = os.path.expandvars(raw_url)
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
@@ -278,6 +281,7 @@ class PostgresSessionStore(SessionStore):
                     }
                     # Error classification (flag-driven)
                     from services.common import runtime_config as cfg
+
                     use_classifier = cfg.flag("error_classifier")
                     if use_classifier:
                         meta = event.get("metadata") or {}
@@ -296,6 +300,7 @@ class PostgresSessionStore(SessionStore):
 
             # Optional masking (only for assistant/tool/system roles and user-visible message)
             from services.common import runtime_config as cfg
+
             masking = cfg.flag("content_masking")
             if masking:
                 try:

@@ -27,10 +27,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from services.common.config_registry import ConfigRegistry, ConfigSnapshot
-from services.common.features import FeatureRegistry, build_default_registry
-from services.common.settings_sa01 import SA01Settings
 from observability.metrics import metrics_collector
+from services.common.config_registry import ConfigRegistry, ConfigSnapshot
+from services.common.features import build_default_registry, FeatureRegistry
+from services.common.settings_sa01 import SA01Settings
 
 
 @dataclass(slots=True)
@@ -40,6 +40,7 @@ class _RuntimeState:
     config: Optional[ConfigRegistry]
     override_resolver: Optional[Callable[[str, Optional[str]], Optional[bool]]]
     deployment_mode: str
+    external_mode: str
 
 
 _STATE: Optional[_RuntimeState] = None
@@ -87,22 +88,31 @@ def init_runtime_config(
     settings = SA01Settings.from_env()
     features = build_default_registry()
     config = _load_config_registry()
-    # Canonical deployment mode consolidation:
-    # LOCAL (full-local dev) and PROD (production/staging) only.
-    # Derive canonical mode strictly from settings (env normalization handled there)
+    # Deployment mode centralization
+    # External switch via SA01_DEPLOYMENT_MODE (DEV|PROD) overrides legacy settings
+    ext = (os.getenv("SA01_DEPLOYMENT_MODE") or "").strip().upper()
+    if ext not in {"DEV", "PROD", ""}:
+        # invalid value -> default to DEV semantics (strict like prod) but log-safe fallback
+        ext = "DEV"
+    # Determine internal canonical mode used by existing code paths: LOCAL|PROD
+    # Map DEV -> LOCAL (development profiles), PROD/STAGING/PRODUCTION -> PROD
     raw_mode = (settings.deployment_mode or "LOCAL").upper()
-    if raw_mode in {"DEV", "LOCAL"}:
-        canonical_mode = "LOCAL"
-    elif raw_mode in {"PROD", "STAGING", "PRODUCTION"}:
-        canonical_mode = "PROD"
+    if ext:
+        external_mode = ext
     else:
+        # Derive external from legacy envs
+        external_mode = "DEV" if raw_mode in {"DEV", "LOCAL"} else "PROD"
+    if external_mode == "DEV":
         canonical_mode = "LOCAL"
+    else:
+        canonical_mode = "PROD"
     _STATE = _RuntimeState(
         settings=settings,
         features=features,
         config=config,
         override_resolver=override_resolver,
         deployment_mode=canonical_mode,
+        external_mode=external_mode,
     )
     try:
         # Emit deployment mode metric once at init
@@ -133,29 +143,17 @@ def deployment_mode() -> str:
     return state().deployment_mode
 
 
-def conversation_policy_bypass_enabled() -> bool:
-    """Return True if conversation policy checks may be bypassed.
+def external_deployment_mode() -> str:
+    """Return external deployment mode switch (DEV | PROD).
 
-    Centralized via FeatureRegistry flag `conversation_policy_bypass`.
-    Mode gate: only effective in LOCAL; forced False in PROD.
+    This reflects `SA01_DEPLOYMENT_MODE` if provided; otherwise derived from
+    legacy settings. DEV is enforced to behave like PROD (no bypass), but
+    remains a distinct label for observability/logging.
     """
-    if deployment_mode() != "LOCAL":
-        return False
-    # In LOCAL/dev, policy bypass is allowed by default (no env flag required)
-    # Tests assert this default; explicit disabling can be added later via registry.
-    return True
+    return state().external_mode
 
 
-def test_policy_bypass_enabled() -> bool:
-    """Return True if gateway selective-authorization may bypass policy in tests.
-
-    Honours `TESTING` env unless explicitly disabled via `DISABLE_TEST_POLICY_BYPASS`.
-    Intended for unit/integration tests; returns False in PROD by convention.
-    """
-    # Allow in any environment when TESTING is set, unless explicitly disabled.
-    if os.getenv("DISABLE_TEST_POLICY_BYPASS") in {"1", "true", "True", "on"}:
-        return False
-    return os.getenv("TESTING") in {"1", "true", "True"}
+# Hard delete: no policy bypass functions; all policy checks enforced uniformly
 
 
 def flag(key: str, tenant_id: Optional[str] = None) -> bool:

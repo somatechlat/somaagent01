@@ -6,7 +6,6 @@ import asyncio
 import datetime
 import io
 import logging
-import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict
@@ -164,6 +163,7 @@ class FileReadTool(BaseTool):
         if not isinstance(path_arg, str):
             raise ToolExecutionError("'path' argument is required")
         from services.common import runtime_config as cfg
+
         base_dir = Path(cfg.env("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
@@ -229,6 +229,7 @@ class CanvasAppendTool(BaseTool):
         persona_id = args.get("persona_id")
 
         from services.common import runtime_config as cfg
+
         canvas_url = cfg.env("CANVAS_SERVICE_URL", "http://localhost:8014")
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
@@ -291,10 +292,12 @@ class IngestDocumentTool(BaseTool):
             raise ToolExecutionError("'attachment_id' is required")
 
         from services.common import runtime_config as cfg
+
         base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         # Harden internal token handling: only default in LOCAL, require explicit in PROD
         try:
             from services.common.runtime_config import deployment_mode as _dep_mode
+
             mode = _dep_mode()
         except Exception:
             # Fallback to LOCAL without reading deprecated env vars

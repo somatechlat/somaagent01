@@ -11,7 +11,6 @@ All other business logic must use `services.common.runtime_config.env()`.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +20,7 @@ ALLOWLIST = {
     REPO_ROOT / "services/common/settings_sa01.py",
     REPO_ROOT / "services/common/features.py",
 }
+
 
 def _is_allowed(path: Path) -> bool:
     if path in ALLOWLIST:
@@ -48,6 +48,8 @@ def test_no_direct_getenv_outside_allowlist() -> None:
             for line_no, line in enumerate(text.splitlines(), start=1):
                 if "os.getenv(" in line:
                     offending.append(f"{py.relative_to(REPO_ROOT)}:{line_no}:{line.strip()}")
-    assert not offending, (
-        "Direct os.getenv usage found outside allowlist. Use runtime_config.env():\n" + "\n".join(offending)
+    assert (
+        not offending
+    ), "Direct os.getenv usage found outside allowlist. Use runtime_config.env():\n" + "\n".join(
+        offending
     )

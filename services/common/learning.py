@@ -11,9 +11,9 @@ without raising so the main chat flow remains resilient.
 Metrics emitted via Prometheus counters/histograms defined here to avoid
 gateway tight coupling. The gateway or workers can import and call functions.
 """
+
 from __future__ import annotations
 
-import json
 import time
 from typing import Any, Dict, List, Optional
 
@@ -39,13 +39,16 @@ LEARNING_REWARD_TOTAL = Counter(
     labelnames=("result",),
 )
 
+
 def _client() -> httpx.AsyncClient:
     timeout = float(cfg.config_get("overlays.learning.timeout_seconds", 10) or 10)
     return httpx.AsyncClient(timeout=timeout)
 
+
 def _base_url() -> str:
     # Derive from runtime config; gateway already sets SOMA_BASE_URL
     return cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+
 
 async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
     if not cfg.flag("learning_context"):
@@ -65,7 +68,21 @@ async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
     except Exception:
         LEARNING_REQUESTS_TOTAL.labels(endpoint, "error").inc()
         LEARNING_REQUEST_LATENCY_SECONDS.labels(endpoint).observe(time.perf_counter() - t0)
+        # In LOCAL/dev mode, provide a minimal stub to keep canonical routes usable
+        try:
+            if cfg.deployment_mode() == "LOCAL":
+                return {
+                    "models": {
+                        "default": {
+                            "weight": 1.0,
+                            "capabilities": ["chat", "memory"],
+                        }
+                    }
+                }
+        except Exception:
+            pass
         return {}
+
 
 async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Return additional contextual messages to prepend/append.
@@ -97,7 +114,10 @@ async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List
         LEARNING_REQUEST_LATENCY_SECONDS.labels(endpoint).observe(time.perf_counter() - t0)
         return []
 
-async def publish_reward(session_id: str, signal: str, value: float, meta: Optional[Dict[str, Any]] = None) -> bool:
+
+async def publish_reward(
+    session_id: str, signal: str, value: float, meta: Optional[Dict[str, Any]] = None
+) -> bool:
     if not cfg.flag("learning_context"):
         return False
     endpoint = "reward"

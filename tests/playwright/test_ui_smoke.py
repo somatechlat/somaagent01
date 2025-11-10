@@ -59,6 +59,7 @@ async def run_test():
         if os.getenv("DEV_AUTO_JWT", "false").lower() in {"true", "1", "yes", "on"}:
             try:
                 from urllib.parse import urlparse
+
                 parsed = urlparse(url)
                 origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else url.rstrip("/")
                 bootstrap_url = origin + "/v1/auth/dev/bootstrap"
