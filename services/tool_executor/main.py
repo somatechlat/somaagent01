@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import os
 import time
 import uuid
 from typing import Any
@@ -14,9 +12,15 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common import runtime_config as cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.idempotency import generate_for_memory_payload
+from services.common.lifecycle_metrics import (
+    now as _lm_now,
+    observe_shutdown as _lm_stop,
+    observe_startup as _lm_start,
+)
 from services.common.logging_config import setup_logging
 from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_outbox_schema,
@@ -24,7 +28,6 @@ from services.common.memory_write_outbox import (
 )
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common import runtime_config as cfg
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
@@ -32,7 +35,6 @@ from services.common.session_repository import PostgresSessionStore
 from services.common.settings_sa01 import SA01Settings
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
-from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.tool_executor.execution_engine import ExecutionEngine
@@ -135,7 +137,7 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
         bootstrap_servers=cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
+            "SA01_KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
         ),
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
@@ -145,7 +147,7 @@ def _kafka_settings() -> KafkaSettings:
 
 
 def _redis_url() -> str:
-    return cfg.env("REDIS_URL", SERVICE_SETTINGS.redis_url)
+    return SERVICE_SETTINGS.redis_url
 
 
 def _tenant_config_path() -> str:
@@ -171,7 +173,7 @@ class ToolExecutor:
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.tenant_config = TenantConfig(path=_tenant_config_path())
         self.policy = PolicyClient(
-            base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
+            base_url=SERVICE_SETTINGS.opa_url,
             tenant_config=self.tenant_config,
         )
         self.store = PostgresSessionStore(dsn=SERVICE_SETTINGS.postgres_dsn)
@@ -201,9 +203,7 @@ class ToolExecutor:
             "results": cfg.env(
                 "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
             ),
-            "group": cfg.env(
-                "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
-            ),
+            "group": cfg.env("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
         }
         self._audit_store: _AuditStore | None = None
 

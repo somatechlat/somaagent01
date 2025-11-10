@@ -21,4 +21,3 @@ def test_health_banner_no_polling_interval():
     src = read(path)
     assert "setInterval(" not in src, "health-banner should not use setInterval"
     assert "healthCheckInterval" not in src, "healthCheckInterval state should be removed"
-

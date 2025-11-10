@@ -9,7 +9,7 @@ endpoints can be added later without breaking existing imports.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import httpx
 

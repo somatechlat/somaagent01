@@ -1,5 +1,3 @@
-import os
-import re
 from pathlib import Path
 
 
@@ -18,24 +16,14 @@ def test_no_legacy_mode_env_in_python_sources():
     ]
     for p in python_files:
         content = p.read_text(encoding="utf-8", errors="ignore")
-        assert (
-            "SOMA_AGENT_MODE" not in content
-        ), f"Legacy SOMA_AGENT_MODE found in: {p}"
+        assert "SOMA_AGENT_MODE" not in content, f"Legacy SOMA_AGENT_MODE found in: {p}"
         assert "SA01_ENV" not in content, f"Legacy SA01_ENV found in: {p}"
     # POLICY_FAIL_OPEN may appear in comments, but should not influence logic.
 
 
-def test_policy_bypass_is_centralized():
-    from services.common.runtime_config import conversation_policy_bypass_enabled, init_runtime_config
+def test_no_policy_bypass_functions_present():
+    import services.common.runtime_config as rc
 
-    os.environ["SOMA_AGENT_ENV"] = "DEV"
-    # No longer set DISABLE_CONVERSATION_POLICY (removed legacy env)
-    init_runtime_config()
-    assert conversation_policy_bypass_enabled() is True
-
-    os.environ["SOMA_AGENT_ENV"] = "PROD"
-    # Legacy bypass env removed; ensure PROD still denies bypass
-    init_runtime_config()
-    assert (
-        conversation_policy_bypass_enabled() is False
-    ), "Bypass must be disabled in PROD regardless of env flag"
+    # Hard delete: no policy bypass functions should remain
+    assert not hasattr(rc, "conversation_policy_bypass_enabled")
+    assert not hasattr(rc, "test_policy_bypass_enabled")

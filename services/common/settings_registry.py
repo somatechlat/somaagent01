@@ -4,21 +4,21 @@ This centralizes retrieval of UI settings document, dialogue model profile, and
 credential presence so routes can build consistent UI sections without duplicating
 overlay logic or failing hard when backing stores are unavailable.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-import os
 import copy
+from typing import Any, Dict, List, Optional
 
-from services.common.ui_settings_store import UiSettingsStore
 from services.gateway.main import (
-    ui_get_defaults,
-    ui_convert_out,
-    get_ui_settings_store,
-    get_llm_credentials_store,
-    PROFILE_STORE,
     APP_SETTINGS,
+    get_llm_credentials_store,
+    get_ui_settings_store,
+    PROFILE_STORE,
+    ui_convert_out,
+    ui_get_defaults,
 )
+
 
 class SettingsRegistry:
     def __init__(self) -> None:
@@ -86,7 +86,10 @@ class SettingsRegistry:
                                 fld["value"] = val
                         else:
                             fld["value"] = val
-                    if fid in {"rfc_url", "rfc_port_http", "rfc_port_ssh", "shell_interface"} and fid in agent_cfg:
+                    if (
+                        fid in {"rfc_url", "rfc_port_http", "rfc_port_ssh", "shell_interface"}
+                        and fid in agent_cfg
+                    ):
                         fld["value"] = agent_cfg.get(fid)
                     if fid == "rfc_password":
                         try:
@@ -102,13 +105,17 @@ class SettingsRegistry:
                                 fld["type"] = "password"
                         except Exception:
                             pass
-                    if fid in {
-                        "mcp_client_init_timeout",
-                        "mcp_client_tool_timeout",
-                        "mcp_server_enabled",
-                        "mcp_server_token",
-                        "a2a_server_enabled",
-                    } and fid in agent_cfg:
+                    if (
+                        fid
+                        in {
+                            "mcp_client_init_timeout",
+                            "mcp_client_tool_timeout",
+                            "mcp_server_enabled",
+                            "mcp_server_token",
+                            "a2a_server_enabled",
+                        }
+                        and fid in agent_cfg
+                    ):
                         fld["value"] = agent_cfg.get(fid)
                     if fid == "mcp_servers" and fid in agent_cfg:
                         fld["value"] = agent_cfg.get(fid)
@@ -172,6 +179,7 @@ class SettingsRegistry:
             pass
 
         return sections
+
 
 _registry: Optional[SettingsRegistry] = None
 

@@ -15,7 +15,8 @@ import asyncio
 import logging
 import signal
 from typing import Awaitable, Callable, Optional
-from services.common.lifecycle_metrics import observe_shutdown as _lm_stop, now as _lm_now
+
+from services.common.lifecycle_metrics import now as _lm_now, observe_shutdown as _lm_stop
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,13 +42,16 @@ def run_service(
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    stop_flag = {'stopping': False}
+    stop_flag = {"stopping": False}
 
     def _request_shutdown(signame: str) -> None:  # pragma: no cover (signal path)
-        if stop_flag['stopping']:
+        if stop_flag["stopping"]:
             return
-        stop_flag['stopping'] = True
-        LOGGER.info("Signal received; initiating shutdown", extra={"service": service_name, "signal": signame})
+        stop_flag["stopping"] = True
+        LOGGER.info(
+            "Signal received; initiating shutdown",
+            extra={"service": service_name, "signal": signame},
+        )
         for task in asyncio.all_tasks(loop):
             task.cancel()
 
@@ -64,7 +68,9 @@ def run_service(
         except asyncio.CancelledError:  # cooperative shutdown
             pass
         except Exception as exc:  # pragma: no cover - unexpected runtime errors
-            LOGGER.exception("Service main crashed", extra={"service": service_name, "error": str(exc)})
+            LOGGER.exception(
+                "Service main crashed", extra={"service": service_name, "error": str(exc)}
+            )
         finally:
             if shutdown_coro is not None:
                 try:

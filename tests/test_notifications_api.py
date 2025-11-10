@@ -1,8 +1,8 @@
 import os
 
+import httpx
 import pytest
 from fastapi import status
-import httpx
 
 from services.gateway.main import app, get_notifications_store
 

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib as _hashlib
-import os
 from typing import Any, Mapping, Optional
 
 
@@ -45,6 +44,7 @@ def generate_for_memory_payload(
 ) -> str:
     meta = payload.get("metadata") or {}
     from services.common import runtime_config as cfg
+
     tenant = payload.get("tenant") or meta.get("tenant") or cfg.env("SOMA_TENANT_ID") or "default"
     # Memory sub-namespace fallback should use SOMA_MEMORY_NAMESPACE (e.g. "wm")
     ns = (

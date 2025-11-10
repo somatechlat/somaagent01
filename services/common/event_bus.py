@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Optional
 
@@ -39,7 +38,11 @@ def _build_trace_headers(span_ctx) -> list[tuple[str, bytes]]:
         trace_id_hex = f"{span_ctx.trace_id:032x}"
         span_id_hex = f"{span_ctx.span_id:016x}"
         # TraceFlags sampled bit reflected by low bit (0x01) when enabled
-        sampled_flag = 0x01 if getattr(span_ctx, "trace_flags", None) and int(span_ctx.trace_flags) & 0x01 else 0x00
+        sampled_flag = (
+            0x01
+            if getattr(span_ctx, "trace_flags", None) and int(span_ctx.trace_flags) & 0x01
+            else 0x00
+        )
         traceparent = f"00-{trace_id_hex}-{span_id_hex}-{sampled_flag:02x}"  # version 00
         headers = [
             ("trace_id", trace_id_hex.encode("utf-8")),
@@ -62,8 +65,9 @@ class KafkaSettings:
     @classmethod
     def from_env(cls) -> "KafkaSettings":
         from services.common import runtime_config as cfg
+
         return cls(
-            bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092") or "kafka:9092",
+            bootstrap_servers=cfg.settings().kafka_bootstrap_servers or "kafka:9092",
             security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT") or "PLAINTEXT",
             sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
             sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
@@ -111,7 +115,9 @@ class KafkaEventBus:
             finally:
                 self._producer = None
 
-    async def publish(self, topic: str, payload: Any, headers: Optional[dict[str, Any]] = None) -> None:
+    async def publish(
+        self, topic: str, payload: Any, headers: Optional[dict[str, Any]] = None
+    ) -> None:
         producer = await self._ensure_producer()
         with TRACER.start_as_current_span(
             "kafka.publish",
@@ -158,7 +164,14 @@ class KafkaEventBus:
                     for k, v in trace_hdrs:
                         if k in {"trace_id", "span_id"}:
                             payload["trace"].setdefault(k, v.decode("utf-8", errors="ignore"))
-                    tp = next((v.decode("utf-8", errors="ignore") for k, v in trace_hdrs if k == "traceparent"), None)
+                    tp = next(
+                        (
+                            v.decode("utf-8", errors="ignore")
+                            for k, v in trace_hdrs
+                            if k == "traceparent"
+                        ),
+                        None,
+                    )
                     if tp:
                         payload["trace"].setdefault("traceparent", tp)
             except Exception:  # pragma: no cover - never fail publish on logging concerns
@@ -200,6 +213,7 @@ class KafkaEventBus:
         # allow tuning via environment variables without code changes.
         try:
             from services.common import runtime_config as cfg
+
             fetch_wait_ms = int(cfg.env("KAFKA_FETCH_MAX_WAIT_MS", "20") or "20")
             fetch_min_bytes = int(cfg.env("KAFKA_FETCH_MIN_BYTES", "1") or "1")
             kwargs.update(
@@ -228,7 +242,9 @@ class KafkaEventBus:
                 # Surface trace headers into payload if not already present (header preference over body).
                 try:
                     if isinstance(message.headers, list):
-                        hdr_map = {k: v.decode("utf-8", errors="ignore") for k, v in message.headers}
+                        hdr_map = {
+                            k: v.decode("utf-8", errors="ignore") for k, v in message.headers
+                        }
                         if hdr_map.get("trace_id") and hdr_map.get("span_id"):
                             data.setdefault("trace", {})
                             data["trace"].setdefault("trace_id", hdr_map["trace_id"])

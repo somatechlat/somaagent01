@@ -6,13 +6,13 @@ only for sensitive endpoints instead of globally applying middleware.
 
 from __future__ import annotations
 
+import logging
 import time
 from functools import wraps
 from typing import Any, Awaitable, Callable, Dict
 
 from fastapi import HTTPException, Request
 from prometheus_client import Counter, Histogram, REGISTRY
-import logging
 
 from services.common.policy_client import PolicyClient, PolicyRequest
 
@@ -51,24 +51,7 @@ async def authorize(
     ctx = context or {}
     tenant = request.headers.get("X-Tenant-Id", "default")
     persona = request.headers.get("X-Persona-Id")
-    # Test-mode bypass: centralized via runtime_config
-    from services.common.runtime_config import test_policy_bypass_enabled
-    if test_policy_bypass_enabled():
-        # Allow all in test mode and log a structured decision
-        AUTH_DECISIONS.labels(action=action, result="allow").inc()
-        AUTH_DURATION.labels(action=action).observe(0.0)
-        logging.getLogger("authz").info(
-            "authz decision",
-            extra={
-                "action": action,
-                "resource": resource,
-                "tenant": tenant,
-                "persona_id": persona,
-                "result": "allow",
-                "mode": "test-bypass",
-            },
-        )
-        return {"tenant": tenant, "persona_id": persona, "action": action, "resource": resource}
+    # Hard delete of test bypass: always evaluate real policy
     policy_req = PolicyRequest(
         tenant=tenant,
         persona_id=persona,
@@ -141,6 +124,7 @@ def require_policy(action: str, resource: str) -> Callable:
         return _inner
 
     return _decorator
+
 
 __all__ = [
     "authorize",

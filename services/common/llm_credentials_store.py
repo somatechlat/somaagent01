@@ -10,7 +10,6 @@ missing, the Gateway refuses to store credentials.
 from __future__ import annotations
 
 import base64
-import os
 from typing import Optional
 
 import redis.asyncio as redis
@@ -22,8 +21,10 @@ class LlmCredentialsStore:
         self, *, redis_url: Optional[str] = None, namespace: str = "gateway:llm_credentials"
     ) -> None:
         from services.common import runtime_config as cfg
+
         self._r: redis.Redis = redis.from_url(
-            redis_url or cfg.env("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True
+            redis_url or cfg.settings().redis_url or "redis://localhost:6379/0",
+            decode_responses=True,
         )
         self._ns = namespace
         self._fernet = self._load_fernet()
@@ -32,6 +33,7 @@ class LlmCredentialsStore:
 
     def _load_fernet(self) -> Fernet:
         from services.common import runtime_config as cfg
+
         key = cfg.env("GATEWAY_ENC_KEY")
         if not key:
             raise RuntimeError("GATEWAY_ENC_KEY is required to store LLM credentials securely")

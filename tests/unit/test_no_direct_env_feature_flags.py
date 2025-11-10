@@ -24,7 +24,8 @@ def test_no_direct_env_escalation_flags():
 
 
 def test_runtime_config_escalation_flags():
-    from services.common.runtime_config import init_runtime_config, flag
+    from services.common.runtime_config import flag, init_runtime_config
+
     os.environ["SOMA_AGENT_ENV"] = "DEV"
     os.environ["ESCALATION_ENABLED"] = "true"
     os.environ["ESCALATION_FALLBACK_ENABLED"] = "true"

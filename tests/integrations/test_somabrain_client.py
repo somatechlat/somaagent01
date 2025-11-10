@@ -11,11 +11,8 @@ They verify that:
 
 from __future__ import annotations
 
-import os
-
 import pytest
 import respx
-from httpx import Response
 
 # Import after setting env var in each test to ensure the module picks up the value.
 

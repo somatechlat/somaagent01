@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
@@ -38,6 +37,7 @@ class ExecutionEngine:
         self._resources = resources
         ensure_metrics_exporter()
         from services.common import runtime_config as cfg
+
         self._circuit_failure_threshold = int(
             cfg.env("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
         )

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
@@ -71,6 +70,7 @@ def setup_logging(default_level: str | None = None) -> None:
         return
 
     from services.common import runtime_config as cfg
+
     level_name = default_level or cfg.env("LOG_LEVEL", "INFO")
     level = getattr(logging, level_name.upper(), logging.INFO)
 

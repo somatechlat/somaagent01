@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Literal, Optional
 
 Profile = Literal["minimal", "standard", "enhanced", "max"]
 State = Literal["on", "degraded", "disabled"]
@@ -258,4 +258,4 @@ def build_default_registry() -> FeatureRegistry:
         ),
     ]
 
-    return FeatureRegistry(descriptors=descriptors, profile=profile) 
+    return FeatureRegistry(descriptors=descriptors, profile=profile)

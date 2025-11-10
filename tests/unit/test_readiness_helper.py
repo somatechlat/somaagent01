@@ -1,6 +1,3 @@
-import asyncio
-import os
-
 import pytest
 
 from services.common.readiness import readiness_summary

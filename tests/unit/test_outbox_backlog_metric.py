@@ -1,5 +1,3 @@
-import types
-
 from services.outbox_sync.main import OUTBOX_BACKLOG, OutboxSyncWorker
 
 
@@ -32,6 +30,7 @@ async def _run_one_loop(worker):
     # Run a single iteration of the loop body logic we need (probe + backlog + claim)
     # We mimic the structure inside start() without starting infinite loop.
     from services.outbox_sync.main import EFFECTIVE_BATCH
+
     worker._health_checked_at = 0  # force probe
     await worker._maybe_probe_health()
     bsize, interval = worker._compute_effective_limits()

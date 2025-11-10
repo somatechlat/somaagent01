@@ -1,9 +1,7 @@
-import os
 import pytest
 
-from services.common.embeddings import maybe_embed
 from services.common import runtime_config as cfg
-
+from services.common.embeddings import maybe_embed
 
 pytestmark = pytest.mark.asyncio
 

@@ -20,11 +20,7 @@ class ConversationPolicyEnforcer:
         metadata: dict,
     ) -> bool:
         """Check whether an inbound user message is permitted."""
-        # Centralized bypass (LOCAL only) handled by runtime_config
-        from services.common.runtime_config import conversation_policy_bypass_enabled
-
-        if conversation_policy_bypass_enabled():
-            return True
+        # Hard delete of LOCAL bypass: always enforce policy
         request = PolicyRequest(
             tenant=tenant,
             persona_id=persona_id,

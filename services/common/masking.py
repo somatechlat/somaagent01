@@ -14,11 +14,11 @@ idempotent and only applies to string fields.
 from __future__ import annotations
 
 import json
-import os
-from services.common import runtime_config as cfg
 import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
+
+from services.common import runtime_config as cfg
 
 try:  # Metrics are optional in some test contexts
     from prometheus_client import Counter

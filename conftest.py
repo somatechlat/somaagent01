@@ -65,6 +65,7 @@ os.environ.setdefault("TESTING", "1")
 # Make tool catalog conveniently available as `catalog` for tests that reference it directly
 try:
     import builtins as _builtins
+
     from integrations.tool_catalog import catalog as _catalog
 
     if not hasattr(_builtins, "catalog"):

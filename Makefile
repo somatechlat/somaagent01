@@ -453,6 +453,11 @@ test-e2e:
 	@echo "Running E2E tests ..."
 	@[ -x ./.venv/bin/python ] && ./.venv/bin/python -m pytest -q tests/e2e || pytest -q tests/e2e
 
+.PHONY: preflight
+preflight:
+	@echo "Running runtime preflight (canonical env + OPA reachability) ..."
+	python scripts/preflight.py
+
 .PHONY: test-live deps-up-live
 
 # Start dependencies + core stack, then run the entire test suite against real services
@@ -478,3 +483,28 @@ test-live-only:
 	PYTHONDONTWRITEBYTECODE=1 pytest -vv
 
  
+# ==============================================================================
+# Code Quality - Single Entry Point (VIBE)
+# ==============================================================================
+
+.PHONY: quality format lint typecheck test
+
+quality: format lint typecheck test
+	@echo "✅ All quality checks passed"
+
+format:
+	@echo "Formatting code..."
+	black .
+	ruff check --fix .
+
+lint:
+	@echo "Linting code..."
+	ruff check .
+
+typecheck:
+	@echo "Type checking..."
+	mypy services/ python/ --ignore-missing-imports
+
+test:
+	@echo "Running tests..."
+	pytest --cov=services --cov=python --cov-report=term-missing

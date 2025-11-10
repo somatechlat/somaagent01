@@ -7,14 +7,14 @@ environment toggles. It enforces fail-closed by default.
 
 from __future__ import annotations
 
+import os
+from typing import Any, Dict
+
+import httpx
+from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.exceptions import HTTPException
-import os
-import json
-import httpx
-from typing import Any, Dict
 
 from observability.metrics import metrics_collector
 
@@ -26,9 +26,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
         super().__init__(app)
         base = os.getenv("SOMA_BASE_URL", "http://host.docker.internal:9696").rstrip("/")
         self.evaluate_url = (
-            evaluate_url
-            or os.getenv("POLICY_EVALUATE_URL")
-            or f"{base}/v1/policy/evaluate"
+            evaluate_url or os.getenv("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )
         # Deprecated: always enforce fail-closed to avoid security bypass via env
         self.fail_open = False
@@ -36,7 +34,12 @@ class EnforcePolicy(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         # Fast-path allow for health and metrics to avoid boot loops
         path = str(getattr(request, "url", ""))
-        if request.url.path in {"/live", "/ready", "/healthz", "/metrics"} or request.url.path.startswith("/health"):
+        if request.url.path in {
+            "/live",
+            "/ready",
+            "/healthz",
+            "/metrics",
+        } or request.url.path.startswith("/health"):
             return await call_next(request)
 
         # Build minimal evaluation payload
@@ -86,7 +89,9 @@ def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
     # FastAPI will pass the app when adding middleware; returning the class is fine
     return EnforcePolicy  # type: ignore[return-value]
 
+
 def opa_client() -> EnforcePolicy:  # compatibility alias expected by some tests
     return EnforcePolicy  # type: ignore[return-value]
+
 
 __all__ = ["enforce_policy", "EnforcePolicy", "opa_client"]

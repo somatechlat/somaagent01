@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-import os
 import time
 from contextlib import suppress
 from typing import Optional
@@ -23,6 +22,11 @@ from aiokafka.errors import KafkaError
 from prometheus_client import Counter, Gauge, start_http_server
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.lifecycle_metrics import (
+    now as _lm_now,
+    observe_shutdown as _lm_stop,
+    observe_startup as _lm_start,
+)
 from services.common.outbox_repository import (
     ensure_schema,
     OUTBOX_PUBLISH_LATENCY,
@@ -30,7 +34,6 @@ from services.common.outbox_repository import (
     OutboxStore,
 )
 from services.common.tracing import setup_tracing
-from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +68,7 @@ OUTBOX_FAILURE_RATIO = Gauge(
 
 def _env_float(name: str, default: float) -> float:
     from services.common import runtime_config as cfg
+
     try:
         return float(cfg.env(name, str(default)))
     except ValueError:
@@ -73,6 +77,7 @@ def _env_float(name: str, default: float) -> float:
 
 def _env_int(name: str, default: int) -> int:
     from services.common import runtime_config as cfg
+
     try:
         return int(cfg.env(name, str(default)))
     except ValueError:
@@ -181,6 +186,7 @@ class OutboxSyncWorker:
         - down: request error/timeout/non-200
         """
         from services.common import runtime_config as cfg
+
         base = cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
@@ -257,8 +263,9 @@ class OutboxSyncWorker:
 
 async def main() -> None:
     from services.common import runtime_config as cfg
+
     logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
-    setup_tracing("outbox-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
+    setup_tracing("outbox-sync", endpoint=cfg.settings().otlp_endpoint)
     # Optional metrics server
     metrics_port = int(cfg.env("OUTBOX_SYNC_METRICS_PORT", "9469"))
     start_http_server(metrics_port)

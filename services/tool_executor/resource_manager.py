@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import os
-from services.common import runtime_config as cfg
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+
+from services.common import runtime_config as cfg
 
 
 @dataclass

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import threading
 from collections import OrderedDict
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 try:  # optional metrics
     from prometheus_client import Counter
@@ -19,12 +19,16 @@ if Counter:
         labelnames=("event",),  # hit|miss|evict|store
     )
 else:  # pragma: no cover
+
     class _Dummy:
         def labels(self, *_args, **_kwargs):
             return self
+
         def inc(self, *_args, **_kwargs):
             pass
+
     EMBED_CACHE_EVENTS = _Dummy()  # type: ignore
+
 
 class EmbeddingCache:
     """Thread-safe LRU embedding cache.
@@ -33,6 +37,7 @@ class EmbeddingCache:
     - SHA256 of UTF-8 text (exact) to avoid collisions.
     - Size-limited; least-recently-used eviction.
     """
+
     def __init__(self, capacity: int = 2048) -> None:
         self.capacity = max(1, capacity)
         self._data: "OrderedDict[str, List[float]]" = OrderedDict()
@@ -73,8 +78,10 @@ class EmbeddingCache:
         with _CACHE_LOCK:
             return {"size": len(self._data), "capacity": self.capacity}
 
+
 # Global singleton (simple usage pattern)
 _GLOBAL_CACHE: EmbeddingCache | None = None
+
 
 def get_cache() -> EmbeddingCache:
     global _GLOBAL_CACHE

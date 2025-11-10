@@ -49,8 +49,12 @@ class ToolCatalog:
             description="Search indexed content and knowledge bases",
             category="search",
             parameters=[
-                ToolParameter(name="query", type="string", description="Search query", required=True),
-                ToolParameter(name="top_k", type="integer", description="Max results", required=False, default=5),
+                ToolParameter(
+                    name="query", type="string", description="Search query", required=True
+                ),
+                ToolParameter(
+                    name="top_k", type="int", description="Max results", required=False, default=5
+                ),
             ],
         )
         # Memory store (alias expected by tests)
@@ -60,8 +64,16 @@ class ToolCatalog:
             category="memory",
             parameters=[
                 ToolParameter(name="key", type="string", description="Memory key", required=True),
-                ToolParameter(name="value", type="string", description="Value to store", required=True),
-                ToolParameter(name="namespace", type="string", description="Memory namespace", required=False, default="wm"),
+                ToolParameter(
+                    name="value", type="string", description="Value to store", required=True
+                ),
+                ToolParameter(
+                    name="namespace",
+                    type="string",
+                    description="Memory namespace",
+                    required=False,
+                    default="wm",
+                ),
             ],
         )
         # Memory recall
@@ -70,8 +82,16 @@ class ToolCatalog:
             description="Recall memories for a query",
             category="memory",
             parameters=[
-                ToolParameter(name="query", type="string", description="Recall query", required=True),
-                ToolParameter(name="top_k", type="integer", description="Number of results", required=False, default=3),
+                ToolParameter(
+                    name="query", type="string", description="Recall query", required=True
+                ),
+                ToolParameter(
+                    name="top_k",
+                    type="int",
+                    description="Number of results",
+                    required=False,
+                    default=3,
+                ),
             ],
         )
 

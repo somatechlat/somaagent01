@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import os
-import math
-from services.common.embedding_cache import get_cache
 from abc import ABC, abstractmethod
 from typing import List, Sequence
 
 import httpx
 from prometheus_client import Counter, Histogram
 
+from services.common.embedding_cache import get_cache
 
 EMBED_REQUESTS = Counter(
     "embeddings_requests_total",
@@ -30,10 +28,15 @@ class EmbeddingsProvider(ABC):
 
 
 class OpenAIEmbeddings(EmbeddingsProvider):
-    def __init__(self, *, api_key: str | None = None, base_url: str | None = None, model: str | None = None) -> None:
+    def __init__(
+        self, *, api_key: str | None = None, base_url: str | None = None, model: str | None = None
+    ) -> None:
         from services.common import runtime_config as cfg
+
         self.api_key = api_key or cfg.env("OPENAI_API_KEY") or ""
-        self.base_url = (base_url or cfg.env("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+        self.base_url = (
+            base_url or cfg.env("OPENAI_BASE_URL") or "https://api.openai.com/v1"
+        ).rstrip("/")
         self.model = (model or cfg.env("EMBEDDINGS_MODEL") or "text-embedding-3-small").strip()
 
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
@@ -51,12 +54,15 @@ class OpenAIEmbeddings(EmbeddingsProvider):
                 payload = {"input": list(texts), "model": self.model}
                 url = f"{self.base_url}/embeddings"
                 from services.common import runtime_config as cfg
-                async with httpx.AsyncClient(timeout=float(cfg.env("EMBEDDINGS_TIMEOUT", "15"))) as client:
+
+                async with httpx.AsyncClient(
+                    timeout=float(cfg.env("EMBEDDINGS_TIMEOUT", "15"))
+                ) as client:
                     resp = await client.post(url, json=payload, headers=headers)
                     resp.raise_for_status()
                     data = resp.json()
                 vecs: List[List[float]] = []
-                for item in (data.get("data") or []):
+                for item in data.get("data") or []:
                     v = item.get("embedding")
                     if isinstance(v, list):
                         vecs.append([float(x) for x in v])
@@ -78,6 +84,7 @@ async def maybe_embed(text: str) -> list[float] | None:
     """
     # Centralized feature toggle via runtime_config facade (C1 migration)
     from services.common import runtime_config as cfg
+
     use_feature = cfg.flag("embeddings_ingest")
     if not use_feature:
         return None
@@ -85,6 +92,7 @@ async def maybe_embed(text: str) -> list[float] | None:
         return None
     try:
         from services.common import runtime_config as cfg
+
         max_chars = int(cfg.env("EMBEDDINGS_MAX_CHARS", "2000"))
     except ValueError:
         max_chars = 2000
@@ -99,6 +107,7 @@ async def maybe_embed(text: str) -> list[float] | None:
     if cfg.env("EMBEDDINGS_TEST_MODE", "false").lower() in {"1", "true", "yes", "on"}:
         # Produce a stable pseudo-vector from hash chunks
         import hashlib
+
         h = hashlib.sha256(clipped.encode("utf-8")).digest()
         # Map bytes to floats [0,1)
         vec = [round(b / 255.0, 6) for b in h[:32]]

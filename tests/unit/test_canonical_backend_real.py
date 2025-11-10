@@ -1,7 +1,7 @@
 """
 Perfect canonical backend tests - testing real integrations with no mocks.
 """
-import pytest
+
 from fastapi.testclient import TestClient
 
 # Import the actual gateway app
@@ -29,7 +29,7 @@ class TestCanonicalBackendReal:
         response = self.client.get("/openapi.json")
         assert response.status_code == 200
         schema = response.json()
-        
+
         # Verify canonical endpoints are present based on actual code
         paths = schema.get("paths", {})
         assert "/v1/weights" in paths
@@ -38,13 +38,14 @@ class TestCanonicalBackendReal:
     def test_singleton_integrations(self):
         """Test that core integrations (Somabrain client) are importable."""
         from python.integrations.soma_client import SomaClient
+
         assert SomaClient is not None
 
     def test_no_legacy_endpoints(self):
         """Test that legacy endpoints don't exist."""
         response = self.client.post("/v1/ui/poll")
         assert response.status_code == 404
-        
+
         response = self.client.get("/v1/csrf")
         assert response.status_code == 404
 

@@ -12,6 +12,18 @@ class ToolParameter:
     required: bool = False
     default: Any | None = None
 
+    def normalized_type(self) -> str:
+        """Return a Python-esque type name for tests while keeping original.
+
+        Maps JSON Schema numeric types ("integer", "number") to Python's
+        "int" / "float" for comparison in test expectations.
+        """
+        if self.type == "integer":
+            return "int"
+        if self.type == "number":
+            return "float"
+        return self.type
+
 
 @dataclass(slots=True)
 class ToolDefinition:

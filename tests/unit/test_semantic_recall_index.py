@@ -1,10 +1,10 @@
-import os
 import pytest
 
-from services.common.semantic_recall import get_index
 from services.common.embeddings import maybe_embed
+from services.common.semantic_recall import get_index
 
 pytestmark = pytest.mark.asyncio
+
 
 async def test_semantic_recall_basic(monkeypatch):
     monkeypatch.setenv("ENABLE_EMBED_ON_INGEST", "true")
@@ -27,8 +27,10 @@ async def test_semantic_recall_basic(monkeypatch):
     top_texts = {r["text"] for r in results}
     assert "alpha" in top_texts
 
+
 async def test_semantic_recall_endpoint_disabled(monkeypatch):
     from services.common.features import build_default_registry
+
     # Force profile minimal disabling semantic_recall
     monkeypatch.setenv("SA01_FEATURE_PROFILE", "minimal")
     reg = build_default_registry()

@@ -76,5 +76,5 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 EXPOSE 8010
 
-# Default command runs the gateway on port 8010 to match compose and HEALTHCHECK.
-CMD ["uvicorn", "services.gateway.main:app", "--host", "0.0.0.0", "--port", "8010"]
+# Default command runs preflight then the gateway on port 8010.
+CMD ["bash", "-lc", "scripts/entrypoints/gateway.sh"]

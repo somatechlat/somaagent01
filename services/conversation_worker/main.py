@@ -17,11 +17,21 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common import runtime_config as cfg
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.idempotency import generate_for_memory_payload
+from services.common.learning import (
+    build_context as learning_build_context,
+    publish_reward as learning_publish_reward,
+)
+from services.common.lifecycle_metrics import (
+    now as _lm_now,
+    observe_shutdown as _lm_stop,
+    observe_startup as _lm_start,
+)
 from services.common.logging_config import setup_logging
 from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_outbox_schema,
@@ -33,6 +43,7 @@ from services.common.outbox_repository import ensure_schema as ensure_outbox_sch
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
+from services.common.runtime_config import deployment_mode as cfg_deployment_mode
 from services.common.schema_validator import validate_event
 from services.common.session_repository import (
     ensure_schema,
@@ -40,20 +51,13 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
-from services.common.runtime_config import deployment_mode as cfg_deployment_mode
-from services.common import runtime_config as cfg
 from services.common.slm_client import ChatMessage
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
-from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.tool_executor.tool_registry import ToolRegistry
-from services.common.learning import (
-    build_context as learning_build_context,
-    publish_reward as learning_publish_reward,
-)
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -189,9 +193,7 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
-        bootstrap_servers = cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
-        )
+        bootstrap_servers = cfg.env("KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers)
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
             security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -207,7 +209,7 @@ class ConversationWorker:
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
-        redis_url = cfg.env("REDIS_URL", APP_SETTINGS.redis_url)
+        redis_url = APP_SETTINGS.redis_url
         self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
@@ -237,7 +239,7 @@ class ConversationWorker:
         )
         self.tenant_config = TenantConfig(path=tenant_config_path)
         self.budgets = BudgetManager(url=redis_url, tenant_config=self.tenant_config)
-        policy_base = cfg.env("POLICY_BASE_URL", APP_SETTINGS.opa_url)
+        policy_base = APP_SETTINGS.opa_url
         self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
@@ -684,8 +686,7 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id")
-                    or cfg.env("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -785,7 +786,9 @@ class ConversationWorker:
         return None
 
     async def _attachment_head(self, att_id: str, tenant: str) -> dict[str, Any]:
-        base = (cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010") or "http://gateway:8010").rstrip("/")
+        base = (
+            cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010") or "http://gateway:8010"
+        ).rstrip("/")
         token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         url = f"{base}/internal/attachments/{att_id}/binary"
         headers = {"X-Internal-Token": token or ""}
@@ -811,7 +814,9 @@ class ConversationWorker:
         return size > int(threshold_mb * 1024 * 1024)
 
     async def _fetch_attachment_bytes(self, *, att_id: str, tenant: str) -> tuple[bytes, str, str]:
-        base = (cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010") or "http://gateway:8010").rstrip("/")
+        base = (
+            cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010") or "http://gateway:8010"
+        ).rstrip("/")
         token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         if not token:
             raise RuntimeError("Internal token not configured")
@@ -899,8 +904,7 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id")
-                    or cfg.env("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -2829,7 +2833,7 @@ class ConversationWorker:
             # L2: Publish a basic reward signal (best-effort)
             # Errors in reward publishing are ignored; we fire‑and‑forget the task.
             base_signal = "response.delivered"
-            length_score = min(1.0, max(0.0, len((response_text or '').strip()) / 1200.0))
+            length_score = min(1.0, max(0.0, len((response_text or "").strip()) / 1200.0))
             escalation_penalty = 0.1 if path == "escalation" else 0.0
             value = max(0.0, length_score - escalation_penalty)
             meta = {
@@ -2872,6 +2876,8 @@ async def main() -> None:
         await worker.policy_client.close()
         _lm_stop(service_name, _shutdown_ts)
 
+
 if __name__ == "__main__":
     from services.common.service_lifecycle import run_service
+
     run_service(lambda: main(), service_name="conversation-worker")

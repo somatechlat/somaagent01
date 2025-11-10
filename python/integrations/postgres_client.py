@@ -5,9 +5,8 @@ The implementation intentionally avoids real database connections. Any runtime
 use will raise a clear error to prevent accidental reliance in unit tests that
 aren't selected.
 """
-from __future__ import annotations
 
-import contextlib
+from __future__ import annotations
 
 
 class _DummyConn:

@@ -106,6 +106,12 @@ def _write_id_file(value: str) -> None:
     this call will raise; letting the exception propagate makes the
     mis‑configuration obvious during startup.
     """
+    # Ensure parent directory exists for local/dev runs
+    try:
+        _PERSISTENT_ID_PATH.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # If directory creation fails (e.g., read-only mount), proceed to write and let it raise
+        pass
     _PERSISTENT_ID_PATH.write_text(value)
 
 

@@ -6,17 +6,21 @@ admin inspection. Exposes Prometheus metrics for throughput and lag.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from services.common import runtime_config as cfg
 import time
 from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
+from services.common import runtime_config as cfg
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.lifecycle_metrics import (
+    now as _lm_now,
+    observe_shutdown as _lm_stop,
+    observe_startup as _lm_start,
+)
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import (
     ensure_schema as ensure_replica_schema,
@@ -24,7 +28,6 @@ from services.common.memory_replica_store import (
 )
 from services.common.settings_sa01 import SA01Settings
 from services.common.tracing import setup_tracing
-from services.common.lifecycle_metrics import now as _lm_now, observe_startup as _lm_start, observe_shutdown as _lm_stop
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)

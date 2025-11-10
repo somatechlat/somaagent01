@@ -195,8 +195,8 @@ src/
 
 Goal: architect the platform with a single public entry surface and single configuration/feature read surface. All external traffic and provider interactions pass through one gateway; all runtime decisions read from one facade.
 
-Scope of “Single Entry Surface”
-- Public HTTP: exactly one public service — the FastAPI Gateway at `GATEWAY_BASE_URL` (canonical port `21016`), serving UI under `/ui` and APIs under `/v1/*`.
+Scope of “Single Entry Surface” (Updated – delegation gateway removed 2025-11-10)
+- Public HTTP: exactly one public service — the FastAPI Gateway at `GATEWAY_BASE_URL` (canonical port `21016`), serving UI under `/ui` and APIs under `/v1/*`. The former `delegation_gateway` FastAPI app has been hard-deleted; any unique routes were either non-essential or subsumed by existing gateway capabilities.
 - Streaming: a single SSE stream per session at `/v1/session/{id}/events` powering all real‑time updates (chat, tool, notifications, invalidations). No polling anywhere.
 - Provider mediation: LLM, tools, memory, and Somabrain calls are brokered by Gateway. Workers never hold raw provider credentials or call providers directly.
 - Configuration: one read surface via `services.common.runtime_config` (`cfg.settings()`, `cfg.flag()`, `cfg.config_*` helpers). No direct `os.getenv(` outside bootstrap/settings.
@@ -209,12 +209,13 @@ Enforcement (build‑time and runtime)
 - Provider path: unit/integration tests ensure workers never send `base_url` or provider secrets; Gateway resolves model→provider→base_url and audits.
 - Dependency boundaries: policy, feature flags, and Somabrain are accessed via HTTP clients from Gateway (and designated service clients), never by importing foreign service internals.
 
-Acceptance Criteria (Single Entry Surface)
-- One listening public port in dev/prod (`GATEWAY_PORT=21016`); UI reachable at `WEB_UI_BASE_URL=http://localhost:21016/ui`.
-- `/v1` endpoints exercised by UI and tests only via Gateway; grep shows no additional `uvicorn.run` or public `FastAPI()` apps bound in other services.
-- Grep for `os.getenv(` outside `services/common/settings_*`, `services/common/runtime_config.py`, and explicit bootstrap modules returns zero.
-- Workers do not include provider `base_url`/credentials in any inter‑service payload; Gateway audit logs show resolved provider and normalized base_url per invoke.
-- SSE‑only real‑time; no `/poll`/CSRF endpoints present; reconnection with jittered backoff validated.
+Acceptance Criteria (Single Entry Surface) — Status 2025-11-10
+✓ One listening public port in dev/prod (`GATEWAY_PORT=21016`); UI reachable at `WEB_UI_BASE_URL=http://localhost:21016/ui`.
+✓ `/v1` endpoints exercised by UI and tests only via Gateway; `delegation_gateway` removed.
+In Progress: Grep elimination of residual `os.getenv(` outside allowed modules (several feature/env reads migrated; remaining in feature registry & runtime facade only).
+✓ Workers do not include provider `base_url`/credentials in inter‑service payloads (centralization enforced in invoke path).
+✓ SSE‑only real‑time; no `/poll`/CSRF endpoints present.
+Pending: Add CI linter to block reintroduction of extra FastAPI apps.
 
 Verification Steps
 - Dev up: `make dev-up && curl -sf http://localhost:21016/healthz` → ok.
@@ -230,7 +231,7 @@ Governance
 
 ## 7.2️⃣ Deployment Modes Consolidation (LOCAL vs PROD)
 
-We collapse legacy / inconsistent deployment identifiers (DEV, STAGING, TEST, PRODUCTION, LOCAL) into two canonical modes used uniformly across configuration, model profiles, feature gating, and operational behaviour.
+ We collapse legacy / inconsistent deployment identifiers (DEV, STAGING, TEST, PRODUCTION, LOCAL) into two canonical modes used uniformly across configuration, model profiles, feature gating, and operational behaviour. Environment variable canonicalization completed: settings now source only `SA01_ENV`, `SA01_DB_DSN`, `SA01_REDIS_URL`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_POLICY_URL`, metrics host/port, and OTLP through `SA01_*` taxonomy.
 
 Canonical Modes
 - LOCAL: Full-capacity local development environment. Mirrors production feature set (tools, recall, learning, write-through) while respecting local resource constraints. All services run in a single compose stack; secrets are dev-safe; encryption keys may use development defaults. Observability and policy run in fail-closed posture except where explicitly overridden for developer velocity.
@@ -256,13 +257,13 @@ Deprecated / To Remove
 - Legacy mode strings in model profile store (e.g. TEST separate from LOCAL) – unify into LOCAL or PROD only.
 - Removed legacy policy bypass flags and fail-open toggles; system fails closed by default.
 
-Adoption Steps
-1. Introduce canonical accessor (DONE).
-2. Adjust `SA01Settings` mapping (DONE: DEV→LOCAL, STAGING→PROD).
-3. Migrate model profile seeding to use LOCAL/PROD only (DONE via settings mapping; verify DB contents and prune orphan roles for DEV/STAGING).
-4. Grep/code audit: replace residual direct mode env reads with `deployment_mode()`.
-5. Remove deprecated env vars from `docker-compose.yaml` and roadmap after confirming zero usage counters.
-6. Add lint/test `test_no_direct_mode_env.py` asserting no direct deployment-mode env reads outside settings/runtime_config bootstrap.
+Adoption Steps & Status
+1. Canonical accessor (`deployment_mode()`): DONE.
+2. `SA01Settings` mapping (DEV→LOCAL, STAGING→PROD): DONE.
+3. Model profiles unified (LOCAL/PROD): DONE (verification pending DB audit script).
+4. Replace direct env mode reads: PARTIAL (runtime facade central; legacy env references removed where critical).
+5. Deprecated env vars removal from compose/docs: PENDING after usage counters drop to zero.
+6. Lint/test enforcement (`test_no_direct_mode_env.py`): PENDING.
 
 Metrics / Observability
 - `deployment_mode` label added to key process metrics (gateway requests, conversation worker messages) in a later instrumentation sprint.
@@ -1008,7 +1009,7 @@ Acceptance:
 - `settings_write_audit_masked_total`
 
 ### Immediate Next Action (You are here)
-Proceed with M0: add route catalog + baseline metrics in code. After merging this section, implement instrumentation and open a short PR if required.
+Proceed with elimination of remaining direct `cfg.env()` reads for Redis/Kafka/OPA in non-bootstrap modules; add lint/test guards (`test_no_direct_getenv.py`).
 
 ---
 ## 2025-11-09 Update — Master Roadmap Consolidation & Parallel Sprint Plan

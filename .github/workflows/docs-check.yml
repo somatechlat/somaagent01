@@ -1,0 +1,42 @@
+name: Documentation Check
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  verify-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          missing=0
+          for file in \
+            docs/README.md \
+            docs/metadata.json \
+            docs/style-guide.md \
+            docs/user-manual/index.md \
+            docs/technical-manual/index.md \
+            docs/technical-manual/architecture.md \
+            docs/development-manual/index.md \
+            docs/onboarding-manual/index.md \
+            docs/agent-onboarding/index.md
+          do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::Missing required file"
+              missing=$((missing+1))
+            fi
+          done
+          if [[ $missing -gt 0 ]]; then
+            echo "Documentation check failed: $missing file(s) missing"
+            exit 1
+          fi
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v12
+        with:
+          config: docs/.markdownlint.json
+          globs: "docs/**/*.md"
