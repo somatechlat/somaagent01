@@ -79,3 +79,27 @@ async def wait_for_event(
                         return payload
     finally:
         await consumer.stop()
+
+
+async def wait_for(predicate: Callable[[], Any], *, timeout: float = 5.0, interval: float = 0.05) -> Any:
+    """Generic async wait helper replacing ad-hoc sleep polling.
+
+    Calls ``predicate`` repeatedly until it returns a truthy value or timeout.
+    Returns the truthy value. Raises ``TimeoutError`` if condition not met.
+    ``predicate`` may be sync or async.
+    """
+    start = asyncio.get_running_loop().time()
+    while True:
+        remaining = timeout - (asyncio.get_running_loop().time() - start)
+        if remaining <= 0:
+            raise TimeoutError("Condition not met within timeout")
+        try:
+            result = predicate()
+            if asyncio.iscoroutine(result):
+                result = await result
+            if result:
+                return result
+        except Exception:
+            # Swallow transient errors; useful for eventual consistency races
+            pass
+        await asyncio.sleep(interval)

@@ -91,4 +91,7 @@ def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
     # FastAPI will pass the app when adding middleware; returning the class is fine
     return EnforcePolicy  # type: ignore[return-value]
 
-__all__ = ["enforce_policy", "EnforcePolicy"]
+def opa_client() -> EnforcePolicy:  # compatibility alias expected by some tests
+    return EnforcePolicy  # type: ignore[return-value]
+
+__all__ = ["enforce_policy", "EnforcePolicy", "opa_client"]

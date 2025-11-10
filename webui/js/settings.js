@@ -45,10 +45,7 @@ const settingsModalProxy = {
                 if (schedulerElement) {
                     const schedulerData = Alpine.$data(schedulerElement);
                     if (schedulerData) {
-                        // Start polling
-                        if (typeof schedulerData.startPolling === 'function') {
-                            schedulerData.startPolling();
-                        }
+                        // Polling removed
 
                         // Initialize Flatpickr if editing or creating
                         if (typeof schedulerData.initFlatpickr === 'function') {
@@ -139,19 +136,12 @@ const settingsModalProxy = {
                     console.log('Scheduler tab active after direct initialization?',
                         schedulerTab && schedulerTab.classList.contains('active'));
 
-                    // Explicitly start polling if we're on the scheduler tab
+                    // Polling removed; just fetch if scheduler is active
                     if (modalAD.activeTab === 'scheduler') {
-                        console.log('Settings opened directly to scheduler tab, initializing polling');
                         const schedulerElement = document.querySelector('[x-data="schedulerSettings"]');
-                        if (schedulerElement) {
-                            const schedulerData = Alpine.$data(schedulerElement);
-                            if (schedulerData && typeof schedulerData.startPolling === 'function') {
-                                schedulerData.startPolling();
-                                // Also force an immediate fetch
-                                if (typeof schedulerData.fetchTasks === 'function') {
-                                    schedulerData.fetchTasks();
-                                }
-                            }
+                        const schedulerData = schedulerElement && Alpine.$data(schedulerElement);
+                        if (schedulerData && typeof schedulerData.fetchTasks === 'function') {
+                            schedulerData.fetchTasks();
                         }
                     }
                 }, 10); // Small delay just for scrolling
@@ -218,8 +208,7 @@ const settingsModalProxy = {
             this.handleCancel();
         }
 
-        // Stop scheduler polling if it's running
-        this.stopSchedulerPolling();
+        // Polling removed
 
         // First update our component state
         this.isOpen = false;
@@ -240,8 +229,7 @@ const settingsModalProxy = {
             data: null
         });
 
-        // Stop scheduler polling if it's running
-        this.stopSchedulerPolling();
+        // Polling removed
 
         // First update our component state
         this.isOpen = false;
@@ -256,18 +244,7 @@ const settingsModalProxy = {
         }
     },
 
-    // Add a helper method to stop scheduler polling
-    stopSchedulerPolling() {
-        // Find the scheduler component and stop polling if it exists
-        const schedulerElement = document.querySelector('[x-data="schedulerSettings"]');
-        if (schedulerElement) {
-            const schedulerData = Alpine.$data(schedulerElement);
-            if (schedulerData && typeof schedulerData.stopPolling === 'function') {
-                console.log('Stopping scheduler polling on modal close');
-                schedulerData.stopPolling();
-            }
-        }
-    },
+    // Legacy polling helper removed
 
     async handleFieldButton(field) {
         console.log(`Button clicked: ${field.id}`);
