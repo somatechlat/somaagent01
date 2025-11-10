@@ -243,27 +243,26 @@ Mapping Rules
 - Model profile selection now uses only LOCAL and PROD buckets (see `conf/model_profiles.yaml`). STAGING reuses PROD profiles to avoid drift.
 
 Central Accessors
-- `runtime_config.deployment_mode()` returns canonical mode (LOCAL|PROD) for all callers (workers, gateway, tools) replacing scattered `os.getenv("SOMA_AGENT_MODE")` checks.
+- `runtime_config.deployment_mode()` returns canonical mode (LOCAL|PROD) for all callers (workers, gateway, tools), replacing scattered direct environment checks for deployment mode.
 - `SA01Settings.deployment_mode` is normalized at initialization (DEV→LOCAL, STAGING→PROD).
 
 Behavioural Guarantees
 - Feature flags and profile resolution depend only on canonical mode; introducing new raw mode strings requires roadmap update first.
-- LOCAL enables rapid iteration: lower pool sizes, optional policy bypass ONLY via explicit documented flag (`DISABLE_CONVERSATION_POLICY`) slated for removal once stable dev fixtures exist.
+- LOCAL enables rapid iteration: lower pool sizes while maintaining fail-closed policy posture.
 - PROD enforces: policy checks fail-closed, auth required (GATEWAY_REQUIRE_AUTH=true), secrets encrypted (mandatory `GATEWAY_ENC_KEY`), no bypass flags.
 
 Deprecated / To Remove
-- Direct reads of `SOMA_AGENT_MODE` outside initialization / telemetry (replace with `deployment_mode()` accessor).
+- Direct environment reads for deployment mode outside initialization/telemetry (replace with `deployment_mode()` accessor).
 - Legacy mode strings in model profile store (e.g. TEST separate from LOCAL) – unify into LOCAL or PROD only.
-- Bypass flag `DISABLE_CONVERSATION_POLICY` (target removal after policy adapter maturity); track usage metric prior to removal.
-- `POLICY_FAIL_OPEN` environment variable (already ignored in code) – remove from compose and docs.
+- Removed legacy policy bypass flags and fail-open toggles; system fails closed by default.
 
 Adoption Steps
 1. Introduce canonical accessor (DONE).
 2. Adjust `SA01Settings` mapping (DONE: DEV→LOCAL, STAGING→PROD).
 3. Migrate model profile seeding to use LOCAL/PROD only (DONE via settings mapping; verify DB contents and prune orphan roles for DEV/STAGING).
-4. Grep/code audit: replace residual `os.getenv("SOMA_AGENT_MODE")` logic with `deployment_mode()` (IN PROGRESS – conversation worker path to be updated next sprint).
+4. Grep/code audit: replace residual direct mode env reads with `deployment_mode()`.
 5. Remove deprecated env vars from `docker-compose.yaml` and roadmap after confirming zero usage counters.
-6. Add lint/test `test_no_direct_mode_env.py` asserting no direct `SOMA_AGENT_MODE` reads outside settings/runtime_config bootstrap.
+6. Add lint/test `test_no_direct_mode_env.py` asserting no direct deployment-mode env reads outside settings/runtime_config bootstrap.
 
 Metrics / Observability
 - `deployment_mode` label added to key process metrics (gateway requests, conversation worker messages) in a later instrumentation sprint.
@@ -271,7 +270,7 @@ Metrics / Observability
 
 Acceptance Criteria (Modes Consolidation)
 - Only LOCAL|PROD appear in model_profiles table deployment_mode column post-migration.
-- No direct `os.getenv("SOMA_AGENT_MODE")` calls outside bootstrap modules; lint + test enforce.
+- No direct deployment-mode env reads outside bootstrap modules; lint + test enforce.
 - Gateway and workers log startup line: `deployment_mode=LOCAL` or `deployment_mode=PROD`.
 - Compose / Helm values reference canonical modes exclusively.
 
