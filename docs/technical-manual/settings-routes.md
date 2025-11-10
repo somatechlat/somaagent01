@@ -23,9 +23,9 @@ Legend
 
 ## Model Profiles & LLM
 
-- GET `/v1/llm/test` (if present)
-  - Auth: Y (policy)
-  - Notes: Connectivity test; returns validation result; no raw secrets.
+- POST `/v1/llm/test` (present in current gateway)
+  - Auth: Y (internal token)
+  - Notes: Connectivity test for active profile; returns validation result; no raw secrets.
 
 - POST `/v1/llm/invoke` and `/v1/llm/invoke/stream`
   - Auth: Y (policy)
@@ -37,9 +37,7 @@ Legend
   - Auth: Y (policy)
   - Notes: Returns presence and timestamps only; never raw secret values.
 
-- POST `/v1/ui/settings/credentials` (if present)
-  - Auth: Y (policy)
-  - Notes: Stores/updates provider secrets (encrypted). Emits masked audit diff + events.
+// Legacy credentials endpoints removed; use sections flow only.
 
 ## Audit & Drift (planned)
 

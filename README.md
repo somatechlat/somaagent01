@@ -20,16 +20,14 @@
 [Documentation](./docs/README.md) •
 [Usage](./docs/usage.md)
 
-Or see DeepWiki generated documentation:
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agent0ai/agent-zero)
+For the complete documentation, see `docs/README.md` or build the site with `mkdocs`.
 
 </div>
 
 
 ## Single point of entry (development)
 
-Use the root Makefile targets below. Provider credentials and settings are managed in the Web UI Settings screen, not via environment variables.
+Use the root Makefile targets below. Provider credentials and model profiles are managed exclusively through the Web UI Settings (`/ui` → Settings), not environment variables. Secrets are stored encrypted in Redis via the Gateway.
 
 - Start stack (developer profile): `make dev-up`
 - Stop stack: `make dev-down`
@@ -54,36 +52,17 @@ Use the Settings UI (preferred) or the helper script to persist your Groq API ke
     - In API Keys section, set `api_key_groq` with your Groq API key
     - Save; then start a chat. The worker uses Gateway `/v1/llm/invoke(/stream)` with stored credentials.
 
-- Option B – helper script:
-    - Ensure the stack is running (Gateway at http://127.0.0.1:21016)
-    - Export your key and run the script:
-        - `export GROQ_API_KEY=...`
-        - Use the Settings UI (External → API Keys) to set provider keys. Seeding scripts are not supported.
-    - Optional envs: `GROQ_MODEL` (default `llama-3.1-8b-instant`), `GROQ_BASE` (default `https://api.groq.com/openai`), `INTERNAL_TOKEN` (to run `/v1/llm/test`).
+Option B (legacy helper script) has been removed; always use the Settings UI sections flow. External seeding scripts for provider credentials are intentionally unsupported to preserve a single write path.
 
 Notes:
 - Groq requires an OpenAI-compatible path; if you provide `https://api.groq.com` the Gateway will normalize to include `/openai` and `/v1` when needed.
 - LLM invoke endpoints are internal-token gated; in dev this is `dev-internal-token` and already configured for worker↔gateway calls.
 
-## Golden vs Local (parity) endpoints and tests
-## Reference vs Local endpoints and visual tests
+## UI access
 
-- Reference baseline UI: http://127.0.0.1:7001 (read‑only capture server)
-- Local Gateway + UI: http://127.0.0.1:21016/ui
+Local Gateway + UI: http://127.0.0.1:21016/ui
 
-Playwright suites (`webui/tests/ui`):
-- Baseline project records snapshots + tokens against reference host.
-- Local project asserts functional/visual alignment; comparison project diffs snapshots.
-
-Run examples (from `webui/tests/ui`):
-- Baseline: `BASELINE_URL=http://127.0.0.1:7001 npx playwright test --project=golden --workers=1`
-- Local: `npx playwright test --project=local --workers=1`
-- Compare: `npx playwright test --project=parity --workers=1`
-
-Artifacts:
-- Snapshots: `specs/*-snapshots/`
-- Traces/screenshots: `test-results/**/trace.zip`, `test-results/**/test-failed-*.png`
-- Design tokens: `tokens/{golden,local}/*.json`
+Note: External baseline capture servers and Playwright parity projects are not part of this repository.
 
 ### Streaming Modes
 
@@ -257,15 +236,12 @@ Click to open a video to learn how to install Agent Zero:
 
 A detailed setup guide for Windows, macOS, and Linux with a video can be found in the Agent Zero Documentation at [this page](./docs/installation.md).
 
-### ⚡ Quick Start
+### ⚡ Quick Start (Local Stack)
 
 ```bash
-# Pull and run with Docker
-
-docker pull agent0ai/agent-zero
-docker run -p 50001:80 agent0ai/agent-zero
-
-# Visit http://localhost:50001 to start
+make dev-up
+curl -f http://localhost:${GATEWAY_PORT:-21016}/v1/health || echo "health check failed"
+open http://localhost:${GATEWAY_PORT:-21016}/ui
 ```
 
 ### 🧰 Local SomaAgent01 stack via Makefile
@@ -293,10 +269,7 @@ make down      # stop the full stack
 make rebuild   # rebuild images and restart everything
 ```
 
-Once the Docker stack is healthy, you can reach the Agent UI at
-`http://localhost:20015`, the delegation gateway on port `21016`, and
-supporting services across the reserved host range `20000-20099`. Run
-`make help` for the complete command catalog.
+Once the stack is healthy, reach the Agent UI at `http://localhost:${GATEWAY_PORT:-21016}/ui`. Run `make help` for the complete command catalog.
 
 > **Observability tip:** The gateway now exports circuit-breaker counters on `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`. Prometheus scrapes this endpoint via the `circuit-breakers` job, enabling the `CircuitBreakerOpenEvents` alert without additional wiring. Alertmanager ships alongside Prometheus—access it on `${ALERTMANAGER_PORT:-9093}` to manage silences or webhook routes. Override `CIRCUIT_BREAKER_METRICS_HOST`/`PORT` if you relocate the exporter.
 
