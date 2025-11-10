@@ -2,7 +2,7 @@
 
 Usage (run locally, do NOT paste secrets into chat):
 
-export GATEWAY_INTERNAL_TOKEN="<paste-locally>"
+export SA01_AUTH_INTERNAL_TOKEN="<paste-locally>"
 export GATEWAY_BASE_URL="http://127.0.0.1:21016"
 python -m pytest -q tests/test_llm_integration.py
 
@@ -10,7 +10,7 @@ This test performs two checks:
  - POST /v1/llm/test to verify profile resolution, credentials presence and reachability
  - POST /v1/llm/invoke/stream and reads SSE chunks for up to 10s to verify streaming works
 
-The test will skip if GATEWAY_INTERNAL_TOKEN is not set.
+The test will skip if SA01_AUTH_INTERNAL_TOKEN is not set.
 """
 
 from __future__ import annotations
@@ -24,20 +24,20 @@ import httpx
 import pytest
 
 GATEWAY_BASE = os.getenv("GATEWAY_BASE_URL", "http://127.0.0.1:21016")
-GATEWAY_INTERNAL_TOKEN = os.getenv("GATEWAY_INTERNAL_TOKEN")
+SA01_AUTH_INTERNAL_TOKEN = os.getenv("SA01_AUTH_INTERNAL_TOKEN")
 
 
 def _headers() -> dict[str, str]:
     return {
         "Content-Type": "application/json",
-        "X-Internal-Token": GATEWAY_INTERNAL_TOKEN,
+        "X-Internal-Token": SA01_AUTH_INTERNAL_TOKEN,
     }
 
 
 def test_llm_test_endpoint():
     """Call /v1/llm/test and assert the gateway reports credentials and reachability."""
-    if not GATEWAY_INTERNAL_TOKEN:
-        pytest.skip("GATEWAY_INTERNAL_TOKEN not set in environment; skipping integration test")
+    if not SA01_AUTH_INTERNAL_TOKEN:
+        pytest.skip("SA01_AUTH_INTERNAL_TOKEN not set in environment; skipping integration test")
 
     url = f"{GATEWAY_BASE}/v1/llm/test"
     resp = httpx.post(url, json={"role": "dialogue"}, headers=_headers(), timeout=10.0)
@@ -50,8 +50,8 @@ def test_llm_test_endpoint():
 
 def test_llm_invoke_stream_smoke():
     """Perform a streaming invoke and collect at least one chunk within timeout."""
-    if not GATEWAY_INTERNAL_TOKEN:
-        pytest.skip("GATEWAY_INTERNAL_TOKEN not set in environment; skipping integration test")
+    if not SA01_AUTH_INTERNAL_TOKEN:
+        pytest.skip("SA01_AUTH_INTERNAL_TOKEN not set in environment; skipping integration test")
 
     url = f"{GATEWAY_BASE}/v1/llm/invoke/stream"
     payload = {

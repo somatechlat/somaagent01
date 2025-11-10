@@ -3,7 +3,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from services.gateway.main import app
+# Importing the FastAPI app after environment variables are set ensures the
+# canonical settings reflect the test overrides.
 
 
 class _FakeCreds:
@@ -34,8 +35,8 @@ class _FakeSLMClient:
 async def test_llm_invoke_audit_success(monkeypatch):
     # In-memory audit store and open gateway
     monkeypatch.setenv("AUDIT_STORE_MODE", "memory")
-    monkeypatch.setenv("GATEWAY_REQUIRE_AUTH", "false")
-    monkeypatch.setenv("GATEWAY_INTERNAL_TOKEN", "itok")
+    monkeypatch.setenv("SA01_AUTH_REQUIRED", "false")
+    monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "itok")
 
     # Fake creds store and SLM client factory (patch module-level functions)
     from services import gateway as gw_pkg  # type: ignore
@@ -43,7 +44,9 @@ async def test_llm_invoke_audit_success(monkeypatch):
     monkeypatch.setattr(gw_pkg.main, "get_llm_credentials_store", lambda: _FakeCreds())
     monkeypatch.setattr(gw_pkg.main, "_gateway_slm_client", lambda: _FakeSLMClient())
 
-    client = TestClient(app)
+    # Import the FastAPI app now that env vars are configured
+    from services.gateway.main import app as gateway_app
+    client = TestClient(gateway_app)
 
     payload = {
         "role": "dialogue",

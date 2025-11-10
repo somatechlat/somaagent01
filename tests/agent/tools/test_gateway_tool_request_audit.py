@@ -16,7 +16,7 @@ class _FakePublisher:
 async def test_tool_request_enqueue_audit(monkeypatch):
     # Use in-memory audit store and disable auth for simplicity
     monkeypatch.setenv("AUDIT_STORE_MODE", "memory")
-    monkeypatch.setenv("GATEWAY_REQUIRE_AUTH", "false")
+    monkeypatch.setenv("SA01_AUTH_REQUIRED", "false")
 
     # Override publisher to avoid Kafka dependency
     app.dependency_overrides[get_publisher] = lambda: _FakePublisher()

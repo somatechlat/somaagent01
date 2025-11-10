@@ -33,7 +33,7 @@ async def test_internal_attachments_requires_token(monkeypatch):
         assert r.status_code == 403
 
     # With token set
-    monkeypatch.setenv("GATEWAY_INTERNAL_TOKEN", "secret-token")
+    monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "secret-token")
     headers = {"X-Internal-Token": "secret-token", "X-Tenant-Id": "test"}
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
