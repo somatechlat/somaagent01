@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from services.common import runtime_config as cfg
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
@@ -19,7 +20,7 @@ class ResourceManager:
     """Tracks concurrent executions to avoid exhausting the host."""
 
     def __init__(self, max_concurrent: int | None = None) -> None:
-        self._limit = max_concurrent or int(os.getenv("TOOL_EXECUTOR_MAX_CONCURRENT", "4"))
+        self._limit = max_concurrent or int(cfg.env("TOOL_EXECUTOR_MAX_CONCURRENT", "4") or "4")
         self._semaphore = asyncio.Semaphore(max(1, self._limit))
 
     async def initialize(self) -> None:
@@ -46,7 +47,7 @@ class ResourceManager:
 
 def default_limits() -> ExecutionLimits:
     return ExecutionLimits(
-        cpu_seconds=float(os.getenv("TOOL_EXECUTOR_CPU_SECONDS", "15")),
-        memory_mb=int(os.getenv("TOOL_EXECUTOR_MEMORY_MB", "512")),
-        timeout_seconds=float(os.getenv("TOOL_EXECUTOR_TIMEOUT", "60")),
+        cpu_seconds=float(cfg.env("TOOL_EXECUTOR_CPU_SECONDS", "15") or "15"),
+        memory_mb=int(cfg.env("TOOL_EXECUTOR_MEMORY_MB", "512") or "512"),
+        timeout_seconds=float(cfg.env("TOOL_EXECUTOR_TIMEOUT", "60") or "60"),
     )

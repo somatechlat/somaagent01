@@ -77,6 +77,12 @@ Errors are emitted as `assistant.error` (or `<role>.error` when tool/system sour
 
 Prefer canonical for stable UI/event tooling. Passthrough exists solely for debugging or legacy client compatibility.
 
+### Runtime Config & Flags
+
+- Use `services.common.runtime_config.env()` for environment reads in business logic and `services.common.runtime_config.flag()` for feature checks. Avoid `os.getenv` directly except in settings/bootstrap modules.
+- Newly centralized keys (guarded by tests): `EXPORT_JOBS_DIR`, `GATEWAY_EXPORT_REQUIRE_TENANT`, `MEMORY_EXPORT_MAX_ROWS`, `MEMORY_EXPORT_PAGE_SIZE`, `EXPORT_JOBS_MAX_ROWS`, `EXPORT_JOBS_PAGE_SIZE`, `UPLOAD_TMP_DIR`.
+- CI guardrails: `tests/unit/test_no_direct_env_feature_flags.py` prevents direct feature-flag env reads; `tests/unit/test_no_direct_env_centralized_keys.py` blocks raw `os.getenv` for the keys above.
+
 #### Feature Flags
 
 - `SA01_ENABLE_CONTENT_MASKING`: enable masking of sensitive content in streamed errors and persisted events.

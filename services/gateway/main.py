@@ -195,18 +195,18 @@ REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
 
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
-        bootstrap_servers=os.getenv(
+        bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
 
 
 def _redis_url() -> str:
-    return os.getenv("REDIS_URL", APP_SETTINGS.redis_url)
+    return cfg.env("REDIS_URL", APP_SETTINGS.redis_url)
 
 
 app = FastAPI(title="SomaAgent 01 Gateway")
@@ -324,11 +324,11 @@ def _csv_list(value: str | None) -> list[str]:
 
 
 def _setup_cors() -> None:
-    origins = _csv_list(os.getenv("GATEWAY_CORS_ORIGINS"))
-    methods = _csv_list(os.getenv("GATEWAY_CORS_METHODS"))
-    headers = _csv_list(os.getenv("GATEWAY_CORS_HEADERS"))
-    expose = _csv_list(os.getenv("GATEWAY_CORS_EXPOSE_HEADERS"))
-    allow_credentials = os.getenv("GATEWAY_CORS_CREDENTIALS", "false").lower() in {
+    origins = _csv_list(cfg.env("GATEWAY_CORS_ORIGINS"))
+    methods = _csv_list(cfg.env("GATEWAY_CORS_METHODS"))
+    headers = _csv_list(cfg.env("GATEWAY_CORS_HEADERS"))
+    expose = _csv_list(cfg.env("GATEWAY_CORS_EXPOSE_HEADERS"))
+    allow_credentials = cfg.env("GATEWAY_CORS_CREDENTIALS", "false").lower() in {
         "true",
         "1",
         "yes",
@@ -1010,7 +1010,7 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
     except Exception:
         raise HTTPException(status_code=400, detail="invalid_base64_audio")
 
-    max_bytes = int(os.getenv("STT_MAX_AUDIO_BYTES", "12582912"))  # 12 MiB default
+    max_bytes = int(cfg.env("STT_MAX_AUDIO_BYTES", "12582912"))  # 12 MiB default
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail="audio_too_large")
 
@@ -1023,7 +1023,7 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
         (
             (req.model_size or "").strip()
             or str((speech_cfg.get("stt_model_size") or "")).strip()
-            or os.getenv("STT_MODEL_SIZE", "tiny")
+            or cfg.env("STT_MODEL_SIZE", "tiny")
         )
         .strip()
         .lower()
@@ -1049,7 +1049,7 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
                 language=(
                     (req.language or "").strip()
                     or str((speech_cfg.get("stt_language") or "")).strip()
-                    or os.getenv("STT_LANGUAGE")
+                    or cfg.env("STT_LANGUAGE")
                     or None
                 ),
                 vad_filter=True,
@@ -1093,7 +1093,7 @@ async def v1_speech_tts_kokoro(req: KokoroSynthesizeRequest) -> JSONResponse:
         raise HTTPException(status_code=400, detail="missing_text")
 
     # Optional short-circuit to prevent abuse
-    max_chars = int(os.getenv("TTS_MAX_TEXT_CHARS", "2000"))
+    max_chars = int(cfg.env("TTS_MAX_TEXT_CHARS", "2000"))
     if len(text) > max_chars:
         raise HTTPException(status_code=413, detail="text_too_long")
 
@@ -1156,7 +1156,7 @@ def _realtime_enabled() -> bool:
     # Primary toggle comes from stored UI settings; env var is a secondary override for ops
     if isinstance(cfg.get("speech_realtime_enabled"), bool):
         return bool(cfg.get("speech_realtime_enabled"))
-    return os.getenv("GATEWAY_REALTIME_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+    return cfg.env("GATEWAY_REALTIME_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _build_ws_url(request: Request, path: str, query: str) -> str:
@@ -1189,11 +1189,11 @@ async def v1_speech_realtime_session(
         raise HTTPException(status_code=503, detail="realtime_unavailable")
 
     session_id = secrets.token_urlsafe(16)
-    ttl = int(os.getenv("REALTIME_SESSION_TTL_SECONDS", "45"))
+    ttl = int(cfg.env("REALTIME_SESSION_TTL_SECONDS", "45"))
     caps = {
-        "sample_rate": int(os.getenv("REALTIME_SAMPLE_RATE", "16000")),
-        "frame_ms": int(os.getenv("REALTIME_FRAME_MS", "20")),
-        "max_session_secs": int(os.getenv("REALTIME_MAX_SESSION_SECS", "600")),
+        "sample_rate": int(cfg.env("REALTIME_SAMPLE_RATE", "16000")),
+        "frame_ms": int(cfg.env("REALTIME_FRAME_MS", "20")),
+        "max_session_secs": int(cfg.env("REALTIME_MAX_SESSION_SECS", "600")),
     }
 
     # Stash a minimal session record in Redis cache (one-use claim at WS connect)
@@ -1389,7 +1389,7 @@ def _uploads_root() -> Path:
             return Path("/")  # dummy path; callers should have short-circuited already
     except Exception:
         return Path("/")
-    base = os.getenv("GATEWAY_UPLOAD_DIR", "/git/agent-zero/tmp/uploads")
+    base = cfg.env("GATEWAY_UPLOAD_DIR", "/git/agent-zero/tmp/uploads")
     p = Path(base)
     try:
         p.mkdir(parents=True, exist_ok=True)
@@ -1399,7 +1399,7 @@ def _uploads_root() -> Path:
 
 
 def _csv_env(name: str) -> set[str]:
-    raw = os.getenv(name, "").strip()
+    raw = cfg.env(name, "").strip()
     if not raw:
         return set()
     return {item.strip().lower() for item in raw.split(",") if item.strip()}
@@ -1409,11 +1409,11 @@ def _upload_limits() -> tuple[int, int]:
     # Prefer runtime overlays saved via UI settings; fall back to env
     cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
     try:
-        max_mb = float(cfg.get("uploads_max_mb", os.getenv("GATEWAY_UPLOAD_MAX_MB", "25")))
+        max_mb = float(cfg.get("uploads_max_mb", cfg.env("GATEWAY_UPLOAD_MAX_MB", "25")))
     except Exception:
         max_mb = 25.0
     try:
-        max_files = int(cfg.get("uploads_max_files", os.getenv("GATEWAY_UPLOAD_MAX_FILES", "10")))
+        max_files = int(cfg.get("uploads_max_files", cfg.env("GATEWAY_UPLOAD_MAX_FILES", "10")))
     except Exception:
         max_files = 10
     return int(max_mb * 1024 * 1024), max_files
@@ -1461,7 +1461,7 @@ def _clamav_strict() -> bool:
 
 
 async def _clamav_scan(path: Path) -> tuple[str, str]:
-    """Scan a file on disk with ClamAV (legacy path-based). Prefer _clamav_scan_bytes."""
+    """Scan a file on disk with ClamAV path-based method. Prefer _clamav_scan_bytes."""
     try:
         # Try python-clamd (optional dependency)
         try:
@@ -1541,17 +1541,19 @@ async def _clamav_scan_bytes(data: bytes) -> tuple[str, str]:
 # DLQ depth refresher settings
 # -----------------------------
 def _env_float(name: str, default: float) -> float:
+    from services.common import runtime_config as cfg
     try:
-        return float(os.getenv(name, str(default)))
+        return float(cfg.env(name, str(default)) or str(default))
     except ValueError:
         return default
 
 
 def _dlq_topics_from_env() -> list[str]:
-    raw = os.getenv("DLQ_TOPICS", "")
+    from services.common import runtime_config as cfg
+    raw = cfg.env("DLQ_TOPICS", "")
     topics = [t.strip() for t in raw.split(",") if t.strip()]
     if not topics:
-        topics = [f"{os.getenv('MEMORY_WAL_TOPIC', 'memory.wal')}.dlq"]
+        topics = [f"{cfg.env('MEMORY_WAL_TOPIC', 'memory.wal') or 'memory.wal'}.dlq"]
     return topics
 
 
@@ -3332,13 +3334,14 @@ async def memory_batch_write(
     _require_admin_scope(auth)
 
     items = list(payload.items or [])
-    max_items = int(os.getenv("MEMORY_BATCH_MAX_ITEMS", "500"))
+    from services.common import runtime_config as cfg
+    max_items = int(cfg.env("MEMORY_BATCH_MAX_ITEMS", "500") or "500")
     if len(items) > max_items:
         raise HTTPException(status_code=413, detail=f"Too many items (>{max_items})")
 
     soma = SomaBrainClient.get()
     results: list[dict[str, Any]] = []
-    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
 
     for m in items:
         try:
@@ -3466,14 +3469,15 @@ async def memory_export(
     )
     _require_admin_scope(auth)
 
+    from services.common import runtime_config as cfg
     # Optionally enforce tenant scoping for exports
     if (
-        os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"}
+        cfg.env("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"}
         and not tenant
     ):
         raise HTTPException(status_code=400, detail="tenant parameter required for export")
 
-    max_rows = int(os.getenv("MEMORY_EXPORT_MAX_ROWS", "100000"))
+    max_rows = int(cfg.env("MEMORY_EXPORT_MAX_ROWS", "100000") or "100000")
     hard_limit = min(limit_total or max_rows, max_rows)
 
     filename = f"memory_export_{int(time.time())}.ndjson"
@@ -3481,7 +3485,7 @@ async def memory_export(
     async def streamer():
         sent = 0
         after: int | None = None
-        page = int(os.getenv("MEMORY_EXPORT_PAGE_SIZE", "1000"))
+        page = int(cfg.env("MEMORY_EXPORT_PAGE_SIZE", "1000") or "1000")
         while True:
             rows = await store.list_memories(
                 limit=min(page, hard_limit - sent),
@@ -3563,7 +3567,8 @@ class ExportJobStatus(BaseModel):
 
 
 def _exports_dir() -> str:
-    path = os.getenv("EXPORT_JOBS_DIR", "/tmp/soma_export_jobs")
+    from services.common import runtime_config as cfg
+    path = cfg.env("EXPORT_JOBS_DIR", "/tmp/soma_export_jobs")
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -3583,8 +3588,9 @@ async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict
     await _enforce_admin_rate_limit(request)
     auth = await authorize_request(request, payload.model_dump())
     _require_admin_scope(auth)
+    from services.common import runtime_config as cfg
     if (
-        os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"}
+        cfg.env("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"}
         and not payload.tenant
     ):
         raise HTTPException(status_code=400, detail="tenant parameter required for export jobs")
@@ -4823,7 +4829,8 @@ async def enqueue_message(
                 result = await soma.remember(mem_payload)
                 GATEWAY_WT_RESULTS.labels("/v1/session/message", "ok").inc()
                 try:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    from services.common import runtime_config as cfg
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
                     wal_event = {
                         "type": "memory.write",
                         "role": "user",
@@ -4933,7 +4940,8 @@ async def init_chunked_upload(
     upload_id = str(uuid.uuid4())
     if not hasattr(app.state, "chunked_uploads"):
         app.state.chunked_uploads = {}
-    tmp_dir = os.getenv("UPLOAD_TMP_DIR", "/tmp/soma_chunk_uploads")
+    from services.common import runtime_config as cfg
+    tmp_dir = cfg.env("UPLOAD_TMP_DIR", "/tmp/soma_chunk_uploads") or "/tmp/soma_chunk_uploads"
     os.makedirs(tmp_dir, exist_ok=True)
     tmp_path = os.path.join(tmp_dir, f"{upload_id}.part")
 
@@ -5243,7 +5251,8 @@ async def finalize_chunked_upload(
                 result = await soma.remember(mem_payload)
                 GATEWAY_WT_RESULTS.labels("/v1/uploads.finalize", "ok").inc()
                 try:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    from services.common import runtime_config as cfg
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
                     wal_event = {
                         "type": "memory.write",
                         "role": "user",
@@ -5585,7 +5594,8 @@ async def upload_files(
                     GATEWAY_WT_RESULTS.labels("/v1/uploads", "ok").inc()
                     # Publish a WAL entry for observability/durability
                     try:
-                        wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                        from services.common import runtime_config as cfg
+                        wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
                         wal_event = {
                             "type": "memory.write",
                             "role": "user",
@@ -5761,7 +5771,8 @@ async def enqueue_quick_action(
                 result = await soma.remember(mem_payload)
                 GATEWAY_WT_RESULTS.labels("/v1/session/action", "ok").inc()
                 try:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    from services.common import runtime_config as cfg
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
                     wal_event = {
                         "type": "memory.write",
                         "role": "user",
@@ -7195,7 +7206,8 @@ async def health_check(
         }
 
     try:
-        dlq_topic = f"{os.getenv('MEMORY_WAL_TOPIC', 'memory.wal')}.dlq"
+        from services.common import runtime_config as cfg
+        dlq_topic = f"{cfg.env('MEMORY_WAL_TOPIC', 'memory.wal') or 'memory.wal'}.dlq"
         dlq_store = get_dlq_store()
         depth = await dlq_store.count(topic=dlq_topic)
         # Emit depth to Prometheus for alerting
@@ -8005,7 +8017,8 @@ async def _process_export_job(job_id: int) -> None:
         return
     params = job.params or {}
     # Enforce tenant requirement if configured
-    if os.getenv("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {
+    from services.common import runtime_config as cfg
+    if cfg.env("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {
         "true",
         "1",
         "yes",
@@ -8018,8 +8031,12 @@ async def _process_export_job(job_id: int) -> None:
     dir_path = _exports_dir()
     tmp_path = os.path.join(dir_path, f"job_{job_id}.ndjson.part")
     final_path = os.path.join(dir_path, f"job_{job_id}.ndjson")
-    max_rows = int(os.getenv("EXPORT_JOBS_MAX_ROWS", os.getenv("MEMORY_EXPORT_MAX_ROWS", "100000")))
-    page = int(os.getenv("EXPORT_JOBS_PAGE_SIZE", os.getenv("MEMORY_EXPORT_PAGE_SIZE", "1000")))
+    max_rows = int(
+        cfg.env("EXPORT_JOBS_MAX_ROWS", cfg.env("MEMORY_EXPORT_MAX_ROWS", "100000")) or "100000"
+    )
+    page = int(
+        cfg.env("EXPORT_JOBS_PAGE_SIZE", cfg.env("MEMORY_EXPORT_PAGE_SIZE", "1000")) or "1000"
+    )
     sent = 0
     after: int | None = None
     rows_written = 0

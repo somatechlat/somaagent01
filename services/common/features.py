@@ -95,7 +95,7 @@ def build_default_registry() -> FeatureRegistry:
         ),
         FeatureDescriptor(
             key="sequence",
-            description="Enable sequence orchestration features (legacy compatibility)",
+            description="Enable sequence orchestration features",
             default_enabled=True,
             profiles={"minimal": True, "standard": True, "enhanced": True, "max": True},
             dependencies=[],

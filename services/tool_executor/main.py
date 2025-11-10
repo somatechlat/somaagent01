@@ -24,6 +24,7 @@ from services.common.memory_write_outbox import (
 )
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common import runtime_config as cfg
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
@@ -87,9 +88,8 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 
     default_port = int(getattr(settings, "metrics_port", 9400))
     default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
-
-    configured_port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
-    host = os.getenv("TOOL_EXECUTOR_METRICS_HOST", default_host)
+    configured_port = int(cfg.env("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
+    host = cfg.env("TOOL_EXECUTOR_METRICS_HOST", default_host)
 
     if configured_port <= 0:
         LOGGER.warning("Tool executor metrics disabled", extra={"port": configured_port})
@@ -134,29 +134,29 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
-        bootstrap_servers=os.getenv(
+        bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
 
 
 def _redis_url() -> str:
-    return os.getenv("REDIS_URL", SERVICE_SETTINGS.redis_url)
+    return cfg.env("REDIS_URL", SERVICE_SETTINGS.redis_url)
 
 
 def _tenant_config_path() -> str:
-    return os.getenv(
+    return cfg.env(
         "TENANT_CONFIG_PATH",
         SERVICE_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
     )
 
 
 def _policy_requeue_prefix() -> str:
-    return os.getenv(
+    return cfg.env(
         "POLICY_REQUEUE_PREFIX",
         SERVICE_SETTINGS.extra.get("policy_requeue_prefix", "policy:requeue"),
     )
@@ -171,7 +171,7 @@ class ToolExecutor:
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.tenant_config = TenantConfig(path=_tenant_config_path())
         self.policy = PolicyClient(
-            base_url=os.getenv("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
+            base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
             tenant_config=self.tenant_config,
         )
         self.store = PostgresSessionStore(dsn=SERVICE_SETTINGS.postgres_dsn)
@@ -195,13 +195,13 @@ class ToolExecutor:
             },
         )
         self.streams = {
-            "requests": os.getenv(
+            "requests": cfg.env(
                 "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
             ),
-            "results": os.getenv(
+            "results": cfg.env(
                 "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
             ),
-            "group": os.getenv(
+            "group": cfg.env(
                 "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
             ),
         }
@@ -422,7 +422,7 @@ class ToolExecutor:
                 "type": "tool.start",
             }
             await self.publisher.publish(
-                os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
                 start_event,
                 dedupe_key=start_event.get("event_id"),
                 session_id=str(session_id),
@@ -633,7 +633,7 @@ class ToolExecutor:
                 "type": "tool.result",
             }
             await self.publisher.publish(
-                os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
                 outbound_event,
                 dedupe_key=outbound_event.get("event_id"),
                 session_id=str(result_event.get("session_id")),
@@ -724,7 +724,7 @@ class ToolExecutor:
                 **str_metadata,
                 "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
                 "universe_id": (result_event.get("metadata") or {}).get("universe_id")
-                or os.getenv("SOMA_NAMESPACE"),
+                or cfg.env("SOMA_NAMESPACE"),
             },
             "status": result_event.get("status"),
         }
@@ -735,7 +735,7 @@ class ToolExecutor:
             emb = await _maybe_embed(content)
             if emb is not None:
                 try:
-                    max_dims = int(os.getenv("EMBEDDING_STORE_DIM_TRUNC", "128"))
+                    max_dims = int(cfg.env("EMBEDDING_STORE_DIM_TRUNC", "128"))
                 except ValueError:
                     max_dims = 128
                 memory_payload.setdefault("metadata", {})["embedding"] = emb[:max_dims]
@@ -765,7 +765,7 @@ class ToolExecutor:
                     "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
                 )
             if allow_memory:
-                wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self.soma.remember(memory_payload)
                 try:
                     wal_event = {
@@ -791,7 +791,7 @@ class ToolExecutor:
                         tenant=tenant,
                     )
                     # Optional: semantic link and plan suggestion (best-effort, non-blocking)
-                    if os.getenv("SOMABRAIN_ENABLE_LINK_PLAN", "false").lower() in {
+                    if cfg.env("SOMABRAIN_ENABLE_LINK_PLAN", "false").lower() in {
                         "1",
                         "true",
                         "yes",
