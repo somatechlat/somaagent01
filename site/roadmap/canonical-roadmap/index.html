@@ -1,0 +1,3035 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Unified documentation portal for SomaAgent01">
+      
+      
+      
+        <link rel="canonical" href="https://docs.somaagent01.dev/roadmap/canonical-roadmap/">
+      
+      
+        <link rel="prev" href="../..">
+      
+      
+        <link rel="next" href="../sprint-roadmap/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>Canonical Roadmap - SomaAgent01 Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#central-configuration-architecture-planned-consolidation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SomaAgent01 Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Canonical Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SomaAgent01 Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Roadmap
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Roadmap
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Canonical Roadmap
+    
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sprint-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sprint Roadmap
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            User Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/quick-start-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quick Start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Technical Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Technical Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/export-jobs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Jobs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/outbound-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Outbound Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/notifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    UI Notifications
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Monitoring & Health
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/tools-messages-memories/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tools, Messages & Memories
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_11" id="__nav_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_11">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/circuit-breaker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Circuit Breaker Open
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/high-error-rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    High Error Rate
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/high-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    High Latency
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-manual/runbooks/kafka-lag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kafka Consumer Lag
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Development Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Development Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/local-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/contribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contribution Workflow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/extensibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Extensibility
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/vibe-coding-rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    VIBE Coding Rules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/coding-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coding Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/testing-guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Guidelines
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/ui-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    UI Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbook (Local Stack)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Onboarding Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Onboarding Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Shared Resources
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Shared Resources
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Style Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Glossary
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Change Log
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="central-configuration-architecture-planned-consolidation">Central Configuration Architecture (Planned Consolidation)<a class="headerlink" href="#central-configuration-architecture-planned-consolidation" title="Permanent link">&para;</a></h1>
+<p>Objective: Eliminate scattered environment variable access and ad‑hoc flag checks by introducing a single, layered configuration access surface consumed everywhere (gateway, workers, UI support code). No direct <code>os.getenv</code> calls remain in business logic after migration – only within the configuration loader.</p>
+<p>Layers &amp; Precedence (highest wins):
+1. Dynamic Overrides: Runtime config documents delivered via Kafka (or future Somabrain config endpoint) and applied through <code>ConfigRegistry.apply_update()</code>.
+2. Environment Variables: 12‑factor compliance; provide non-secret overrides at container start.
+3. Defaults: Versioned static defaults derived from <code>SA01Settings.environment_defaults()</code> and seed config documents.</p>
+<p>Core Components:
+- <code>SA01Settings</code> (static/base): Environment‑aware service connection defaults (Postgres/Kafka/Redis/OPA/metrics). Provides stable base and environment mapping.
+- <code>ConfigRegistry</code> (dynamic): Validates and stores a JSONSchema-backed snapshot (<code>registry.v1.schema.json</code>), notifies subscribers, and exposes consistent shape for application consumption.
+- <code>FeatureRegistry</code>: Pure in‑memory projection of feature descriptors + profile; will be driven by dynamic overrides (e.g., profile change, forced enable/disable list) once merged with <code>ConfigRegistry</code>.
+- <code>RuntimeConfigFacade</code> (new planned module): Single import point (<code>from services.common.runtime_config import cfg</code>) exposing read‑only helper methods: <code>cfg.db()</code>, <code>cfg.kafka()</code>, <code>cfg.redis()</code>, <code>cfg.feature('token_metrics')</code>, <code>cfg.flag('embeddings_ingest')</code>, <code>cfg.policy()</code>, <code>cfg.somabrain()</code>, <code>cfg.profile()</code>. Internally composes SA01Settings + registry snapshot + computed feature states.
+- Metrics Layer: Prometheus gauges/counters updated from a single periodic refresher (<code>cfg.refresh_metrics()</code>), replacing per‑module self‑updates.</p>
+<p>Design Principles:
+- Fail‑Closed for Sensitive Domains: If dynamic override layer is unavailable, security‑critical values (policy fail‑open, masking enablement) revert to conservative defaults explicitly defined in SA01Settings.
+- Immutable Read Surface: Callers cannot mutate configuration dictionaries; updates only occur via validated registry documents.
+- Deterministic Hashing: Each effective merged snapshot publishes a <code>config_effective_checksum</code> metric for change detection and alerting.
+- Single Path for Flags: All feature/flag queries route through <code>cfg.flag()</code> which first resolves remote tenant override cache → registry descriptor → fallback default.
+- Zero Direct Env Access: A linter rule (planned) prohibits <code>os.getenv(</code> outside configuration and bootstrap modules.</p>
+<p>Access Flow:
+<div class="highlight"><pre><span></span><code>Incoming Kafka config event → deserialize → ConfigRegistry.apply_update() → recompute merged snapshot (defaults + env + dynamic) → update FeatureRegistry overlay → emit metrics + trigger subscribers → RuntimeConfigFacade exposes new view.
+</code></pre></div></p>
+<p>Planned Migration Steps:
+1. Inventory all <code>os.getenv</code> usages (gateway, session_repository, embeddings, features, tool executor).
+2. Introduce <code>runtime_config.py</code> with facade &amp; merge logic (no behavior change yet; shadow reads).
+3. Replace direct env reads with facade methods (batch by domain: database, kafka, redis, feature flags, masking, policy, embeddings).
+4. Integrate dynamic overrides (config update listener) and publish <code>config_effective_checksum</code> metric.
+5. Enforce linter rule + add unit test <code>test_no_direct_getenv.py</code> blocking straggler <code>os.getenv</code> references.
+6. Update <code>/v1/runtime-config</code> endpoint to source exclusively from facade (deprecate internal recomputation).</p>
+<p>Metrics To Add:
+- <code>config_effective_checksum</code> (Gauge – last applied checksum)
+- <code>config_layer_source_total{layer}</code> (Counter – counts of accesses hitting dynamic|env|default)
+- <code>feature_flag_resolution_total{source}</code> (Counter – local|remote|cache_miss|cache_hit)
+- <code>config_update_latency_seconds</code> (Histogram – time from receipt to facade publication)</p>
+<p>Risk &amp; Mitigations:
+- Stale Overrides: Use checksum comparison + optional monotonic <code>version</code> to reject regressions.
+- Partial Documents: JSONSchema requires explicit fields; missing keys fall back to defaults predictably.
+- Tenant Explosion (flag cache size): Introduce size‑bounded LRU for per‑tenant overrides with eviction metric.
+- Deployment Drift: Print merged snapshot summary at startup and include checksum in <code>/health/summary</code> for observability.</p>
+<p>Acceptance Criteria (Centralization Complete):
+- Grep for <code>os.getenv(</code> outside allowed modules returns zero.
+- <code>/v1/feature-flags</code> effective states match facade outputs for sampled features (golden test).
+- Dynamic config update triggers metric change and subscriber callback without error.
+- Single import <code>cfg</code> used in all new code paths for settings/flags.</p>
+<p>Next Sprint Integration: This architecture underpins L2 (Learning &amp; Context) by enabling remote toggles for experimental learning weight adjustments and context build heuristics without re-deploy.</p>
+<h1 id="canonical-roadmap-somaagent01">📍 Canonical Roadmap – somaAgent01<a class="headerlink" href="#canonical-roadmap-somaagent01" title="Permanent link">&para;</a></h1>
+<p><em>Merged with Agent-Zero architectural insights – 2025-11-08</em></p>
+<hr />
+<h2 id="0-executive-summary">0️⃣ Executive Summary<a class="headerlink" href="#0-executive-summary" title="Permanent link">&para;</a></h2>
+<p>This is the <strong>single source of truth</strong> for the post-merge, centralised architecture of <strong>somaAgent01</strong> after integrating the best patterns from <em>Agent-Zero</em>.<br />
+We now have <strong>zero import-time side-effects</strong>, <strong>deterministic middleware</strong>, <strong>test-friendly singletons</strong>, and a <strong>clear separation of concerns</strong>.</p>
+<hr />
+<h2 id="1-vision-success-criteria">1️⃣ Vision &amp; Success Criteria<a class="headerlink" href="#1-vision-success-criteria" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Description</th>
+<th>Success Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Single source of truth</strong></td>
+<td>All external services (Somabrain, OPA, Kafka, Postgres, etc.) are accessed through <strong>registry singletons</strong> that live in a dedicated <code>integrations/</code> package.</td>
+<td>Every module imports <code>from integrations.service&gt; import singleton&gt;</code>; no direct <code>httpx</code>, <code>kafka-python</code>, <code>psycopg2</code> usage outside the registry.</td>
+</tr>
+<tr>
+<td><strong>Zero import-time side-effects</strong></td>
+<td>Background workers, DB pools, Kafka producers, and Prometheus metrics are <strong>lazy-initialised</strong> in FastAPI startup hooks or explicit <code>init()</code> calls.</td>
+<td>Test suite runs with <code>settings.testing=True</code> without “event loop already running” or connection errors.</td>
+</tr>
+<tr>
+<td><strong>Deterministic middleware stack</strong></td>
+<td>OPA, auth, request-id, and observability middleware are registered <strong>once</strong> and configured from the central <code>settings</code> object.</td>
+<td>No <code>NameError</code> for stale factories; auth tests receive the expected <code>HTTPException</code>.</td>
+</tr>
+<tr>
+<td><strong>Observability-first</strong></td>
+<td>All request/response paths emit structured logs, request-id correlation, and Prometheus metrics defined in a single <code>observability/metrics.py</code>.</td>
+<td>Prometheus endpoint <code>/metrics</code> contains <code>somabrain_requests_total</code>, <code>gateway_http_requests_total</code>, etc.</td>
+</tr>
+<tr>
+<td><strong>Test-friendly &amp; extensible</strong></td>
+<td>The architecture supports unit- and integration-testing with simple monkey-patching of the singleton objects.</td>
+<td>All existing tests (≈ 300) pass after the refactor.</td>
+</tr>
+<tr>
+<td><strong>Clear documentation &amp; diagram</strong></td>
+<td>A single markdown file (<code>docs/roadmap/canonical-roadmap.md</code>) describes the whole system, the layers, and the data-flow.</td>
+<td>New contributors can read the file and understand where to add a feature in 5 minutes.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-target-state-layered-architecture">2️⃣ Target State – Layered Architecture<a class="headerlink" href="#2-target-state-layered-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>src/
+├─ config/
+│   ├─ __init__.py               # expose `settings`
+│   └─ settings.py               # Pydantic BaseSettings – immutable singleton
+├─ integrations/
+│   ├─ __init__.py               # expose public singletons
+│   ├─ somabrain/
+│   │   ├─ __init__.py           # `client = SomabrainClient()`
+│   │   └─ client.py             # async httpx wrapper
+│   ├─ opa/
+│   │   ├─ __init__.py           # `policy = EnforcePolicy(...)`
+│   │   └─ middleware.py         # class EnforcePolicy
+│   ├─ kafka/
+│   │   └─ producer.py           # lazy-init KafkaProducer singleton
+│   └─ postgres/
+│       └─ pool.py               # asyncpg pool singleton
+├─ observability/
+│   ├─ __init__.py
+│   ├─ metrics.py                # factories + all metric objects
+│   └─ logging.py                # structured logger with request-id
+├─ services/
+│   └─ gateway/
+│       ├─ __init__.py
+│       ├─ app.py                # FastAPI instance, routes, startup/shutdown
+│       └─ dependencies.py       # FastAPI Depends helpers
+├─ main.py                       # uvicorn services.gateway.app:app
+└─ docs/
+    └─ roadmap/
+        └─ canonical-roadmap.md  # ← this file
+</code></pre></div>
+<hr />
+<h2 id="3-key-patterns-communication">3️⃣ Key Patterns &amp; Communication<a class="headerlink" href="#3-key-patterns-communication" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Where used</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Configuration singleton</strong></td>
+<td><code>config/settings.py</code></td>
+<td><code>settings = Settings()</code> loaded once; all env vars typed &amp; validated.</td>
+</tr>
+<tr>
+<td><strong>Integration registry</strong></td>
+<td><code>integrations/__init__.py</code></td>
+<td>Exposes <code>somabrain_client</code>, <code>opa_policy</code>, <code>kafka_producer</code>, <code>pg_pool</code>.</td>
+</tr>
+<tr>
+<td><strong>Lazy startup hooks</strong></td>
+<td><code>services/gateway/app.py</code></td>
+<td>Background services start only when <code>settings.testing=False</code>.</td>
+</tr>
+<tr>
+<td><strong>Deterministic middleware</strong></td>
+<td><code>app.add_middleware(opa_policy.__class__, fail_open=settings.policy_fail_open)</code></td>
+<td>Registered <strong>once</strong>, no duplicate factories.</td>
+</tr>
+<tr>
+<td><strong>Observability layer</strong></td>
+<td><code>observability/metrics.py</code></td>
+<td>Centralised Prometheus metrics; <code>request-id</code> propagated in logs.</td>
+</tr>
+<tr>
+<td><strong>Test isolation</strong></td>
+<td><code>pytest.ini</code> sets <code>TESTING=1</code></td>
+<td>Background services skipped; singletons can be monkey-patched.</td>
+</tr>
+<tr>
+<td><strong>Event bus</strong></td>
+<td><code>services/common/event_bus.py</code> (existing)</td>
+<td>Decoupled domain events between workers.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-detailed-implementation-roadmap">4️⃣ Detailed Implementation Roadmap<a class="headerlink" href="#4-detailed-implementation-roadmap" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Description</th>
+<th>Owner</th>
+<th>Duration</th>
+<th>Acceptance Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>M0 – Baseline</strong></td>
+<td>Freeze current <code>main</code> branch, ensure CI passes.</td>
+<td>–</td>
+<td>0 d</td>
+<td>CI green on <code>prune/auto-cleanup</code> (expected failures noted).</td>
+</tr>
+<tr>
+<td><strong>M1 – Config Layer</strong></td>
+<td>Create <code>config/settings.py</code>, replace all <code>os.getenv</code> with <code>settings</code>.</td>
+<td>Senior Backend</td>
+<td>1 d</td>
+<td>No <code>os.getenv</code> left; <code>settings</code> imported everywhere.</td>
+</tr>
+<tr>
+<td><strong>M2 – Integration Registry</strong></td>
+<td>Move Somabrain client, OPA middleware, Kafka producer, Postgres pool into <code>integrations/</code> singletons.</td>
+<td>Senior Backend</td>
+<td>2 d</td>
+<td>Every module imports from <code>integrations.service&gt;</code>; tests can <code>monkeypatch</code> singleton.</td>
+</tr>
+<tr>
+<td><strong>M3 – Observability Core</strong></td>
+<td>Create <code>observability/metrics.py</code> with factories first, then metric objects.</td>
+<td>Observability Engineer</td>
+<td>1 d</td>
+<td>Importing any module no longer raises <code>NameError</code>.</td>
+</tr>
+<tr>
+<td><strong>M4 – FastAPI Refactor</strong></td>
+<td>Rewrite <code>services/gateway/app.py</code> to use singletons, clean middleware, add startup/shutdown.</td>
+<td>Senior Backend</td>
+<td>2 d</td>
+<td><code>uvicorn services.gateway.app:app</code> starts; <code>/docs</code> &amp; <code>/metrics</code> work.</td>
+</tr>
+<tr>
+<td><strong>M5 – Test-Mode Guard</strong></td>
+<td>Add <code>settings.testing</code> flag; guard background service startup.</td>
+<td>QA Engineer</td>
+<td>1 d</td>
+<td><code>pytest -q</code> runs without external services; no “event loop” errors.</td>
+</tr>
+<tr>
+<td><strong>M6 – Auth &amp; OPA Alignment</strong></td>
+<td>Adjust <code>EnforcePolicy</code> to respect <code>settings.require_auth</code> and <code>settings.policy_fail_open</code>.</td>
+<td>Security Engineer</td>
+<td>1 d</td>
+<td><code>tests/unit/test_gateway_authorization.py</code> passes with expected <code>HTTPException</code>.</td>
+</tr>
+<tr>
+<td><strong>M7 – Documentation Overhaul</strong></td>
+<td>Populate this file with diagram, layer description, and step-by-step guide.</td>
+<td>Technical Writer</td>
+<td>1 d</td>
+<td>New contributors can locate <code>integrations.somabrain.client</code> in 5 min.</td>
+</tr>
+<tr>
+<td><strong>M7.5 – Pixel-Perfect UI Parity</strong></td>
+<td>Copy golden CSS, fonts, spacing, icons; map canonical SSE events to golden DOM structure; dual-mode Playwright suite.</td>
+<td>Frontend + QA</td>
+<td>3 d</td>
+<td>Playwright <code>parity.spec.ts</code> passes both <code>GATEWAY_BASE_URL</code> and <code>http://localhost:7001</code> modes with 1px diffs.</td>
+</tr>
+<tr>
+<td><strong>M8 – Full Test Run &amp; Fixes</strong></td>
+<td>Run entire suite, fix residual import errors, update mocks.</td>
+<td>QA Engineer</td>
+<td>2 d</td>
+<td><strong>0 failures</strong> (unit + integration tests).</td>
+</tr>
+<tr>
+<td><strong>M9 – CI/CD Integration</strong></td>
+<td>Add lint (<code>ruff</code>), type-check (<code>mypy</code>), and startup verification.</td>
+<td>DevOps Engineer</td>
+<td>1 d</td>
+<td>GitHub Actions passes on every PR.</td>
+</tr>
+<tr>
+<td><strong>M10 – Release</strong></td>
+<td>Tag <code>v0.1.0-centralised</code>; push to <code>master</code>.</td>
+<td>Release Manager</td>
+<td>0.5 d</td>
+<td>Release notes include “centralised integration registry”.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total estimated effort:</strong> ~ 12 person-days.</p>
+<hr />
+<h2 id="5-communication-data-flow">5️⃣ Communication &amp; Data Flow<a class="headerlink" href="#5-communication-data-flow" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>┌────────────┐     ┌──────────────────────┐
+│   Client   │────▶│  FastAPI Gateway     │
+└────────────┘     │   (app.py)           │
+                   │  – middleware        │
+                   │  – routes            │
+                   └──────────┬───────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │  integrations singletons      │
+              │  - somabrain_client           │
+              │  - opa_policy                 │
+              │  - kafka_producer             │
+              │  - pg_pool                    │
+              └───────────────┬───────────────┘
+                              │
+                   ┌──────────┴───────────┐
+                   │ External Services    │
+                   │ - Somabrain Brain    │
+                   │ - OPA Service        │
+                   │ - Kafka Cluster      │
+                   │ - Postgres           │
+                   └──────────────────────┘
+</code></pre></div>
+<hr />
+<h2 id="6-post-merge-checklist-tick-when-done">6️⃣ Post-Merge Checklist (tick when done)<a class="headerlink" href="#6-post-merge-checklist-tick-when-done" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] <code>config/settings.py</code> created and all env reads migrated.  </li>
+<li>[ ] <code>integrations/</code> folder created; all singletons exposed via <code>__init__.py</code>.  </li>
+<li>[ ] <code>observability/metrics.py</code> centralises all metric creation.  </li>
+<li>[ ] <code>services/gateway/app.py</code> uses only public singletons; no import-time side-effects.  </li>
+<li>[ ] CI passes (<code>pytest -q</code>, <code>ruff</code>, <code>mypy</code>, Docker build).  </li>
+<li>[ ] Documentation (this file) reflects final state and is peer-reviewed.</li>
+</ul>
+<hr />
+<h2 id="7-next-steps">7️⃣ Next Steps<a class="headerlink" href="#7-next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Create the new folder structure (<code>config/</code>, <code>integrations/</code>, <code>observability/</code>).  </li>
+<li>Move the first integration (<code>somabrain</code>) and run the test suite.  </li>
+<li>Iterate per milestone until M10 is complete.  </li>
+<li>Tag release <code>v0.1.0-centralised</code> and merge to <code>master</code>.</li>
+</ol>
+<hr />
+<h2 id="71-single-entry-surface-centralization-charter-authoritative">7.1️⃣ Single Entry Surface — Centralization Charter (Authoritative)<a class="headerlink" href="#71-single-entry-surface-centralization-charter-authoritative" title="Permanent link">&para;</a></h2>
+<p>Goal: architect the platform with a single public entry surface and single configuration/feature read surface. All external traffic and provider interactions pass through one gateway; all runtime decisions read from one facade.</p>
+<p>Scope of “Single Entry Surface”
+- Public HTTP: exactly one public service — the FastAPI Gateway at <code>GATEWAY_BASE_URL</code> (canonical port <code>21016</code>), serving UI under <code>/ui</code> and APIs under <code>/v1/*</code>.
+- Streaming: a single SSE stream per session at <code>/v1/session/{id}/events</code> powering all real‑time updates (chat, tool, notifications, invalidations). No polling anywhere.
+- Provider mediation: LLM, tools, memory, and Somabrain calls are brokered by Gateway. Workers never hold raw provider credentials or call providers directly.
+- Configuration: one read surface via <code>services.common.runtime_config</code> (<code>cfg.settings()</code>, <code>cfg.flag()</code>, <code>cfg.config_*</code> helpers). No direct <code>os.getenv(</code> outside bootstrap/settings.
+- Tooling/Models: Gateway owns Tool Catalog and Model Profiles CRUD and resolution. Workers retrieve read‑only projections.
+- Health &amp; Observability: <code>/v1/health</code> and <code>/healthz</code> exposed only by Gateway; metrics scraped from the single metrics endpoint; traces originate at Gateway.</p>
+<p>Enforcement (build‑time and runtime)
+- Lint/Test: a repo‑level test forbids <code>os.getenv(</code> outside allowlisted modules (settings/bootstrap) and blocks introducing new HTTP servers outside Gateway.
+- Network tests: Playwright/pytest assert that UI uses only <code>/v1/*</code> and <code>/ui/*</code>; no legacy or alternate ports/hosts.
+- Provider path: unit/integration tests ensure workers never send <code>base_url</code> or provider secrets; Gateway resolves model→provider→base_url and audits.
+- Dependency boundaries: policy, feature flags, and Somabrain are accessed via HTTP clients from Gateway (and designated service clients), never by importing foreign service internals.</p>
+<p>Acceptance Criteria (Single Entry Surface)
+- One listening public port in dev/prod (<code>GATEWAY_PORT=21016</code>); UI reachable at <code>WEB_UI_BASE_URL=http://localhost:21016/ui</code>.
+- <code>/v1</code> endpoints exercised by UI and tests only via Gateway; grep shows no additional <code>uvicorn.run</code> or public <code>FastAPI()</code> apps bound in other services.
+- Grep for <code>os.getenv(</code> outside <code>services/common/settings_*</code>, <code>services/common/runtime_config.py</code>, and explicit bootstrap modules returns zero.
+- Workers do not include provider <code>base_url</code>/credentials in any inter‑service payload; Gateway audit logs show resolved provider and normalized base_url per invoke.
+- SSE‑only real‑time; no <code>/poll</code>/CSRF endpoints present; reconnection with jittered backoff validated.</p>
+<p>Verification Steps
+- Dev up: <code>make dev-up &amp;&amp; curl -sf http://localhost:21016/healthz</code> → ok.
+- UI smoke: <code>WEB_UI_BASE_URL=http://localhost:21016/ui</code> tests pass; network log contains only <code>/v1/*</code> and <code>/ui/*</code>.
+- Lint/test: <code>test_no_direct_getenv.py</code> passes; <code>grep</code> checks for stray servers and getenv are enforced in CI.</p>
+<p>Governance
+- Any change adding a new public surface, alternative port, or direct provider call must update this section first and provide a migration plan; otherwise the change is rejected at review.</p>
+<hr />
+<p><em>This canonical roadmap supersedes any prior partial roadmaps and should be the only living document describing the overall architecture.</em></p>
+<h2 id="integration-of-celery-into-somaagent01-canonical">📚 Integration of Celery into somaagent01 (Canonical)<a class="headerlink" href="#integration-of-celery-into-somaagent01-canonical" title="Permanent link">&para;</a></h2>
+<p>Version: 1.0 – 2025‑11‑08
+Audience: Developers, DevOps engineers, and security auditors working on the somaagent01 code‑base.</p>
+<p>Table of Contents
+Why Celery?
+High‑Level Architecture
+Prerequisites &amp; Dependencies
+Code Layout &amp; Core Components
+FastAPI Scheduler API
+LLM Tool – schedule_task_celery
+Security – JWT Middleware &amp; Scope Enforcement
+Observability – Prometheus Metrics
+Docker‑Compose Deployment
+Feature‑Flag Switching (APScheduler ↔ Celery)
+Migration from APScheduler to Celery
+Testing Strategy
+Roll‑out Checklist
+Appendix – Example Payloads &amp; cURL snippets</p>
+<p>1️⃣ Why Celery?
+Reason  Benefit for somaagent01
+Distributed workers Heavy or long‑running tasks (model inference, large downloads) run in separate processes, keeping the LLM‑agent responsive.
+Reliable delivery &amp; retries Guarantees at‑least‑once execution, automatic exponential back‑off, dead‑letter queues – essential for production automation.
+Cron / periodic jobs    Celery Beat provides a robust, persistent scheduler that survives container restarts.
+Task chaining &amp; workflows   Canvas primitives (chains, groups, chords) enable multi‑step pipelines (e.g., fetch → process → store).
+Horizontal scalability  Adding more workers is just a new container – linear scaling.
+Existing stack compatibility    The project already uses Redis for other services; Celery works natively with Redis as broker + backend.</p>
+<p>When to adopt?</p>
+<p>When you have long‑running or CPU‑heavy jobs.
+When you need retries, dead‑letter handling, or task chaining.
+When you anticipate scaling the system horizontally.
+For simple low‑frequency cron jobs you can keep using APScheduler (lighter).</p>
+<p>2️⃣ High‑Level Architecture
++-------------------+      +-------------------+      +-------------------+
+|   FastAPI (agent)   | → |   Celery Beat      | → |   Celery Workers   |
++-------------------+      +-------------------+      +-------------------+
+        ^                         ^                         ^
+        |                         |                         |
+        |   Redis broker (queues)  |   Redis result store    |
+        +-----------------------------------------------------+</p>
+<p>FastAPI (the existing agent server) exposes a /api/celery/* REST API for job CRUD.
+Celery Beat enqueues periodic jobs; Celery Workers execute tasks and post results.
+Redis acts as broker and optional result backend.</p>
+<p>3️⃣ Prerequisites &amp; Dependencies
+- Redis available for broker + result backend
+- Celery 5.x, celery[redis]
+- FastAPI and Pydantic (already present)
+- Prometheus client for metrics</p>
+<p>4️⃣ Code Layout &amp; Core Components
+- celery_app/: Celery application factory and tasks registration
+- scheduler/: API adapters for APScheduler and Celery modes
+- extensions/: <code>schedule_task_celery</code> tool wrapper for LLM-triggered tasks
+- services/gateway/main.py: feature-flag wiring, runtime-config surface, API router include</p>
+<p>5️⃣ FastAPI Scheduler API (Unified)
+- GET /v1/ui/scheduler/jobs – list
+- POST /v1/ui/scheduler/jobs – create
+- PUT /v1/ui/scheduler/jobs/{id} – update
+- POST /v1/ui/scheduler/jobs/{id}/run – run now
+- DELETE /v1/ui/scheduler/jobs/{id} – delete
+- GET /v1/ui/scheduler/runs?job_id=&amp;cursor= – history</p>
+<p>6️⃣ LLM Tool – schedule_task_celery
+- Thin wrapper selecting APScheduler or Celery implementation based on feature flag
+- Validates payload, enqueues job, returns job id and trace</p>
+<p>7️⃣ Security – JWT Middleware &amp; Scope Enforcement
+- Scopes: scheduler:read, scheduler:write, scheduler:run
+- Optional OPA tenant policies
+- Audit log for CRUD and run-now actions</p>
+<p>8️⃣ Observability – Prometheus Metrics
+- scheduler_jobs_total
+- scheduler_runs_started_total / success_total / failure_total
+- scheduler_run_duration_seconds (histogram)
+- Celery queue depth gauge (broker)</p>
+<p>9️⃣ Docker‑Compose Deployment
+- Add celery_worker and celery_beat services
+- Configure USE_CELERY/SCHEDULER_USE_CELERY, Redis URL, concurrency</p>
+<p>🔟 Feature‑Flag Switching (APScheduler ↔ Celery)
+- Env/config flag <code>SCHEDULER_USE_CELERY</code>
+- Runtime-config projects <code>scheduler.enabled</code> and <code>scheduler.use_celery</code> to UI</p>
+<p>1️⃣1️⃣ Migration from APScheduler to Celery
+- Export current jobs → JSON, transform → Celery Beat entries
+- Validate counts, enable flag, rollback path documented</p>
+<p>1️⃣2️⃣ Testing Strategy
+- Unit (validators, wrapper), Integration (API + Celery), E2E (compose), Load, Security</p>
+<p>1️⃣3️⃣ Roll‑out Checklist
+- Code review, CI, staging with flag off → on, smoke tests, security audit, observability check, migration run, rollback tested, production deploy, post‑deploy review</p>
+<p>📎 Appendix – Example Payloads &amp; cURL snippets
+- Job creation payload, cURL for create/list/run</p>
+<p>📌 Final notes
+- Feature‑flag enables gradual rollout; code is modular to swap Celery if needed later.</p>
+<p>End of documentation.</p>
+<p>========================
+Centralize Gateway / UI URLs (Immediate action)
+========================</p>
+<p>Decision (explicit)
+- Canonical Gateway host port: 21016 (the UI must be reachable at http://localhost:21016/ui/index.html).
+- Canonical environment variables (reuse existing names):
+  - <code>GATEWAY_PORT</code> (numeric, default 21016)
+  - <code>GATEWAY_BASE_URL</code> (full URL, e.g. http://localhost:21016)
+  - <code>WEB_UI_BASE_URL</code> (UI entry, e.g. http://localhost:21016/ui)</p>
+<p>Rationale
+- Many tests, scripts and docs contained hard-coded values (21016, 20016, 8010, and literal http://127.0.0.1 URLs). This causes runtime confusion. The project already uses <code>GATEWAY_PORT</code> and <code>GATEWAY_BASE_URL</code> in places; we will standardize on them and prefer <code>WEB_UI_BASE_URL</code> for UI consumers.</p>
+<p>Immediate plan (no new systems, minimal edits)
+1. Ensure <code>.env</code> / <code>.env.example</code> contains the canonical variables (set <code>GATEWAY_PORT=21016</code>, <code>GATEWAY_BASE_URL=http://localhost:21016</code>, <code>WEB_UI_BASE_URL=http://localhost:21016/ui</code>).
+2. Replace hard-coded URL fallbacks in tests, scripts, and webui test configs to prefer <code>WEB_UI_BASE_URL</code> → <code>GATEWAY_BASE_URL</code> → derived <code>http://localhost:${GATEWAY_PORT}</code>. Exact files to update include (representative):
+   - <code>tests/e2e/*.py</code>, <code>tests/playwright/*.py</code>, <code>tests/ui/*</code>
+   - <code>webui/playwright.config.ts</code> and <code>webui/tests/*.spec.ts</code>
+   - <code>scripts/e2e_quick.py</code>, <code>scripts/ui-smoke.sh</code>, <code>scripts/check_stack.sh</code>
+   - <code>python/api/*</code> modules that fallback to <code>http://localhost:20016</code> or <code>http://127.0.0.1:21016</code>
+   - <code>.vscode/tasks.json</code> and Makefile examples
+   - docs under <code>docs/*</code> and generated <code>site/*</code> that embed http://localhost:21016 or other literal ports
+3. Remove clearly broken / redundant artifacts that confuse developers and standardize on the single compose manifest.
+4. Verify by running the dev stack and smoke tests (see "Verification" below).</p>
+<p>Safety &amp; VIBE constraints
+- No new configuration systems or helper files will be introduced. Edits reuse existing env variables and the repo's helpers.
+- Files will be archived before removal so the operation is reversible.
+- Changes will be committed directly to the working branch per your instruction (no extra branches), with a single clear commit and changelog.</p>
+<p>Verification
+- Bring up the dev stack (with <code>GATEWAY_PORT=21016</code>) and confirm:
+  - The UI is reachable at <code>http://localhost:21016/ui/index.html</code>.
+  - <code>curl -s http://localhost:21016/v1/health</code> returns 200 and expected JSON status.
+  - Run <code>pytest -q tests/e2e/test_api_contract_smoke.py</code> — passes or at least successfully performs the POST and opens SSE.
+  - Run the Playwright UI smoke <code>./scripts/ui-smoke.sh ${WEB_UI_BASE_URL}</code> to validate UI load and network behavior.</p>
+<p>Post-conditions
+- All literal host:port occurrences for Gateway/UI should be removed except in docs examples that explicitly show how to set the env variables (those will show variables not raw URLs).
+- <code>archive/</code> will contain the moved/archived files for safe undo.</p>
+<h2 id="canonical-roadmap-auditability-observability-and-perfect-memory">Canonical Roadmap — Auditability, Observability, and Perfect Memory<a class="headerlink" href="#canonical-roadmap-auditability-observability-and-perfect-memory" title="Permanent link">&para;</a></h2>
+<p>This is the living, canonical roadmap for building SomaAgent01 into an auditable, observable, and traceable agentic platform with perfect message persistence and recall via SomaBrain. It is grounded in the current infrastructure and codebase.</p>
+<h3 id="vision-and-nonnegotiables">Vision and Non‑Negotiables<a class="headerlink" href="#vision-and-nonnegotiables" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Every interaction is auditable: we can answer who/what/when/why/how for any message, tool call, or LLM response.</li>
+<li>End-to-end traceability: a single trace follows a request across UI → Gateway → Workers → Providers → SomaBrain.</li>
+<li>Perfect memory: all user and assistant messages are durably persisted and available for high-quality recall in SomaBrain.</li>
+<li>Security by default: least privilege, encrypted by default, policy enforced (OPA/OpenFGA), and no plaintext secrets in logs.</li>
+<li>Production-grade reliability: idempotent processing, backpressure, retries with budgets, and SLOs with actionable alerts.</li>
+</ul>
+<h2 id="system-overview-as-built">System Overview (as-built)<a class="headerlink" href="#system-overview-as-built" title="Permanent link">&para;</a></h2>
+<p>Core services (verified under <code>services/</code>):
+- <code>gateway</code>: FastAPI edge API handling UI, settings, uploads, LLM invoke (/v1/llm/invoke[/stream]), SSE/WS, and write-through to SomaBrain.
+- <code>conversation_worker</code>: Consumes inbound chat events, orchestrates tools, streams responses via Gateway invoke, and writes memories.
+- <code>tool_executor</code>: Executes registered tools deterministically; reports tool_call events.
+- <code>ui</code>: SPA served directly by Gateway; SSE streaming for chat updates.
+- <code>memory_service</code>, <code>memory_replicator</code>, <code>memory_sync</code>, <code>outbox_sync</code>: Durable memory pipeline (WAL/outbox) and replica sync.
+- <code>delegation_gateway</code>, <code>delegation_worker</code>: Delegated agent flows (if enabled).</p>
+<p>Foundational infra:
+- Kafka (event backbone), Redis (state/cache), Postgres (durable store), Vault/Env (secrets), OpenFGA (authz), OPA (policy), OpenTelemetry (traces/metrics/logs), Prometheus (metrics), Grafana/Tempo/Loki (observability).
+- SomaBrain reachable at <code>http://host.docker.internal:9696</code> via <code>SOMA_BASE_URL</code> (Compose).</p>
+<p>Centralized configuration and tools:
+- Gateway hosts a central Tool Catalog and runtime config. It provides:
+    - A single registry of tools, schemas, and per-tenant enable flags and execution profiles (timeouts, concurrency, resource limits).
+    - A UI-safe runtime config projection (<code>/v1/runtime-config</code>) and a public tool list (<code>/v1/tools</code>) without secrets.
+    - Distribution to services via ETag/TTL-cached internal endpoints. Services fail closed if the catalog is unavailable (strict mode).
+    - Provider secrets centralized in Gateway; services invoke providers through Gateway, not with raw keys.</p>
+<h2 id="data-and-event-contracts-canonical">Data and Event Contracts (canonical)<a class="headerlink" href="#data-and-event-contracts-canonical" title="Permanent link">&para;</a></h2>
+<p>Identifiers and correlation:
+- <code>request_id</code>: client-generated or edge-assigned; returned to client.
+- <code>trace_id</code>/<code>span_id</code>: W3C Trace Context propagated via <code>traceparent</code> header and Kafka headers.
+- <code>session_id</code>, <code>message_id</code>, <code>tool_call_id</code>, <code>memory_id</code>: UUIDv4; unique across services.
+- <code>idempotency_key</code>: for POSTs that may be retried (e.g., message send), also carried in Kafka headers.</p>
+<p>Canonical message envelope (Kafka and internal HTTP JSON):
+- <code>meta</code>: { request_id, trace_id, idempotency_key, tenant_id, user_id, session_id, created_at }
+- <code>payload</code>: one of <code>message.user</code>, <code>message.assistant</code>, <code>tool.call</code>, <code>tool.result</code>, <code>llm.request</code>, <code>llm.delta</code>, <code>llm.complete</code>, <code>memory.write</code>, <code>memory.recall</code>, <code>error</code>.
+- <code>version</code>: schema version, starting at <code>v1</code>.</p>
+<p>Persistence contract:
+- All <code>message.user</code> and <code>message.assistant</code> events must be persisted in Postgres and written through to SomaBrain; outbox/WAL ensures durability and at-least-once delivery; consumers implement idempotency.
+- Attachments are referenced by stable URIs: <code>/v1/attachments/{id}</code>; metadata saved with content hash and MIME.</p>
+<p>Attachment ingestion contract:
+- All ingestion paths use <code>attachment_id</code> (no filesystem paths). A service-only fetch streams content from Gateway (policy-enforced; tenant-scoped).
+- The <code>document_ingest</code> tool accepts <code>{ attachment_id, tenant_id, content_type?, size_bytes? }</code> and returns <code>{ text, metadata }</code> with extraction details.</p>
+<p>SSE/WS streaming contract:
+- Streamed events carry <code>event</code> and <code>data</code> fields; <code>data</code> includes <code>meta</code> fields above.
+- Event types: <code>llm.delta</code>, <code>llm.complete</code>, <code>tool.call</code>, <code>tool.result</code>, <code>error</code>, <code>heartbeat</code>.</p>
+<h2 id="traceability-and-observability">Traceability and Observability<a class="headerlink" href="#traceability-and-observability" title="Permanent link">&para;</a></h2>
+<p>OpenTelemetry propagation and spans:
+- Ingress: generate/accept <code>request_id</code> and <code>traceparent</code>; start <code>gateway.receive</code> span.
+- Gateway → Worker: include <code>traceparent</code>, <code>request_id</code>, <code>idempotency_key</code> in Kafka headers.
+- Worker → Gateway Invoke → Provider: propagate <code>traceparent</code>; spans: <code>worker.handle_message</code>, <code>gateway.llm.invoke</code>, <code>provider.api.call</code>.
+- Memory write-through: <code>memory.write</code> span encloses Postgres insert, WAL publish, SomaBrain HTTP call.</p>
+<p>Metrics (Prometheus):
+- QPS/latency/error for: <code>/v1/session/message</code>, <code>/v1/llm/invoke</code>, tool executions, memory writes and recalls.
+- Budgets: retry counts, DLQ depth, outbox lag, replica lag.
+- Cost: token usage by provider/model; per-tenant caps.</p>
+<p>Logs:
+- Structured JSON with <code>level</code>, <code>timestamp</code>, <code>message</code>, <code>request_id</code>, <code>trace_id</code>, <code>session_id</code>, <code>user_id</code>, <code>tenant_id</code>.
+- No secrets, no PII beyond stable IDs; redact payloads as needed (configurable).</p>
+<h2 id="security-model">Security Model<a class="headerlink" href="#security-model" title="Permanent link">&para;</a></h2>
+<ul>
+<li>AuthN: session cookies or OIDC; browser calls use same-origin cookies or header/bearer tokens. No custom CSRF endpoint.</li>
+<li>AuthZ: OpenFGA for resource relations; OPA for policy gates (e.g., tool allowlist, PII egress checks).</li>
+<li>OperationsAdministration: privileged operator endpoints (DLQ, audit, memory export/metrics, migrations, constitution) are selectively policy‑gated using <code>authorize()</code> with resource <code>OperationsAdministration</code> and <code>ops.*</code> actions.</li>
+<li>Secrets: provider API keys stored centrally; never logged; access via internal credentials endpoint with internal token.</li>
+<li>Transport: HTTPS/TLS; internal mTLS optional; WAF headers and strict CORS for UI.</li>
+<li>Data protection: PII minimization, column-level encryption for sensitive fields, backup/restore tested.</li>
+</ul>
+<h2 id="somabrain-integration-perfect-memory-and-recall">SomaBrain Integration (Perfect Memory and Recall)<a class="headerlink" href="#somabrain-integration-perfect-memory-and-recall" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Write-through path: Worker persists messages locally and calls SomaBrain over <code>SOMA_BASE_URL</code> with retries and idempotency.</li>
+<li>Outbox/WAL: if SomaBrain temporarily unavailable, retry with exponential backoff; replicas reconcile via <code>memory_replicator</code>.</li>
+<li>Recall: Provide <code>recall(query|ids|context_window)</code> call surfaces in Gateway; Worker may fetch recall context pre-LLM invoke.</li>
+<li>Feedback: Store user feedback signals (helpful/not helpful/tag) and send to SomaBrain for learning.</li>
+</ul>
+<p>Acceptance criteria:
+- 100% of messages are persisted locally and visible in SomaBrain within SLA (p50 1s, p95 5s) under normal conditions.
+- Recall returns deterministic slices tied to <code>session_id</code> or semantic query with stable relevance signals.
+- End-to-end traces for any message include spans across all hops and appear in Tempo/Jaeger.</p>
+<p>Strict-mode defaults:
+- Fail-closed policies in dev and prod: when a dependency or authorization check fails, the system surfaces a clear error to the UI and audit log; no silent fallbacks.
+- Dev mirrors prod posture (no mocks); warnings and health banners appear in UI when components degrade.</p>
+<h2 id="auditing-and-compliance">Auditing and Compliance<a class="headerlink" href="#auditing-and-compliance" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Immutable audit log: append-only audit events (<code>who</code>, <code>what</code>, <code>when</code>, <code>why</code>, <code>how</code>) stored in Postgres and replicated to cold storage.</li>
+<li>Change management: settings POST creates audit entries; diffs recorded (with secret masking).</li>
+<li>Export: admin endpoint to export audit traces for a <code>request_id</code>/<code>session_id</code>.</li>
+</ul>
+<h2 id="testing-and-cicd">Testing and CI/CD<a class="headerlink" href="#testing-and-cicd" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Unit: schema validation for envelopes; idempotency tests; provider credential fetch tests.</li>
+<li>Integration: write-through tests (Gateway ↔ Worker ↔ SomaBrain); tool orchestration; SSE stream integrity.</li>
+<li>E2E/Playwright: console/network-clean smoke; chat send/stream; tool flow; memory proof (health-gated for replica lag).</li>
+<li>Security tests: CORS, authZ policies, redaction; secrets not present in logs.</li>
+<li>CI gates: build, lint/typecheck, unit, integration, E2E (smoke) required; full E2E nightly.</li>
+</ul>
+<h2 id="web-ui-integration-canonical-behavior">Web UI Integration (Canonical behavior)<a class="headerlink" href="#web-ui-integration-canonical-behavior" title="Permanent link">&para;</a></h2>
+<p>Goal: ship a clean, SSE-only Web UI against canonical Gateway contracts. No mocks, no inline fallbacks; UI must operate against real services via Gateway only.</p>
+<p>Canonical UI behaviors:
+- Chat transport: strictly SSE for streaming via <code>/v1/session/{session_id}/events</code> with event types <code>llm.delta</code>, <code>llm.complete</code>, <code>tool.call</code>, <code>tool.result</code>, <code>error</code>, <code>heartbeat</code>.
+- Message send: POST <code>/v1/session/message</code> with <code>{ message, session_id?, persona_id?, attachments? }</code>; UI must not poll legacy endpoints; it awaits SSE for responses.
+- Attachments: uploads via POST <code>/v1/uploads</code> returning descriptors <code>{ id, sha256, content_type, size_bytes, url }</code>; messages reference <code>attachments: [{ id }]</code> (no filesystem paths).
+- Session management: list/history/delete/reset through Gateway routes; delete chat removes session history and closes streams.
+- Tools: request via POST <code>/v1/tool/request</code>; UI shows tool call and result events inline, matching the SSE contract.
+- Profiles and runtime config: UI fetches <code>/v1/tools</code> and <code>/v1/runtime-config</code> for model profiles, allowed tools, limits, and flags; secrets never exposed.</p>
+<p>Canonical endpoints and flows (summary)
+- Chat send: POST <code>/v1/session/message</code> with <code>{ session_id, message, attachments? }</code>.
+- File uploads: POST <code>/v1/uploads</code>, then reference returned <code>attachment_id</code> in the message.
+- Streaming updates: subscribe to SSE <code>GET /v1/session/{session_id}/events</code>; render <code>llm.delta</code>, <code>llm.complete</code>, <code>tool.*</code>.
+- Auth: same-origin cookies or header/bearer tokens (no CSRF endpoint).</p>
+<p>Memory views
+- Prefer read-only, SomaBrain-backed endpoints (list/search/delete under policy). Avoid UI polling; use manual refresh or SSE invalidations when available.</p>
+<p>Knowledge import
+- POST <code>/v1/uploads</code> then trigger a <code>document_ingest</code> tool call referencing <code>attachment_id</code>; show tool events in-stream.</p>
+<p>Session controls
+- <code>/v1/sessions/{id}/reset</code>, <code>/v1/sessions/{id}</code> DELETE, <code>/v1/sessions/import</code>, <code>/v1/sessions/export</code>, <code>/v1/sessions/{id}/pause</code>, <code>/v1/health</code>.</p>
+<p>UI behavior requirements (copy exactly from A0, implemented via canonical endpoints)
+- Progressive streaming token render with smooth autoscroll and speech synthesis hooks
+- Attachments UX: drag/drop, multi-file upload, progress bar, preview; map to upload→attachment_id flow
+- Session list and tasks switching preserved; selection persisted in localStorage; delete closes SSE and clears view
+- Notifications and error handling: frontend toasts on fetch failures; backend disconnected banner; strict error copies
+- Settings modal: memory dashboard, scheduler/tasks, tool visibility driven by <code>/v1/tools</code> and <code>/v1/runtime-config</code></p>
+<p>Enforcement
+- SSE-only; no UI proxy or polling.
+- No inline dialogue fallback in Gateway; replies originate from Conversation Worker and real providers.</p>
+<p>Acceptance criteria for UI integration:
+- Sending a message from the UI produces streamed assistant deltas over SSE within p50 &lt; 1s under local dev.
+- Uploading a file yields an attachment_id; subsequent message referencing it triggers tool ingestion and assistant usage of extracted text.
+- Deleting a chat closes the current SSE stream and removes history; a new chat starts clean.
+- UI reflects Tool Catalog enable/disable and execution profile limits within configured TTL.</p>
+<p>NO LEGACY enforcement (applies to both UI and Gateway)
+SSE-only and no-CSRF (ongoing checks)
+- No UI polling; SSE subscribe + reconnect/backoff.
+- No CSRF fetch endpoint; rely on same-origin cookies or header token.
+- Single canonical SSE path in Gateway.
+- No dashboard polling; prefer read-only backed endpoints and explicit refresh.</p>
+<p>Test plan additions (Playwright + pytest)
+- test_ui_chat_stream_sse: open SSE, send message, assert llm.delta then llm.complete; no polling
+- test_ui_upload_ingest_tool: upload file(s), send message referencing attachments, assert <code>tool.call</code> and <code>tool.result</code> events and assistant utilization of extracted text
+- test_ui_memory_dashboard_readonly: load subdirs, search memories, view detail, no polling; optional delete guarded by policy flag
+- test_api_session_controls: reset/delete/export/import/nudge/pause endpoints round-trip without legacy routes
+- test_no_legacy_network: assert no network calls to disallowed legacy endpoints.</p>
+<h2 id="rollout-plan-and-milestones">Rollout Plan and Milestones<a class="headerlink" href="#rollout-plan-and-milestones" title="Permanent link">&para;</a></h2>
+<p>Phase 0 — Correctness and Strictness
+- Align SomaBrain port to 9696 across code/docs/compose; health checks green when SomaBrain is up.
+- Enable strict-mode defaults (fail-closed on policy/dependency failures) and surface banners in UI; remove legacy fallbacks.</p>
+<p>Phase 0.5 — Agent Zero Web UI Integration and Real Chat (priority)
+- Integrate Agent Zero UI into <code>webui/</code> with adapters to our <code>/v1</code> endpoints.
+- Remove any UI-side polling or file path usage; wire SSE, uploads, and session controls.
+- Remove Gateway inline dialogue fallback; require Conversation Worker running and real provider credentials.
+- Playwright parity smoke: chat send/stream, upload+tool, delete chat.</p>
+<p>Phase 1 — Attachment Ingestion by ID
+- Add internal service fetch endpoint for attachments by ID and migrate Worker and <code>document_ingest</code> to <code>attachment_id</code> contracts.
+- Update UI previews/downloads to route via Gateway <code>/v1/attachments/{id}</code> and eliminate filesystem path references.</p>
+<p>Phase 2 — Central Tool Catalog and Runtime Config
+- Implement Tool Catalog in Gateway (schemas, execution profiles, per-tenant flags, egress allowlists) with ETag/TTL distribution to services.
+- Centralize provider secrets at Gateway; Workers invoke providers via Gateway.</p>
+<p>Phase 3 — Memory Guarantees and Policy
+- Strengthen outbox/WAL/idempotency; expose WAL/outbox lag in health; chaos-test recovery.
+- OPA gates for conversation.send, tool.execute, memory.write; precise user-visible denies and audit.</p>
+<p>Phase 5 — E2E and CI
+- Playwright suite for chat streaming, uploads, tool flows, delete chat, policy denies; wire to CI.
+- Add docs/versioned schemas; publish acceptance checks per sprint.</p>
+<h2 id="concrete-next-steps-backlog">Concrete Next Steps (Backlog)<a class="headerlink" href="#concrete-next-steps-backlog" title="Permanent link">&para;</a></h2>
+<p>1) Update docker-compose and docs to <code>SOMA_BASE_URL=http://host.docker.internal:9696</code>; add a test to enforce alignment.
+2) Implement internal attachment fetch-by-ID and migrate Worker and <code>document_ingest</code> to use it; adjust UI previews.
+3) Add Tool Catalog tables/APIs in Gateway and service-side ETag/TTL fetch with fail-closed behavior.
+4) Enforce OPA gates across conversation/tool/memory flows with clear deny errors and audits; expose WAL lag in health.
+5) Add Playwright smoke covering uploads/streaming/tool-call and delete chat; wire to CI.
+6) Add structured logging and schema validation (JSONSchema in <code>schemas/</code>) on key envelopes.
+7) Integrate Agent Zero UI and adapters; remove Gateway inline dialogue fallback; ensure SSE-only streaming path; document required env vars for real LLM.
+8) Verify conversation history continuity: existing sessions render in UI; SSE resumes on refresh; delete/reset behave correctly.</p>
+<h2 id="references-in-repo">References (in-repo)<a class="headerlink" href="#references-in-repo" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Services: <code>services/gateway/main.py</code>, <code>services/conversation_worker/main.py</code>, <code>services/tool_executor/main.py</code>, <code>services/memory_*/*</code>, <code>services/ui*/main.py</code>.</li>
+<li>Client: <code>python/integrations/soma_client.py</code>.</li>
+<li>Docs: <code>docs/technical-manual/architecture.md</code>, <code>docs/technical-manual/tools-messages-memories.md</code>.</li>
+</ul>
+<p>This roadmap is canonical. Proposed changes should be added here first, then implemented with tests and observability.</p>
+<h2 id="centralize-llm-modelprofile-management-priority">Centralize LLM model/profile management (priority)<a class="headerlink" href="#centralize-llm-modelprofile-management-priority" title="Permanent link">&para;</a></h2>
+<p>Goal
+- Make the Gateway the single source of truth for all model profiles, provider credentials, base_url normalization, and runtime model resolution. All services must invoke LLMs through the Gateway endpoints (<code>/v1/llm/invoke</code> and <code>/v1/llm/invoke/stream</code>) and must not propagate raw <code>base_url</code> values between services.</p>
+<p>Why this is needed
+- During audits we found model/profile information and base_url normalization logic duplicated across services (workers, Gateway, local config files). This causes validation errors (eg. "invalid model/base_url after normalization"), runtime surprises, and operational friction. Centralization reduces surface area for mistakes, makes credential management secure, and simplifies rollout of provider changes.</p>
+<p>Design decisions (summary)
+- Gateway owns: ModelProfileStore reads/writes, <code>_normalize_llm_base_url</code> rules, provider detection, and credential lookup. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send <code>base_url</code>.
+- Centralized Settings: UI saves all agent/model settings and provider secrets via <code>/v1/ui/settings/sections</code> (single writer path). Provider secrets are encrypted (mandatory <code>GATEWAY_ENC_KEY</code>) and surfaced only as presence + <code>updated_at</code> via <code>/v1/ui/settings/credentials</code>.
+- Gateway exposes <code>/v1/model-profiles</code> (CRUD), <code>/v1/ui/settings/*</code> (settings reads/writes), and <code>/v1/llm/test</code> for profile connectivity validation.
+- Legacy credentials endpoints (<code>/v1/llm/credentials</code>, <code>/v1/llm/credentials/{provider}</code>) removed; callers must use Settings sections save flow.
+- Callers cannot override <code>base_url</code>; the Gateway always uses the profile’s value.</p>
+<p>Acceptance criteria
+- Worker-&gt;Gateway-&gt;Provider flow succeeds end-to-end: POST to Gateway invoke returns stream or non-stream content and the UI receives assistant events via SSE.
+- No service outside Gateway performs normalization logic that changes <code>base_url</code> semantics.
+- Gateway audit logs record provider and normalized base_url for every LLM invoke.</p>
+<p>Migration strategy (high level)
+1. Audit all usages of model/profile and <code>base_url</code> (scripts, conf, services). Document and back up existing profiles.
+2. Implement Gateway CRUD/API and ensure any incoming <code>overrides.base_url</code> is ignored.
+3. Update workers to stop sending <code>base_url</code> and to rely on Gateway resolution of model-&gt;provider-&gt;base_url.
+4. Complete removal of duplicated config; no lock flag required.</p>
+<p>Risks &amp; mitigations
+- Risk: Missing credentials after migration. Mitigation: use <code>/v1/llm/test</code> and a migration script to copy secrets into Gateway store, validate, and only then enforce lock.
+- Risk: Legacy clients sending <code>base_url</code>. Mitigation: <code>warn</code> mode that logs and surfaces in UI and builds a one-click migration map.</p>
+<hr />
+<h2 id="2025-10-31-update-real-endpoints-roadmap-merged">2025-10-31 Update — Real Endpoints Roadmap (Merged)<a class="headerlink" href="#2025-10-31-update-real-endpoints-roadmap-merged" title="Permanent link">&para;</a></h2>
+<p>This addendum locks our single-surface Gateway API and the UI’s SSE-only behavior. It merges decisions we’ve implemented with the remaining work to reach full parity with the original Agent Zero Web UI while retaining the somaAgent01 architecture.</p>
+<p>Feature → Endpoint map (authoritative)
+- Chat ingress: <code>POST /v1/session/message</code>
+- Session stream (SSE): <code>GET /v1/session/{session_id}/events</code>
+- Recent timeline: <code>GET /v1/sessions/{session_id}/events</code>
+- Uploads: <code>POST /v1/uploads</code>
+- Attachments download: <code>GET /v1/attachments/{id}</code>
+- Tools catalog/list: <code>GET /v1/tools</code>, <code>GET /v1/tool-catalog</code>, <code>PUT /v1/tool-catalog/{name}</code>
+- Tool request enqueue: <code>POST /v1/tool/request</code>
+- UI settings (sections): <code>GET|POST /v1/ui/settings/sections</code>
+- Runtime config (UI boot hints): <code>GET /v1/runtime-config</code>, <code>GET /ui/config.json</code>
+- Session helpers: <code>POST /v1/sessions/{id}/reset</code>, <code>POST /v1/sessions/{id}/pause</code>, <code>GET /v1/sessions/{id}/history</code>, <code>GET /v1/sessions/{id}/context-window</code>, <code>POST /v1/sessions/import</code>, <code>POST /v1/sessions/export</code>, <code>DELETE /v1/sessions/{id}</code>
+- Workdir (developer UX): <code>GET /v1/workdir/list</code>, <code>POST /v1/workdir/upload</code>, <code>POST /v1/workdir/delete</code>, <code>GET /v1/workdir/download</code>
+- Antivirus check: <code>GET /v1/av/test</code></p>
+<p>Transport and events (canonical)
+- SSE-only. Event envelope matches “Outbound SSE Event Contract (sa01-v1)”.
+- Event types: <code>assistant.thinking</code>, <code>assistant.stream</code>, <code>assistant.final</code>, <code>tool.start</code>, <code>tool.result</code>, <code>uploads.progress</code>.</p>
+<p>Phased delivery (done vs remaining)
+- Done: single Gateway surface; UI served under <code>/ui</code>; session durability; outbox + memory write outbox; settings sections + audit logging.
+- Remaining (high→medium):
+  - UI tool lifecycle de-duplication when <code>tool.start</code> lacks <code>request_id</code> but <code>tool.result</code> includes it
+  - Uploads progress single-block per file and render “Uploaded:” when only a final “done” event arrives
+  - Settings modal Alpine init race under automation; ensure modal opens reliably on first click
+  - Provider credential presence hints to enable SSE assistant tests</p>
+<p>Acceptance for this addendum
+- No legacy UI calls appear (<code>/v1/ui/poll</code>, <code>/v1/csrf</code>)
+- Uploading small files shows “Uploaded:” even without intermediate progress
+- Tool start→result yields a single “Tool: <name>” block with result body
+- Settings modal renders sections on first open in CI/local</p>
+<hr />
+<h2 id="2025-11-01-update-long-message-stability-thought-bubble-parity-and-canonical-memory-apis">2025-11-01 Update — Long-message stability, Thought-bubble parity, and Canonical Memory APIs<a class="headerlink" href="#2025-11-01-update-long-message-stability-thought-bubble-parity-and-canonical-memory-apis" title="Permanent link">&para;</a></h2>
+<p>Scope
+- Fix UI collapse/flip during very long assistant streams by adopting a streaming-safe renderer and CSS containment.
+- Achieve visual/behavioral parity for thought bubbles (ephemeral thinking hint + final thoughts rows) with the 7001 demo.
+- Canonicalize Memory Dashboard endpoints under <code>/v1/memories/*</code> and rewire the UI to them (remove reliance on legacy <code>/memory_dashboard</code>).</p>
+<p>What changed (code)
+- Web UI streaming safety:
+  - During streaming, render assistant deltas without markdown/KaTeX (<code>response_stream</code> message type) and throttle DOM updates to ~30fps.
+  - On final event, perform a single markdown+KaTeX render to replace the streaming content.
+  - CSS containment and transition disabling applied to streaming message containers to prevent layout thrash.
+- Thought bubble parity:
+  - Ephemeral thinking bubble lifecycle tightened (show on thinking, clear on final/error/reset); visuals aligned to golden where possible.
+  - “Show thoughts” toggle instantly affects <code>.msg-thoughts</code>; persistence remains under <code>/v1/ui/preferences</code>.
+- Memory Dashboard APIs:
+  - New canonical routes:
+    - <code>GET /v1/memories/current-subdir</code>
+    - <code>GET /v1/memories/subdirs</code>
+    - <code>GET /v1/memories?memory_subdir=&amp;q=&amp;area=&amp;limit=</code>
+    - <code>DELETE /v1/memories/{id}</code>
+    - <code>POST /v1/memories/bulk-delete</code> with <code>{ ids: number[] }</code>
+    - <code>PATCH /v1/memories/{id}</code> with <code>{ edited: { content?, metadata? } }</code>
+  - UI store (<code>memory-dashboard-store.js</code>) rewired to these endpoints.
+  - Legacy <code>/memory_dashboard</code> kept as a compatibility shim; slated for removal post cutover.</p>
+<p>Tests added
+- Playwright: <code>thought.bubbles.and.toggles.spec.ts</code>
+  - Sends a message, waits for assistant to finish (progress empty), clicks all <code>.kvps-row.msg-thoughts .kvps-val</code> rows if present, then flips Show thoughts/JSON/utils and performs best‑effort DOM visibility checks.</p>
+<p>Acceptance criteria
+- Long streaming replies do not cause UI collapse or flipping; progress bar remains coherent; no errors logged.
+- Thought bubbles (ephemeral + final thoughts) match the golden UI’s look and timing; toggles flip visibility instantly and persist via preferences.
+- Memory Dashboard uses <code>/v1/memories/*</code> endpoints in the UI; basic flows (list/search/delete/update) function; no UI polling.</p>
+<p>Next sprints (focused)
+- Sprint A (stability):
+  - Finalize streaming renderer (metrics: frame times under load), add throttling guardrails and optional raf-based coalescing.
+  - Extend Playwright with a “long message torture test” (markdown + code + LaTeX + images) and record video/trace.
+- Sprint B (parity polish):
+  - Copy exact bubble CSS from golden assets and unify styles; add structural assertions for bubble elements.
+  - Expand toggles test to verify persistence across reload and themes.
+- Sprint C (memory UX):
+  - Add pagination/filter UX assertions; integrate optional delete policy checks; consider SSE-invalidations for live updates.</p>
+<hr />
+<h2 id="2025-11-02-update-dualmode-parity-golden-7001-vs-local-v1-and-test-matrix">2025-11-02 Update — Dual‑mode Parity (Golden 7001 vs Local /v1) and Test Matrix<a class="headerlink" href="#2025-11-02-update-dualmode-parity-golden-7001-vs-local-v1-and-test-matrix" title="Permanent link">&para;</a></h2>
+<p>Scope
+- Establish a two-mode UI test strategy to compare our local canonical UI (served by Gateway at :21016 under /ui and backed by /v1 APIs) against the golden reference running on port 7001 (which uses legacy routes and serves UI at the root).
+- Ensure our local Web UI achieves UX/CSS/behavioral parity with the golden demo while retaining strict SSE-only and /v1-only contracts locally.</p>
+<p>What changed (tests and harness)
+- Playwright config already honors WEB_UI_BASE_URL; we added a GOLDEN_MODE flag. When GOLDEN_MODE=1 or WEB_UI_BASE_URL contains :7001, tests relax network assertions and switch to more permissive selectors.
+- Updated tests:
+  - <code>network.no-legacy.spec.ts</code>: now skipped in GOLDEN_MODE (golden legitimately makes legacy calls).
+  - <code>parity.spec.ts</code>: detects GOLDEN_MODE and (a) does not assert <code>/v1/session/message</code> POST, (b) uses robust input selectors, (c) gates sidebar session controls to local-only.
+  - <code>long.stream.torture.spec.ts</code>: made completion checks robust (handles cases where progress bar text may not clear even though streaming completes) and avoids strict locator ambiguity.
+  - <code>chat.reset.single-reply.spec.ts</code> and <code>controls.sidebar.sessions.spec.ts</code>: hardened selectors and timeouts.
+  - New: <code>golden.smoke.spec.ts</code> — a lenient smoke for golden: loads the page, types into the first text input/textarea, sends via Enter/click and asserts a visible DOM change; no /v1 assumptions.</p>
+<p>How to run
+- Local (canonical /v1):
+  - <code>WEB_UI_BASE_URL=http://127.0.0.1:21016/ui npx playwright test</code>
+- Golden (port 7001):
+  - <code>WEB_UI_BASE_URL=http://127.0.0.1:7001 GOLDEN_MODE=1 npx playwright test specs/golden.smoke.spec.ts specs/parity.spec.ts</code></p>
+<p>Acceptance gates for parity
+- Visual/behavioral parity: thought bubble timing, streaming smoothness, toggle interactions, session controls UX, and general layout should match golden 7001.
+- Local strictness retained: no polling or CSRF endpoints; only <code>/v1/*</code> routes are allowed; SSE-only stream path.</p>
+<p>Status (as of 2025-11-02)
+- Local UI suite: PASS (all critical specs green; env-dependent scheduler/tools smokes are skipped). Long-stream torture stabilized (no transient shrink), multi-turn chats stable, no duplicate replies after reset. Memory Dashboard rewired to <code>/v1/memories/*</code>.
+- Golden checks: PASS for <code>golden.smoke</code> and adapted <code>parity.spec</code> against <code>http://127.0.0.1:7001</code>.
+- Python E2E tool flow: PASS (1 test, 1 warning about custom mark; to be registered later).
+- Known pending items:
+  - Expand golden run to include long-stream and thought-bubbles with selector adapters (some selectors differ at 7001 root).
+  - CSS pixel parity for thought-bubble icons/spacing; add optional screenshot assertions.</p>
+<p>Next steps
+1) Extend GOLDEN_MODE adapter helpers (shared util) and apply to the remaining specs so the entire smoke set can run against 7001.
+2) Produce a short “parity delta” report (selectors/CSS/behavior) from a side-by-side run and implement the CSS polish locally.
+3) Add CI jobs for both matrices: local canonical (/v1-only) and golden-compat (selector-only, network relaxed).</p>
+<p>Quality gates snapshot
+- Build: PASS (dev stack up).
+- Lint/Typecheck: PASS (no new issues introduced by spec edits).
+- Tests: Local UI suite PASS; Golden subset PASS; E2E tool flow: FAIL (to be triaged).</p>
+<hr />
+<h2 id="2025-11-08-update-streaming-centralization-event-bus-sse-hardening">2025-11-08 Update — Streaming Centralization (Event Bus) &amp; SSE Hardening<a class="headerlink" href="#2025-11-08-update-streaming-centralization-event-bus-sse-hardening" title="Permanent link">&para;</a></h2>
+<p>Scope
+- Consolidate all UI real-time updates behind a single client stream and event bus; eliminate residual polling (scheduler, memory dashboard) and ship production-grade reconnection, heartbeats, and backpressure.</p>
+<p>What changed (current state)
+- Chat: migrated from legacy polling to SSE in <code>webui/index.js</code>. CSRF fetch removed from <code>webui/js/api.js</code>. Confirmed no <code>/poll</code> references in chat code.
+- Gap: other panels (scheduler, memory dashboard) still use polling; no shared client event bus; reconnect/backoff minimal; no heartbeat stall detection.</p>
+<p>Design decisions
+- Single stream client: <code>webui/js/stream.js</code> wraps <code>EventSource</code> with jittered backoff, Last-Event-ID, heartbeat tracking, and stall detection → emits standardized UI events onto a bus.
+- Central event bus: <code>webui/js/event-bus.js</code> is a minimal pub/sub with topic strings; domain stores subscribe and update state.
+- Canonical UI event schema (additive on top of existing assistant/tool events):
+  - <code>ui.status.progress</code> — progress updates for long-running work (payload: { id, label?, pct?, stage?, details? }).
+  - <code>ui.status.paused</code> — conversation/session paused/resumed state (payload: { session_id, paused, reason? }).
+  - <code>ui.notification</code> — transient notifications/toasts (payload: { level: info|warn|error, message, code?, href? }).
+  - <code>session.list.update</code> — session/task list invalidations or diffs (payload: { added?, removed?, changed? }).
+  - <code>task.list.update</code> — task/scheduler invalidations or diffs (payload mirrors above).
+- Domain stores: <code>messagesStore</code>, <code>notificationsStore</code>, <code>progressStore</code>, <code>sessionsStore</code>, <code>tasksStore</code> consume bus events; views bind to stores. Messages continue to handle <code>assistant.delta/complete</code>, <code>tool.start/result</code>.</p>
+<p>Server updates (Gateway)
+- Extend SSE publisher to include the canonical UI events above where applicable (progress/paused/notifications and list invalidations). Continue emitting <code>heartbeat</code> at a fixed cadence.
+- Support <code>Last-Event-ID</code> to help reconnect resume. Expose <code>X-Accel-Buffering: no</code> and appropriate cache headers.
+ - Emit lightweight invalidation hints alongside normal payloads:
+   - <code>task.list.update</code> when task-related events occur (e.g., <code>task.*</code>, or <code>tool.result</code>/<code>assistant.final</code> with <code>metadata.task_id</code>).
+   - <code>memory.list.update</code> for <code>memory.*</code> events.
+   These hints allow SSE-driven UI list refreshes without polling.</p>
+<p>Reliability
+- Reconnect/backoff: full jitter exponential backoff with max cap; fast-path on immediate user action (send message) to force a quick reconnect attempt.
+- Heartbeat stall detection: UI banner after N missed heartbeats; auto-retry in background; allow manual retry button.
+- Backpressure: coalesce frequent progress updates (throttle to ~10–20Hz) and only re-render at animation frames.</p>
+<p>Testing
+- Playwright: <code>stream.reconnect.and.banner.spec.ts</code> (disconnect → banner → auto-recover), <code>no-poll.anywhere.spec.ts</code> (assert no network calls to legacy/poll endpoints), <code>scheduler.memory.bus.spec.ts</code> (live updates via SSE, no polling), long-stream remains green.
+- Pytest API: contract tests for new UI event types (<code>ui.status.progress</code>, <code>ui.notification</code>) and <code>Last-Event-ID</code> resume.
+ - Pytest API: assert presence of <code>task.list.update</code>/<code>memory.list.update</code> hint events during representative flows.</p>
+<p>Acceptance criteria
+- No polling in any UI module (chat, scheduler, memory dashboard, settings), verified via Playwright network assertions.
+- Stream client reconnects with jittered backoff; heartbeat stall triggers an offline banner and recovers automatically.
+- Session/task/memory views update via SSE invalidations or diffs; manual refresh still available but not required.
+- Large histories remain responsive: either virtualization or message trimming is enabled without breaking grouping.</p>
+<p>Status / Next steps
+- Done: chat SSE, CSRF removal. In progress: planning and roadmap consolidation for central event bus.
+- Next: implement <code>event-bus.js</code> and <code>stream.js</code>, refactor <code>index.js</code> to use the bus, extend Gateway to emit canonical UI events, migrate scheduler and memory dashboard stores, add tests.</p>
+<hr />
+<h2 id="2025-11-09-addition-unified-configuration-security-secrets-hardening-roadmap-m0m12">2025-11-09 Addition — Unified Configuration / Security / Secrets Hardening Roadmap (M0–M12)<a class="headerlink" href="#2025-11-09-addition-unified-configuration-security-secrets-hardening-roadmap-m0m12" title="Permanent link">&para;</a></h2>
+<p>This section merges prior architectural, security, and settings analyses into a single phased plan. It focuses on eliminating schema ambiguity, centralizing provider credentials, enforcing policy gates, and delivering auditable, deterministic configuration flows.</p>
+<h3 id="guiding-principles">Guiding Principles<a class="headerlink" href="#guiding-principles" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Single authoritative write path for UI + runtime settings (no scattered direct table writes).</li>
+<li>Provider credentials encrypted at rest; rotation possible without code changes.</li>
+<li>All settings changes produce masked audit diffs and Kafka <code>config_updates</code> events.</li>
+<li>Read paths are cached, versioned, and fail closed when invariants break.</li>
+<li>Strict separation of concerns: registry (metadata), store (persistence), resolver (runtime projection), policy (OPA/OpenFGA), secrets backend (encryption / rotation).</li>
+</ul>
+<h3 id="milestone-overview">Milestone Overview<a class="headerlink" href="#milestone-overview" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Focus</th>
+<th>Key Artifacts</th>
+<th>Primary Risks</th>
+<th>Acceptance Snapshot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0</td>
+<td>Instrument &amp; Inventory</td>
+<td>Route catalog, metrics, audit diff schema</td>
+<td>Blind spots may hide unsafe flows</td>
+<td>All settings endpoints mapped &amp; emitting metrics; audit diff schema validated</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>Read-only Registry</td>
+<td><code>SettingsRegistry</code> (in-memory typed view)</td>
+<td>Drift between registry &amp; DB snapshot</td>
+<td>Registry stable across test runs; no write methods</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Typed Schemas &amp; Validation</td>
+<td>Pydantic models per domain (<code>ui</code>, <code>llm</code>, <code>tooling</code>, <code>auth</code>, <code>limits</code>)</td>
+<td>Legacy untyped writes break</td>
+<td>All incoming writes validated; invalid payload → 422 with field map</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Transactional Write Path</td>
+<td>Single POST <code>/v1/ui/settings/sections</code> → domain split + audit diff</td>
+<td>Race conditions, partial writes</td>
+<td>Atomic commit; audit diff includes masked secrets; event published</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>Secrets Backend &amp; Rotation</td>
+<td><code>SecretsBackend</code> with key version, Fernet or AES-GCM envelope</td>
+<td>Lost key = unusable creds</td>
+<td>Key version recorded; rotation script passes canary test</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>Auth Hardening</td>
+<td>Enforce <code>REQUIRE_AUTH</code>, internal token depreciation, JWT scopes</td>
+<td>Lock-out on misconfig</td>
+<td>All protected endpoints reject unauthenticated calls in strict mode</td>
+</tr>
+<tr>
+<td>M6</td>
+<td>Provider Normalization Service</td>
+<td><code>_normalize_llm_base_url</code> extracted &amp; consolidated</td>
+<td>Hidden divergence in workers</td>
+<td>Workers no longer attempt normalization; 0 base_url overrides</td>
+</tr>
+<tr>
+<td>M7</td>
+<td>Drift Detection &amp; Health</td>
+<td>Compare registry vs DB vs cache, expose <code>/v1/config/drift</code></td>
+<td>False positives cause noise</td>
+<td>p95 drift check &lt; 50ms; health gating accurate</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>Observability Expansion</td>
+<td>Structured logs, span attributes for config writes</td>
+<td>PII leakage risk</td>
+<td>No secrets in logs; span shows domain + diff hash</td>
+</tr>
+<tr>
+<td>M9</td>
+<td>Key Rotation Automation</td>
+<td>Cron/CI pipeline rotates + re-encrypts stale versions</td>
+<td>Rotation failure mid-cycle</td>
+<td>Dry-run validation; rollback key retained until success</td>
+</tr>
+<tr>
+<td>M10</td>
+<td>Multi-Tenant Partitioning</td>
+<td>Tenant-specific overrides with fallback precedence</td>
+<td>Cross-tenant bleed</td>
+<td>Override precedence documented; tests prove isolation</td>
+</tr>
+<tr>
+<td>M11</td>
+<td>Policy-Driven Dynamic Limits</td>
+<td>Per-tenant rate/tool limits enforced via OPA / FGA</td>
+<td>Policy latency</td>
+<td>Cache TTL ensures p95 policy check &lt; 10ms</td>
+</tr>
+<tr>
+<td>M12</td>
+<td>Externalized Config Packages</td>
+<td>Export minimal config bundle for air-gapped analysis</td>
+<td>Incomplete masking</td>
+<td>Bundle excludes raw secrets; diffs stored with masked placeholders</td>
+</tr>
+</tbody>
+</table>
+<h3 id="critical-path-why-this-order">Critical Path (Why This Order)<a class="headerlink" href="#critical-path-why-this-order" title="Permanent link">&para;</a></h3>
+<ol>
+<li>M0–M2 build visibility &amp; strong typing before altering write mechanics.</li>
+<li>M3 introduces atomic writes; must land before secrets centralization (M4) so secrecy is applied once.</li>
+<li>M4–M5 secure sensitive data &amp; enforce auth; prevents later expansions from amplifying risk.</li>
+<li>M6 removes normalization duplication to avoid drift when registry evolves.</li>
+<li>M7–M8 deepen detection &amp; traceability; required before adding rotation cadence (M9).</li>
+<li>M10–M11 extend multi-tenancy &amp; dynamic policy safely atop hardened core.</li>
+<li>M12 packages external consumption after stability and security layers mature.</li>
+</ol>
+<h3 id="detailed-milestones-acceptance-criteria">Detailed Milestones &amp; Acceptance Criteria<a class="headerlink" href="#detailed-milestones-acceptance-criteria" title="Permanent link">&para;</a></h3>
+<h4 id="m0-inventory-instrumentation">M0 – Inventory &amp; Instrumentation<a class="headerlink" href="#m0-inventory-instrumentation" title="Permanent link">&para;</a></h4>
+<p>Scope: Enumerate every settings/credentials route, add Prometheus counters/histograms, define audit diff schema (<code>old</code>, <code>new</code>, <code>mask</code>, <code>domain</code>, <code>changed_at</code>).
+Acceptance:
+- Route catalog file (<code>docs/technical-manual/settings-routes.md</code>) lists all verbs &amp; auth scopes.
+- Metrics: <code>settings_write_total</code>, <code>settings_write_latency_seconds</code>, <code>settings_read_total</code> present.
+- Audit diff emitted for each write with masked secret fields (pattern: value replaced by <code>****</code> length-preserving mask).</p>
+<h4 id="m1-read-only-registry">M1 – Read-only Registry<a class="headerlink" href="#m1-read-only-registry" title="Permanent link">&para;</a></h4>
+<p>Scope: Implement <code>SettingsRegistry</code> that loads typed domains on startup and caches them (ETag + version integer).
+Acceptance:
+- Registry object accessible via dependency injection; no mutation methods.
+- Unit test ensures repeated access returns same instance; mismatch between DB &amp; registry triggers warning.</p>
+<h4 id="m2-domain-schemas-validation">M2 – Domain Schemas &amp; Validation<a class="headerlink" href="#m2-domain-schemas-validation" title="Permanent link">&para;</a></h4>
+<p>Scope: Introduce domain Pydantic models; convert loose JSON sections into structured <code>UiSettings</code>, <code>LlmSettings</code>, <code>ToolingSettings</code>, <code>AuthSettings</code>, <code>LimitsSettings</code>.
+Acceptance:
+- Invalid field triggers 422 with <code>detail: [{loc, msg, type}]</code>.
+- 100% coverage for schema conversions; legacy untyped write path blocked.</p>
+<h4 id="m3-transactional-write-path">M3 – Transactional Write Path<a class="headerlink" href="#m3-transactional-write-path" title="Permanent link">&para;</a></h4>
+<p>Scope: Replace multi-endpoint writes with single sectioned POST; perform domain validation, diff generation, atomic commit, event publish.
+Acceptance:
+- Single commit covers all domains; partial failure rollback test passes.
+- Kafka <code>config_updates</code> event includes <code>version</code>, <code>domains_changed</code>, <code>diff_hash</code>.</p>
+<h4 id="m4-secrets-backend-rotation">M4 – Secrets Backend &amp; Rotation<a class="headerlink" href="#m4-secrets-backend-rotation" title="Permanent link">&para;</a></h4>
+<p>Scope: Implement encryption with key versioning; support key rotation CLI (<code>rotate_key.py</code>) that re-encrypts values.
+Acceptance:
+- Secret record stores <code>{ciphertext, key_version, updated_at}</code>.
+- Rotation increases key version and preserves decrypt ability; canary decrypt test passes.</p>
+<h4 id="m5-auth-hardening">M5 – Auth Hardening<a class="headerlink" href="#m5-auth-hardening" title="Permanent link">&para;</a></h4>
+<p>Scope: Enforce token validation even if <code>REQUIRE_AUTH</code> previously false; remove deprecated internal token bypass for non-critical endpoints; scope-based access.
+Acceptance:
+- Auth off path removed (except explicitly flagged health endpoints).
+- Restricted endpoint test unauthorized returns 401/403 with structured body.</p>
+<h4 id="m6-provider-normalization-service">M6 – Provider Normalization Service<a class="headerlink" href="#m6-provider-normalization-service" title="Permanent link">&para;</a></h4>
+<p>Scope: Centralize model/base_url normalization logic; workers send only high-level model identifiers.
+Acceptance:
+- No calls in codebase to legacy normalization helper outside service.
+- LLM invoke logs contain normalized provider fields.</p>
+<h4 id="m7-drift-detection">M7 – Drift Detection<a class="headerlink" href="#m7-drift-detection" title="Permanent link">&para;</a></h4>
+<p>Scope: Periodic comparison between DB snapshot, registry cache, and last event version.
+Acceptance:
+- <code>/v1/config/drift</code> returns status <code>ok|warning|critical</code> and counts of mismatches.
+- Simulated drift triggers <code>warning</code> and publishes alert metric.</p>
+<h4 id="m8-observability-expansion">M8 – Observability Expansion<a class="headerlink" href="#m8-observability-expansion" title="Permanent link">&para;</a></h4>
+<p>Scope: Add structured logging fields <code>config_version</code>, <code>domains_changed</code> to write spans; propagate trace context.
+Acceptance:
+- Logs verified free of secret raw values; diff hashes present.
+- Trace viewer shows <code>config.write</code> span with attributes.</p>
+<h4 id="m9-key-rotation-automation">M9 – Key Rotation Automation<a class="headerlink" href="#m9-key-rotation-automation" title="Permanent link">&para;</a></h4>
+<p>Scope: Scheduled job or pipeline step rotates keys monthly; dry-run mode and rollback support.
+Acceptance:
+- Dry-run outputs prospective new key version mapping.
+- Rotation job updates all rows; post-rotation decrypt validation 100%.</p>
+<h4 id="m10-multi-tenant-partitioning">M10 – Multi-Tenant Partitioning<a class="headerlink" href="#m10-multi-tenant-partitioning" title="Permanent link">&para;</a></h4>
+<p>Scope: Per-tenant overrides layered on global base; precedence (tenant → global) enforced.
+Acceptance:
+- Tenant override read returns merged settings; removing override reverts to global.
+- Cross-tenant access attempt blocked &amp; audited.</p>
+<h4 id="m11-policy-driven-dynamic-limits">M11 – Policy-Driven Dynamic Limits<a class="headerlink" href="#m11-policy-driven-dynamic-limits" title="Permanent link">&para;</a></h4>
+<p>Scope: Limits (rate, tool concurrency) enforced via cached policy decisions; registry updates invalidate caches.
+Acceptance:
+- Limit breaches return 429 with structured detail.
+- p95 policy check latency &lt; 10ms under load test.</p>
+<h4 id="m12-externalized-config-bundle">M12 – Externalized Config Bundle<a class="headerlink" href="#m12-externalized-config-bundle" title="Permanent link">&para;</a></h4>
+<p>Scope: Export sanitized config bundle (<code>config_bundle_v&lt;version&gt;.tar.gz</code>) for air-gapped review.
+Acceptance:
+- Bundle excludes secrets; masked placeholders present; signature file SHA256 verified.
+- Import tool validates signature and reconstructs registry snapshot.</p>
+<h3 id="risks-mitigations">Risks &amp; Mitigations<a class="headerlink" href="#risks-mitigations" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Schema Migration Complexity (M2): Provide dual-read fallback for one release; log warnings for legacy format.</li>
+<li>Rotation Failures (M4/M9): Canary encryption + staged rollout; keep previous key version until success metrics confirmed.</li>
+<li>Policy Latency (M11): Cache decisions with TTL + event-driven invalidation; circuit breaker on policy backend.</li>
+<li>Drift False Positives (M7): Multi-source hash comparison and threshold before alerting.</li>
+</ul>
+<h3 id="metrics-to-track-throughout">Metrics to Track Throughout<a class="headerlink" href="#metrics-to-track-throughout" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>settings_validation_errors_total</code></li>
+<li><code>config_updates_events_total</code></li>
+<li><code>secrets_rotation_success_total</code> / <code>secrets_rotation_failure_total</code></li>
+<li><code>config_drift_checks_total</code> and <code>config_drift_mismatches_total</code></li>
+<li><code>policy_decision_latency_seconds</code></li>
+<li><code>settings_write_audit_masked_total</code></li>
+</ul>
+<h3 id="immediate-next-action-you-are-here">Immediate Next Action (You are here)<a class="headerlink" href="#immediate-next-action-you-are-here" title="Permanent link">&para;</a></h3>
+<p>Proceed with M0: add route catalog + baseline metrics in code. After merging this section, implement instrumentation and open a short PR if required.</p>
+<hr />
+<h2 id="2025-11-09-update-master-roadmap-consolidation-parallel-sprint-plan">2025-11-09 Update — Master Roadmap Consolidation &amp; Parallel Sprint Plan<a class="headerlink" href="#2025-11-09-update-master-roadmap-consolidation-parallel-sprint-plan" title="Permanent link">&para;</a></h2>
+<p>This section consolidates the architectural roadmap with feature-flag strategy, streaming hardening, semantic recall, unified configuration/security, and release cadence. It defines parallel sprint execution. This document remains the single source of truth.</p>
+<h3 id="integrated-master-tracks">Integrated Master Tracks<a class="headerlink" href="#integrated-master-tracks" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Capability Registry &amp; Best Mode (feature flags → descriptors, profiles, health-aware degrade)</li>
+<li>Streaming &amp; UI Parity (single SSE stream, client event bus, zero polling, reconnection robustness)</li>
+<li>Semantic Memory &amp; Recall (embeddings ingestion, query-time similarity ranking, caching, recall metrics)</li>
+<li>Unified Config &amp; Secrets (M0–M12 milestones: instrumentation, schemas, transactional writes, encryption, rotation, drift, policy limits)</li>
+<li>Tool Catalog &amp; Runtime Config (Gateway-owned definitions, per-tenant flags, audited changes)</li>
+<li>Reliability &amp; Backpressure (consumer lag gauges, circuit breakers, alert templates)</li>
+<li>LLM Model/Profile Centralization (Gateway sole authority; workers stop sending base_url)</li>
+<li>Auditing &amp; Compliance (masked diff events, traceability, export tooling)</li>
+</ol>
+<h3 id="capability-descriptor-schema-to-be-implemented">Capability Descriptor Schema (to be implemented)<a class="headerlink" href="#capability-descriptor-schema-to-be-implemented" title="Permanent link">&para;</a></h3>
+<p>Fields: <code>key</code>, <code>description</code>, <code>default_enabled</code>, <code>profiles: {minimal|standard|enhanced|max}</code>, <code>dependencies</code>, <code>degrade_strategy (auto|manual|none)</code>, <code>cost_impact (low|medium|high)</code>, <code>metrics_key</code>, <code>tags (observability|security|performance)</code>. State machine: <code>enabled</code> → (<code>degraded</code> | <code>disabled</code>). Transitions audited.</p>
+<h3 id="profiles-default-enhanced">Profiles (Default = enhanced)<a class="headerlink" href="#profiles-default-enhanced" title="Permanent link">&para;</a></h3>
+<p>minimal: critical path only (chat, memory write-through).<br />
+standard: + basic tools, metrics, auth hardening.<br />
+enhanced (default): all production features including embeddings ingestion and scheduler.<br />
+max: enhanced + experimental (semantic recall, advanced caching) gated behind stability checks.</p>
+<h3 id="parallel-sprint-plan">Parallel Sprint Plan<a class="headerlink" href="#parallel-sprint-plan" title="Permanent link">&para;</a></h3>
+<p>Sprint 0 (Planning &amp; Instrumentation, 2–3 days, parallel)
+- Feature descriptor schema &amp; examples documented.
+- Unified Config M0: route inventory + metrics/audit diff schema.
+- SSE event bus interface + canonical UI event list (progress, notification, list updates, heartbeat).
+Exit: Documentation merged; no code side-effects; acceptance criteria clarified.</p>
+<p>Sprint 1 (Enable Best Mode Safely, 4–6 days)
+- Implement <code>features</code> registry module + metrics + <code>/v1/features</code> diagnostics.
+- Refactor env flag lookups to registry (gateway, session_repository, embeddings helper).
+- Implement SSE client bus (chat only) with jittered reconnect + heartbeat stall banner.
+- Semantic recall design &amp; cache strategy (vector similarity approach, LRU/hash plan).
+- Docs + tests (registry unit tests, Playwright no-poll chat spec).
+Exit: Enhanced profile active by default; registry metrics visible; chat polling eliminated.</p>
+<p>Sprint 2 (Semantic Recall &amp; Full Streaming, 1–2 weeks)
+- Implement recall API (embed query → top-k memory slice). Hybrid filters (session, recency).
+- Embedding cache implementation (LRU + normalized hash key).
+- Migrate scheduler &amp; memory dashboard to SSE bus (remove all polling).
+- Add consumer lag gauges &amp; circuit breakers; alert rule templates drafted.
+Exit: Zero UI polling; recall latency &amp; hit metrics published; alert templates ready.</p>
+<p>Sprint 3 (Config &amp; Secrets Hardening, 1–2 weeks)
+- M1–M4: Typed domain schemas, transactional writes, secrets encryption, rotation CLI.
+- Centralize LLM profile normalization; workers stop sending base_url.
+Exit: Atomic masked writes; secrets encrypted; normalized profile flow validated.</p>
+<p>Sprint 4 (Policy, Multi-Tenancy, Limits, 2 weeks)
+- Auth hardening (REQUIRE_AUTH); OPA/OpenFGA gates for conversation/tool/memory.
+- Multi-tenant override precedence; dynamic limits (rate/tool concurrency).
+- Drift detection endpoint &amp; health gating.
+Exit: Policy decisions fast (&lt;10ms p95); tenant isolation tests green; drift checks stable.</p>
+<p>Sprint 5 (Parity Polish &amp; Release Cadence, 1 week)
+- Golden vs canonical UI screenshot diff optional gating.
+- CI matrices (canonical + golden mode); release tagging &amp; automated changelog.
+- Observability dashboards updated (feature states, recall metrics, circuit breaker status).
+Exit: CI green across matrices; v0.3.0 (semantic recall) tagged; dashboards live.</p>
+<h3 id="immediate-action-items-start-now">Immediate Action Items (Start Now)<a class="headerlink" href="#immediate-action-items-start-now" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Write feature descriptor schema doc (registry definitions &amp; examples).</li>
+<li>Begin Unified Config M0 metrics &amp; audit diff instrumentation design.</li>
+<li>Draft SSE event bus module interfaces (client &amp; server publish contract).</li>
+</ul>
+<h3 id="key-success-metrics">Key Success Metrics<a class="headerlink" href="#key-success-metrics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>0 raw <code>os.getenv</code> feature lookups after Sprint 1 (lint rule enforcement).</li>
+<li>UI network log shows no polling endpoints after Sprint 2.</li>
+<li>Recall p95 latency &lt; 150ms local; cache hit-rate &gt; 70% for repeated similar queries.</li>
+<li>Secrets encryption coverage 100%; rotation dry-run passes monthly.</li>
+<li>Policy decision latency p95 &lt; 10ms; drift false positives &lt; 1/week.</li>
+</ul>
+<h3 id="risk-mitigations-snapshot">Risk Mitigations Snapshot<a class="headerlink" href="#risk-mitigations-snapshot" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Registry Rollout: dual path (env var fallback) until Sprint 1 exit.</li>
+<li>Recall Accuracy: shadow evaluation before enabling for all profiles.</li>
+<li>Secrets Rotation: staged rotation with canary decrypt &amp; rollback key retention.</li>
+<li>Policy Latency: local cache TTL + event-driven invalidation; circuit breaker fallback to deny with clear error.</li>
+</ul>
+<h3 id="release-cadence-versioning">Release Cadence &amp; Versioning<a class="headerlink" href="#release-cadence-versioning" title="Permanent link">&para;</a></h3>
+<ul>
+<li>v0.1.0-centralised (architecture) → v0.2.0-streaming-bus → v0.3.0-semantic-recall → v0.4.0-config-secrets → v0.5.0-multi-tenancy.</li>
+<li>Each release: automated changelog (diff of feature states + schema versions) &amp; audit snapshot.</li>
+</ul>
+<h3 id="governance-note">Governance Note<a class="headerlink" href="#governance-note" title="Permanent link">&para;</a></h3>
+<p>All roadmap modifications must update this file first; PRs referencing roadmap changes include a diff of this section. Sprint exit reviews confirm metrics &amp; acceptance criteria before advancing profile defaults.</p>
+<p>— End of 2025-11-09 consolidation.</p>
+<h2 id="2025-11-09-update-nolegacy-mandate-somabrain-alignment-authoritative">2025-11-09 Update — No‑Legacy Mandate &amp; Somabrain Alignment (Authoritative)<a class="headerlink" href="#2025-11-09-update-nolegacy-mandate-somabrain-alignment-authoritative" title="Permanent link">&para;</a></h2>
+<p>This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles the Somabrain integration blueprint with the current implementation. It defines what “legacy” means, inventories gaps, and lays out a sprinted, prioritized plan to remove every legacy pathway and align all interactions through the Somabrain HTTP surface.</p>
+<h3 id="zerolegacy-definition-nonnegotiable">Zero‑Legacy Definition (non‑negotiable)<a class="headerlink" href="#zerolegacy-definition-nonnegotiable" title="Permanent link">&para;</a></h3>
+<ul>
+<li>No stub/shim code paths that bypass real policy/security (e.g., placeholder OPA that always allows).</li>
+<li>No duplicate or competing implementations of the same concern (feature flags, Kafka producer, config normalization, health endpoints).</li>
+<li>No direct environment flag checks outside the central Feature Registry and Settings.</li>
+<li>No deprecated endpoints, polling loops, or hidden fallbacks; SSE‑only real‑time; one canonical API surface.</li>
+<li>No ambiguous integration boundaries: all SomaBrain interactions occur via its HTTP API at <code>SOMA_BASE_URL</code>.</li>
+</ul>
+<h3 id="somabrain-integration-boundary-final">Somabrain Integration Boundary (final)<a class="headerlink" href="#somabrain-integration-boundary-final" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Boundary: HTTP only. Do not import Somabrain internal Python modules in‑process; use the HTTP service surface consistently.</li>
+<li>Required endpoints (contract):</li>
+<li>Health: <code>GET {SOMA_BASE_URL}/healthz</code> (primary), <code>GET /health</code> accepted as legacy alias.</li>
+<li>Learning/Weights: <code>GET /v1/weights</code>, <code>POST /v1/weights/update</code>.</li>
+<li>Context Builder: <code>POST /v1/context/build</code>.</li>
+<li>Tenant Feature Flags: <code>GET /v1/flags/{tenant}/{flag}</code>.</li>
+<li>Memory: <code>POST /v1/memory/remember</code>, <code>POST /v1/memory/link</code>, <code>POST /v1/plan/suggest</code> (where applicable).</li>
+<li>Recall: <code>POST /v1/recall/query</code> (tenant‑scoped).</li>
+</ul>
+<h3 id="legacy-inventory-to-be-removed-or-unified">Legacy Inventory (to be removed or unified)<a class="headerlink" href="#legacy-inventory-to-be-removed-or-unified" title="Permanent link">&para;</a></h3>
+<ul>
+<li>(Removed) Legacy OPA placeholder middleware (<code>python/integrations/opa_middleware.py</code>) has been excised. Future policy enforcement will use a real HTTP adapter with selective authorization semantics.</li>
+<li>Duplicate health endpoints (<code>/health</code>, <code>/healthz</code>) and mixed targets (<code>/health</code> vs <code>/healthz</code>) → converge to <code>/healthz</code> in Gateway; probe Somabrain <code>/healthz</code> first; keep <code>/health</code> as alias only.</li>
+<li>Env‑flag checks scattered across code (<code>os.getenv("SA01_ENABLE_*"</code>, <code>ENABLE_*</code>) → replace with Feature Registry lookups; add lint rule to forbid direct getenv for flags.</li>
+<li>Dual outbox/Kafka producers across services vs Somabrain’s producer → keep local outbox pattern but unify headers/schema and health adaptation; centralize Kafka publisher behind one adapter (no competing producers).</li>
+<li>Local feature flags vs tenant flags in Somabrain Redis → add tenant override layer calling Somabrain <code>GET /v1/flags/{tenant}/{flag}</code> with TTL cache; registry provides defaults only.</li>
+<li>Any unused legacy modules (gRPC memory client references, polling UI calls, legacy credentials routes) → delete.</li>
+</ul>
+<h3 id="enforcement-principles">Enforcement Principles<a class="headerlink" href="#enforcement-principles" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Single source per concern: one place to evaluate policy, one publisher API, one feature flag gateway, one health probe path.</li>
+<li>Fail‑closed by default for security‑relevant flows (policy/memory/tool writes); surface clear denies and audit entries.</li>
+<li>Observability for every removed legacy pathway: add counters to ensure it stays at zero usage.</li>
+</ul>
+<h3 id="prioritized-sprint-plan-legacy-eradication">Prioritized Sprint Plan (Legacy Eradication)<a class="headerlink" href="#prioritized-sprint-plan-legacy-eradication" title="Permanent link">&para;</a></h3>
+<p>Sprint L0 — Policy &amp; Health Hardening (3 days)
+- Replace OPA stub with HTTP policy adapter calling Somabrain policy endpoint; wire into Gateway middleware; measure with <code>auth_requests_total</code>, <code>auth_duration_seconds</code>.
+- Standardize health: Gateway serves <code>/healthz</code>; probes Somabrain <code>{SOMA_BASE_URL}/healthz</code> (fallback <code>/health</code>); UI banner uses <code>/v1/health</code> aggregate with Somabrain status folded in.
+- Acceptance: Real denies produce 403 with structured reason; <code>/healthz</code> green only when Somabrain healthy; tests cover allow/deny and degrade.</p>
+<p>Sprint L1 — Feature Flags Unification (3 days)
+- Add tenant override path: Gateway resolves feature flags by calling Somabrain <code>GET /v1/flags/{tenant}/{flag}</code> with 1–2s TTL cache; Feature Registry provides profile defaults only.
+- Add <code>/v1/feature-flags?tenant=...</code> endpoint returning merged view; UI and services consume only this path.
+- Add lint rule forbidding <code>os.getenv("SA01_ENABLE_"</code> and direct env gating outside the registry.
+- Acceptance: No direct getenv flag checks; per‑tenant flags effective and observable; tests verify TTL cache and fallback behavior.</p>
+<p>Sprint L2 — Context &amp; Learning Hooks (4 days)
+- Inject <code>get_weights()</code> and <code>build_context()</code> into the chat prompt assembly path; record <code>learning_updates_total</code>, <code>learning_context_build_duration_seconds</code>.
+- Hook reward/TD updates via <code>POST /v1/weights/update</code> on tool outcomes; ensure idempotency and backoff.
+- Acceptance: Prompts include current weights and Somabrain‑built context; rewards post without raising; metrics present.</p>
+<p>Sprint L3 — Eventing &amp; Outbox Alignment (4 days)
+- Centralize Kafka publisher behind one adapter; ensure uniform headers <code>{trace_id, request_id, tenant}</code>; align topics with Somabrain naming; keep durable Postgres outbox.
+- Add trace injection/extraction on publish/consume flows; expose <code>trace_propagation_errors_total</code>.
+- Acceptance: WAL/outbox publish path unified; traces link across Gateway↔Workers; no duplicate producer classes remain.</p>
+<p>Sprint L4 — UI/Streaming Cleanup &amp; Endpoint Purge (3 days)
+- Verify UI uses SSE only, no polling; remove any legacy <code>/poll</code>, CSRF routes, and deprecated credential endpoints; align to <code>/v1/*</code> and <code>/ui/config.json</code> exclusively.
+- Remove duplicate/obsolete endpoints and modules; add “legacy usage” counters to confirm zero usage in CI.
+- Acceptance: Playwright <code>no-legacy-network</code> passes; counters stay zero; grep for legacy routes returns none.</p>
+<h3 id="definition-of-done-nolegacy">Definition of Done (No‑Legacy)<a class="headerlink" href="#definition-of-done-nolegacy" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Zero stub or dead code for policy, health, flags, eventing, or memory; any former shims deleted.</li>
+<li>No direct <code>os.getenv</code> feature checks; registry + tenant override only.</li>
+<li>Single health path (<code>/healthz</code>) in Gateway; Somabrain probed at <code>/healthz</code>.</li>
+<li>All Somabrain interactions through HTTP client; no internal module imports from Somabrain.</li>
+<li>UI/network tests show no polling or legacy endpoints; only <code>/v1/*</code> and <code>/ui/*</code> used.</li>
+</ul>
+<h3 id="acceptance-metrics">Acceptance &amp; Metrics<a class="headerlink" href="#acceptance-metrics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Security: 100% of protected routes pass through real policy adapter; <code>auth_requests_total{result="deny"}</code> increments on policy failure.</li>
+<li>Availability: <code>/healthz</code> reflects Somabrain state; outbox/backpressure adapts when Somabrain degrades; alerts fire accordingly.</li>
+<li>Observability: new metrics present — <code>learning_updates_total</code>, <code>learning_context_build_duration_seconds</code>, <code>trace_propagation_errors_total</code>, <code>feature_flag_remote_requests_total</code>.</li>
+<li>Hygiene: CI job runs <code>grep</code>/lint to forbid legacy patterns and fails if found.</li>
+</ul>
+<h3 id="risks-mitigations_1">Risks &amp; Mitigations<a class="headerlink" href="#risks-mitigations_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Policy latency: cache allow/deny with short TTL; add circuit breaker → deny with reason if backend unavailable (configurable fail‑open in dev only).</li>
+<li>Flag staleness: small TTL cache + proactive refresh on write paths; degrade to defaults with audit.</li>
+<li>Eventing drift: publish contract and headers standardized; add contract tests for topics and headers.</li>
+</ul>
+<h3 id="immediate-next-actions-to-schedule">Immediate Next Actions (to schedule)<a class="headerlink" href="#immediate-next-actions-to-schedule" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Implement OPA HTTP adapter + middleware swap (L0).</li>
+<li>Add <code>/v1/feature-flags</code> merged endpoint + tenant override via Somabrain (L1).</li>
+<li>Wire <code>get_weights</code>/<code>build_context</code> + reward updates into chat/tool flows (L2).</li>
+</ul>
+<p>This section is now part of the canonical roadmap. Any refactor or removal tied to the No‑Legacy mandate must first update this document with scope, acceptance, metrics, and tests, then proceed to implementation.</p>
+<h2 id="2025-11-09-integration-summary-somabrain-full-alignment-clarification">2025-11-09 Integration Summary — Somabrain Full Alignment (Clarification)<a class="headerlink" href="#2025-11-09-integration-summary-somabrain-full-alignment-clarification" title="Permanent link">&para;</a></h2>
+<p>This summary captures the clarified objective: SomaAgent01 fully integrates Somabrain as the upstream AI brain over HTTP while retaining all valuable existing subsystems (gateway, workers, outbox/WAL, Kafka, UI, metrics, auditing). We eliminate only genuine legacy shims or duplicates; we do not discard functioning architecture components.</p>
+<h3 id="core-understanding">Core Understanding<a class="headerlink" href="#core-understanding" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Somabrain is the authoritative service for: learning (weights/reward updates), context building, recall, tenant feature flags, policy enforcement, and memory graph operations.</li>
+<li>SomaAgent01 remains authoritative for: durable message persistence (Postgres + WAL/outbox), event publishing (Kafka with standardized headers), session orchestration, tool execution sandbox, UI delivery, and composite observability.</li>
+<li>Interaction mode: strictly HTTP (<code>SOMA_BASE_URL</code>) — no in‑process imports of Somabrain internals to preserve service boundary and upgrade independence.</li>
+</ol>
+<h3 id="retained-subsystems-not-removed">Retained Subsystems (Not Removed)<a class="headerlink" href="#retained-subsystems-not-removed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Postgres durability (sessions, outbox, WAL, audit, settings).</li>
+<li>Redis/Kafka usage for caching and event bus.</li>
+<li>Existing Gateway + Workers patterns (routes, SSE streaming, tool executor) with refactors only where integration demands.</li>
+<li>Observability stack (Prometheus metrics, alerting templates, structured logging, tracing propagation) extended to include Somabrain call metrics.</li>
+</ul>
+<h3 id="removed-replaced-items-true-legacy-only">Removed / Replaced Items (True Legacy Only)<a class="headerlink" href="#removed-replaced-items-true-legacy-only" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Placeholder OPA middleware (local no‑op) → replaced by real HTTP policy adapter against Somabrain policy endpoint.</li>
+<li>Direct scattered <code>os.getenv</code> feature flag checks → replaced by Feature Registry + Somabrain tenant overrides.</li>
+<li>Duplicate health endpoints / inconsistent probes → converge on unified <code>/healthz</code> logic with Somabrain upstream probe.</li>
+<li>Any residual polling or deprecated endpoints (CSRF, legacy /poll) in UI → SSE-only pattern enforced.</li>
+</ul>
+<h3 id="integration-surface-mapping">Integration Surface Mapping<a class="headerlink" href="#integration-surface-mapping" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Somabrain Endpoint</th>
+<th>SomaAgent01 Call Site</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Health</td>
+<td><code>GET /healthz</code> (fallback <code>/health</code>)</td>
+<td>Gateway <code>/healthz</code>, outbox sync health probe</td>
+<td>Classify normal/degraded/down; propagate metrics</td>
+</tr>
+<tr>
+<td>Weights (read)</td>
+<td><code>GET /v1/weights</code></td>
+<td>Conversation prompt assembly pre-invoke</td>
+<td>Embed weights into LLM context</td>
+</tr>
+<tr>
+<td>Weights (update)</td>
+<td><code>POST /v1/weights/update</code></td>
+<td>Tool/result feedback handler</td>
+<td>Reward/TD adjustments; idempotent key</td>
+</tr>
+<tr>
+<td>Context build</td>
+<td><code>POST /v1/context/build</code></td>
+<td>Conversation loop before LLM invoke</td>
+<td>Includes τ temperature &amp; segmentation</td>
+</tr>
+<tr>
+<td>Recall</td>
+<td><code>POST /v1/recall/query</code></td>
+<td>Optional recall enrichment stage</td>
+<td>Tenant/session scoping &amp; top‑k memory slice</td>
+</tr>
+<tr>
+<td>Feature flags</td>
+<td><code>GET /v1/flags/{tenant}/{flag}</code></td>
+<td>Registry tenant override layer &amp; <code>/v1/feature-flags</code> endpoint</td>
+<td>TTL cache + fallback to profile defaults</td>
+</tr>
+<tr>
+<td>Policy (OPA)</td>
+<td>policy evaluate endpoint (exact path from Somabrain)</td>
+<td>Gateway middleware &amp; workers (memory/tool actions)</td>
+<td>Fail‑closed unless configured fail‑open dev</td>
+</tr>
+<tr>
+<td>Memory write</td>
+<td><code>POST /v1/memory/remember</code></td>
+<td>Tool executor &amp; conversation worker write-through</td>
+<td>Local WAL/outbox remains for durability</td>
+</tr>
+<tr>
+<td>Memory link</td>
+<td><code>POST /v1/memory/link</code></td>
+<td>Async post-write linking task</td>
+<td>Non-blocking; logs failures</td>
+</tr>
+<tr>
+<td>Plan suggest</td>
+<td><code>POST /v1/plan/suggest</code></td>
+<td>Optional background suggestion trigger</td>
+<td>Best-effort enhancement</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data-flow-updated">Data Flow (Updated)<a class="headerlink" href="#data-flow-updated" title="Permanent link">&para;</a></h3>
+<p>User → Gateway → (Policy check via Somabrain) → Conversation Worker → Context + Weights from Somabrain → LLM Invoke → Tool Executor (tool calls) → Memory write-through (Somabrain) + local WAL → Kafka publish (standard headers) → UI SSE stream.</p>
+<h3 id="observability-extensions">Observability Extensions<a class="headerlink" href="#observability-extensions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>New metrics: <code>somabrain_request_duration_seconds{endpoint,method}</code>, <code>somabrain_requests_total{endpoint,status}</code>, <code>learning_updates_total{outcome}</code>, <code>learning_context_build_duration_seconds</code>, <code>feature_flag_remote_requests_total{flag,tenant,result}</code>.</li>
+<li>Alerts: Somabrain error rate spike, policy denial surge, recall latency p95 &gt; threshold.</li>
+</ul>
+<h3 id="reliability-degrade-strategy">Reliability &amp; Degrade Strategy<a class="headerlink" href="#reliability-degrade-strategy" title="Permanent link">&para;</a></h3>
+<ul>
+<li>If Somabrain recall or context build fails → degrade: skip enrichment but continue chat; feature state reported as <code>degraded</code>.</li>
+<li>If policy endpoint unavailable and fail‑closed → deny write/tool ops with clear error; if fail‑open (dev only) → proceed and metric logs decision.</li>
+<li>If memory write fails upstream → enqueue in local outbox for retry while preserving local persistence.</li>
+</ul>
+<h3 id="security-enforcement">Security Enforcement<a class="headerlink" href="#security-enforcement" title="Permanent link">&para;</a></h3>
+<ul>
+<li>All memory writes/tool executions behind real policy evaluation; audit includes decision, tenant, action, resource.</li>
+<li>Feature flags controlling sensitive features (masking, error classification) originate from Somabrain overrides; local defaults only apply when remote unreachable (audited).</li>
+</ul>
+<h3 id="incremental-sprint-execution-high-level">Incremental Sprint Execution (High-Level)<a class="headerlink" href="#incremental-sprint-execution-high-level" title="Permanent link">&para;</a></h3>
+<ul>
+<li>L0: Real policy adapter + health unification.</li>
+<li>L1: Tenant feature flag override integration + registry lint enforcement.</li>
+<li>L2: Weights/context injection + reward updates instrumentation.</li>
+<li>L3: Eventing/Kafka header standardization + trace linking.</li>
+<li>L4: UI hygiene and endpoint purge (legacy removal confirmation).</li>
+</ul>
+<h3 id="acceptance-summary">Acceptance Summary<a class="headerlink" href="#acceptance-summary" title="Permanent link">&para;</a></h3>
+<p>Upon completion of L4: all Somabrain responsibilities are exercised via HTTP endpoints; no stubbed legacy code remains; traces span entire request lifecycle; feature flags reflect tenant overrides; UI streams exclusively over SSE with enriched context and recall (when enabled).</p>
+<h3 id="next-immediate-action-post-append">Next Immediate Action (Post-Append)<a class="headerlink" href="#next-immediate-action-post-append" title="Permanent link">&para;</a></h3>
+<p>Start Sprint L0 implementation: swap OPA stub for HTTP adapter, centralized <code>/healthz</code> aggregator including Somabrain classification and new metrics.</p>
+<p>This integration summary is now appended to the canonical roadmap and governs subsequent implementation decisions.</p>
+<h2 id="2025-11-09-feature-expansion-somabrain-driven-additions-readiness-matrix">2025-11-09 Feature Expansion – Somabrain-Driven Additions &amp; Readiness Matrix<a class="headerlink" href="#2025-11-09-feature-expansion-somabrain-driven-additions-readiness-matrix" title="Permanent link">&para;</a></h2>
+<p>This section enumerates net-new features that leverage Somabrain’s actual HTTP capabilities while preserving SomaAgent01’s durable, evented architecture. Each item lists readiness (Ready / Needs Instrumentation / Needs Extension), dependencies, and target metrics. These augment existing sprints and inform rapid development prioritization.</p>
+<h3 id="capability-reference-somabrain-http-endpoints">Capability Reference (Somabrain HTTP Endpoints)<a class="headerlink" href="#capability-reference-somabrain-http-endpoints" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Weights: <code>GET /v1/weights</code>, <code>POST /v1/weights/update</code></li>
+<li>Context: <code>POST /v1/context/build</code></li>
+<li>Feature Flags (tenant): <code>GET /v1/flags/{tenant}/{flag}</code></li>
+<li>Recall: <code>POST /v1/recall/query</code></li>
+<li>Policy: policy evaluate endpoint (OPA remote)</li>
+<li>Memory Ops: <code>POST /v1/memory/remember</code>, <code>POST /v1/memory/link</code></li>
+<li>Planning: <code>POST /v1/plan/suggest</code></li>
+</ul>
+<h3 id="feature-slate-readiness">Feature Slate &amp; Readiness<a class="headerlink" href="#feature-slate-readiness" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+<th>Readiness</th>
+<th>Key Dependencies</th>
+<th>Primary Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adaptive Context Orchestration</td>
+<td>Dynamic prompt shaping using current weights + τ</td>
+<td>Ready</td>
+<td>weights, context.build</td>
+<td>context_build_duration p95</td>
+</tr>
+<tr>
+<td>Reward-Driven Tuning</td>
+<td>Tool/LLM outcomes → weights.update</td>
+<td>Ready</td>
+<td>weights.update</td>
+<td>learning_updates_total</td>
+</tr>
+<tr>
+<td>Proactive Semantic Suggestions</td>
+<td>Background recall nudges for low-confidence turns</td>
+<td>Ready (instrument)</td>
+<td>recall.query</td>
+<td>suggestion_latency p95</td>
+</tr>
+<tr>
+<td>Policy-Gated Auto-Actions</td>
+<td>Safe auto-execution of low-risk plan steps</td>
+<td>Instrument</td>
+<td>policy evaluate, plan.suggest</td>
+<td>auto_action_denied_total</td>
+</tr>
+<tr>
+<td>Policy Explainability Console</td>
+<td>View allow/deny trace details</td>
+<td>Instrument</td>
+<td>policy endpoint trace</td>
+<td>policy_trace_latency</td>
+</tr>
+<tr>
+<td>Learning KPI Dashboard</td>
+<td>Surfacing reward volume &amp; precision impact</td>
+<td>Instrument</td>
+<td>weights.update logs</td>
+<td>recall_precision_delta</td>
+</tr>
+<tr>
+<td>Recall Drift &amp; Vector Health</td>
+<td>Drift detection &amp; re-embed trigger</td>
+<td>Extension</td>
+<td>recall.query + local stats</td>
+<td>drift_events_total</td>
+</tr>
+<tr>
+<td>Real-Time Tenant Flag Console</td>
+<td>Merged effective flags per tenant</td>
+<td>Ready</td>
+<td>flags endpoint</td>
+<td>flag_remote_latency p95</td>
+</tr>
+<tr>
+<td>Domain Profiles &amp; Routing</td>
+<td>Domain-based context/recall partitioning</td>
+<td>Extension</td>
+<td>context.build (tags)</td>
+<td>domain_hit_ratio</td>
+</tr>
+<tr>
+<td>Memory Graph Explorer</td>
+<td>Visualize linked memory graph</td>
+<td>Ready</td>
+<td>memory.link</td>
+<td>graph_nodes_rendered</td>
+</tr>
+<tr>
+<td>Grounded Citations</td>
+<td>Provenance inline with recall results</td>
+<td>Instrument (verify payload)</td>
+<td>recall.query metadata</td>
+<td>citation_presence_rate</td>
+</tr>
+<tr>
+<td>Cross-Session Surfacing</td>
+<td>Suggest similar sessions for continuity</td>
+<td>Instrument</td>
+<td>recall.query (tenant scope)</td>
+<td>session_overlap_suggestions</td>
+</tr>
+<tr>
+<td>Safety Red Teaming Suite</td>
+<td>Scheduled adversarial prompt tests</td>
+<td>Ready</td>
+<td>policy evaluate</td>
+<td>redteam_findings_total</td>
+</tr>
+<tr>
+<td>SLA-Aware Backpressure 2.0</td>
+<td>Dynamic outbox/WAL scaling via health &amp; latency budgets</td>
+<td>Ready</td>
+<td>healthz, existing WAL</td>
+<td>backpressure_activation_total</td>
+</tr>
+<tr>
+<td>Data Retention &amp; Privacy Zones</td>
+<td>TTL &amp; domain masking enforcement</td>
+<td>Extension</td>
+<td>policy + memory.write</td>
+<td>retention_expiry_success_total</td>
+</tr>
+<tr>
+<td>Delegated Sub-Tasks (Multi-Agent)</td>
+<td>Plan decomposition into Celery task chains</td>
+<td>Ready</td>
+<td>plan.suggest + Celery</td>
+<td>delegated_chain_duration</td>
+</tr>
+<tr>
+<td>Experimentation Framework (A/B weights)</td>
+<td>Variant weights evaluation + auto promote</td>
+<td>Extension</td>
+<td>weights.update (variant tagging)</td>
+<td>variant_win_rate</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rapid-development-priority-impact-feasibility">Rapid Development Priority (Impact × Feasibility)<a class="headerlink" href="#rapid-development-priority-impact-feasibility" title="Permanent link">&para;</a></h3>
+<p>P0 (Ship first – core value, minimal friction): Adaptive Context, Reward Tuning, Real-Time Tenant Flag Console, SLA-Aware Backpressure 2.0, Proactive Semantic Suggestions (basic), Policy-Gated Auto-Actions (baseline deny/allow).
+P1: Policy Explainability Console, Learning KPI Dashboard, Grounded Citations, Delegated Sub-Tasks.
+P2: Recall Drift &amp; Vector Health, Cross-Session Surfacing, Memory Graph Explorer, Data Retention &amp; Privacy Zones.
+P3: Domain Profiles &amp; Routing, Experimentation Framework.</p>
+<h3 id="metrics-to-add">Metrics to Add<a class="headerlink" href="#metrics-to-add" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>somabrain_request_duration_seconds{endpoint,method}</code></li>
+<li><code>learning_updates_total{outcome}</code></li>
+<li><code>context_build_duration_seconds</code></li>
+<li><code>recall_query_duration_seconds</code> / <code>recall_results_total{hit}</code></li>
+<li><code>auto_actions_total{decision}</code></li>
+<li><code>policy_trace_requests_total</code> / <code>policy_trace_duration_seconds</code></li>
+<li><code>flag_remote_requests_total{flag,tenant,result}</code></li>
+<li><code>drift_events_total{cause}</code></li>
+</ul>
+<h3 id="cross-cutting-concerns">Cross-Cutting Concerns<a class="headerlink" href="#cross-cutting-concerns" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Tracing:</strong> Ensure spans cover remote Somabrain calls with attributes (endpoint, tenant, status). Link Celery tasks via trace headers.</li>
+<li><strong>Security:</strong> Auto-action feature always policy-gated + audit; never executes without explicit allow.</li>
+<li><strong>Degrade Modes:</strong> Context build failure → fallback minimal prompt; recall failure → skip enrichment and mark feature degraded.</li>
+<li><strong>Caching:</strong> Tenant flag lookups cached (TTL 1–2s); context and recall not cached (real-time relevance) except optional embedding LRU.</li>
+</ul>
+<h3 id="extension-requirements-somabrain">Extension Requirements (Somabrain)<a class="headerlink" href="#extension-requirements-somabrain" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Domain tagging in context/recall responses (for domain profile routing).</li>
+<li>Recall result provenance completeness (source type, id, created_at, confidence score).</li>
+<li>Policy trace endpoint providing decision path (rules matched, reasons) for explainability.</li>
+<li>Variant key in weights update payloads to support experimentation.</li>
+</ul>
+<h3 id="integration-risk-matrix">Integration Risk Matrix<a class="headerlink" href="#integration-risk-matrix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Policy latency spike</td>
+<td>Auto-actions stall</td>
+<td>Local cache + circuit breaker</td>
+</tr>
+<tr>
+<td>Recall cost growth</td>
+<td>Token spend increases</td>
+<td>Adaptive threshold &amp; sampling</td>
+</tr>
+<tr>
+<td>Drift false positives</td>
+<td>Unnecessary re-embeds</td>
+<td>Statistical smoothing (EWMA)</td>
+</tr>
+<tr>
+<td>Flag endpoint instability</td>
+<td>Feature gating inconsistency</td>
+<td>TTL fallback + profile default audit</td>
+</tr>
+</tbody>
+</table>
+<h3 id="immediate-follow-up-pre-implementation">Immediate Follow-Up (Pre-Implementation)<a class="headerlink" href="#immediate-follow-up-pre-implementation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Verify Somabrain recall payload includes provenance fields.</li>
+<li>Confirm available policy trace capabilities; if absent, spec new endpoint.</li>
+<li>Define reward mapping (tool result → scalar/feature vector) for weights updates.</li>
+<li>Draft metrics additions &amp; gauge cardinality review (avoid high-cardinality labels).</li>
+</ol>
+<p>This feature expansion is now part of the canonical roadmap; future development must reference readiness classification and priority tiers before implementation.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
