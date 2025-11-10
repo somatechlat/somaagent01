@@ -163,7 +163,8 @@ class FileReadTool(BaseTool):
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
             raise ToolExecutionError("'path' argument is required")
-        base_dir = Path(os.getenv("TOOL_WORK_DIR", "work_dir")).resolve()
+        from services.common import runtime_config as cfg
+        base_dir = Path(cfg.env("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
             raise ToolExecutionError("Access outside work directory is not allowed")
@@ -227,7 +228,8 @@ class CanvasAppendTool(BaseTool):
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
 
-        canvas_url = os.getenv("CANVAS_SERVICE_URL", "http://localhost:8014")
+        from services.common import runtime_config as cfg
+        canvas_url = cfg.env("CANVAS_SERVICE_URL", "http://localhost:8014")
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
             "session_id": session_id,
@@ -237,7 +239,7 @@ class CanvasAppendTool(BaseTool):
             "persona_id": persona_id,
         }
         async with httpx.AsyncClient(
-            timeout=float(os.getenv("CANVAS_SERVICE_TIMEOUT", "5"))
+            timeout=float(cfg.env("CANVAS_SERVICE_TIMEOUT", "5"))
         ) as client:
             response = await client.post(endpoint, json=payload)
             response.raise_for_status()
@@ -288,7 +290,8 @@ class IngestDocumentTool(BaseTool):
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             raise ToolExecutionError("'attachment_id' is required")
 
-        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        from services.common import runtime_config as cfg
+        base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         # Harden internal token handling: only default in LOCAL, require explicit in PROD
         try:
             from services.common.runtime_config import deployment_mode as _dep_mode
@@ -297,7 +300,7 @@ class IngestDocumentTool(BaseTool):
             # Fallback to LOCAL without reading deprecated env vars
             mode = "LOCAL"
         default_token = "dev-internal-token" if mode == "LOCAL" else ""
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN", default_token)
+        token = cfg.env("GATEWAY_INTERNAL_TOKEN", default_token)
         if not token:
             raise ToolExecutionError("Internal token not configured for attachment fetch")
         url = f"{base}/internal/attachments/{attachment_id}/binary"
@@ -306,7 +309,7 @@ class IngestDocumentTool(BaseTool):
             headers["X-Tenant-Id"] = str(tenant_header)
         try:
             async with httpx.AsyncClient(
-                timeout=float(os.getenv("TOOL_FETCH_TIMEOUT", "15"))
+                timeout=float(cfg.env("TOOL_FETCH_TIMEOUT", "15"))
             ) as client:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:

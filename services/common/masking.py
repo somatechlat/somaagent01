@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+from services.common import runtime_config as cfg
 import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
@@ -83,8 +84,8 @@ def _init_metrics() -> None:
 
 
 def _load_rules_from_env() -> List[MaskRule]:
-    raw = os.getenv("SA01_MASK_RULES")
-    path = os.getenv("SA01_MASK_RULES_FILE")
+    raw = cfg.env("SA01_MASK_RULES")
+    path = cfg.env("SA01_MASK_RULES_FILE")
     rules: list[dict[str, str]] = []
     if path:
         try:

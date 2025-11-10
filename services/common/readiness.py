@@ -48,14 +48,16 @@ COMPONENTS = ["postgres", "kafka", "redis"]
 
 
 def _timeout_seconds() -> float:
+    from services.common import runtime_config as cfg
     try:
-        return float(os.getenv("READINESS_CHECK_TIMEOUT", "2.0"))
+        return float(cfg.env("READINESS_CHECK_TIMEOUT", "2.0"))
     except ValueError:
         return 2.0
 
 
 async def _check_postgres() -> Dict[str, Any]:
-    dsn = os.getenv(
+    from services.common import runtime_config as cfg
+    dsn = cfg.env(
         "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
     )
     try:
@@ -74,7 +76,8 @@ async def _check_postgres() -> Dict[str, Any]:
 
 async def _check_kafka() -> Dict[str, Any]:
     # Allow tests to disable Kafka probe to avoid noisy resource warnings when broker absent
-    if os.getenv("READINESS_DISABLE_KAFKA", "false").lower() in {"true", "1", "yes", "on"}:
+    from services.common import runtime_config as cfg
+    if cfg.env("READINESS_DISABLE_KAFKA", "false").lower() in {"true", "1", "yes", "on"}:
         return {"status": "healthy", "message": "Kafka probe disabled"}
     bus = None
     try:
@@ -93,7 +96,8 @@ async def _check_kafka() -> Dict[str, Any]:
 
 async def _check_redis() -> Dict[str, Any]:
     try:
-        cache = RedisSessionCache(url=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+        from services.common import runtime_config as cfg
+        cache = RedisSessionCache(url=cfg.env("REDIS_URL", "redis://localhost:6379/0"))
         await cache.ping()
         return {"status": "healthy", "message": "Redis PING ok"}
     except Exception as exc:  # pragma: no cover

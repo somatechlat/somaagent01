@@ -88,7 +88,8 @@ class DurablePublisher:
         # Apply a bounded timeout to avoid hanging request paths on metadata waits
         timeout_s: float
         try:
-            timeout_s = float(os.getenv("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0"))
+            from services.common import runtime_config as cfg
+            timeout_s = float(cfg.env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0") or "2.0")
         except Exception:
             timeout_s = 2.0
         # Compute unified headers for Kafka and (if needed) for outbox persistence

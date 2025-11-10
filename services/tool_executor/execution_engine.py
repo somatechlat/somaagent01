@@ -37,11 +37,12 @@ class ExecutionEngine:
         self._sandbox = sandbox
         self._resources = resources
         ensure_metrics_exporter()
+        from services.common import runtime_config as cfg
         self._circuit_failure_threshold = int(
-            os.getenv("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
+            cfg.env("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
         )
         self._circuit_reset_timeout = float(
-            os.getenv("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
+            cfg.env("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
         )
         self._tool_breakers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {}
 

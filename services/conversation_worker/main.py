@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import mimetypes
-import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -114,12 +113,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    metrics_port = int(os.getenv("CONVERSATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
+    metrics_port = int(cfg.env("CONVERSATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
     if metrics_port <= 0:
         LOGGER.warning("Metrics server disabled", extra={"port": metrics_port})
         _METRICS_SERVER_STARTED = True
         return
-    metrics_host = os.getenv("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
+    metrics_host = cfg.env("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
     try:
         start_http_server(metrics_port, addr=metrics_host)
         LOGGER.info(
@@ -190,39 +189,39 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
-        bootstrap_servers = os.getenv(
+        bootstrap_servers = cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
         )
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
-            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-            sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-            sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+            security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+            sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+            sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
         self.settings = {
-            "inbound": os.getenv("CONVERSATION_INBOUND", "conversation.inbound"),
-            "outbound": os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
-            "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
+            "inbound": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
+            "outbound": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
-        redis_url = os.getenv("REDIS_URL", APP_SETTINGS.redis_url)
+        redis_url = cfg.env("REDIS_URL", APP_SETTINGS.redis_url)
         self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
         # Prefer explicit WORKER_GATEWAY_BASE, then a generic GATEWAY_BASE_URL, then localhost host-port
         # that matches docker-compose's forwarded port (default 20016). Last resort: the in-cluster name.
-        default_host_port = f"http://localhost:{os.getenv('GATEWAY_PORT', '20016')}"
+        default_host_port = f"http://localhost:{cfg.env('GATEWAY_PORT', '20016')}"
         self._gateway_base = (
-            os.getenv("WORKER_GATEWAY_BASE")
-            or os.getenv("GATEWAY_BASE_URL")
+            cfg.env("WORKER_GATEWAY_BASE")
+            or cfg.env("GATEWAY_BASE_URL")
             or default_host_port
             or "http://gateway:8010"
         ).rstrip("/")
-        self._internal_token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         if not self._internal_token:
             try:
                 LOGGER.warning(
@@ -232,13 +231,13 @@ class ConversationWorker:
             except Exception:
                 pass
         self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
-        tenant_config_path = os.getenv(
+        tenant_config_path = cfg.env(
             "TENANT_CONFIG_PATH",
             APP_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
         )
         self.tenant_config = TenantConfig(path=tenant_config_path)
         self.budgets = BudgetManager(url=redis_url, tenant_config=self.tenant_config)
-        policy_base = os.getenv("POLICY_BASE_URL", APP_SETTINGS.opa_url)
+        policy_base = cfg.env("POLICY_BASE_URL", APP_SETTINGS.opa_url)
         self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
@@ -246,7 +245,7 @@ class ConversationWorker:
         # SomaBrain HTTP client (centralized memory backend)
         self.soma = SomaBrainClient.get()
         self.mem_outbox = MemoryWriteOutbox(dsn=APP_SETTINGS.postgres_dsn)
-        router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
+        router_url = cfg.env("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         # Canonical deployment mode (LOCAL | PROD)
         self.deployment_mode = cfg_deployment_mode()
@@ -286,7 +285,7 @@ class ConversationWorker:
             return None
         ttl_s = 10.0
         try:
-            ttl_s = float(os.getenv("SOMABRAIN_PERSONA_TTL_SECONDS", "10"))
+            ttl_s = float(cfg.env("SOMABRAIN_PERSONA_TTL_SECONDS", "10"))
         except ValueError:
             ttl_s = 10.0
         now = time.time()
@@ -352,15 +351,15 @@ class ConversationWorker:
         Limits JSON-serialized size, list lengths, and string lengths.
         """
         try:
-            max_bytes = int(os.getenv("SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES", "20000"))
+            max_bytes = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES", "20000"))
         except ValueError:
             max_bytes = 20000
         try:
-            max_items = int(os.getenv("SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS", "10"))
+            max_items = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS", "10"))
         except ValueError:
             max_items = 10
         try:
-            max_str = int(os.getenv("SOMABRAIN_CONTEXT_UPDATE_MAX_STRING", "4000"))
+            max_str = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_STRING", "4000"))
         except ValueError:
             max_str = 4000
 
@@ -453,18 +452,18 @@ class ConversationWorker:
             tenant = (base_metadata or {}).get("tenant")
             # Configurable recall paging
             try:
-                top_k = int(os.getenv("SOMABRAIN_RECALL_TOPK", "8"))
+                top_k = int(cfg.env("SOMABRAIN_RECALL_TOPK", "8"))
             except ValueError:
                 top_k = 8
             try:
-                chunk_size = int(os.getenv("SOMABRAIN_RECALL_CHUNK_SIZE", "4"))
+                chunk_size = int(cfg.env("SOMABRAIN_RECALL_CHUNK_SIZE", "4"))
             except ValueError:
                 chunk_size = 4
             chunk_size = max(1, min(20, chunk_size))
             pages = max(1, (top_k + chunk_size - 1) // chunk_size)
-            universe_val = (base_metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE")
+            universe_val = (base_metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE")
             # Attempt SSE recall stream when enabled
-            use_sse = os.getenv("SOMABRAIN_USE_RECALL_SSE", "false").lower() in {
+            use_sse = cfg.env("SOMABRAIN_USE_RECALL_SSE", "false").lower() in {
                 "1",
                 "true",
                 "yes",
@@ -481,13 +480,13 @@ class ConversationWorker:
                     }
                     # Optional cap on number of events
                     try:
-                        max_events = int(os.getenv("SOMABRAIN_RECALL_SSE_MAX_EVENTS", "20"))
+                        max_events = int(cfg.env("SOMABRAIN_RECALL_SSE_MAX_EVENTS", "20"))
                     except ValueError:
                         max_events = 20
                     count = 0
                     async for evt in self.soma.recall_stream_events(
                         payload,
-                        request_timeout=float(os.getenv("SOMABRAIN_RECALL_SSE_TIMEOUT", "15")),
+                        request_timeout=float(cfg.env("SOMABRAIN_RECALL_SSE_TIMEOUT", "15")),
                     ):
                         if stop_event.is_set():
                             break
@@ -597,7 +596,7 @@ class ConversationWorker:
                 except Exception:
                     pass
 
-                await asyncio.sleep(float(os.getenv("SOMABRAIN_RECALL_PAGE_DELAY", "0.05")))
+                await asyncio.sleep(float(cfg.env("SOMABRAIN_RECALL_PAGE_DELAY", "0.05")))
         except Exception:
             LOGGER.debug("background recall loop error", exc_info=True)
 
@@ -686,7 +685,7 @@ class ConversationWorker:
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
                     "universe_id": (metadata or {}).get("universe_id")
-                    or os.getenv("SOMA_NAMESPACE"),
+                    or cfg.env("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -713,7 +712,7 @@ class ConversationWorker:
                 )
             if not allow_memory:
                 return
-            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
             except Exception:
@@ -759,7 +758,7 @@ class ConversationWorker:
 
     def _should_offload_ingest(self, path: str) -> bool:
         try:
-            threshold_mb = float(os.getenv("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
+            threshold_mb = float(cfg.env("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
         except ValueError:
             threshold_mb = 5.0
         try:
@@ -786,8 +785,8 @@ class ConversationWorker:
         return None
 
     async def _attachment_head(self, att_id: str, tenant: str) -> dict[str, Any]:
-        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        base = (cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010") or "http://gateway:8010").rstrip("/")
+        token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         url = f"{base}/internal/attachments/{att_id}/binary"
         headers = {"X-Internal-Token": token or ""}
         if tenant:
@@ -804,7 +803,7 @@ class ConversationWorker:
 
     def _should_offload_ingest_id(self, size: int | None) -> bool:
         try:
-            threshold_mb = float(os.getenv("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
+            threshold_mb = float(cfg.env("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
         except ValueError:
             threshold_mb = 5.0
         if size is None or size <= 0:
@@ -812,8 +811,8 @@ class ConversationWorker:
         return size > int(threshold_mb * 1024 * 1024)
 
     async def _fetch_attachment_bytes(self, *, att_id: str, tenant: str) -> tuple[bytes, str, str]:
-        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        base = (cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010") or "http://gateway:8010").rstrip("/")
+        token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         if not token:
             raise RuntimeError("Internal token not configured")
         url = f"{base}/internal/attachments/{att_id}/binary"
@@ -821,7 +820,7 @@ class ConversationWorker:
         if tenant:
             headers["X-Tenant-Id"] = str(tenant)
         async with httpx.AsyncClient(
-            timeout=float(os.getenv("WORKER_FETCH_TIMEOUT", "10"))
+            timeout=float(cfg.env("WORKER_FETCH_TIMEOUT", "10"))
         ) as client:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 404:
@@ -901,7 +900,7 @@ class ConversationWorker:
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
                     "universe_id": (metadata or {}).get("universe_id")
-                    or os.getenv("SOMA_NAMESPACE"),
+                    or cfg.env("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -927,7 +926,7 @@ class ConversationWorker:
                 )
             if not allow_memory:
                 return
-            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
             except Exception:
@@ -1245,7 +1244,7 @@ class ConversationWorker:
                         }
                         try:
                             await self.publisher.publish(
-                                os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                                cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
                                 event,
                                 dedupe_key=req_id,
                                 session_id=session_id,
@@ -1260,7 +1259,7 @@ class ConversationWorker:
                         result_event = await self._wait_for_tool_result(
                             session_id=session_id,
                             request_id=req_id,
-                            timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20")),
+                            timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20")),
                         )
                         # Append a summarised tool result back into the message context
                         if result_event:
@@ -1578,7 +1577,7 @@ class ConversationWorker:
                 }
                 try:
                     await self.publisher.publish(
-                        os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                        cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
                         event,
                         dedupe_key=req_id,
                         session_id=session_id,
@@ -1591,7 +1590,7 @@ class ConversationWorker:
                 result_event = await self._wait_for_tool_result(
                     session_id=session_id,
                     request_id=req_id,
-                    timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20")),
+                    timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20")),
                 )
                 # Append a summarised tool result back into the message context
                 if result_event:
@@ -1875,7 +1874,7 @@ class ConversationWorker:
                         **dict(enriched_metadata),
                         "agent_profile_id": enriched_metadata.get("agent_profile_id"),
                         "universe_id": enriched_metadata.get("universe_id")
-                        or os.getenv("SOMA_NAMESPACE"),
+                        or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
                 # Optional embedding (user message)
@@ -1886,7 +1885,7 @@ class ConversationWorker:
                     if emb is not None:
                         # Truncate to configurable dimension to avoid oversized rows
                         try:
-                            max_dims = int(os.getenv("EMBEDDING_STORE_DIM_TRUNC", "128"))
+                            max_dims = int(cfg.env("EMBEDDING_STORE_DIM_TRUNC", "128"))
                         except ValueError:
                             max_dims = 128
                         payload.setdefault("metadata", {})["embedding"] = emb[:max_dims]
@@ -1925,7 +1924,7 @@ class ConversationWorker:
                         exc_info=True,
                     )
                 if allow_memory:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
                     try:
                         wal_event = {
@@ -1987,7 +1986,7 @@ class ConversationWorker:
                                             **dict(enriched_metadata or {}),
                                         },
                                     }
-                                    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
                                         topic,
                                         tool_event,
@@ -2039,7 +2038,7 @@ class ConversationWorker:
                                             **dict(enriched_metadata or {}),
                                         },
                                     }
-                                    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
                                         topic,
                                         tool_event,
@@ -2212,7 +2211,7 @@ class ConversationWorker:
                 }
                 # Optional: honor persona/profile defaults for top_k if provided via metadata
                 try:
-                    top_k_override = int(os.getenv("SOMABRAIN_EVAL_TOPK", "5"))
+                    top_k_override = int(cfg.env("SOMABRAIN_EVAL_TOPK", "5"))
                 except ValueError:
                     top_k_override = 5
                 eval_req["top_k"] = max(1, min(50, top_k_override))
@@ -2354,7 +2353,7 @@ class ConversationWorker:
                         pass
             routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
 
-            if model_profile and os.getenv("ROUTER_URL"):
+            if model_profile and cfg.env("ROUTER_URL"):
                 candidates = (
                     [slm_kwargs.get("model", model_profile.model)]
                     if slm_kwargs
@@ -2733,7 +2732,7 @@ class ConversationWorker:
                         **dict(response_metadata),
                         "agent_profile_id": response_metadata.get("agent_profile_id"),
                         "universe_id": response_metadata.get("universe_id")
-                        or os.getenv("SOMA_NAMESPACE"),
+                        or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
                 # Optional embedding (assistant message)
@@ -2743,7 +2742,7 @@ class ConversationWorker:
                     emb = await _maybe_embed(payload.get("content", ""))
                     if emb is not None:
                         try:
-                            max_dims = int(os.getenv("EMBEDDING_STORE_DIM_TRUNC", "128"))
+                            max_dims = int(cfg.env("EMBEDDING_STORE_DIM_TRUNC", "128"))
                         except ValueError:
                             max_dims = 128
                         payload.setdefault("metadata", {})["embedding"] = emb[:max_dims]
@@ -2780,7 +2779,7 @@ class ConversationWorker:
                         exc_info=True,
                     )
                 if allow_memory:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
                     try:
                         wal_event = {

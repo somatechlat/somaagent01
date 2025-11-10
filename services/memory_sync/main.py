@@ -39,25 +39,28 @@ def _kafka_settings() -> KafkaSettings:
 
 
 def _env_float(name: str, default: float) -> float:
+    from services.common import runtime_config as cfg
     try:
-        return float(os.getenv(name, str(default)))
+        return float(cfg.env(name, str(default)))
     except ValueError:
         return default
 
 
 def _env_int(name: str, default: int) -> int:
+    from services.common import runtime_config as cfg
     try:
-        return int(os.getenv(name, str(default)))
+        return int(cfg.env(name, str(default)))
     except ValueError:
         return default
 
 
 class MemorySyncWorker:
     def __init__(self) -> None:
-        self.store = MemoryWriteOutbox(dsn=os.getenv("POSTGRES_DSN"))
+        from services.common import runtime_config as cfg
+        self.store = MemoryWriteOutbox(dsn=cfg.env("POSTGRES_DSN"))
         self.bus = KafkaEventBus(_kafka_settings())
         # Durable publisher requires an OutboxStore for reliability
-        self.outbox = OutboxStore(dsn=os.getenv("POSTGRES_DSN"))
+        self.outbox = OutboxStore(dsn=cfg.env("POSTGRES_DSN"))
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.soma = SomaClient.get()
         self.batch_size = _env_int("MEMORY_SYNC_BATCH_SIZE", 100)
@@ -77,7 +80,7 @@ class MemorySyncWorker:
             await ensure_outbox_schema(self.outbox)
         except Exception:
             LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
-        metrics_port = int(os.getenv("MEMORY_SYNC_METRICS_PORT", "9471"))
+        metrics_port = int(cfg.env("MEMORY_SYNC_METRICS_PORT", "9471"))
         start_http_server(metrics_port)
         LOGGER.info(
             "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}
@@ -166,7 +169,8 @@ class MemorySyncWorker:
 
         # Success: publish WAL and mark sent
         try:
-            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            from services.common import runtime_config as cfg
+            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             wal_event = {
                 "type": "memory.write",
                 "role": payload.get("role"),
@@ -195,8 +199,9 @@ class MemorySyncWorker:
 
 
 async def main() -> None:
-    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-    setup_tracing("memory-sync", endpoint=os.getenv("OTLP_ENDPOINT"))
+    from services.common import runtime_config as cfg
+    logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
+    setup_tracing("memory-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
     worker = MemorySyncWorker()
     try:
         await worker.start()

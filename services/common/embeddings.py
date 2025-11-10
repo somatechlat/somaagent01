@@ -31,9 +31,10 @@ class EmbeddingsProvider(ABC):
 
 class OpenAIEmbeddings(EmbeddingsProvider):
     def __init__(self, *, api_key: str | None = None, base_url: str | None = None, model: str | None = None) -> None:
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or ""
-        self.base_url = (base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-        self.model = (model or os.getenv("EMBEDDINGS_MODEL") or "text-embedding-3-small").strip()
+        from services.common import runtime_config as cfg
+        self.api_key = api_key or cfg.env("OPENAI_API_KEY") or ""
+        self.base_url = (base_url or cfg.env("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+        self.model = (model or cfg.env("EMBEDDINGS_MODEL") or "text-embedding-3-small").strip()
 
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
         provider = "openai"
@@ -49,7 +50,8 @@ class OpenAIEmbeddings(EmbeddingsProvider):
                 }
                 payload = {"input": list(texts), "model": self.model}
                 url = f"{self.base_url}/embeddings"
-                async with httpx.AsyncClient(timeout=float(os.getenv("EMBEDDINGS_TIMEOUT", "15"))) as client:
+                from services.common import runtime_config as cfg
+                async with httpx.AsyncClient(timeout=float(cfg.env("EMBEDDINGS_TIMEOUT", "15"))) as client:
                     resp = await client.post(url, json=payload, headers=headers)
                     resp.raise_for_status()
                     data = resp.json()
@@ -82,7 +84,8 @@ async def maybe_embed(text: str) -> list[float] | None:
     if not isinstance(text, str) or not text.strip():
         return None
     try:
-        max_chars = int(os.getenv("EMBEDDINGS_MAX_CHARS", "2000"))
+        from services.common import runtime_config as cfg
+        max_chars = int(cfg.env("EMBEDDINGS_MAX_CHARS", "2000"))
     except ValueError:
         max_chars = 2000
     clipped = text if len(text) <= max_chars else text[:max_chars]
@@ -93,7 +96,7 @@ async def maybe_embed(text: str) -> list[float] | None:
         return cached
 
     # Deterministic test-mode embedding path (no network)
-    if os.getenv("EMBEDDINGS_TEST_MODE", "false").lower() in {"1", "true", "yes", "on"}:
+    if cfg.env("EMBEDDINGS_TEST_MODE", "false").lower() in {"1", "true", "yes", "on"}:
         # Produce a stable pseudo-vector from hash chunks
         import hashlib
         h = hashlib.sha256(clipped.encode("utf-8")).digest()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 import uuid
 from typing import Any
@@ -27,6 +26,7 @@ from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.settings_sa01 import SA01Settings
+from services.common.runtime_config import cfg
 from services.common.tracing import setup_tracing
 
 setup_logging()
@@ -62,12 +62,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    port = int(os.getenv("DELEGATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
+    port = int(cfg.env("DELEGATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
     if port <= 0:
         LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
-    host = os.getenv("DELEGATION_METRICS_HOST", APP_SETTINGS.metrics_host)
+    host = cfg.env("DELEGATION_METRICS_HOST", APP_SETTINGS.metrics_host)
     start_http_server(port, addr=host)
     LOGGER.info(
         "Delegation gateway metrics server started",
@@ -78,13 +78,13 @@ def ensure_metrics_server() -> None:
 
 def get_bus() -> KafkaEventBus:
     kafka_settings = KafkaSettings(
-        bootstrap_servers=os.getenv(
+        bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
     return KafkaEventBus(kafka_settings)
 
@@ -194,7 +194,7 @@ async def create_delegation_task(
         "callback_url": request.callback_url,
         "metadata": request.metadata or {},
     }
-    topic = os.getenv("DELEGATION_TOPIC", "somastack.delegation")
+    topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
     await publisher.publish(
         topic,
         event,
@@ -233,5 +233,6 @@ async def delegation_callback(
 
 if __name__ == "__main__":
     import uvicorn
+    from services.common.runtime_config import cfg as _cfg
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8015")))
+    uvicorn.run(app, host="0.0.0.0", port=int(_cfg.env("PORT", "8015")))

@@ -30,7 +30,8 @@ class DLQMessage:
 
 class DLQStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv(
+        from services.common import runtime_config as cfg
+        raw_dsn = dsn or cfg.env(
             "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
         self.dsn = os.path.expandvars(raw_dsn)
@@ -38,8 +39,8 @@ class DLQStore:
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

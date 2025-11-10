@@ -9,6 +9,7 @@ workers can run locally against the running infra.
 from __future__ import annotations
 
 import os
+from services.common import runtime_config as cfg
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -32,7 +33,7 @@ class SA01Settings(BaseServiceSettings):
     @classmethod
     def default_environment(cls) -> str:
         # Canonical selector: use SOMA_AGENT_ENV only (DEV default)
-        return os.getenv("SOMA_AGENT_ENV", "DEV").upper()
+        return cfg.env("SOMA_AGENT_ENV", "DEV").upper()
 
     @classmethod
     def environment_defaults(cls) -> Mapping[str, Mapping[str, Any]]:
@@ -47,50 +48,50 @@ class SA01Settings(BaseServiceSettings):
             # Map local developer environment to the canonical LOCAL profile set
             "deployment_mode": "LOCAL",
             # Compose maps host ports: kafka 20000->9092, redis 20001->6379, pg 20002->5432, opa 20009->8181
-            "postgres_dsn": os.getenv(
+            "postgres_dsn": cfg.env(
                 "SA01_POSTGRES_DSN", "postgresql://soma:soma@localhost:20002/somaagent01"
             ),
-            "kafka_bootstrap_servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:20000"),
-            "redis_url": os.getenv("REDIS_URL", "redis://localhost:20001/0"),
-            "otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
-            "model_profiles_path": os.getenv("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
+            "kafka_bootstrap_servers": cfg.env("KAFKA_BOOTSTRAP_SERVERS", "localhost:20000"),
+            "redis_url": cfg.env("REDIS_URL", "redis://localhost:20001/0"),
+            "otlp_endpoint": cfg.env("OTLP_ENDPOINT", ""),
+            "model_profiles_path": cfg.env("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
             "extra": {},
             # Extended fields
-            "metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
-            "metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
-            "opa_url": os.getenv("OPA_URL", "http://localhost:20009"),
+            "metrics_port": int(cfg.env("GATEWAY_METRICS_PORT", "9400")),
+            "metrics_host": cfg.env("GATEWAY_METRICS_HOST", "0.0.0.0"),
+            "opa_url": cfg.env("OPA_URL", "http://localhost:20009"),
         }
 
         # Placeholders for non-DEV; expect env to provide concrete values
         staging_defaults = {
             # Treat STAGING as production-like for profile selection
             "deployment_mode": "PROD",
-            "postgres_dsn": os.getenv(
+            "postgres_dsn": cfg.env(
                 "SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"
             ),
-            "kafka_bootstrap_servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-            "redis_url": os.getenv("REDIS_URL", "redis://redis:6379/0"),
-            "otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
-            "model_profiles_path": os.getenv("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
+            "kafka_bootstrap_servers": cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+            "redis_url": cfg.env("REDIS_URL", "redis://redis:6379/0"),
+            "otlp_endpoint": cfg.env("OTLP_ENDPOINT", ""),
+            "model_profiles_path": cfg.env("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
             "extra": {},
-            "metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
-            "metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
-            "opa_url": os.getenv("OPA_URL", "http://opa:8181"),
+            "metrics_port": int(cfg.env("GATEWAY_METRICS_PORT", "9400")),
+            "metrics_host": cfg.env("GATEWAY_METRICS_HOST", "0.0.0.0"),
+            "opa_url": cfg.env("OPA_URL", "http://opa:8181"),
         }
 
         prod_defaults = {
             "deployment_mode": "PROD",
-            "postgres_dsn": os.getenv(
+            "postgres_dsn": cfg.env(
                 "SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"
             ),
-            "kafka_bootstrap_servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-            "redis_url": os.getenv("REDIS_URL", "redis://redis:6379/0"),
-            "otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
-            "model_profiles_path": os.getenv("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
+            "kafka_bootstrap_servers": cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+            "redis_url": cfg.env("REDIS_URL", "redis://redis:6379/0"),
+            "otlp_endpoint": cfg.env("OTLP_ENDPOINT", ""),
+            "model_profiles_path": cfg.env("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
             "extra": {},
-            "metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
-            "metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
-            "opa_url": os.getenv("OPA_URL", "http://opa:8181"),
+            "metrics_port": int(cfg.env("GATEWAY_METRICS_PORT", "9400")),
+            "metrics_host": cfg.env("GATEWAY_METRICS_HOST", "0.0.0.0"),
+            "opa_url": cfg.env("OPA_URL", "http://opa:8181"),
         }
 
         return {
