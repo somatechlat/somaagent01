@@ -36,17 +36,9 @@ class TestCanonicalBackendReal:
         assert "/v1/context" in paths or "/v1/flags/{flag}" in paths
 
     def test_singleton_integrations(self):
-        """Test that integrations are available and importable."""
-        # Test actual integrations are available and importable
+        """Test that core integrations (Somabrain client) are importable."""
         from python.integrations.soma_client import SomaClient
-        from python.integrations.opa_middleware import EnforcePolicy, enforce_policy
-        
-        # Test SomaClient class exists
         assert SomaClient is not None
-        
-        # Test OPA middleware classes exist
-        assert EnforcePolicy is not None
-        assert enforce_policy is not None
 
     def test_no_legacy_endpoints(self):
         """Test that legacy endpoints don't exist."""
@@ -57,13 +49,9 @@ class TestCanonicalBackendReal:
         assert response.status_code == 404
 
     def test_authorization_middleware_real(self):
-        """Test authorization works with real middleware."""
-        from python.integrations.opa_middleware import EnforcePolicy
-        
-        # Test OPA middleware class exists
-        assert EnforcePolicy is not None
-        
-        # Test basic authorization flow (simplified)
-        response = self.client.get("/health", headers={"Authorization": "Bearer test"})
-        # Should either succeed or fail gracefully
-        assert response.status_code in [200, 401, 403]
+        """Authorization middleware placeholder after removal.
+
+        Ensures removal did not break the health route (still 200/503 semantics).
+        """
+        response = self.client.get("/health")
+        assert response.status_code in [200, 503]

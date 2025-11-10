@@ -183,7 +183,14 @@ DEV_DOCKER := docker compose -p somaagent01_dev -f $(DEV_COMPOSE_FILE)
 
 dev-up:
 	@echo "Starting lightweight developer stack..."
+	@# Optional pre-up pruning to avoid container_name conflicts from stale runs
+	@# Set PRUNE_BEFORE_UP=0 to skip. Defaults to 1 for reliability.
+	@PRUNE_BEFORE_UP=${PRUNE_BEFORE_UP:-1}; \
+	if [ "$$PRUNE_BEFORE_UP" = "1" ]; then \
+		$(MAKE) prune-soma >/dev/null 2>&1 || true; \
+	fi
 	$(MAKE) up COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=$(DEV_PROFILES) COMPOSE_PROJECT_NAME=somaagent01_dev
+	$(MAKE) health-wait
 
 dev-down:
 	@echo "Stopping lightweight developer stack..."
@@ -233,6 +240,19 @@ dev-down-hard:
 dev-down-clean:
 	@echo "Fully cleaning developer stack (containers, volumes, network)..."
 	$(MAKE) dev-down DEV_REMOVE_VOLUMES=1 DEV_REMOVE_NETWORK=1
+
+
+.PHONY: prune-soma
+# Remove any leftover containers using fixed container_name "somaAgent01_*" to avoid name conflicts
+prune-soma:
+	@echo "Pruning leftover somaAgent01_* containers (if any) ..."
+	@ids=$$(docker ps -aq --filter "name=^somaAgent01_" 2>/dev/null || true); \
+	if [ -n "$$ids" ]; then \
+		echo "Removing: $$ids"; \
+		docker rm -f $$ids >/dev/null 2>&1 || true; \
+	else \
+		echo "No leftover somaAgent01_* containers"; \
+	fi
 
 
 
@@ -412,6 +432,19 @@ health:
 	@echo "Checking Gateway health at http://127.0.0.1:$${GATEWAY_PORT:-21016}/v1/health ..."
 	@curl -fsS -D - http://127.0.0.1:$${GATEWAY_PORT:-21016}/v1/health -o /dev/null
 
+.PHONY: health-wait
+# Wait until the Gateway health endpoint responds (with retries)
+health-wait:
+	@GATEWAY_PORT=$${GATEWAY_PORT:-21016}; \
+	echo "Waiting for Gateway at http://127.0.0.1:$$GATEWAY_PORT/v1/health ..."; \
+	retries=40; \
+	until curl -fsS "http://127.0.0.1:$$GATEWAY_PORT/v1/health" -o /dev/null; do \
+		retries=$$((retries-1)); \
+		if [ $$retries -le 0 ]; then echo "Gateway health check failed"; exit 1; fi; \
+		sleep 2; \
+	done; \
+	echo "Gateway is healthy"
+
 ui-smoke:
 	@echo "Running UI smoke ..."
 	@WEB_UI_BASE_URL=$${WEB_UI_BASE_URL:-http://localhost:$${GATEWAY_PORT:-21016}/ui} ./scripts/ui-smoke.sh
@@ -419,5 +452,29 @@ ui-smoke:
 test-e2e:
 	@echo "Running E2E tests ..."
 	@[ -x ./.venv/bin/python ] && ./.venv/bin/python -m pytest -q tests/e2e || pytest -q tests/e2e
+
+.PHONY: test-live deps-up-live
+
+# Start dependencies + core stack, then run the entire test suite against real services
+deps-up-live:
+	@echo "Bringing up core dependencies for live testing (Kafka/Redis/Postgres/OPA)..."
+	$(MAKE) deps-up
+	@echo "Bringing up application stack (Gateway + workers) ..."
+	$(MAKE) up PROFILES=core,dev
+	@echo "Waiting for Gateway health ..."
+	$(MAKE) health-wait
+
+test-live:
+	@echo "Running full test suite against live stack (no mocks) ..."
+	$(MAKE) deps-up-live
+	PYTHONDONTWRITEBYTECODE=1 pytest -vv
+	@echo "All tests completed"
+
+.PHONY: test-live-only
+# Run tests against an already running live stack (skips bring-up)
+test-live-only:
+	@echo "Running tests against existing live stack (skipping bring-up) ..."
+	$(MAKE) health-wait
+	PYTHONDONTWRITEBYTECODE=1 pytest -vv
 
  

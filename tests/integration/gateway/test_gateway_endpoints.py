@@ -3,7 +3,7 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-from httpx import AsyncClient
+import httpx
 
 from services.gateway import main as gateway_main
 
@@ -90,7 +90,8 @@ async def test_enqueue_and_list_via_gateway():
     app.dependency_overrides[gateway_main.get_session_cache] = lambda: cache
     app.dependency_overrides[gateway_main.get_session_store] = lambda: store
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         # post a user message
         r = await ac.post("/v1/session/message", json={"message": "Hello there"})
         assert r.status_code == 200

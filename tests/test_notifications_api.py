@@ -2,7 +2,7 @@ import os
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
+import httpx
 
 from services.gateway.main import app, get_notifications_store
 
@@ -24,7 +24,8 @@ async def test_notifications_crud(monkeypatch):
 
     monkeypatch.setattr("services.gateway.main.authorize_request", fake_auth)
 
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         # Create
         resp = await client.post(
             "/v1/ui/notifications",
@@ -71,7 +72,8 @@ async def test_notifications_invalid_severity(monkeypatch):
         return {"tenant": "x"}
 
     monkeypatch.setattr("services.gateway.main.authorize_request", fake_auth)
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         r = await client.post(
             "/v1/ui/notifications",
             json={"type": "x", "title": "t", "body": "b", "severity": "bad", "meta": {}},
