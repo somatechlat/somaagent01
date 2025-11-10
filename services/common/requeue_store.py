@@ -18,9 +18,10 @@ class RequeueStore:
     ) -> None:
         # Resolve Redis URL with environment variable expansion to support values like
         # REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
-        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        from services.common import runtime_config as cfg
+        raw_url = url or cfg.env("REDIS_URL", "redis://localhost:6379/0")
         self.url = os.path.expandvars(raw_url)
-        self.prefix = prefix or os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
+        self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
 
@@ -35,10 +36,9 @@ class RequeueStore:
         - redis_url (str)
         - policy_requeue_prefix (str)
         """
-        url = getattr(settings, "redis_url", None) or os.getenv("REDIS_URL")
-        prefix = getattr(settings, "policy_requeue_prefix", None) or os.getenv(
-            "POLICY_REQUEUE_PREFIX"
-        )
+        from services.common import runtime_config as cfg
+        url = getattr(settings, "redis_url", None) or cfg.env("REDIS_URL")
+        prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env("POLICY_REQUEUE_PREFIX")
         return cls(url=url, prefix=prefix)
 
     async def add(self, identifier: str, event: dict[str, Any]) -> None:

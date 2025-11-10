@@ -44,9 +44,8 @@ def _client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=timeout)
 
 def _base_url() -> str:
-    # Derive from runtime settings extra or fallback env path; gateway already sets SOMA_BASE_URL
-    import os
-    return os.getenv("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+    # Derive from runtime config; gateway already sets SOMA_BASE_URL
+    return cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
 
 async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
     if not cfg.flag("learning_context"):

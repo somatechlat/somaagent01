@@ -61,12 +61,13 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls) -> "KafkaSettings":
+        from services.common import runtime_config as cfg
         return cls(
-            bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-            sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-            sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+            bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092") or "kafka:9092",
+            security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT") or "PLAINTEXT",
+            sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+            sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+            sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
 
 
@@ -198,8 +199,9 @@ class KafkaEventBus:
         # Low-latency fetch settings for near‑real‑time UI streaming. Defaults are conservative;
         # allow tuning via environment variables without code changes.
         try:
-            fetch_wait_ms = int(os.getenv("KAFKA_FETCH_MAX_WAIT_MS", "20"))  # default 20ms
-            fetch_min_bytes = int(os.getenv("KAFKA_FETCH_MIN_BYTES", "1"))  # default 1 byte
+            from services.common import runtime_config as cfg
+            fetch_wait_ms = int(cfg.env("KAFKA_FETCH_MAX_WAIT_MS", "20") or "20")
+            fetch_min_bytes = int(cfg.env("KAFKA_FETCH_MIN_BYTES", "1") or "1")
             kwargs.update(
                 {
                     "fetch_max_wait_ms": max(1, fetch_wait_ms),

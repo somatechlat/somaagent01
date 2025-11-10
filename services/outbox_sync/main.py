@@ -64,15 +64,17 @@ OUTBOX_FAILURE_RATIO = Gauge(
 
 
 def _env_float(name: str, default: float) -> float:
+    from services.common import runtime_config as cfg
     try:
-        return float(os.getenv(name, str(default)))
+        return float(cfg.env(name, str(default)))
     except ValueError:
         return default
 
 
 def _env_int(name: str, default: int) -> int:
+    from services.common import runtime_config as cfg
     try:
-        return int(os.getenv(name, str(default)))
+        return int(cfg.env(name, str(default)))
     except ValueError:
         return default
 
@@ -178,7 +180,8 @@ class OutboxSyncWorker:
         - degraded: HTTP 200 but body not clearly ok
         - down: request error/timeout/non-200
         """
-        base = os.getenv("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+        from services.common import runtime_config as cfg
+        base = cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
         try:
@@ -253,10 +256,11 @@ class OutboxSyncWorker:
 
 
 async def main() -> None:
-    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-    setup_tracing("outbox-sync", endpoint=os.getenv("OTLP_ENDPOINT"))
+    from services.common import runtime_config as cfg
+    logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
+    setup_tracing("outbox-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
     # Optional metrics server
-    metrics_port = int(os.getenv("OUTBOX_SYNC_METRICS_PORT", "9469"))
+    metrics_port = int(cfg.env("OUTBOX_SYNC_METRICS_PORT", "9469"))
     start_http_server(metrics_port)
     worker = OutboxSyncWorker()
     try:

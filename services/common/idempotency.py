@@ -44,13 +44,14 @@ def generate_for_memory_payload(
     now_seconds: Optional[float] = None,
 ) -> str:
     meta = payload.get("metadata") or {}
-    tenant = payload.get("tenant") or meta.get("tenant") or os.getenv("SOMA_TENANT_ID") or "default"
+    from services.common import runtime_config as cfg
+    tenant = payload.get("tenant") or meta.get("tenant") or cfg.env("SOMA_TENANT_ID") or "default"
     # Memory sub-namespace fallback should use SOMA_MEMORY_NAMESPACE (e.g. "wm")
     ns = (
         payload.get("namespace")
         or meta.get("namespace")
         or namespace
-        or os.getenv("SOMA_MEMORY_NAMESPACE", "wm")
+        or cfg.env("SOMA_MEMORY_NAMESPACE", "wm")
     )
     session_id = str(payload.get("session_id") or meta.get("session_id") or "")
     role = str(payload.get("role") or meta.get("role") or "event")

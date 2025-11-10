@@ -1450,7 +1450,7 @@ def _clamav_enabled() -> bool:
     cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
     if isinstance(cfg, dict) and cfg.get("av_enabled") is not None:
         return bool(cfg.get("av_enabled"))
-    return os.getenv("CLAMAV_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+    return (cfg.env("CLAMAV_ENABLED", "false") or "false").lower() in {"1", "true", "yes", "on"}
 
 
 def _clamav_strict() -> bool:
@@ -1467,8 +1467,8 @@ async def _clamav_scan(path: Path) -> tuple[str, str]:
         try:
             import clamd  # type: ignore
 
-            host = os.getenv("CLAMAV_HOST", "clamav")
-            port = int(os.getenv("CLAMAV_PORT", "3310"))
+            host = cfg.env("CLAMAV_HOST", "clamav") or "clamav"
+            port = int(cfg.env("CLAMAV_PORT", "3310") or "3310")
             cd = clamd.ClamdNetworkSocket(host=host, port=port)
             resp = await asyncio.to_thread(cd.scan, str(path))
             # resp like {"/path": ("OK"|"FOUND"|"ERROR", "detail")}
@@ -1513,8 +1513,8 @@ async def _clamav_scan_bytes(data: bytes) -> tuple[str, str]:
         try:
             import clamd  # type: ignore
 
-            host = os.getenv("CLAMAV_HOST", "clamav")
-            port = int(os.getenv("CLAMAV_PORT", "3310"))
+            host = cfg.env("CLAMAV_HOST", "clamav") or "clamav"
+            port = int(cfg.env("CLAMAV_PORT", "3310") or "3310")
             cd = clamd.ClamdNetworkSocket(host=host, port=port)
             # clamd expects a file-like object; wrap bytes
             import io
@@ -1637,7 +1637,7 @@ async def _config_update_listener() -> None:
                     try:
                         ack = registry.build_ack("ok")
                         await get_publisher().publish(
-                            os.getenv("CONFIG_ACK_TOPIC", "config_updates.ack"), ack, fallback=True
+                            cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack") or "config_updates.ack", ack, fallback=True
                         )
                     except Exception:
                         LOGGER.debug("config ack publish failed", exc_info=True)
@@ -1649,7 +1649,7 @@ async def _config_update_listener() -> None:
                     try:
                         ack = registry.build_ack("rejected", error=str(exc))
                         await get_publisher().publish(
-                            os.getenv("CONFIG_ACK_TOPIC", "config_updates.ack"), ack, fallback=True
+                            cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack") or "config_updates.ack", ack, fallback=True
                         )
                     except Exception:
                         LOGGER.debug("config ack publish failed (reject)", exc_info=True)
@@ -1693,7 +1693,7 @@ async def start_background_services() -> None:
     app.state.event_bus = event_bus
 
     # Initialize durable publisher with Outbox fallback
-    outbox_store = OutboxStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    outbox_store = OutboxStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     try:
         await ensure_outbox_schema(outbox_store)
     except Exception:
@@ -1702,7 +1702,7 @@ async def start_background_services() -> None:
     app.state.publisher = DurablePublisher(bus=event_bus, outbox=outbox_store)
 
     # Initialize memory write outbox for fail-safe remember() retry
-    mem_outbox = MemoryWriteOutbox(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    mem_outbox = MemoryWriteOutbox(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     try:
         await ensure_mw_outbox_schema(mem_outbox)
     except Exception:
@@ -1744,7 +1744,7 @@ async def start_background_services() -> None:
     # Initialize export jobs store and schema, then start worker (controlled by env flags)
     # Enable with: EXPORT_JOBS_ENABLED=true and DISABLE_FILE_SAVING=false
     if (
-        _flag_truthy(os.getenv("EXPORT_JOBS_ENABLED", "false"), False)
+        _flag_truthy(cfg.env("EXPORT_JOBS_ENABLED", "false"), False)
         and not _file_saving_disabled()
     ):
         try:
@@ -1824,7 +1824,7 @@ async def start_background_services() -> None:
 
     # Start notifications TTL janitor (periodic expiry cleanup)
     async def _notifications_ttl_janitor():
-        interval = int(os.getenv("NOTIFICATIONS_JANITOR_INTERVAL_SECONDS", "60"))
+        interval = int(cfg.env("NOTIFICATIONS_JANITOR_INTERVAL_SECONDS", "60") or "60")
         store = get_notifications_store()
         while True:
             try:
@@ -1836,7 +1836,7 @@ async def start_background_services() -> None:
             await asyncio.sleep(interval)
 
     try:
-        if os.getenv("NOTIFICATIONS_JANITOR_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
+        if (cfg.env("NOTIFICATIONS_JANITOR_ENABLED", "true") or "true").lower() in {"true", "1", "yes", "on"}:
             app.state._notifications_janitor_task = asyncio.create_task(_notifications_ttl_janitor())
     except Exception:
         LOGGER.debug("Failed to start notifications janitor", exc_info=True)
@@ -1896,7 +1896,7 @@ async def ui_policy_overview(request: Request) -> HTMLResponse:
     reports whether the policy service is reachable.  Real‑world implementations
     would display policy rules, allow editing, etc.
     """
-    opa_url = os.getenv("OPA_URL", APP_SETTINGS.opa_url)
+    opa_url = cfg.env("OPA_URL", APP_SETTINGS.opa_url) or APP_SETTINGS.opa_url
     status_msg = "OPA not configured"
     if opa_url:
         try:
@@ -1922,7 +1922,7 @@ async def ui_policy_overview(request: Request) -> HTMLResponse:
 # port (default 8000) and exposes the default prometheus_client metrics.
 def _start_metrics_server() -> None:
     # Skip in pytest to avoid port binding and background tasks
-    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {
+    if cfg.env("PYTEST_CURRENT_TEST") and (cfg.env("PYTEST_DISABLE_BACKGROUND", "1") or "1").lower() in {
         "1",
         "true",
         "yes",
@@ -1930,8 +1930,8 @@ def _start_metrics_server() -> None:
     }:
         LOGGER.debug("Test mode: skipping metrics server startup and aux services")
         return
-    port = int(os.getenv("GATEWAY_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
-    host = os.getenv("GATEWAY_METRICS_HOST", APP_SETTINGS.metrics_host)
+    port = int(cfg.env("GATEWAY_METRICS_PORT", str(APP_SETTINGS.metrics_port)) or str(APP_SETTINGS.metrics_port))
+    host = cfg.env("GATEWAY_METRICS_HOST", APP_SETTINGS.metrics_host) or APP_SETTINGS.metrics_host
     start_http_server(port, addr=host)
     LOGGER.info(
         "Gateway metrics server started",
@@ -1965,7 +1965,7 @@ def _start_metrics_server() -> None:
 
 # CORS is configured via _setup_cors above
 
-API_VERSION = os.getenv("GATEWAY_API_VERSION", "v1")
+API_VERSION = cfg.env("GATEWAY_API_VERSION", "v1") or "v1"
 
 
 def _flag_truthy(value: str | None, default: bool = False) -> bool:
@@ -1975,11 +1975,11 @@ def _flag_truthy(value: str | None, default: bool = False) -> bool:
 
 
 def _write_through_enabled() -> bool:
-    return _flag_truthy(os.getenv("GATEWAY_WRITE_THROUGH"), False)
+    return _flag_truthy(cfg.env("GATEWAY_WRITE_THROUGH"), False)
 
 
 def _write_through_async() -> bool:
-    return _flag_truthy(os.getenv("GATEWAY_WRITE_THROUGH_ASYNC"), False)
+    return _flag_truthy(cfg.env("GATEWAY_WRITE_THROUGH_ASYNC"), False)
 
 
 def _file_saving_disabled() -> bool:
@@ -2000,7 +2000,7 @@ def _sse_disabled() -> bool:
 
     Controlled via GATEWAY_DISABLE_SSE (truthy disables SSE). Default False.
     """
-    return _flag_truthy(os.getenv("GATEWAY_DISABLE_SSE"), False)
+    return _flag_truthy(cfg.env("GATEWAY_DISABLE_SSE"), False)
 
 
 def _masking_enabled() -> bool:
@@ -2028,7 +2028,8 @@ def _token_metrics_enabled() -> bool:
 
 
 def _notifications_topic() -> str:
-    return os.getenv("UI_NOTIFICATIONS_TOPIC", "ui.notifications")
+    from services.common import runtime_config as cfg
+    return (cfg.env("UI_NOTIFICATIONS_TOPIC", "ui.notifications") or "ui.notifications")
 
 
 def _error_classifier_enabled() -> bool:
@@ -2056,17 +2057,18 @@ def _tool_events_enabled() -> bool:
 
 
 def _rate_limit_enabled() -> bool:
-    return os.getenv("GATEWAY_RATE_LIMIT_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+    from services.common import runtime_config as cfg
+    return (cfg.env("GATEWAY_RATE_LIMIT_ENABLED", "false") or "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _rate_limit_params() -> tuple[int, int]:
-    # window_seconds, max_requests
+    from services.common import runtime_config as cfg
     try:
-        window = int(os.getenv("GATEWAY_RATE_LIMIT_WINDOW_SECONDS", "60"))
+        window = int(cfg.env("GATEWAY_RATE_LIMIT_WINDOW_SECONDS", "60") or "60")
     except Exception:
         window = 60
     try:
-        max_req = int(os.getenv("GATEWAY_RATE_LIMIT_MAX_REQUESTS", "120"))
+        max_req = int(cfg.env("GATEWAY_RATE_LIMIT_MAX_REQUESTS", "120") or "120")
     except Exception:
         max_req = 120
     return max(1, window), max(1, max_req)
@@ -2082,8 +2084,9 @@ _ATTACHMENTS_STORE: AttachmentsStore | None = None
 def get_attachments_store() -> AttachmentsStore:
     global _ATTACHMENTS_STORE
     if _ATTACHMENTS_STORE is None:
+        from services.common import runtime_config as cfg
         _ATTACHMENTS_STORE = AttachmentsStore(
-            dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+            dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         )
     return _ATTACHMENTS_STORE
 
@@ -2122,7 +2125,7 @@ async def get_runtime_config() -> dict[str, Any]:
         soma = SomaBrainClient.get()
         somabrain = {"base_url": soma.base_url}
     except Exception:
-        somabrain = {"base_url": os.getenv("SOMA_BASE_URL", "http://localhost:9696")}
+        somabrain = {"base_url": cfg.env("SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"}
 
     tool_count = 0
     try:
@@ -2183,7 +2186,8 @@ async def get_features() -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 _FLAG_CACHE: dict[str, dict[str, Any]] = {}
-_FLAG_CACHE_TTL_SECONDS = int(os.getenv("FEATURE_FLAGS_TTL_SECONDS", "30") or "30")
+from services.common import runtime_config as cfg  # centralized env facade
+_FLAG_CACHE_TTL_SECONDS = int(cfg.env("FEATURE_FLAGS_TTL_SECONDS", "30") or "30")
 
 def _flag_cache_key(tenant_id: str, profile: str) -> str:
     return f"{tenant_id}:{profile}"
@@ -2473,38 +2477,37 @@ async def add_security_headers(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
 
     # X-Frame-Options
-    if os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper() in {"DENY", "SAMEORIGIN"}:
-        response.headers.setdefault(
-            "X-Frame-Options", os.getenv("GATEWAY_FRAME_OPTIONS", "DENY").upper()
-        )
+    from services.common import runtime_config as cfg
+    frame_opt = (cfg.env("GATEWAY_FRAME_OPTIONS", "DENY") or "DENY").upper()
+    if frame_opt in {"DENY", "SAMEORIGIN"}:
+        response.headers.setdefault("X-Frame-Options", frame_opt)
 
     # Referrer-Policy
-    response.headers.setdefault(
-        "Referrer-Policy", os.getenv("GATEWAY_REFERRER_POLICY", "no-referrer")
-    )
+    ref_pol = cfg.env("GATEWAY_REFERRER_POLICY", "no-referrer") or "no-referrer"
+    response.headers.setdefault("Referrer-Policy", ref_pol)
 
     # Permissions-Policy (string, optional)
-    perm = os.getenv("GATEWAY_PERMISSIONS_POLICY")
+    perm = cfg.env("GATEWAY_PERMISSIONS_POLICY")
     if perm:
         response.headers.setdefault("Permissions-Policy", perm)
 
     # Content-Security-Policy (string, optional)
-    csp = os.getenv("GATEWAY_CSP")
+    csp = cfg.env("GATEWAY_CSP")
     if csp:
         response.headers.setdefault("Content-Security-Policy", csp)
 
     # HSTS (enable only when TLS is terminated upstream)
-    if os.getenv("GATEWAY_HSTS", "false").lower() in {"true", "1", "yes", "on"}:
-        max_age = os.getenv("GATEWAY_HSTS_MAX_AGE", "15552000")  # ~180 days
+    if (cfg.env("GATEWAY_HSTS", "false") or "false").lower() in {"true", "1", "yes", "on"}:
+        max_age = cfg.env("GATEWAY_HSTS_MAX_AGE", "15552000") or "15552000"  # ~180 days
         inc_sub = (
             "; includeSubDomains"
-            if os.getenv("GATEWAY_HSTS_INCLUDE_SUBDOMAINS", "true").lower()
+            if (cfg.env("GATEWAY_HSTS_INCLUDE_SUBDOMAINS", "true") or "true").lower()
             in {"true", "1", "yes", "on"}
             else ""
         )
         preload = (
             "; preload"
-            if os.getenv("GATEWAY_HSTS_PRELOAD", "false").lower() in {"true", "1", "yes", "on"}
+            if (cfg.env("GATEWAY_HSTS_PRELOAD", "false") or "false").lower() in {"true", "1", "yes", "on"}
             else ""
         )
         response.headers.setdefault(
@@ -2577,7 +2580,8 @@ def _session_claims_from_cookie(request: Request) -> dict[str, Any] | None:
     Only verifies signature/exp using the configured JWT_SECRET or public key.
     """
     try:
-        cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+        from services.common import runtime_config as cfg
+        cookie_name = cfg.env("GATEWAY_JWT_COOKIE_NAME", "jwt") or "jwt"
         token = request.cookies.get(cookie_name)
         if not token:
             return None
@@ -2589,9 +2593,9 @@ def _session_claims_from_cookie(request: Request) -> dict[str, Any] | None:
         elif alg and (alg.startswith("RS") or alg.startswith("ES")):
             key = JWT_PUBLIC_KEY
         if not key:
-            # Re-read env in case tests or runtime set it after import
-            env_secret = os.getenv("GATEWAY_JWT_SECRET")
-            env_pub = os.getenv("GATEWAY_JWT_PUBLIC_KEY")
+            # Re-read via cfg in case tests or runtime set it after import
+            env_secret = cfg.env("GATEWAY_JWT_SECRET")
+            env_pub = cfg.env("GATEWAY_JWT_PUBLIC_KEY")
             key = JWT_SECRET or env_secret or JWT_PUBLIC_KEY or env_pub
         if not key:
             return None
@@ -2633,23 +2637,26 @@ async def ui_auth_guard(request: Request, call_next):
 
 
 def _oidc_enabled() -> bool:
-    return os.getenv("OIDC_ENABLED", "false").lower() in {"true", "1", "yes", "on"}
+    from services.common import runtime_config as cfg
+    return (cfg.env("OIDC_ENABLED", "false") or "false").lower() in {"true", "1", "yes", "on"}
 
 
 def _oidc_client() -> dict[str, Any]:
+    from services.common import runtime_config as cfg
+    issuer = cfg.env("OIDC_ISSUER") or cfg.env("GOOGLE_ISSUER", "https://accounts.google.com") or "https://accounts.google.com"
+    client_id = cfg.env("OIDC_CLIENT_ID", cfg.env("GOOGLE_CLIENT_ID", "")) or ""
+    client_secret = cfg.env("OIDC_CLIENT_SECRET", cfg.env("GOOGLE_CLIENT_SECRET", "")) or ""
+    base = cfg.env("GATEWAY_BASE_URL", "http://localhost:8080") or "http://localhost:8080"
+    redirect_uri = cfg.env("OIDC_REDIRECT_URI") or (base.rstrip("/") + "/v1/auth/callback")
+    scopes = cfg.env("OIDC_SCOPES", "openid email profile") or "openid email profile"
+    provider = cfg.env("OIDC_PROVIDER", "google") or "google"
     return {
-        "issuer": os.getenv(
-            "OIDC_ISSUER", os.getenv("GOOGLE_ISSUER", "https://accounts.google.com")
-        ),
-        "client_id": os.getenv("OIDC_CLIENT_ID", os.getenv("GOOGLE_CLIENT_ID", "")),
-        "client_secret": os.getenv("OIDC_CLIENT_SECRET", os.getenv("GOOGLE_CLIENT_SECRET", "")),
-        "redirect_uri": os.getenv(
-            "OIDC_REDIRECT_URI",
-            os.getenv("GATEWAY_BASE_URL", "http://localhost:8080").rstrip("/")
-            + "/v1/auth/callback",
-        ),
-        "scopes": os.getenv("OIDC_SCOPES", "openid email profile"),
-        "provider": os.getenv("OIDC_PROVIDER", "google"),
+        "issuer": issuer,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
+        "scopes": scopes,
+        "provider": provider,
     }
 
 
@@ -2674,19 +2681,20 @@ async def _oidc_discovery() -> dict[str, Any]:
 
 def _jwt_cookie_flags(request: Request) -> dict[str, Any]:
     # Configure cookie flags strictly via JWT-specific env, defaulting to Lax
-    same_site = os.getenv("GATEWAY_JWT_COOKIE_SAMESITE", "Lax")
+    from services.common import runtime_config as cfg
+    same_site = cfg.env("GATEWAY_JWT_COOKIE_SAMESITE", "Lax") or "Lax"
     forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
-    secure_env = os.getenv("GATEWAY_COOKIE_SECURE", "false").lower() in {"true", "1", "yes", "on"}
+    secure_env = (cfg.env("GATEWAY_COOKIE_SECURE", "false") or "false").lower() in {"true", "1", "yes", "on"}
     secure = secure_env or request.url.scheme == "https" or forwarded_proto == "https"
-    http_only_env = os.getenv("GATEWAY_JWT_COOKIE_HTTPONLY", "true").lower() in {
+    http_only_env = (cfg.env("GATEWAY_JWT_COOKIE_HTTPONLY", "true") or "true").lower() in {
         "true",
         "1",
         "yes",
         "on",
     }
-    path = os.getenv("GATEWAY_JWT_COOKIE_PATH", "/")
-    domain = os.getenv("GATEWAY_JWT_COOKIE_DOMAIN")
-    max_age = os.getenv("GATEWAY_JWT_COOKIE_MAX_AGE")
+    path = cfg.env("GATEWAY_JWT_COOKIE_PATH", "/") or "/"
+    domain = cfg.env("GATEWAY_JWT_COOKIE_DOMAIN") or None
+    max_age = cfg.env("GATEWAY_JWT_COOKIE_MAX_AGE") or None
     try:
         max_age_int = int(max_age) if max_age else None
     except Exception:
@@ -2851,7 +2859,8 @@ async def auth_callback(
         _hydrate_jwt_credentials_from_vault()
     if not JWT_SECRET:
         raise HTTPException(status_code=500, detail="server not configured to sign session JWTs")
-    cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+    from services.common import runtime_config as cfg
+    cookie_name = cfg.env("GATEWAY_JWT_COOKIE_NAME", "jwt") or "jwt"
     # Build minimal session claims
     session_claims: dict[str, Any] = {
         "sub": claims.get("sub"),
@@ -2859,11 +2868,11 @@ async def auth_callback(
         "name": claims.get("name") or claims.get("given_name"),
         "iss": "gateway",
     }
-    if os.getenv("OIDC_TENANT_FROM_EMAIL_DOMAIN", "true").lower() in {"true", "1", "yes"}:
+    if (cfg.env("OIDC_TENANT_FROM_EMAIL_DOMAIN", "true") or "true").lower() in {"true", "1", "yes"}:
         email = (claims.get("email") or "").strip()
         if "@" in email:
             session_claims["tenant"] = email.split("@", 1)[1]
-    token_ttl = int(os.getenv("GATEWAY_JWT_TTL_SECONDS", "3600"))
+    token_ttl = int(cfg.env("GATEWAY_JWT_TTL_SECONDS", "3600") or "3600")
     now = int(time.time())
     session_claims.update({"iat": now, "exp": now + token_ttl})
     session_jwt = jwt.encode(
@@ -2900,7 +2909,7 @@ async def root_entry(request: Request) -> Response:
 
 @app.post("/v1/auth/logout")
 async def auth_logout(request: Request) -> Response:
-    cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+    cookie_name = cfg.env("GATEWAY_JWT_COOKIE_NAME", "jwt") or "jwt"
     resp = JSONResponse({"status": "ok"})
     flags = _jwt_cookie_flags(request)
     resp.delete_cookie(key=cookie_name, path=flags["path"], domain=flags["domain"])
@@ -2913,7 +2922,8 @@ async def dev_bootstrap(request: Request) -> JSONResponse:
 
     Guarded by DEV_AUTO_JWT. Returns token and also sets cookie for browser flows.
     """
-    if os.getenv("DEV_AUTO_JWT", "false").lower() not in {"true", "1", "yes", "on"}:
+    from services.common import runtime_config as cfg
+    if (cfg.env("DEV_AUTO_JWT", "false") or "false").lower() not in {"true", "1", "yes", "on"}:
         raise HTTPException(status_code=404, detail="not enabled")
 
     # Do not allow when explicit auth is required and OIDC is enabled; bootstrap is dev-only
@@ -2929,16 +2939,16 @@ async def dev_bootstrap(request: Request) -> JSONResponse:
         JWT_SECRET = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8")
 
     # Claims
-    tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
+    tenant = request.headers.get("x-tenant-id") or (cfg.env("SOMA_TENANT_ID", "public") or "public")
     sub = request.headers.get("x-subject") or "dev-user"
     scope = "ui scheduler conversation"
     now = int(time.time())
-    ttl = int(os.getenv("GATEWAY_JWT_TTL_SECONDS", "3600"))
+    ttl = int(cfg.env("GATEWAY_JWT_TTL_SECONDS", "3600") or "3600")
     claims = {"sub": sub, "tenant": tenant, "scope": scope, "iss": "gateway", "iat": now, "exp": now + ttl}
     token = jwt.encode(claims, JWT_SECRET, algorithm=(JWT_ALGORITHMS[0] if JWT_ALGORITHMS else "HS256"))
 
     # Set cookie and return token for programmatic clients
-    cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+    cookie_name = cfg.env("GATEWAY_JWT_COOKIE_NAME", "jwt") or "jwt"
     resp = JSONResponse({"token": token, "tenant": tenant, "subject": sub, "ttl": ttl})
     flags = _jwt_cookie_flags(request)
     resp.set_cookie(
@@ -2959,7 +2969,7 @@ def _cached_openapi_schema() -> dict[str, Any]:
     if _OPENAPI_CACHE is None:
         _OPENAPI_CACHE = get_openapi(
             title=app.title,
-            version=os.getenv("GATEWAY_OPENAPI_VERSION", "1.0.0"),
+            version=(cfg.env("GATEWAY_OPENAPI_VERSION", "1.0.0") or "1.0.0"),
             routes=app.routes,
             description=app.description,
         )
@@ -2983,8 +2993,9 @@ def get_publisher() -> DurablePublisher:
     get_bus_override = overrides.get(get_event_bus)
     if get_bus_override is not None:
         bus = get_bus_override()
+        from services.common import runtime_config as cfg
         outbox = getattr(app.state, "outbox_store", None) or OutboxStore(
-            dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+            dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         )
         return DurablePublisher(bus=bus, outbox=outbox)
 
@@ -2993,7 +3004,7 @@ def get_publisher() -> DurablePublisher:
     if publisher is None:
         # Fallback construction (should not happen in normal startup)
         event_bus = KafkaEventBus(_kafka_settings())
-        outbox_store = OutboxStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+        outbox_store = OutboxStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
         publisher = DurablePublisher(bus=event_bus, outbox=outbox_store)
         app.state.publisher = publisher
     return publisher
@@ -3044,7 +3055,8 @@ def get_session_store() -> PostgresSessionStore:
     """
     global _SESSION_STORE
     if _SESSION_STORE is None:
-        dsn = os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn)
+        from services.common import runtime_config as cfg
+        dsn = cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         try:
             LOGGER.info("initializing session store")
         except Exception:
@@ -3086,7 +3098,8 @@ def get_api_key_store() -> ApiKeyStore:
 def get_notifications_store() -> NotificationsStore:
     global _NOTIF_STORE
     if _NOTIF_STORE is None:
-        _NOTIF_STORE = NotificationsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+        from services.common import runtime_config as cfg
+        _NOTIF_STORE = NotificationsStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     return _NOTIF_STORE
 
 
@@ -3094,7 +3107,8 @@ def get_dlq_store() -> DLQStore:
     global _DLQ_STORE
     if _DLQ_STORE is not None:
         return _DLQ_STORE
-    _DLQ_STORE = DLQStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    from services.common import runtime_config as cfg
+    _DLQ_STORE = DLQStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     return _DLQ_STORE
 
 
@@ -3102,7 +3116,8 @@ def get_replica_store() -> MemoryReplicaStore:
     global _REPLICA_STORE
     if _REPLICA_STORE is not None:
         return _REPLICA_STORE
-    _REPLICA_STORE = MemoryReplicaStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    from services.common import runtime_config as cfg
+    _REPLICA_STORE = MemoryReplicaStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     return _REPLICA_STORE
 
 
@@ -3110,7 +3125,8 @@ def get_export_job_store() -> ExportJobStore:
     global _EXPORT_STORE
     if _EXPORT_STORE is not None:
         return _EXPORT_STORE
-    _EXPORT_STORE = ExportJobStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    from services.common import runtime_config as cfg
+    _EXPORT_STORE = ExportJobStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     return _EXPORT_STORE
 
 
@@ -3131,7 +3147,8 @@ def get_ui_settings_store() -> UiSettingsStore:
     global _UI_SETTINGS_STORE
     if _UI_SETTINGS_STORE is not None:
         return _UI_SETTINGS_STORE
-    _UI_SETTINGS_STORE = UiSettingsStore(dsn=os.getenv("POSTGRES_DSN", APP_SETTINGS.postgres_dsn))
+    from services.common import runtime_config as cfg
+    _UI_SETTINGS_STORE = UiSettingsStore(dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn)
     return _UI_SETTINGS_STORE
 
 
@@ -3419,7 +3436,8 @@ async def memory_delete(
 def _export_semaphore() -> asyncio.Semaphore:
     sem = getattr(app.state, "_export_sem", None)
     if sem is None:
-        limit = int(os.getenv("GATEWAY_EXPORT_CONCURRENCY", "2"))
+        from services.common import runtime_config as cfg
+        limit = int(cfg.env("GATEWAY_EXPORT_CONCURRENCY", "2") or "2")
         app.state._export_sem = asyncio.Semaphore(max(1, limit))
         sem = app.state._export_sem
     return sem
@@ -3892,7 +3910,8 @@ class MessagePayload(BaseModel):
 
 
 def _inbound_topic() -> str:
-    return os.getenv("CONVERSATION_INBOUND", "conversation.inbound")
+    from services.common import runtime_config as cfg
+    return cfg.env("CONVERSATION_INBOUND", "conversation.inbound") or "conversation.inbound"
 
 
 # Removed DEV echo: no synthetic assistant responses. The gateway never fabricates events.
@@ -4025,33 +4044,34 @@ QUICK_ACTIONS: dict[str, str] = {
     "resume": "Resume where you left off and continue the current activity.",
 }
 
-REQUIRE_AUTH = os.getenv("GATEWAY_REQUIRE_AUTH", "false").lower() in {
+from services.common import runtime_config as cfg
+REQUIRE_AUTH = (cfg.env("GATEWAY_REQUIRE_AUTH", "false") or "false").lower() in {
     "true",
     "1",
     "yes",
 }
 JWT_SECRET = get_dotenv_value("GATEWAY_JWT_SECRET")
 JWT_PUBLIC_KEY = get_dotenv_value("GATEWAY_JWT_PUBLIC_KEY")
-JWT_AUDIENCE = os.getenv("GATEWAY_JWT_AUDIENCE")
-JWT_ISSUER = os.getenv("GATEWAY_JWT_ISSUER")
+JWT_AUDIENCE = cfg.env("GATEWAY_JWT_AUDIENCE")
+JWT_ISSUER = cfg.env("GATEWAY_JWT_ISSUER")
 JWT_ALGORITHMS = [
     alg.strip()
-    for alg in os.getenv("GATEWAY_JWT_ALGORITHMS", "HS256,RS256").split(",")
+    for alg in (cfg.env("GATEWAY_JWT_ALGORITHMS", "HS256,RS256") or "HS256,RS256").split(",")
     if alg.strip()
 ]
-JWT_JWKS_URL = os.getenv("GATEWAY_JWKS_URL")
-JWT_JWKS_CACHE_SECONDS = float(os.getenv("GATEWAY_JWKS_CACHE_SECONDS", "300"))
-JWT_LEEWAY = float(os.getenv("GATEWAY_JWT_LEEWAY", "10"))
+JWT_JWKS_URL = cfg.env("GATEWAY_JWKS_URL")
+JWT_JWKS_CACHE_SECONDS = float(cfg.env("GATEWAY_JWKS_CACHE_SECONDS", "300") or "300")
+JWT_LEEWAY = float(cfg.env("GATEWAY_JWT_LEEWAY", "10") or "10")
 JWT_TENANT_CLAIMS = [
     claim.strip()
-    for claim in os.getenv("GATEWAY_JWT_TENANT_CLAIMS", "tenant,org,customer").split(",")
+    for claim in (cfg.env("GATEWAY_JWT_TENANT_CLAIMS", "tenant,org,customer") or "tenant,org,customer").split(",")
     if claim.strip()
 ]
-OPA_URL = os.getenv("OPA_URL", APP_SETTINGS.opa_url)
+OPA_URL = cfg.env("OPA_URL", APP_SETTINGS.opa_url) or APP_SETTINGS.opa_url
 # Default decision path aligned with local policy package; env can override
-OPA_DECISION_PATH = os.getenv("OPA_DECISION_PATH", "/v1/data/soma/policy/allow")
-OPA_TIMEOUT_SECONDS = float(os.getenv("OPA_TIMEOUT_SECONDS", "3"))
-JWKS_TIMEOUT_SECONDS = float(os.getenv("GATEWAY_JWKS_TIMEOUT_SECONDS", "3"))
+OPA_DECISION_PATH = cfg.env("OPA_DECISION_PATH", "/v1/data/soma/policy/allow") or "/v1/data/soma/policy/allow"
+OPA_TIMEOUT_SECONDS = float(cfg.env("OPA_TIMEOUT_SECONDS", "3") or "3")
+JWKS_TIMEOUT_SECONDS = float(cfg.env("GATEWAY_JWKS_TIMEOUT_SECONDS", "3") or "3")
 
 JWKS_CACHE: dict[str, tuple[list[dict[str, Any]], float]] = {}
 
@@ -4103,8 +4123,9 @@ def _admin_rate_limiter() -> _TokenBucketLimiter | None:
     if lim is not None:
         return lim  # type: ignore[return-value]
     try:
-        rps = float(os.getenv("GATEWAY_ADMIN_RPS", "0"))
-        burst = int(os.getenv("GATEWAY_ADMIN_BURST", "10"))
+        from services.common import runtime_config as cfg
+        rps = float(cfg.env("GATEWAY_ADMIN_RPS", "0") or "0")
+        burst = int(cfg.env("GATEWAY_ADMIN_BURST", "10") or "10")
     except Exception:
         rps, burst = 0.0, 10
     if rps <= 0:
@@ -4131,9 +4152,10 @@ def _hydrate_jwt_credentials_from_vault() -> None:
     if JWT_SECRET:
         return
 
-    vault_path = os.getenv("GATEWAY_JWT_VAULT_PATH")
-    secret_key = os.getenv("GATEWAY_JWT_VAULT_SECRET_KEY")
-    mount_point = os.getenv("GATEWAY_JWT_VAULT_MOUNT", "secret")
+    from services.common import runtime_config as cfg
+    vault_path = cfg.env("GATEWAY_JWT_VAULT_PATH")
+    secret_key = cfg.env("GATEWAY_JWT_VAULT_SECRET_KEY")
+    mount_point = cfg.env("GATEWAY_JWT_VAULT_MOUNT", "secret") or "secret"
 
     if not vault_path or not secret_key:
         return
@@ -4409,7 +4431,8 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
 
     # Support JWT in cookie when configured (useful for browser sessions)
     if not auth_header:
-        cookie_name = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+        from services.common import runtime_config as cfg
+        cookie_name = cfg.env("GATEWAY_JWT_COOKIE_NAME", "jwt") or "jwt"
         token_cookie = request.cookies.get(cookie_name)
         if token_cookie:
             auth_header = f"Bearer {token_cookie}"
@@ -4651,8 +4674,9 @@ async def enqueue_message(
     # This only applies when auth is not required and the client did not supply
     # an explicit tenant in headers or metadata.
     if not REQUIRE_AUTH and not metadata.get("tenant"):
+        from services.common import runtime_config as cfg
         try:
-            metadata["tenant"] = os.getenv("SOMA_TENANT_ID", "public")
+            metadata["tenant"] = cfg.env("SOMA_TENANT_ID", "public") or "public"
         except Exception:
             metadata["tenant"] = "public"
 
@@ -4793,8 +4817,9 @@ async def enqueue_message(
             "version": "sa01-v1",
             "type": "assistant.started",
         }
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             started,
             dedupe_key=started.get("event_id"),
             session_id=session_id,
@@ -4822,7 +4847,7 @@ async def enqueue_message(
                         **dict(metadata or {}),
                         "agent_profile_id": (metadata or {}).get("agent_profile_id"),
                         "universe_id": (metadata or {}).get("universe_id")
-                        or os.getenv("SOMA_NAMESPACE"),
+                        or (cfg.env("SOMA_NAMESPACE") or None),
                     },
                 }
                 mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -5043,8 +5068,9 @@ async def upload_chunk(
             "version": "sa01-v1",
             "type": "uploads.progress",
         }
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             progress_event,
             dedupe_key=progress_event.get("event_id"),
             session_id=str(sess),
@@ -5204,8 +5230,9 @@ async def finalize_chunked_upload(
             "version": "sa01-v1",
             "type": "uploads.progress",
         }
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             final_event,
             dedupe_key=final_event.get("event_id"),
             session_id=str(sess),
@@ -5392,8 +5419,9 @@ async def upload_files(
                             "version": "sa01-v1",
                             "type": "uploads.progress",
                         }
+                        from services.common import runtime_config as cfg
                         await publisher.publish(
-                            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
                             progress_event,
                             dedupe_key=progress_event.get("event_id"),
                             session_id=str(sess),
@@ -5523,8 +5551,9 @@ async def upload_files(
                     "version": "sa01-v1",
                     "type": "uploads.progress",
                 }
+                from services.common import runtime_config as cfg
                 await publisher.publish(
-                    os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                    (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
                     final_event,
                     dedupe_key=final_event.get("event_id"),
                     session_id=str(sess),
@@ -5586,7 +5615,7 @@ async def upload_files(
                             "upload_index": idx,
                             # Ensure universe is set for proper memory partitioning
                             "universe_id": (header_meta or {}).get("universe_id")
-                            or os.getenv("SOMA_NAMESPACE"),
+                            or (cfg.env("SOMA_NAMESPACE") or None),
                         },
                     }
                     mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -5733,8 +5762,9 @@ async def enqueue_quick_action(
             "version": "sa01-v1",
             "type": "assistant.started",
         }
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             started,
             dedupe_key=started.get("event_id"),
             session_id=session_id,
@@ -5764,7 +5794,7 @@ async def enqueue_quick_action(
                             "agent_profile_id"
                         ),
                         "universe_id": (event.get("metadata", {}) or {}).get("universe_id")
-                        or os.getenv("SOMA_NAMESPACE"),
+                        or (cfg.env("SOMA_NAMESPACE") or None),
                     },
                 }
                 mem_payload["idempotency_key"] = generate_for_memory_payload(mem_payload)
@@ -6174,7 +6204,8 @@ async def request_tool_execution(
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=f"invalid tool request: {exc}") from exc
 
-    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+    from services.common import runtime_config as cfg
+    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests") or "tool.requests"
     await publisher.publish(
         topic,
         event,
@@ -6339,8 +6370,9 @@ async def post_utility_event(
         "metadata": metadata | {"headline": title},
     }
     try:
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             event,
             dedupe_key=ev_id,
             session_id=session_id,
@@ -6383,8 +6415,9 @@ async def post_ui_event(
         "metadata": metadata,
     }
     try:
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             event,
             dedupe_key=ev_id,
             session_id=session_id,
@@ -6407,7 +6440,8 @@ async def upsert_tool_catalog_item(
 ) -> dict[str, Any]:
     # Enforce policy; treat as admin-level change via OPA
     try:
-        tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
+        from services.common import runtime_config as cfg
+        tenant = request.headers.get("x-tenant-id") or (cfg.env("SOMA_TENANT_ID", "public") or "public")
         await _evaluate_opa(
             request,
             {
@@ -6660,7 +6694,8 @@ async def get_session_context_window(
 
 
 async def _legacy_error_backfill_loop(stop_evt: asyncio.Event) -> None:
-    interval = int(os.getenv("LEGACY_ERROR_BACKFILL_SECONDS", "900"))  # 15 min default
+    from services.common import runtime_config as cfg
+    interval = int(cfg.env("LEGACY_ERROR_BACKFILL_SECONDS", "900") or "900")  # 15 min default
     store = get_session_store()
     while not stop_evt.is_set():
         try:
@@ -6680,7 +6715,8 @@ async def _legacy_error_backfill_loop(stop_evt: asyncio.Event) -> None:
 
 
 def _workdir_base() -> Path:
-    base = os.getenv("TOOL_WORK_DIR", "work_dir")
+    from services.common import runtime_config as cfg
+    base = cfg.env("TOOL_WORK_DIR", "work_dir") or "work_dir"
     return Path(base).expanduser().resolve()
 
 
@@ -6819,7 +6855,8 @@ async def ui_config_json() -> JSONResponse:
 
     def _bool(name: str, default: bool) -> bool:
         try:
-            raw = os.getenv(name)
+            from services.common import runtime_config as cfg
+            raw = cfg.env(name)
             if raw is None:
                 return default
             return str(raw).lower() in {"true", "1", "yes", "on"}
@@ -6829,7 +6866,8 @@ async def ui_config_json() -> JSONResponse:
     cfg = {
         "api_base": "/v1",
         "deployment_mode": APP_SETTINGS.deployment_mode,
-        "version": os.getenv("SA01_VERSION", "dev"),
+        from services.common import runtime_config as cfg
+        "version": cfg.env("SA01_VERSION", "dev") or "dev",
         # feature flags
         "features": {
             "write_through": _bool("GATEWAY_WRITE_THROUGH", True),
@@ -6840,8 +6878,8 @@ async def ui_config_json() -> JSONResponse:
         # uploads overlay booleans commonly used by UI
         "uploads_enabled": bool(uploads_cfg.get("uploads_enabled", True)),
         # optional hints carried over for compatibility
-        "universe_default": os.getenv("SOMA_NAMESPACE"),
-        "namespace_default": os.getenv("SOMA_MEMORY_NAMESPACE", "wm"),
+        "universe_default": (cfg.env("SOMA_NAMESPACE") or None),
+        "namespace_default": (cfg.env("SOMA_MEMORY_NAMESPACE", "wm") or "wm"),
     }
     return JSONResponse(cfg)
 
@@ -6987,8 +7025,9 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
         try:
             cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
             try:
+                from services.common import runtime_config as rcfg
                 ttl_days = float(
-                    cfg.get("uploads_ttl_days", os.getenv("GATEWAY_UPLOAD_TTL_DAYS", "7"))
+                    cfg.get("uploads_ttl_days", rcfg.env("GATEWAY_UPLOAD_TTL_DAYS", "7") or "7")
                 )
             except Exception:
                 ttl_days = 7.0
@@ -7007,10 +7046,11 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
         try:
             cfg = getattr(app.state, "uploads_cfg", {}) if hasattr(app, "state") else {}
             try:
+                from services.common import runtime_config as rcfg
                 interval = float(
                     cfg.get(
                         "uploads_janitor_interval_seconds",
-                        os.getenv("GATEWAY_UPLOAD_JANITOR_INTERVAL_SECONDS", "3600"),
+                        rcfg.env("GATEWAY_UPLOAD_JANITOR_INTERVAL_SECONDS", "3600") or "3600",
                     )
                 )
             except Exception:
@@ -7022,7 +7062,8 @@ async def _uploads_janitor(stop_event: asyncio.Event) -> None:
 
 async def _start_uploads_janitor() -> None:
     # Skip background janitor in pytest
-    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("PYTEST_DISABLE_BACKGROUND", "1").lower() in {
+    from services.common import runtime_config as cfg
+    if cfg.env("PYTEST_CURRENT_TEST") and (cfg.env("PYTEST_DISABLE_BACKGROUND", "1") or "1").lower() in {
         "1",
         "true",
         "yes",
@@ -7187,8 +7228,9 @@ async def health_check(
             LOGGER.debug(f"{name} health check failed", extra={"error": str(exc), "url": url})
             record_status(name, "degraded", f"{type(exc).__name__}: {exc}")
 
-    await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
-    await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
+    from services.common import runtime_config as cfg
+    await check_http_target("telemetry_worker", cfg.env("TELEMETRY_HEALTH_URL"))
+    await check_http_target("delegation_gateway", cfg.env("DELEGATION_HEALTH_URL"))
 
     # Replication lag and DLQ depth (best-effort, do not hard-fail health)
     try:
@@ -7241,7 +7283,8 @@ async def sse_session_events(session_id: str, request: Request) -> StreamingResp
     """
     if _sse_disabled():
         raise HTTPException(status_code=503, detail="SSE disabled")
-    topic = os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound")
+    from services.common import runtime_config as cfg
+    topic = cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"
     notif_topic = _notifications_topic()
     group_base = f"sse-{session_id}"
     # Attempt to extract tenant for notifications filtering (best-effort; unauth -> stream none scoped notifications)
@@ -7301,7 +7344,8 @@ async def sse_session_events(session_id: str, request: Request) -> StreamingResp
             except Exception:
                 LOGGER.debug("telemetry emit failed (sse open)", exc_info=True)
             last_beat = 0.0
-            heartbeat_secs = float(os.getenv("SSE_HEARTBEAT_SECONDS", "20"))
+            from services.common import runtime_config as cfg
+            heartbeat_secs = float(cfg.env("SSE_HEARTBEAT_SECONDS", "20") or "20")
             while True:
                 try:
                     payload = await queue.get()
@@ -8107,7 +8151,8 @@ async def _process_export_job(job_id: int) -> None:
 
 async def _export_jobs_runner() -> None:
     poll = max(1.0, _env_float("EXPORT_JOBS_POLL_SECONDS", 2.0))
-    concurrency = max(1, int(os.getenv("EXPORT_JOBS_CONCURRENCY", "1")))
+    from services.common import runtime_config as cfg
+    concurrency = max(1, int(cfg.env("EXPORT_JOBS_CONCURRENCY", "1") or "1"))
     sem = asyncio.Semaphore(concurrency)
     try:
         await asyncio.sleep(min(1.0, poll * 0.25))
@@ -8187,8 +8232,9 @@ async def _gather_health_components_with_memory(
             LOGGER.debug(f"{name} health check failed", extra={"error": str(exc), "url": url})
             record_status(name, "degraded", f"{type(exc).__name__}: {exc}")
 
-    await check_http_target("telemetry_worker", os.getenv("TELEMETRY_HEALTH_URL"))
-    await check_http_target("delegation_gateway", os.getenv("DELEGATION_HEALTH_URL"))
+    from services.common import runtime_config as cfg
+    await check_http_target("telemetry_worker", cfg.env("TELEMETRY_HEALTH_URL"))
+    await check_http_target("delegation_gateway", cfg.env("DELEGATION_HEALTH_URL"))
 
     # Note: gRPC memory service removed. Health now relies on SomaBrain HTTP check below.
 
@@ -8222,7 +8268,8 @@ async def healthz(
     overall_status = payload.get("status", "ok")
 
     # Do an HTTP health check against the SomaBrain HTTP target
-    http_target = os.getenv("SOMA_BASE_URL", "http://localhost:9696")
+    from services.common import runtime_config as cfg
+    http_target = cfg.env("SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"
     mem_http_status = "degraded"
     mem_http_detail: str | None = None
     try:
@@ -8917,7 +8964,8 @@ async def ui_sections_set(
     # Derive tenant from header (if present) or default to public in local/dev
     if REQUIRE_AUTH and OPA_URL:
         try:
-            tenant = request.headers.get("x-tenant-id") or os.getenv("SOMA_TENANT_ID", "public")
+            from services.common import runtime_config as cfg
+            tenant = request.headers.get("x-tenant-id") or (cfg.env("SOMA_TENANT_ID", "public") or "public")
             await _evaluate_opa(
                 request,
                 {"action": "settings.update", "resource": "ui.settings", "tenant": tenant},
@@ -9603,8 +9651,9 @@ async def ui_sections_set(
             "message": "Settings saved successfully",
             "metadata": {"explicit_provider": explicit_provider},
         }
+        from services.common import runtime_config as cfg
         await publisher.publish(
-            os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
             ev,
             dedupe_key=ev["event_id"],
             session_id=ev["session_id"],
@@ -9658,9 +9707,10 @@ async def av_test() -> dict[str, Any]:
         if isinstance(doc, dict) and isinstance(doc.get("antivirus"), dict)
         else {}
     )
-    host = str(cfg.get("av_host") or os.getenv("CLAMAV_HOST", "clamav"))
+    from services.common import runtime_config as rcfg
+    host = str(cfg.get("av_host") or (rcfg.env("CLAMAV_HOST", "clamav") or "clamav"))
     try:
-        port = int(cfg.get("av_port") or int(os.getenv("CLAMAV_PORT", "3310")))
+        port = int(cfg.get("av_port") or int(rcfg.env("CLAMAV_PORT", "3310") or "3310"))
     except Exception:
         port = 3310
     # Attempt TCP connect with short timeout
@@ -9799,7 +9849,8 @@ def _require_internal_token(request: Request) -> dict[str, str]:
     Returns a dict with optional tenant context derived from headers.
     """
     provided = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
-    expected = os.getenv("GATEWAY_INTERNAL_TOKEN", "")
+    from services.common import runtime_config as cfg
+    expected = cfg.env("GATEWAY_INTERNAL_TOKEN", "") or ""
     if not expected or not provided or provided != expected:
         raise HTTPException(status_code=403, detail="forbidden (internal)")
     # Optional tenant scoping header for additional checks
@@ -10106,7 +10157,8 @@ async def reprocess_dlq_item(
 
 
 def _internal_token_ok(request: Request) -> bool:
-    expected = os.getenv("GATEWAY_INTERNAL_TOKEN")
+    from services.common import runtime_config as cfg
+    expected = cfg.env("GATEWAY_INTERNAL_TOKEN")
     if not expected:
         return False
     got = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
@@ -11364,7 +11416,8 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         OpenAI compatibility mode (env GATEWAY_LLM_STREAM_MODE=openai OR ?mode=openai):
           - Re-emit raw upstream OpenAI-style chunks unchanged + final [DONE]
         """
-        mode = os.getenv("GATEWAY_LLM_STREAM_MODE", "canonical").lower()
+        from services.common import runtime_config as cfg
+        mode = (cfg.env("GATEWAY_LLM_STREAM_MODE", "canonical") or "canonical").lower()
         try:
             qp_mode = request.query_params.get("mode")
             if qp_mode:

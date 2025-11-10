@@ -2,13 +2,13 @@
 Celery application configuration for SomaAgent01
 Provides distributed task processing and scheduling
 """
-import os
+from services.common import runtime_config as cfg
 from celery import Celery
 from celery.schedules import crontab
 
 # Celery configuration
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:20001/0')
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:20001/0')
+CELERY_BROKER_URL = cfg.env('CELERY_BROKER_URL', 'redis://localhost:20001/0')
+CELERY_RESULT_BACKEND = cfg.env('CELERY_RESULT_BACKEND', 'redis://localhost:20001/0')
 
 # Create Celery app
 celery_app = Celery(

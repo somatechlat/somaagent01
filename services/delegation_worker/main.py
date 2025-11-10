@@ -25,17 +25,18 @@ setup_tracing("delegation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
 
 class DelegationWorker:
     def __init__(self) -> None:
-        self.topic = os.getenv("DELEGATION_TOPIC", "somastack.delegation")
-        self.group = os.getenv("DELEGATION_GROUP", "delegation-worker")
+        from services.common import runtime_config as cfg
+        self.topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
+        self.group = cfg.env("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(
             KafkaSettings(
-                bootstrap_servers=os.getenv(
+                bootstrap_servers=cfg.env(
                     "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
                 ),
-                security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-                sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-                sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-                sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+                security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+                sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+                sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+                sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
             )
         )
         self.store = DelegationStore(dsn=APP_SETTINGS.postgres_dsn)

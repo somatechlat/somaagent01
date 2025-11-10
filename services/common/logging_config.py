@@ -70,7 +70,8 @@ def setup_logging(default_level: str | None = None) -> None:
     if _LOGGING_INITIALISED:
         return
 
-    level_name = default_level or os.getenv("LOG_LEVEL", "INFO")
+    from services.common import runtime_config as cfg
+    level_name = default_level or cfg.env("LOG_LEVEL", "INFO")
     level = getattr(logging, level_name.upper(), logging.INFO)
 
     root = logging.getLogger()
@@ -85,7 +86,7 @@ def setup_logging(default_level: str | None = None) -> None:
     root.addHandler(handler)
 
     # Optional redaction (enabled by default for safety)
-    if os.getenv("LOG_REDACT_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
+    if cfg.env("LOG_REDACT_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
         try:
             install_redaction_filter(root)
         except Exception:

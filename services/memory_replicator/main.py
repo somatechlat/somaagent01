@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
+from services.common import runtime_config as cfg
 import time
 from typing import Any
 
@@ -61,9 +61,9 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
         return
     default_port = int(getattr(settings, "metrics_port", 9403))
     default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
-    port = int(os.getenv("REPLICATOR_METRICS_PORT", str(default_port)))
+    port = int(cfg.env("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
-        start_http_server(port, addr=os.getenv("REPLICATOR_METRICS_HOST", default_host))
+        start_http_server(port, addr=cfg.env("REPLICATOR_METRICS_HOST", default_host))
         LOGGER.info("Memory replicator metrics server started", extra={"port": port})
     else:
         LOGGER.warning("Memory replicator metrics disabled", extra={"port": port})
@@ -72,13 +72,13 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
-        bootstrap_servers=os.getenv(
+        bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
 
 
@@ -87,8 +87,8 @@ class MemoryReplicator:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
-        self.group_id = os.getenv("MEMORY_REPLICATOR_GROUP", "memory-replicator")
+        self.wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+        self.group_id = cfg.env("MEMORY_REPLICATOR_GROUP", "memory-replicator")
         self.replica = MemoryReplicaStore(dsn=SERVICE_SETTINGS.postgres_dsn)
         self.dlq_store = DLQStore(dsn=SERVICE_SETTINGS.postgres_dsn)
         self.dlq = DeadLetterQueue(source_topic=self.wal_topic)
@@ -140,8 +140,8 @@ class MemoryReplicator:
                     lag = max(0.0, time.time() - wal_ts)
                     REPL_LAG.set(lag)
                     # Classify lag using env thresholds (seconds)
-                    degraded = float(os.getenv("MEMORY_REPLICATOR_LAG_DEGRADED", "5"))
-                    critical = float(os.getenv("MEMORY_REPLICATOR_LAG_CRITICAL", "20"))
+                    degraded = float(cfg.env("MEMORY_REPLICATOR_LAG_DEGRADED", "5"))
+                    critical = float(cfg.env("MEMORY_REPLICATOR_LAG_CRITICAL", "20"))
                     state = 0
                     if lag >= critical:
                         state = 2

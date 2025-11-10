@@ -22,10 +22,12 @@ class BudgetManager:
     def __init__(
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
-        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        from services.common import runtime_config as cfg
+
+        raw_url = url or cfg.env("REDIS_URL", "redis://localhost:6379/0")
         self.url = os.path.expandvars(raw_url)
-        self.prefix = os.getenv("BUDGET_PREFIX", "budget:tokens")
-        self.limit = int(os.getenv("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
+        self.prefix = cfg.env("BUDGET_PREFIX", "budget:tokens")
+        self.limit = int(cfg.env("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)
         self.tenant_config = tenant_config or TenantConfig()
 
@@ -64,8 +66,10 @@ class BudgetManager:
         env_key = f"BUDGET_LIMIT_{tenant.upper()}"
         persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
         if persona_key in os.environ:
-            return int(os.getenv(persona_key, "0")) or None
-        limit = int(os.getenv(env_key, "0"))
+            from services.common import runtime_config as cfg
+            return int(cfg.env(persona_key, "0")) or None
+        from services.common import runtime_config as cfg
+        limit = int(cfg.env(env_key, "0"))
         if limit == 0:
             limit = self.limit
         return limit or None
