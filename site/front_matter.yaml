@@ -1,0 +1,17 @@
+---
+title: SomaAgent01 Documentation
+project: SomaAgent01
+version: 1.0.0
+last_updated: 2025-01-24
+owner: Documentation Team
+standards:
+  - ISO/IEC 12207
+  - ISO/IEC 15288
+  - ISO/IEC 29148
+  - ISO/IEC 29119
+  - ISO/IEC 42010
+  - ISO 21500
+  - ISO/IEC 27001
+  - IEEE 1016
+badge: "![Version](https://img.shields.io/badge/version-1.0.0-blue)"
+---

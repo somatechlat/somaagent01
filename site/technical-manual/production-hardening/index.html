@@ -1,0 +1,1827 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Unified documentation portal for SomaAgent01">
+      
+      
+      
+        <link rel="canonical" href="https://docs.somaagent01.dev/technical-manual/production-hardening/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>Production Hardening Plan (Phase: Pre-K8s → K8s → Terraform) - SomaAgent01 Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#production-hardening-plan-phase-pre-k8s-k8s-terraform" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="SomaAgent01 Docs" class="md-header__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SomaAgent01 Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Production Hardening Plan (Phase: Pre-K8s → K8s → Terraform)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="SomaAgent01 Docs" class="md-nav__button md-logo" aria-label="SomaAgent01 Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SomaAgent01 Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/somatechlat/somaagent01" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    somaagent01
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Roadmap
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Roadmap
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/canonical-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Canonical Roadmap
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/sprint-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sprint Roadmap
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            User Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/quick-start-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quick Start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-manual/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Technical Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Technical Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gateway-llm-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LLM Routing & Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-jobs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Jobs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outbound-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Outbound Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    UI Notifications
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Monitoring & Health
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools-messages-memories/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tools, Messages & Memories
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_11" id="__nav_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Runbooks
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_11">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/circuit-breaker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Circuit Breaker Open
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-error-rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    High Error Rate
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    High Latency
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kafka-lag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Kafka Consumer Lag
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Development Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Development Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/local-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/contribution-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contribution Workflow
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/extensibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Extensibility
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/vibe-coding-rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    VIBE Coding Rules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/coding-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Coding Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/testing-guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Guidelines
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/ui-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    UI Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbook (Local Stack)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development-manual/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Onboarding Manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Onboarding Manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../onboarding-manual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Shared Resources
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Shared Resources
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Style Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Glossary
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Change Log
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#objectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objectives
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#readiness-liveness-standardization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Readiness &amp; Liveness Standardization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#graceful-shutdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Graceful Shutdown
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observability Enhancements
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration &amp; Secrets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kubernetes-helm-scaffold" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kubernetes (Helm) Scaffold
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terraform-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Terraform Baseline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reliability-backpressure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reliability &amp; Backpressure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-posture-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Posture (Preview)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#developer-mode-parity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developer Mode Parity
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics-backlog-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics Backlog Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prioritized-next-steps-execution-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prioritized Next Steps (Execution Queue)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Risk &amp; Mitigations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria-phase-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Acceptance Criteria (Phase Completion)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="production-hardening-plan-phase-pre-k8s-k8s-terraform">Production Hardening Plan (Phase: Pre-K8s → K8s → Terraform)<a class="headerlink" href="#production-hardening-plan-phase-pre-k8s-k8s-terraform" title="Permanent link">&para;</a></h1>
+<h2 id="objectives">Objectives<a class="headerlink" href="#objectives" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Establish consistent health/readiness/liveness endpoints across services.</li>
+<li>Guarantee graceful shutdown and background task cancellation (no orphaned tasks, clean closing of Kafka &amp; HTTP clients).</li>
+<li>Standardize observability: metrics, structured logs, OpenTelemetry traces, Kafka trace headers (traceparent) for cross-service correlation.</li>
+<li>Harden configuration &amp; secrets management for container and cluster deployment.</li>
+<li>Provide Kubernetes deployment primitives (Helm charts scaffold) with probes, resource requests/limits, security context, and topology hints.</li>
+<li>Prepare Terraform baseline for cloud infra (Kafka, Postgres, Redis, object storage buckets, secret stores) and CI integration hooks.</li>
+</ul>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>Services: <code>gateway</code>, <code>delegation_gateway</code>, <code>delegation_worker</code>, <code>conversation_worker</code>, <code>tool_executor</code>, <code>memory_sync</code>, <code>memory_replicator</code>, <code>outbox_sync</code>, <code>celery_worker</code> (+ any future <code>memory_service</code>).</p>
+<h2 id="readiness-liveness-standardization">Readiness &amp; Liveness Standardization<a class="headerlink" href="#readiness-liveness-standardization" title="Permanent link">&para;</a></h2>
+<p>Checklist per HTTP service:
+- Endpoint: <code>GET /live</code> returns <code>{status: "alive"}</code> (fast path, no external deps).
+- Endpoint: <code>GET /ready</code> probes critical dependencies (DB schema ensure, Kafka metadata fetch, cache ping). Failure ⇒ HTTP 503.
+- Endpoint: <code>GET /health</code> retains richer component detail (already present in <code>gateway</code>).
+- Worker processes (non-HTTP): Provide a lightweight HTTP sidecar or expose periodic heartbeat metric (e.g., <code>worker_last_heartbeat_timestamp</code>).</p>
+<p>Action Items:
+1. Add <code>/ready</code> + <code>/live</code> to any remaining HTTP apps (verify <code>conversation_worker</code> if it exposes HTTP; else document alternative).
+2. Introduce a shared readiness helper in <code>services/common/readiness.py</code> (probe functions: postgres, kafka, redis, optional external) to remove duplication.
+3. Document readiness contract in OpenAPI and Helm values.</p>
+<h2 id="graceful-shutdown">Graceful Shutdown<a class="headerlink" href="#graceful-shutdown" title="Permanent link">&para;</a></h2>
+<p>Current state: lifecycle helper integrated for several workers; gateway tracks tasks and cancels on lifespan shutdown.
+Required:
+- Ensure each service closes: Kafka producer/consumer, HTTP clients, async DB pools, background tasks (janitors, exporters, listeners).
+- Add signal handlers (SIGINT/SIGTERM) via shared helper across workers (<code>service_lifecycle.py</code>).
+- Emit shutdown trace span and log marker for correlation.</p>
+<p>Action Items:
+1. Audit each worker for running tasks without cancellation tokens; wrap in stop Event.
+2. Gateway: add termination timeout enforcement (e.g., 20s) before forced exit.
+3. Add unit test simulating cancellation for one worker (mock bus + dummy loop). (Low priority if environment constraints.)</p>
+<h2 id="observability-enhancements">Observability Enhancements<a class="headerlink" href="#observability-enhancements" title="Permanent link">&para;</a></h2>
+<p>Completed: trace headers (<code>trace_id</code>, <code>span_id</code>, <code>traceparent</code>) and payload injection.
+Next:
+- Add metrics: startup duration (<code>service_startup_seconds</code>), last successful readiness timestamp, graceful shutdown duration.
+- Structured logging: ensure <code>trace_id</code> and <code>span_id</code> included in all top-level log records (logging filter).
+- Add <code>ServiceMonitor</code> annotations example in Helm chart for Prometheus scraping.</p>
+<h2 id="configuration-secrets">Configuration &amp; Secrets<a class="headerlink" href="#configuration-secrets" title="Permanent link">&para;</a></h2>
+<p>Currently: environment variables + direct secret fetch helper (<code>vault_secrets</code>).
+Target:
+- Central config registry abstraction with layered precedence: default → environment → remote dynamic overrides (Kafka topic <code>config_updates</code>).
+- Schema validation for config documents (JSONSchema versioned).
+- Staged rollout: publish new config version, consumer validates &amp; acknowledges; revert on failure.
+- Secrets: reference by key (e.g., <code>${secret:openai}</code>) resolved at runtime through secret provider interface; no raw secrets in config files.</p>
+<p>Action Items:
+1. Draft <code>services/common/config_registry.py</code> (load, validate, subscribe, ack model).
+2. Add <code>schemas/config/registry.v1.schema.json</code> for structural validation.
+3. Extend existing <code>_config_update_listener</code> to send ack events / metrics.</p>
+<h2 id="kubernetes-helm-scaffold">Kubernetes (Helm) Scaffold<a class="headerlink" href="#kubernetes-helm-scaffold" title="Permanent link">&para;</a></h2>
+<p>Chart Structure (proposed):
+<div class="highlight"><pre><span></span><code>helm/
+  Chart.yaml
+  values.yaml
+  templates/
+    deployment-gateway.yaml
+    deployment-delegation-gateway.yaml
+    deployment-workers.yaml
+    service.yaml
+    configmap-env.yaml
+    secret-env.yaml
+    ingress.yaml
+    servicemonitor.yaml (optional)
+</code></pre></div>
+Key Values:
+- <code>image.repository</code>, <code>image.tag</code>.
+- <code>resources.{requests,limits}</code> per component.
+- <code>autoscaling.enabled</code>, HPA metrics (CPU/memory, custom latency metric optional).
+- <code>env</code>: list of key/value, plus secretRefs.
+- <code>readinessProbe</code> and <code>livenessProbe</code> hitting <code>/ready</code> &amp; <code>/live</code>.
+- <code>podSecurityContext</code> (runAsNonRoot, fsGroup). <code>securityContext</code> (drop capabilities, readOnlyRootFilesystem).
+- <code>topologySpreadConstraints</code> for HA.</p>
+<p>Action Items:
+1. Scaffold chart and minimal templates referencing readiness endpoints.
+2. Add <code>NOTIFICATIONS_JANITOR_ENABLED=false</code> override capability via values.
+3. Document example <code>values-production.yaml</code> with tightened resource limits.</p>
+<h2 id="terraform-baseline">Terraform Baseline<a class="headerlink" href="#terraform-baseline" title="Permanent link">&para;</a></h2>
+<p>Components:
+- VPC / networking (if not managed separately).
+- Postgres (managed service) + Redis (Elasticache/Valkey) + Kafka (MSK / Redpanda / Aiven) + Object storage bucket.
+- Secret store (AWS Secrets Manager / Vault integration).
+- IAM roles (pod service accounts) &amp; security groups for DB/Kafka.</p>
+<p>Action Items:
+1. Define module layout <code>infra/terraform/</code> with environments: <code>dev</code>, <code>prod</code>.
+2. Add remote state (<code>backend.tf</code>) pattern placeholder.
+3. Variables for sizing, engine versions, retention, encryption.
+4. Output endpoints and ARNs consumed by Helm chart values (CI pipeline artifact).</p>
+<h2 id="reliability-backpressure">Reliability &amp; Backpressure<a class="headerlink" href="#reliability-backpressure" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Implement circuit breakers (already using <code>pybreaker</code>) consistently for all outbound calls (LLM, SomaBrain, config fetch).</li>
+<li>Add retry with jitter for publishing when Kafka temporarily unavailable (in DurablePublisher fallback path already present). Confirm exponential backoff.</li>
+<li>Memory pipeline: add WAL lag metric, compaction job schedule via cron-like worker.</li>
+</ul>
+<p>Action Items:
+1. Add <code>memory_wal_lag_seconds</code> metric (difference between now and last WAL timestamp).
+2. Add background compaction placeholder in <code>memory_replicator</code> (feature-flagged).</p>
+<h2 id="security-posture-preview">Security Posture (Preview)<a class="headerlink" href="#security-posture-preview" title="Permanent link">&para;</a></h2>
+<p>Will be detailed in separate security review document; key early tasks:
+- Ensure no secrets logged; add log filter to redact known patterns.
+- Validate JWT algorithms enforced (already fail-fast for missing PyJWT).
+- Policy enforcement metrics (exists) – add decision latency histogram.</p>
+<h2 id="developer-mode-parity">Developer Mode Parity<a class="headerlink" href="#developer-mode-parity" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Provide <code>docker-compose.dev.yaml</code> layering optional services &amp; mock dependencies.</li>
+<li>Seed scripts for model profiles, tool catalog entries, test tenants.</li>
+<li>Enable watch mode (reload) for FastAPI services.</li>
+</ul>
+<h2 id="metrics-backlog-summary">Metrics Backlog Summary<a class="headerlink" href="#metrics-backlog-summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>service_startup_seconds</td>
+<td>Histogram</td>
+<td>Measure startup initialization cost</td>
+</tr>
+<tr>
+<td>service_shutdown_seconds</td>
+<td>Histogram</td>
+<td>Ensure graceful shutdown bounded</td>
+</tr>
+<tr>
+<td>readiness_last_success_timestamp</td>
+<td>Gauge</td>
+<td>Track last successful readiness probe</td>
+</tr>
+<tr>
+<td>memory_wal_lag_seconds</td>
+<td>Gauge</td>
+<td>Monitor replication freshness</td>
+</tr>
+<tr>
+<td>config_update_apply_total</td>
+<td>Counter (labels: result)</td>
+<td>Track config rollout success/failure</td>
+</tr>
+<tr>
+<td>policy_decision_latency_seconds</td>
+<td>Histogram</td>
+<td>Observe authorization performance</td>
+</tr>
+</tbody>
+</table>
+<h2 id="prioritized-next-steps-execution-queue">Prioritized Next Steps (Execution Queue)<a class="headerlink" href="#prioritized-next-steps-execution-queue" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Shared readiness helper &amp; apply to all HTTP services.</li>
+<li>Config registry scaffold + schema + ack metrics.</li>
+<li>Helm chart initial commit with gateway + delegation + one worker (conversation_worker) deployments.</li>
+<li>Startup/shutdown metrics instrumentation.</li>
+<li>memory WAL lag metric + compaction placeholder.</li>
+<li>Policy decision latency histogram.</li>
+<li>Terraform directory scaffold + variable definitions.</li>
+<li>Developer mode compose profile enhancements.</li>
+</ol>
+<h2 id="risk-mitigations">Risk &amp; Mitigations<a class="headerlink" href="#risk-mitigations" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inconsistent readiness logic</td>
+<td>Central helper + tests</td>
+</tr>
+<tr>
+<td>Secret leakage in logs</td>
+<td>Redaction filter + scanning CI job</td>
+</tr>
+<tr>
+<td>Trace correlation gaps</td>
+<td>Mandatory headers (implemented) + docs</td>
+</tr>
+<tr>
+<td>Unbounded shutdown</td>
+<td>Timeout + structured shutdown spans</td>
+</tr>
+<tr>
+<td>Config drift across envs</td>
+<td>Registry with versioned schema + ack metrics</td>
+</tr>
+</tbody>
+</table>
+<h2 id="acceptance-criteria-phase-completion">Acceptance Criteria (Phase Completion)<a class="headerlink" href="#acceptance-criteria-phase-completion" title="Permanent link">&para;</a></h2>
+<ul>
+<li>All HTTP services respond to <code>/ready</code> and <code>/live</code> within &lt;200ms when healthy.</li>
+<li>Helm chart deploys gateway &amp; delegation services with passing probes.</li>
+<li>Traceparent visible in Kafka messages and spans link across publish/consume.</li>
+<li>Config registry publishes and validates a sample update end-to-end.</li>
+<li>Startup and shutdown metrics exposed and observable in Prometheus scrape.</li>
+<li>Terraform scaffold defines core infra modules and variables (no full apply required yet).</li>
+<li>Security review doc placeholder created referencing redaction and policy latency goals.</li>
+</ul>
+<hr />
+<p>Version: 0.1.0
+Last Updated: (auto-fill in future CI step)</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.top", "navigation.tracking", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
