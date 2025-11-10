@@ -39,6 +39,7 @@ class _RuntimeState:
     features: FeatureRegistry
     config: Optional[ConfigRegistry]
     override_resolver: Optional[Callable[[str, Optional[str]], Optional[bool]]]
+    deployment_mode: str
 
 
 _STATE: Optional[_RuntimeState] = None
@@ -86,9 +87,28 @@ def init_runtime_config(
     settings = SA01Settings.from_env()
     features = build_default_registry()
     config = _load_config_registry()
+    # Canonical deployment mode consolidation:
+    # LOCAL (full-local dev) and PROD (production/staging) only.
+    # Derive canonical mode strictly from settings (env normalization handled there)
+    raw_mode = (settings.deployment_mode or "LOCAL").upper()
+    if raw_mode in {"DEV", "LOCAL"}:
+        canonical_mode = "LOCAL"
+    elif raw_mode in {"PROD", "STAGING", "PRODUCTION"}:
+        canonical_mode = "PROD"
+    else:
+        canonical_mode = "LOCAL"
     _STATE = _RuntimeState(
-        settings=settings, features=features, config=config, override_resolver=override_resolver
+        settings=settings,
+        features=features,
+        config=config,
+        override_resolver=override_resolver,
+        deployment_mode=canonical_mode,
     )
+    try:
+        # Emit deployment mode metric once at init
+        metrics_collector.record_deployment_mode(canonical_mode)
+    except Exception:
+        pass
 
 
 def state() -> _RuntimeState:
@@ -102,6 +122,41 @@ def state() -> _RuntimeState:
 def settings() -> SA01Settings:  # type: ignore[override]
     """Return the process settings loaded from environment."""
     return state().settings
+
+
+def deployment_mode() -> str:
+    """Return the canonical deployment mode (LOCAL | PROD).
+
+    Collapses legacy values (DEV/STAGING/PRODUCTION) into two modes for
+    simplified profile selection and conditional behaviour.
+    """
+    return state().deployment_mode
+
+
+def conversation_policy_bypass_enabled() -> bool:
+    """Return True if conversation policy checks may be bypassed.
+
+    Centralized via FeatureRegistry flag `conversation_policy_bypass`.
+    Mode gate: only effective in LOCAL; forced False in PROD.
+    """
+    if deployment_mode() != "LOCAL":
+        return False
+    try:
+        return flag("conversation_policy_bypass")
+    except Exception:
+        return False
+
+
+def test_policy_bypass_enabled() -> bool:
+    """Return True if gateway selective-authorization may bypass policy in tests.
+
+    Honours `TESTING` env unless explicitly disabled via `DISABLE_TEST_POLICY_BYPASS`.
+    Intended for unit/integration tests; returns False in PROD by convention.
+    """
+    # Allow in any environment when TESTING is set, unless explicitly disabled.
+    if os.getenv("DISABLE_TEST_POLICY_BYPASS") in {"1", "true", "True", "on"}:
+        return False
+    return os.getenv("TESTING") in {"1", "true", "True"}
 
 
 def flag(key: str, tenant_id: Optional[str] = None) -> bool:

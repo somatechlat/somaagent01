@@ -23,7 +23,7 @@ We removed the legacy global `EnforcePolicy` middleware that caused health failu
 | `POLICY_DATA_PATH` | `/v1/data/soma/allow` | Data path returning truthy allow decision. |
 | `POLICY_CACHE_TTL` | `2` | Seconds to cache identical decisions. |
 
-> Note: `POLICY_FAIL_OPEN` is intentionally ignored—system now fails closed for safety.
+
 
 ## Metrics
 | Metric | Labels | Description |

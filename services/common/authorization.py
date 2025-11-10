@@ -51,9 +51,9 @@ async def authorize(
     ctx = context or {}
     tenant = request.headers.get("X-Tenant-Id", "default")
     persona = request.headers.get("X-Persona-Id")
-    # Test-mode bypass: allow all decisions when TESTING env is set (except explicit override)
-    import os
-    if os.getenv("TESTING") in {"1", "true", "True"} and os.getenv("DISABLE_TEST_POLICY_BYPASS") not in {"1", "true", "True"}:
+    # Test-mode bypass: centralized via runtime_config
+    from services.common.runtime_config import test_policy_bypass_enabled
+    if test_policy_bypass_enabled():
         # Allow all in test mode and log a structured decision
         AUTH_DECISIONS.labels(action=action, result="allow").inc()
         AUTH_DURATION.labels(action=action).observe(0.0)

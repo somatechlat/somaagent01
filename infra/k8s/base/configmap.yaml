@@ -4,7 +4,7 @@ metadata:
   name: somaagent-config
 data:
   LOG_LEVEL: "INFO"
-  SOMA_AGENT_MODE: "PRODUCTION"
+  SOMA_AGENT_ENV: "PROD"
   KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
   REDIS_URL: "redis://redis:6379/0"
   POSTGRES_DSN: "postgresql://soma:soma@postgres:5432/somaagent01"

@@ -11,7 +11,6 @@ x-agent-env: &agent-env
   SA01_POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
   POLICY_BASE_URL: http://opa:8181
   POLICY_DATA_PATH: /v1/data/soma/policy/allow
-  POLICY_FAIL_OPEN: "false"
   OPA_URL: http://opa:8181
   CONVERSATION_INBOUND: conversation.inbound
   CONVERSATION_OUTBOUND: conversation.outbound
@@ -19,7 +18,6 @@ x-agent-env: &agent-env
   TOOL_REQUESTS_TOPIC: tool.requests
   TOOL_RESULTS_TOPIC: tool.results
   TOOL_EXECUTOR_GROUP: tool-executor
-  SOMA_AGENT_MODE: LOCAL
   SOMA_BASE_URL: http://host.docker.internal:9696
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   SOMA_ENABLED: "true"
@@ -214,8 +212,7 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *agent-env
-      DISABLE_CONVERSATION_POLICY: "true"
-      SOMA_AGENT_MODE: LOCAL
+      # conversation_policy_bypass now governed by centralized feature flag; remove legacy env
       WORKER_GATEWAY_BASE: "http://host.docker.internal:${GATEWAY_PORT:-21016}"
       GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
       CONVERSATION_METRICS_PORT: "9410"

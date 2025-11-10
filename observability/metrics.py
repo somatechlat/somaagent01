@@ -283,6 +283,13 @@ runtime_config_last_applied_ts = Gauge(
     registry=registry
 )
 
+# Deployment mode metric (LOCAL | PROD)
+deployment_mode_info = Info(
+    'deployment_mode_info',
+    'Canonical deployment mode information',
+    registry=registry
+)
+
 
 def record_memory_persistence(duration: float, operation: str, status: str, tenant: str) -> None:
     """Record memory persistence duration for SLA tracking."""
@@ -393,6 +400,13 @@ class MetricsCollector:
             runtime_config_updates_total.labels(source=source).inc()
             runtime_config_info.info({'version': version, 'checksum': checksum, 'source': source})
             runtime_config_last_applied_ts.set(time.time())
+        except Exception:
+            pass
+
+    def record_deployment_mode(self, mode: str) -> None:
+        """Record current canonical deployment mode (LOCAL | PROD)."""
+        try:
+            deployment_mode_info.info({'mode': mode})
         except Exception:
             pass
 

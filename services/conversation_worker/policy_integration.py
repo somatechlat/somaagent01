@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 from services.common.policy_client import PolicyClient, PolicyRequest
@@ -21,8 +20,10 @@ class ConversationPolicyEnforcer:
         metadata: dict,
     ) -> bool:
         """Check whether an inbound user message is permitted."""
-        # Optional development bypass to unblock local testing when OPA denies or is unreachable.
-        if os.getenv("DISABLE_CONVERSATION_POLICY", "false").lower() in {"true", "1", "yes", "on"}:
+        # Centralized bypass (LOCAL only) handled by runtime_config
+        from services.common.runtime_config import conversation_policy_bypass_enabled
+
+        if conversation_policy_bypass_enabled():
             return True
         request = PolicyRequest(
             tenant=tenant,

@@ -31,8 +31,8 @@ class SA01Settings(BaseServiceSettings):
 
     @classmethod
     def default_environment(cls) -> str:
-        # Keep DEV as the standard local mode
-        return os.getenv("SA01_ENV", os.getenv("SOMA_AGENT_ENV", "DEV")).upper()
+        # Canonical selector: use SOMA_AGENT_ENV only (DEV default)
+        return os.getenv("SOMA_AGENT_ENV", "DEV").upper()
 
     @classmethod
     def environment_defaults(cls) -> Mapping[str, Mapping[str, Any]]:
@@ -44,7 +44,8 @@ class SA01Settings(BaseServiceSettings):
         """
         dev_defaults = {
             # BaseServiceSettings required fields
-            "deployment_mode": "DEV",
+            # Map local developer environment to the canonical LOCAL profile set
+            "deployment_mode": "LOCAL",
             # Compose maps host ports: kafka 20000->9092, redis 20001->6379, pg 20002->5432, opa 20009->8181
             "postgres_dsn": os.getenv(
                 "SA01_POSTGRES_DSN", "postgresql://soma:soma@localhost:20002/somaagent01"
@@ -62,7 +63,8 @@ class SA01Settings(BaseServiceSettings):
 
         # Placeholders for non-DEV; expect env to provide concrete values
         staging_defaults = {
-            "deployment_mode": "STAGING",
+            # Treat STAGING as production-like for profile selection
+            "deployment_mode": "PROD",
             "postgres_dsn": os.getenv(
                 "SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"
             ),
