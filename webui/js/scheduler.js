@@ -1447,7 +1447,7 @@ if (!window.schedulerSettings) {
 
             // Add essential methods directly
             const essentialMethods = [
-                'fetchTasks', 'startPolling', 'stopPolling',
+                'fetchTasks',
                 'startCreateTask', 'startEditTask', 'cancelEdit',
                 'saveTask', 'runTask', 'resetTaskState', 'deleteTask',
                 'toggleTaskExpand', 'showTaskDetail', 'closeTaskDetail',

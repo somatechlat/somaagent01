@@ -2821,22 +2821,30 @@ class ConversationWorker:
                 except Exception:
                     LOGGER.debug("context.feedback scheduling failed", exc_info=True)
                 # No else branch here; memory.write deny is logged earlier
-            # L2: Publish a basic reward signal (best-effort)
-            try:
-                # Simple heuristic: reward utility based on length & presence of escalation
-                base_signal = "response.delivered"
-                length_score = min(1.0, max(0.0, len((response_text or '').strip()) / 1200.0))
-                escalation_penalty = 0.1 if path == "escalation" else 0.0
-                value = max(0.0, length_score - escalation_penalty)
-                meta = {
-                    "escalated": path == "escalation",
-                    "input_tokens": usage.get("input_tokens", 0),
-                    "output_tokens": usage.get("output_tokens", 0),
-                    "model": model_used,
-                }
-                asyncio.create_task(learning_publish_reward(session_id=session_id, signal=base_signal, value=value, meta=meta))
             except Exception:
-                LOGGER.debug("learning_publish_reward scheduling failed", exc_info=True)
+                # Catch any unexpected errors in the memory write or feedback path
+                # and log them without interrupting the processing pipeline.
+                LOGGER.debug("Assistant memory write or feedback failed", exc_info=True)
+            # L2: Publish a basic reward signal (best-effort)
+            # Errors in reward publishing are ignored; we fire‑and‑forget the task.
+            base_signal = "response.delivered"
+            length_score = min(1.0, max(0.0, len((response_text or '').strip()) / 1200.0))
+            escalation_penalty = 0.1 if path == "escalation" else 0.0
+            value = max(0.0, length_score - escalation_penalty)
+            meta = {
+                "escalated": path == "escalation",
+                "input_tokens": usage.get("input_tokens", 0),
+                "output_tokens": usage.get("output_tokens", 0),
+                "model": model_used,
+            }
+            asyncio.create_task(
+                learning_publish_reward(
+                    session_id=session_id,
+                    signal=base_signal,
+                    value=value,
+                    meta=meta,
+                )
+            )
             record_metrics(result_label, path)
 
         # Execute the processing pipeline and ensure metrics are recorded on unexpected errors
@@ -2844,7 +2852,6 @@ class ConversationWorker:
             await _process()
         except Exception:
             try:
-                # Best-effort metrics in case of an unhandled exception
                 MESSAGE_PROCESSING_COUNTER.labels("error").inc()
                 MESSAGE_LATENCY.labels(path).observe(time.perf_counter() - start_time)
             except Exception:
