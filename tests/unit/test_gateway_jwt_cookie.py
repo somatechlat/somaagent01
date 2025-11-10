@@ -23,8 +23,11 @@ def _make_cookie_request(cookie_name: str, token: str) -> Request:
 
 @pytest.fixture(autouse=True)
 def _reset_auth_globals(monkeypatch: pytest.MonkeyPatch):
+    # Require auth for this test
     monkeypatch.setattr(gateway_main, "REQUIRE_AUTH", True, raising=False)
-    monkeypatch.setenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+    # Use canonical settings for cookie name
+    monkeypatch.setattr(gateway_main.APP_SETTINGS, "jwt_cookie_name", "jwt", raising=False)
+    # Clear runtime JWT sources to force resolver path
     monkeypatch.setattr(gateway_main, "JWT_SECRET", None, raising=False)
     monkeypatch.setattr(gateway_main, "JWT_PUBLIC_KEY", None, raising=False)
     monkeypatch.setattr(gateway_main, "JWT_JWKS_URL", None, raising=False)

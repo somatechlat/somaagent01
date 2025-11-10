@@ -10121,7 +10121,8 @@ def _require_internal_token(request: Request) -> dict[str, str]:
     provided = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
     from services.common import runtime_config as cfg
 
-    expected = cfg.env("GATEWAY_INTERNAL_TOKEN", "") or ""
+    # Use canonical internal token from settings
+    expected = APP_SETTINGS.internal_token or ""
     if not expected or not provided or provided != expected:
         raise HTTPException(status_code=403, detail="forbidden (internal)")
     # Optional tenant scoping header for additional checks
@@ -10430,7 +10431,7 @@ async def reprocess_dlq_item(
 def _internal_token_ok(request: Request) -> bool:
     from services.common import runtime_config as cfg
 
-    expected = cfg.env("GATEWAY_INTERNAL_TOKEN")
+    expected = APP_SETTINGS.internal_token
     if not expected:
         return False
     got = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")

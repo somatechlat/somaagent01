@@ -89,7 +89,7 @@ class SA01Settings(BaseServiceSettings):
     jwt_vault_secret_key: str | None = None
 
     def __post_init__(self) -> None:  # type: ignore[override]
-        super().__post_init__()
+        BaseServiceSettings.__post_init__(self)
         # Normalize algorithms / tenant claims lists if provided as strings
         if isinstance(self.jwt_algorithms, str):
             self.jwt_algorithms = [a.strip() for a in self.jwt_algorithms.split(",") if a.strip()]

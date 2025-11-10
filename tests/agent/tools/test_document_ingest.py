@@ -55,7 +55,7 @@ async def test_document_ingest_success_text_plain(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: FakeClient(fake_resp, recorder))
 
     # Ensure token and base url are set
-    monkeypatch.setenv("GATEWAY_INTERNAL_TOKEN", "test-token")
+    monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "test-token")
     monkeypatch.setenv("WORKER_GATEWAY_BASE", "http://gw:8010")
 
     tool = IngestDocumentTool()
@@ -82,7 +82,7 @@ async def test_document_ingest_octet_stream_by_extension(monkeypatch):
     fake_resp = FakeResponse(200, headers, content)
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: FakeClient(fake_resp))
-    monkeypatch.setenv("GATEWAY_INTERNAL_TOKEN", "test-token")
+    monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "test-token")
 
     tool = IngestDocumentTool()
     result = await tool.run({"attachment_id": "a1"})
@@ -96,7 +96,7 @@ async def test_document_ingest_octet_stream_by_extension(monkeypatch):
 async def test_document_ingest_not_found_raises(monkeypatch):
     fake_resp = FakeResponse(404, {"content-type": "text/plain"}, b"not found")
     monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: FakeClient(fake_resp))
-    monkeypatch.setenv("GATEWAY_INTERNAL_TOKEN", "test-token")
+    monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "test-token")
 
     tool = IngestDocumentTool()
     with pytest.raises(ToolExecutionError) as ei:
@@ -115,7 +115,7 @@ async def test_document_ingest_missing_attachment_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_document_ingest_missing_internal_token(monkeypatch):
     # Force empty token to trigger config error
-    monkeypatch.setenv("GATEWAY_INTERNAL_TOKEN", "")
+    monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "")
     tool = IngestDocumentTool()
     with pytest.raises(ToolExecutionError) as ei:
         await tool.run({"attachment_id": "x"})
