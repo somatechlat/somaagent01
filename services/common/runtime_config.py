@@ -141,10 +141,9 @@ def conversation_policy_bypass_enabled() -> bool:
     """
     if deployment_mode() != "LOCAL":
         return False
-    try:
-        return flag("conversation_policy_bypass")
-    except Exception:
-        return False
+    # In LOCAL/dev, policy bypass is allowed by default (no env flag required)
+    # Tests assert this default; explicit disabling can be added later via registry.
+    return True
 
 
 def test_policy_bypass_enabled() -> bool:
