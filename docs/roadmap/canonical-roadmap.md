@@ -1338,13 +1338,13 @@ This feature expansion is now part of the canonical roadmap; future development 
 
 This section formally initiates parallel sprint execution across the previously defined master tracks. It converts roadmap intent into concrete sprint artifacts and prioritised queues. All teams operate from this canonical file; any deviation requires a documented diff here first.
 
-### Active Parallel Sprints (Day 0 Start)
-| Sprint | Track Focus | Objectives (This Sprint) | Exit Criteria |
-|--------|-------------|---------------------------|---------------|
-| S0-A | Capability Registry | Define and implement `FeatureDescriptor` schema; bootstrap registry read surface; env fallback dual-path | `/v1/features` returns descriptors; no write ops; tests green |
-| S0-B | Streaming Bus | Implement client `stream.js` + `event-bus.js`; migrate chat events to bus; heartbeat + jitter reconnect | Chat uses bus; no polling in chat module; heartbeat metric present |
-| S0-C | Unified Config (M0) | Inventory settings endpoints; add metrics counters & latency histograms; audit diff schema defined | `settings_write_total` & `settings_write_latency_seconds` exposed; audit diff unit test passes |
-| S0-D | Tool Catalog Foundations | Draft DB schema & versioned tool descriptor JSONSchema; read-only list endpoint skeleton | `/v1/tools` serves schema-backed descriptor list (static seed) |
+### Active Parallel Sprints (Day 0 Start) ✅ **COMPLETED 2025-11-11**
+| Sprint | Track Focus | Objectives (This Sprint) | Exit Criteria | Status |
+|--------|-------------|---------------------------|---------------|--------|
+| S0-A ✅ | Capability Registry | Define and implement `FeatureDescriptor` schema; bootstrap registry read surface; env fallback dual-path | `/v1/features` returns descriptors; no write ops; tests green | **COMPLETED** |
+| S0-B ✅ | Streaming Bus | Implement client `stream.js` + `event-bus.js`; migrate chat events to bus; heartbeat + jitter reconnect | Chat uses bus; no polling in chat module; heartbeat metric present | **COMPLETED** |
+| S0-C ✅ | Unified Config (M0) | Inventory settings endpoints; add metrics counters & latency histograms; audit diff schema defined | `settings_write_total` & `settings_write_latency_seconds` exposed; audit diff unit test passes | **COMPLETED** |
+| S0-D ✅ | Tool Catalog Foundations | Draft DB schema & versioned tool descriptor JSONSchema; read-only list endpoint skeleton | `/v1/tools` serves schema-backed descriptor list (static seed) | **COMPLETED** |
 
 ### Immediate Task Backlog (Sequenced Within Sprints)
 1. Registry: Add `features/descriptor.py` with Pydantic `FeatureDescriptor` (fields: key, description, default_enabled, profiles, dependencies, degrade_strategy, cost_impact, metrics_key, tags).

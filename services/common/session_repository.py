@@ -497,6 +497,39 @@ class PostgresSessionStore(SessionStore):
             )
         return events
 
+    # ---------- Semantic Recall Extension ----------
+    async def add_embedding(
+        self, session_id: str, text: str, vector: list[float], metadata: dict[str, Any] | None = None
+    ) -> None:
+        """Store a vector embedding for semantic recall."""
+        sql = """
+            INSERT INTO session_embeddings (session_id, text, vector, metadata, created_at)
+            VALUES ($1, $2, $3, $4, now())
+            ON CONFLICT (session_id, text) DO NOTHING
+        """
+        await self.db.execute(sql, session_id, text, vector, json.dumps(metadata or {}))
+
+    async def semantic_recall(
+        self, session_id: str, query_vector: list[float], top_k: int = 5
+    ) -> list[dict[str, Any]]:
+        """Return top-k semantically similar memories."""
+        sql = """
+            SELECT text, vector, metadata, created_at
+            FROM session_embeddings
+            WHERE session_id = $1
+            ORDER BY vector <-> $2
+            LIMIT $3
+        """
+        rows = await self.db.fetch(sql, session_id, query_vector, top_k)
+        return [
+            {
+                "text": r["text"],
+                "metadata": json.loads(r["metadata"]),
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ]
+
     async def event_exists(self, session_id: str, event_id: Optional[str]) -> bool:
         if not event_id:
             return False

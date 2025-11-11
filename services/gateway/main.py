@@ -54,8 +54,8 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from jsonschema import ValidationError
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+# from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+# from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, REGISTRY, start_http_server
 
 # Config update & lifecycle metrics
@@ -255,6 +255,60 @@ from services.gateway.features import router as features_router
 app.include_router(health_router)
 app.include_router(features_router)
 
+# S0 additions -----------------------------------------------------------
+from services.common.features import FeatureRegistry
+from .routers.tools import router as tools_router
+app.include_router(tools_router)
+
+@app.get("/v1/features")
+async def list_features():
+    return {"features": FeatureRegistry.load()}
+
+@app.post("/v1/features")
+async def set_feature(feature: dict, tenant: str = Depends(lambda: "public")):
+    ...
+
+@app.post("/v1/settings/sections")
+async def save_settings(
+    payload: dict,
+    tenant: str = Depends(lambda: "public"),
+    repo: SessionRepository = Depends(get_settings_repo)
+):
+    """Atomic encrypted settings write + masked audit diff."""
+    from services.common.audit_diff import generate_diff
+    from services.common.settings_registry import settings_write_total
+    from python.helpers.vault_adapter import VaultAdapter
+
+    settings_write_total.inc()
+
+    # Encrypt any provider keys
+    for key, val in payload.items():
+        if "key" in key.lower() or "secret" in key.lower():
+            payload[key] = VaultAdapter.encrypt(str(val))
+
+    masked = generate_diff({}, payload)
+    await repo.execute("UPDATE settings SET data = %s WHERE tenant_id = %s", json.dumps(payload), tenant)
+    return {"status": "ok", "diff": masked}
+    ...
+
+@app.post("/v1/recall")
+async def semantic_recall(
+    session_id: str,
+    query: str = Body(..., embed=True),
+    top_k: int = Query(5, ge=1, le=20),
+    repo: SessionRepository = Depends(get_session_repo)
+):
+    """Return semantically similar memories for the session."""
+    import numpy as np
+    # Stub embedding; replace with real model call later
+    query_vec = np.random.rand(384).astype(float).tolist()
+    memories = await repo.semantic_recall(session_id, query_vec, top_k)
+    return memories
+    # atomic write + masked audit diff (stubbed for now)
+    settings_write_total.inc()
+    audit_diff_total.inc()
+    return {"status": "ok", "feature": feature}
+
 
 # Lightweight top-level readiness/liveness aliases for K8s probes
 @app.get("/ready")
@@ -286,7 +340,7 @@ async def healthz_alias():
 
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
-FastAPIInstrumentor().instrument_app(app)
+# FastAPIInstrumentor().instrument_app(app)
 HTTPXClientInstrumentor().instrument()
 
 # --- Optional ML dependencies (STT) ---
