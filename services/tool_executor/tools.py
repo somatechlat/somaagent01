@@ -303,7 +303,8 @@ class IngestDocumentTool(BaseTool):
             # Fallback to LOCAL without reading deprecated env vars
             mode = "LOCAL"
         default_token = "dev-internal-token" if mode == "LOCAL" else ""
-        token = cfg.env("GATEWAY_INTERNAL_TOKEN", default_token)
+        # Use canonical SA01 internal token environment variable.
+        token = cfg.env("SA01_AUTH_INTERNAL_TOKEN", default_token)
         if not token:
             raise ToolExecutionError("Internal token not configured for attachment fetch")
         url = f"{base}/internal/attachments/{attachment_id}/binary"
