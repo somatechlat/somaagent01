@@ -56,9 +56,15 @@ class TestCanonicalSseRoutes:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
-        # Verify we have real feature flags
-        assert "realtime_mode" in data
-        assert isinstance(data["realtime_mode"], bool)
+        # New schema: nested flags dict with per-flag objects
+        assert "flags" in data
+        assert isinstance(data["flags"], dict)
+        # Choose a known descriptor key like 'sequence'
+        assert "sequence" in data["flags"]
+        seq_flag = data["flags"]["sequence"]
+        assert isinstance(seq_flag, dict)
+        assert "effective" in seq_flag
+        assert isinstance(seq_flag["effective"], bool)
 
     @pytest.mark.asyncio
     async def test_sse_session_events_no_mock(self):

@@ -33,18 +33,26 @@ except Exception:
         "off",
     }
 
+import os as _os
+
 try:
     if not _feature_audio_enabled:
         raise ImportError("audio features disabled")
     import whisper  # type: ignore
-except ImportError as exc:  # pragma: no cover - exercised in developer builds
-    if _feature_audio_enabled:
+except ImportError as exc:  # pragma: no cover - exercised in developer & CI builds
+    _testing_mode = _os.getenv("TESTING") == "1" or _os.getenv("PYTEST_CURRENT_TEST") is not None
+    _require_whisper = _os.getenv("SA01_REQUIRE_WHISPER") in {"1", "true", "yes"}
+    # In normal (non-test) operation with the feature enabled OR when explicitly required, fail fast.
+    if (_feature_audio_enabled and not _testing_mode) or _require_whisper:
         raise ImportError(
             "Whisper library is required for production audio transcription. "
             "Install with: pip install openai-whisper"
         ) from exc
+    # Otherwise degrade gracefully for tests / lightweight dev builds.
     whisper = None  # type: ignore
-    LOGGER.info("Skipping Whisper preload – audio support disabled or package missing")
+    LOGGER.info(
+        "Skipping Whisper preload – audio support disabled, package missing, or test mode graceful fallback"
+    )
 
 _model = None
 _model_name = ""

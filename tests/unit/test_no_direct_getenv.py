@@ -98,10 +98,9 @@ def test_no_direct_os_getenv_calls() -> None:
         if calls:
             offending[py_file] = [c.lineno for c in calls]
 
-    assert not offending, (
-        "Direct os.getenv / os.environ.get calls found in production code: "
-        + ", ".join(
-            f"{p.relative_to(repo_root)} (lines {','.join(map(str, lines))})"
-            for p, lines in offending.items()
-        )
+    assert (
+        not offending
+    ), "Direct os.getenv / os.environ.get calls found in production code: " + ", ".join(
+        f"{p.relative_to(repo_root)} (lines {','.join(map(str, lines))})"
+        for p, lines in offending.items()
     )

@@ -37,7 +37,9 @@ class LlmCredentialsStore:
         # Use the canonical Fernet key environment variable defined in SA01Settings.
         key = cfg.env("SA01_CRYPTO_FERNET_KEY")
         if not key:
-            raise RuntimeError("SA01_CRYPTO_FERNET_KEY is required to store LLM credentials securely")
+            raise RuntimeError(
+                "SA01_CRYPTO_FERNET_KEY is required to store LLM credentials securely"
+            )
         # Accept raw urlsafe base64 key or plaintext that should be base64 encoded
         try:
             # Validate length by constructing Fernet

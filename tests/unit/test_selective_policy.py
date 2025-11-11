@@ -59,16 +59,18 @@ def test_deny(monkeypatch, app):
         return False
 
     monkeypatch.setattr(client, "evaluate", _eval_deny)
-    
+
     # Enable auth to ensure policy is enforced.
     from services.common import runtime_config as cfg
+
     original_settings = cfg._STATE.settings if cfg._STATE else None
     try:
         import copy
+
         fake_settings = copy.deepcopy(cfg.settings())
         fake_settings.auth_required = True
         cfg._STATE.settings = fake_settings
-        
+
         client_http = TestClient(app_obj)
         r = client_http.get("/deny")
         assert r.status_code == 403
@@ -84,16 +86,18 @@ def test_error(monkeypatch, app):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(client, "evaluate", _eval_error)
-    
+
     # Enable auth to ensure policy is enforced.
     from services.common import runtime_config as cfg
+
     original_settings = cfg._STATE.settings if cfg._STATE else None
     try:
         import copy
+
         fake_settings = copy.deepcopy(cfg.settings())
         fake_settings.auth_required = True
         cfg._STATE.settings = fake_settings
-        
+
         client_http = TestClient(app_obj)
         r = client_http.get("/deny")
         # Error path currently treated as deny (fail-closed)

@@ -12,6 +12,7 @@ import * as bus from '/js/event-bus.js';
     .stream-status-banner .bubble { display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); background: #111827; color: #e5e7eb; }
     .stream-status-banner.online .bubble { background: #065f46; color: #ecfdf5; }
     .stream-status-banner.reconnecting .bubble { background: #92400e; color: #fff7ed; }
+    .stream-status-banner.stale .bubble { background: #1e3a8a; color: #dbeafe; }
     .stream-status-banner.offline .bubble { background: #7f1d1d; color: #fef2f2; }
     .stream-status-banner .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: 0.9; }
     .stream-status-banner .msg { opacity: 0.95; }
@@ -45,7 +46,7 @@ import * as bus from '/js/event-bus.js';
     let hideTimer = null;
 
     bus.on('stream.online', () => {
-      setState('online', 'Connected');
+      setState('online', 'Live');
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hideTimer = setTimeout(() => {
         const el = document.getElementById(ID);
@@ -68,9 +69,33 @@ import * as bus from '/js/event-bus.js';
       setState('reconnecting', `Reconnecting (attempt ${attempt}, ${delay}ms)…`);
     });
 
+    bus.on('stream.stale', (p) => {
+      const el = document.getElementById(ID);
+      if (el) el.style.display = '';
+      const ms = p && p.ms_since_heartbeat ? p.ms_since_heartbeat : '?';
+      setState('stale', `Stale (${ms}ms since heartbeat)`);
+    });
+
+    bus.on('stream.retry.success', (p) => {
+      // transient success indicator if banner currently visible in reconnect state
+      const el = document.getElementById(ID);
+      if (el && el.style.display !== 'none') {
+        setState('online', 'Recovered');
+        setTimeout(() => {
+          if (el) el.style.display = 'none';
+        }, 1200);
+      }
+    });
+
+    bus.on('stream.retry.giveup', (p) => {
+      const el = document.getElementById(ID);
+      if (el) el.style.display = '';
+      setState('offline', 'Give up (manual reload)');
+    });
+
     // heartbeat keeps online state sticky
     bus.on('stream.heartbeat', () => {
-      // noop; online state is maintained by stream.js
+      // Keep banner hidden if stable
     });
   }
 

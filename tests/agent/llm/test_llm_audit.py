@@ -46,6 +46,7 @@ async def test_llm_invoke_audit_success(monkeypatch):
 
     # Import the FastAPI app now that env vars are configured
     from services.gateway.main import app as gateway_app
+
     client = TestClient(gateway_app)
 
     payload = {

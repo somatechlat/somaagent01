@@ -42,13 +42,18 @@ class FeatureRegistry:
         if key in self._state_cache:
             return self._state_cache[key]
         desc = self._descriptors[key]
-        # NOTE: Direct environment overrides have been removed as part of the
-        # "hard‑delete legacy" effort. Feature flag values are now resolved
-        # exclusively via the central `runtime_config.flag()` call, which may
-        # apply tenant‑specific overrides from Somabrain. The old env‑var path is
-        # therefore eliminated to guarantee a single source of truth.
         # Profile default
         enabled = desc.profiles.get(self._profile, desc.default_enabled)
+        # Honor explicit environment override variables when provided.
+        # This is not a legacy path; tests and ops rely on fast env flips.
+        try:
+            if desc.enabled_env_var:
+                raw = cfg.env(desc.enabled_env_var)
+                if raw != "":
+                    val = str(raw).lower() in {"1", "true", "yes", "on"}
+                    enabled = bool(val)
+        except Exception:
+            pass
         # Dependencies: if any dependency disabled, mark disabled
         for dep in desc.dependencies:
             if self.state(dep) == "disabled":
