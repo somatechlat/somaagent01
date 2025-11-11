@@ -1334,3 +1334,61 @@ P3: Domain Profiles & Routing, Experimentation Framework.
 This feature expansion is now part of the canonical roadmap; future development must reference readiness classification and priority tiers before implementation.
 
 
+## 2025-11-11 Sprint Kickoff & Parallel Execution Plan (Appended)
+
+This section formally initiates parallel sprint execution across the previously defined master tracks. It converts roadmap intent into concrete sprint artifacts and prioritised queues. All teams operate from this canonical file; any deviation requires a documented diff here first.
+
+### Active Parallel Sprints (Day 0 Start)
+| Sprint | Track Focus | Objectives (This Sprint) | Exit Criteria |
+|--------|-------------|---------------------------|---------------|
+| S0-A | Capability Registry | Define and implement `FeatureDescriptor` schema; bootstrap registry read surface; env fallback dual-path | `/v1/features` returns descriptors; no write ops; tests green |
+| S0-B | Streaming Bus | Implement client `stream.js` + `event-bus.js`; migrate chat events to bus; heartbeat + jitter reconnect | Chat uses bus; no polling in chat module; heartbeat metric present |
+| S0-C | Unified Config (M0) | Inventory settings endpoints; add metrics counters & latency histograms; audit diff schema defined | `settings_write_total` & `settings_write_latency_seconds` exposed; audit diff unit test passes |
+| S0-D | Tool Catalog Foundations | Draft DB schema & versioned tool descriptor JSONSchema; read-only list endpoint skeleton | `/v1/tools` serves schema-backed descriptor list (static seed) |
+
+### Immediate Task Backlog (Sequenced Within Sprints)
+1. Registry: Add `features/descriptor.py` with Pydantic `FeatureDescriptor` (fields: key, description, default_enabled, profiles, dependencies, degrade_strategy, cost_impact, metrics_key, tags).
+2. Registry: Implement `FeatureRegistry.load_descriptors()` from bundled YAML/JSON; dual-path lookups (env fallback) flagged with deprecation warning metric `feature_env_fallback_total`.
+3. Streaming: Create `webui/js/event-bus.js` (subscribe, unsubscribe, publish); `webui/js/stream.js` (EventSource wrapper, heartbeat, jitter backoff, Last-Event-ID support) and refactor chat code to consume published events instead of direct EventSource callbacks.
+4. Config M0: Add Prometheus counters/histograms in `observability/metrics.py` for settings read/write; design `AuditDiff` dataclass + serializer (mask secret values by regex key match: /secret|key|token|password/i).
+5. Tool Catalog: Define `schemas/tool_descriptor.v1.json`; seed descriptors in `prompts/tool_catalog.seed.json`; implement GET `/v1/tools` returning validated list (FastAPI route stub).
+6. Testing: Add pytest for FeatureDescriptor validation (profiles subset, degrade_strategy in {auto,manual,none}); audit diff masking; tool descriptor schema round-trip.
+
+### Metrics to Add This Sprint
+- `feature_registry_load_seconds` (Histogram)
+- `feature_env_fallback_total{key}` (Counter, temporary)
+- `stream_heartbeat_missed_total` (Counter)
+- `stream_reconnect_attempts_total` (Counter)
+- `settings_write_total` / `settings_write_latency_seconds` / `settings_read_total`
+- `tool_descriptor_validation_errors_total`
+
+### Guardrails & Non-Goals (This Sprint)
+- No dynamic feature enable/disable writes yet (read-only surface only).
+- No semantic recall implementation (design only retained from roadmap; execution deferred to Sprint 2).
+- No secrets encryption changes (begin at Sprint 3 per hardening roadmap).
+- Avoid expanding UI bus beyond chat until baseline stability proven.
+
+### Acceptance Tests (Definition of Done for S0)
+- `pytest -q` includes new tests: `test_feature_descriptors.py`, `test_audit_diff_masking.py`, `test_tool_descriptor_schema.py` — all pass.
+- Playwright chat spec updated (`chat.bus.stream.spec.ts`) confirming bus event reception and absence of direct EventSource usage in component layer.
+- `curl /v1/features` returns descriptor objects with required fields; optional fields omitted are defaulted server-side.
+- Metrics endpoint exposes all newly added counters/histograms with non-zero increments after smoke.
+
+### Risk Snapshot & Mitigations
+| Risk | Impact | Mitigation |
+|------|--------|-----------|
+| Over-complex initial registry | Slows adoption | Keep write path out of scope; minimal read-only facade |
+| UI regressions from refactor | Streaming breakage | Progressive enhancement: keep old path until bus confirms events; feature flag `UI_BUS_ENABLED` for rollback |
+| Metric cardinality explosion | Prometheus performance | Limit per-feature env fallback label lifetime (< 1 week); remove counter post-migration |
+
+### Next Sprint (Preview – S1)
+- Enable dynamic feature state transitions with audit events.
+- Implement SSE bus adoption for scheduler & memory dashboard panels (remove residual polling).
+- Add embedding recall API design doc + stub endpoint returning fixed slice for contract tests.
+
+### Governance Reminder
+All code added MUST reference this sprint section in PR description. Any schema evolution (FeatureDescriptor or tool descriptor) requires simultaneous doc + JSONSchema diff update here.
+
+— End Sprint Kickoff (2025-11-11)
+
+
