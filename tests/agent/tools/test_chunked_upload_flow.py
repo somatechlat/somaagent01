@@ -10,11 +10,11 @@ from services.gateway.main import app
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_chunked_upload_end_to_end(monkeypatch, tmp_path):
-    dsn = os.getenv("TEST_POSTGRES_DSN") or os.getenv("POSTGRES_DSN")
+    dsn = os.getenv("TEST_SA01_DB_DSN") or os.getenv("SA01_DB_DSN")
     if not dsn:
-        pytest.skip("POSTGRES_DSN not set for integration")
+        pytest.skip("SA01_DB_DSN not set for integration")
 
-    monkeypatch.setenv("POSTGRES_DSN", dsn)
+    monkeypatch.setenv("SA01_DB_DSN", dsn)
     client = TestClient(app)
 
     session_id = str(uuid.uuid4())
@@ -63,11 +63,11 @@ async def test_chunked_upload_end_to_end(monkeypatch, tmp_path):
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_single_upload_progress(monkeypatch):
-    dsn = os.getenv("TEST_POSTGRES_DSN") or os.getenv("POSTGRES_DSN")
+    dsn = os.getenv("TEST_SA01_DB_DSN") or os.getenv("SA01_DB_DSN")
     if not dsn:
-        pytest.skip("POSTGRES_DSN not set for integration")
+        pytest.skip("SA01_DB_DSN not set for integration")
 
-    monkeypatch.setenv("POSTGRES_DSN", dsn)
+    monkeypatch.setenv("SA01_DB_DSN", dsn)
     client = TestClient(app)
     session_id = str(uuid.uuid4())
     small = b"hello world" * 1000

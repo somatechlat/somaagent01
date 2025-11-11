@@ -7,7 +7,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_embedding_cache_basic(monkeypatch):
-    monkeypatch.setenv("ENABLE_EMBED_ON_INGEST", "true")
+    monkeypatch.setenv("SA01_ENABLE_EMBEDDINGS_INGEST", "true")
     monkeypatch.setenv("EMBEDDINGS_TEST_MODE", "true")
     # First call populates cache
     v1 = await maybe_embed("hello world")
@@ -17,7 +17,7 @@ async def test_embedding_cache_basic(monkeypatch):
 
 
 async def test_embedding_cache_eviction(monkeypatch):
-    monkeypatch.setenv("ENABLE_EMBED_ON_INGEST", "true")
+    monkeypatch.setenv("SA01_ENABLE_EMBEDDINGS_INGEST", "true")
     monkeypatch.setenv("EMBEDDINGS_TEST_MODE", "true")
     cache = EmbeddingCache(capacity=3)
     texts = ["t1", "t2", "t3", "t4"]

@@ -2,9 +2,8 @@
 
 This store is used by the Gateway to persist provider-specific API secrets that
 conversation workers can retrieve securely at runtime. Secrets are encrypted at
-rest using a symmetric key provided via the `GATEWAY_ENC_KEY` environment
-variable (Fernet-compatible urlsafe base64-encoded 32-byte key). If the key is
-missing, the Gateway refuses to store credentials.
+rest using a symmetric key retrieved from `SA01_CRYPTO_FERNET_KEY` (urlsafe
+base64 32-byte).
 """
 
 from __future__ import annotations
@@ -34,12 +33,9 @@ class LlmCredentialsStore:
     def _load_fernet(self) -> Fernet:
         from services.common import runtime_config as cfg
 
-        # Use the canonical Fernet key environment variable defined in SA01Settings.
         key = cfg.env("SA01_CRYPTO_FERNET_KEY")
         if not key:
-            raise RuntimeError(
-                "SA01_CRYPTO_FERNET_KEY is required to store LLM credentials securely"
-            )
+            raise RuntimeError("Missing SA01_CRYPTO_FERNET_KEY; credential encryption disabled")
         # Accept raw urlsafe base64 key or plaintext that should be base64 encoded
         try:
             # Validate length by constructing Fernet
@@ -51,7 +47,7 @@ class LlmCredentialsStore:
                 return Fernet(k)
             except Exception as exc:
                 raise RuntimeError(
-                    "Invalid GATEWAY_ENC_KEY; must be 32-byte urlsafe base64"
+                    "Invalid Fernet key; must be 32-byte urlsafe base64"
                 ) from exc
 
     async def set(self, provider: str, secret: str) -> None:

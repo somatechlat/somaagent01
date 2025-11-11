@@ -1,8 +1,8 @@
 """Read-only SettingsRegistry aggregates settings domains for snapshot use.
 
-This centralizes retrieval of UI settings document, dialogue model profile, and
-credential presence so routes can build consistent UI sections without duplicating
-overlay logic or failing hard when backing stores are unavailable.
+Centralizes retrieval of UI settings document, dialogue model profile, and
+credential presence so routes can build consistent UI sections without
+duplicating overlay logic or importing non-existent modules.
 """
 
 from __future__ import annotations
@@ -10,11 +10,20 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict, List, Optional
 
+# Canonical helpers live under python.helpers and services.common
+from python.helpers.settings import (
+    convert_out as ui_convert_out,
+    get_default_settings as ui_get_defaults,
+)
+from services.common import runtime_config as cfg
+from services.common.model_profiles import ModelProfileStore
+from services.common.ui_settings_store import UiSettingsStore
+from services.common.llm_credentials_store import LlmCredentialsStore
+
 
 class SettingsRegistry:
     def __init__(self) -> None:
-        # Use local import to avoid circular dependency
-        from services.ui.settings import convert_out as ui_convert_out, get_default_settings as ui_get_defaults
+        # Cache UI defaults converted for overlay surface
         self._cached_defaults = ui_convert_out(ui_get_defaults())
 
     async def snapshot_sections(self) -> List[Dict[str, Any]]:
@@ -31,20 +40,14 @@ class SettingsRegistry:
 
         # Load agent settings doc
         try:
-            # Use local import to avoid circular dependency
-            from integrations.repositories import get_ui_settings_store
-            agent_cfg = await get_ui_settings_store().get()
+            agent_cfg = await UiSettingsStore().get()
         except Exception:
             agent_cfg = {}
 
-        # Load model profile
-        # Use local import to avoid circular dependency
-        from services.common.settings import settings as APP_SETTINGS
-        deployment = APP_SETTINGS.deployment_mode
+        # Load model profile (dialogue) for current deployment mode
+        deployment = cfg.deployment_mode()
         try:
-            # Use local import to avoid circular dependency
-            from services.common.model_profile import profile_store as PROFILE_STORE
-            profile = await PROFILE_STORE.get("dialogue", deployment)
+            profile = await ModelProfileStore.from_settings(cfg.settings()).get("dialogue", deployment)
         except Exception:
             profile = None
 
@@ -147,10 +150,7 @@ class SettingsRegistry:
 
         # Credentials presence overlay
         try:
-            # Use local import to avoid circular dependency
-            from integrations.repositories import get_llm_credentials_store
-            creds_store = get_llm_credentials_store()
-            providers_with_keys = set(await creds_store.list_providers())
+            providers_with_keys = set(await LlmCredentialsStore().list_providers())
         except Exception:
             providers_with_keys = set()
         if providers_with_keys:

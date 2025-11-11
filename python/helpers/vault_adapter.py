@@ -10,7 +10,7 @@ class VaultAdapter:
     @classmethod
     def cipher(cls) -> Fernet:
         if cls._cipher is None:
-            key = os.getenv("GATEWAY_ENC_KEY") or Fernet.generate_key()
+            key = os.getenv("SA01_CRYPTO_FERNET_KEY") or Fernet.generate_key()
             cls._cipher = Fernet(key.encode() if isinstance(key, str) else key)
         return cls._cipher
 

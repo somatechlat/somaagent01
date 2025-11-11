@@ -31,18 +31,18 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["python3", "-m", "services.tool_executor.main"]
           env:
-            - name: POSTGRES_DSN
-              value: {{ .Values.env.POSTGRES_DSN | quote }}
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: {{ .Values.env.KAFKA_BOOTSTRAP_SERVERS | quote }}
-            - name: REDIS_URL
-              value: {{ .Values.env.REDIS_URL | quote }}
-            - name: SOMA_BASE_URL
-              value: {{ .Values.env.SOMA_BASE_URL | quote }}
-            - name: SOMA_NAMESPACE
-              value: {{ .Values.env.SOMA_NAMESPACE | quote }}
-            - name: MEMORY_WAL_TOPIC
-              value: {{ .Values.env.MEMORY_WAL_TOPIC | quote }}
+            - name: SA01_DB_DSN
+              value: {{ .Values.env.SA01_DB_DSN | default .Values.env.SA01_DB_DSN | quote }}
+            - name: SA01_KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.env.SA01_KAFKA_BOOTSTRAP_SERVERS | default .Values.env.SA01_KAFKA_BOOTSTRAP_SERVERS | quote }}
+            - name: SA01_REDIS_URL
+              value: {{ .Values.env.SA01_REDIS_URL | default .Values.env.SA01_REDIS_URL | quote }}
+            - name: SA01_SA01_SOMA_BASE_URL
+              value: {{ .Values.env.SA01_SA01_SOMA_BASE_URL | default .Values.env.SA01_SOMA_BASE_URL | quote }}
+            - name: SA01_SA01_SOMA_NAMESPACE
+              value: {{ .Values.env.SA01_SA01_SOMA_NAMESPACE | default .Values.env.SA01_SOMA_NAMESPACE | quote }}
+            - name: SA01_MEMORY_WAL_TOPIC
+              value: {{ .Values.env.SA01_MEMORY_WAL_TOPIC | default .Values.env.SA01_MEMORY_WAL_TOPIC | quote }}
             - name: TOOL_EXECUTOR_METRICS_PORT
               value: {{ .Values.services.toolExecutor.metricsPort | quote }}
             - name: JWT_ENABLED

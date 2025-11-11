@@ -22,7 +22,7 @@ from python.integrations.soma_client import (
 )
 
 # Base URL for the Somabrain service – configurable via env var.
-_BASE_URL = os.getenv("SOMA_BASE_URL", "http://host.docker.internal:9696")
+_BASE_URL = os.getenv("SA01_SA01_SOMA_BASE_URL") or os.getenv("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696")
 
 # ---------------------------------------------------------------------------
 # Helper functions – each performs a single HTTP call and raises ``SomaClientError``

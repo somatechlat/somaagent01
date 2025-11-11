@@ -24,7 +24,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     def __init__(self, app, evaluate_url: str | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        base = os.getenv("SOMA_BASE_URL", "http://host.docker.internal:9696").rstrip("/")
+        base = os.getenv("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696").rstrip("/")
         self.evaluate_url = (
             evaluate_url or os.getenv("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )

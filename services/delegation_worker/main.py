@@ -31,7 +31,7 @@ class DelegationWorker:
         self.bus = KafkaEventBus(
             KafkaSettings(
                 bootstrap_servers=cfg.env(
-                    "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
+                    "SA01_KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
                 ),
                 security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),

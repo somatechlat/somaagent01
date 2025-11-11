@@ -19,14 +19,14 @@ class AlwaysFailSoma:
 
 @pytest.mark.asyncio
 async def test_gateway_enqueues_memory_on_soma_failure(monkeypatch):
-    dsn = os.getenv("TEST_POSTGRES_DSN")
+    dsn = os.getenv("TEST_SA01_DB_DSN")
     if not dsn:
-        pytest.skip("TEST_POSTGRES_DSN not set; skipping integration test")
+        pytest.skip("TEST_SA01_DB_DSN not set; skipping integration test")
 
     # Configure env for write-through path
-    monkeypatch.setenv("GATEWAY_WRITE_THROUGH", "true")
-    monkeypatch.setenv("GATEWAY_WRITE_THROUGH_ASYNC", "false")
-    monkeypatch.setenv("POSTGRES_DSN", dsn)
+    monkeypatch.setenv("SA01_GATEWAY_WRITE_THROUGH", "true")
+    monkeypatch.setenv("SA01_GATEWAY_WRITE_THROUGH_ASYNC", "false")
+    monkeypatch.setenv("SA01_DB_DSN", dsn)
 
     # Ensure outbox schema exists
     store = MemoryWriteOutbox(dsn=dsn)

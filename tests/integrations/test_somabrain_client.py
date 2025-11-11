@@ -3,7 +3,7 @@
 The tests use ``respx`` to mock the underlying HTTP calls made by the client.
 They verify that:
 
-* The request URL is correctly constructed from ``SOMA_BASE_URL``.
+* The request URL is correctly constructed from ``SA01_SOMA_BASE_URL``.
 * The JSON payload is forwarded for POST requests.
 * Successful 2xx responses are parsed and returned.
 * Non‑2xx responses raise :class:`SomaClientError`.
@@ -20,13 +20,13 @@ import respx
 @pytest.fixture(autouse=True)
 def reset_env(monkeypatch):
     """Ensure a clean environment for each test."""
-    # Remove any existing SOMA_BASE_URL to avoid cross‑test contamination.
-    monkeypatch.delenv("SOMA_BASE_URL", raising=False)
+    # Remove any existing SA01_SOMA_BASE_URL to avoid cross‑test contamination.
+    monkeypatch.delenv("SA01_SOMA_BASE_URL", raising=False)
     yield
 
 
 def test_get_weights_success(monkeypatch):
-    monkeypatch.setenv("SOMA_BASE_URL", "http://example.com")
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
     with respx.mock(base_url="http://example.com") as mock:
         route = mock.get("/v1/weights").respond(json={"weights": [1, 2, 3]})
         from python.integrations.somabrain_client import get_weights
@@ -37,7 +37,7 @@ def test_get_weights_success(monkeypatch):
 
 
 def test_update_weights_success(monkeypatch):
-    monkeypatch.setenv("SOMA_BASE_URL", "http://example.com")
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
     payload = {"new": "value"}
     with respx.mock(base_url="http://example.com") as mock:
         route = mock.post("/v1/weights/update", json=payload).respond(json={"ok": True})
@@ -49,7 +49,7 @@ def test_update_weights_success(monkeypatch):
 
 
 def test_build_context_error(monkeypatch):
-    monkeypatch.setenv("SOMA_BASE_URL", "http://example.com")
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
     payload = {"foo": "bar"}
     with respx.mock(base_url="http://example.com") as mock:
         mock.post("/v1/context/build", json=payload).respond(status_code=400, json={"error": "bad"})
@@ -62,7 +62,7 @@ def test_build_context_error(monkeypatch):
 
 
 def test_get_tenant_flag_success(monkeypatch):
-    monkeypatch.setenv("SOMA_BASE_URL", "http://example.com")
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
     with respx.mock(base_url="http://example.com") as mock:
         route = mock.get("/v1/flags/tenant123/featureX").respond(json={"enabled": True})
         from python.integrations.somabrain_client import get_tenant_flag

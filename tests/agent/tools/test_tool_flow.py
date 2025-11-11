@@ -7,14 +7,14 @@ import httpx
 import pytest
 
 BASE_URL = (
-    os.getenv("GATEWAY_BASE_URL")
+    os.getenv("SA01_GATEWAY_BASE_URL")
     or os.getenv("BASE_URL")
     or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
 )
 TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
 POLL_TIMEOUT = float(os.getenv("E2E_POLL_TIMEOUT", "20"))
 POLL_INTERVAL = float(os.getenv("E2E_POLL_INTERVAL", "0.5"))
-TENANT = os.getenv("SOMA_TENANT_ID", "public")
+TENANT = os.getenv("SA01_SOMA_TENANT_ID", "public")
 EXPECT_MEMORY = os.getenv("E2E_EXPECT_MEMORY", "0") in {"1", "true", "yes"}
 
 

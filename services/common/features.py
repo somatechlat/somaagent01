@@ -71,6 +71,19 @@ def build_default_registry() -> FeatureRegistry:
 
     descriptors = [
         FeatureDescriptor(
+            key="sse_enabled",
+            description="Enable Server-Sent Events endpoints for streaming",
+            default_enabled=True,
+            profiles={"minimal": True, "standard": True, "enhanced": True, "max": True},
+            dependencies=[],
+            degrade_strategy="none",
+            cost_impact="low",
+            metrics_key="sse.enabled",
+            tags=["streaming", "ui"],
+            enabled_env_var="SA01_SSE_ENABLED",
+            stability="stable",
+        ),
+        FeatureDescriptor(
             key="embeddings_ingest",
             description="Generate vector embeddings for messages and tool outputs",
             default_enabled=True,
@@ -80,7 +93,7 @@ def build_default_registry() -> FeatureRegistry:
             cost_impact="medium",
             metrics_key="embeddings_ingest",
             tags=["performance", "memory"],
-            enabled_env_var="ENABLE_EMBED_ON_INGEST",
+            enabled_env_var="SA01_ENABLE_EMBEDDINGS_INGEST",
             stability="beta",
         ),
         FeatureDescriptor(
@@ -207,7 +220,7 @@ def build_default_registry() -> FeatureRegistry:
             degrade_strategy="manual",
             cost_impact="medium",
             tags=["llm", "routing"],
-            enabled_env_var="ESCALATION_ENABLED",
+            enabled_env_var="SA01_ENABLE_ESCALATION",
             stability="beta",
         ),
         FeatureDescriptor(
@@ -219,7 +232,7 @@ def build_default_registry() -> FeatureRegistry:
             degrade_strategy="auto",
             cost_impact="low",
             tags=["llm", "routing"],
-            enabled_env_var="ESCALATION_FALLBACK_ENABLED",
+            enabled_env_var="SA01_ENABLE_ESCALATION_FALLBACK",
             stability="experimental",
         ),
         FeatureDescriptor(
@@ -231,7 +244,7 @@ def build_default_registry() -> FeatureRegistry:
             degrade_strategy="none",
             cost_impact="low",
             tags=["security"],
-            enabled_env_var="DISABLE_FILE_SAVING",
+            enabled_env_var="SA01_FILE_SAVING_DISABLED",
             stability="stable",
         ),
         FeatureDescriptor(
@@ -243,7 +256,7 @@ def build_default_registry() -> FeatureRegistry:
             degrade_strategy="manual",
             cost_impact="high",
             tags=["audio"],
-            enabled_env_var="FEATURE_AUDIO",
+            enabled_env_var="SA01_ENABLE_AUDIO",
             stability="experimental",
         ),
         FeatureDescriptor(
@@ -255,7 +268,7 @@ def build_default_registry() -> FeatureRegistry:
             degrade_strategy="manual",
             cost_impact="high",
             tags=["automation"],
-            enabled_env_var="FEATURE_BROWSER",
+            enabled_env_var="SA01_ENABLE_BROWSER",
             stability="experimental",
         ),
     ]

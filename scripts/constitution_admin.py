@@ -5,7 +5,7 @@ Utilities to inspect the current constitution version, validate a local constitu
 and load it into SomaBrain.
 
 Environment:
-- SOMA_BASE_URL, SOMA_API_KEY, SOMA_TENANT_ID, SOMA_TENANT_HEADER, SOMA_AUTH_HEADER (optional)
+- SA01_SOMA_BASE_URL, SOMA_API_KEY, SA01_SOMA_TENANT_ID, SOMA_TENANT_HEADER, SOMA_AUTH_HEADER (optional)
 
 Usage:
   python scripts/constitution_admin.py version

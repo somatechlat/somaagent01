@@ -187,6 +187,100 @@ def env(key: str, default: Optional[str] = None) -> str:
     return val
 
 
+def db_dsn(default: Optional[str] = None) -> str:
+    """Return canonical Postgres DSN (SA01_DB_DSN) with fallback."""
+    val = env("SA01_DB_DSN")
+    if val:
+        return val
+    return default or settings().postgres_dsn
+
+
+def redis_url(default: Optional[str] = None) -> str:
+    """Return canonical Redis URL."""
+    val = env("SA01_REDIS_URL")
+    if val:
+        return val
+    return default or settings().redis_url
+
+
+def kafka_bootstrap_servers(default: Optional[str] = None) -> str:
+    """Return canonical Kafka bootstrap servers."""
+    val = env("SA01_KAFKA_BOOTSTRAP_SERVERS")
+    if val:
+        return val
+    return default or settings().kafka_bootstrap_servers
+
+
+def policy_url(default: Optional[str] = None) -> str:
+    val = env("SA01_POLICY_URL")
+    if val:
+        return val
+    return default or settings().opa_url
+
+
+def policy_decision_path(default: Optional[str] = None) -> str:
+    val = env("SA01_POLICY_DECISION_PATH")
+    if val:
+        return val
+    return default or ""
+
+
+def soma_base_url(default: Optional[str] = None) -> str:
+    val = env("SA01_SOMA_BASE_URL")
+    if val:
+        return val
+    return default or (settings().soma_base_url or "")
+
+
+def memory_wal_topic(default: Optional[str] = None) -> str:
+    val = env("SA01_MEMORY_WAL_TOPIC")
+    if val:
+        return val
+    return default or "memory.wal"
+
+
+def conversation_inbound(default: Optional[str] = None) -> str:
+    val = env("SA01_CONVERSATION_INBOUND")
+    if val:
+        return val
+    return default or "conversation.inbound"
+
+
+def conversation_outbound(default: Optional[str] = None) -> str:
+    val = env("SA01_CONVERSATION_OUTBOUND")
+    if val:
+        return val
+    return default or "conversation.outbound"
+
+
+def conversation_group(default: Optional[str] = None) -> str:
+    val = env("SA01_CONVERSATION_GROUP")
+    if val:
+        return val
+    return default or "conversation-worker"
+
+
+def tool_requests_topic(default: Optional[str] = None) -> str:
+    val = env("SA01_TOOL_REQUESTS_TOPIC")
+    if val:
+        return val
+    return default or "tool.requests"
+
+
+def tool_results_topic(default: Optional[str] = None) -> str:
+    val = env("SA01_TOOL_RESULTS_TOPIC")
+    if val:
+        return val
+    return default or "tool.results"
+
+
+def notifications_topic(default: Optional[str] = None) -> str:
+    val = env("SA01_UI_NOTIFICATIONS_TOPIC")
+    if val:
+        return val
+    return default or "ui.notifications"
+
+
 def config_snapshot() -> Optional[ConfigSnapshot]:
     """Return the current config snapshot, if registry is initialized."""
     return state().config.get() if state().config else None

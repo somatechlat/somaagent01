@@ -17,7 +17,7 @@ class RequeueStore:
         prefix: Optional[str] = None,
     ) -> None:
         # Resolve Redis URL with environment variable expansion to support values like
-        # REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
+        # SA01_REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
         from services.common import runtime_config as cfg
 
         raw_url = url or cfg.settings().redis_url or "redis://localhost:6379/0"

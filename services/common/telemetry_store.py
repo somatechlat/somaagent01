@@ -17,7 +17,7 @@ class TelemetryStore:
 
         raw_dsn = (
             dsn
-            or cfg.env("POSTGRES_DSN", "postgresql://***REMOVED***@localhost:5432/somaagent01")
+            or cfg.db_dsn("postgresql://***REMOVED***@localhost:5432/somaagent01")
             or "postgresql://***REMOVED***@localhost:5432/somaagent01"
         )
         self.dsn = os.path.expandvars(raw_dsn)

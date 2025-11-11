@@ -31,12 +31,12 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["python3", "-m", "services.memory_replicator.main"]
           env:
-            - name: POSTGRES_DSN
-              value: {{ .Values.env.POSTGRES_DSN | quote }}
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: {{ .Values.env.KAFKA_BOOTSTRAP_SERVERS | quote }}
-            - name: MEMORY_WAL_TOPIC
-              value: {{ .Values.env.MEMORY_WAL_TOPIC | quote }}
+            - name: SA01_DB_DSN
+              value: {{ .Values.env.SA01_DB_DSN | default .Values.env.SA01_DB_DSN | quote }}
+            - name: SA01_KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.env.SA01_KAFKA_BOOTSTRAP_SERVERS | default .Values.env.SA01_KAFKA_BOOTSTRAP_SERVERS | quote }}
+            - name: SA01_MEMORY_WAL_TOPIC
+              value: {{ .Values.env.SA01_MEMORY_WAL_TOPIC | default .Values.env.SA01_MEMORY_WAL_TOPIC | quote }}
             - name: REPLICATOR_METRICS_PORT
               value: {{ .Values.services.memoryReplicator.metricsPort | quote }}
             - name: PROMETHEUS_SCRAPE

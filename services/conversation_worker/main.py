@@ -193,7 +193,7 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
-        bootstrap_servers = cfg.env("KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers)
+        bootstrap_servers = cfg.env("SA01_KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers)
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
             security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -202,9 +202,18 @@ class ConversationWorker:
             sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
         self.settings = {
-            "inbound": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
-            "outbound": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
-            "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
+            "inbound": (
+                cfg.env("SA01_CONVERSATION_INBOUND")
+                or cfg.env("SA01_CONVERSATION_INBOUND", "conversation.inbound")
+            ),
+            "outbound": (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+            ),
+            "group": (
+                cfg.env("SA01_CONVERSATION_GROUP")
+                or cfg.env("SA01_CONVERSATION_GROUP", "conversation-worker")
+            ),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
@@ -214,16 +223,14 @@ class ConversationWorker:
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
-        # Prefer explicit WORKER_GATEWAY_BASE, then a generic GATEWAY_BASE_URL, then localhost host-port
-        # that matches docker-compose's forwarded port (default 20016). Last resort: the in-cluster name.
-        default_host_port = f"http://localhost:{cfg.env('GATEWAY_PORT', '20016')}"
+        # Prefer canonical SA01_* first, then legacy fallbacks, with in-cluster DNS as last resort.
         self._gateway_base = (
-            cfg.env("WORKER_GATEWAY_BASE")
+            cfg.env("SA01_GATEWAY_BASE_URL")
+            or cfg.env("WORKER_GATEWAY_BASE")
             or cfg.env("GATEWAY_BASE_URL")
-            or default_host_port
             or "http://gateway:8010"
         ).rstrip("/")
-        self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
+        self._internal_token = cfg.env("SA01_AUTH_INTERNAL_TOKEN") or cfg.env("GATEWAY_INTERNAL_TOKEN")
         if not self._internal_token:
             try:
                 LOGGER.warning(
@@ -713,7 +720,7 @@ class ConversationWorker:
                 )
             if not allow_memory:
                 return
-            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
             except Exception:
@@ -930,7 +937,7 @@ class ConversationWorker:
                 )
             if not allow_memory:
                 return
-            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
             except Exception:
@@ -987,11 +994,10 @@ class ConversationWorker:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream?mode=openai"
-        # Build overrides but omit empty strings (e.g. base_url="") while allowing 0/0.0
+        # Build overrides (worker no longer forwards base_url; Gateway normalizes provider endpoints)
         ov: dict[str, Any] = {}
         for k, v in {
             "model": slm_kwargs.get("model"),
-            "base_url": slm_kwargs.get("base_url"),
             "temperature": slm_kwargs.get("temperature"),
             "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
         }.items():
@@ -1108,7 +1114,6 @@ class ConversationWorker:
                 ov2: dict[str, Any] = {}
                 for k, v in {
                     "model": slm_kwargs.get("model"),
-                    "base_url": slm_kwargs.get("base_url"),
                     "temperature": slm_kwargs.get("temperature"),
                     "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
                 }.items():
@@ -1174,7 +1179,6 @@ class ConversationWorker:
             ov: dict[str, Any] = {}
             for k, v in {
                 "model": slm_kwargs.get("model"),
-                "base_url": slm_kwargs.get("base_url"),
                 "temperature": slm_kwargs.get("temperature"),
                 "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
             }.items():
@@ -1248,7 +1252,8 @@ class ConversationWorker:
                         }
                         try:
                             await self.publisher.publish(
-                                cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                                cfg.env("SA01_TOOL_REQUESTS_TOPIC")
+                                or cfg.env("SA01_TOOL_REQUESTS_TOPIC", "tool.requests"),
                                 event,
                                 dedupe_key=req_id,
                                 session_id=session_id,
@@ -1400,11 +1405,10 @@ class ConversationWorker:
 
         # Stream and detect tool calls
         url = f"{self._gateway_base}/v1/llm/invoke/stream?mode=openai"
-        # Build overrides and omit empty-string values (esp. base_url="")
+        # Build overrides (base_url not forwarded; Gateway resolves provider endpoint)
         ov: dict[str, Any] = {}
         for k, v in {
             "model": slm_kwargs.get("model"),
-            "base_url": slm_kwargs.get("base_url"),
             "temperature": slm_kwargs.get("temperature"),
             "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
         }.items():
@@ -1581,7 +1585,8 @@ class ConversationWorker:
                 }
                 try:
                     await self.publisher.publish(
-                        cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                        cfg.env("SA01_TOOL_REQUESTS_TOPIC")
+                        or cfg.env("SA01_TOOL_REQUESTS_TOPIC", "tool.requests"),
                         event,
                         dedupe_key=req_id,
                         session_id=session_id,
@@ -1648,19 +1653,17 @@ class ConversationWorker:
         profile = await self.profile_store.get("escalation", self.deployment_mode)
         overrides: Dict[str, Any] = {}
         if profile:
-            # Only include base_url when non-empty to avoid sending an empty string
             overrides.update(
                 {
                     "model": profile.model,
                     "temperature": profile.temperature,
                 }
             )
-            if isinstance(profile.base_url, str) and profile.base_url.strip():
-                overrides["base_url"] = profile.base_url
+            # base_url intentionally not forwarded; Gateway resolves provider endpoint
             if isinstance(profile.kwargs, dict):
                 overrides["kwargs"] = profile.kwargs
-        # Allow explicit slm_kwargs to override profile
-        for k in ("model", "base_url", "temperature", "kwargs", "metadata"):
+        # Allow explicit slm_kwargs to override profile (excluding base_url)
+        for k in ("model", "temperature", "kwargs", "metadata"):
             if k in slm_kwargs and slm_kwargs[k] is not None:
                 if k == "metadata" and overrides.get("kwargs") is None:
                     overrides["kwargs"] = slm_kwargs[k]
@@ -1928,7 +1931,7 @@ class ConversationWorker:
                         exc_info=True,
                     )
                 if allow_memory:
-                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
                     try:
                         wal_event = {
@@ -1990,7 +1993,7 @@ class ConversationWorker:
                                             **dict(enriched_metadata or {}),
                                         },
                                     }
-                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    topic = cfg.env("SA01_TOOL_REQUESTS_TOPIC") or cfg.env("SA01_TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
                                         topic,
                                         tool_event,
@@ -2042,7 +2045,7 @@ class ConversationWorker:
                                             **dict(enriched_metadata or {}),
                                         },
                                     }
-                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    topic = cfg.env("SA01_TOOL_REQUESTS_TOPIC") or cfg.env("SA01_TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
                                         topic,
                                         tool_event,
@@ -2568,7 +2571,6 @@ class ConversationWorker:
                         ov2: dict[str, Any] = {}
                         for k, v in {
                             "model": slm_kwargs.get("model"),
-                            "base_url": slm_kwargs.get("base_url"),
                             "temperature": slm_kwargs.get("temperature"),
                             "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
                         }.items():
@@ -2783,7 +2785,7 @@ class ConversationWorker:
                         exc_info=True,
                     )
                 if allow_memory:
-                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
                     try:
                         wal_event = {

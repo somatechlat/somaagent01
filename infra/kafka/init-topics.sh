@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BS="${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+BS="${SA01_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
 
 topics=(
   conversation.inbound:3

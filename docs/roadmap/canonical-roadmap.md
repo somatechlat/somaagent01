@@ -136,7 +136,7 @@ src/
 | **M5 – Test-Mode Guard** | Add `settings.testing` flag; guard background service startup. | QA Engineer | 1 d | `pytest -q` runs without external services; no “event loop” errors. |
 | **M6 – Auth & OPA Alignment** | Adjust `EnforcePolicy` to respect `settings.require_auth`. | Security Engineer | 1 d | `tests/unit/test_gateway_authorization.py` passes with expected `HTTPException`. |
 | **M7 – Documentation Overhaul** | Populate this file with diagram, layer description, and step-by-step guide. | Technical Writer | 1 d | New contributors can locate `integrations.somabrain.client` in 5 min. |
-| **M7.5 – Pixel-Perfect UI Parity** | Copy golden CSS, fonts, spacing, icons; map canonical SSE events to golden DOM structure; dual-mode Playwright suite. | Frontend + QA | 3 d | Playwright `parity.spec.ts` passes both `GATEWAY_BASE_URL` and `http://localhost:7001` modes with 1px diffs. |
+| **M7.5 – Pixel-Perfect UI Parity** | Copy golden CSS, fonts, spacing, icons; map canonical SSE events to golden DOM structure; dual-mode Playwright suite. | Frontend + QA | 3 d | Playwright `parity.spec.ts` passes both `SA01_GATEWAY_BASE_URL` and `http://localhost:7001` modes with 1px diffs. |
 | **M8 – Full Test Run & Fixes** | Run entire suite, fix residual import errors, update mocks. | QA Engineer | 2 d | **0 failures** (unit + integration tests). |
 | **M9 – CI/CD Integration** | Add lint (`ruff`), type-check (`mypy`), and startup verification. | DevOps Engineer | 1 d | GitHub Actions passes on every PR. |
 | **M10 – Release** | Tag `v0.1.0-centralised`; push to `master`. | Release Manager | 0.5 d | Release notes include “centralised integration registry”. |
@@ -196,7 +196,7 @@ src/
 Goal: architect the platform with a single public entry surface and single configuration/feature read surface. All external traffic and provider interactions pass through one gateway; all runtime decisions read from one facade.
 
 Scope of “Single Entry Surface” (Updated – delegation gateway removed 2025-11-10)
-- Public HTTP: exactly one public service — the FastAPI Gateway at `GATEWAY_BASE_URL` (canonical port `21016`), serving UI under `/ui` and APIs under `/v1/*`. The former `delegation_gateway` FastAPI app has been hard-deleted; any unique routes were either non-essential or subsumed by existing gateway capabilities.
+- Public HTTP: exactly one public service — the FastAPI Gateway at `SA01_GATEWAY_BASE_URL` (canonical port `21016`), serving UI under `/ui` and APIs under `/v1/*`. The former `delegation_gateway` FastAPI app has been hard-deleted; any unique routes were either non-essential or subsumed by existing gateway capabilities.
 - Streaming: a single SSE stream per session at `/v1/session/{id}/events` powering all real‑time updates (chat, tool, notifications, invalidations). No polling anywhere.
 - Provider mediation: LLM, tools, memory, and Somabrain calls are brokered by Gateway. Workers never hold raw provider credentials or call providers directly.
 - Configuration: one read surface via `services.common.runtime_config` (`cfg.settings()`, `cfg.flag()`, `cfg.config_*` helpers). No direct `os.getenv(` outside bootstrap/settings.
@@ -229,6 +229,99 @@ Governance
 
 *This canonical roadmap supersedes any prior partial roadmaps and should be the only living document describing the overall architecture.*
 
+---
+
+# Architecture Consolidation Update — November 2025
+
+This section captures the repo‑wide centralization sweep performed on November 11, 2025, and merges concrete implementation details into the canonical roadmap. It documents what was unified, what remains to be finished, and how we will deprecate legacy paths. All changes below are implemented unless noted as “Planned”.
+
+## Executive Summary
+- Feature flags: one registry and a single point of resolution (`cfg.flag`). Added canonical `sse_enabled` flag with `SA01_SSE_ENABLED` override; legacy `GATEWAY_DISABLE_SSE` is honored only as a fallback.
+- Streaming: two supported endpoints remain for compatibility; both backed by the same SSE plumbing. Consolidation guidance and deprecation plan included below.
+- Masking: unified streaming chunk masking to use the same rule engine as Gateway (services.common.masking), removing divergence with SecretsManager-based streaming filters.
+- Secrets/crypto: canonicalized Fernet key to `SA01_CRYPTO_FERNET_KEY`; deployments must now provide this key for credential encryption.
+- Settings Registry: fixed imports and dependencies so a single “snapshot” overlay path exists for UI sections; removed reliance on non‑existent modules.
+- Repositories: corrected imports to canonical `services.common.*` stores to avoid duplicate or broken repository layers.
+- Compose envs: added `SA01_*` canonical variables to docker‑compose for local dev parity with preflight checks; legacy variables remain temporarily for compatibility.
+
+## Implemented Changes (files and effects)
+- Feature registry and SSE enablement
+  - services/common/features.py: added descriptor `key: "sse_enabled"` with env override `SA01_SSE_ENABLED` (default true).
+  - services/gateway/main.py: `_sse_disabled()` now prefers `cfg.flag("sse_enabled")`; legacy `GATEWAY_DISABLE_SSE` read only as fallback. UI `/v1/runtime-config` reflects `sse_enabled`.
+
+- LLM credentials encryption key (canonicalization)
+- services/common/llm_credentials_store.py: now requires `SA01_CRYPTO_FERNET_KEY` and fails fast when the key is missing.
+
+- Settings registry made canonical
+  - services/common/settings_registry.py: imports use `python.helpers.settings` for defaults, `services.common.ui_settings_store` for persisted config, `services.common.model_profiles` for profile overlay, and `services.common.llm_credentials_store` for provider presence. Removes broken imports and duplicate overlay logic.
+
+- Streaming masking unified
+  - python/extensions/response_stream_chunk/_10_mask_stream.py
+  - python/extensions/reasoning_stream_chunk/_10_mask_stream.py
+  Both now call `services.common.masking.mask_text` for chunks and full text, aligning behavior with Gateway SSE masking rules.
+
+- Repository singletons aligned
+  - integrations/repositories.py: switched all imports to `services.common.*` to avoid legacy `lib.common.*` paths and drift.
+
+- Docker Compose canonical envs added (dev)
+  - docker-compose.yaml: added `SA01_DEPLOYMENT_MODE=DEV`, `SA01_DB_DSN`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_REDIS_URL`, `SA01_POLICY_URL`, `SA01_POLICY_DECISION_PATH`, `SA01_AUTH_REQUIRED`, `SA01_AUTH_INTERNAL_TOKEN`, `SA01_CRYPTO_FERNET_KEY`, `SA01_SSE_ENABLED`. Kept legacy variables during deprecation window.
+
+## Single Sources of Truth (authoritative decisions)
+- Flags and modes
+  - Feature flags are defined in code in `services/common/features.py` and resolved via `services/common/runtime_config.flag()` only.
+  - Canonical deployment mode is returned by `services/common/runtime_config.deployment_mode()` (LOCAL|PROD). No new mode strings may be introduced without updating this roadmap section.
+  - Unused file `conf/features.yaml` is deprecated (see “Deprecations and Removals”).
+
+- Streaming surface (SSE)
+  - Supported endpoints:
+    - GET `/v1/session/{session_id}/events` (SSE always; UI default)
+    - GET `/v1/sessions/{session_id}/events?stream=true` (JSON list by default; SSE when `stream=true`; used by tests/clients)
+  - Both are backed by the same consumer logic and masking. If we converge to a single path, the plural route remains the long‑term canonical path for JSON list semantics; the singular route is earmarked for eventual deprecation once clients have migrated.
+
+- Masking
+  - All stream chunk masking and error masking must go through `services.common.masking`. Rule sources are `SA01_MASK_RULES` or `SA01_MASK_RULES_FILE`, with defaults. SecretsManager’s streaming filter may be re‑implemented as an adapter on top of the same rules if prefix buffering is required.
+
+- Settings and repositories
+  - UI settings overlays sourced exclusively through `services/common/settings_registry.py`. Gateway endpoints should not duplicate overlay code; any divergence must be resolved by enhancing the registry.
+  - Repository accessors resolve stores from `services.common.*` only; `integrations/repositories.py` is a convenience wrapper, not an alternate implementation.
+
+- Secrets and credentials
+- Encrypt provider credentials with `SA01_CRYPTO_FERNET_KEY` (urlsafe base64 32-byte required).
+
+## Deprecations and Removals
+- Legacy environment variables
+  - Immediate deprecation: prefer `SA01_*` variables everywhere. Preflight already flags legacy usage inside containers. Compose retains legacy vars for transition only.
+  - Removal window: remove legacy envs from docker‑compose.yaml after one release cycle once CI green across environments.
+
+- Streaming endpoint convergence
+  - Plan: keep both endpoints for two releases. Add a deprecation notice header (`Deprecation: true; Sunset: <date>`) on the singular path after clients migrate. Update UI to prefer the plural path with `stream=true` when feasible.
+
+- Unused feature YAML
+  - `conf/features.yaml` is declared deprecated. Either remove it, or make FeatureRegistry optionally load descriptors from that file with a strict schema and checksum metric. Until then, descriptors in code are authoritative.
+
+## Required Follow‑ups (tracked tasks)
+- Replace remaining direct env toggles in gateway (e.g., rate limit envs) with `cfg.flag` or a centralized `cfg.env` wrapper, then add a repo test that rejects new direct `os.getenv` in business logic.
+- Remove duplicate UI sections overlay logic from `services/gateway/main.py` and rely solely on `SettingsRegistry`.
+- Add a streaming‑aware adapter over `services.common.masking` if we need forward‑buffering for partial secrets during chunking.
+- Write docs snippet in user/deployment manuals explaining the two SSE endpoints and the migration plan.
+- Decide on conf/features.yaml fate and remove it or wire it in; update tests accordingly.
+
+## Acceptance Criteria (post‑consolidation)
+- `rg -n "os.getenv\("` returns zero matches outside these modules: `services/common/runtime_config.py`, `services/common/settings_*`, `python/helpers/dotenv.py`, test scaffolding.
+- `/v1/runtime-config` surfaces `sse_enabled`, deployment mode, and checksum when dynamic config is active.
+- `/v1/feature-flags` merged tenant view matches `cfg.flag` for sampled features (sequence, semantic_recall, sse_enabled, content_masking, token_metrics).
+- Both SSE endpoints deliver identical stream payload semantics; masking and error coercion are identical.
+- CI has a guard preventing new FastAPI apps outside gateway and forbids re‑introducing direct provider calls from workers.
+
+## Verifications and How‑Tos
+- SSE health: metrics include `gateway_sse_connections` and `sse_messages_sent_total`; heartbeats sent every `SSE_HEARTBEAT_SECONDS` (default 20s) via Gateway, and UI monitors stale/offline states.
+- Credentials encryption: set `SA01_CRYPTO_FERNET_KEY` (urlsafe base64 32‑byte) for dev and prod; legacy keys are no longer supported.
+- Compose parity: local dev now bootstraps canonical SA01_* envs. Preflight in container validates presence and forbids legacy inside container processes.
+
+---
+
+By policy, any change that adds a new configuration surface, streaming endpoint, or secrets path must update this section first with a deprecation/migration plan and confirm that single‑source decisions remain intact.
+
 ## 7.2️⃣ Deployment Modes Consolidation (LOCAL vs PROD)
 
  We collapse legacy / inconsistent deployment identifiers (DEV, STAGING, TEST, PRODUCTION, LOCAL) into two canonical modes used uniformly across configuration, model profiles, feature gating, and operational behaviour. Environment variable canonicalization completed: settings now source only `SA01_ENV`, `SA01_DB_DSN`, `SA01_REDIS_URL`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_POLICY_URL`, metrics host/port, and OTLP through `SA01_*` taxonomy.
@@ -250,7 +343,7 @@ Central Accessors
 Behavioural Guarantees
 - Feature flags and profile resolution depend only on canonical mode; introducing new raw mode strings requires roadmap update first.
 - LOCAL enables rapid iteration: lower pool sizes while maintaining fail-closed policy posture.
-- PROD enforces: policy checks fail-closed, auth required (GATEWAY_REQUIRE_AUTH=true), secrets encrypted (mandatory `GATEWAY_ENC_KEY`), no bypass flags.
+- PROD enforces: policy checks fail-closed, auth required (GATEWAY_REQUIRE_AUTH=true), secrets encrypted (mandatory `SA01_CRYPTO_FERNET_KEY`), no bypass flags.
 
 Deprecated / To Remove
 - Direct environment reads for deployment mode outside initialization/telemetry (replace with `deployment_mode()` accessor).
@@ -406,15 +499,15 @@ Decision (explicit)
 - Canonical Gateway host port: 21016 (the UI must be reachable at http://localhost:21016/ui/index.html).
 - Canonical environment variables (reuse existing names):
   - `GATEWAY_PORT` (numeric, default 21016)
-  - `GATEWAY_BASE_URL` (full URL, e.g. http://localhost:21016)
+  - `SA01_GATEWAY_BASE_URL` (full URL, e.g. http://localhost:21016)
   - `WEB_UI_BASE_URL` (UI entry, e.g. http://localhost:21016/ui)
 
 Rationale
-- Many tests, scripts and docs contained hard-coded values (21016, 20016, 8010, and literal http://127.0.0.1 URLs). This causes runtime confusion. The project already uses `GATEWAY_PORT` and `GATEWAY_BASE_URL` in places; we will standardize on them and prefer `WEB_UI_BASE_URL` for UI consumers.
+- Many tests, scripts and docs contained hard-coded values (21016, 20016, 8010, and literal http://127.0.0.1 URLs). This causes runtime confusion. The project already uses `GATEWAY_PORT` and `SA01_GATEWAY_BASE_URL` in places; we will standardize on them and prefer `WEB_UI_BASE_URL` for UI consumers.
 
 Immediate plan (no new systems, minimal edits)
-1. Ensure `.env` / `.env.example` contains the canonical variables (set `GATEWAY_PORT=21016`, `GATEWAY_BASE_URL=http://localhost:21016`, `WEB_UI_BASE_URL=http://localhost:21016/ui`).
-2. Replace hard-coded URL fallbacks in tests, scripts, and webui test configs to prefer `WEB_UI_BASE_URL` → `GATEWAY_BASE_URL` → derived `http://localhost:${GATEWAY_PORT}`. Exact files to update include (representative):
+1. Ensure `.env` / `.env.example` contains the canonical variables (set `GATEWAY_PORT=21016`, `SA01_GATEWAY_BASE_URL=http://localhost:21016`, `WEB_UI_BASE_URL=http://localhost:21016/ui`).
+2. Replace hard-coded URL fallbacks in tests, scripts, and webui test configs to prefer `WEB_UI_BASE_URL` → `SA01_GATEWAY_BASE_URL` → derived `http://localhost:${GATEWAY_PORT}`. Exact files to update include (representative):
    - `tests/e2e/*.py`, `tests/playwright/*.py`, `tests/ui/*`
    - `webui/playwright.config.ts` and `webui/tests/*.spec.ts`
    - `scripts/e2e_quick.py`, `scripts/ui-smoke.sh`, `scripts/check_stack.sh`
@@ -464,7 +557,7 @@ Core services (verified under `services/`):
 
 Foundational infra:
 - Kafka (event backbone), Redis (state/cache), Postgres (durable store), Vault/Env (secrets), OpenFGA (authz), OPA (policy), OpenTelemetry (traces/metrics/logs), Prometheus (metrics), Grafana/Tempo/Loki (observability).
-- SomaBrain reachable at `http://host.docker.internal:9696` via `SOMA_BASE_URL` (Compose).
+- SomaBrain reachable at `http://host.docker.internal:9696` via `SA01_SOMA_BASE_URL` (Compose).
 
 Centralized configuration and tools:
 - Gateway hosts a central Tool Catalog and runtime config. It provides:
@@ -527,7 +620,7 @@ Logs:
 
 ## SomaBrain Integration (Perfect Memory and Recall)
 
-- Write-through path: Worker persists messages locally and calls SomaBrain over `SOMA_BASE_URL` with retries and idempotency.
+- Write-through path: Worker persists messages locally and calls SomaBrain over `SA01_SOMA_BASE_URL` with retries and idempotency.
 - Outbox/WAL: if SomaBrain temporarily unavailable, retry with exponential backoff; replicas reconcile via `memory_replicator`.
 - Recall: Provide `recall(query|ids|context_window)` call surfaces in Gateway; Worker may fetch recall context pre-LLM invoke.
 - Feedback: Store user feedback signals (helpful/not helpful/tag) and send to SomaBrain for learning.
@@ -645,7 +738,7 @@ Phase 5 — E2E and CI
 
 ## Concrete Next Steps (Backlog)
 
-1) Update docker-compose and docs to `SOMA_BASE_URL=http://host.docker.internal:9696`; add a test to enforce alignment.
+1) Update docker-compose and docs to `SA01_SOMA_BASE_URL=http://host.docker.internal:9696`; add a test to enforce alignment.
 2) Implement internal attachment fetch-by-ID and migrate Worker and `document_ingest` to use it; adjust UI previews.
 3) Add Tool Catalog tables/APIs in Gateway and service-side ETag/TTL fetch with fail-closed behavior.
 4) Enforce OPA gates across conversation/tool/memory flows with clear deny errors and audits; expose WAL lag in health.
@@ -673,7 +766,7 @@ Why this is needed
 
 Design decisions (summary)
 - Gateway owns: ModelProfileStore reads/writes, `_normalize_llm_base_url` rules, provider detection, and credential lookup. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send `base_url`.
-- Centralized Settings: UI saves all agent/model settings and provider secrets via `/v1/ui/settings/sections` (single writer path). Provider secrets are encrypted (mandatory `GATEWAY_ENC_KEY`) and surfaced only as presence + `updated_at` via `/v1/ui/settings/credentials`.
+- Centralized Settings: UI saves all agent/model settings and provider secrets via `/v1/ui/settings/sections` (single writer path). Provider secrets are encrypted (mandatory `SA01_CRYPTO_FERNET_KEY`) and surfaced only as presence + `updated_at` via `/v1/ui/settings/credentials`.
 - Gateway exposes `/v1/model-profiles` (CRUD), `/v1/ui/settings/*` (settings reads/writes), and `/v1/llm/test` for profile connectivity validation.
 - Legacy credentials endpoints (`/v1/llm/credentials`, `/v1/llm/credentials/{provider}`) removed; callers must use Settings sections save flow.
 - Callers cannot override `base_url`; the Gateway always uses the profile’s value.
@@ -1111,12 +1204,12 @@ This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles t
 - No duplicate or competing implementations of the same concern (feature flags, Kafka producer, config normalization, health endpoints).
 - No direct environment flag checks outside the central Feature Registry and Settings.
 - No deprecated endpoints, polling loops, or hidden fallbacks; SSE‑only real‑time; one canonical API surface.
-- No ambiguous integration boundaries: all SomaBrain interactions occur via its HTTP API at `SOMA_BASE_URL`.
+- No ambiguous integration boundaries: all SomaBrain interactions occur via its HTTP API at `SA01_SOMA_BASE_URL`.
 
 ### Somabrain Integration Boundary (final)
 - Boundary: HTTP only. Do not import Somabrain internal Python modules in‑process; use the HTTP service surface consistently.
 - Required endpoints (contract):
-  - Health: `GET {SOMA_BASE_URL}/healthz` (primary), `GET /health` accepted as legacy alias.
+  - Health: `GET {SA01_SOMA_BASE_URL}/healthz` (primary), `GET /health` accepted as legacy alias.
   - Learning/Weights: `GET /v1/weights`, `POST /v1/weights/update`.
   - Context Builder: `POST /v1/context/build`.
   - Tenant Feature Flags: `GET /v1/flags/{tenant}/{flag}`.
@@ -1140,7 +1233,7 @@ This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles t
 
 Sprint L0 — Policy & Health Hardening (3 days)
 - Replace OPA stub with HTTP policy adapter calling Somabrain policy endpoint; wire into Gateway middleware; measure with `auth_requests_total`, `auth_duration_seconds`.
-- Standardize health: Gateway serves `/healthz`; probes Somabrain `{SOMA_BASE_URL}/healthz` (fallback `/health`); UI banner uses `/v1/health` aggregate with Somabrain status folded in.
+- Standardize health: Gateway serves `/healthz`; probes Somabrain `{SA01_SOMA_BASE_URL}/healthz` (fallback `/health`); UI banner uses `/v1/health` aggregate with Somabrain status folded in.
 - Acceptance: Real denies produce 403 with structured reason; `/healthz` green only when Somabrain healthy; tests cover allow/deny and degrade.
 
 Sprint L1 — Feature Flags Unification (3 days)
@@ -1196,7 +1289,7 @@ This summary captures the clarified objective: SomaAgent01 fully integrates Soma
 ### Core Understanding
 1. Somabrain is the authoritative service for: learning (weights/reward updates), context building, recall, tenant feature flags, policy enforcement, and memory graph operations.
 2. SomaAgent01 remains authoritative for: durable message persistence (Postgres + WAL/outbox), event publishing (Kafka with standardized headers), session orchestration, tool execution sandbox, UI delivery, and composite observability.
-3. Interaction mode: strictly HTTP (`SOMA_BASE_URL`) — no in‑process imports of Somabrain internals to preserve service boundary and upgrade independence.
+3. Interaction mode: strictly HTTP (`SA01_SOMA_BASE_URL`) — no in‑process imports of Somabrain internals to preserve service boundary and upgrade independence.
 
 ### Retained Subsystems (Not Removed)
 - Postgres durability (sessions, outbox, WAL, audit, settings).
@@ -1390,5 +1483,3 @@ This section formally initiates parallel sprint execution across the previously 
 All code added MUST reference this sprint section in PR description. Any schema evolution (FeatureDescriptor or tool descriptor) requires simultaneous doc + JSONSchema diff update here.
 
 — End Sprint Kickoff (2025-11-11)
-
-

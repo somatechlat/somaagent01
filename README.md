@@ -41,7 +41,7 @@ Notes:
 
 ### Enable live LLM chat via Groq (DEV)
 
-Use the Settings UI (preferred) or the helper script to persist your Groq API key and dialogue model profile in the Gateway. The Gateway securely stores LLM credentials in Redis (encrypted with `GATEWAY_ENC_KEY`) and injects them into centralized `/v1/llm/invoke` calls used by the conversation worker.
+Use the Settings UI (preferred) or the helper script to persist your Groq API key and dialogue model profile in the Gateway. The Gateway securely stores LLM credentials in Redis (encrypted with `SA01_CRYPTO_FERNET_KEY`) and injects them into centralized `/v1/llm/invoke` calls used by the conversation worker.
 
 - Option A – through the UI:
     - Open the app at http://localhost:${GATEWAY_PORT:-21016}/ui

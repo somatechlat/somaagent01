@@ -31,16 +31,16 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["python3", "-m", "uvicorn", "services.delegation_gateway.main:app", "--host", "0.0.0.0", "--port", "{{ .Values.services.delegationGateway.port }}"]
           env:
-            - name: POSTGRES_DSN
-              value: {{ .Values.env.POSTGRES_DSN | quote }}
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: {{ .Values.env.KAFKA_BOOTSTRAP_SERVERS | quote }}
-            - name: REDIS_URL
-              value: {{ .Values.env.REDIS_URL | quote }}
-            - name: SOMA_BASE_URL
-              value: {{ .Values.env.SOMA_BASE_URL | quote }}
-            - name: SOMA_NAMESPACE
-              value: {{ .Values.env.SOMA_NAMESPACE | quote }}
+            - name: SA01_DB_DSN
+              value: {{ .Values.env.SA01_DB_DSN | quote }}
+            - name: SA01_KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.env.SA01_KAFKA_BOOTSTRAP_SERVERS | quote }}
+            - name: SA01_REDIS_URL
+              value: {{ .Values.env.SA01_REDIS_URL | quote }}
+            - name: SA01_SOMA_BASE_URL
+              value: {{ .Values.env.SA01_SOMA_BASE_URL | quote }}
+            - name: SA01_SOMA_NAMESPACE
+              value: {{ .Values.env.SA01_SOMA_NAMESPACE | quote }}
             - name: JWT_ENABLED
               value: {{ .Values.global.JWT_ENABLED | quote }}
             - name: OPA_ENABLED

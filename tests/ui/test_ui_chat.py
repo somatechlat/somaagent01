@@ -12,7 +12,7 @@ except Exception:
 
 pytestmark = pytest.mark.e2e
 
-BASE_URL = os.getenv("GATEWAY_BASE_URL", "http://localhost:8010").rstrip("/")
+BASE_URL = os.getenv("SA01_GATEWAY_BASE_URL", "http://localhost:8010").rstrip("/")
 
 
 async def _health_ok() -> bool:
