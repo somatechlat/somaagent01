@@ -249,9 +249,11 @@ import json as _json
 from services.common.config_registry import ConfigRegistry
 from services.common.readiness import readiness_summary
 from services.gateway.health import router as health_router
+from services.gateway.features import router as features_router
 
 # Include health endpoints
 app.include_router(health_router)
+app.include_router(features_router)
 
 
 # Lightweight top-level readiness/liveness aliases for K8s probes
@@ -758,16 +760,7 @@ LLM_INVOKE_RESULTS = _get_or_create_counter(
 )
 
 # Feature flag remote fetch metrics
-FLAG_REMOTE_REQUESTS_TOTAL = _get_or_create_counter(
-    "gateway_flag_remote_requests_total",
-    "Remote feature-flag fetch results",
-    labelnames=("status",),  # ok|error
-)
-FLAG_REMOTE_LATENCY_SECONDS = _get_or_create_histogram(
-    "gateway_flag_remote_latency_seconds",
-    "Latency of remote feature-flag fetches",
-    labelnames=(),
-)
+# Feature flag remote fetch metrics moved to services.gateway.features
 
 # Token usage counters – track input and output token volumes per provider/model
 GATEWAY_TOKENS_TOTAL = _get_or_create_counter(
@@ -2309,111 +2302,17 @@ async def get_runtime_config() -> dict[str, Any]:
     }
 
 
-@app.get("/v1/features")
-async def get_features() -> JSONResponse:
-    """Return feature profile and per-feature states.
-
-    Provides a stable JSON surface for UI diagnostics and automation. Uses the
-    central FeatureRegistry; falls back gracefully if unavailable.
-    """
-    try:
-        from services.common.features import build_default_registry
-
-        reg = build_default_registry()
-        _update_feature_metrics()
-        items = []
-        for d in reg.describe():
-            items.append(
-                {
-                    "key": d.key,
-                    "state": reg.state(d.key),
-                    "enabled": reg.is_enabled(d.key),
-                    "profile_default": d.profiles.get(reg.profile, d.default_enabled),
-                    "dependencies": d.dependencies,
-                    "stability": d.stability,
-                    "tags": d.tags,
-                }
-            )
-        return JSONResponse({"profile": reg.profile, "features": items})
-    except Exception as exc:
-        return JSONResponse({"error": "registry_unavailable", "detail": str(exc)}, status_code=500)
+## /v1/features endpoint moved to services.gateway.features router
 
 
 # ---------------------------------------------------------------------------
 # Merged feature flags endpoint (registry + tenant remote overrides)
 # ---------------------------------------------------------------------------
 
-_FLAG_CACHE: dict[str, dict[str, Any]] = {}
-from services.common import runtime_config as cfg  # centralized env facade
-
-_FLAG_CACHE_TTL_SECONDS = int(cfg.env("FEATURE_FLAGS_TTL_SECONDS", "30") or "30")
+## feature flags cache moved to services.gateway.features router
 
 
-def _flag_cache_key(tenant_id: str, profile: str) -> str:
-    return f"{tenant_id}:{profile}"
-
-
-def _now_seconds() -> float:
-    return time.time()
-
-
-@app.get("/v1/feature-flags")
-async def list_feature_flags(request: Request) -> JSONResponse:
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
-    reg = build_default_registry()
-    profile = reg.profile
-    cache_key = _flag_cache_key(tenant_id, profile)
-    cached = _FLAG_CACHE.get(cache_key)
-    if cached and cached.get("expires_at", 0) > _now_seconds():
-        return JSONResponse(cached["payload"])  # serve cached merged view
-
-    descriptors = reg.describe()
-
-    async def _fetch_remote(desc) -> tuple[str, Any]:
-        start = time.time()
-        try:
-            remote_enabled = get_tenant_flag(tenant_id, desc.key)
-            FLAG_REMOTE_REQUESTS_TOTAL.labels("ok").inc()
-            FLAG_REMOTE_LATENCY_SECONDS.observe(time.time() - start)
-            return desc.key, bool(remote_enabled)
-        except Exception:
-            FLAG_REMOTE_REQUESTS_TOTAL.labels("error").inc()
-            FLAG_REMOTE_LATENCY_SECONDS.observe(time.time() - start)
-            return desc.key, None  # treat failures as no override
-
-    remote_results: dict[str, Any] = {}
-    for d in descriptors:
-        k, v = await _fetch_remote(d)
-        remote_results[k] = v
-
-    merged: dict[str, dict[str, Any]] = {}
-    for d in descriptors:
-        local_on = reg.is_enabled(d.key)
-        remote_override = remote_results.get(d.key)
-        effective = local_on if remote_override is None else bool(remote_override)
-        merged[d.key] = {
-            "local": local_on,
-            "remote": remote_override,
-            "effective": effective,
-            "source": "remote" if remote_override is not None else "local",
-        }
-
-    payload = {
-        "profile": profile,
-        "tenant_id": tenant_id,
-        "ttl_seconds": _FLAG_CACHE_TTL_SECONDS,
-        "flags": merged,
-    }
-    # Back-compat: expose commonly used simplified flags at top-level for UI/tests
-    try:
-        payload["realtime_mode"] = bool(reg.is_enabled("sequence"))
-    except Exception:
-        payload["realtime_mode"] = False
-    _FLAG_CACHE[cache_key] = {
-        "expires_at": _now_seconds() + _FLAG_CACHE_TTL_SECONDS,
-        "payload": payload,
-    }
-    return JSONResponse(payload)
+## /v1/feature-flags endpoint moved to services.gateway.features router
 
 
 class SemanticRecallQuery(BaseModel):
@@ -2835,7 +2734,9 @@ def _oidc_client() -> dict[str, Any]:
     )
     client_id = cfg.env("OIDC_CLIENT_ID", cfg.env("GOOGLE_CLIENT_ID", "")) or ""
     client_secret = cfg.env("OIDC_CLIENT_SECRET", cfg.env("GOOGLE_CLIENT_SECRET", "")) or ""
-    base = APP_SETTINGS.gateway_base_url or f"http://localhost:{APP_SETTINGS.gateway_port}"  # canonical surface
+    base = (
+        APP_SETTINGS.gateway_base_url or f"http://localhost:{APP_SETTINGS.gateway_port}"
+    )  # canonical surface
     redirect_uri = cfg.env("OIDC_REDIRECT_URI") or (base.rstrip("/") + "/v1/auth/callback")
     scopes = cfg.env("OIDC_SCOPES", "openid email profile") or "openid email profile"
     provider = cfg.env("OIDC_PROVIDER", "google") or "google"
