@@ -1,4 +1,5 @@
 import os
+from services.common import runtime_config as cfg
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional
 
@@ -41,16 +42,11 @@ class FeatureRegistry:
         if key in self._state_cache:
             return self._state_cache[key]
         desc = self._descriptors[key]
-        # Env override (migration compatibility)
-        if desc.enabled_env_var:
-            raw = os.getenv(desc.enabled_env_var)
-            if raw is not None:
-                if raw.lower() in {"1", "true", "yes", "on"}:
-                    self._state_cache[key] = "on"
-                    return "on"
-                else:
-                    self._state_cache[key] = "disabled"
-                    return "disabled"
+        # NOTE: Direct environment overrides have been removed as part of the
+        # "hard‑delete legacy" effort. Feature flag values are now resolved
+        # exclusively via the central `runtime_config.flag()` call, which may
+        # apply tenant‑specific overrides from Somabrain. The old env‑var path is
+        # therefore eliminated to guarantee a single source of truth.
         # Profile default
         enabled = desc.profiles.get(self._profile, desc.default_enabled)
         # Dependencies: if any dependency disabled, mark disabled
@@ -63,7 +59,8 @@ class FeatureRegistry:
 
 
 def build_default_registry() -> FeatureRegistry:
-    profile = os.getenv("SA01_FEATURE_PROFILE", "enhanced").lower()
+    # Use the central runtime_config.env helper for consistency.
+    profile = cfg.env("SA01_FEATURE_PROFILE", "enhanced").lower()
     if profile not in {"minimal", "standard", "enhanced", "max"}:
         profile = "enhanced"
 
