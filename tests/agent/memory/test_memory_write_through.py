@@ -6,11 +6,11 @@ from typing import Any, Dict, List
 import httpx
 import pytest
 
-BASE_URL = os.getenv("GATEWAY_BASE_URL", os.getenv("BASE_URL", "http://localhost:21016"))
+BASE_URL = os.getenv("SA01_GATEWAY_BASE_URL", os.getenv("BASE_URL", "http://localhost:21016"))
 TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
 POLL_TIMEOUT = float(os.getenv("E2E_POLL_TIMEOUT", "30"))
 POLL_INTERVAL = float(os.getenv("E2E_POLL_INTERVAL", "0.5"))
-TENANT = os.getenv("SOMA_TENANT_ID", "public")
+TENANT = os.getenv("SA01_SOMA_TENANT_ID", "public")
 
 
 @pytest.mark.e2e
@@ -36,7 +36,7 @@ def test_chat_message_persists_to_somabrain() -> None:
         features = (cfg.json() or {}).get("features", {})
         if not bool(features.get("write_through")):
             pytest.skip(
-                "Write-through to SomaBrain is disabled. Enable GATEWAY_WRITE_THROUGH=1 to run this proof test."
+                "Write-through to SomaBrain is disabled. Enable SA01_GATEWAY_WRITE_THROUGH=1 to run this proof test."
             )
 
         # Check health for memory replicator; if degraded/down, xfail with guidance

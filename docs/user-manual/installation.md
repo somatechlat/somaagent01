@@ -36,19 +36,19 @@ The Makefile auto-creates a minimal `.env`. For custom configuration:
 ```bash
 # Gateway
 GATEWAY_PORT=21016
-GATEWAY_BASE_URL=http://localhost:21016
+SA01_GATEWAY_BASE_URL=http://localhost:21016
 WEB_UI_BASE_URL=http://localhost:21016/ui
 
 # Encryption key for LLM credentials (Fernet urlsafe base64)
-GATEWAY_ENC_KEY=O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=
+SA01_CRYPTO_FERNET_KEY=O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=
 
 # Internal token for service-to-service calls
-GATEWAY_INTERNAL_TOKEN=dev-internal-token
+SA01_AUTH_INTERNAL_TOKEN=dev-internal-token
 
 # SomaBrain
-SOMA_BASE_URL=http://host.docker.internal:9696
-SOMA_TENANT_ID=public
-SOMA_NAMESPACE=somabrain_ns:public
+SA01_SOMA_BASE_URL=http://host.docker.internal:9696
+SA01_SOMA_TENANT_ID=public
+SA01_SOMA_NAMESPACE=somabrain_ns:public
 
 # Kafka
 KAFKA_PORT=21000
@@ -209,7 +209,7 @@ Ensure SomaBrain is running on port 9696:
 curl http://localhost:9696/health
 ```
 
-If not running, start SomaBrain separately or adjust `SOMA_BASE_URL`.
+If not running, start SomaBrain separately or adjust `SA01_SOMA_BASE_URL`.
 
 ## Next Steps
 

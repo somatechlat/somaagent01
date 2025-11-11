@@ -15,7 +15,7 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
   - User message ingestion (`POST /v1/session/message`)
   - SSE streaming (`GET /v1/session/{session_id}/events`)
   - Settings management (UI-driven, encrypted in Redis)
-  - LLM credential storage (encrypted with `GATEWAY_ENC_KEY`)
+  - LLM credential storage (encrypted with `SA01_CRYPTO_FERNET_KEY`)
   - Write-through to SomaBrain
   - Rate limiting, JWT auth, OPA/OpenFGA policy enforcement
 
@@ -110,7 +110,7 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 
 - **Authentication**: JWT (cookie or Bearer token)
 - **Authorization**: OPA policy + OpenFGA tenant access
-- **Secrets**: Encrypted in Redis with Fernet (`GATEWAY_ENC_KEY`)
+-- **Secrets**: Encrypted in Redis with Fernet (`SA01_CRYPTO_FERNET_KEY`)
 - **Rate Limiting**: Redis-based fixed-window (configurable)
 - **Audit**: All actions logged to `audit_log` table
 

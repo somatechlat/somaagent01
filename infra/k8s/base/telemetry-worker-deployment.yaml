@@ -31,9 +31,9 @@ spec:
               value: INFO
             - name: TELEMETRY_DIRECT_WRITE
               value: "false"
-            - name: KAFKA_BOOTSTRAP_SERVERS
+            - name: SA01_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
-            - name: POSTGRES_DSN
+            - name: SA01_DB_DSN
               valueFrom:
                 secretKeyRef:
                   name: telemetry-postgres

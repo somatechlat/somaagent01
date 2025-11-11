@@ -77,7 +77,7 @@ async def maybe_embed(text: str) -> list[float] | None:
     """Optionally compute an embedding for a single text.
 
     Behavior:
-    - If ENABLE_EMBED_ON_INGEST is not enabled, returns None (feature disabled).
+    - If SA01_ENABLE_EMBEDDINGS_INGEST is not enabled (flag off), returns None.
     - If enabled and text is empty/whitespace, returns None.
     - If enabled but provider is misconfigured (e.g., missing key), raises error (fail-fast).
     - Respects EMBEDDINGS_MAX_CHARS limit before sending to provider.

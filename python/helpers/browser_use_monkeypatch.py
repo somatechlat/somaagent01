@@ -9,15 +9,8 @@ try:
 
     _FEATURE_BROWSER_ENABLED = bool(_cfg.flag("browser_support"))
 except Exception:
-    # Fallback when runtime_config not available (early tooling import)
-    import os as _os
-
-    _FEATURE_BROWSER_ENABLED = _os.getenv("FEATURE_BROWSER", "false").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    # No legacy env fallback – treat as disabled when cfg unavailable
+    _FEATURE_BROWSER_ENABLED = False
 
 
 def _feature_enabled() -> bool:
@@ -199,10 +192,10 @@ if _feature_enabled():
             "browser_use library is required for production web automation. "
             "Install with: pip install browser-use"
         ) from exc
-else:  # lightweight developer fallback
+else:  # lightweight developer stub
 
     class ChatGoogle:  # type: ignore
         def _fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
             return schema
 
-    LOGGER.info("browser_use not loaded – FEATURE_BROWSER disabled")
+    LOGGER.info("browser_use not loaded – browser_support feature disabled")

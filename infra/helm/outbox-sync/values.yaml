@@ -18,8 +18,8 @@ metrics:
   port: 9415
   host: 0.0.0.0
 env:
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+  SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SA01_DB_DSN: postgresql://soma:soma@postgres:5432/somaagent01
   OUTBOX_SYNC_BATCH_SIZE: "200"
   OUTBOX_SYNC_INTERVAL_SECONDS: "1.0"
   OUTBOX_SYNC_MAX_RETRIES: "8"

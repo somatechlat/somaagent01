@@ -69,8 +69,8 @@ class TestCanonicalSseRoutes:
     @pytest.mark.asyncio
     async def test_sse_session_events_no_mock(self):
         """Test SSE endpoint for session events with real Postgres."""
-        if not os.getenv("POSTGRES_DSN"):
-            pytest.skip("POSTGRES_DSN not set; skipping real SSE session events test")
+        if not os.getenv("SA01_DB_DSN"):
+            pytest.skip("SA01_DB_DSN not set; skipping real SSE session events test")
         session_id = str(uuid.uuid4())
 
         try:

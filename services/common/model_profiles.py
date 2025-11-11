@@ -28,13 +28,13 @@ class ModelProfile:
 
 class ModelProfileStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Align DSN resolution with other stores: prefer POSTGRES_DSN env override
+        # Align DSN resolution with other stores: prefer SA01_DB_DSN env override
         # (set by docker-compose) over any baked settings. Fall back to provided
         # dsn or a localhost dev default.
         from services.common import runtime_config as cfg
 
         raw_dsn = cfg.env(
-            "POSTGRES_DSN",
+            "SA01_DB_DSN",
             dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
         )
         self.dsn = os.path.expandvars(raw_dsn)
@@ -42,11 +42,11 @@ class ModelProfileStore:
 
     @classmethod
     def from_settings(cls, settings: BaseServiceSettings) -> "ModelProfileStore":
-        # Respect the same POSTGRES_DSN env override here too to avoid mismatches
-        # when SA01_POSTGRES_DSN is set in .env but docker provides POSTGRES_DSN.
+        # Respect the same SA01_DB_DSN env override here too to avoid mismatches
+        # when SA01_DB_DSN is set in .env but docker provides SA01_DB_DSN.
         from services.common import runtime_config as cfg
 
-        return cls(dsn=cfg.env("POSTGRES_DSN", settings.postgres_dsn))
+        return cls(dsn=cfg.db_dsn(settings.postgres_dsn))
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

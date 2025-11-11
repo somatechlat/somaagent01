@@ -18,7 +18,7 @@ GATEWAY_BASE = "http://localhost:21016"
 
 @pytest_asyncio.fixture()
 async def pg_pool() -> AsyncIterator[asyncpg.Pool]:
-    dsn = os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+    dsn = os.getenv("SA01_DB_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
     try:
         pool = await asyncpg.create_pool(dsn)
     except Exception as e:

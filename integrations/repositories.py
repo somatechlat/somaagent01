@@ -1,25 +1,25 @@
 """
 Centralized repository singleton layer for all data stores and repositories.
 
-This module provides singleton access to all database stores and repositories,
-following the same pattern as integrations/tool_catalog.py to avoid circular imports.
+This module provides singleton access to all database stores and repositories.
+Imports are aligned with services.common.* to avoid mismatched legacy paths.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
-# Import all store classes
-from lib.common.attachments_store import AttachmentsStore
-from lib.common.audit_store import _AuditStore
-from lib.common.api_key_store import ApiKeyStore
-from lib.common.dlq_store import DLQStore
-from lib.common.export_job_store import ExportJobStore
-from lib.common.llm_credentials_store import LlmCredentialsStore
-from lib.common.memory_replica_store import MemoryReplicaStore
-from lib.common.notifications_store import NotificationsStore
-from lib.common.postgres_session_store import PostgresSessionStore
-from lib.common.ui_settings_store import UiSettingsStore
+# Import all store classes from canonical locations
+from services.common.attachments_store import AttachmentsStore
+from services.common.audit_store import AuditStore as _AuditStore, from_env as _audit_store_from_env
+from services.common.api_key_store import ApiKeyStore
+from services.common.dlq_store import DLQStore
+from services.common.export_job_store import ExportJobStore
+from services.common.llm_credentials_store import LlmCredentialsStore
+from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.notifications_store import NotificationsStore
+from services.common.session_repository import PostgresSessionStore
+from services.common.ui_settings_store import UiSettingsStore
 
 
 class RepositoryManager:
@@ -44,9 +44,12 @@ class RepositoryManager:
         return self._attachments_store
 
     def get_audit_store(self) -> _AuditStore:
-        """Get singleton instance of AuditStore."""
+        """Get singleton instance of AuditStore.
+
+        Respects AUDIT_STORE_MODE and SA01_DB_DSN via services.common.audit_store.from_env().
+        """
         if self._audit_store is None:
-            self._audit_store = _AuditStore()
+            self._audit_store = _audit_store_from_env()
         return self._audit_store
 
     def get_api_key_store(self) -> ApiKeyStore:

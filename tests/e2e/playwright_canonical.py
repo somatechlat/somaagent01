@@ -18,7 +18,7 @@ class TestCanonicalBackendE2E:
     @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for testing."""
-        return os.getenv("GATEWAY_BASE_URL", "http://localhost:21016")
+        return os.getenv("SA01_GATEWAY_BASE_URL", "http://localhost:21016")
 
     @pytest.fixture(scope="session")
     def mode(self):
@@ -209,7 +209,7 @@ class TestCanonicalBackendDualMode:
             browser = await p.chromium.launch(headless=(browser_mode == "headless"))
             page = await browser.new_page()
 
-            base_url = os.getenv("GATEWAY_BASE_URL", "http://localhost:21016")
+            base_url = os.getenv("SA01_GATEWAY_BASE_URL", "http://localhost:21016")
             response = await page.goto(f"{base_url}/health/live")
 
             assert response.status == 200
@@ -221,7 +221,7 @@ class TestEnvironmentSetup:
 
     async def test_environment_ready(self):
         """Verify environment is ready for testing."""
-        required_env = ["GATEWAY_BASE_URL", "POSTGRES_DSN", "KAFKA_BOOTSTRAP_SERVERS"]
+        required_env = ["SA01_GATEWAY_BASE_URL", "SA01_DB_DSN", "SA01_KAFKA_BOOTSTRAP_SERVERS"]
 
         missing_vars = [var for var in required_env if not os.getenv(var)]
 
@@ -230,7 +230,7 @@ class TestEnvironmentSetup:
 
     async def test_services_running(self):
         """Test that all required services are running."""
-        base_url = os.getenv("GATEWAY_BASE_URL", "http://localhost:21016")
+        base_url = os.getenv("SA01_GATEWAY_BASE_URL", "http://localhost:21016")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)

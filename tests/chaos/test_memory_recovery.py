@@ -68,8 +68,8 @@ class ChaosSimulator:
         start_time = time.time()
 
         # Temporarily break database connection
-        original_dsn = os.getenv("POSTGRES_DSN")
-        os.environ["POSTGRES_DSN"] = "postgresql://invalid:invalid@localhost:5432/invalid"
+        original_dsn = os.getenv("SA01_DB_DSN")
+        os.environ["SA01_DB_DSN"] = "postgresql://invalid:invalid@localhost:5432/invalid"
 
         try:
             # Attempt operations that should fail
@@ -82,7 +82,7 @@ class ChaosSimulator:
             await asyncio.sleep(duration)
 
             # Restore connection
-            os.environ["POSTGRES_DSN"] = original_dsn
+            os.environ["SA01_DB_DSN"] = original_dsn
 
             # Check recovery
             health = await self.outbox.get_health_metrics()
@@ -95,7 +95,7 @@ class ChaosSimulator:
                 "health": health,
             }
         finally:
-            os.environ["POSTGRES_DSN"] = original_dsn
+            os.environ["SA01_DB_DSN"] = original_dsn
 
     async def verify_memory_consistency(self, session_id: str) -> Dict[str, Any]:
         """Verify memory consistency after chaos."""

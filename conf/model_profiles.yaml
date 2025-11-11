@@ -19,6 +19,14 @@ LOCAL:
       model: "gpt-4o-mini"
       base_url: "https://api.openai.com/v1"
       temperature: 0.4
+    - role: "dialogue"
+      model: "gpt-4o-mini"
+      base_url: "https://api.openai.com/v1"
+      temperature: 0.2
+    - role: "escalation"
+      model: "gpt-4o-mini"
+      base_url: "https://api.openai.com/v1"
+      temperature: 0.2
 TEST:
   router:
     base_url: "http://router:8010"

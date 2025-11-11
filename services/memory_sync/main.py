@@ -63,10 +63,10 @@ class MemorySyncWorker:
     def __init__(self) -> None:
         from services.common import runtime_config as cfg
 
-        self.store = MemoryWriteOutbox(dsn=cfg.env("POSTGRES_DSN"))
+        self.store = MemoryWriteOutbox(dsn=cfg.db_dsn())
         self.bus = KafkaEventBus(_kafka_settings())
         # Durable publisher requires an OutboxStore for reliability
-        self.outbox = OutboxStore(dsn=cfg.env("POSTGRES_DSN"))
+        self.outbox = OutboxStore(dsn=cfg.db_dsn())
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.soma = SomaClient.get()
         self.batch_size = _env_int("MEMORY_SYNC_BATCH_SIZE", 100)
@@ -177,7 +177,7 @@ class MemorySyncWorker:
         try:
             from services.common import runtime_config as cfg
 
-            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
             wal_event = {
                 "type": "memory.write",
                 "role": payload.get("role"),

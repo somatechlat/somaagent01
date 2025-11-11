@@ -95,8 +95,8 @@ jobs:
 
       - name: Run canonical backend tests
         env:
-          POSTGRES_DSN: postgresql://soma:soma@localhost:5432/somaagent01_test
-          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          SA01_DB_DSN: postgresql://soma:soma@localhost:5432/somaagent01_test
+          SA01_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
           GATEWAY_PORT: 21016
           POSTGRES_PORT: 5432
         run: |
@@ -104,8 +104,8 @@ jobs:
 
       - name: Run SSE streaming tests
         env:
-          POSTGRES_DSN: postgresql://soma:soma@localhost:5432/somaagent01_test
-          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          SA01_DB_DSN: postgresql://soma:soma@localhost:5432/somaagent01_test
+          SA01_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
         run: |
           pytest tests/test_llm_integration.py -v --cov-append
 
@@ -150,7 +150,7 @@ jobs:
 
       - name: Run integration tests
         env:
-          POSTGRES_DSN: postgresql://soma:soma@localhost:5432/somaagent01_test
+          SA01_DB_DSN: postgresql://soma:soma@localhost:5432/somaagent01_test
           GATEWAY_INTERNAL_TOKEN: test-token-ci
         run: |
           pytest tests/test_llm_integration.py -v

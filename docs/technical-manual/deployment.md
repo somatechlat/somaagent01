@@ -27,32 +27,33 @@ helm install soma-stack infra/helm/soma-stack
 ### Required Variables
 
 ```bash
-# Gateway
+## Gateway
 GATEWAY_PORT=21016
-GATEWAY_ENC_KEY=<fernet-key>  # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-GATEWAY_INTERNAL_TOKEN=<secure-token>
-GATEWAY_REQUIRE_AUTH=true
+SA01_GATEWAY_BASE_URL=http://localhost:21016
+SA01_CRYPTO_FERNET_KEY=<fernet-key>  # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+SA01_AUTH_INTERNAL_TOKEN=<secure-token>
+SA01_AUTH_REQUIRED=true
 
-# Kafka
-KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+## Kafka
+SA01_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
-# Redis
-REDIS_URL=redis://redis:6379/0
+## Redis
+SA01_REDIS_URL=redis://redis:6379/0
 
-# PostgreSQL
-POSTGRES_DSN=postgresql://soma:soma@postgres:5432/somaagent01
+## PostgreSQL
+SA01_DB_DSN=postgresql://soma:soma@postgres:5432/somaagent01
 
-# SomaBrain
-SOMA_BASE_URL=http://somabrain:9696
-SOMA_TENANT_ID=production
-SOMA_NAMESPACE=somabrain_ns:production
+## SomaBrain
+SA01_SA01_SOMA_BASE_URL=http://somabrain:9696
+SA01_SA01_SOMA_TENANT_ID=production
+SA01_SA01_SOMA_NAMESPACE=somabrain_ns:production
 
-# OPA
-OPA_URL=http://opa:8181
+## OPA
+SA01_POLICY_URL=http://opa:8181
 
-# Observability
-GATEWAY_METRICS_PORT=8000
-OTLP_ENDPOINT=http://otel-collector:4317
+## Observability
+SA01_METRICS_PORT=8000
+SA01_OTLP_ENDPOINT=http://otel-collector:4317
 ```
 
 ### Optional Variables
@@ -84,7 +85,7 @@ services:
     image: somaagent01:latest
     environment:
       GATEWAY_REQUIRE_AUTH: "true"
-      GATEWAY_ENC_KEY: ${GATEWAY_ENC_KEY}
+      SA01_CRYPTO_FERNET_KEY: ${SA01_CRYPTO_FERNET_KEY}
     deploy:
       replicas: 3
       resources:
@@ -105,8 +106,8 @@ kubectl create namespace somaagent01
 
 ```bash
 kubectl create secret generic gateway-secrets \
-  --from-literal=enc-key=${GATEWAY_ENC_KEY} \
-  --from-literal=internal-token=${GATEWAY_INTERNAL_TOKEN} \
+  --from-literal=enc-key=${SA01_CRYPTO_FERNET_KEY} \
+  --from-literal=internal-token=${SA01_AUTH_INTERNAL_TOKEN} \
   -n somaagent01
 ```
 

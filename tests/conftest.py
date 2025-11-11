@@ -32,7 +32,7 @@ if RUN_INTEGRATION:
         """Spin up Kafka via testcontainers and expose its bootstrap server."""
 
         with KafkaContainer() as container:
-            os.environ["KAFKA_BOOTSTRAP_SERVERS"] = container.get_bootstrap_server()
+            os.environ["SA01_KAFKA_BOOTSTRAP_SERVERS"] = container.get_bootstrap_server()
             yield container
 
 
@@ -40,7 +40,7 @@ if RUN_INTEGRATION:
 
     @pytest.fixture(scope="session")
     def redis_container() -> "RedisContainer":
-        """Spin up Redis and export REDIS_URL for the application."""
+        """Spin up Redis and export SA01_REDIS_URL for the application."""
 
         with RedisContainer() as container:
             if hasattr(container, "get_connection_url"):
@@ -49,7 +49,7 @@ if RUN_INTEGRATION:
                 host = container.get_container_host_ip()
                 port = container.get_exposed_port(6379)
                 connection_url = f"redis://{host}:{port}/0"
-            os.environ["REDIS_URL"] = connection_url
+            os.environ["SA01_REDIS_URL"] = connection_url
             yield container
 
 
@@ -60,7 +60,7 @@ if RUN_INTEGRATION:
         """Provision Postgres for integration tests."""
 
         with PostgresContainer("postgres:16-alpine") as container:
-            os.environ["POSTGRES_DSN"] = container.get_connection_url()
+            os.environ["SA01_DB_DSN"] = container.get_connection_url()
             yield container
 
 
@@ -81,7 +81,7 @@ if RUN_INTEGRATION:
 
         import redis.asyncio as redis_lib
 
-        client = redis_lib.from_url(os.environ["REDIS_URL"])
+        client = redis_lib.from_url(os.environ["SA01_REDIS_URL"])
         await client.flushall()
         try:
             yield client
@@ -97,7 +97,7 @@ if RUN_INTEGRATION:
 
         import asyncpg
 
-        conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
+        conn = await asyncpg.connect(os.environ["SA01_DB_DSN"])
         try:
             for table in ("session_events", "model_profiles", "delegation_tasks"):
                 try:

@@ -54,7 +54,7 @@ async def wait_for_event(
 ) -> Dict[str, Any]:
     """Consume Kafka events until one matches ``predicate`` or timeout expires."""
 
-    bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+    bootstrap = os.getenv("SA01_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
     group_id = f"test-consumer-{uuid.uuid4()}"
     consumer = AIOKafkaConsumer(
         topic,

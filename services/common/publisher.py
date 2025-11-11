@@ -89,7 +89,11 @@ class DurablePublisher:
         try:
             from services.common import runtime_config as cfg
 
-            timeout_s = float(cfg.env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0") or "2.0")
+            timeout_s = float(
+                cfg.env("SA01_KAFKA_PUBLISH_TIMEOUT_SECONDS")
+                or cfg.env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
+                or "2.0"
+            )
         except Exception:
             timeout_s = 2.0
         # Compute unified headers for Kafka and (if needed) for outbox persistence

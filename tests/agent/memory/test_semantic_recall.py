@@ -7,7 +7,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_semantic_recall_basic(monkeypatch):
-    monkeypatch.setenv("ENABLE_EMBED_ON_INGEST", "true")
+    monkeypatch.setenv("SA01_ENABLE_EMBEDDINGS_INGEST", "true")
     monkeypatch.setenv("EMBEDDINGS_TEST_MODE", "true")
     monkeypatch.setenv("SA01_FEATURE_PROFILE", "max")  # ensure semantic_recall enabled by profile
     # Build index manually (feature gating tested separately)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram
 
@@ -78,54 +78,45 @@ def _now_seconds() -> float:
 
 
 @router.get("/v1/feature-flags")
-async def list_feature_flags(request: Request) -> JSONResponse:
+async def list_feature_flags(request: Request, tenant: str | None = Query(default=None)) -> JSONResponse:
+    """Return remote-only feature flags for a tenant.
+
+    No local fallback is applied. If remote lookup fails, respond with 502.
+    """
     from services.common.features import build_default_registry
     from python.integrations.somabrain_client import get_tenant_flag
 
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
+    tenant_id = (tenant or "").strip() or request.headers.get("X-Tenant-Id") or request.headers.get("x-tenant-id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="missing_tenant")
+
     reg = build_default_registry()
     profile = reg.profile
     cache_key = _flag_cache_key(tenant_id, profile)
     cached = _FLAG_CACHE.get(cache_key)
     if cached and cached.get("expires_at", 0) > _now_seconds():
-        return JSONResponse(cached["payload"])  # serve cached merged view
+        return JSONResponse(cached["payload"])  # serve cached view
 
     descriptors = reg.describe()
 
-    async def _fetch_remote(desc) -> tuple[str, Any]:
+    flags: Dict[str, bool] = {}
+    for d in descriptors:
         start = time.time()
         try:
-            remote_enabled = get_tenant_flag(tenant_id, desc.key)
+            remote_enabled = bool(get_tenant_flag(tenant_id, d.key))
             _flag_remote_requests_total.labels("ok").inc()
             _flag_remote_latency_seconds.observe(time.time() - start)
-            return desc.key, bool(remote_enabled)
-        except Exception:
+            flags[d.key] = remote_enabled
+        except Exception as exc:
             _flag_remote_requests_total.labels("error").inc()
             _flag_remote_latency_seconds.observe(time.time() - start)
-            return desc.key, None  # treat failures as no override
-
-    remote_results: Dict[str, Any] = {}
-    for d in descriptors:
-        k, v = await _fetch_remote(d)
-        remote_results[k] = v
-
-    merged: Dict[str, Dict[str, Any]] = {}
-    for d in descriptors:
-        local_on = reg.is_enabled(d.key)
-        remote_override = remote_results.get(d.key)
-        effective = local_on if remote_override is None else bool(remote_override)
-        merged[d.key] = {
-            "local": local_on,
-            "remote": remote_override,
-            "effective": effective,
-            "source": "remote" if remote_override is not None else "local",
-        }
+            raise HTTPException(status_code=502, detail=f"flag_lookup_failed:{d.key}") from exc
 
     payload = {
         "tenant": tenant_id,
         "profile": profile,
         "ttl_seconds": _FLAG_CACHE_TTL_SECONDS,
-        "flags": merged,
+        "flags": flags,
         "timestamp": time.time(),
     }
     _FLAG_CACHE[cache_key] = {"expires_at": _now_seconds() + _FLAG_CACHE_TTL_SECONDS, "payload": payload}

@@ -22,7 +22,7 @@ import httpx
 BASE = (
     sys.argv[1]
     if len(sys.argv) > 1
-    else os.environ.get("GATEWAY_BASE_URL")
+    else os.environ.get("SA01_GATEWAY_BASE_URL")
     or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT', '21016')}"
 )
 

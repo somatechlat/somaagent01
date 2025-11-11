@@ -22,10 +22,10 @@ from kafka.admin import KafkaAdminClient, NewPartitions
 def get_admin_client() -> KafkaAdminClient:
     """Create and return a ``KafkaAdminClient``.
 
-    The bootstrap servers are taken from the ``KAFKA_BOOTSTRAP_SERVERS``
+    The bootstrap servers are taken from the ``SA01_KAFKA_BOOTSTRAP_SERVERS``
     environment variable, defaulting to ``localhost:9092``.
     """
-    bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    bootstrap = os.getenv("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     return KafkaAdminClient(bootstrap_servers=bootstrap)
 
 

@@ -29,10 +29,7 @@ class ToolCatalogStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         from services.common import runtime_config as cfg
 
-        raw_dsn = cfg.env(
-            "POSTGRES_DSN",
-            dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
-        ) or (dsn or "postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = cfg.db_dsn(dsn or settings.postgres_dsn if (dsn or settings) else None)
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -40,7 +37,7 @@ class ToolCatalogStore:
     def from_settings(cls, settings: BaseServiceSettings) -> "ToolCatalogStore":
         from services.common import runtime_config as cfg
 
-        return cls(dsn=cfg.env("POSTGRES_DSN", settings.postgres_dsn) or settings.postgres_dsn)
+        return cls(dsn=cfg.db_dsn(settings.postgres_dsn))
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

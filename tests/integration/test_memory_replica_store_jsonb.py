@@ -16,7 +16,7 @@ async def test_memory_replica_payload_is_dict():
     Skips gracefully if Postgres is unreachable in this environment.
     """
     # Use DSN resolution from store by default
-    store = MemoryReplicaStore(dsn=os.getenv("POSTGRES_DSN"))
+    store = MemoryReplicaStore(dsn=os.getenv("SA01_DB_DSN"))
 
     # Try to connect; skip if cannot
     try:
@@ -31,7 +31,7 @@ async def test_memory_replica_payload_is_dict():
         "type": "memory.write",
         "role": "tool",
         "session_id": session_id,
-        "tenant": os.getenv("SOMA_TENANT_ID", "public"),
+        "tenant": os.getenv("SA01_SOMA_TENANT_ID", "public"),
         "payload": {
             "id": event_id,
             "type": "unit_test_payload",

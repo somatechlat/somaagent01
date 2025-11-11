@@ -187,7 +187,7 @@ class OutboxSyncWorker:
         """
         from services.common import runtime_config as cfg
 
-        base = cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+        base = cfg.soma_base_url().rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
         try:

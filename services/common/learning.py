@@ -46,8 +46,8 @@ def _client() -> httpx.AsyncClient:
 
 
 def _base_url() -> str:
-    # Derive from runtime config; gateway already sets SOMA_BASE_URL
-    return cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+    # Derive from runtime config; gateway already sets SA01_SOMA_BASE_URL
+    return cfg.soma_base_url().rstrip("/")
 
 
 async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:

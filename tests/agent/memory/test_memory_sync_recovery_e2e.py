@@ -20,9 +20,9 @@ async def test_memory_sync_drains_after_outage_e2e():
         pg_url = pg.get_connection_url()
         bootstrap = kafka.get_bootstrap_server()
 
-        os.environ["POSTGRES_DSN"] = pg_url
-        os.environ["KAFKA_BOOTSTRAP_SERVERS"] = bootstrap
-        os.environ["MEMORY_WAL_TOPIC"] = "memory.wal"
+        os.environ["SA01_DB_DSN"] = pg_url
+        os.environ["SA01_KAFKA_BOOTSTRAP_SERVERS"] = bootstrap
+        os.environ["SA01_MEMORY_WAL_TOPIC"] = "memory.wal"
         os.environ["MEMORY_SYNC_METRICS_PORT"] = "0"
 
         # Outbox schema and seed one item

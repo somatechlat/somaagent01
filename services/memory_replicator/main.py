@@ -76,7 +76,7 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
         bootstrap_servers=cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
+            "SA01_KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
         ),
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
@@ -90,7 +90,7 @@ class MemoryReplicator:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+        self.wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
         self.group_id = cfg.env("MEMORY_REPLICATOR_GROUP", "memory-replicator")
         self.replica = MemoryReplicaStore(dsn=SERVICE_SETTINGS.postgres_dsn)
         self.dlq_store = DLQStore(dsn=SERVICE_SETTINGS.postgres_dsn)

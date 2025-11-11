@@ -5,35 +5,23 @@ x-agent-env: &agent-env
   # Prioritize mounted repo code over baked image to enable live development
   PYTHONPATH: "/git/agent-zero:/app"
   LOG_LEVEL: INFO
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  REDIS_URL: redis://redis:6379/0
-  POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-  SA01_POSTGRES_DSN: postgresql://soma:soma@postgres:5432/somaagent01
-  POLICY_BASE_URL: http://opa:8181
-  POLICY_DATA_PATH: /v1/data/soma/policy/allow
-  OPA_URL: http://opa:8181
-  CONVERSATION_INBOUND: conversation.inbound
-  CONVERSATION_OUTBOUND: conversation.outbound
-  CONVERSATION_GROUP: conversation-worker
-  TOOL_REQUESTS_TOPIC: tool.requests
-  TOOL_RESULTS_TOPIC: tool.results
-  TOOL_EXECUTOR_GROUP: tool-executor
-  SOMA_BASE_URL: http://host.docker.internal:9696
+  # legacy envs removed in favor of SA01_* canonical variables
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
-  SOMA_ENABLED: "true"
-  # Ensure all services target the correct SomaBrain tenant/namespace
-  SOMA_TENANT_ID: public
-  SOMA_NAMESPACE: somabrain_ns:public
-  SOMA_MEMORY_NAMESPACE: wm
-  MEMORY_WAL_TOPIC: memory.wal
-  # Reduce Postgres pool sizes in dev to avoid exhausting max_connections
-  PG_POOL_MIN_SIZE: "1"
-  PG_POOL_MAX_SIZE: "2"
-  # Default to empty in dev to avoid unintended authentication requirements.
-  GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
-  # Internal S2S token used by workers/tools to call Gateway internal endpoints in dev
-  GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
   USE_LLM: "true"
+  # Canonical SA01_* envs (added for consistency while keeping legacy vars above)
+  SA01_DEPLOYMENT_MODE: DEV
+  SA01_DB_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+  SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SA01_REDIS_URL: redis://redis:6379/0
+  SA01_POLICY_URL: http://opa:8181
+  SA01_POLICY_DECISION_PATH: /v1/data/soma/policy/allow
+  SA01_AUTH_REQUIRED: "false"
+  SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
+  SA01_SOMA_BASE_URL: http://host.docker.internal:9696
+  # Provide a default Fernet key for dev; replace for staging/prod
+  SA01_CRYPTO_FERNET_KEY: "${SA01_CRYPTO_FERNET_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
+  # Streaming feature toggle (centralized)
+  SA01_SSE_ENABLED: "true"
 
 x-agent-service: &agent-service
   image: somaagent01-dev:latest
@@ -45,7 +33,7 @@ x-agent-service: &agent-service
       INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-false}
   working_dir: /git/agent-zero
   environment:
-    <<: *agent-env
+      <<: *agent-env
   env_file:
     - ${SOMA_ENV_FILE:-.env}
   # Give agent processes more memory for heavy ML package imports during runtime
@@ -92,7 +80,7 @@ services:
     entrypoint: ["bash", "-lc"]
     command: bash /init/init-topics.sh
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SA01_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     volumes:
       - ./infra/kafka/init-topics.sh:/init/init-topics.sh:ro
     mem_limit: 600m
@@ -212,9 +200,6 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *agent-env
-      # conversation_policy_bypass now governed by centralized feature flag; remove legacy env
-      WORKER_GATEWAY_BASE: "http://host.docker.internal:${GATEWAY_PORT:-21016}"
-      GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
       CONVERSATION_METRICS_PORT: "9410"
     command:
       - python3
@@ -313,26 +298,11 @@ services:
     environment:
       <<: *agent-env
       PORT: "8010"
-      # Enable DB-backed attachments; allow in-memory inline content
-      DISABLE_FILE_SAVING: "false"
-      # Allow uploads in dev: disable the global file-saving guard for Gateway.
-      # Attachments are stored in Postgres; no local filesystem writes occur.
-      GATEWAY_DISABLE_FILE_SAVING: "false"
-      # Give Kafka producer a bit more time to warm up metadata in dev (reduce transient 502 on first publish)
-      PUBLISH_KAFKA_TIMEOUT_SECONDS: "5.0"
-      # Encryption key (Fernet urlsafe base64) required to store provider secrets securely
-      # Dev-safe Fernet key (urlsafe base64 32-byte). Replace with a secure value in staging/prod.
-      GATEWAY_ENC_KEY: "${GATEWAY_ENC_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
-      GATEWAY_INTERNAL_TOKEN: "${GATEWAY_INTERNAL_TOKEN:-dev-internal-token}"
-      # For local development default to false to simplify testing. Set the
-      # environment variable to 'true' in staging/production as needed.
-      GATEWAY_REQUIRE_AUTH: ${GATEWAY_REQUIRE_AUTH:-false}
-      # Enable write-through to SomaBrain in dev so WAL is emitted immediately.
-      GATEWAY_WRITE_THROUGH: "true"
-      GATEWAY_WRITE_THROUGH_ASYNC: "true"
-      # OpenRouter header hints (prevent 401s due to missing metadata). Override in staging/prod.
-      OPENROUTER_REFERER: "${OPENROUTER_REFERER:-http://localhost}"
-      OPENROUTER_TITLE: "${OPENROUTER_TITLE:-SomaAgent01 Dev}"
+      # Kafka publish timeout (canonical)
+      SA01_KAFKA_PUBLISH_TIMEOUT_SECONDS: "5.0"
+      # Enable write-through to SomaBrain in dev so WAL is emitted immediately (canonical)
+      SA01_GATEWAY_WRITE_THROUGH: "true"
+      SA01_GATEWAY_WRITE_THROUGH_ASYNC: "true"
     ports:
       - "${GATEWAY_PORT:-21016}:8010"
     networks:

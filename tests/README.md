@@ -119,7 +119,7 @@ pytest tests/agent/ -m e2e -v          # Run E2E tests
 
 ### Run Live Agent Tests (requires API keys)
 ```bash
-export GATEWAY_INTERNAL_TOKEN="<your-token>"
+export SA01_AUTH_INTERNAL_TOKEN="<your-token>"
 pytest tests/agent/context/ -v        # Live context tests
 pytest tests/agent/llm/ -v            # Live LLM tests
 ```
@@ -134,16 +134,16 @@ pytest tests/agent/llm/ -v            # Live LLM tests
 ## Environment Variables
 
 ### Required for Live Tests
-- `GATEWAY_BASE_URL` - Gateway URL (default: http://localhost:21016)
-- `GATEWAY_INTERNAL_TOKEN` - Internal token for Gateway API
-- `POSTGRES_DSN` - Postgres connection string
-- `KAFKA_BOOTSTRAP_SERVERS` - Kafka bootstrap servers
+- `SA01_GATEWAY_BASE_URL` - Gateway URL (default: http://localhost:21016)
+- `SA01_AUTH_INTERNAL_TOKEN` - Internal token for Gateway API
+- `SA01_DB_DSN` - Postgres connection string
+- `SA01_KAFKA_BOOTSTRAP_SERVERS` - Kafka bootstrap servers
 
 ### Optional
 - `E2E_HTTP_TIMEOUT` - HTTP timeout for E2E tests (default: 20s)
 - `E2E_POLL_TIMEOUT` - Polling timeout (default: 20s)
 - `E2E_EXPECT_MEMORY` - Expect memory verification (default: 0)
-- `SOMA_TENANT_ID` - Tenant ID (default: public)
+- `SA01_SOMA_TENANT_ID` - Tenant ID (default: public)
 
 ## Test Philosophy
 

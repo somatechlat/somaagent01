@@ -198,10 +198,12 @@ class ToolExecutor:
         )
         self.streams = {
             "requests": cfg.env(
-                "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
+                "SA01_TOOL_REQUESTS_TOPIC",
+                cfg.env("SA01_TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")),
             ),
             "results": cfg.env(
-                "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
+                "SA01_TOOL_RESULTS_TOPIC",
+                cfg.env("SA01_TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")),
             ),
             "group": cfg.env("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
         }
@@ -422,7 +424,8 @@ class ToolExecutor:
                 "type": "tool.start",
             }
             await self.publisher.publish(
-                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound"),
                 start_event,
                 dedupe_key=start_event.get("event_id"),
                 session_id=str(session_id),
@@ -633,7 +636,8 @@ class ToolExecutor:
                 "type": "tool.result",
             }
             await self.publisher.publish(
-                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound"),
                 outbound_event,
                 dedupe_key=outbound_event.get("event_id"),
                 session_id=str(result_event.get("session_id")),
@@ -765,7 +769,7 @@ class ToolExecutor:
                     "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
                 )
             if allow_memory:
-                wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+                wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self.soma.remember(memory_payload)
                 try:
                     wal_event = {

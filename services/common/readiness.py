@@ -23,7 +23,7 @@ Usage (FastAPI):
         raise HTTPException(status_code=503, detail=result)
 
 Environment overrides:
-  POSTGRES_DSN            – override default Postgres DSN
+  SA01_DB_DSN            – override default Postgres DSN
   READINESS_CHECK_TIMEOUT – per‑check timeout in seconds (float, default 2.0)
 
 The module intentionally does NOT cache results; each call performs fresh
@@ -57,7 +57,7 @@ def _timeout_seconds() -> float:
 async def _check_postgres() -> Dict[str, Any]:
     from services.common import runtime_config as cfg
 
-    dsn = cfg.env("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+    dsn = cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
     try:
         pool = await asyncpg.create_pool(dsn, min_size=0, max_size=1)
         async with pool.acquire() as conn:

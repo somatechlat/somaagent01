@@ -23,15 +23,8 @@ try:
 
     _feature_audio_enabled = bool(_cfg.flag("audio_support"))
 except Exception:
-    # Fallback to env when runtime_config is unavailable
-    import os as _os
-
-    _feature_audio_enabled = _os.getenv("FEATURE_AUDIO", "none").lower() not in {
-        "none",
-        "0",
-        "false",
-        "off",
-    }
+    # No legacy env fallback – treat as disabled when cfg unavailable
+    _feature_audio_enabled = False
 
 import os as _os
 
@@ -132,18 +125,14 @@ def _is_downloaded():
 
 async def transcribe(model_name: str, audio_bytes_b64: str):
     if whisper is None:
-        raise RuntimeError(
-            "Audio transcription is disabled in this build. Set FEATURE_AUDIO to enable Whisper support."
-        )
+        raise RuntimeError("Audio transcription is disabled (audio_support feature off).")
     # return await runtime.call_development_function(_transcribe, model_name, audio_bytes_b64)
     return await _transcribe(model_name, audio_bytes_b64)
 
 
 async def _transcribe(model_name: str, audio_bytes_b64: str):
     if whisper is None:
-        raise RuntimeError(
-            "Audio transcription is disabled in this build. Set FEATURE_AUDIO to enable Whisper support."
-        )
+        raise RuntimeError("Audio transcription is disabled (audio_support feature off).")
     await _preload(model_name)
 
     # Decode audio bytes if encoded as a base64 string

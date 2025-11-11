@@ -25,9 +25,9 @@ async def test_wal_to_replica_happy_path_e2e():
         bootstrap = kafka.get_bootstrap_server()
 
         # Env configuration for the replicator
-        os.environ["POSTGRES_DSN"] = pg_url
-        os.environ["KAFKA_BOOTSTRAP_SERVERS"] = bootstrap
-        os.environ["MEMORY_WAL_TOPIC"] = "memory.wal"
+        os.environ["SA01_DB_DSN"] = pg_url
+        os.environ["SA01_KAFKA_BOOTSTRAP_SERVERS"] = bootstrap
+        os.environ["SA01_MEMORY_WAL_TOPIC"] = "memory.wal"
         os.environ["REPLICATOR_METRICS_PORT"] = "0"  # disable metrics server
 
         # Ensure schemas
@@ -81,9 +81,9 @@ async def test_wal_to_replica_happy_path_e2e():
 @pytest.mark.integration
 async def test_replicator_error_routes_to_dlq_unit(monkeypatch):
     # Unit-level: simulate insert error and ensure DLQ store receives a row
-    pg_url = os.getenv("TEST_POSTGRES_DSN")
+    pg_url = os.getenv("TEST_SA01_DB_DSN")
     if not pg_url:
-        pytest.skip("TEST_POSTGRES_DSN not set")
+        pytest.skip("TEST_SA01_DB_DSN not set")
 
     store = DLQStore(dsn=pg_url)
     await ensure_dlq_schema(store)

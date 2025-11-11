@@ -180,9 +180,7 @@ class SessionEnvelope:
 
 class PostgresSessionStore(SessionStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or cfg.env(
-            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
-        )
+        raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

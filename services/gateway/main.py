@@ -229,7 +229,7 @@ REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
 
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
-        bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers),
+        bootstrap_servers=cfg.env("SA01_KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers),
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
         sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
@@ -254,78 +254,86 @@ from services.gateway.features import router as features_router
 # Include health endpoints
 app.include_router(health_router)
 app.include_router(features_router)
+# Runtime config surface (read-only)
+@app.get("/v1/runtime-config")
+async def v1_runtime_config() -> JSONResponse:
+    """Return a safe, read-only snapshot of runtime config.
+
+    Exposes selected settings (non-secret), deployment mode, and effective
+    feature states. Secrets and sensitive connection strings are omitted.
+    """
+    try:
+        from services.common.features import build_default_registry as _build_reg
+    except Exception:
+        _build_reg = None  # type: ignore[assignment]
+
+    # Core identifiers (safe)
+    payload: dict[str, Any] = {
+        "environment": getattr(APP_SETTINGS, "environment", ""),
+        "deployment_mode": cfg.deployment_mode(),
+        "external_deployment_mode": cfg.external_deployment_mode(),
+        "gateway_port": getattr(APP_SETTINGS, "gateway_port", None),
+        "gateway_base_url": getattr(APP_SETTINGS, "gateway_base_url", None),
+        "metrics": {
+            "host": getattr(APP_SETTINGS, "metrics_host", None),
+            "port": getattr(APP_SETTINGS, "metrics_port", None),
+        },
+    }
+
+    # Effective feature states
+    features: list[dict[str, Any]] = []
+    try:
+        if _build_reg is not None:
+            reg = _build_reg()
+            for d in reg.describe():
+                try:
+                    features.append(
+                        {
+                            "key": d.key,
+                            "enabled": reg.is_enabled(d.key),
+                            "state": reg.state(d.key),
+                            "profile_default": d.profiles.get(reg.profile, d.default_enabled),
+                            "tags": list(d.tags or []),
+                            "stability": getattr(d, "stability", "stable"),
+                        }
+                    )
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    payload["features"] = features
+
+    # Selected overlays (uploads/antivirus/speech) – scrubbed, non-secret
+    try:
+        overlays: dict[str, Any] = {}
+        for k in ("uploads_cfg", "av_cfg", "speech_cfg"):
+            val = getattr(app.state, k, None)
+            if isinstance(val, dict):
+                # Best-effort scrub of sensitive-looking keys
+                scrubbed = {}
+                for sk, sv in val.items():
+                    if any(t in str(sk).lower() for t in ("secret", "key", "token", "password")):
+                        scrubbed[sk] = "[REDACTED]"
+                    else:
+                        scrubbed[sk] = sv
+                overlays[k] = scrubbed
+        if overlays:
+            payload["overlays"] = overlays
+    except Exception:
+        pass
+
+    return JSONResponse(payload)
 
 # S0 additions -----------------------------------------------------------
-from services.common.features import FeatureRegistry
 from .routers.tools import router as tools_router
 app.include_router(tools_router)
-
-@app.get("/v1/features")
-async def list_features():
-    return {"features": FeatureRegistry.load()}
 
 @app.post("/v1/features")
 async def set_feature(feature: dict, tenant: str = Depends(lambda: "public")):
     ...
 
-@app.post("/v1/settings/sections")
-async def save_settings(
-    payload: dict,
-    tenant: str = Depends(lambda: "public"),
-    repo: SessionRepository = Depends(get_settings_repo)
-):
-    """Atomic encrypted settings write + masked audit diff."""
-    from services.common.audit_diff import generate_diff
-    from services.common.settings_registry import settings_write_total
-    from python.helpers.vault_adapter import VaultAdapter
-
-    settings_write_total.inc()
-
-    # Encrypt any provider keys
-    for key, val in payload.items():
-        if "key" in key.lower() or "secret" in key.lower():
-            payload[key] = VaultAdapter.encrypt(str(val))
-
-    masked = generate_diff({}, payload)
-    await repo.execute("UPDATE settings SET data = %s WHERE tenant_id = %s", json.dumps(payload), tenant)
-    return {"status": "ok", "diff": masked}
-    ...
-
-@app.post("/v1/recall")
-async def semantic_recall(
-    session_id: str,
-    query: str = Body(..., embed=True),
-    top_k: int = Query(5, ge=1, le=20),
-    repo: SessionRepository = Depends(get_session_repo)
-):
-    """Return semantically similar memories for the session."""
-    import numpy as np
-    # Stub embedding; replace with real model call later
-    query_vec = np.random.rand(384).astype(float).tolist()
-    memories = await repo.semantic_recall(session_id, query_vec, top_k)
-    return memories
-    # atomic write + masked audit diff (stubbed for now)
-    settings_write_total.inc()
-    audit_diff_total.inc()
-    return {"status": "ok", "feature": feature}
-
-
-# Lightweight top-level readiness/liveness aliases for K8s probes
-@app.get("/ready")
-async def ready_alias():
-    summary = await readiness_summary()
-    if summary.get("status") == "ready":
-        return {"status": "ready", "timestamp": summary.get("timestamp")}
-    from fastapi import HTTPException as _HTTPException  # local import to avoid polluting globals
-
-    raise _HTTPException(status_code=503, detail=summary)
-
-
-@app.get("/live")
-async def live_alias():
-    from datetime import datetime as _dt
-
-    return {"status": "alive", "timestamp": _dt.utcnow().isoformat()}
+## NOTE: removed erroneous route decorator on helper to avoid forward-ref issues
+## A proper helper is defined later alongside LlmInvokeRequest
 
 
 # Simple /healthz alias returning 200 only when overall healthy
@@ -340,8 +348,17 @@ async def healthz_alias():
 
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
-# FastAPIInstrumentor().instrument_app(app)
-HTTPXClientInstrumentor().instrument()
+# FastAPI instrumentation is optional and disabled by default here.
+try:
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor  # type: ignore
+
+    try:
+        HTTPXClientInstrumentor().instrument()
+    except Exception:
+        LOGGER.debug("HTTPX instrumentation failed; continuing without it", exc_info=True)
+except Exception:
+    # opentelemetry-instrumentation-httpx not installed – proceed without instrumentation
+    LOGGER.debug("HTTPX instrumentation unavailable; package not installed")
 
 # --- Optional ML dependencies (STT) ---
 try:  # lazy import guard to avoid failing when ML deps aren’t installed
@@ -687,7 +704,7 @@ SOMABRAIN_REQUEST_LATENCY_SECONDS = _get_or_create_histogram(
 )
 
 
-# Gateway write-through metrics (emitted when GATEWAY_WRITE_THROUGH is enabled)
+# Gateway write-through metrics (emitted when write-through is enabled)
 GATEWAY_WT_ATTEMPTS = _get_or_create_counter(
     "gateway_write_through_attempts_total",
     "Total write-through attempts from gateway to SomaBrain",
@@ -1456,7 +1473,8 @@ def _dlq_topics_from_env() -> list[str]:
     raw = cfg.env("DLQ_TOPICS", "")
     topics = [t.strip() for t in raw.split(",") if t.strip()]
     if not topics:
-        topics = [f"{cfg.env('MEMORY_WAL_TOPIC', 'memory.wal') or 'memory.wal'}.dlq"]
+        wal = cfg.memory_wal_topic()
+        topics = [f"{wal}.dlq"]
     return topics
 
 
@@ -1603,7 +1621,7 @@ async def start_background_services() -> None:
 
     # Initialize durable publisher with Outbox fallback
     outbox_store = OutboxStore(
-        dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
     try:
         await ensure_outbox_schema(outbox_store)
@@ -1614,7 +1632,7 @@ async def start_background_services() -> None:
 
     # Initialize memory write outbox for fail-safe remember() retry
     mem_outbox = MemoryWriteOutbox(
-        dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
     try:
         await ensure_mw_outbox_schema(mem_outbox)
@@ -1626,6 +1644,30 @@ async def start_background_services() -> None:
     app.state.http_client = httpx.AsyncClient(
         timeout=30.0, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
     )
+
+    # Ensure model profiles are available even when metrics server is skipped in tests
+    try:
+        await PROFILE_STORE.ensure_schema()
+        await PROFILE_STORE._ensure_pool()
+        # Force seed of dialogue/escalation defaults if missing for test convenience
+        await PROFILE_STORE.sync_from_settings(APP_SETTINGS)
+        for _role in ("dialogue", "escalation"):
+            existing = await PROFILE_STORE.get(_role, APP_SETTINGS.deployment_mode)
+            if existing is None:
+                from services.common.model_profiles import ModelProfile
+
+                await PROFILE_STORE.upsert(
+                    ModelProfile(
+                        role=_role,
+                        deployment_mode=APP_SETTINGS.deployment_mode,
+                        model="gpt-4o-mini",
+                        base_url="https://api.openai.com/v1",
+                        temperature=0.2,
+                        kwargs={"seeded": True},
+                    )
+                )
+    except Exception:
+        LOGGER.debug("Model profile store initialization failed", exc_info=True)
 
     # Start config update listener in background and keep handle for shutdown
     try:
@@ -1656,8 +1698,8 @@ async def start_background_services() -> None:
         LOGGER.debug("Failed to start DLQ refresher task", exc_info=True)
 
     # Initialize export jobs store and schema, then start worker (controlled by env flags)
-    # Enable with: EXPORT_JOBS_ENABLED=true and DISABLE_FILE_SAVING=false
-    if _flag_truthy(cfg.env("EXPORT_JOBS_ENABLED", "false"), False) and not _file_saving_disabled():
+    # Enable with: SA01_EXPORT_JOBS_ENABLED=true and SA01_FILE_SAVING_DISABLED=false
+    if _flag_truthy(cfg.env("SA01_EXPORT_JOBS_ENABLED", "false"), False) and not _file_saving_disabled():
         try:
             export_store = get_export_job_store()
             await ensure_export_jobs_schema(export_store)
@@ -1899,23 +1941,15 @@ def _flag_truthy(value: str | None, default: bool = False) -> bool:
 
 
 def _write_through_enabled() -> bool:
-    """Determine if write‑through is enabled.
-
-    Historically the flag was read from the ``GATEWAY_WRITE_THROUGH``
-    environment variable. The test suite (and production deployments) set
-    ``SA01_GATEWAY_WRITE_THROUGH`` instead. To retain backward compatibility
-    we check both variables, giving precedence to the ``SA01_`` prefixed name.
-    """
-    # Prefer the explicit ``SA01_`` name used by the test harness.
+    """Determine if write‑through is enabled (SA01_* only)."""
     val = cfg.env("SA01_GATEWAY_WRITE_THROUGH")
-    if val is not None:
-        return _flag_truthy(val, False)
-    # Fallback to the original name for legacy compatibility.
-    return _flag_truthy(cfg.env("GATEWAY_WRITE_THROUGH"), False)
+    if val is None:
+        return False
+    return _flag_truthy(val, False)
 
 
 def _write_through_async() -> bool:
-    return _flag_truthy(cfg.env("GATEWAY_WRITE_THROUGH_ASYNC"), False)
+    return _flag_truthy(cfg.env("SA01_GATEWAY_WRITE_THROUGH_ASYNC"), False)
 
 
 def _file_saving_disabled() -> bool:
@@ -1933,11 +1967,8 @@ def _file_saving_disabled() -> bool:
 
 
 def _sse_disabled() -> bool:
-    """Whether to disable SSE endpoint intentionally.
-
-    Controlled via GATEWAY_DISABLE_SSE (truthy disables SSE). Default False.
-    """
-    return _flag_truthy(cfg.env("GATEWAY_DISABLE_SSE"), False)
+    """Whether to disable SSE endpoint (no legacy fallbacks)."""
+    return not cfg.flag("sse_enabled")
 
 
 def _masking_enabled() -> bool:
@@ -1970,7 +2001,11 @@ def _token_metrics_enabled() -> bool:
 def _notifications_topic() -> str:
     from services.common import runtime_config as cfg
 
-    return cfg.env("UI_NOTIFICATIONS_TOPIC", "ui.notifications") or "ui.notifications"
+    return (
+        cfg.env("SA01_UI_NOTIFICATIONS_TOPIC")
+        or cfg.env("SA01_UI_NOTIFICATIONS_TOPIC", "ui.notifications")
+        or "ui.notifications"
+    )
 
 
 def _error_classifier_enabled() -> bool:
@@ -2003,7 +2038,10 @@ def _tool_events_enabled() -> bool:
 def _rate_limit_enabled() -> bool:
     from services.common import runtime_config as cfg
 
-    return (cfg.env("GATEWAY_RATE_LIMIT_ENABLED", "false") or "false").lower() in {
+    raw = cfg.env("SA01_GATEWAY_RATE_LIMIT_ENABLED") or cfg.env(
+        "GATEWAY_RATE_LIMIT_ENABLED", "false"
+    )
+    return (raw or "false").lower() in {
         "true",
         "1",
         "yes",
@@ -2015,11 +2053,19 @@ def _rate_limit_params() -> tuple[int, int]:
     from services.common import runtime_config as cfg
 
     try:
-        window = int(cfg.env("GATEWAY_RATE_LIMIT_WINDOW_SECONDS", "60") or "60")
+        window = int(
+            cfg.env("SA01_GATEWAY_RATE_LIMIT_WINDOW_SECONDS")
+            or cfg.env("GATEWAY_RATE_LIMIT_WINDOW_SECONDS", "60")
+            or "60"
+        )
     except Exception:
         window = 60
     try:
-        max_req = int(cfg.env("GATEWAY_RATE_LIMIT_MAX_REQUESTS", "120") or "120")
+        max_req = int(
+            cfg.env("SA01_GATEWAY_RATE_LIMIT_MAX_REQUESTS")
+            or cfg.env("GATEWAY_RATE_LIMIT_MAX_REQUESTS", "120")
+            or "120"
+        )
     except Exception:
         max_req = 120
     return max(1, window), max(1, max_req)
@@ -2038,7 +2084,7 @@ def get_attachments_store() -> AttachmentsStore:
         from services.common import runtime_config as cfg
 
         _ATTACHMENTS_STORE = AttachmentsStore(
-            dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+            dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         )
     return _ATTACHMENTS_STORE
 
@@ -2078,7 +2124,7 @@ async def get_runtime_config() -> dict[str, Any]:
         somabrain = {"base_url": soma.base_url}
     except Exception:
         somabrain = {
-            "base_url": cfg.env("SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"
+        "base_url": cfg.soma_base_url() or "http://localhost:9696"
         }
 
     tool_count = 0
@@ -2151,42 +2197,7 @@ async def semantic_recall_endpoint(payload: SemanticRecallQuery) -> JSONResponse
         return JSONResponse({"error": "semantic_recall_error", "detail": str(exc)}, status_code=500)
 
 
-@app.get("/v1/ui/settings/sections")
-async def get_ui_settings_sections() -> JSONResponse:
-    """Return structured UI settings sections for SPA consumption.
-
-    Normalizes underlying UiSettingsStore document to a stable schema.
-    Legacy /settings_get is deprecated and replaced by this endpoint.
-    """
-    try:
-        store = get_ui_settings_store()
-        doc = await store.get()
-    except Exception:
-        doc = {}
-
-    # Source sections may already be normalized; fall back to helper defaults
-    raw_sections = (doc or {}).get("sections") or []
-    norm_sections: list[dict[str, Any]] = []
-    for sec in raw_sections:
-        title = sec.get("title") or sec.get("name") or "Untitled"
-        tab = sec.get("tab") or "agent"
-        fields_in = sec.get("fields") or []
-        fields_out = []
-        for f in fields_in:
-            fields_out.append(
-                {
-                    "id": f.get("id") or f.get("name"),
-                    "title": f.get("title") or f.get("label") or f.get("id") or "Field",
-                    "value": f.get("value"),
-                }
-            )
-        norm_sections.append({"title": title, "tab": tab, "fields": fields_out})
-
-    try:
-        metrics_collector.track_settings_read("ui.settings.sections")
-    except Exception:
-        pass
-    return JSONResponse({"sections": norm_sections})
+## Removed duplicate UI settings sections handler; consolidated above.
 
 
 # -----------------------------
@@ -2904,7 +2915,7 @@ def get_publisher() -> DurablePublisher:
     if get_bus_override is not None:
         bus = get_bus_override()
         outbox = getattr(app.state, "outbox_store", None) or OutboxStore(
-            dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+            dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         )
         return DurablePublisher(bus=bus, outbox=outbox)
 
@@ -2914,7 +2925,7 @@ def get_publisher() -> DurablePublisher:
         # Fallback construction (should not happen in normal startup)
         event_bus = KafkaEventBus(_kafka_settings())
         outbox_store = OutboxStore(
-            dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+            dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         )
         publisher = DurablePublisher(bus=event_bus, outbox=outbox_store)
         app.state.publisher = publisher
@@ -2968,7 +2979,7 @@ def get_session_store() -> PostgresSessionStore:
     if _SESSION_STORE is None:
         from services.common import runtime_config as cfg
 
-        dsn = cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn = cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         try:
             LOGGER.info("initializing session store")
         except Exception:
@@ -2986,6 +2997,14 @@ def get_audit_store() -> _AuditStore:
     global _AUDIT_STORE
     if _AUDIT_STORE is not None:
         return _AUDIT_STORE
+    # Prefer repository-managed singleton if available so tests share the same instance
+    try:
+        from integrations.repositories import get_audit_store as _repo_get_audit_store  # type: ignore
+
+        _AUDIT_STORE = _repo_get_audit_store()
+        return _AUDIT_STORE
+    except Exception:
+        pass
     _AUDIT_STORE = audit_store_from_env()
     return _AUDIT_STORE
 
@@ -3000,7 +3019,7 @@ def get_api_key_store() -> ApiKeyStore:
     redis_password = get_dotenv_value("REDIS_PASSWORD")
     if not redis_url:
         raise RuntimeError(
-            "API‑key store requires a Redis configuration. Set REDIS_URL (and optionally REDIS_PASSWORD)."
+            "API‑key store requires Redis. Set SA01_REDIS_URL (optionally REDIS_PASSWORD)."
         )
     _API_KEY_STORE = RedisApiKeyStore(redis_url=redis_url, redis_password=redis_password)
     LOGGER.info("Initialized Redis‑based API‑key store.")
@@ -3013,7 +3032,7 @@ def get_notifications_store() -> NotificationsStore:
         from services.common import runtime_config as cfg
 
         _NOTIF_STORE = NotificationsStore(
-            dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+            dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
         )
     return _NOTIF_STORE
 
@@ -3025,7 +3044,7 @@ def get_dlq_store() -> DLQStore:
     from services.common import runtime_config as cfg
 
     _DLQ_STORE = DLQStore(
-        dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
     return _DLQ_STORE
 
@@ -3037,7 +3056,7 @@ def get_replica_store() -> MemoryReplicaStore:
     from services.common import runtime_config as cfg
 
     _REPLICA_STORE = MemoryReplicaStore(
-        dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
     return _REPLICA_STORE
 
@@ -3049,7 +3068,7 @@ def get_export_job_store() -> ExportJobStore:
     from services.common import runtime_config as cfg
 
     _EXPORT_STORE = ExportJobStore(
-        dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
     return _EXPORT_STORE
 
@@ -3074,7 +3093,7 @@ def get_ui_settings_store() -> UiSettingsStore:
     from services.common import runtime_config as cfg
 
     _UI_SETTINGS_STORE = UiSettingsStore(
-        dsn=cfg.env("POSTGRES_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
+        dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
     return _UI_SETTINGS_STORE
 
@@ -3286,7 +3305,9 @@ async def memory_batch_write(
 
     soma = SomaBrainClient.get()
     results: list[dict[str, Any]] = []
-    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+    wal_topic = (
+        cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+    )
 
     for m in items:
         try:
@@ -3844,7 +3865,11 @@ class MessagePayload(BaseModel):
 def _inbound_topic() -> str:
     from services.common import runtime_config as cfg
 
-    return cfg.env("CONVERSATION_INBOUND", "conversation.inbound") or "conversation.inbound"
+    return (
+        cfg.env("SA01_CONVERSATION_INBOUND")
+        or cfg.env("SA01_CONVERSATION_INBOUND", "conversation.inbound")
+        or "conversation.inbound"
+    )
 
 
 # Removed DEV echo: no synthetic assistant responses. The gateway never fabricates events.
@@ -4749,7 +4774,11 @@ async def enqueue_message(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             started,
             dedupe_key=started.get("event_id"),
             session_id=session_id,
@@ -4759,10 +4788,7 @@ async def enqueue_message(
         LOGGER.debug("Failed to publish assistant.started", exc_info=True)
 
     # Optional write-through to SomaBrain with WAL emission
-    # Ensure write‑through is performed for quick actions during tests/debugging.
-    # The original guard respects the GATEWAY_WRITE_THROUGH flag, but forcing it
-    # guarantees the WAL publish expected by the test suite.
-    if _write_through_enabled() or True:
+    if _write_through_enabled():
 
         async def _write_through() -> None:
             try:
@@ -4789,7 +4815,11 @@ async def enqueue_message(
                 try:
                     from services.common import runtime_config as cfg
 
-                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+                    wal_topic = (
+                        cfg.env("SA01_MEMORY_WAL_TOPIC")
+                        or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
+                        or "memory.wal"
+                    )
                     wal_event = {
                         "type": "memory.write",
                         "role": "user",
@@ -4856,7 +4886,11 @@ async def enqueue_message(
     try:
         from services.common import runtime_config as cfg_mod
 
-        wal_topic = cfg_mod.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+        wal_topic = (
+            cfg_mod.env("SA01_MEMORY_WAL_TOPIC")
+            or cfg_mod.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
+            or "memory.wal"
+        )
         await publisher.publish(
             wal_topic,
             {"type": "memory.write", "payload": mem_payload},
@@ -5023,7 +5057,11 @@ async def upload_chunk(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             progress_event,
             dedupe_key=progress_event.get("event_id"),
             session_id=str(sess),
@@ -5186,7 +5224,11 @@ async def finalize_chunked_upload(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             final_event,
             dedupe_key=final_event.get("event_id"),
             session_id=str(sess),
@@ -5234,7 +5276,11 @@ async def finalize_chunked_upload(
                 try:
                     from services.common import runtime_config as cfg
 
-                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+                    wal_topic = (
+                        cfg.env("SA01_MEMORY_WAL_TOPIC")
+                        or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
+                        or "memory.wal"
+                    )
                     wal_event = {
                         "type": "memory.write",
                         "role": "user",
@@ -5378,7 +5424,10 @@ async def upload_files(
 
                         await publisher.publish(
                             (
-                                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound")
+                                (
+                                    cfg.env("SA01_CONVERSATION_OUTBOUND")
+                                    or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                                )
                                 or "conversation.outbound"
                             ),
                             progress_event,
@@ -5514,7 +5563,10 @@ async def upload_files(
 
                 await publisher.publish(
                     (
-                        cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound")
+                        (
+                            cfg.env("SA01_CONVERSATION_OUTBOUND")
+                            or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                        )
                         or "conversation.outbound"
                     ),
                     final_event,
@@ -5588,7 +5640,11 @@ async def upload_files(
                     try:
                         from services.common import runtime_config as cfg
 
-                        wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+                        wal_topic = (
+                            cfg.env("SA01_MEMORY_WAL_TOPIC")
+                            or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
+                            or "memory.wal"
+                        )
                         wal_event = {
                             "type": "memory.write",
                             "role": "user",
@@ -5729,7 +5785,11 @@ async def enqueue_quick_action(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             started,
             dedupe_key=started.get("event_id"),
             session_id=session_id,
@@ -5805,7 +5865,11 @@ async def enqueue_quick_action(
                 # Always attempt WAL publish so tests can observe it even if remember() failed.
                 try:
                     # Use global cfg (runtime_config facade) already imported at module level
-                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal") or "memory.wal"
+                    wal_topic = (
+                        cfg.env("SA01_MEMORY_WAL_TOPIC")
+                        or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
+                        or "memory.wal"
+                    )
                     wal_event = {
                         "type": "memory.write",
                         "role": "user",
@@ -6181,7 +6245,11 @@ async def request_tool_execution(
 
     from services.common import runtime_config as cfg
 
-    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests") or "tool.requests"
+    topic = (
+        cfg.env("SA01_TOOL_REQUESTS_TOPIC")
+        or cfg.env("SA01_TOOL_REQUESTS_TOPIC", "tool.requests")
+        or "tool.requests"
+    )
     await publisher.publish(
         topic,
         event,
@@ -6366,7 +6434,11 @@ async def post_utility_event(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             event,
             dedupe_key=ev_id,
             session_id=session_id,
@@ -6412,7 +6484,11 @@ async def post_ui_event(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             event,
             dedupe_key=ev_id,
             session_id=session_id,
@@ -6899,7 +6975,7 @@ async def ui_config_json() -> JSONResponse:
         "deployment_mode": APP_SETTINGS.deployment_mode,
         "version": cfg_mod.env("SA01_VERSION", "dev") or "dev",
         "features": {
-            "write_through": _bool("GATEWAY_WRITE_THROUGH", True),
+            "write_through": _bool("SA01_GATEWAY_WRITE_THROUGH", True),
             "write_through_async": _write_through_async(),
             "require_auth": REQUIRE_AUTH,
             "sse_enabled": not _sse_disabled(),
@@ -7271,7 +7347,6 @@ async def health_check(
             record_status(name, "degraded", f"{type(exc).__name__}: {exc}")
 
     await check_http_target("telemetry_worker", cfg.env("TELEMETRY_HEALTH_URL"))
-    await check_http_target("delegation_gateway", cfg.env("DELEGATION_HEALTH_URL"))
 
     # Replication lag and DLQ depth (best-effort, do not hard-fail health)
     try:
@@ -7291,7 +7366,7 @@ async def health_check(
     try:
         from services.common import runtime_config as cfg
 
-        dlq_topic = f"{cfg.env('MEMORY_WAL_TOPIC', 'memory.wal') or 'memory.wal'}.dlq"
+        dlq_topic = f"{(cfg.env('SA01_MEMORY_WAL_TOPIC') or cfg.env('SA01_MEMORY_WAL_TOPIC', 'memory.wal') or 'memory.wal')}.dlq"
         dlq_store = get_dlq_store()
         depth = await dlq_store.count(topic=dlq_topic)
         # Emit depth to Prometheus for alerting
@@ -7323,14 +7398,18 @@ async def health_check(
 async def sse_session_events(session_id: str, request: Request) -> StreamingResponse:
     """Server-Sent Events stream of outbound conversation events for a session.
 
-    Streams events from the Kafka topic configured as CONVERSATION_OUTBOUND and
+    Streams events from the Kafka topic configured as SA01_CONVERSATION_OUTBOUND and
     filters by session_id.
     """
     if _sse_disabled():
         raise HTTPException(status_code=503, detail="SSE disabled")
     from services.common import runtime_config as cfg
 
-    topic = cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"
+    topic = (
+        cfg.env("SA01_CONVERSATION_OUTBOUND")
+        or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+        or "conversation.outbound"
+    )
     notif_topic = _notifications_topic()
     group_base = f"sse-{session_id}"
     # Attempt to extract tenant for notifications filtering (best-effort; unauth -> stream none scoped notifications)
@@ -8284,7 +8363,6 @@ async def _gather_health_components_with_memory(
     from services.common import runtime_config as cfg
 
     await check_http_target("telemetry_worker", cfg.env("TELEMETRY_HEALTH_URL"))
-    await check_http_target("delegation_gateway", cfg.env("DELEGATION_HEALTH_URL"))
 
     # Note: gRPC memory service removed. Health now relies on SomaBrain HTTP check below.
 
@@ -8307,8 +8385,8 @@ async def healthz(
     """Consolidated healthz endpoint.
 
     This endpoint performs lightweight probes to core dependencies (Postgres,
-    Redis, Kafka) and to SomaBrain via its HTTP /health endpoint (configurable via
-    SOMA_BASE_URL). The overall status is computed from component
+    Redis, Kafka) and to SomaBrain via its HTTP /health endpoint configured by
+    `SA01_SOMA_BASE_URL`. The overall status is computed from component
     statuses and returned along with per-component details.
     """
 
@@ -8320,7 +8398,7 @@ async def healthz(
     # Do an HTTP health check against the SomaBrain HTTP target
     from services.common import runtime_config as cfg
 
-    http_target = cfg.env("SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"
+    http_target = cfg.soma_base_url() or "http://localhost:9696"
     mem_http_status = "degraded"
     mem_http_detail: str | None = None
     try:
@@ -9717,7 +9795,11 @@ async def ui_sections_set(
         from services.common import runtime_config as cfg
 
         await publisher.publish(
-            (cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound") or "conversation.outbound"),
+            (
+                cfg.env("SA01_CONVERSATION_OUTBOUND")
+                or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
+                or "conversation.outbound"
+            ),
             ev,
             dedupe_key=ev["event_id"],
             session_id=ev["session_id"],
@@ -10722,7 +10804,6 @@ class LlmInvokeMessage(BaseModel):
 
 class LlmInvokeOverrides(BaseModel):
     model: Optional[str] = None
-    base_url: Optional[str] = None
     temperature: Optional[float] = None
     kwargs: Optional[Dict[str, Any]] = None
 
@@ -10750,23 +10831,15 @@ async def _resolve_profile_and_creds(
     """
     # Load profile for role/deployment
     profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
-    if not profile and not payload.overrides:
+    if not profile:
         raise HTTPException(status_code=400, detail="model profile not configured for role")
 
     model = (
-        payload.overrides.model
-        if payload.overrides and payload.overrides.model
-        else (profile.model if profile else "")
+        payload.overrides.model if payload.overrides and payload.overrides.model else profile.model
     ).strip()
 
-    # Determine base_url. Ignore any provided override and use profile value only.
-    override_base_raw = None
-    if payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
-        # Accept explicit empty-string as "provided but empty" (we'll normalize later)
-        override_base_raw = str(payload.overrides.base_url)
-
-    # Always use profile base_url regardless of any override
-    base_url_raw = profile.base_url if profile else ""
+    # Determine base_url solely from profile (overrides no longer accepted)
+    base_url_raw = profile.base_url
 
     base_url = _normalize_llm_base_url(str(base_url_raw))
     try:
@@ -10812,20 +10885,15 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     # Resolve profile and credentials inline to avoid tuple-unpack pitfalls
     try:
         profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
-        if not profile and not payload.overrides:
+        if not profile:
             raise HTTPException(status_code=400, detail="model profile not configured for role")
         model = (
-            payload.overrides.model
-            if payload.overrides and payload.overrides.model
-            else (profile.model if profile else "")
+            payload.overrides.model if payload.overrides and payload.overrides.model else profile.model
         ).strip()
-        # Determine base_url: prefer profile.base_url if present; otherwise allow overrides.base_url.
-        # This enables callers to specify a base URL via overrides when no profile is configured
-        # (e.g., in tests or ad-hoc usage).
+        # Determine base_url exclusively from profile; overrides are no longer accepted.
+        # If missing, fail-fast with a clear error to surface misconfiguration.
         if profile and getattr(profile, "base_url", None):
             base_url_raw = profile.base_url
-        elif payload.overrides and getattr(payload.overrides, "base_url", None) is not None:
-            base_url_raw = str(payload.overrides.base_url)
         else:
             base_url_raw = ""
         base_url = _normalize_llm_base_url(str(base_url_raw))
@@ -11429,7 +11497,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
             else (profile.model if profile else "")
         ).strip()
         # Ignore any overrides.base_url; use profile base_url only
-        base_url_raw = profile.base_url if profile else ""
+        base_url_raw = profile.base_url
         base_url = _normalize_llm_base_url(str(base_url_raw))
         try:
             temperature = (

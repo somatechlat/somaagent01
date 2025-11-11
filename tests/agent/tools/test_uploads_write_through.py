@@ -89,7 +89,7 @@ class FakeAttachmentsStore:
 def write_through_env(monkeypatch):
     monkeypatch.setenv("SA01_GATEWAY_WRITE_THROUGH", "true")
     monkeypatch.setenv("SA01_AUTH_REQUIRED", "false")
-    monkeypatch.setenv("SOMA_NAMESPACE", "test-universe")
+    monkeypatch.setenv("SA01_SOMA_NAMESPACE", "test-universe")
     yield
 
 

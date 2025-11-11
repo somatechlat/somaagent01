@@ -14,11 +14,11 @@ from services.gateway.main import app
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_admin_memory_structured_filters(monkeypatch):
-    dsn = os.getenv("TEST_POSTGRES_DSN")
+    dsn = os.getenv("TEST_SA01_DB_DSN")
     if not dsn:
-        pytest.skip("TEST_POSTGRES_DSN not set; skipping integration test")
+        pytest.skip("TEST_SA01_DB_DSN not set; skipping integration test")
 
-    monkeypatch.setenv("POSTGRES_DSN", dsn)
+    monkeypatch.setenv("SA01_DB_DSN", dsn)
     store = MemoryReplicaStore(dsn=dsn)
     await ensure_replica_schema(store)
 

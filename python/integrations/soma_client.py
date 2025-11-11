@@ -13,14 +13,14 @@ sensible defaults and exposes helpers for common headers and payload shapes.
 
 Environment variables:
 
-* ``SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
+* ``SA01_SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
     ``http://localhost:9696`` which matches the local development cluster.
 * ``SOMA_API_KEY``: Optional API key.  When provided the client sends it in an
   ``Authorization: Bearer`` header (or a custom header if
   ``SOMA_AUTH_HEADER`` is supplied).
-* ``SOMA_TENANT_ID``: Optional tenant identifier forwarded via
+* ``SA01_SOMA_TENANT_ID``: Optional tenant identifier forwarded via
   ``X-Tenant-ID`` (or a custom header defined by ``SOMA_TENANT_HEADER``).
-* ``SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
+* ``SA01_SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
   to outgoing request bodies under the ``universe`` key so that requests are
   automatically segmented per Agent Zero memory sub-directory.
 * ``SOMA_TIMEOUT_SECONDS``: Optional request timeout (float seconds).  Defaults
@@ -101,7 +101,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     try:
         url = httpx.URL(normalized)
     except Exception:
-        logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
+        logger.warning("Invalid SA01_SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
         return "http://localhost:9696"
 
     # Rewrite only the legacy port 9595 to the current default (9696),
@@ -124,23 +124,23 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
 def _default_base_url() -> str:
     """Return the base URL for SomaBrain.
 
-    The environment variable ``SOMA_BASE_URL`` can be used to point to a custom
+    The environment variable ``SA01_SOMA_BASE_URL`` can be used to point to a custom
     endpoint. If it is not set we default to ``http://localhost:9696``. The
     function no longer performs any legacy‑host sanitisation – that logic lives
     in ``_sanitize_legacy_base_url`` and is only applied when an explicit URL
     is provided.
     """
-    return os.getenv("SOMA_BASE_URL", "http://localhost:9696")
+    return os.getenv("SA01_SOMA_BASE_URL", "http://localhost:9696")
 
 
 DEFAULT_BASE_URL = _default_base_url()
 DEFAULT_TIMEOUT = float(os.environ.get("SOMA_TIMEOUT_SECONDS", "30"))
 # IMPORTANT: Distinguish logical universe vs. memory namespace
-# - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
-# - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
+# - SA01_SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
+# - SA01_SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
 #   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = os.environ.get("SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = os.environ.get("SOMA_MEMORY_NAMESPACE", "wm")
+DEFAULT_UNIVERSE = os.environ.get("SA01_SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = os.environ.get("SA01_SOMA_MEMORY_NAMESPACE", "wm")
 
 TENANT_HEADER = os.environ.get("SOMA_TENANT_HEADER", "X-Tenant-ID")
 AUTH_HEADER = os.environ.get("SOMA_AUTH_HEADER", "Authorization")
@@ -238,7 +238,7 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": os.environ.get("SOMA_BASE_URL"),
+                "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
@@ -247,7 +247,7 @@ class SomaClient:
         self.namespace = namespace
         # Universe/context identifier (e.g. "somabrain_ns:public")
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or os.environ.get("SOMA_TENANT_ID")
+        self._tenant_id = tenant_id or os.environ.get("SA01_SOMA_TENANT_ID")
         self._api_key = api_key or os.environ.get("SOMA_API_KEY")
         verify_override = _boolean(os.environ.get("SOMA_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
@@ -375,7 +375,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": os.environ.get("SOMA_BASE_URL"),
+                "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -527,7 +527,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or os.getenv("SOMA_TENANT_ID", "").strip()
+            or os.getenv("SA01_SOMA_TENANT_ID", "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -665,7 +665,7 @@ class SomaClient:
         """
 
         body: Dict[str, Any] = {
-            "tenant": tenant or os.getenv("SOMA_TENANT_ID", "").strip() or "default",
+            "tenant": tenant or os.getenv("SA01_SOMA_TENANT_ID", "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,
