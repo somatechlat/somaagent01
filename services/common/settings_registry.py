@@ -10,18 +10,11 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict, List, Optional
 
-from services.gateway.main import (
-    APP_SETTINGS,
-    get_llm_credentials_store,
-    get_ui_settings_store,
-    PROFILE_STORE,
-    ui_convert_out,
-    ui_get_defaults,
-)
-
 
 class SettingsRegistry:
     def __init__(self) -> None:
+        # Use local import to avoid circular dependency
+        from services.ui.settings import convert_out as ui_convert_out, get_default_settings as ui_get_defaults
         self._cached_defaults = ui_convert_out(ui_get_defaults())
 
     async def snapshot_sections(self) -> List[Dict[str, Any]]:
@@ -38,13 +31,19 @@ class SettingsRegistry:
 
         # Load agent settings doc
         try:
+            # Use local import to avoid circular dependency
+            from integrations.repositories import get_ui_settings_store
             agent_cfg = await get_ui_settings_store().get()
         except Exception:
             agent_cfg = {}
 
         # Load model profile
+        # Use local import to avoid circular dependency
+        from services.common.settings import settings as APP_SETTINGS
         deployment = APP_SETTINGS.deployment_mode
         try:
+            # Use local import to avoid circular dependency
+            from services.common.model_profile import profile_store as PROFILE_STORE
             profile = await PROFILE_STORE.get("dialogue", deployment)
         except Exception:
             profile = None
@@ -148,6 +147,8 @@ class SettingsRegistry:
 
         # Credentials presence overlay
         try:
+            # Use local import to avoid circular dependency
+            from integrations.repositories import get_llm_credentials_store
             creds_store = get_llm_credentials_store()
             providers_with_keys = set(await creds_store.list_providers())
         except Exception:

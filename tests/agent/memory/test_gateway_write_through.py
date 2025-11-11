@@ -3,7 +3,8 @@ from typing import Any, Dict, Optional
 import pytest
 from fastapi.testclient import TestClient
 
-from services.gateway.main import app, get_publisher, get_session_cache, get_session_store
+from services.gateway.main import app, get_publisher, get_session_cache
+from integrations.repositories import get_session_store
 
 
 class StubPublisher:

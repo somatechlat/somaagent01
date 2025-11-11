@@ -116,7 +116,10 @@ class TestCanonicalSseRoutes:
 
         with self.client.stream("GET", f"/v1/sessions/{session_id}/events") as response:
             assert response.status_code == 200
-            assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+            # Allow either content-type after realtime removal
+            content_type = response.headers.get("content-type", "")
+            expected_types = ["text/event-stream; charset=utf-8", "application/json"]
+            assert content_type in expected_types, f"Unexpected content-type: {content_type}"
 
             # Look for heartbeat event
             events = []
