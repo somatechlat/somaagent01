@@ -38,11 +38,27 @@ async def test_operations_admin_deny(monkeypatch):
         return False
 
     monkeypatch.setattr(auth_mod.PolicyClient, "evaluate", deny_eval)
-    req = DummyRequest(headers={})
-    with pytest.raises(Exception):
-        await authorize(
-            request=req,
-            action="ops.memory.list",
-            resource="OperationsAdministration",
-            context={"tenant": "t1"},
-        )
+    # When SA01_AUTH_REQUIRED=false, policy evaluation is bypassed and no exception is raised.
+    # To test the deny path, we must enable auth.
+    from services.common import runtime_config as cfg
+
+    # Temporarily override the settings singleton to enable auth.
+    original_settings = cfg._STATE.settings if cfg._STATE else None
+    try:
+        import copy
+
+        fake_settings = copy.deepcopy(cfg.settings())
+        fake_settings.auth_required = True
+        cfg._STATE.settings = fake_settings
+
+        req = DummyRequest(headers={})
+        with pytest.raises(Exception):
+            await authorize(
+                request=req,
+                action="ops.memory.list",
+                resource="OperationsAdministration",
+                context={"tenant": "t1"},
+            )
+    finally:
+        # Restore the original settings singleton.
+        cfg._STATE.settings = original_settings

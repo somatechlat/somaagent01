@@ -3,7 +3,7 @@
 Usage (run locally, do NOT paste secrets into chat):
 
 export SA01_AUTH_INTERNAL_TOKEN="<paste-locally>"
-export GATEWAY_BASE_URL="http://127.0.0.1:21016"
+export SA01_GATEWAY_BASE_URL="http://127.0.0.1:21016"
 python -m pytest -q tests/test_llm_integration.py
 
 This test performs two checks:
@@ -23,7 +23,7 @@ import uuid
 import httpx
 import pytest
 
-GATEWAY_BASE = os.getenv("GATEWAY_BASE_URL", "http://127.0.0.1:21016")
+GATEWAY_BASE = os.getenv("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016")
 SA01_AUTH_INTERNAL_TOKEN = os.getenv("SA01_AUTH_INTERNAL_TOKEN")
 
 
