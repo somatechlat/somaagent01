@@ -304,15 +304,13 @@ function getConnectionStatus() {
 
 function setConnectionStatus(connected) {
   connectionStatus = connected;
-  if (globalThis.Alpine && timeDate) {
-    const statusIconEl = timeDate.querySelector(".status-icon");
-    if (statusIconEl) {
-      const statusIcon = Alpine.$data(statusIconEl);
-      if (statusIcon) {
-        statusIcon.connected = connected;
-      }
+  try {
+    if (globalThis.Alpine?.store && globalThis.Alpine.store('conn')) {
+      const s = globalThis.Alpine.store('conn');
+      s.status = connected ? 'online' : 'offline';
+      s.tooltip = connected ? 'Online' : 'Offline';
     }
-  }
+  } catch {}
 }
 
 let lastLogVersion = 0;
@@ -326,15 +324,26 @@ let assistantBuffer = "";
 // Subscribe to stream lifecycle & events
 bus.on("stream.online", () => {
   setConnectionStatus(true);
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = 'Online'; } } catch {}
   try { notificationsSseStore.create({ type: "system", title: "Connected", body: "Streaming online", severity: "success", ttl_seconds: 3 }); } catch {}
 });
-bus.on("stream.offline", () => {
+bus.on("stream.offline", (info) => {
   setConnectionStatus(false);
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = info?.reason ? `Offline — ${info.reason}` : 'Offline'; } } catch {}
   try { notificationsSseStore.create({ type: "system", title: "Disconnected", body: "Backend stream offline", severity: "warning", ttl_seconds: 15 }); } catch {}
 });
-bus.on("stream.heartbeat", () => { /* reserved for future diagnostics */ });
+bus.on("stream.stale", (info) => {
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'stale'; const secs = Math.max(1, Math.round((info?.ms_since_heartbeat || 0)/1000)); s.tooltip = `Stale — ${secs}s since last heartbeat`; } } catch {}
+});
 bus.on("stream.reconnecting", (info) => {
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'reconnecting'; const attempt = info?.attempt || 1; const delayMs = info?.delay || 0; s.tooltip = `Reconnecting (attempt ${attempt}, ${Math.round(delayMs)}ms)`; } } catch {}
   try { notificationsSseStore.create({ type: "system", title: "Reconnecting", body: `Attempt ${info.attempt || 1}`, severity: "info", ttl_seconds: 4 }); } catch {}
+});
+bus.on("stream.retry.success", (info) => {
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = `Reconnected after ${info?.attempt || 1} attempts`; } } catch {}
+});
+bus.on("stream.retry.giveup", (info) => {
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = `Reconnection paused after ${info?.attempt || 1} attempts`; } } catch {}
 });
 bus.on("sse:event", (ev) => {
   if (ev && (!ev.session_id || ev.session_id === context)) {
@@ -843,6 +852,13 @@ document.addEventListener("DOMContentLoaded", () => {
       notifBridge.list = notificationsSseStore.state.list || [];
       notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
     });
+    // Connection status Alpine store (used by bell-adjacent indicator)
+    const connBridge = createAlpineStore('conn', { status: 'offline', tooltip: 'Offline' });
+    // If connection already established before DOM ready, reflect it
+    if (typeof connectionStatus === 'boolean') {
+      connBridge.status = connectionStatus ? 'online' : 'offline';
+      connBridge.tooltip = connectionStatus ? 'Online' : 'Offline';
+    }
   } catch (e) { console.warn("Failed to create Alpine notifications bridge", e); }
 
   // Ensure an active context exists so SSE connects (needed for notifications stream)

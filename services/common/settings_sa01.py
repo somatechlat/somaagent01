@@ -96,7 +96,9 @@ class SA01Settings(BaseServiceSettings):
         if self.jwt_algorithms is None:
             self.jwt_algorithms = ["HS256", "RS256"]
         if isinstance(self.jwt_tenant_claims, str):
-            self.jwt_tenant_claims = [c.strip() for c in self.jwt_tenant_claims.split(",") if c.strip()]
+            self.jwt_tenant_claims = [
+                c.strip() for c in self.jwt_tenant_claims.split(",") if c.strip()
+            ]
         if self.jwt_tenant_claims is None:
             self.jwt_tenant_claims = ["tenant", "org", "customer"]
 
@@ -109,15 +111,21 @@ class SA01Settings(BaseServiceSettings):
         # Fail-closed: encryption key must be present if any credentials subsystem depends on it
         if self.crypto_fernet_key is None:
             # We do not auto-generate – strict posture
-            raise ValueError("Missing SA01_CRYPTO_FERNET_KEY; credential encryption disabled and startup aborted.")
+            raise ValueError(
+                "Missing SA01_CRYPTO_FERNET_KEY; credential encryption disabled and startup aborted."
+            )
         # Basic validation for Fernet key length (urlsafe base64 44 chars for 32 bytes)
         if self.crypto_fernet_key and len(self.crypto_fernet_key.strip()) < 32:
             raise ValueError("Invalid SA01_CRYPTO_FERNET_KEY; appears too short.")
         # Upload lists normalization
         if isinstance(self.upload_allowed_mime, str):
-            self.upload_allowed_mime = [m.strip() for m in self.upload_allowed_mime.split(",") if m.strip()]
+            self.upload_allowed_mime = [
+                m.strip() for m in self.upload_allowed_mime.split(",") if m.strip()
+            ]
         if isinstance(self.upload_denied_mime, str):
-            self.upload_denied_mime = [m.strip() for m in self.upload_denied_mime.split(",") if m.strip()]
+            self.upload_denied_mime = [
+                m.strip() for m in self.upload_denied_mime.split(",") if m.strip()
+            ]
         # CORS list normalization
         if isinstance(self.cors_origins, str):
             self.cors_origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -126,7 +134,9 @@ class SA01Settings(BaseServiceSettings):
         if isinstance(self.cors_headers, str):
             self.cors_headers = [h.strip() for h in self.cors_headers.split(",") if h.strip()]
         if isinstance(self.cors_expose_headers, str):
-            self.cors_expose_headers = [h.strip() for h in self.cors_expose_headers.split(",") if h.strip()]
+            self.cors_expose_headers = [
+                h.strip() for h in self.cors_expose_headers.split(",") if h.strip()
+            ]
         # Gateway base URL fallback
         if not self.gateway_base_url:
             self.gateway_base_url = f"http://localhost:{self.gateway_port}"
@@ -192,9 +202,13 @@ class SA01Settings(BaseServiceSettings):
             "jwt_cookie_domain": cfg.env("SA01_AUTH_JWT_COOKIE_DOMAIN"),
             "jwt_cookie_path": cfg.env("SA01_AUTH_JWT_COOKIE_PATH", "/"),
             "jwt_cookie_samesite": cfg.env("SA01_AUTH_JWT_COOKIE_SAMESITE", "Lax"),
-            "jwt_cookie_http_only": (cfg.env("SA01_AUTH_JWT_COOKIE_HTTPONLY", "true") or "true").lower()
+            "jwt_cookie_http_only": (
+                cfg.env("SA01_AUTH_JWT_COOKIE_HTTPONLY", "true") or "true"
+            ).lower()
             in {"true", "1", "yes"},
-            "jwt_cookie_max_age": (int(cfg.env("SA01_AUTH_JWT_COOKIE_MAX_AGE", "0") or "0") or None),
+            "jwt_cookie_max_age": (
+                int(cfg.env("SA01_AUTH_JWT_COOKIE_MAX_AGE", "0") or "0") or None
+            ),
             "internal_token": cfg.env("SA01_AUTH_INTERNAL_TOKEN"),
             "crypto_fernet_key": cfg.env("SA01_CRYPTO_FERNET_KEY"),
             # Uploads
@@ -242,7 +256,8 @@ class SA01Settings(BaseServiceSettings):
             "metrics_port": int(cfg.env("SA01_METRICS_PORT", "9400")),
             "metrics_host": cfg.env("SA01_METRICS_HOST", "0.0.0.0"),
             "opa_url": cfg.env("SA01_POLICY_URL", "http://opa:8181"),
-            "auth_required": (cfg.env("SA01_AUTH_REQUIRED", "true") or "true").lower() in {"true", "1", "yes"},
+            "auth_required": (cfg.env("SA01_AUTH_REQUIRED", "true") or "true").lower()
+            in {"true", "1", "yes"},
             "jwt_secret": cfg.env("SA01_AUTH_JWT_SECRET"),
             "jwt_public_key": cfg.env("SA01_AUTH_JWT_PUBLIC_KEY"),
             "jwt_jwks_url": cfg.env("SA01_AUTH_JWKS_URL"),
@@ -256,8 +271,13 @@ class SA01Settings(BaseServiceSettings):
             "jwt_cookie_domain": cfg.env("SA01_AUTH_JWT_COOKIE_DOMAIN"),
             "jwt_cookie_path": cfg.env("SA01_AUTH_JWT_COOKIE_PATH", "/"),
             "jwt_cookie_samesite": cfg.env("SA01_AUTH_JWT_COOKIE_SAMESITE", "Lax"),
-            "jwt_cookie_http_only": (cfg.env("SA01_AUTH_JWT_COOKIE_HTTPONLY", "true") or "true").lower() in {"true", "1", "yes"},
-            "jwt_cookie_max_age": (int(cfg.env("SA01_AUTH_JWT_COOKIE_MAX_AGE", "0") or "0") or None),
+            "jwt_cookie_http_only": (
+                cfg.env("SA01_AUTH_JWT_COOKIE_HTTPONLY", "true") or "true"
+            ).lower()
+            in {"true", "1", "yes"},
+            "jwt_cookie_max_age": (
+                int(cfg.env("SA01_AUTH_JWT_COOKIE_MAX_AGE", "0") or "0") or None
+            ),
             "internal_token": cfg.env("SA01_AUTH_INTERNAL_TOKEN"),
             "crypto_fernet_key": cfg.env("SA01_CRYPTO_FERNET_KEY"),
             "upload_dir": cfg.env("SA01_UPLOAD_DIR", "/uploads"),
@@ -269,7 +289,8 @@ class SA01Settings(BaseServiceSettings):
             "cors_methods": cfg.env("SA01_CORS_METHODS", ""),
             "cors_headers": cfg.env("SA01_CORS_HEADERS", ""),
             "cors_expose_headers": cfg.env("SA01_CORS_EXPOSE_HEADERS", ""),
-            "cors_credentials": (cfg.env("SA01_CORS_CREDENTIALS", "false") or "false").lower() in {"true", "1", "yes", "on"},
+            "cors_credentials": (cfg.env("SA01_CORS_CREDENTIALS", "false") or "false").lower()
+            in {"true", "1", "yes", "on"},
             "gateway_port": int(cfg.env("SA01_GATEWAY_PORT", "21016") or "21016"),
             "gateway_base_url": cfg.env("SA01_GATEWAY_BASE_URL"),
             "admin_rps": float(cfg.env("SA01_ADMIN_RPS", "0") or "0"),
@@ -296,7 +317,8 @@ class SA01Settings(BaseServiceSettings):
             "metrics_port": int(cfg.env("SA01_METRICS_PORT", "9400")),
             "metrics_host": cfg.env("SA01_METRICS_HOST", "0.0.0.0"),
             "opa_url": cfg.env("SA01_POLICY_URL", "http://opa:8181"),
-            "auth_required": (cfg.env("SA01_AUTH_REQUIRED", "true") or "true").lower() in {"true", "1", "yes"},
+            "auth_required": (cfg.env("SA01_AUTH_REQUIRED", "true") or "true").lower()
+            in {"true", "1", "yes"},
             "jwt_secret": cfg.env("SA01_AUTH_JWT_SECRET"),
             "jwt_public_key": cfg.env("SA01_AUTH_JWT_PUBLIC_KEY"),
             "jwt_jwks_url": cfg.env("SA01_AUTH_JWKS_URL"),
@@ -310,8 +332,13 @@ class SA01Settings(BaseServiceSettings):
             "jwt_cookie_domain": cfg.env("SA01_AUTH_JWT_COOKIE_DOMAIN"),
             "jwt_cookie_path": cfg.env("SA01_AUTH_JWT_COOKIE_PATH", "/"),
             "jwt_cookie_samesite": cfg.env("SA01_AUTH_JWT_COOKIE_SAMESITE", "Lax"),
-            "jwt_cookie_http_only": (cfg.env("SA01_AUTH_JWT_COOKIE_HTTPONLY", "true") or "true").lower() in {"true", "1", "yes"},
-            "jwt_cookie_max_age": (int(cfg.env("SA01_AUTH_JWT_COOKIE_MAX_AGE", "0") or "0") or None),
+            "jwt_cookie_http_only": (
+                cfg.env("SA01_AUTH_JWT_COOKIE_HTTPONLY", "true") or "true"
+            ).lower()
+            in {"true", "1", "yes"},
+            "jwt_cookie_max_age": (
+                int(cfg.env("SA01_AUTH_JWT_COOKIE_MAX_AGE", "0") or "0") or None
+            ),
             "internal_token": cfg.env("SA01_AUTH_INTERNAL_TOKEN"),
             "crypto_fernet_key": cfg.env("SA01_CRYPTO_FERNET_KEY"),
             "upload_dir": cfg.env("SA01_UPLOAD_DIR", "/uploads"),
@@ -323,7 +350,8 @@ class SA01Settings(BaseServiceSettings):
             "cors_methods": cfg.env("SA01_CORS_METHODS", ""),
             "cors_headers": cfg.env("SA01_CORS_HEADERS", ""),
             "cors_expose_headers": cfg.env("SA01_CORS_EXPOSE_HEADERS", ""),
-            "cors_credentials": (cfg.env("SA01_CORS_CREDENTIALS", "false") or "false").lower() in {"true", "1", "yes", "on"},
+            "cors_credentials": (cfg.env("SA01_CORS_CREDENTIALS", "false") or "false").lower()
+            in {"true", "1", "yes", "on"},
             "gateway_port": int(cfg.env("SA01_GATEWAY_PORT", "21016") or "21016"),
             "gateway_base_url": cfg.env("SA01_GATEWAY_BASE_URL"),
             "admin_rps": float(cfg.env("SA01_ADMIN_RPS", "0") or "0"),

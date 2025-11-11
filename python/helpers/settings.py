@@ -7,7 +7,7 @@ import subprocess
 from typing import Any, cast, Literal, TypedDict
 
 # Third‑party imports (alphabetical)
-from python.helpers import defer, git, runtime, whisper
+from python.helpers import defer, git, runtime
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
 from python.helpers.secrets import SecretsManager
@@ -1547,9 +1547,15 @@ def _apply_settings(previous: Settings | None):
 
         # reload whisper model if necessary
         if not previous or _settings["stt_model_size"] != previous["stt_model_size"]:
-            defer.DeferredTask().start_task(
-                whisper.preload, _settings["stt_model_size"]
-            )  # TODO overkill, replace with background task
+                # Lazy import of whisper to avoid ImportError when audio support is disabled.
+                try:
+                    from python.helpers import whisper as _whisper
+                except Exception:
+                    _whisper = None
+                if _whisper:
+                    defer.DeferredTask().start_task(
+                        _whisper.preload, _settings["stt_model_size"]
+                    )  # TODO overkill, replace with background task
 
         # force memory reload on embedding model change
         if not previous or (

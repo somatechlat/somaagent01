@@ -83,6 +83,41 @@
     transform: none;
 }
 
+/* Connection indicator placed beside bell icon */
+.conn-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-left: 8px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    box-sizing: border-box;
+    pointer-events: none; /* do not intercept bell clicks */
+}
+
+.conn-indicator.conn-online {
+    background-color: #00c340; /* green */
+}
+
+.conn-indicator.conn-stale {
+    background-color: #ffb300; /* amber */
+}
+
+.conn-indicator.conn-reconnecting {
+    background-color: #2196F3; /* blue */
+    animation: conn-pulse 1.2s ease-in-out infinite;
+}
+
+.conn-indicator.conn-offline {
+    background-color: transparent;
+    border-color: #e40138; /* red ring */
+}
+
+@keyframes conn-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.75; }
+}
+
 
 
 /* Light Mode Styles */
@@ -105,6 +140,12 @@
     background: rgba(0, 0, 0, 0.05);
     border-color: rgba(0, 0, 0, 0.1);
 }
+
+/* Light mode variants for connection indicator */
+.light-mode .conn-indicator.conn-online { background-color: #00a836; }
+.light-mode .conn-indicator.conn-stale { background-color: #ff9800; }
+.light-mode .conn-indicator.conn-reconnecting { background-color: #1976D2; }
+.light-mode .conn-indicator.conn-offline { border-color: #d32f2f; }
 
 
 
