@@ -84,7 +84,7 @@ SA01_KAFKA_BOOTSTRAP_SERVERS=localhost:21000
 SA01_REDIS_URL=redis://localhost:20001/0
 SA01_DB_DSN=postgresql://soma:soma@localhost:20002/somaagent01
 SA01_POLICY_URL=http://localhost:20009
-SA01_SA01_SOMA_BASE_URL=http://localhost:9696
+SA01_SOMA_BASE_URL=http://localhost:9696
 ``` 
 
 ### Hot Reload

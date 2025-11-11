@@ -39,8 +39,8 @@ env:
   SA01_DB_DSN: "postgresql://soma:soma@postgres:5432/somaagent01"
   SA01_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
   SA01_REDIS_URL: "redis://redis:6379/0"
-  SA01_SA01_SOMA_BASE_URL: "http://somabrain:9696"
-  SA01_SA01_SOMA_NAMESPACE: "default"
+  SA01_SOMA_BASE_URL: "http://somabrain:9696"
+  SA01_SOMA_NAMESPACE: "default"
   SA01_MEMORY_WAL_TOPIC: "memory.wal"
 
 services:
