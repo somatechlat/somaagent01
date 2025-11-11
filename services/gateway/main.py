@@ -1539,10 +1539,20 @@ def _mime_allowed(mime: str) -> bool:
 
 
 def _clamav_enabled() -> bool:
-    # Prefer overlays from settings
-    cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
-    if isinstance(cfg, dict) and cfg.get("av_enabled") is not None:
-        return bool(cfg.get("av_enabled"))
+    """Return whether ClamAV scanning is enabled.
+
+    Preference order:
+    1. Per‑request overlay configuration stored in ``app.state.av_cfg`` (a
+       plain ``dict`` that may contain the ``av_enabled`` key).
+    2. Centralised environment access via ``services.common.runtime_config``.
+    """
+    # Overlay dictionary may be attached to the FastAPI app state.
+    av_cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
+    if isinstance(av_cfg, dict) and av_cfg.get("av_enabled") is not None:
+        return bool(av_cfg.get("av_enabled"))
+    # Fallback to the global runtime config helper.
+    from services.common import runtime_config as cfg
+
     return (cfg.env("CLAMAV_ENABLED", "false") or "false").lower() in {"1", "true", "yes", "on"}
 
 
@@ -2091,6 +2101,18 @@ def _flag_truthy(value: str | None, default: bool = False) -> bool:
 
 
 def _write_through_enabled() -> bool:
+    """Determine if write‑through is enabled.
+
+    Historically the flag was read from the ``GATEWAY_WRITE_THROUGH``
+    environment variable. The test suite (and production deployments) set
+    ``SA01_GATEWAY_WRITE_THROUGH`` instead. To retain backward compatibility
+    we check both variables, giving precedence to the ``SA01_`` prefixed name.
+    """
+    # Prefer the explicit ``SA01_`` name used by the test harness.
+    val = cfg.env("SA01_GATEWAY_WRITE_THROUGH")
+    if val is not None:
+        return _flag_truthy(val, False)
+    # Fallback to the original name for legacy compatibility.
     return _flag_truthy(cfg.env("GATEWAY_WRITE_THROUGH"), False)
 
 
@@ -7126,6 +7148,9 @@ like /ui/config.json so those routes take precedence over static files.
 """
 
 try:
+    # UI assets reside at the repository root "webui" directory.
+    # ``__file__`` is ``services/gateway/main.py``; moving up two levels
+    # reaches the repository root, then we append ``webui``.
     UI_DIR = (Path(__file__).resolve().parents[2] / "webui").resolve()
     if UI_DIR.exists():
         # Mount the Web UI root under /ui so /ui/index.html and related relative paths work
