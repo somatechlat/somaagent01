@@ -272,7 +272,7 @@ const model = {
   },
 
   // Generate server-side API URL for file (for device sync)
-   // Legacy server URLs removed; use attachment descriptors with .path
+   // Prior server URLs removed; use attachment descriptors with .path
 
   // Check if file is an image based on extension
   isImageFile(filename) {

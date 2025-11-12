@@ -2,7 +2,7 @@
 Centralized repository singleton layer for all data stores and repositories.
 
 This module provides singleton access to all database stores and repositories.
-Imports are aligned with services.common.* to avoid mismatched legacy paths.
+Imports are aligned with services.common.* to avoid mismatched prior paths.
 """
 
 from __future__ import annotations

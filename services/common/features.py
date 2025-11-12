@@ -45,7 +45,7 @@ class FeatureRegistry:
         # Profile default
         enabled = desc.profiles.get(self._profile, desc.default_enabled)
         # Honor explicit environment override variables when provided.
-        # This is not a legacy path; tests and ops rely on fast env flips.
+        # This is not a prior path; tests and ops rely on fast env flips.
         try:
             if desc.enabled_env_var:
                 raw = cfg.env(desc.enabled_env_var)

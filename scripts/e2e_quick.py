@@ -2,7 +2,7 @@
 """
 Minimal end-to-end check:
 - POST /v1/session/message
-- Open SSE /v1/session/{id}/events
+- Open SSE /v1/sessions/{id}/events?stream=true
 - Print first assistant event snippet then exit 0
 
 Usage:
@@ -49,7 +49,7 @@ async def main() -> int:
 
     async with httpx.AsyncClient(timeout=None) as client:
         print("Opening SSE for session", sid)
-        async with client.stream("GET", f"{BASE}/v1/session/{sid}/events") as resp:
+        async with client.stream("GET", f"{BASE}/v1/sessions/{sid}/events?stream=true") as resp:
             if resp.status_code != 200:
                 print("SSE open failed:", resp.status_code)
                 return 4

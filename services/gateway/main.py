@@ -137,7 +137,7 @@ from hashlib import sha256
 
 from jsonschema import validate as jsonschema_validate, ValidationError as JSONSchemaValidationError
 
-from observability.metrics import metrics_collector
+from observability.metrics import metrics_collector, runtime_config_last_applied_ts
 from python.helpers.dotenv import get_dotenv_value
 from python.helpers.settings import (
     convert_out as ui_convert_out,
@@ -145,7 +145,7 @@ from python.helpers.settings import (
     set_settings,
 )
 from python.integrations.somabrain_client import (
-    get_tenant_flag,
+    get_tenant_flag as fetch_tenant_flag,
     SomaBrainClient,
     SomaClientError,
 )
@@ -154,6 +154,7 @@ from services.common import (
     masking as _masking,
     runtime_config as cfg,
 )
+from services.common.tenant_flags import init_tenant_flag_cache
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.attachments_store import AttachmentsStore
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
@@ -221,7 +222,7 @@ tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
 # --- Consolidated service stores (moved in-process to the gateway) ---
 PROFILE_STORE = ModelProfileStore.from_settings(APP_SETTINGS)
 CATALOG_STORE = ToolCatalogStore.from_settings(APP_SETTINGS)
-# Legacy alias for tests expecting a global 'catalog'
+# Prior alias for tests expecting a global 'catalog'
 catalog = CATALOG_STORE
 TELEMETRY_STORE = TelemetryStore.from_settings(APP_SETTINGS)
 REQUEUE_STORE = RequeueStore.from_settings(APP_SETTINGS)
@@ -241,7 +242,15 @@ def _redis_url() -> str:
     return APP_SETTINGS.redis_url
 
 
+_FEATURE_FLAG_TTL = float(cfg.env("FEATURE_FLAGS_TTL_SECONDS", "30") or "30")
+_TENANT_FLAG_CACHE = init_tenant_flag_cache(fetch_tenant_flag, _FEATURE_FLAG_TTL)
+cfg.set_override_resolver(lambda key, tenant: _TENANT_FLAG_CACHE.get(tenant, key))
+
+
 app = FastAPI(title="SomaAgent 01 Gateway")
+
+# Enforce Somabrain OPA policy globally (health/metrics bypass handled in middleware).
+app.add_middleware(EnforcePolicy)
 
 # Import health endpoints
 import json as _json
@@ -463,9 +472,10 @@ def _setup_cors() -> None:
 _setup_cors()
 
 
-# NOTE: The previous global policy middleware (EnforcePolicy) has been removed.
-# Future selective authorization should use a dedicated client or decorator.
-# Import selective authorization helpers
+# Somabrain policy middleware enforces constitution rules for every request.
+from python.integrations.opa_middleware import EnforcePolicy
+
+# Import selective authorization helpers for endpoint-level checks
 from services.common.authorization import authorize
 
 # ---------------------------------------------------------------------------
@@ -611,7 +621,7 @@ async def api_get_flag(flag: str, request: Request) -> JSONResponse:
         raise HTTPException(status_code=502, detail=str(exc))
 
 
-# Legacy UI proxy router is intentionally not included here to enforce SSE-only UI paths.
+# Prior UI proxy router is intentionally not included here to enforce SSE-only UI paths.
 # The Web UI must use canonical /v1 endpoints directly; polling shims are removed.
 
 
@@ -906,7 +916,7 @@ def _scrub(obj: Any, depth: int = 0) -> Any:
 # Scheduler Task Endpoints (temporary compatibility layer)
 # ---------------------------------------------------------------------------
 # NOTE: The roadmap specifies canonical endpoints under /v1/ui/scheduler/*.
-# The current WebUI still calls legacy paths like /scheduler_tasks_list.
+# The current WebUI still calls prior paths like /scheduler_tasks_list.
 # We implement these paths now with real persistence (Redis) and selective
 # authorization so the UI smoke tests function. A later migration can expose
 # canonical /v1/ui/scheduler routes and deprecate these.
@@ -1545,41 +1555,41 @@ async def _config_update_listener() -> None:
         settings=_kafka_settings(),
     ):
         try:
-            # Apply incoming config via registry if present, else route to legacy setter
+            # Apply incoming config via registry if present, else route to prior setter
             registry = getattr(app.state, "config_registry", None)
-            if isinstance(payload, dict) and registry is not None:
+    if isinstance(payload, dict) and registry is not None:
+        try:
+            snap = cfg.apply_config_update(payload)
+            try:
+                CONFIG_UPDATE_RESULTS.labels("ok").inc()
+            except Exception:
+                pass
+            if snap:
                 try:
-                    snap = registry.apply_update(payload)
-                    try:
-                        CONFIG_UPDATE_RESULTS.labels("ok").inc()
-                    except Exception:
-                        pass
-                    # Optionally emit ack via DurablePublisher when available
-                    try:
-                        ack = registry.build_ack("ok")
-                        await get_publisher().publish(
-                            cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
-                            or "config_updates.ack",
-                            ack,
-                            fallback=True,
-                        )
-                    except Exception:
-                        LOGGER.debug("config ack publish failed", exc_info=True)
-                except Exception as exc:
-                    try:
-                        CONFIG_UPDATE_RESULTS.labels("rejected").inc()
-                    except Exception:
-                        pass
-                    try:
-                        ack = registry.build_ack("rejected", error=str(exc))
-                        await get_publisher().publish(
-                            cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
-                            or "config_updates.ack",
-                            ack,
-                            fallback=True,
-                        )
-                    except Exception:
-                        LOGGER.debug("config ack publish failed (reject)", exc_info=True)
+                    ack = registry.build_ack("ok")
+                    await get_publisher().publish(
+                        cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
+                        or "config_updates.ack",
+                        ack,
+                        fallback=True,
+                    )
+                except Exception:
+                    LOGGER.debug("config ack publish failed", exc_info=True)
+        except Exception as exc:
+            try:
+                CONFIG_UPDATE_RESULTS.labels("rejected").inc()
+            except Exception:
+                pass
+            try:
+                ack = registry.build_ack("rejected", error=str(exc))
+                await get_publisher().publish(
+                    cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
+                    or "config_updates.ack",
+                    ack,
+                    fallback=True,
+                )
+            except Exception:
+                LOGGER.debug("config ack publish failed (reject)", exc_info=True)
             else:
                 set_settings(payload)  # type: ignore[arg-type]
         except Exception as exc:
@@ -1596,17 +1606,20 @@ async def start_background_services() -> None:
     """Initialize shared resources and background services."""
     _startup_t0 = time.perf_counter()
     # Initialize ConfigRegistry with defaults (best-effort)
-    try:
-        schema_path = os.path.join(os.getcwd(), "schemas/config/registry.v1.schema.json")
-        with open(schema_path, "r", encoding="utf-8") as fh:
-            _schema = _json.load(fh)
-        registry = ConfigRegistry(_schema)
-        # Minimal defaults – overlays object present per schema; version 0
-        defaults = {"version": "0", "overlays": {}, "secrets": {}, "feature_flags": {}}
-        registry.load_defaults(defaults)
+    registry = cfg.state().config
+    if registry is None:
+        try:
+            schema_path = os.path.join(os.getcwd(), "schemas/config/registry.v1.schema.json")
+            with open(schema_path, "r", encoding="utf-8") as fh:
+                _schema = _json.load(fh)
+            registry = ConfigRegistry(_schema)
+            defaults = {"version": "0", "overlays": {}, "secrets": {}, "feature_flags": {}}
+            registry.load_defaults(defaults)
+            cfg.state().config = registry
+        except Exception:
+            LOGGER.debug("ConfigRegistry initialization failed", exc_info=True)
+    if registry:
         app.state.config_registry = registry
-    except Exception:
-        LOGGER.debug("ConfigRegistry initialization failed", exc_info=True)
     # Initialize shared event bus for reuse across requests
     event_bus = KafkaEventBus(_kafka_settings())
     # No explicit start() on our KafkaEventBus; producer is initialized lazily.
@@ -1743,14 +1756,14 @@ async def start_background_services() -> None:
         LOGGER.debug("Attachments store schema ensure failed", exc_info=True)
 
     # Ensure UI settings schema exists (best-effort)
-    # Ensure session schema and run legacy error backfill once (best-effort)
+    # Ensure session schema and run prior error backfill once (best-effort)
     try:
         store = get_session_store()
         await ensure_session_schema(store)
         try:
             backfill_counts = await store.backfill_error_events()
             LOGGER.info(
-                "Backfill legacy error events",
+                "Backfill prior error events",
                 extra={"updated": backfill_counts},
             )
         except Exception:
@@ -1760,12 +1773,12 @@ async def start_background_services() -> None:
             await ensure_session_constraints(store)
         except Exception:
             LOGGER.debug("Session constraints ensure failed", exc_info=True)
-        # Start periodic legacy error normalization loop
+        # Start periodic prior error normalization loop
         try:
-            app.state._legacy_error_loop_stop = asyncio.Event()
-            asyncio.create_task(_legacy_error_backfill_loop(app.state._legacy_error_loop_stop))
+            app.state._prior_error_loop_stop = asyncio.Event()
+            asyncio.create_task(_prior_error_backfill_loop(app.state._prior_error_loop_stop))
         except Exception:
-            LOGGER.debug("Failed to start legacy error backfill loop", exc_info=True)
+            LOGGER.debug("Failed to start prior error backfill loop", exc_info=True)
     except Exception:
         LOGGER.debug("Session schema ensure failed", exc_info=True)
 
@@ -1967,7 +1980,7 @@ def _file_saving_disabled() -> bool:
 
 
 def _sse_disabled() -> bool:
-    """Whether to disable SSE endpoint (no legacy fallbacks)."""
+    """Whether to disable SSE endpoint (no prior fallbacks)."""
     return not cfg.flag("sse_enabled")
 
 
@@ -2149,7 +2162,29 @@ async def get_runtime_config() -> dict[str, Any]:
         "uploads": uploads,
         "somabrain": somabrain,
         "tools": {"enabled_count": tool_count},
-        "config": {"checksum": checksum},
+        "config": {
+            "checksum": checksum,
+            "last_applied_timestamp": runtime_config_last_applied_ts.get()
+            if checksum
+            else None,
+        },
+    }
+
+
+@app.post("/v1/runtime-config/apply")
+async def apply_runtime_config(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+    if not _internal_token_ok(request):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    from services.common import runtime_config as cfg
+
+    snap = cfg.apply_config_update(payload)
+    if not snap:
+        raise HTTPException(status_code=503, detail="Config registry unavailable")
+    return {
+        "version": snap.version,
+        "checksum": snap.checksum,
+        "applied_at": float(time.time()),
     }
 
 
@@ -3875,17 +3910,17 @@ def _inbound_topic() -> str:
 # Removed DEV echo: no synthetic assistant responses. The gateway never fabricates events.
 
 
-# Removed legacy /v1/session/message implementation that synthesized events. See the unified
+# Removed prior /v1/session/message implementation that synthesized events. See the unified
 # enqueue_message implementation below for the only supported behavior.
 
 
-# Removed legacy dict-shaped /v1/sessions; keeping the typed response version below.
+# Removed prior dict-shaped /v1/sessions; keeping the typed response version below.
 
 
-# Removed legacy dict-shaped /v1/sessions/{id}/events; keeping the typed response version below.
+# Removed prior dict-shaped /v1/sessions/{id}/events; keeping the typed response version below.
 
 
-# Removed legacy SSE endpoint that polled the session store to avoid duplicate route definitions.
+# Removed prior SSE endpoint that polled the session store to avoid duplicate route definitions.
 
 
 # -----------------------------
@@ -6604,7 +6639,7 @@ async def revoke_api_key(
 
 
 """SSE endpoint is defined later with a per-connection consumer group to avoid
-inter-client interference. A legacy WebSocket stream implementation has been
+inter-client interference. A prior WebSocket stream implementation has been
 removed to prevent duplicate mechanisms and shared consumer groups across clients.
 """
 
@@ -6790,21 +6825,21 @@ async def get_session_context_window(
 
 
 # -----------------------------
-# Periodic legacy error backfill loop
+# Periodic prior error backfill loop
 # -----------------------------
 
 
-async def _legacy_error_backfill_loop(stop_evt: asyncio.Event) -> None:
+async def _prior_error_backfill_loop(stop_evt: asyncio.Event) -> None:
     from services.common import runtime_config as cfg
 
-    interval = int(cfg.env("LEGACY_ERROR_BACKFILL_SECONDS", "900") or "900")  # 15 min default
+    interval = int(cfg.env("PRIOR_ERROR_BACKFILL_SECONDS", "900") or "900")  # 15 min default
     store = get_session_store()
     while not stop_evt.is_set():
         try:
             await ensure_session_schema(store)
             await store.backfill_error_events()
         except Exception:
-            LOGGER.debug("Periodic legacy error backfill failed", exc_info=True)
+            LOGGER.debug("Periodic prior error backfill failed", exc_info=True)
         try:
             await asyncio.wait_for(stop_evt.wait(), timeout=max(30, interval))
         except asyncio.TimeoutError:
@@ -7030,7 +7065,7 @@ try:
 
             @app.get("/index.js", include_in_schema=False)
             async def _index_js() -> FileResponse:  # type: ignore
-                # Force fresh fetch to avoid browsers using a cached legacy copy that still calls /poll
+                # Force fresh fetch to avoid browsers using a cached prior copy that still calls /poll
                 return FileResponse(
                     str(index_js),
                     media_type="application/javascript",
@@ -7272,10 +7307,10 @@ async def _gateway_lifespan(fastapi_app: FastAPI):
             await shutdown_background_services()
         except Exception:
             pass
-        # Stop legacy error loop
+        # Stop prior error loop
         try:
-            if hasattr(app.state, "_legacy_error_loop_stop"):
-                app.state._legacy_error_loop_stop.set()
+            if hasattr(app.state, "_prior_error_loop_stop"):
+                app.state._prior_error_loop_stop.set()
         except Exception:
             pass
 
@@ -7395,31 +7430,14 @@ async def health_check(
 
 
 @app.get("/v1/session/{session_id}/events")
-async def sse_session_events(session_id: str, request: Request) -> StreamingResponse:
-    """Server-Sent Events stream of outbound conversation events for a session.
-
-    Streams events from the Kafka topic configured as SA01_CONVERSATION_OUTBOUND and
-    filters by session_id.
-    """
-    if _sse_disabled():
-        raise HTTPException(status_code=503, detail="SSE disabled")
-    from services.common import runtime_config as cfg
-
-    topic = (
-        cfg.env("SA01_CONVERSATION_OUTBOUND")
-        or cfg.env("SA01_CONVERSATION_OUTBOUND", "conversation.outbound")
-        or "conversation.outbound"
+async def prior_sse_route() -> JSONResponse:
+    return JSONResponse(
+        {
+            "error": "use_new_path",
+            "detail": "The prior /v1/session/{session_id}/events endpoint is retired. Use /v1/sessions/{session_id}/events?stream=true instead.",
+        },
+        status_code=410,
     )
-    notif_topic = _notifications_topic()
-    group_base = f"sse-{session_id}"
-    # Attempt to extract tenant for notifications filtering (best-effort; unauth -> stream none scoped notifications)
-    try:
-        auth_meta = await authorize_request(
-            request, {"action": "sse.connect", "session_id": session_id}
-        )
-    except Exception:
-        auth_meta = {}
-    tenant = auth_meta.get("tenant")
 
     async def event_iter() -> AsyncIterator[bytes]:
         # Use a unique consumer group per connection to avoid inter-client interference
@@ -7493,7 +7511,7 @@ async def sse_session_events(session_id: str, request: Request) -> StreamingResp
                             continue
                     except Exception:
                         pass
-                    # Normalize legacy raw error payloads on the stream
+                    # Normalize prior raw error payloads on the stream
                     try:
                         if isinstance(payload, dict) and payload.get("type") == "error":
                             role = (payload.get("role") or "assistant").lower()
@@ -7863,7 +7881,7 @@ async def internal_runtime_settings(request: Request) -> JSONResponse:
     try:
         flat = base.model_dump()  # type: ignore[attr-defined]
     except Exception:
-        # Fallback for legacy TypedDict behavior
+        # Fallback for prior TypedDict behavior
         flat = dict(base)  # type: ignore[arg-type]
 
     # Overlay agent UI settings
@@ -10301,7 +10319,7 @@ async def reprocess_dlq_item(
 # LLM credentials management
 # -----------------------------
 
-## Removed legacy credentials write endpoint. Credentials are saved exclusively
+## Removed prior credentials write endpoint. Credentials are saved exclusively
 ## via the Settings sections payload (api_key_* fields) to the encrypted store.
 
 
@@ -10398,7 +10416,7 @@ def _resolve_model_alias(model: str) -> tuple[str, bool]:
         return model, False
 
 
-## Removed legacy internal credentials read endpoint. No API returns raw secrets.
+## Removed prior internal credentials read endpoint. No API returns raw secrets.
 
 
 class LlmTestRequest(BaseModel):
@@ -10873,7 +10891,7 @@ async def _resolve_profile_and_creds(
     return model, base_url, api_path, temperature, meta
 
 
-## Note: legacy tuple-to-dict resolver helper removed; handlers now resolve profiles inline
+## Note: prior tuple-to-dict resolver helper removed; handlers now resolve profiles inline
 
 
 @app.post("/v1/llm/invoke")
@@ -11600,7 +11618,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                 **{k: v for k, v in meta.items() if not k.startswith("_")},
             ):
                 if not canonical:
-                    # Legacy passthrough – emit raw chunk and skip further processing for this iteration
+                    # Prior passthrough – emit raw chunk and skip further processing for this iteration
                     try:
                         _choices = chunk.get("choices") if isinstance(chunk, dict) else None
                         if _choices and isinstance(_choices, list) and _choices:
@@ -11610,7 +11628,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
                                 _delta.get("tool_calls")
                             )
                             LOGGER.debug(
-                                "LLM stream chunk (legacy)",
+                                "LLM stream chunk (prior)",
                                 extra={
                                     "model": model,
                                     "has_content": _has_content,

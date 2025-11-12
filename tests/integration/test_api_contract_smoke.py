@@ -10,7 +10,7 @@ import pytest
 async def test_sse_api_contract_smoke():
     """API contract smoke:
     - POST /v1/session/message to create/queue a message
-    - Open SSE /v1/session/{id}/events and assert we observe an assistant event
+    - Open SSE /v1/sessions/{id}/events?stream=true and assert we observe an assistant event
 
     Notes: This is a smoke test intended for local/dev runs where the Gateway and workers
     may or may not be fully available. The test is tolerant: it fails only if the UI
@@ -44,7 +44,7 @@ async def test_sse_api_contract_smoke():
     found_assistant = False
     deadline = time.time() + 30
     async with httpx.AsyncClient(timeout=None) as client:
-        async with client.stream("GET", f"{BASE}/v1/session/{session_id}/events") as resp:
+        async with client.stream("GET", f"{BASE}/v1/sessions/{session_id}/events?stream=true") as resp:
             assert resp.status_code == 200, f"SSE open failed: {resp.status_code}"
             buf = ""
             async for chunk in resp.aiter_text():

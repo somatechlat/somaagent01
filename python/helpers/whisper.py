@@ -23,7 +23,7 @@ try:
 
     _feature_audio_enabled = bool(_cfg.flag("audio_support"))
 except Exception:
-    # No legacy env fallback – treat as disabled when cfg unavailable
+    # No prior env fallback – treat as disabled when cfg unavailable
     _feature_audio_enabled = False
 
 import os as _os

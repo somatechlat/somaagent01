@@ -3,13 +3,13 @@
 Preflight validation for SomaAgent01 runtime.
 
 - Enforces canonical environment taxonomy (SA01_*).
-- Fails if legacy env names are present.
+- Fails if prior env names are present.
 - Verifies required canonical variables are set (non-empty).
 - Optionally probes OPA health and decision path when URLs are present.
 
 Exit codes:
   0: OK
-  1: Missing required variables / legacy variables present
+  1: Missing required variables / prior variables present
   2: Dependency check failed (OPA unreachable)
 """
 from __future__ import annotations
@@ -20,8 +20,8 @@ import sys
 import urllib.error
 import urllib.request
 
-# Legacy names we forbid entirely (non-SA01_ variables)
-LEGACY_ENV = {
+# Prior names we forbid entirely (non-SA01_ variables)
+PRIOR_ENV = {
     "POSTGRES_DSN",
     "REDIS_URL",
     "KAFKA_BOOTSTRAP_SERVERS",
@@ -78,9 +78,9 @@ def fail(msg: str, code: int = 1) -> None:
     sys.exit(code)
 
 
-def check_legacy_present() -> list[str]:
+def check_prior_present() -> list[str]:
     present = []
-    for k in LEGACY_ENV:
+    for k in PRIOR_ENV:
         if k in os.environ and os.environ[k] != "":
             present.append(k)
     return present
@@ -139,9 +139,9 @@ def probe_opa() -> tuple[bool, str]:
 
 
 def main() -> None:
-    legacy = check_legacy_present()
-    if legacy:
-        fail("Legacy environment variables present: " + ", ".join(sorted(legacy)), 1)
+    prior = check_prior_present()
+    if prior:
+        fail("Prior environment variables present: " + ", ".join(sorted(prior)), 1)
     missing = check_required_present()
     if missing:
         fail("Missing required canonical env vars: " + ", ".join(sorted(missing)), 1)
@@ -151,7 +151,7 @@ def main() -> None:
     ok, msg = probe_opa()
     if not ok:
         fail(msg, 2)
-    print("preflight OK: canonical env set, no legacy vars, OPA reachable")
+    print("preflight OK: canonical env set, no prior vars, OPA reachable")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ TGT = ROOT / "webui"
 OUT = ROOT / "tmp" / "compare"
 DIFFS = OUT / "diffs"
 ASSET = OUT / "asset_diffs"
-LEGACY = OUT / "legacy_calls.txt"
+PRIOR = OUT / "prior_calls.txt"
 REPORT = OUT / "report.md"
 
 TEXT_EXTS = {".html", ".htm", ".js", ".css", ".json", ".md", ".txt", ".vue", ".ts", ".jsx", ".tsx"}
@@ -57,7 +57,7 @@ tgt_files = relpaths(TGT)
 all_files = sorted(set(ref_files) | set(tgt_files))
 
 report_lines = []
-legacy_lines = []
+prior_lines = []
 report_lines.append("# WebUI Diff Report\n")
 report_lines.append(f"Reference dir: {REF}\n")
 report_lines.append(f"Target dir: {TGT}\n")
@@ -116,8 +116,8 @@ for rel in all_files:
         with diff_out.open("w") as of:
             of.write(f"BINARY DIFFER: ref_sha={ref_hash}\n tgt_sha={tgt_hash}\n")
 
-# scan for legacy network calls in target and reference
-patterns = ["api/", "http://", "https://", "localhost", "127.0.0.1", "old", "legacy"]
+# scan for prior network calls in target and reference
+patterns = ["api/", "http://", "https://", "localhost", "127.0.0.1", "old", "prior"]
 for base in (REF, TGT):
     for p in relpaths(base):
         full = base / p
@@ -130,17 +130,17 @@ for base in (REF, TGT):
         for i, line in enumerate(text.splitlines(), 1):
             for pat in patterns:
                 if pat in line:
-                    legacy_lines.append(f"{base}/{p}:{i}: {pat}: {line.strip()}")
+                    prior_lines.append(f"{base}/{p}:{i}: {pat}: {line.strip()}")
 
 # write outputs
 with open(REPORT, "w", encoding="utf-8") as f:
     f.write("\n".join(report_lines))
 
-with open(LEGACY, "w", encoding="utf-8") as f:
-    f.write("\n".join(legacy_lines))
+with open(PRIOR, "w", encoding="utf-8") as f:
+    f.write("\n".join(prior_lines))
 
 print("Diff run complete.")
 print(f"Wrote report to: {REPORT}")
 print(f"Per-file diffs (text/binary markers) in: {DIFFS}")
 print(f"Asset diff metadata in: {ASSET}")
-print(f"Legacy/network calls in: {LEGACY}")
+print(f"Prior/network calls in: {PRIOR}")

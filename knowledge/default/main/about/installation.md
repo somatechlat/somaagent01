@@ -77,7 +77,7 @@ The following user guide provides instructions for installing and running Agent 
 2.2. Create a data directory for persistence:
 - Choose or create a directory on your machine where you want to store Agent Zero's data
 - This can be any location you prefer (e.g., `C:/agent-zero-data` or `/home/user/agent-zero-data`)
-- This directory will contain all your Agent Zero files, like the legacy root folder structure:
+- This directory will contain all your Agent Zero files, like the prior root folder structure:
   - `/memory` - Agent's memory and learned information
   - `/knowledge` - Knowledge base
   - `/instruments` - Instruments and functions
@@ -289,7 +289,7 @@ Agent Zero's Web UI is accessible from any device on your network through the Do
 > - The port is automatically assigned by Docker unless you specify one
 
 > [!NOTE]
-> If you're serving the UI directly (legacy approach) instead of via the Gateway,
+> If you're serving the UI directly (prior approach) instead of via the Gateway,
 > ensure your static server or UI host binds to all interfaces using `host="0.0.0.0"`.
 
 For developers or users who need to run Agent Zero directly on their system,see the [In-Depth Guide for Full Binaries Installation](#in-depth-guide-for-full-binaries-installation).

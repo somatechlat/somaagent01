@@ -85,11 +85,11 @@ MEMORY_WRITE_SECONDS = Histogram(
 )
 
 
-def _sanitize_legacy_base_url(raw_base_url: str) -> str:
+def _sanitize_prior_base_url(raw_base_url: str) -> str:
     """Sanitize the provided base URL.
 
     - Ensures a non‑empty, well‑formed URL string
-    - If the legacy port 9595 is detected, preserve the original host and
+    - If the prior port 9595 is detected, preserve the original host and
       scheme but rewrite the port to 9696
     """
     candidate = (raw_base_url or "").strip()
@@ -104,7 +104,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
         logger.warning("Invalid SA01_SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
         return "http://localhost:9696"
 
-    # Rewrite only the legacy port 9595 to the current default (9696),
+    # Rewrite only the prior port 9595 to the current default (9696),
     # preserving original host and scheme.
     if url.port == 9595:
         try:
@@ -112,7 +112,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
         except Exception:
             override = httpx.URL("http://localhost:9696")
         logger.warning(
-            "Detected legacy SomaBrain port on %s; redirecting to %s",
+            "Detected prior SomaBrain port on %s; redirecting to %s",
             normalized,
             override,
         )
@@ -126,8 +126,8 @@ def _default_base_url() -> str:
 
     The environment variable ``SA01_SOMA_BASE_URL`` can be used to point to a custom
     endpoint. If it is not set we default to ``http://localhost:9696``. The
-    function no longer performs any legacy‑host sanitisation – that logic lives
-    in ``_sanitize_legacy_base_url`` and is only applied when an explicit URL
+    function no longer performs any prior‑host sanitisation – that logic lives
+    in ``_sanitize_prior_base_url`` and is only applied when an explicit URL
     is provided.
     """
     return os.getenv("SA01_SOMA_BASE_URL", "http://localhost:9696")
@@ -241,7 +241,7 @@ class SomaClient:
                 "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
             },
         )
-        sanitized_base_url = _sanitize_legacy_base_url(base_url)
+        sanitized_base_url = _sanitize_prior_base_url(base_url)
         self.base_url = _normalize_base_url(sanitized_base_url)
         # Memory namespace (e.g. "wm"). Not the same as the logical universe.
         self.namespace = namespace
@@ -516,7 +516,7 @@ class SomaClient:
         """Store a memory item via SomaBrain.
 
         The new `/memory/remember` endpoint is attempted first; if the server
-        only supports the legacy surface we fall back to `/remember`.
+        only supports the prior surface we fall back to `/remember`.
         """
 
         payload_dict = dict(payload)
@@ -584,7 +584,7 @@ class SomaClient:
             body["namespace"] = "default"
 
         # IMPORTANT: do NOT send coord to /memory/remember (spec does not accept it). We still use coord when falling back
-        # to legacy /remember (handled below).
+        # to prior /remember (handled below).
         if derived_universe:
             body["universe"] = derived_universe
             body["value"].setdefault("universe", derived_universe)
@@ -606,7 +606,7 @@ class SomaClient:
         with tracer.start_as_current_span("somabrain.remember"):
             # Prefer new endpoint; if unavailable (404) we fall back below.
             # Additionally, tolerate certain 4xx responses (e.g. "memory pool unavailable")
-            # by treating them as a signal to attempt the legacy endpoint.
+            # by treating them as a signal to attempt the prior endpoint.
             try:
                 response = await self._request(
                     "POST",
@@ -617,24 +617,24 @@ class SomaClient:
             except SomaClientError as exc:
                 msg = str(exc).lower()
                 # Some deployments respond 400 with detail "memory pool unavailable"
-                # while the legacy /remember path continues to work. Fall back in that case.
+                # while the prior /remember path continues to work. Fall back in that case.
                 if "memory pool unavailable" in msg or " 400 " in msg:
                     response = None
                 else:
                     raise
         if response is None:
-            legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
+            prior_payload: Dict[str, Any] = {"payload": dict(payload)}
             if coord:
-                # Legacy endpoint supports coord
-                legacy_payload["coord"] = coord
+                # Prior endpoint supports coord
+                prior_payload["coord"] = coord
             # Use logical universe fallback, not memory namespace
             if universe or self.universe:
                 resolved_universe = universe or self.universe
                 if resolved_universe:
-                    legacy_payload["universe"] = resolved_universe
-                    legacy_payload.setdefault("payload", {})
-                    legacy_payload["payload"]["universe"] = resolved_universe
-            response = await self._request("POST", "/remember", json=legacy_payload)
+                    prior_payload["universe"] = resolved_universe
+                    prior_payload.setdefault("payload", {})
+                    prior_payload["payload"]["universe"] = resolved_universe
+            response = await self._request("POST", "/remember", json=prior_payload)
         duration = time.perf_counter() - start_ts
         MEMORY_WRITE_TOTAL.labels("ok").inc()
         MEMORY_WRITE_SECONDS.labels("ok").observe(duration)
@@ -660,7 +660,7 @@ class SomaClient:
     ) -> Mapping[str, Any]:
         """Recall memories for a query.
 
-        Prefer the richer `/memory/recall` endpoint but tolerate the legacy
+        Prefer the richer `/memory/recall` endpoint but tolerate the prior
         `/recall` surface to remain compatible with older deployments.
         """
 
@@ -722,10 +722,10 @@ class SomaClient:
                 allow_404=True,
             )
         if response is None:
-            legacy_body = {"query": query, "top_k": top_k}
+            prior_body = {"query": query, "top_k": top_k}
             if universe or self.universe:
-                legacy_body["universe"] = universe or self.universe
-            return await self._request("POST", "/recall", json=legacy_body)
+                prior_body["universe"] = universe or self.universe
+            return await self._request("POST", "/recall", json=prior_body)
         return response
 
     async def recall_stream(

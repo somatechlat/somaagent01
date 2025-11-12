@@ -50,7 +50,7 @@ const memoryDashboardStore = {
   editMode: false,
   editMemoryBackup: null,
 
-  // SSE only: no polling retained (legacy fields removed)
+  // SSE only: no polling retained (prior fields removed)
 
   async openModal() {
     await openModal("settings/memory/memory-dashboard.html");

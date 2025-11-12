@@ -52,7 +52,7 @@ Use the Settings UI (preferred) or the helper script to persist your Groq API ke
     - In API Keys section, set `api_key_groq` with your Groq API key
     - Save; then start a chat. The worker uses Gateway `/v1/llm/invoke(/stream)` with stored credentials.
 
-Option B (legacy helper script) has been removed; always use the Settings UI sections flow. External seeding scripts for provider credentials are intentionally unsupported to preserve a single write path.
+Option B (prior helper script) has been removed; always use the Settings UI sections flow. External seeding scripts for provider credentials are intentionally unsupported to preserve a single write path.
 
 Notes:
 - Groq requires an OpenAI-compatible path; if you provide `https://api.groq.com` the Gateway will normalize to include `/openai` and `/v1` when needed.
@@ -75,7 +75,7 @@ Canonical contract sequence (typical):
 Optional tool markers (when enabled via `SA01_ENABLE_TOOL_EVENTS=true`): `assistant.tool.started` / `assistant.tool.delta` / `assistant.tool.final` may appear interleaved with deltas.
 Errors are emitted as `assistant.error` (or `<role>.error` when tool/system sourced) and always normalized before persistence.
 
-Prefer canonical for stable UI/event tooling. Passthrough exists solely for debugging or legacy client compatibility.
+Prefer canonical for stable UI/event tooling. Passthrough exists solely for debugging or prior client compatibility.
 
 ### Runtime Config & Flags
 
@@ -123,7 +123,16 @@ Timeline uniqueness enforced by index `(session_id, payload->>'event_id')`. Raw 
 
 ### SSE Heartbeats & Metrics
 
-`/v1/session/{session_id}/events` streams canonical outbound events and injects `system.keepalive` heartbeats every `SSE_HEARTBEAT_SECONDS` (default 20s). Active connections tracked via Prometheus gauge `gateway_sse_connections`.
+`/v1/sessions/{session_id}/events?stream=true` streams canonical outbound events and injects `system.keepalive` heartbeats every `SSE_HEARTBEAT_SECONDS` (default 20s). Active connections tracked via Prometheus gauge `gateway_sse_connections`.
+
+## Canonical Metrics & Config Signals
+
+- `runtime_config_info`, `runtime_config_updates_total{source}`, `runtime_config_layer_total{layer}`, and `runtime_config_last_applied_timestamp_seconds` expose the checksum + source layer (default|environment|dynamic). Scrape these to detect config drift and verify when governance updates land.
+- `sse_active_connections`, `sse_messages_sent_total`, and `sse_message_duration_seconds` span the streaming surface so you can monitor cardiovascular health per session.
+- `gateway_requests_total`, `gateway_request_duration_seconds`, and the `config_update_apply_total{result}` counter capture command volume + config listener outcomes.
+- `/v1/runtime-config` (GET) reports the current checksum and timestamp; `/v1/runtime-config/apply` (internal token-only POST) lets you push validated config docs via Kafka while keeping `config_updates` acked.
+
+Prometheus is the only metrics sink in this repo; dashboards should connect to these endpoints without touching Grafana artifacts stored here.
 
 Metrics (scrape `${GATEWAY_METRICS_PORT:-8000}`):
 - `gateway_sse_connections`
@@ -230,7 +239,7 @@ From now on, please use this name for both `git clone` and `docker pull` command
 ## 🆕 What’s New (October 2025)
 
 - Versioned gateway surface at `/v1/*` plus Prometheus alerts for latency, error-rate, and circuit-breaker openings.
-- Capsule Registry service with optional Cosign signing, gateway proxy endpoints for `/v1/capsules/*` (with legacy `/capsules/*` aliases), SDK helpers (`python/somaagent/capsule.py`), and a refreshed marketplace UI (`webui/marketplace.html`) that surfaces signatures and triggers one-click installs into `/capsules/installed` entirely through the gateway.
+- Capsule Registry service with optional Cosign signing, gateway proxy endpoints for `/v1/capsules/*` (with prior `/capsules/*` aliases), SDK helpers (`python/somaagent/capsule.py`), and a refreshed marketplace UI (`webui/marketplace.html`) that surfaces signatures and triggers one-click installs into `/capsules/installed` entirely through the gateway.
 - GitHub Actions capsule workflow (`.github/workflows/capsule.yml`) and Kafka partition scaler script (`scripts/kafka_partition_scaler.py`).
 - Optional dependencies (PyJWT, sentence-transformers, openai-whisper, GitPython) now load lazily so tests can run without them; install as needed for full functionality.
 

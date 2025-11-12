@@ -75,7 +75,7 @@ export function setMessage(id, type, heading, content, temp, kvps = null) {
   return messageContainer;
 }
 
-// Legacy copy button functions removed - now using action buttons component
+// Prior copy button functions removed - now using action buttons component
 
 export function getHandler(type) {
   switch (type) {
@@ -925,7 +925,7 @@ function mapImgUrl(val) {
     const id = raw.replace(/^attachment\/?|^att:|^att\//, "");
     // If id looks like UUID, map to attachments endpoint
     if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return `/v1/attachments/${id}`;
-    // Fallback: do not attempt legacy pathing; return as-is to prevent 404 noise
+    // Fallback: do not attempt prior pathing; return as-is to prevent 404 noise
     return `/v1/attachments/${encodeURIComponent(id)}`;
   } catch { return ""; }
 }

@@ -89,7 +89,7 @@ def init_runtime_config(
     features = build_default_registry()
     config = _load_config_registry()
     # Deployment mode centralization
-    # External switch via SA01_DEPLOYMENT_MODE (DEV|PROD) overrides legacy settings
+    # External switch via SA01_DEPLOYMENT_MODE (DEV|PROD) overrides prior settings
     ext = (os.getenv("SA01_DEPLOYMENT_MODE") or "").strip().upper()
     if ext not in {"DEV", "PROD", ""}:
         # invalid value -> default to DEV semantics (strict like prod) but log-safe fallback
@@ -100,7 +100,7 @@ def init_runtime_config(
     if ext:
         external_mode = ext
     else:
-        # Derive external from legacy envs
+        # Derive external from prior envs
         external_mode = "DEV" if raw_mode in {"DEV", "LOCAL"} else "PROD"
     if external_mode == "DEV":
         canonical_mode = "LOCAL"
@@ -129,6 +129,11 @@ def state() -> _RuntimeState:
     return _STATE
 
 
+def set_override_resolver(resolver: Callable[[str, Optional[str]], Optional[bool]]) -> None:
+    st = state()
+    st.override_resolver = resolver
+
+
 def settings() -> SA01Settings:  # type: ignore[override]
     """Return the process settings loaded from environment."""
     return state().settings
@@ -147,7 +152,7 @@ def external_deployment_mode() -> str:
     """Return external deployment mode switch (DEV | PROD).
 
     This reflects `SA01_DEPLOYMENT_MODE` if provided; otherwise derived from
-    legacy settings. DEV is enforced to behave like PROD (no bypass), but
+    prior settings. DEV is enforced to behave like PROD (no bypass), but
     remains a distinct label for observability/logging.
     """
     return state().external_mode
@@ -183,7 +188,15 @@ def env(key: str, default: Optional[str] = None) -> str:
     """
     val = os.getenv(key)
     if val is None:
+        try:
+            metrics_collector.record_runtime_config_layer("default")
+        except Exception:
+            pass
         return "" if default is None else str(default)
+    try:
+        metrics_collector.record_runtime_config_layer("environment")
+    except Exception:
+        pass
     return val
 
 
@@ -294,6 +307,10 @@ def config_get(path: str, default: Any | None = None) -> Any:
     snap = config_snapshot()
     if not snap:
         return default
+    try:
+        metrics_collector.record_runtime_config_layer("dynamic")
+    except Exception:
+        pass
     node: Any = snap.payload
     for part in path.split("."):
         if isinstance(node, dict) and part in node:

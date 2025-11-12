@@ -664,7 +664,7 @@ class SomaMemory:
 
 
 class _SomaDocStoreAdapter:
-    """Adapter exposing a FAISS-like interface expected by legacy call sites."""
+    """Adapter exposing a FAISS-like interface expected by prior call sites."""
 
     def __init__(self, store: "_SomaDocStore") -> None:
         self._store = store
@@ -772,7 +772,7 @@ class _SomaDocStore:
                 coord_str = self._format_coord(coord)
                 result = await self._client.remember(
                     payload,
-                    # Do not pass coord to new endpoint; client will handle legacy fallback internally if needed
+                    # Do not pass coord to new endpoint; client will handle prior fallback internally if needed
                     universe=self.memory.memory_subdir,
                 )
             except SomaClientError as exc:

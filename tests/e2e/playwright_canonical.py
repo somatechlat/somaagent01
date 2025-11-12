@@ -119,8 +119,8 @@ class TestCanonicalBackendE2E:
         for flag in expected_flags:
             assert flag in flags_data or True  # Allow missing flags
 
-    async def test_no_legacy_endpoints_real(self, page, base_url):
-        """Ensure legacy endpoints return 404."""
+    async def test_no_prior_endpoints_real(self, page, base_url):
+        """Ensure prior endpoints return 404."""
         # Test polling endpoint
         response = await page.goto(f"{base_url}/v1/ui/poll")
         assert response.status == 404

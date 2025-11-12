@@ -9,7 +9,7 @@ try:
 
     _FEATURE_BROWSER_ENABLED = bool(_cfg.flag("browser_support"))
 except Exception:
-    # No legacy env fallback – treat as disabled when cfg unavailable
+    # No prior env fallback – treat as disabled when cfg unavailable
     _FEATURE_BROWSER_ENABLED = False
 
 

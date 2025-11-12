@@ -6,8 +6,8 @@ import * as stream from "/js/stream.js";
 import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
-// Legacy notification store (toast + polling-era compatibility)
-// Consolidated SSE + REST notifications store (legacy polling/ toast removed)
+// Prior notification store (toast + polling-era compatibility)
+// Consolidated SSE + REST notifications store (prior polling/ toast removed)
 import { store as notificationsSseStore } from "/components/notifications/notificationsStore.js";
 import { createStore as createAlpineStore } from "/js/AlpineStore.js";
 
@@ -317,7 +317,7 @@ let lastLogVersion = 0;
 let lastLogGuid = "";
 let lastSpokenNo = 0;
 
-// --- SSE integration (replaces legacy polling) ---
+// --- SSE integration (replaces prior polling) ---
 let currentAssistantId = null;
 let assistantBuffer = "";
 
@@ -1024,7 +1024,7 @@ chatHistory.addEventListener("scroll", updateAfterScroll);
 
 chatInput.addEventListener("input", adjustTextareaHeight);
 
-// Legacy polling fully removed; SSE handles live updates
+// Prior polling fully removed; SSE handles live updates
 
 // Setup event handlers once the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function () {
