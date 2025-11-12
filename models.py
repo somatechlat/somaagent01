@@ -19,7 +19,6 @@ feature_ai_env = os.environ.get("FEATURE_AI", "").lower()
 _enable_ai = feature_ai_env not in ("none", "false", "0")
 
 # Attempt to import LiteLLM/OpenAI only when AI is enabled; otherwise provide
-# safe fallbacks so the module can be imported in developer-mode without
 # installing heavy dependencies.
 litellm = None
 openai = None
@@ -43,20 +42,16 @@ if _enable_ai:
         embedding = None
         litellm_exceptions = None
 
-# browser-use is required for production deployment; provide safe fallbacks
 # so classes can be referenced even when browser-use isn't installed.
 try:
     from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter
 except Exception:
 
-    class ChatGoogle:  # lightweight fallback
         def _fix_gemini_schema(self, s):
             return s
 
-    class ChatOpenRouter:  # lightweight fallback base class
         pass
 
-    class _BrowserUseMonkeypatchFallback:
         @staticmethod
         def apply():
             return None
@@ -65,12 +60,10 @@ except Exception:
         def gemini_clean_and_conform(s):
             return s
 
-    browser_use_monkeypatch = _BrowserUseMonkeypatchFallback()
 
 try:
     # Older import path provided by the monolithic 'langchain' package
     from langchain.embeddings.base import Embeddings  # type: ignore
-except Exception:  # pragma: no cover - fallback for slim builds using langchain-core only
     # Newer, lighter-weight location provided by langchain-core
     from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
 from langchain_core.callbacks.manager import (
@@ -103,9 +96,7 @@ from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
 
 try:
-    # Pydantic v2 configuration helper; safe fallback if unavailable
     from pydantic import ConfigDict  # type: ignore
-except Exception:  # pragma: no cover - fallback for environments without pydantic
     ConfigDict = dict  # type: ignore
 
 
@@ -494,7 +485,6 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
             "BadGatewayError",
             "GatewayTimeoutError",
             "RateLimitError",
-            "MidStreamFallbackError",
             "GroqException",
         )
         if hasattr(litellm_exceptions, name)
@@ -950,7 +940,6 @@ class AsyncAIChatReplacement:
         self.chat = AsyncAIChatReplacement._Chat(wrapper)
 
 
-class BrowserCompatibleChatWrapper(ChatOpenRouter):
     """
     A wrapper for browser agent that can filter/sanitize messages
     before sending them to the LLM.
@@ -1156,7 +1145,6 @@ def _get_litellm_chat(
     except Exception:
         pass
 
-    # Resolve API key from centralized credentials store (no env fallback)
     api_key = kwargs.pop("api_key", None) or _get_provider_secret_sync(provider_name)
     if not api_key:
         raise LLMNotConfiguredError(
@@ -1185,7 +1173,6 @@ def _get_litellm_embedding(
             **kwargs,
         )
 
-    # Resolve API key from centralized credentials store (no env fallback)
     api_key = kwargs.pop("api_key", None) or _get_provider_secret_sync(provider_name)
     if not api_key:
         raise LLMNotConfiguredError(
@@ -1305,11 +1292,9 @@ def get_chat_model(
 
 def get_browser_model(
     provider: str, name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any
-) -> BrowserCompatibleChatWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
     return _get_litellm_chat(
-        BrowserCompatibleChatWrapper, name, provider_name, model_config, **kwargs
     )
 
 

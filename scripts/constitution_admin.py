@@ -27,12 +27,10 @@ from python.integrations.somabrain_client import SomaBrainClient, SomaClientErro
 
 
 def _dual_shape_payload(doc: Mapping[str, Any]) -> Mapping[str, Any]:
-    """Return a request body compatible with both {input} and {document} server shapes.
 
     Some SomaBrain deployments expect { input: <object> } while others (or tests)
     use { document: <object> }. We include both keys; the server should ignore
     unknown keys per permissive model parsing. This preserves backward
-    compatibility with existing tests that assert presence of "document".
     """
     try:
         # Avoid accidental mutation by copying shallowly

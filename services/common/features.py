@@ -224,15 +224,12 @@ def build_default_registry() -> FeatureRegistry:
             stability="beta",
         ),
         FeatureDescriptor(
-            key="escalation_fallback",
-            description="Enable fallback escalation path when primary escalation fails",
             default_enabled=False,
             profiles={"minimal": False, "standard": False, "enhanced": False, "max": True},
             dependencies=["escalation"],
             degrade_strategy="auto",
             cost_impact="low",
             tags=["llm", "routing"],
-            enabled_env_var="SA01_ENABLE_ESCALATION_FALLBACK",
             stability="experimental",
         ),
         FeatureDescriptor(

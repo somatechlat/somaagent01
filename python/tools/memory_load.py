@@ -3,7 +3,6 @@ from collections.abc import Mapping
 from python.helpers.tool import Response, Tool
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
-# Backwards-compatible alias expected by tests and some callers
 SomaClient = SomaBrainClient
 
 DEFAULT_THRESHOLD = 0.7
@@ -82,17 +81,14 @@ class MemoryLoad(Tool):
                     if isinstance(text, str) and text.strip():
                         message = text.strip()
                     else:
-                        # New fallback for 'what' field in payload
                         what = payload.get("what")
                         if isinstance(what, str) and what.strip():
                             message = what.strip()
             else:
-                # Fallback to top‑level content fields
                 content = entry.get("content")
                 if isinstance(content, str) and content.strip():
                     message = content.strip()
 
-            # Additional fallback: use common metadata keys if no explicit content
             if not message:
                 for key in ["fact", "summary", "value", "title", "text", "what"]:
                     val = entry.get(key)
@@ -114,7 +110,6 @@ class MemoryLoad(Tool):
         else:
             # Store raw results in conversation context for later use
             try:
-                self.agent.extras_temporary["memory_load_results"] = results
             except Exception:
                 pass
             result = "\n\n".join(dict.fromkeys(results))

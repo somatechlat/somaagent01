@@ -23,7 +23,6 @@ try:
 
     _feature_audio_enabled = bool(_cfg.flag("audio_support"))
 except Exception:
-    # No prior env fallback – treat as disabled when cfg unavailable
     _feature_audio_enabled = False
 
 import os as _os
@@ -44,7 +43,6 @@ except ImportError as exc:  # pragma: no cover - exercised in developer & CI bui
     # Otherwise degrade gracefully for tests / lightweight dev builds.
     whisper = None  # type: ignore
     LOGGER.info(
-        "Skipping Whisper preload – audio support disabled, package missing, or test mode graceful fallback"
     )
 
 _model = None
@@ -115,7 +113,6 @@ async def is_downloaded():
     except Exception as e:
         # if not runtime.is_development():
         raise e
-        # Fallback to direct execution if RFC fails in development
         # return _is_downloaded()
 
 
@@ -141,7 +138,6 @@ async def _transcribe(model_name: str, audio_bytes_b64: str):
     # Create temp audio file
     import os
 
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
         audio_file.write(audio_bytes)
         temp_path = audio_file.name
     try:

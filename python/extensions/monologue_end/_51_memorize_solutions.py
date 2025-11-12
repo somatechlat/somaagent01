@@ -138,7 +138,6 @@ class MemorizeSolutions(Extension):
                         log_item=solution_log,
                     )
 
-                    # Update the individual log item with completion status but keep it temporary
                     if result_obj.get("success"):
                         total_consolidated += 1
                         if solution_log:

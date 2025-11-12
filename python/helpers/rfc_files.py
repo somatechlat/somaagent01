@@ -493,7 +493,6 @@ def _zip_dir_impl(folder_path: str) -> str:
     """
     Implementation function to create a zip archive of a directory.
     """
-    zip_file_path = tempfile.NamedTemporaryFile(suffix=".zip", delete=False).name
     base_name = os.path.basename(folder_path)
 
     with zipfile.ZipFile(zip_file_path, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
@@ -530,8 +529,6 @@ def _read_directory_impl(dir_path: str) -> str:
 
     temp_zip_path = None
     try:
-        # Create temporary zip file
-        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as temp_zip:
             temp_zip_path = temp_zip.name
 
         # Create zip archive
@@ -547,13 +544,11 @@ def _read_directory_impl(dir_path: str) -> str:
             zip_content = zipf.read()
             b64_zip = base64.b64encode(zip_content).decode("utf-8")
 
-        # Clean up temporary file
         os.unlink(temp_zip_path)
 
         return b64_zip
 
     except Exception as e:
-        # Clean up temporary file if it exists
         if temp_zip_path is not None and os.path.exists(temp_zip_path):
             os.unlink(temp_zip_path)
         raise Exception(f"Failed to zip directory {dir_path}: {str(e)}")

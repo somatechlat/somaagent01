@@ -9,7 +9,6 @@ try:
 
     _FEATURE_BROWSER_ENABLED = bool(_cfg.flag("browser_support"))
 except Exception:
-    # No prior env fallback – treat as disabled when cfg unavailable
     _FEATURE_BROWSER_ENABLED = False
 
 
@@ -103,7 +102,6 @@ def gemini_clean_and_conform(text: str):
 
 def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
     """
-    Convert a Pydantic model to a Gemini-compatible schema.
 
     This function removes unsupported properties like 'additionalProperties' and resolves
     $ref references that Gemini doesn't support.

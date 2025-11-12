@@ -134,7 +134,6 @@ async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
             # Expect timeout/read error due to test harness; narrow exception types
             with pytest.raises((httpx.TimeoutException, httpx.ReadError)):
                 r = await client.get(url, headers={"Accept": "text/event-stream"}, timeout=10.0)
-                # Fallback: if not streaming, skip
                 if r.status_code != 200:
                     pytest.skip("SSE endpoint not available")
     except Exception:

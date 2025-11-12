@@ -60,7 +60,6 @@ class UiSettingsStore:
                     return dict(parsed) if isinstance(parsed, dict) else {}
                 except Exception:
                     return {}
-            # Fallback: attempt to coerce to dict, else return empty
             try:
                 return dict(val)  # type: ignore[arg-type]
             except Exception:

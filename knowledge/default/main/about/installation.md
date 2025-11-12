@@ -310,7 +310,6 @@ For developers or users who need to run Agent Zero directly on their system,see 
 
 > [!IMPORTANT]
 > If you have issues loading your settings, you can try to delete the `/tmp/settings.json` file and let Agent Zero generate a new one.
-> The same goes for chats in `/tmp/chats/`, they might be incompatible with the new version
 
 2. **Update Process (Docker Desktop)**
 - Go to Docker Desktop and stop the container from the "Containers" tab
@@ -450,7 +449,6 @@ And you should see that the **(base)** on the left has changed to **(a0)**. This
 ~~~
 pip install -r requirements.txt
 ~~~
-This might take some time. If you get any errors regarding version conflicts and compatibility, double check that your environment is activated and that you created that environment with the correct Python version.
 
 <img src="res/setup/image-19.png" alt="conda reqs" height="200"/>
 <br><br>

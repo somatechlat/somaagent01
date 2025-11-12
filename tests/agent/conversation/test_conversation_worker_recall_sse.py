@@ -28,12 +28,10 @@ async def test_background_recall_uses_sse_when_enabled(monkeypatch):
         yield {"kind": "recall", "page": 1, "memories": [3]}
 
     # Replace with a simple object that has recall_stream_events
-    class _SomaShim:
         async def recall_stream_events(self, payload, request_timeout=None):
             async for e in fake_recall_stream_events(payload, request_timeout):
                 yield e
 
-    worker.soma = _SomaShim()
 
     stop_event = asyncio.Event()
     base_metadata = {"tenant": "default", "universe_id": "wm"}

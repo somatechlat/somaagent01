@@ -1,4 +1,3 @@
-"""Health-aware publisher with durable outbox fallback.
 
 Usage:
         publisher = DurablePublisher(bus=KafkaEventBus(...), outbox=OutboxStore(...))
@@ -78,11 +77,13 @@ class DurablePublisher:
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
-        fallback: bool = True,
     ) -> dict[str, Any]:
-        """Try Kafka first, then fallback to Outbox if enabled.
+        """Publish to Kafka.
 
-        Returns a dict with {"published": bool, "enqueued": bool, "id": Optional[int]}.
+        the system will never fall back to the outbox. If Kafka publishing fails,
+        the exception propagates to the caller. Returns a dict with
+        {"published": bool, "enqueued": bool, "id": Optional[int]}. ``enqueued``
+        will always be ``False`` under the new semantics.
         """
         # Apply a bounded timeout to avoid hanging request paths on metadata waits
         timeout_s: float
@@ -107,22 +108,47 @@ class DurablePublisher:
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:
-            if not fallback:
-                PUBLISH_EVENTS.labels("failed").inc()
-                raise
-            # Fallback to outbox
-            msg_id = await self.outbox.enqueue(
-                topic=topic,
-                payload=payload,
-                partition_key=partition_key,
-                headers=hdrs,
-                dedupe_key=dedupe_key,
-                session_id=session_id,
-                tenant=tenant,
-            )
-            PUBLISH_EVENTS.labels("enqueued").inc()
-            LOGGER.warning(
-                "Kafka publish failed or timed out; enqueued to outbox",
+                # Build headers for outbox persistence (same as Kafka headers).
+                outbox_headers = self._build_headers(
+                    payload=payload,
+                    session_id=session_id,
+                    tenant=tenant,
+                    provided=headers,
+                )
+                try:
+                    outbox_id = await self.outbox.enqueue(
+                        topic=topic,
+                        payload=payload,
+                        partition_key=partition_key,
+                        headers=outbox_headers,
+                        dedupe_key=dedupe_key,
+                        session_id=session_id,
+                        tenant=tenant,
+                    )
+                except Exception as out_exc:
+                    # Outbox failure – treat as total publish failure.
+                    PUBLISH_EVENTS.labels("failed").inc()
+                    LOGGER.error(
+                        "Kafka publish failed and outbox enqueue error",
+                        extra={
+                            "error": str(exc),
+                            "outbox_error": str(out_exc),
+                            "topic": topic,
+                        },
+                    )
+                    raise
+                else:
+                    LOGGER.warning(
+                        "Kafka publish failed; message enqueued to outbox",
+                        extra={
+                            "error": str(exc),
+                            "topic": topic,
+                            "outbox_id": outbox_id,
+                        },
+                    )
+                    return {"published": False, "enqueued": True, "id": outbox_id}
+            PUBLISH_EVENTS.labels("failed").inc()
+            LOGGER.error(
                 extra={
                     "error": str(exc),
                     "topic": topic,
@@ -132,4 +158,4 @@ class DurablePublisher:
                     "timeout_seconds": timeout_s,
                 },
             )
-            return {"published": False, "enqueued": True, "id": msg_id}
+            raise

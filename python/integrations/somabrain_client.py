@@ -17,7 +17,6 @@ from prometheus_client import Counter, Histogram
 from services.common import runtime_config as cfg
 
 # Re‑use the generic error class from the existing Soma client for consistency.
-# Import the full async SomaClient for backward‑compatible singleton access.
 from python.integrations.soma_client import (
     SomaClient as _SomaClient,
     SomaClientError,
@@ -202,7 +201,6 @@ def put_persona(persona_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     return _request("PUT", f"/persona/{persona_id}", json=body)
 
 
-# Provide a lightweight alias for backward compatibility. Existing code
 # expects ``SomaBrainClient.get()`` to return a ``SomaClient`` singleton.
 # The async ``SomaClient`` already implements ``get()``, so we expose the same
 # class under the historic name.

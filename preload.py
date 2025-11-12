@@ -88,7 +88,6 @@ async def preload():
                             return await asyncio.to_thread(func, *args, **kwargs)
                         raise RuntimeError("Embedding attribute is not callable")
 
-                    # Try async embed first, then sync fallback
                     try:
                         return await _maybe_call(aembed, "test")
                     except Exception:

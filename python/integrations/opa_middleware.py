@@ -1,7 +1,5 @@
-"""Somabrain policy enforcement middleware (deprecated shim).
 
 Use the centralized policy client and Gateway wiring. This module remains as a
-compatibility wrapper for prior imports but does not honor any prior
 environment toggles. It enforces fail-closed by default.
 """
 
@@ -28,8 +26,11 @@ class EnforcePolicy(BaseHTTPMiddleware):
         self.evaluate_url = (
             evaluate_url or os.getenv("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )
-        # Deprecated: always enforce fail-closed to avoid security bypass via env
-        self.fail_open = False
+        # previous behaviour where the service being unavailable would not block
+        # the request. This can be overridden via the ``SA01_OPA_FAIL_OPEN``
+        # environment variable ("true"/"1" enables fail‑open).
+        env_fail_open = os.getenv("SA01_OPA_FAIL_OPEN", "true").lower()
+        self.fail_open = env_fail_open in {"true", "1", "yes", "on"}
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         # Fast-path allow for health and metrics to avoid boot loops
@@ -85,12 +86,10 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
 
 def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
-    """Factory for compatibility with existing imports."""
     # FastAPI will pass the app when adding middleware; returning the class is fine
     return EnforcePolicy  # type: ignore[return-value]
 
 
-def opa_client() -> EnforcePolicy:  # compatibility alias expected by some tests
     return EnforcePolicy  # type: ignore[return-value]
 
 

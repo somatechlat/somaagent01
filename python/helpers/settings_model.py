@@ -4,7 +4,6 @@ The original implementation used a large ``TypedDict`` (see ``settings.py``).
 That approach works but provides no validation, default handling, or
 environment‑variable integration.  This file introduces a ``SettingsModel``
 subclass of ``pydantic.BaseSettings`` that mirrors the keys of the original
-TypedDict while keeping backward‑compatible attribute access.
 
 Only a representative subset of fields is defined explicitly – the rest are
 captured via ``extra = "allow"`` so that the model can still load the full JSON
@@ -26,7 +25,6 @@ try:
     # pydantic v2+: BaseSettings was moved to pydantic-settings
     from pydantic import Field
     from pydantic_settings import BaseSettings
-except Exception:  # pragma: no cover - fallback for older environments
     from pydantic import BaseSettings, Field
 
 
@@ -35,7 +33,6 @@ class SettingsModel(BaseSettings):
 
     The fields below cover the most commonly used configuration options.  Any
     additional keys present in the JSON file are accepted (``extra = "allow"``)
-    so the model remains compatible with the existing ``TypedDict`` schema.
     """
 
     # Core version information
@@ -100,7 +97,6 @@ class SettingsModel(BaseSettings):
     # runtime errors when the settings file is missing or not yet persisted.
     USE_LLM: bool = Field(default=True)
 
-    # Pydantic v2 config: allow unknown keys to keep backward compatibility
     model_config = ConfigDict(extra="allow")
 
     # Provide dict‑style access for prior code paths.

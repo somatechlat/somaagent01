@@ -252,10 +252,8 @@ class LoopData:
         self.system = []
         self.user_message: history.Message | None = None
         self.history_output: list[history.OutputMessage] = []
-        self.extras_temporary: OrderedDict[str, history.MessageContent] = OrderedDict()
         self.extras_persistent: OrderedDict[str, history.MessageContent] = OrderedDict()
         self.last_response = ""
-        self.params_temporary: dict = {}
         self.params_persistent: dict = {}
 
         # override values with kwargs
@@ -315,7 +313,6 @@ class Agent:
 
                     self.context.streaming_agent = self  # mark self as current streamer
                     self.loop_data.iteration += 1
-                    self.loop_data.params_temporary = {}  # clear temporary params
 
                     # call message_loop_start extensions
                     await self.call_extensions("message_loop_start", loop_data=self.loop_data)
@@ -450,11 +447,9 @@ class Agent:
             content=self.read_prompt(
                 "agent.context.extras.md",
                 extras=dirty_json.stringify(
-                    {**loop_data.extras_persistent, **loop_data.extras_temporary}
                 ),
             ),
         ).output()
-        loop_data.extras_temporary.clear()
 
         # convert history + extras to LLM format
         history_langchain: list[BaseMessage] = history.output_langchain(
@@ -601,7 +596,6 @@ class Agent:
         Parameters
         ----------
         messages: list[BaseMessage]
-            The original list of LangChain messages (currently unused – kept for API compatibility).
         start_idx: int | None
             Inclusive start index for the slice. If ``None`` the slice starts at the beginning.
         end_idx: int | None
@@ -791,7 +785,6 @@ class Agent:
                     f"Failed to get MCP tool '{tool_name}': {e}"
                 )
 
-            # Fallback to local get_tool if MCP tool was not found or MCP lookup failed
             if not tool:
                 tool = self.get_tool(
                     name=tool_name,
@@ -804,7 +797,6 @@ class Agent:
             if tool:
                 await self.handle_intervention()
 
-                # Call tool hooks for compatibility
                 await tool.before_execution(**tool_args)
                 await self.handle_intervention()
 

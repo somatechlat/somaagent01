@@ -45,7 +45,6 @@ if RUN_INTEGRATION:
         with RedisContainer() as container:
             if hasattr(container, "get_connection_url"):
                 connection_url = container.get_connection_url()
-            else:  # pragma: no cover - fallback for older testcontainers
                 host = container.get_container_host_ip()
                 port = container.get_exposed_port(6379)
                 connection_url = f"redis://{host}:{port}/0"

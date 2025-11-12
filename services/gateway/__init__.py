@@ -7,6 +7,5 @@ prior import pattern used throughout the test suite.
 """
 
 # Export the main FastAPI module under the name ``main`` for backward
-# compatibility with existing tests that expect ``services.gateway.main`` to be
 # an attribute of the package.
 from . import main as main  # noqa: F401

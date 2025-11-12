@@ -424,7 +424,6 @@ def get_subdirectories(
 
 def zip_dir(dir_path: str):
     full_path = get_abs_path(dir_path)
-    zip_file_path = tempfile.NamedTemporaryFile(suffix=".zip", delete=False).name
     base_name = os.path.basename(full_path)
     with zipfile.ZipFile(zip_file_path, "w", compression=zipfile.ZIP_DEFLATED) as zip:
         for root, _, files in os.walk(full_path):

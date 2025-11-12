@@ -130,7 +130,6 @@ class MemorizeMemories(Extension):
                         log_item=memory_log,
                     )
 
-                    # Update the individual log item with completion status but keep it temporary
                     if result_obj.get("success"):
                         total_consolidated += 1
                         if memory_log:

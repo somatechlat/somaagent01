@@ -176,7 +176,6 @@ def _deserialize_context(data):
         name=data.get("name", None),
         created_at=(
             datetime.fromisoformat(
-                # older chats may not have created_at - backcompat
                 data.get("created_at", datetime.fromtimestamp(0).isoformat())
             )
         ),

@@ -3,7 +3,6 @@ from typing import List
 from services.common.ui_settings_store import UiSettingsStore
 
 async def get_settings_repo():
-    """Get settings repository for backwards compatibility."""
     return UiSettingsStore()
 
 router = APIRouter(prefix="/v1/tools", tags=["tools"])

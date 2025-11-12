@@ -60,7 +60,6 @@ Tests for Gateway endpoints, authentication, policy enforcement, and external in
 - `test_gateway_api_keys.py` - API key authentication
 - `test_gateway_public_api.py` - Public Gateway endpoints
 - `test_session_repository.py` - Session persistence
-- `test_durable_publisher_fallback.py` - Event publishing reliability
 - `test_somabrain_client.py` - SomaBrain integration (memory backend)
 - `test_opa_middleware.py` - OPA policy enforcement
 - `gateway/test_gateway_endpoints.py` - Gateway endpoint tests

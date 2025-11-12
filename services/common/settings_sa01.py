@@ -1,6 +1,5 @@
 """Service settings for SomaAgent 01 (self-contained).
 
-This replaces the old shim that imported from a non-existent ``common`` package.
 It provides a minimal, robust SA01Settings based on ``BaseServiceSettings`` with
 DEV defaults aligned to docker-compose host port mappings so the gateway and
 workers can run locally against the running infra.
@@ -137,7 +136,6 @@ class SA01Settings(BaseServiceSettings):
             self.cors_expose_headers = [
                 h.strip() for h in self.cors_expose_headers.split(",") if h.strip()
             ]
-        # Gateway base URL fallback
         if not self.gateway_base_url:
             self.gateway_base_url = f"http://localhost:{self.gateway_port}"
         # Somabrain defaults

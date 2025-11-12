@@ -39,7 +39,6 @@ async def preload():
     except Exception as e:
         # if not runtime.is_development():
         raise e
-        # Fallback to direct execution if RFC fails in development
         # PrintStyle.standard("RFC failed, falling back to direct execution...")
         # return await _preload()
 
@@ -89,7 +88,6 @@ async def is_downloading():
     except Exception as e:
         # if not runtime.is_development():
         raise e
-        # Fallback to direct execution if RFC fails in development
         # return _is_downloading()
 
 
@@ -104,7 +102,6 @@ async def is_downloaded():
     except Exception as e:
         # if not runtime.is_development():
         raise e
-        # Fallback to direct execution if RFC fails in development
         # return _is_downloaded()
 
 
@@ -120,7 +117,6 @@ async def synthesize_sentences(sentences: list[str]):
     except Exception as e:
         # if not runtime.is_development():
         raise e
-        # Fallback to direct execution if RFC fails in development
         # return await _synthesize_sentences(sentences)
 
 
@@ -163,7 +159,6 @@ async def _synthesize_sentences(sentences: list[str]):
                 audio_bytes = buffer.getvalue()
                 wrote = True
             except Exception as se:
-                # Fallback to pure-Python writer if soundfile misbehaves in this environment
                 PrintStyle.warn(
                     f"soundfile write failed ({type(se).__name__}): {se}; falling back to wave module"
                 )

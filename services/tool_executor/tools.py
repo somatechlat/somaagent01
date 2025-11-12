@@ -300,7 +300,6 @@ class IngestDocumentTool(BaseTool):
 
             mode = _dep_mode()
         except Exception:
-            # Fallback to LOCAL without reading deprecated env vars
             mode = "LOCAL"
         default_token = "dev-internal-token" if mode == "LOCAL" else ""
         # Use canonical SA01 internal token environment variable.
@@ -367,7 +366,6 @@ class IngestDocumentTool(BaseTool):
                     text = pytesseract.image_to_string(img)
                 except Exception as exc:
                     LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
-            # Fallback: treat common text extensions as text even if MIME is octet-stream
             if not text:
                 try:
                     fname = (filename or "").lower()

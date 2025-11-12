@@ -31,4 +31,4 @@ async def test_feature_flags_match_cfg(monkeypatch):
     for key, meta in flags.items():
         expected = cfg.flag(key, tenant)
         assert meta["effective"] == expected, f"{key} mismatch"
-*** End of File
+# End of test file

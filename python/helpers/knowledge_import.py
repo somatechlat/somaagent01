@@ -70,7 +70,6 @@ def load_knowledge(
     """
     Load knowledge files from a directory with change detection and metadata enhancement.
 
-    This function now includes enhanced error handling and compatibility with the
     intelligent memory consolidation system.
     """
 
@@ -93,8 +92,6 @@ def load_knowledge(
         "pdf": PyPDFLoader,
         "csv": CSVLoader,
         "html": UnstructuredHTMLLoader,
-        "json": TextLoader,  # Use TextLoader for better consolidation compatibility
-        "md": TextLoader,  # Use TextLoader for better consolidation compatibility
     }
 
     cnt_files = 0
@@ -206,7 +203,6 @@ def load_knowledge(
                     )
                     documents = loader.load_and_split()
 
-                    # Enhanced metadata for better consolidation compatibility
                     enhanced_metadata = {
                         **metadata,
                         "source_file": os.path.basename(file_path),

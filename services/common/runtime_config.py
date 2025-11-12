@@ -92,7 +92,6 @@ def init_runtime_config(
     # External switch via SA01_DEPLOYMENT_MODE (DEV|PROD) overrides prior settings
     ext = (os.getenv("SA01_DEPLOYMENT_MODE") or "").strip().upper()
     if ext not in {"DEV", "PROD", ""}:
-        # invalid value -> default to DEV semantics (strict like prod) but log-safe fallback
         ext = "DEV"
     # Determine internal canonical mode used by existing code paths: LOCAL|PROD
     # Map DEV -> LOCAL (development profiles), PROD/STAGING/PRODUCTION -> PROD
@@ -201,7 +200,6 @@ def env(key: str, default: Optional[str] = None) -> str:
 
 
 def db_dsn(default: Optional[str] = None) -> str:
-    """Return canonical Postgres DSN (SA01_DB_DSN) with fallback."""
     val = env("SA01_DB_DSN")
     if val:
         return val

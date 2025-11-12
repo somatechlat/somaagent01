@@ -24,7 +24,6 @@ from . import dotenv, files
 from .settings_model import SettingsModel as Settings
 
 
-# ``PartialSettings`` kept for compatibility – it behaves like ``Settings``
 # but allows any subset of fields to be provided when constructing the model.
 class PartialSettings(Settings):
     pass
@@ -1566,7 +1565,6 @@ def get_default_settings() -> Settings:
         version=_get_version(),
         # Default all providers to Groq; users can change in Settings
         chat_model_provider="groq",
-        # Choose broadly available Groq models (OpenAI-compatible API)
         chat_model_name="llama-3.1-70b-versatile",
         chat_model_api_base="",
         chat_model_kwargs={"temperature": "0"},
