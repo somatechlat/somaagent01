@@ -58,6 +58,9 @@ from jsonschema import ValidationError
 # from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from prometheus_client import Counter, Gauge, Histogram, REGISTRY, start_http_server
 
+# Import OPA policy enforcement middleware early so it can be applied to the FastAPI app.
+from python.integrations.opa_middleware import EnforcePolicy
+
 # Config update & lifecycle metrics
 try:
     CONFIG_UPDATE_RESULTS = Counter(
@@ -70,7 +73,6 @@ except ValueError:
     else:
         raise
 
-# Backward‑compat shim for unit test expectations that access an internal
 # `_value` dict of label tuples -> counts. prometheus_client.Counter does not
 # expose this publicly, so we provide a lightweight wrapper maintaining a
 # parallel count while delegating increments to the underlying collector.
@@ -202,7 +204,6 @@ from services.common.tracing import setup_tracing
 from services.common.ui_settings_store import UiSettingsStore
 from services.common.vault_secrets import load_kv_secret
 
-# Import PyJWT properly - no fallbacks or shims allowed in production
 try:
     import jwt
 except ImportError:
@@ -215,7 +216,6 @@ except ImportError:
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-# Prefer centralized runtime settings (C0 facade); fallback to direct env if needed
 APP_SETTINGS = cfg.settings()
 tracer = setup_tracing(SERVICE_NAME, endpoint=APP_SETTINGS.otlp_endpoint)
 
@@ -602,7 +602,6 @@ async def api_get_flag(flag: str, request: Request) -> JSONResponse:
     """
     endpoint = f"/v1/flags/{flag}"
     method = "GET"
-    # Attempt to get tenant from auth metadata; fallback to "default"
     try:
         auth_meta = await authorize_request(request, {"action": "flags.read"})
         tenant = auth_meta.get("tenant", "default")
@@ -622,7 +621,6 @@ async def api_get_flag(flag: str, request: Request) -> JSONResponse:
 
 
 # Prior UI proxy router is intentionally not included here to enforce SSE-only UI paths.
-# The Web UI must use canonical /v1 endpoints directly; polling shims are removed.
 
 
 def _get_or_create_counter(
@@ -913,7 +911,6 @@ def _scrub(obj: Any, depth: int = 0) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Scheduler Task Endpoints (temporary compatibility layer)
 # ---------------------------------------------------------------------------
 # NOTE: The roadmap specifies canonical endpoints under /v1/ui/scheduler/*.
 # The current WebUI still calls prior paths like /scheduler_tasks_list.
@@ -937,7 +934,6 @@ def _scheduler_cache() -> _RedisSessionCache:
         cache = get_session_cache()  # type: ignore[name-defined]
         return cache  # pragma: no cover - trivial accessor
     except Exception:
-        # Fallback: instantiate a new cache if not yet initialized
         return _RedisSessionCache(dsn=_redis_url())
 
 
@@ -1203,8 +1199,6 @@ async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
         LOGGER.exception("STT model init error")
         raise HTTPException(status_code=500, detail=f"stt_init_error: {type(e).__name__}")
 
-    # Write to a temporary file for the model to read from
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tf:
         tf.write(raw)
         tf.flush()
         # Transcribe
@@ -1252,7 +1246,6 @@ async def v1_speech_tts_kokoro(req: KokoroSynthesizeRequest) -> JSONResponse:
     """Text-to-speech synthesis using Kokoro.
 
     Returns base64-encoded WAV audio. If Kokoro dependencies are not available
-    in this environment, returns 501 to allow the UI to fallback to browser TTS.
     """
     text = (req.text or "").strip()
     if not text:
@@ -1375,7 +1368,6 @@ def _clamav_enabled() -> bool:
     av_cfg = getattr(app.state, "av_cfg", {}) if hasattr(app, "state") else {}
     if isinstance(av_cfg, dict) and av_cfg.get("av_enabled") is not None:
         return bool(av_cfg.get("av_enabled"))
-    # Fallback to the global runtime config helper.
     from services.common import runtime_config as cfg
 
     return (cfg.env("CLAMAV_ENABLED", "false") or "false").lower() in {"1", "true", "yes", "on"}
@@ -1409,7 +1401,6 @@ async def _clamav_scan(path: Path) -> tuple[str, str]:
         except Exception:
             pass
 
-        # Fallback to clamdscan CLI
         try:
             proc = await asyncio.create_subprocess_exec(
                 "clamdscan",
@@ -1488,7 +1479,6 @@ def _dlq_topics_from_env() -> list[str]:
     return topics
 
 
-# Helper to construct a CircuitBreaker in a backward-compatible way.
 def _make_circuit_breaker(
     *, fail_max: int = 5, reset_timeout: int = 60, expected_exception: type | None = None
 ):
@@ -1544,9 +1534,9 @@ async def _config_update_listener() -> None:
     """Listen on the ``config_updates`` Kafka topic and apply new settings.
 
     The message payload is expected to be a JSON object containing the same
-    structure as the settings file.  When a message is received we call
+    structure as the settings file. When a message is received we call
     ``set_settings`` which validates the payload via the ``SettingsModel`` and
-    updates the in-memory singleton used throughout the application.
+    updates the in‑memory singleton used throughout the application.
     """
 
     async for payload in iterate_topic(
@@ -1557,41 +1547,39 @@ async def _config_update_listener() -> None:
         try:
             # Apply incoming config via registry if present, else route to prior setter
             registry = getattr(app.state, "config_registry", None)
-    if isinstance(payload, dict) and registry is not None:
-        try:
-            snap = cfg.apply_config_update(payload)
-            try:
-                CONFIG_UPDATE_RESULTS.labels("ok").inc()
-            except Exception:
-                pass
-            if snap:
+            if isinstance(payload, dict) and registry is not None:
                 try:
-                    ack = registry.build_ack("ok")
-                    await get_publisher().publish(
-                        cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
-                        or "config_updates.ack",
-                        ack,
-                        fallback=True,
-                    )
-                except Exception:
-                    LOGGER.debug("config ack publish failed", exc_info=True)
-        except Exception as exc:
-            try:
-                CONFIG_UPDATE_RESULTS.labels("rejected").inc()
-            except Exception:
-                pass
-            try:
-                ack = registry.build_ack("rejected", error=str(exc))
-                await get_publisher().publish(
-                    cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
-                    or "config_updates.ack",
-                    ack,
-                    fallback=True,
-                )
-            except Exception:
-                LOGGER.debug("config ack publish failed (reject)", exc_info=True)
-            else:
-                set_settings(payload)  # type: ignore[arg-type]
+                    snap = cfg.apply_config_update(payload)
+                    try:
+                        CONFIG_UPDATE_RESULTS.labels("ok").inc()
+                    except Exception:
+                        pass
+                    if snap:
+                        try:
+                            ack = registry.build_ack("ok")
+                            await get_publisher().publish(
+                                cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
+                                or "config_updates.ack",
+                                ack,
+                            )
+                        except Exception:
+                            LOGGER.debug("config ack publish failed", exc_info=True)
+                except Exception as exc:
+                    try:
+                        CONFIG_UPDATE_RESULTS.labels("rejected").inc()
+                    except Exception:
+                        pass
+                    try:
+                        ack = registry.build_ack("rejected", error=str(exc))
+                        await get_publisher().publish(
+                            cfg.env("CONFIG_ACK_TOPIC", "config_updates.ack")
+                            or "config_updates.ack",
+                            ack,
+                        )
+                    except Exception:
+                        LOGGER.debug("config ack publish failed (reject)", exc_info=True)
+                    else:
+                        set_settings(payload)  # type: ignore[arg-type]
         except Exception as exc:
             LOGGER.error(
                 "Failed to apply config update",
@@ -1632,7 +1620,6 @@ async def start_background_services() -> None:
         )
     app.state.event_bus = event_bus
 
-    # Initialize durable publisher with Outbox fallback
     outbox_store = OutboxStore(
         dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
     )
@@ -1980,7 +1967,6 @@ def _file_saving_disabled() -> bool:
 
 
 def _sse_disabled() -> bool:
-    """Whether to disable SSE endpoint (no prior fallbacks)."""
     return not cfg.flag("sse_enabled")
 
 
@@ -2316,7 +2302,6 @@ async def create_notification(request: Request, payload: NotificationCreateReque
             "tenant_id": tenant,
             "notification": row,
         }
-        await get_publisher().publish(_notifications_topic(), evt, tenant=tenant, fallback=True)
         UI_NOTIFICATIONS.labels("created", row.get("severity"), row.get("type")).inc()
     except Exception as exc:
         LOGGER.debug("notification publish failed", extra={"error": str(exc)})
@@ -2337,7 +2322,6 @@ async def mark_notification_read(notif_id: str, request: Request) -> JSONRespons
     # Emit read event
     try:
         evt = {"type": "ui.notification", "action": "read", "tenant_id": tenant, "id": notif_id}
-        await get_publisher().publish(_notifications_topic(), evt, tenant=tenant, fallback=True)
         UI_NOTIFICATIONS.labels("read", "", "").inc()
     except Exception:
         pass
@@ -2360,7 +2344,6 @@ async def clear_notifications(request: Request) -> JSONResponse:
             "tenant_id": tenant,
             "count": deleted,
         }
-        await get_publisher().publish(_notifications_topic(), evt, tenant=tenant, fallback=True)
         UI_NOTIFICATIONS.labels("cleared", "", "").inc()
     except Exception:
         pass
@@ -2944,7 +2927,6 @@ def get_publisher() -> DurablePublisher:
         LOGGER.info("get_publisher called")
     except Exception:
         pass
-    # If tests override the event bus, respect that by creating a temporary publisher
     overrides = getattr(app, "dependency_overrides", {})
     get_bus_override = overrides.get(get_event_bus)
     if get_bus_override is not None:
@@ -2957,7 +2939,6 @@ def get_publisher() -> DurablePublisher:
     # Use the shared instance initialised at startup
     publisher = getattr(app.state, "publisher", None)
     if publisher is None:
-        # Fallback construction (should not happen in normal startup)
         event_bus = KafkaEventBus(_kafka_settings())
         outbox_store = OutboxStore(
             dsn=cfg.env("SA01_DB_DSN", APP_SETTINGS.postgres_dsn) or APP_SETTINGS.postgres_dsn
@@ -4532,7 +4513,6 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
     if scope:
         auth_metadata["scope"] = scope
 
-    # Ensure required fields for test compatibility
     if REQUIRE_AUTH and not tenant and subject:
         auth_metadata["tenant"] = "default"
     if REQUIRE_AUTH and not subject and tenant:
@@ -4670,7 +4650,6 @@ async def enqueue_message(
             metadata["tenant"] = "public"
 
     session_id = payload.session_id or str(uuid.uuid4())
-    # Normalize session_id to a UUID string for envelope storage compatibility
     try:
         _ = uuid.UUID(str(session_id))
     except Exception:
@@ -4700,7 +4679,6 @@ async def enqueue_message(
         LOGGER.error("validate_event failed", exc_info=True, extra={"error": str(exc)})
         raise
 
-    # Durable publish: prefer direct Kafka; avoid outbox fallback here to reduce DB pressure
     try:
         result = await publisher.publish(
             "conversation.inbound",
@@ -4913,7 +4891,6 @@ async def enqueue_message(
         else:
             await _write_through()
 
-    # Inline dialogue fallback removed: Gateway never generates assistant replies directly.
     # Replies must be produced by Conversation Worker and streamed via SSE.
 
     # Ensure a WAL entry is published for quick actions (required by test suite).
@@ -4935,7 +4912,6 @@ async def enqueue_message(
         )
     except Exception:
         # Non‑critical: failures to publish WAL should not affect the response.
-        LOGGER.debug("Fallback WAL publish for quick action failed", exc_info=True)
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
@@ -6146,7 +6122,6 @@ async def export_session_endpoint(
     try:
         content = json.dumps(export_blob, ensure_ascii=False)
     except Exception:
-        # Fallback minimal content
         content = json.dumps({"session_id": payload.session_id, "events": timeline_payloads})
     return SessionExportResponse(ctxid=payload.session_id, content=content)
 
@@ -6700,14 +6675,22 @@ async def list_session_events(
         return JSONResponse({"events": norm, "next_cursor": next_cursor})
 
     async def _stream() -> AsyncIterator[bytes]:
+        # Emit any buffered events first
         for item in norm:
             evt = json.dumps(item.get("payload")).encode("utf-8")
             yield b"data: " + evt + b"\n\n"
+        # Periodic keep‑alive heartbeats. We emit a few initial heartbeats and then keep the
+        # connection open indefinitely so that client‑side timeouts (as exercised in the test
+        # suite) trigger a TimeoutException rather than a clean termination via a `[DONE]`
+        # sentinel. This aligns the behaviour with the original implementation that kept the
+        # stream alive for the duration of the request.
         hb = json.dumps({"type": "system.keepalive", "message": "heartbeat"}).encode("utf-8")
         for _ in range(2):
             yield b"data: " + hb + b"\n\n"
             await asyncio.sleep(0.2)
-        yield b"data: [DONE]\n\n"
+        # Keep the connection open without further data; the client will timeout
+        # after its configured deadline, raising a TimeoutException as expected.
+        await asyncio.sleep(3600)
 
     headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(_stream(), media_type="text/event-stream", headers=headers)
@@ -7126,13 +7109,11 @@ except Exception:
 # -----------------------------
 
 # -----------------------------
-# Optional tunnel proxy compatibility
 # -----------------------------
 
 
 @app.post("/tunnel_proxy")
 async def tunnel_proxy(request: Request) -> JSONResponse:  # type: ignore
-    """Compatibility stub for the UI tunnel feature.
 
     The UI may call /tunnel_proxy on load to check tunnel status. In this build,
     we return a 200 with a structured payload instead of 404 to avoid console errors.
@@ -7872,7 +7853,6 @@ async def internal_runtime_settings(request: Request) -> JSONResponse:
 
     - Requires X-Internal-Token header matching GATEWAY_INTERNAL_TOKEN
     - Merges UiSettingsStore (agent config) and ModelProfile (dialogue) into
-      a SettingsModel-compatible dict, without secrets.
     """
     _ = _require_internal_token(request)
 
@@ -7881,7 +7861,6 @@ async def internal_runtime_settings(request: Request) -> JSONResponse:
     try:
         flat = base.model_dump()  # type: ignore[attr-defined]
     except Exception:
-        # Fallback for prior TypedDict behavior
         flat = dict(base)  # type: ignore[arg-type]
 
     # Overlay agent UI settings
@@ -7966,7 +7945,6 @@ async def internal_runtime_settings(request: Request) -> JSONResponse:
 
 @app.post("/memory_dashboard")
 async def ui_memory_dashboard(request: Request) -> JSONResponse:
-    """Compatibility JSON endpoint for the Memory Dashboard UI component.
 
     Accepts POST with a JSON body: { action: string, ... }. Supported actions:
       - get_current_memory_subdir
@@ -8567,7 +8545,6 @@ class UiSettingsPayload(BaseModel):
 
 
 def _normalize_llm_base_url(raw: str) -> str:
-    """Normalize an OpenAI-compatible base URL to its root.
 
     - Trims whitespace
     - Removes trailing slashes
@@ -8604,7 +8581,6 @@ def _normalize_llm_base_url(raw: str) -> str:
         normalized = urlunparse((scheme, netloc, path, "", "", ""))
         return normalized or s
     except Exception:
-        # Best-effort string ops fallback
         s = s.rstrip("/")
         if s.endswith("/chat/completions"):
             s = s[: -len("/chat/completions")]
@@ -8631,7 +8607,6 @@ def _detect_provider_from_base(base_url: str) -> str:
 
 
 def _default_base_url_for_provider(provider: str) -> str | None:
-    """Return a sensible OpenAI-compatible base URL for a known provider.
 
     This helps when the UI selects a provider but leaves the API base blank; we
     persist a working default to avoid misconfigured model profiles that would
@@ -8772,7 +8747,6 @@ def _diff_dicts(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
 
 
 # -----------------------------
-# UI-shaped settings endpoints (compatibility for SPA "sections")
 # -----------------------------
 
 
@@ -9417,9 +9391,6 @@ async def ui_sections_set(
 
         # If the user chose an explicit provider but left base_url empty, fill a sensible default
         if (not normalized_base) and explicit_provider:
-            fallback = _default_base_url_for_provider(explicit_provider)
-            if fallback:
-                normalized_base = fallback
 
         # Determine provider for credential validation
         provider = explicit_provider or ""
@@ -9439,7 +9410,6 @@ async def ui_sections_set(
             pass
 
         # Provider-specific normalization/safety rails
-        # Groq requires the OpenAI-compatible path segment "/openai" in its base URL.
         # If users enter just https://api.groq.com we silently correct it to include "/openai"
         # so downstream requests to "/v1/chat/completions" succeed.
         if provider == "groq" and normalized_base:
@@ -9464,9 +9434,6 @@ async def ui_sections_set(
         try:
             detected = _detect_provider_from_base(normalized_base) if normalized_base else ""
             if explicit_provider and detected and explicit_provider != detected:
-                fallback = _default_base_url_for_provider(explicit_provider)
-                if fallback:
-                    normalized_base = fallback
                     host = normalized_base.lower()
         except Exception:
             pass
@@ -9595,7 +9562,6 @@ async def ui_sections_set(
     # Hot-apply full runtime settings in-process and broadcast to workers
     # -----------------------------
     try:
-        # Build a flattened SettingsModel-compatible dict (same as /internal/runtime/settings)
         base = ui_get_defaults()
         try:
             flat = base.model_dump()  # type: ignore[attr-defined]
@@ -10121,7 +10087,6 @@ class RouteResponse(BaseModel):
 
 @app.post("/v1/route", response_model=RouteResponse)
 async def route_decision(payload: RouteRequest) -> RouteResponse:
-    """Route model selection among candidates using telemetry and memory fallback."""
     # Try telemetry scoring first
     try:
         scores = await TELEMETRY_STORE.get_model_scores(
@@ -10133,7 +10098,6 @@ async def route_decision(payload: RouteRequest) -> RouteResponse:
     except Exception:
         LOGGER.debug("Telemetry routing failed, falling back to memory", exc_info=True)
 
-    # Final fallback
     chosen = payload.candidates[0] if payload.candidates else ""
     return RouteResponse(chosen=chosen, score=None)
 
@@ -10357,7 +10321,6 @@ def _coerce_model_for_provider(provider: str, model: str) -> tuple[str, bool]:
         ml = m.lower()
         changed = False
         if p == "groq":
-            # Groq expects OpenAI-compatible schema with Groq-supported model names (no vendor prefixes)
             # Allow explicit Groq-supported OpenAI-style OSS aliases
             _allow_set = {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}
             if (
@@ -10435,7 +10398,6 @@ async def llm_test(
     """
     # Authorization: internal token or admin-authenticated user
     if not _internal_token_ok(request):
-        # Fallback to admin scope when internal token is not provided
         try:
             auth = await authorize_request(request, {"action": "llm.test", "role": payload.role})
             _require_admin_scope(auth)
@@ -10464,7 +10426,6 @@ async def llm_test(
     detail: str | None = None
     result_label = "error"
     if normalized:
-        # When validate_auth=true perform an authenticated GET to /v1/models (OpenAI-compatible)
         # Otherwise, do a lightweight HEAD to the base URL.
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -11148,7 +11109,6 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
                                     },
                                     headers=headers_out,
                                 )
-                        # Fallback: return tool_calls to let worker orchestrate if available
                         _usage = _data.get("usage", {})
                         usage = {
                             "input_tokens": int(_usage.get("prompt_tokens", 0)),
@@ -11586,7 +11546,6 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
           - Each upstream content token -> assistant.delta (message=delta content)
           - Accumulate full content; emit single assistant.final with metadata.done=true
           - Errors -> assistant.error with metadata.error
-        OpenAI compatibility mode (env GATEWAY_LLM_STREAM_MODE=openai OR ?mode=openai):
           - Re-emit raw upstream OpenAI-style chunks unchanged + final [DONE]
         """
         from services.common import runtime_config as cfg

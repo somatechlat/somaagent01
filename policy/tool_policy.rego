@@ -171,7 +171,6 @@ is_string(x) {
 is_valid_timestamp_format(fmt) {
   fmt in ["ISO", "UNIX", "RFC3339", "US"]
 }
-}
 
 # File size validation
 exceeds_file_size(size_bytes, max_bytes) {

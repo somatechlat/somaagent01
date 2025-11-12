@@ -64,7 +64,6 @@ async def test_durable_publisher_header_injection_success(monkeypatch):
         payload,
         session_id="s123",
         tenant="tenantA",
-        fallback=False,
     )
     assert res["published"] is True
     assert bus.sent, "No messages sent"
@@ -79,7 +78,6 @@ async def test_durable_publisher_header_injection_success(monkeypatch):
         assert len(hdr_map["trace_id"]) == 32
 
 
-async def test_durable_publisher_outbox_fallback(monkeypatch):
     from services.common.publisher import DurablePublisher
 
     class FailingBus:
@@ -95,7 +93,6 @@ async def test_durable_publisher_outbox_fallback(monkeypatch):
         "session_id": "sX",
         "metadata": {"tenant": "tY"},
     }
-    res = await pub.publish("sys", payload, session_id="sX", tenant="tY", fallback=True)
     assert res["published"] is False and res["enqueued"] is True
     # Headers persisted to outbox
     hdrs = outbox.last.get("headers")

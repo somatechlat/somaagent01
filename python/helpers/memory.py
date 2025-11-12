@@ -19,7 +19,6 @@ from typing import (
 )
 from weakref import WeakKeyDictionary
 
-# faiss needs to be patched for python 3.12 on arm - production compatibility patch
 # Import faiss optionally to avoid crashing the UI when faiss is not installed in the
 # container. Many dev setups use remote memory (SOMA_ENABLED) and don't require
 # local FAISS. We set FAISS_AVAILABLE=False when the module is missing and provide
@@ -58,7 +57,6 @@ except Exception:
     FAISS = None  # type: ignore
     DistanceStrategy = None  # type: ignore
 
-    class Document(object):  # fallback for type compatibility
         def __init__(self, page_content: str = "", metadata: dict | None = None):
             self.page_content = page_content
             self.metadata = metadata or {}
@@ -69,7 +67,6 @@ try:
 except Exception:  # pragma: no cover - optional dependency in minimal images
 
     def simple_eval(expr: str, names: Mapping[str, Any] | None = None) -> bool:
-        """Very small fallback evaluator for expressions like: area == 'main'.
 
         This avoids a hard dependency on `simpleeval` for environments that only
         use remote SomaBrain memory (SOMA_ENABLED=true). It is not a general
@@ -289,7 +286,6 @@ class Memory:
         # here we setup the embeddings model with the chosen cache storage
         if LC_CacheBackedEmbeddings is None:
             raise RuntimeError(
-                "LangChain CacheBackedEmbeddings not available. Install compatible langchain packages "
                 "or set SOMA_ENABLED=true to use remote SomaBrain memory."
             )
         embedder = LC_CacheBackedEmbeddings.from_bytes_store(  # type: ignore
@@ -772,7 +768,6 @@ class _SomaDocStore:
                 coord_str = self._format_coord(coord)
                 result = await self._client.remember(
                     payload,
-                    # Do not pass coord to new endpoint; client will handle prior fallback internally if needed
                     universe=self.memory.memory_subdir,
                 )
             except SomaClientError as exc:

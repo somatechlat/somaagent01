@@ -28,7 +28,6 @@
 - `test_gateway_api_keys.py` - **KEEP** - Tests API key authentication
 - `test_gateway_public_api.py` - **KEEP** - Tests public Gateway endpoints
 - `test_session_repository.py` - **KEEP** - Tests session persistence
-- `test_durable_publisher_fallback.py` - **KEEP** - Tests event publishing reliability
 
 #### 4. Critical Infrastructure Tests (tests/integrations/)
 - `test_somabrain_client.py` - **KEEP** - Tests SomaBrain integration (memory backend)

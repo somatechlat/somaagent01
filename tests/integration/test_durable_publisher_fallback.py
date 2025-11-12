@@ -15,7 +15,6 @@ class FailingBus:
 
 
 @pytest.mark.asyncio
-async def test_durable_publisher_fallback_enqueues_to_outbox(event_loop):
     # Spin up a real Postgres with Testcontainers
     with PostgresContainer("postgres:16-alpine") as pg:
         dsn = pg.get_connection_url()  # e.g. postgresql://test:test@0.0.0.0:5432/test

@@ -75,7 +75,6 @@ def get_runtime_id() -> str:
 
 
 # ----------------------------------------------------------------------
-# Persistent runtime identifier – stored in a secret file (no env fallback)
 # ----------------------------------------------------------------------
 # Default location is a writable file inside the repository (./tmp/persistent_id).
 # In production you should mount a secret and point the env var
@@ -119,7 +118,6 @@ def get_persistent_id() -> str:
     """Return a stable runtime identifier.
 
     The identifier is stored in a secret file defined by
-    ``SA01_PERSISTENT_ID_PATH``. No environment variable fallback is used –
     this is the *single source of truth* for production deployments.
     """
     persisted = _read_id_file()

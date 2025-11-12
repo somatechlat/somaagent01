@@ -2,7 +2,6 @@ from typing import Literal
 
 # tiktoken is an optional dependency that's heavy to install in minimal
 # dev images. Import it if available, otherwise provide a lightweight
-# fallback tokenizer based on whitespace which is good enough for
 # rate-limiting and approximate counts during development.
 try:
     import tiktoken
@@ -26,7 +25,6 @@ def count_tokens(text: str, encoding_name="cl100k_base") -> int:
         tokens = encoding.encode(text)
         return len(tokens)
 
-    # Fallback: use a very simple whitespace-based tokenizer for
     # approximate counts in minimal development images.
     return max(1, len(text.split()))
 

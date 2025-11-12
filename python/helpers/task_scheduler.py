@@ -362,7 +362,6 @@ class ScheduledTask(BaseTask):
         with self._lock:
             crontab = CronTab(crontab=self.schedule.to_crontab())  # type: ignore
 
-            # Get the timezone from the schedule or use UTC as fallback
             task_timezone = pytz.timezone(
                 self.schedule.timezone or Localization.get().get_timezone()
             )

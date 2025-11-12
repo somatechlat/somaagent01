@@ -33,7 +33,6 @@ class RequeueStore:
     def from_settings(cls, settings: Any) -> "RequeueStore":
         """Construct from settings object.
 
-        Expects attributes or env fallbacks:
         - redis_url (str)
         - policy_requeue_prefix (str)
         """
@@ -74,7 +73,6 @@ class RequeueStore:
                 await self.client.srem(self.keyset, identifier)
         return sorted(results, key=lambda item: item.get("timestamp", 0.0), reverse=True)
 
-    # --- Backwards-compatibility aliases used by gateway ---
     async def list_requeue(self) -> list[dict[str, Any]]:
         return await self.list()
 

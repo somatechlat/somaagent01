@@ -223,7 +223,6 @@ class ConversationWorker:
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
-        # Prefer canonical SA01_* first, then prior fallbacks, with in-cluster DNS as last resort.
         self._gateway_base = (
             cfg.env("SA01_GATEWAY_BASE_URL")
             or cfg.env("WORKER_GATEWAY_BASE")
@@ -264,13 +263,10 @@ class ConversationWorker:
         except Exception:
             self.escalation_enabled = True
         try:
-            self.escalation_fallback_enabled = bool(cfg.flag("escalation_fallback"))
         except Exception:
-            self.escalation_fallback_enabled = False
 
         # Tool registry for model-led orchestration (no network hop)
         self.tool_registry = ToolRegistry()
-        # Back-compat shim for older tests that expect a local SLM client with an api_key attr.
         # Runtime LLM calls are made via Gateway; this object is not used for provider calls.
         try:
             import types  # noqa: WPS433 (std lib)
@@ -278,7 +274,6 @@ class ConversationWorker:
             self.slm = types.SimpleNamespace(api_key=None)
         except Exception:
             # Last resort: dummy attr
-            self.slm = type("_Shim", (), {"api_key": None})()
         # Persona cache (TTL seconds)
         # key: persona_id -> (cached_at_epoch_seconds, persona_dict | None)
         # Keeps outbound memory metadata enrichment fast and avoids repeated HTTP calls.
@@ -452,7 +447,6 @@ class ConversationWorker:
         Strategy:
         1) If SOMABRAIN_USE_RECALL_SSE=true, attempt true SSE streaming via /memory/recall/stream
            and publish context.update per event (status=recall_sse).
-        2) Otherwise (or on error), fallback to paged recall using chunk_size/chunk_index
            with periodic context.update (status=recall).
 
         Cancellation is cooperative via stop_event.
@@ -542,7 +536,6 @@ class ConversationWorker:
                         "recall_stream_events failed; falling back to paged recall", exc_info=True
                     )
 
-            # Paged recall fallback
             for page_index in range(pages):
                 if stop_event.is_set():
                     break
@@ -613,7 +606,6 @@ class ConversationWorker:
         """No-op: credentials are not fetched by worker.
 
         Runtime LLM calls go through Gateway which injects provider credentials
-        from its encrypted store. This method remains for backwards-compat
         but does nothing now.
         """
         try:
@@ -663,7 +655,6 @@ class ConversationWorker:
                     return pytesseract.image_to_string(img)[:200_000]
                 except Exception:
                     return ""
-            # Fallback: return nothing for unknown binary types
             return ""
         except Exception:
             return ""
@@ -1108,7 +1099,6 @@ class ConversationWorker:
                 bg_task.cancel()
         text = "".join(buffer)
         if not text:
-            # Fallback: call non-streaming invoke once to get a definitive answer
             try:
                 url2 = f"{self._gateway_base}/v1/llm/invoke"
                 ov2: dict[str, Any] = {}
@@ -1173,7 +1163,6 @@ class ConversationWorker:
                 "Streaming unavailable via Gateway, falling back to non-stream invoke",
                 extra={"error": str(exc)},
             )
-            # Fallback: non-stream invoke
             url = f"{self._gateway_base}/v1/llm/invoke"
             # Build non-stream overrides similarly to streaming path (omit empty strings)
             ov: dict[str, Any] = {}
@@ -1781,7 +1770,6 @@ class ConversationWorker:
                 tenant = (event.get("metadata") or {}).get("tenant", "default")
                 preview = (event.get("message") or "")[:200]
             except Exception:
-                # Defensive fallback - never fail message processing due to logging
                 event_id = event.get("event_id") if isinstance(event, dict) else ""
                 tenant = "default"
                 preview = ""
@@ -1864,7 +1852,6 @@ class ConversationWorker:
                 if not await self.store.event_exists(session_id, event.get("event_id")):
                     await self.store.append_event(session_id, {"type": "user", **event})
             except Exception:
-                # Fallback: append without duplication check on failure
                 await self.store.append_event(session_id, {"type": "user", **event})
             # Save user message to SomaBrain as a memory (non-blocking semantics with error shielding)
             try:
@@ -2016,7 +2003,6 @@ class ConversationWorker:
                                     )
                                 )
                         else:
-                            # Prior path-based fallback (DEV only)
                             if self.deployment_mode != "DEV":
                                 LOGGER.warning(
                                     "Path-based attachment ingest blocked in non-DEV mode",
@@ -2523,7 +2509,6 @@ class ConversationWorker:
                     )
                     decision = EscalationDecision(
                         False,
-                        "fallback_after_error",
                         {**decision.metadata, "error": str(exc)},
                     )
                     ESCALATION_ATTEMPTS.labels("error").inc()
@@ -2541,7 +2526,6 @@ class ConversationWorker:
                     )
                 except Exception as exc:
                     LOGGER.exception("SLM request failed")
-                    # Attempt a non-streaming fallback via Gateway once more before giving up
                     result_label = "generation_error"
                     try:
                         error_event = {
@@ -2550,7 +2534,6 @@ class ConversationWorker:
                             "session_id": session_id,
                             "persona_id": persona_id,
                             "role": "assistant",
-                            "message": "Generation backend error encountered; attempting fallback.",
                             "metadata": {
                                 "source": "worker",
                                 "error": str(exc)[:400],
@@ -2592,12 +2575,9 @@ class ConversationWorker:
                             resp_ns = await client.post(url_ns, json=body_ns, headers=headers_ns)
                             if not resp_ns.is_error:
                                 data_ns = resp_ns.json()
-                                fallback_text = data_ns.get("content", "")
                                 usage = data_ns.get(
                                     "usage", {"input_tokens": 0, "output_tokens": 0}
                                 )
-                                if fallback_text:
-                                    response_text = fallback_text
                                 else:
                                     response_text = (
                                         "I encountered an error while generating a reply."

@@ -328,7 +328,6 @@ class MemoryConsolidator:
             return consolidated_metadata
 
         except Exception as e:
-            # If metadata gathering fails, return original metadata as fallback
             PrintStyle(font_color="yellow").print(
                 f"Failed to gather consolidated metadata: {str(e)}"
             )
@@ -450,16 +449,12 @@ class MemoryConsolidator:
 
         except Exception as e:
             PrintStyle().warning(f"Keyword extraction failed: {str(e)}")
-            # Fallback: use intelligent truncation for search
             # Take first 200 chars if short, or first sentence if longer, but cap at 200 chars
             if len(new_memory) <= 200:
-                fallback_content = new_memory
             else:
                 first_sentence = new_memory.split(".")[0]
-                fallback_content = (
                     first_sentence[:200] if len(first_sentence) <= 200 else new_memory[:200]
                 )
-            return [fallback_content.strip()]
 
     async def _analyze_memory_consolidation(
         self, context: MemoryAnalysisContext, log_item: Optional[LogItem] = None
@@ -511,12 +506,10 @@ class MemoryConsolidator:
             except ValueError:
                 action = ConsolidationAction.SKIP
 
-            # Determine appropriate fallback for new_memory_content based on action
             if action in [ConsolidationAction.MERGE, ConsolidationAction.REPLACE]:
                 # For MERGE/REPLACE, if no content provided, it's an error - don't use original
                 default_content = ""
             else:
-                # For KEEP_SEPARATE/UPDATE/SKIP, original memory is appropriate fallback
                 default_content = context.new_memory
 
             return ConsolidationResult(
@@ -530,7 +523,6 @@ class MemoryConsolidator:
 
         except Exception as e:
             PrintStyle().warning(f"LLM consolidation analysis failed: {str(e)}")
-            # Fallback: skip consolidation
             return ConsolidationResult(
                 action=ConsolidationAction.SKIP, reasoning=f"Analysis failed: {str(e)}"
             )

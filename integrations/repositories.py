@@ -166,5 +166,4 @@ def get_session_store() -> PostgresSessionStore:
 
 # Additional missing function
 async def get_settings_repo():
-    """Get settings repository for backwards compatibility."""
     return get_ui_settings_store()

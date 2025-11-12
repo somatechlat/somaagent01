@@ -55,7 +55,6 @@ Use the Settings UI (preferred) or the helper script to persist your Groq API ke
 Option B (prior helper script) has been removed; always use the Settings UI sections flow. External seeding scripts for provider credentials are intentionally unsupported to preserve a single write path.
 
 Notes:
-- Groq requires an OpenAI-compatible path; if you provide `https://api.groq.com` the Gateway will normalize to include `/openai` and `/v1` when needed.
 - LLM invoke endpoints are internal-token gated; in dev this is `dev-internal-token` and already configured for worker↔gateway calls.
 
 ## UI access
@@ -75,7 +74,6 @@ Canonical contract sequence (typical):
 Optional tool markers (when enabled via `SA01_ENABLE_TOOL_EVENTS=true`): `assistant.tool.started` / `assistant.tool.delta` / `assistant.tool.final` may appear interleaved with deltas.
 Errors are emitted as `assistant.error` (or `<role>.error` when tool/system sourced) and always normalized before persistence.
 
-Prefer canonical for stable UI/event tooling. Passthrough exists solely for debugging or prior client compatibility.
 
 ### Runtime Config & Flags
 
@@ -193,7 +191,6 @@ From now on, please use this name for both `git clone` and `docker pull` command
 
 - Agent Zero uses the operating system as a tool to accomplish its tasks. It has no single-purpose tools pre-programmed. Instead, it can write its own code and use the terminal to create and use its own tools as needed.
 - The only default tools in its arsenal are online search, memory features, communication (with the user and other agents), and code/terminal execution. Everything else is created by the agent itself or can be extended by the user.
-- Tool usage functionality has been developed from scratch to be the most compatible and reliable, even with very small models.
 - **Default Tools:** Agent Zero includes tools like knowledge, code execution, and communication.
 - **Creating Custom Tools:** Extend Agent Zero's functionality by creating your own custom tools.
 - **Instruments:** Instruments are a new type of tool that allow you to create custom functions and procedures that can be called by Agent Zero.
@@ -339,7 +336,6 @@ Once the stack is healthy, reach the Agent UI at `http://localhost:${GATEWAY_POR
 - Python update + dual installation
 - Browser Use update
 - New login screen
-- LiteLLM retry on temporary errors
 - Github Copilot provider support
 
 
@@ -446,7 +442,6 @@ Default models set to gpt-4.1
 - Scheduler improvements
 - New model provider
 - Input tool fix
-- Compatibility and stability improvements
 
 ### v0.8.4
 [Release video](https://youtu.be/QBh_h_D_E24)

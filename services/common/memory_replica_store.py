@@ -55,7 +55,6 @@ class MemoryReplicaStore:
             async def _init_conn(conn: asyncpg.Connection) -> None:  # type: ignore[name-defined]
                 """Ensure JSON/JSONB are decoded to Python objects.
 
-                Using text format keeps compatibility across asyncpg versions.
                 """
                 try:
                     await conn.set_type_codec(

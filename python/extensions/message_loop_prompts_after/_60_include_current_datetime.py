@@ -21,4 +21,3 @@ class IncludeCurrentDatetime(Extension):
         )
 
         # add current datetime to the loop data
-        loop_data.extras_temporary["current_datetime"] = datetime_prompt

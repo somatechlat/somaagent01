@@ -15,13 +15,9 @@ class LogFromStream(Extension):
         pipes = "|" * math.ceil(math.sqrt(len(text)))
         heading = build_heading(self.agent, f"Reasoning.. {pipes}")
 
-        # create log message and store it in loop data temporary params
-        if "log_item_generating" not in loop_data.params_temporary:
-            loop_data.params_temporary["log_item_generating"] = self.agent.context.log.log(
                 type="agent",
                 heading=heading,
             )
 
         # update log message
-        log_item = loop_data.params_temporary["log_item_generating"]
         log_item.update(heading=heading, reasoning=text)

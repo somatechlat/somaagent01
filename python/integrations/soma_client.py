@@ -447,7 +447,6 @@ class SomaClient:
                         # Retry-After can be seconds or HTTP-date; try seconds first
                         ra_s = float(ra)
                     except ValueError:
-                        # Fallback: parse HTTP-date to seconds delta (simple/lenient)
                         try:
                             import email.utils as _eutils
                             import time as _time
@@ -627,7 +626,6 @@ class SomaClient:
             if coord:
                 # Prior endpoint supports coord
                 prior_payload["coord"] = coord
-            # Use logical universe fallback, not memory namespace
             if universe or self.universe:
                 resolved_universe = universe or self.universe
                 if resolved_universe:
@@ -661,7 +659,6 @@ class SomaClient:
         """Recall memories for a query.
 
         Prefer the richer `/memory/recall` endpoint but tolerate the prior
-        `/recall` surface to remain compatible with older deployments.
         """
 
         body: Dict[str, Any] = {
@@ -670,7 +667,6 @@ class SomaClient:
             "query": query,
             "top_k": top_k,
         }
-        # Use logical universe fallback, not memory namespace
         if universe or self.universe:
             body["universe"] = universe or self.universe
         if layer:
@@ -714,7 +710,6 @@ class SomaClient:
                 response = None
 
         if response is None:
-            # Fallback to JSON body for older/newer deployments that accept it
             response = await self._request(
                 "POST",
                 "/memory/recall",
@@ -733,7 +728,6 @@ class SomaClient:
         payload: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         """Invoke the streaming recall endpoint."""
-        # Prefer spec-compliant query param ?payload=<json>; fallback to JSON body
         params_payload = None
         try:
             params_payload = json.dumps(dict(payload), separators=(",", ":"))
@@ -815,7 +809,6 @@ class SomaClient:
                         continue
                     yield evt
 
-        # Try params first; on error fallback to JSON
         tried_params = False
         if params_payload is not None:
             tried_params = True
@@ -824,10 +817,8 @@ class SomaClient:
                     yield evt
                 return
             except SomaClientError:
-                # fallback below
                 pass
 
-        # Fallback via JSON body
         async for evt in _stream_with(use_params=False):
             yield evt
 

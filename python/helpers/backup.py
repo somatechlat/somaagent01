@@ -21,7 +21,6 @@ class BackupService:
     - JSON-based metadata with user-editable path specifications
     - Comprehensive system information collection
     - Checksum validation for integrity
-    - RFC compatibility through existing file helpers
     - Git version integration consistent with main application
     """
 
@@ -375,7 +374,6 @@ class BackupService:
         if not matched_files:
             raise Exception("No files matched the backup patterns")
 
-        # Create temporary zip file
         temp_dir = tempfile.mkdtemp()
         zip_path = os.path.join(temp_dir, f"{backup_name}.zip")
 

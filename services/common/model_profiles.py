@@ -101,7 +101,6 @@ class ModelProfileStore:
                 json.dumps(profile.kwargs or {}, ensure_ascii=False),
             )
 
-    # Backward-compat helpers to match Gateway endpoint names
     async def create_profile(self, profile: ModelProfile) -> None:
         """Create or replace a model profile.
 
@@ -189,9 +188,7 @@ class ModelProfileStore:
             for row in rows
         ]
 
-    # Backward-compatible alias used by gateway endpoints
     async def list_profiles(self, deployment_mode: Optional[str] = None) -> list[ModelProfile]:
-        """Alias for list(); maintained for gateway handler compatibility."""
         return await self.list(deployment_mode)
 
     async def sync_from_settings(self, settings: BaseServiceSettings) -> None:

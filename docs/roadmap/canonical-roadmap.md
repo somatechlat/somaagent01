@@ -18,7 +18,6 @@ Design Principles:
 - Fail‑Closed for Sensitive Domains: If dynamic override layer is unavailable, security‑critical values (policy fail‑open, masking enablement) revert to conservative defaults explicitly defined in SA01Settings.
 - Immutable Read Surface: Callers cannot mutate configuration dictionaries; updates only occur via validated registry documents.
 - Deterministic Hashing: Each effective merged snapshot publishes a `config_effective_checksum` metric for change detection and alerting.
-- Single Path for Flags: All feature/flag queries route through `cfg.flag()` which first resolves remote tenant override cache → registry descriptor → fallback default.
 - Zero Direct Env Access: A linter rule (planned) prohibits `os.getenv(` outside configuration and bootstrap modules.
 
 Access Flow:
@@ -236,18 +235,14 @@ Governance
 This section captures the repo‑wide centralization sweep performed on November 11, 2025, and merges concrete implementation details into the canonical roadmap. It documents what was unified, what remains to be finished, and how we will deprecate prior paths. All changes below are implemented unless noted as “Planned”.
 
 ## Executive Summary
-- Feature flags: one registry and a single point of resolution (`cfg.flag`). Added canonical `sse_enabled` flag with `SA01_SSE_ENABLED` override; prior `GATEWAY_DISABLE_SSE` is honored only as a fallback.
-- Streaming: two supported endpoints remain for compatibility; both backed by the same SSE plumbing. Consolidation guidance and deprecation plan included below.
 - Masking: unified streaming chunk masking to use the same rule engine as Gateway (services.common.masking), removing divergence with SecretsManager-based streaming filters.
 - Secrets/crypto: canonicalized Fernet key to `SA01_CRYPTO_FERNET_KEY`; deployments must now provide this key for credential encryption.
 - Settings Registry: fixed imports and dependencies so a single “snapshot” overlay path exists for UI sections; removed reliance on non‑existent modules.
 - Repositories: corrected imports to canonical `services.common.*` stores to avoid duplicate or broken repository layers.
-- Compose envs: added `SA01_*` canonical variables to docker‑compose for local dev parity with preflight checks; prior variables remain temporarily for compatibility.
 
 ## Implemented Changes (files and effects)
 - Feature registry and SSE enablement
   - services/common/features.py: added descriptor `key: "sse_enabled"` with env override `SA01_SSE_ENABLED` (default true).
-  - services/gateway/main.py: `_sse_disabled()` now prefers `cfg.flag("sse_enabled")`; prior `GATEWAY_DISABLE_SSE` read only as fallback. UI `/v1/runtime-config` reflects `sse_enabled`.
 
 - LLM credentials encryption key (canonicalization)
 - services/common/llm_credentials_store.py: now requires `SA01_CRYPTO_FERNET_KEY` and fails fast when the key is missing.
@@ -360,7 +355,6 @@ Adoption Steps & Status
 
 Metrics / Observability
 - `deployment_mode` label added to key process metrics (gateway requests, conversation worker messages) in a later instrumentation sprint.
-- Counter `prior_mode_env_reads_total` (temporary) to confirm elimination; removed when stable at zero.
 
 Acceptance Criteria (Modes Consolidation)
 - Only LOCAL|PROD appear in model_profiles table deployment_mode column post-migration.
@@ -407,7 +401,6 @@ Reliable delivery & retries	Guarantees at‑least‑once execution, automatic ex
 Cron / periodic jobs	Celery Beat provides a robust, persistent scheduler that survives container restarts.
 Task chaining & workflows	Canvas primitives (chains, groups, chords) enable multi‑step pipelines (e.g., fetch → process → store).
 Horizontal scalability	Adding more workers is just a new container – linear scaling.
-Existing stack compatibility	The project already uses Redis for other services; Celery works natively with Redis as broker + backend.
 
 When to adopt?
 
@@ -507,11 +500,9 @@ Rationale
 
 Immediate plan (no new systems, minimal edits)
 1. Ensure `.env` / `.env.example` contains the canonical variables (set `GATEWAY_PORT=21016`, `SA01_GATEWAY_BASE_URL=http://localhost:21016`, `WEB_UI_BASE_URL=http://localhost:21016/ui`).
-2. Replace hard-coded URL fallbacks in tests, scripts, and webui test configs to prefer `WEB_UI_BASE_URL` → `SA01_GATEWAY_BASE_URL` → derived `http://localhost:${GATEWAY_PORT}`. Exact files to update include (representative):
    - `tests/e2e/*.py`, `tests/playwright/*.py`, `tests/ui/*`
    - `webui/playwright.config.ts` and `webui/tests/*.spec.ts`
    - `scripts/e2e_quick.py`, `scripts/ui-smoke.sh`, `scripts/check_stack.sh`
-   - `python/api/*` modules that fallback to `http://localhost:20016` or `http://127.0.0.1:21016`
    - `.vscode/tasks.json` and Makefile examples
    - docs under `docs/*` and generated `site/*` that embed http://localhost:21016 or other literal ports
 3. Remove clearly broken / redundant artifacts that confuse developers and standardize on the single compose manifest.
@@ -631,7 +622,6 @@ Acceptance criteria:
 - End-to-end traces for any message include spans across all hops and appear in Tempo/Jaeger.
 
 Strict-mode defaults:
-- Fail-closed policies in dev and prod: when a dependency or authorization check fails, the system surfaces a clear error to the UI and audit log; no silent fallbacks.
 - Dev mirrors prod posture (no mocks); warnings and health banners appear in UI when components degrade.
 
 ## Auditing and Compliance
@@ -650,7 +640,6 @@ Strict-mode defaults:
 
 ## Web UI Integration (Canonical behavior)
 
-Goal: ship a clean, SSE-only Web UI against canonical Gateway contracts. No mocks, no inline fallbacks; UI must operate against real services via Gateway only.
 
 Canonical UI behaviors:
 - Chat transport: strictly SSE for streaming via `/v1/sessions/{session_id}/events?stream=true` with event types `llm.delta`, `llm.complete`, `tool.call`, `tool.result`, `error`, `heartbeat`.
@@ -684,7 +673,6 @@ UI behavior requirements (copy exactly from A0, implemented via canonical endpoi
 
 Enforcement
 - SSE-only; no UI proxy or polling.
-- No inline dialogue fallback in Gateway; replies originate from Conversation Worker and real providers.
 
 Acceptance criteria for UI integration:
 - Sending a message from the UI produces streamed assistant deltas over SSE within p50 < 1s under local dev.
@@ -710,12 +698,10 @@ Test plan additions (Playwright + pytest)
 
 Phase 0 — Correctness and Strictness
 - Align SomaBrain port to 9696 across code/docs/compose; health checks green when SomaBrain is up.
-- Enable strict-mode defaults (fail-closed on policy/dependency failures) and surface banners in UI; remove prior fallbacks.
 
 Phase 0.5 — Agent Zero Web UI Integration and Real Chat (priority)
 - Integrate Agent Zero UI into `webui/` with adapters to our `/v1` endpoints.
 - Remove any UI-side polling or file path usage; wire SSE, uploads, and session controls.
-- Remove Gateway inline dialogue fallback; require Conversation Worker running and real provider credentials.
 - Playwright parity smoke: chat send/stream, upload+tool, delete chat.
 
 Phase 1 — Attachment Ingestion by ID
@@ -744,7 +730,6 @@ Phase 5 — E2E and CI
 4) Enforce OPA gates across conversation/tool/memory flows with clear deny errors and audits; expose WAL lag in health.
 5) Add Playwright smoke covering uploads/streaming/tool-call and delete chat; wire to CI.
 6) Add structured logging and schema validation (JSONSchema in `schemas/`) on key envelopes.
-7) Integrate Agent Zero UI and adapters; remove Gateway inline dialogue fallback; ensure SSE-only streaming path; document required env vars for real LLM.
 8) Verify conversation history continuity: existing sessions render in UI; SSE resumes on refresh; delete/reset behave correctly.
 
 ## References (in-repo)
@@ -850,7 +835,6 @@ What changed (code)
     - `POST /v1/memories/bulk-delete` with `{ ids: number[] }`
     - `PATCH /v1/memories/{id}` with `{ edited: { content?, metadata? } }`
   - UI store (`memory-dashboard-store.js`) rewired to these endpoints.
-  - Prior `/memory_dashboard` kept as a compatibility shim; slated for removal post cutover.
 
 Tests added
 - Playwright: `thought.bubbles.and.toggles.spec.ts`
@@ -909,7 +893,6 @@ Status (as of 2025-11-02)
 Next steps
 1) Extend GOLDEN_MODE adapter helpers (shared util) and apply to the remaining specs so the entire smoke set can run against 7001.
 2) Produce a short “parity delta” report (selectors/CSS/behavior) from a side-by-side run and implement the CSS polish locally.
-3) Add CI jobs for both matrices: local canonical (/v1-only) and golden-compat (selector-only, network relaxed).
 
 Quality gates snapshot
 - Build: PASS (dev stack up).
@@ -993,7 +976,6 @@ This section merges prior architectural, security, and settings analyses into a 
 | M7 | Drift Detection & Health | Compare registry vs DB vs cache, expose `/v1/config/drift` | False positives cause noise | p95 drift check < 50ms; health gating accurate |
 | M8 | Observability Expansion | Structured logs, span attributes for config writes | PII leakage risk | No secrets in logs; span shows domain + diff hash |
 | M9 | Key Rotation Automation | Cron/CI pipeline rotates + re-encrypts stale versions | Rotation failure mid-cycle | Dry-run validation; rollback key retained until success |
-| M10 | Multi-Tenant Partitioning | Tenant-specific overrides with fallback precedence | Cross-tenant bleed | Override precedence documented; tests prove isolation |
 | M11 | Policy-Driven Dynamic Limits | Per-tenant rate/tool limits enforced via OPA / FGA | Policy latency | Cache TTL ensures p95 policy check < 10ms |
 | M12 | Externalized Config Packages | Export minimal config bundle for air-gapped analysis | Incomplete masking | Bundle excludes raw secrets; diffs stored with masked placeholders |
 
@@ -1088,7 +1070,6 @@ Acceptance:
 - Import tool validates signature and reconstructs registry snapshot.
 
 ### Risks & Mitigations
-- Schema Migration Complexity (M2): Provide dual-read fallback for one release; log warnings for prior format.
 - Rotation Failures (M4/M9): Canary encryption + staged rollout; keep previous key version until success metrics confirmed.
 - Policy Latency (M11): Cache decisions with TTL + event-driven invalidation; circuit breaker on policy backend.
 - Drift False Positives (M7): Multi-source hash comparison and threshold before alerting.
@@ -1180,10 +1161,8 @@ Exit: CI green across matrices; v0.3.0 (semantic recall) tagged; dashboards live
 - Policy decision latency p95 < 10ms; drift false positives < 1/week.
 
 ### Risk Mitigations Snapshot
-- Registry Rollout: dual path (env var fallback) until Sprint 1 exit.
 - Recall Accuracy: shadow evaluation before enabling for all profiles.
 - Secrets Rotation: staged rotation with canary decrypt & rollback key retention.
-- Policy Latency: local cache TTL + event-driven invalidation; circuit breaker fallback to deny with clear error.
 
 ### Release Cadence & Versioning
 - v0.1.0-centralised (architecture) → v0.2.0-streaming-bus → v0.3.0-semantic-recall → v0.4.0-config-secrets → v0.5.0-multi-tenancy.
@@ -1200,10 +1179,8 @@ All roadmap modifications must update this file first; PRs referencing roadmap c
 This addendum enforces a strict “NO PRIOR ANYWHERE” policy and reconciles the Somabrain integration blueprint with the current implementation. It defines what “prior” means, inventories gaps, and lays out a sprinted, prioritized plan to remove every prior pathway and align all interactions through the Somabrain HTTP surface.
 
 ### Zero‑Prior Definition (non‑negotiable)
-- No stub/shim code paths that bypass real policy/security (e.g., placeholder OPA that always allows).
 - No duplicate or competing implementations of the same concern (feature flags, Kafka producer, config normalization, health endpoints).
 - No direct environment flag checks outside the central Feature Registry and Settings.
-- No deprecated endpoints, polling loops, or hidden fallbacks; SSE‑only real‑time; one canonical API surface.
 - No ambiguous integration boundaries: all SomaBrain interactions occur via its HTTP API at `SA01_SOMA_BASE_URL`.
 
 ### Somabrain Integration Boundary (final)
@@ -1233,14 +1210,12 @@ This addendum enforces a strict “NO PRIOR ANYWHERE” policy and reconciles th
 
 Sprint L0 — Policy & Health Hardening (3 days)
 - Replace OPA stub with HTTP policy adapter calling Somabrain policy endpoint; wire into Gateway middleware; measure with `auth_requests_total`, `auth_duration_seconds`.
-- Standardize health: Gateway serves `/healthz`; probes Somabrain `{SA01_SOMA_BASE_URL}/healthz` (fallback `/health`); UI banner uses `/v1/health` aggregate with Somabrain status folded in.
 - Acceptance: Real denies produce 403 with structured reason; `/healthz` green only when Somabrain healthy; tests cover allow/deny and degrade.
 
 Sprint L1 — Feature Flags Unification (3 days)
 - Add tenant override path: Gateway resolves feature flags by calling Somabrain `GET /v1/flags/{tenant}/{flag}` with 1–2s TTL cache; Feature Registry provides profile defaults only.
 - Add `/v1/feature-flags?tenant=...` endpoint returning merged view; UI and services consume only this path.
 - Add lint rule forbidding `os.getenv("SA01_ENABLE_"` and direct env gating outside the registry.
-- Acceptance: No direct getenv flag checks; per‑tenant flags effective and observable; tests verify TTL cache and fallback behavior.
 
 Sprint L2 — Context & Learning Hooks (4 days)
 - Inject `get_weights()` and `build_context()` into the chat prompt assembly path; record `learning_updates_total`, `learning_context_build_duration_seconds`.
@@ -1258,7 +1233,6 @@ Sprint L4 — UI/Streaming Cleanup & Endpoint Purge (3 days)
 - Acceptance: Playwright `no-prior-network` passes; counters stay zero; grep for prior routes returns none.
 
 ### Definition of Done (No‑Prior)
-- Zero stub or dead code for policy, health, flags, eventing, or memory; any former shims deleted.
 - No direct `os.getenv` feature checks; registry + tenant override only.
 - Single health path (`/healthz`) in Gateway; Somabrain probed at `/healthz`.
 - All Somabrain interactions through HTTP client; no internal module imports from Somabrain.
@@ -1284,7 +1258,6 @@ This section is now part of the canonical roadmap. Any refactor or removal tied 
 
 ## 2025-11-09 Integration Summary — Somabrain Full Alignment (Clarification)
 
-This summary captures the clarified objective: SomaAgent01 fully integrates Somabrain as the upstream AI brain over HTTP while retaining all valuable existing subsystems (gateway, workers, outbox/WAL, Kafka, UI, metrics, auditing). We eliminate only genuine prior shims or duplicates; we do not discard functioning architecture components.
 
 ### Core Understanding
 1. Somabrain is the authoritative service for: learning (weights/reward updates), context building, recall, tenant feature flags, policy enforcement, and memory graph operations.
@@ -1306,12 +1279,10 @@ This summary captures the clarified objective: SomaAgent01 fully integrates Soma
 ### Integration Surface Mapping
 | Concern | Somabrain Endpoint | SomaAgent01 Call Site | Notes |
 |---------|--------------------|-----------------------|-------|
-| Health | `GET /healthz` (fallback `/health`) | Gateway `/healthz`, outbox sync health probe | Classify normal/degraded/down; propagate metrics |
 | Weights (read) | `GET /v1/weights` | Conversation prompt assembly pre-invoke | Embed weights into LLM context |
 | Weights (update) | `POST /v1/weights/update` | Tool/result feedback handler | Reward/TD adjustments; idempotent key |
 | Context build | `POST /v1/context/build` | Conversation loop before LLM invoke | Includes τ temperature & segmentation |
 | Recall | `POST /v1/recall/query` | Optional recall enrichment stage | Tenant/session scoping & top‑k memory slice |
-| Feature flags | `GET /v1/flags/{tenant}/{flag}` | Registry tenant override layer & `/v1/feature-flags` endpoint | TTL cache + fallback to profile defaults |
 | Policy (OPA) | policy evaluate endpoint (exact path from Somabrain) | Gateway middleware & workers (memory/tool actions) | Fail‑closed unless configured fail‑open dev |
 | Memory write | `POST /v1/memory/remember` | Tool executor & conversation worker write-through | Local WAL/outbox remains for durability |
 | Memory link | `POST /v1/memory/link` | Async post-write linking task | Non-blocking; logs failures |
@@ -1401,7 +1372,6 @@ P3: Domain Profiles & Routing, Experimentation Framework.
 ### Cross-Cutting Concerns
 - **Tracing:** Ensure spans cover remote Somabrain calls with attributes (endpoint, tenant, status). Link Celery tasks via trace headers.
 - **Security:** Auto-action feature always policy-gated + audit; never executes without explicit allow.
-- **Degrade Modes:** Context build failure → fallback minimal prompt; recall failure → skip enrichment and mark feature degraded.
 - **Caching:** Tenant flag lookups cached (TTL 1–2s); context and recall not cached (real-time relevance) except optional embedding LRU.
 
 ### Extension Requirements (Somabrain)
@@ -1416,7 +1386,6 @@ P3: Domain Profiles & Routing, Experimentation Framework.
 | Policy latency spike | Auto-actions stall | Local cache + circuit breaker |
 | Recall cost growth | Token spend increases | Adaptive threshold & sampling |
 | Drift false positives | Unnecessary re-embeds | Statistical smoothing (EWMA) |
-| Flag endpoint instability | Feature gating inconsistency | TTL fallback + profile default audit |
 
 ### Immediate Follow-Up (Pre-Implementation)
 1. Verify Somabrain recall payload includes provenance fields.
@@ -1434,14 +1403,12 @@ This section formally initiates parallel sprint execution across the previously 
 ### Active Parallel Sprints (Day 0 Start) ✅ **COMPLETED 2025-11-11**
 | Sprint | Track Focus | Objectives (This Sprint) | Exit Criteria | Status |
 |--------|-------------|---------------------------|---------------|--------|
-| S0-A ✅ | Capability Registry | Define and implement `FeatureDescriptor` schema; bootstrap registry read surface; env fallback dual-path | `/v1/features` returns descriptors; no write ops; tests green | **COMPLETED** |
 | S0-B ✅ | Streaming Bus | Implement client `stream.js` + `event-bus.js`; migrate chat events to bus; heartbeat + jitter reconnect | Chat uses bus; no polling in chat module; heartbeat metric present | **COMPLETED** |
 | S0-C ✅ | Unified Config (M0) | Inventory settings endpoints; add metrics counters & latency histograms; audit diff schema defined | `settings_write_total` & `settings_write_latency_seconds` exposed; audit diff unit test passes | **COMPLETED** |
 | S0-D ✅ | Tool Catalog Foundations | Draft DB schema & versioned tool descriptor JSONSchema; read-only list endpoint skeleton | `/v1/tools` serves schema-backed descriptor list (static seed) | **COMPLETED** |
 
 ### Immediate Task Backlog (Sequenced Within Sprints)
 1. Registry: Add `features/descriptor.py` with Pydantic `FeatureDescriptor` (fields: key, description, default_enabled, profiles, dependencies, degrade_strategy, cost_impact, metrics_key, tags).
-2. Registry: Implement `FeatureRegistry.load_descriptors()` from bundled YAML/JSON; dual-path lookups (env fallback) flagged with deprecation warning metric `feature_env_fallback_total`.
 3. Streaming: Create `webui/js/event-bus.js` (subscribe, unsubscribe, publish); `webui/js/stream.js` (EventSource wrapper, heartbeat, jitter backoff, Last-Event-ID support) and refactor chat code to consume published events instead of direct EventSource callbacks.
 4. Config M0: Add Prometheus counters/histograms in `observability/metrics.py` for settings read/write; design `AuditDiff` dataclass + serializer (mask secret values by regex key match: /secret|key|token|password/i).
 5. Tool Catalog: Define `schemas/tool_descriptor.v1.json`; seed descriptors in `prompts/tool_catalog.seed.json`; implement GET `/v1/tools` returning validated list (FastAPI route stub).
@@ -1449,7 +1416,6 @@ This section formally initiates parallel sprint execution across the previously 
 
 ### Metrics to Add This Sprint
 - `feature_registry_load_seconds` (Histogram)
-- `feature_env_fallback_total{key}` (Counter, temporary)
 - `stream_heartbeat_missed_total` (Counter)
 - `stream_reconnect_attempts_total` (Counter)
 - `settings_write_total` / `settings_write_latency_seconds` / `settings_read_total`
@@ -1472,7 +1438,6 @@ This section formally initiates parallel sprint execution across the previously 
 |------|--------|-----------|
 | Over-complex initial registry | Slows adoption | Keep write path out of scope; minimal read-only facade |
 | UI regressions from refactor | Streaming breakage | Progressive enhancement: keep old path until bus confirms events; feature flag `UI_BUS_ENABLED` for rollback |
-| Metric cardinality explosion | Prometheus performance | Limit per-feature env fallback label lifetime (< 1 week); remove counter post-migration |
 
 ### Next Sprint (Preview – S1)
 - Enable dynamic feature state transitions with audit events.
@@ -1514,7 +1479,6 @@ Deliver 100% alignment between SomaAgent01 and the live Somabrain stack. Every c
 
 ### Roadmap (supersedes prior Somabrain notes)
 
-#### Phase 0 – No-Legacy Baseline (Day 0–1)
 1. **Purge local personas/prompts** from `python/helpers/settings.py`, `prompts/system_prompt*`, and UI defaults. Replace with adapter that fetches persona via `GET /persona/{pid}` and injects `properties.prompts`, `properties.mood`, and `properties.tools`.
 2. **Centralize Somabrain client**: Ensure all modules import from `python.integrations.somabrain_client` (sync/async helpers + metrics). Remove remaining `httpx` calls to Somabrain.
 3. **Reinstate OPA middleware** by adding Somabrain’s policy evaluator (per-request) back into `services/gateway/main.py`, excluding only health/metrics routes.
@@ -1526,13 +1490,11 @@ Deliver 100% alignment between SomaAgent01 and the live Somabrain stack. Every c
 4. **Plan + neuromodulators**: before each reasoning cycle, query `/plan/suggest` and `/neuromodulators` to adjust SLM inputs; persist updates via POST when agent state changes.
 
 #### Phase 2 – Memory & Tool Executor (Day 3–5)
-1. **Memory helpers**: retire FAISS/legacy branches in `python/helpers/memory.py`; all reads/writes/links call Somabrain `/memory/*` + `/link`.
 2. **Tool executor outbox**: replace local WAL publisher with Somabrain’s outbox/Kafka topic integration (pending endpoint or shared library). Ensure tool results emit `link` + `plan` updates asynchronously.
 3. **Memory dashboard**: already functional; extend to display persona-derived tags and Somabrain metrics (wm_hits, importance) returned by `/memory/recall`.
 
 #### Phase 3 – Config, Feature Flags, Constitution (Day 5–7)
 1. **Runtime config sync**: `/v1/runtime-config` reads from `/config/memory`; `/v1/runtime-config/apply` proxies to `/config/cutover/*` and `/memory/cutover/*`. Track checksum/timestamp in gateway state + Prometheus.
-2. **Feature flag parity**: `/v1/feature-flags` must validate that every flag served equals Somabrain’s value (fallback only for outage). Add tests verifying tenant-scoped overrides via live API.
 3. **Constitution tooling**: Admin CLI + gateway routes should call `/constitution/*` and `/opa/policy`. Remove local files; store only references/metadata locally. Add regression test ensuring policy reload denies disallowed actions.
 
 #### Phase 4 – Observability & Health (Day 7–8)
@@ -1546,7 +1508,6 @@ Deliver 100% alignment between SomaAgent01 and the live Somabrain stack. Every c
 
 ### Constitution Alignment
 - All policy changes flow through Somabrain: `/constitution/load` → `/constitution/validate` → `/opa/policy` POST to regenerate and reload OPA.
-- Gateway must block requests when Somabrain policy denies them (fail-closed). Local “shim” middleware is banned.
 
 ### Deliverables & Tests
 1. **Docs**: update README + deployment manual to describe Somabrain-backed personas, policies, runtime config, and health propagation.
@@ -1558,7 +1519,6 @@ Deliver 100% alignment between SomaAgent01 and the live Somabrain stack. Every c
 3. **Metrics validation**: Prometheus `/metrics` must expose `somabrain_client_http_requests_total`, `learning_request_latency_seconds`, `runtime_config_apply_total`, `tenant_flag_remote_requests_total`, etc.
 
 ### Non-Negotiables
-- No local “legacy” pathways (FAISS fallback, feature shims, grafana dashboards) may remain.
 - Somabrain is the single source of truth for persona, prompts, tool policies, runtime config, feature flags, and constitution.
 - All integrations must use the HTTP API; no direct imports from `/root/somabrain` internals are allowed in SomaAgent01.
 

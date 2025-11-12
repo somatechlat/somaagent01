@@ -173,7 +173,6 @@ class State:
             )
         except Exception as e:
             raise Exception(
-                f"Browser agent initialization failed. This might be due to model compatibility issues. Error: {e}"
             ) from e
 
         self.iter_no = get_iter_no(self.agent)

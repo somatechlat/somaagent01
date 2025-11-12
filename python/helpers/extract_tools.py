@@ -101,7 +101,6 @@ def import_module(file_path: str) -> ModuleType:
 
             PrintStyle(font_color="yellow").print(f"Warning: failed importing {abs_path}: {e}")
         except Exception:
-            # Fallback to stderr
             import sys
             import traceback
 

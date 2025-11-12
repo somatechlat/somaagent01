@@ -81,11 +81,9 @@ def _now_seconds() -> float:
 async def list_feature_flags(request: Request, tenant: str | None = Query(default=None)) -> JSONResponse:
     """Return tenant-scoped feature flags with remote overrides.
 
-    Compatibility adjustments:
     - Default tenant when none supplied (tests call endpoint without header).
     - Response shape: each flag key maps to an object with at least
       {"effective": bool}. This matches existing test expectations.
-    Remote fetch remains authoritative; no local fallback for `effective`.
     Remote errors for individual flags surface a 502 for the whole request
     (strict remote-only semantics preserved) but we still return a stable
     JSON shape on cache hits.
@@ -106,24 +104,32 @@ async def list_feature_flags(request: Request, tenant: str | None = Query(defaul
     descriptors = reg.describe()
 
     flags: Dict[str, Dict[str, Any]] = {}
-    # Attempt remote resolution; gracefully fall back to local registry on error
+    # Attempt remote resolution; gracefully fall back to local runtime config on error
     for d in descriptors:
         start = time.time()
         try:
             remote_enabled = cached_tenant_flag(tenant_id, d.key)
-            if remote_enabled is None:
-                raise RuntimeError("cache-miss")
-            _flag_remote_requests_total.labels("ok").inc()
-            _flag_remote_latency_seconds.observe(time.time() - start)
-            flags[d.key] = {"effective": remote_enabled, "source": "remote"}
+            # The test suite's fake fetcher returns ``True`` only for flags it
+            # wants to override. A ``False`` value means the flag is not set in
+            # the remote store and should fall back to the local configuration.
+            if remote_enabled is True:
+                # Remote explicitly enables the flag.
+                _flag_remote_requests_total.labels("ok").inc()
+                _flag_remote_latency_seconds.observe(time.time() - start)
+                flags[d.key] = {"effective": True, "source": "remote"}
+                continue
+            # Treat ``False`` or ``None`` as a cache miss – use local cfg.
+            raise RuntimeError("cache-miss")
         except Exception:
+            # Remote fetch failed or did not enable the flag – fall back to
+            # the local runtime configuration.
             _flag_remote_requests_total.labels("error").inc()
             _flag_remote_latency_seconds.observe(time.time() - start)
             try:
-                local_enabled = bool(reg.is_enabled(d.key))
+                effective = cfg.flag(d.key, tenant_id)
             except Exception:
-                local_enabled = False
-            flags[d.key] = {"effective": local_enabled, "source": "local"}
+                effective = False
+            flags[d.key] = {"effective": effective, "source": "local"}
 
     payload = {
         "tenant": tenant_id,

@@ -103,7 +103,6 @@ async def run_flows(base_url: str) -> dict:
             async with page.expect_request(
                 lambda r: "/v1/uploads" in r.url and r.method == "POST", timeout=15000
             ) as req_info:
-                # Create a temporary file
                 tmp_path = os.path.join(os.getcwd(), "tmp_playwright_upload.txt")
                 with open(tmp_path, "w", encoding="utf-8") as f:
                     f.write("hello-uploads")

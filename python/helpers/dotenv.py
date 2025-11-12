@@ -22,7 +22,6 @@ def get_dotenv_file_path():
 
 
 def get_dotenv_value(key: str, default: Any = None):
-    """Return an environment value with production-friendly fallbacks.
 
     Resolution order (first non-empty wins):
     1) KEY

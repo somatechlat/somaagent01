@@ -18,7 +18,6 @@
 
 **DLQ (Dead Letter Queue)**: PostgreSQL-backed storage for failed Kafka messages requiring manual intervention.
 
-**Durable Publisher**: Component ensuring message delivery via Kafka with PostgreSQL outbox fallback.
 
 ### G
 

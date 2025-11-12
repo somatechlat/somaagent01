@@ -60,7 +60,6 @@ class AgentConnection:
                 _PRINTER.print(f"Agent: {self._agent_card.get('name', 'Unknown')}")  # type: ignore
                 _PRINTER.print(f"Description: {self._agent_card.get('description', 'No description')}")  # type: ignore
             except Exception as e:
-                # Fallback: if URL contains '/a2a', try root path without it
                 if "/a2a" in self.agent_url:
                     root_url = self.agent_url.split("/a2a", 1)[0]
                     try:

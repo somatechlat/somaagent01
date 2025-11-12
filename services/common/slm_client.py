@@ -1,4 +1,3 @@
-"""Async client for OSS SLM/LLM endpoints (OpenAI-compatible).
 
 This client no longer reads any environment variables. All configuration must be
 provided explicitly by the caller (base_url, model, api_key, temperature, etc.).
@@ -31,7 +30,6 @@ class SLMClient:
         api_key: str | None = None,
         temperature: float | None = None,
     ) -> None:
-        # No env fallbacks: callers must supply configuration
         self.base_url = base_url or ""
         self.default_model = model or ""
         self.api_key = api_key or ""
@@ -48,7 +46,6 @@ class SLMClient:
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> Tuple[str, dict[str, int]]:
-        # No dev fallback: fail fast if misconfigured
         if not ((base_url or self.base_url) and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
