@@ -1,5 +1,5 @@
 
-This client no longer reads any environment variables. All configuration must be
+"""This client no longer reads any environment variables. All configuration must be
 provided explicitly by the caller (base_url, model, api_key, temperature, etc.).
 """
 

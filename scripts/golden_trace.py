@@ -23,7 +23,8 @@ from typing import Any, Dict, List
 
 import httpx
 
-GATEWAY_BASE = os.getenv("GATEWAY_BASE", "http://localhost:21016")
+from services.common.registry import registry
+GATEWAY_BASE = registry().soma_base_url().rstrip('/')
 
 
 def _hash(text: str) -> str:

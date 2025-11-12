@@ -11,7 +11,7 @@ import { store as speechStore } from "/components/chat/speech/speech-store.js";
 import { store as notificationsSseStore } from "/components/notifications/notificationsStore.js";
 import { createStore as createAlpineStore } from "/js/AlpineStore.js";
 
-globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
+globalThis.fetchApi = api.fetchApi;
 
 const leftPanel = document.getElementById("left-panel");
 const rightPanel = document.getElementById("right-panel");

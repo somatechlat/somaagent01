@@ -224,15 +224,6 @@ def build_default_registry() -> FeatureRegistry:
             stability="beta",
         ),
         FeatureDescriptor(
-            default_enabled=False,
-            profiles={"minimal": False, "standard": False, "enhanced": False, "max": True},
-            dependencies=["escalation"],
-            degrade_strategy="auto",
-            cost_impact="low",
-            tags=["llm", "routing"],
-            stability="experimental",
-        ),
-        FeatureDescriptor(
             key="file_saving_disabled",
             description="Disable on-disk file saving in gateway (security hardening)",
             default_enabled=True,

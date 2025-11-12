@@ -67,3 +67,15 @@ class RepairableException(Exception):
     """An exception type indicating errors that can be surfaced to the LLM for potential self-repair."""
 
     pass
+
+
+class MissingDependencyError(RuntimeError):
+    """Raised when a required service, configuration, or external dependency is missing.
+
+    The repository is moving towards a *fail‑fast* strategy: instead of silently
+    falling back to defaults or out‑of‑band mechanisms, missing critical
+    components should cause an explicit error that can be observed and handled
+    by the caller. This exception type centralises that behaviour.
+    """
+
+    pass

@@ -4912,6 +4912,9 @@ async def enqueue_message(
         )
     except Exception:
         # Non‑critical: failures to publish WAL should not affect the response.
+        # Log the failure for observability but continue.
+        LOGGER.debug("Failed to publish memory write WAL entry", exc_info=True)
+        pass
 
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
@@ -7114,7 +7117,7 @@ except Exception:
 
 @app.post("/tunnel_proxy")
 async def tunnel_proxy(request: Request) -> JSONResponse:  # type: ignore
-
+    """
     The UI may call /tunnel_proxy on load to check tunnel status. In this build,
     we return a 200 with a structured payload instead of 404 to avoid console errors.
     Supported actions (all no-ops by default): get, create, verify, stop.

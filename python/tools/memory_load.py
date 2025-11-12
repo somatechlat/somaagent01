@@ -110,6 +110,9 @@ class MemoryLoad(Tool):
         else:
             # Store raw results in conversation context for later use
             try:
+                conversation_context = self.agent.conversation_context
+                if conversation_context is not None:
+                    conversation_context["memory_load_results"] = results
             except Exception:
                 pass
             result = "\n\n".join(dict.fromkeys(results))
