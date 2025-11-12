@@ -1,5 +1,5 @@
 
-Usage:
+"""Usage:
         publisher = DurablePublisher(bus=KafkaEventBus(...), outbox=OutboxStore(...))
         await publisher.publish("topic", payload, dedupe_key=event_id, session_id=..., tenant=...)
 
@@ -108,54 +108,18 @@ class DurablePublisher:
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:
-                # Build headers for outbox persistence (same as Kafka headers).
-                outbox_headers = self._build_headers(
-                    payload=payload,
-                    session_id=session_id,
-                    tenant=tenant,
-                    provided=headers,
-                )
-                try:
-                    outbox_id = await self.outbox.enqueue(
-                        topic=topic,
-                        payload=payload,
-                        partition_key=partition_key,
-                        headers=outbox_headers,
-                        dedupe_key=dedupe_key,
-                        session_id=session_id,
-                        tenant=tenant,
-                    )
-                except Exception as out_exc:
-                    # Outbox failure – treat as total publish failure.
-                    PUBLISH_EVENTS.labels("failed").inc()
-                    LOGGER.error(
-                        "Kafka publish failed and outbox enqueue error",
-                        extra={
-                            "error": str(exc),
-                            "outbox_error": str(out_exc),
-                            "topic": topic,
-                        },
-                    )
-                    raise
-                else:
-                    LOGGER.warning(
-                        "Kafka publish failed; message enqueued to outbox",
-                        extra={
-                            "error": str(exc),
-                            "topic": topic,
-                            "outbox_id": outbox_id,
-                        },
-                    )
-                    return {"published": False, "enqueued": True, "id": outbox_id}
+            # No outbox fallback – surface the failure directly.
             PUBLISH_EVENTS.labels("failed").inc()
+            from python.helpers.errors import MissingDependencyError
+
             LOGGER.error(
+                "Kafka publish failed – no fallback enabled",
                 extra={
                     "error": str(exc),
                     "topic": topic,
-                    "dedupe_key": dedupe_key,
-                    "session_id": session_id,
-                    "tenant": tenant,
                     "timeout_seconds": timeout_s,
                 },
             )
-            raise
+            raise MissingDependencyError(
+                f"Failed to publish to Kafka topic '{topic}': {exc}"
+            ) from exc

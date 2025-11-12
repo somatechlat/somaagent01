@@ -27,7 +27,7 @@ from python.integrations.somabrain_client import SomaBrainClient, SomaClientErro
 
 
 def _dual_shape_payload(doc: Mapping[str, Any]) -> Mapping[str, Any]:
-
+    """
     Some SomaBrain deployments expect { input: <object> } while others (or tests)
     use { document: <object> }. We include both keys; the server should ignore
     unknown keys per permissive model parsing. This preserves backward

@@ -90,11 +90,7 @@ class HealthChecker:
             # Check if SomaBrain client is properly initialized
             if hasattr(self.soma_client, "base_url"):
                 async with httpx.AsyncClient(timeout=5.0) as client:
-                    # Prefer /healthz; fall back to /health if /healthz is not found
-                    url_z = f"{self.soma_client.base_url}/healthz"
-                    resp = await client.get(url_z)
-                    if resp.status_code == 404:
-                        resp = await client.get(f"{self.soma_client.base_url}/health")
+                    resp = await client.get(f"{self.soma_client.base_url}/health")
                     return {
                         "status": "healthy" if resp.status_code == 200 else "unhealthy",
                         "message": f"SomaBrain health check: {resp.status_code}",
@@ -276,10 +272,4 @@ async def health_summary():
     }
 
 
-@router.get("/healthz")
-async def healthz():
-    """Simple /healthz for probes: healthy -> 200, else 503."""
-    health = await health_checker.check_health()
-    if health["status"] == "healthy":
-        return {"status": "ok", "timestamp": health["timestamp"]}
-    raise HTTPException(status_code=503, detail=health)
+

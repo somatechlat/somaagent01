@@ -32,7 +32,7 @@ except Exception as exc:  # pragma: no cover – asyncpg missing in CI is a conf
 
 
 class _StubConn:
-
+    """
     Any attempt to execute a query will raise a RuntimeError, mirroring the
     original stub's behaviour but providing a more explicit message.
     """

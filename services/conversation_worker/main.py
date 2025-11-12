@@ -263,7 +263,9 @@ class ConversationWorker:
         except Exception:
             self.escalation_enabled = True
         try:
+            self.persona_enrichment_enabled = bool(cfg.flag("persona_enrichment"))
         except Exception:
+            self.persona_enrichment_enabled = True
 
         # Tool registry for model-led orchestration (no network hop)
         self.tool_registry = ToolRegistry()

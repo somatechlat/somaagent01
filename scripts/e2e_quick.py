@@ -18,12 +18,11 @@ from typing import Optional
 
 import httpx
 
-# Resolve canonical base from environment when available (VIBE: prefer existing env vars)
+from services.common.registry import registry
 BASE = (
     sys.argv[1]
     if len(sys.argv) > 1
-    else os.environ.get("SA01_GATEWAY_BASE_URL")
-    or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT', '21016')}"
+    else registry().soma_base_url().rstrip('/')
 )
 
 
