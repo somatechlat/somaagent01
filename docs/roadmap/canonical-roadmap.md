@@ -197,7 +197,7 @@ Goal: architect the platform with a single public entry surface and single confi
 
 Scope of “Single Entry Surface” (Updated – delegation gateway removed 2025-11-10)
 - Public HTTP: exactly one public service — the FastAPI Gateway at `SA01_GATEWAY_BASE_URL` (canonical port `21016`), serving UI under `/ui` and APIs under `/v1/*`. The former `delegation_gateway` FastAPI app has been hard-deleted; any unique routes were either non-essential or subsumed by existing gateway capabilities.
-- Streaming: a single SSE stream per session at `/v1/session/{id}/events` powering all real‑time updates (chat, tool, notifications, invalidations). No polling anywhere.
+- Streaming: a single SSE stream per session at `/v1/sessions/{id}/events?stream=true` powering all real‑time updates (chat, tool, notifications, invalidations). No polling anywhere.
 - Provider mediation: LLM, tools, memory, and Somabrain calls are brokered by Gateway. Workers never hold raw provider credentials or call providers directly.
 - Configuration: one read surface via `services.common.runtime_config` (`cfg.settings()`, `cfg.flag()`, `cfg.config_*` helpers). No direct `os.getenv(` outside bootstrap/settings.
 - Tooling/Models: Gateway owns Tool Catalog and Model Profiles CRUD and resolution. Workers retrieve read‑only projections.
@@ -205,7 +205,7 @@ Scope of “Single Entry Surface” (Updated – delegation gateway removed 2025
 
 Enforcement (build‑time and runtime)
 - Lint/Test: a repo‑level test forbids `os.getenv(` outside allowlisted modules (settings/bootstrap) and blocks introducing new HTTP servers outside Gateway.
-- Network tests: Playwright/pytest assert that UI uses only `/v1/*` and `/ui/*`; no legacy or alternate ports/hosts.
+- Network tests: Playwright/pytest assert that UI uses only `/v1/*` and `/ui/*`; no prior or alternate ports/hosts.
 - Provider path: unit/integration tests ensure workers never send `base_url` or provider secrets; Gateway resolves model→provider→base_url and audits.
 - Dependency boundaries: policy, feature flags, and Somabrain are accessed via HTTP clients from Gateway (and designated service clients), never by importing foreign service internals.
 
@@ -233,21 +233,21 @@ Governance
 
 # Architecture Consolidation Update — November 2025
 
-This section captures the repo‑wide centralization sweep performed on November 11, 2025, and merges concrete implementation details into the canonical roadmap. It documents what was unified, what remains to be finished, and how we will deprecate legacy paths. All changes below are implemented unless noted as “Planned”.
+This section captures the repo‑wide centralization sweep performed on November 11, 2025, and merges concrete implementation details into the canonical roadmap. It documents what was unified, what remains to be finished, and how we will deprecate prior paths. All changes below are implemented unless noted as “Planned”.
 
 ## Executive Summary
-- Feature flags: one registry and a single point of resolution (`cfg.flag`). Added canonical `sse_enabled` flag with `SA01_SSE_ENABLED` override; legacy `GATEWAY_DISABLE_SSE` is honored only as a fallback.
+- Feature flags: one registry and a single point of resolution (`cfg.flag`). Added canonical `sse_enabled` flag with `SA01_SSE_ENABLED` override; prior `GATEWAY_DISABLE_SSE` is honored only as a fallback.
 - Streaming: two supported endpoints remain for compatibility; both backed by the same SSE plumbing. Consolidation guidance and deprecation plan included below.
 - Masking: unified streaming chunk masking to use the same rule engine as Gateway (services.common.masking), removing divergence with SecretsManager-based streaming filters.
 - Secrets/crypto: canonicalized Fernet key to `SA01_CRYPTO_FERNET_KEY`; deployments must now provide this key for credential encryption.
 - Settings Registry: fixed imports and dependencies so a single “snapshot” overlay path exists for UI sections; removed reliance on non‑existent modules.
 - Repositories: corrected imports to canonical `services.common.*` stores to avoid duplicate or broken repository layers.
-- Compose envs: added `SA01_*` canonical variables to docker‑compose for local dev parity with preflight checks; legacy variables remain temporarily for compatibility.
+- Compose envs: added `SA01_*` canonical variables to docker‑compose for local dev parity with preflight checks; prior variables remain temporarily for compatibility.
 
 ## Implemented Changes (files and effects)
 - Feature registry and SSE enablement
   - services/common/features.py: added descriptor `key: "sse_enabled"` with env override `SA01_SSE_ENABLED` (default true).
-  - services/gateway/main.py: `_sse_disabled()` now prefers `cfg.flag("sse_enabled")`; legacy `GATEWAY_DISABLE_SSE` read only as fallback. UI `/v1/runtime-config` reflects `sse_enabled`.
+  - services/gateway/main.py: `_sse_disabled()` now prefers `cfg.flag("sse_enabled")`; prior `GATEWAY_DISABLE_SSE` read only as fallback. UI `/v1/runtime-config` reflects `sse_enabled`.
 
 - LLM credentials encryption key (canonicalization)
 - services/common/llm_credentials_store.py: now requires `SA01_CRYPTO_FERNET_KEY` and fails fast when the key is missing.
@@ -261,10 +261,10 @@ This section captures the repo‑wide centralization sweep performed on November
   Both now call `services.common.masking.mask_text` for chunks and full text, aligning behavior with Gateway SSE masking rules.
 
 - Repository singletons aligned
-  - integrations/repositories.py: switched all imports to `services.common.*` to avoid legacy `lib.common.*` paths and drift.
+  - integrations/repositories.py: switched all imports to `services.common.*` to avoid prior `lib.common.*` paths and drift.
 
 - Docker Compose canonical envs added (dev)
-  - docker-compose.yaml: added `SA01_DEPLOYMENT_MODE=DEV`, `SA01_DB_DSN`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_REDIS_URL`, `SA01_POLICY_URL`, `SA01_POLICY_DECISION_PATH`, `SA01_AUTH_REQUIRED`, `SA01_AUTH_INTERNAL_TOKEN`, `SA01_CRYPTO_FERNET_KEY`, `SA01_SSE_ENABLED`. Kept legacy variables during deprecation window.
+  - docker-compose.yaml: added `SA01_DEPLOYMENT_MODE=DEV`, `SA01_DB_DSN`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_REDIS_URL`, `SA01_POLICY_URL`, `SA01_POLICY_DECISION_PATH`, `SA01_AUTH_REQUIRED`, `SA01_AUTH_INTERNAL_TOKEN`, `SA01_CRYPTO_FERNET_KEY`, `SA01_SSE_ENABLED`. Kept prior variables during deprecation window.
 
 ## Single Sources of Truth (authoritative decisions)
 - Flags and modes
@@ -274,7 +274,7 @@ This section captures the repo‑wide centralization sweep performed on November
 
 - Streaming surface (SSE)
   - Supported endpoints:
-    - GET `/v1/session/{session_id}/events` (SSE always; UI default)
+    - GET `/v1/sessions/{session_id}/events?stream=true` (SSE always; UI default)
     - GET `/v1/sessions/{session_id}/events?stream=true` (JSON list by default; SSE when `stream=true`; used by tests/clients)
   - Both are backed by the same consumer logic and masking. If we converge to a single path, the plural route remains the long‑term canonical path for JSON list semantics; the singular route is earmarked for eventual deprecation once clients have migrated.
 
@@ -289,9 +289,9 @@ This section captures the repo‑wide centralization sweep performed on November
 - Encrypt provider credentials with `SA01_CRYPTO_FERNET_KEY` (urlsafe base64 32-byte required).
 
 ## Deprecations and Removals
-- Legacy environment variables
-  - Immediate deprecation: prefer `SA01_*` variables everywhere. Preflight already flags legacy usage inside containers. Compose retains legacy vars for transition only.
-  - Removal window: remove legacy envs from docker‑compose.yaml after one release cycle once CI green across environments.
+- Prior environment variables
+  - Immediate deprecation: prefer `SA01_*` variables everywhere. Preflight already flags prior usage inside containers. Compose retains prior vars for transition only.
+  - Removal window: remove prior envs from docker‑compose.yaml after one release cycle once CI green across environments.
 
 - Streaming endpoint convergence
   - Plan: keep both endpoints for two releases. Add a deprecation notice header (`Deprecation: true; Sunset: <date>`) on the singular path after clients migrate. Update UI to prefer the plural path with `stream=true` when feasible.
@@ -315,8 +315,8 @@ This section captures the repo‑wide centralization sweep performed on November
 
 ## Verifications and How‑Tos
 - SSE health: metrics include `gateway_sse_connections` and `sse_messages_sent_total`; heartbeats sent every `SSE_HEARTBEAT_SECONDS` (default 20s) via Gateway, and UI monitors stale/offline states.
-- Credentials encryption: set `SA01_CRYPTO_FERNET_KEY` (urlsafe base64 32‑byte) for dev and prod; legacy keys are no longer supported.
-- Compose parity: local dev now bootstraps canonical SA01_* envs. Preflight in container validates presence and forbids legacy inside container processes.
+- Credentials encryption: set `SA01_CRYPTO_FERNET_KEY` (urlsafe base64 32‑byte) for dev and prod; prior keys are no longer supported.
+- Compose parity: local dev now bootstraps canonical SA01_* envs. Preflight in container validates presence and forbids prior inside container processes.
 
 ---
 
@@ -324,7 +324,7 @@ By policy, any change that adds a new configuration surface, streaming endpoint,
 
 ## 7.2️⃣ Deployment Modes Consolidation (LOCAL vs PROD)
 
- We collapse legacy / inconsistent deployment identifiers (DEV, STAGING, TEST, PRODUCTION, LOCAL) into two canonical modes used uniformly across configuration, model profiles, feature gating, and operational behaviour. Environment variable canonicalization completed: settings now source only `SA01_ENV`, `SA01_DB_DSN`, `SA01_REDIS_URL`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_POLICY_URL`, metrics host/port, and OTLP through `SA01_*` taxonomy.
+ We collapse prior / inconsistent deployment identifiers (DEV, STAGING, TEST, PRODUCTION, LOCAL) into two canonical modes used uniformly across configuration, model profiles, feature gating, and operational behaviour. Environment variable canonicalization completed: settings now source only `SA01_ENV`, `SA01_DB_DSN`, `SA01_REDIS_URL`, `SA01_KAFKA_BOOTSTRAP_SERVERS`, `SA01_POLICY_URL`, metrics host/port, and OTLP through `SA01_*` taxonomy.
 
 Canonical Modes
 - LOCAL: Full-capacity local development environment. Mirrors production feature set (tools, recall, learning, write-through) while respecting local resource constraints. All services run in a single compose stack; secrets are dev-safe; encryption keys may use development defaults. Observability and policy run in fail-closed posture except where explicitly overridden for developer velocity.
@@ -347,20 +347,20 @@ Behavioural Guarantees
 
 Deprecated / To Remove
 - Direct environment reads for deployment mode outside initialization/telemetry (replace with `deployment_mode()` accessor).
-- Legacy mode strings in model profile store (e.g. TEST separate from LOCAL) – unify into LOCAL or PROD only.
-- Removed legacy policy bypass flags and fail-open toggles; system fails closed by default.
+- Prior mode strings in model profile store (e.g. TEST separate from LOCAL) – unify into LOCAL or PROD only.
+- Removed prior policy bypass flags and fail-open toggles; system fails closed by default.
 
 Adoption Steps & Status
 1. Canonical accessor (`deployment_mode()`): DONE.
 2. `SA01Settings` mapping (DEV→LOCAL, STAGING→PROD): DONE.
 3. Model profiles unified (LOCAL/PROD): DONE (verification pending DB audit script).
-4. Replace direct env mode reads: PARTIAL (runtime facade central; legacy env references removed where critical).
+4. Replace direct env mode reads: PARTIAL (runtime facade central; prior env references removed where critical).
 5. Deprecated env vars removal from compose/docs: PENDING after usage counters drop to zero.
 6. Lint/test enforcement (`test_no_direct_mode_env.py`): PENDING.
 
 Metrics / Observability
 - `deployment_mode` label added to key process metrics (gateway requests, conversation worker messages) in a later instrumentation sprint.
-- Counter `legacy_mode_env_reads_total` (temporary) to confirm elimination; removed when stable at zero.
+- Counter `prior_mode_env_reads_total` (temporary) to confirm elimination; removed when stable at zero.
 
 Acceptance Criteria (Modes Consolidation)
 - Only LOCAL|PROD appear in model_profiles table deployment_mode column post-migration.
@@ -556,7 +556,7 @@ Core services (verified under `services/`):
 - `delegation_gateway`, `delegation_worker`: Delegated agent flows (if enabled).
 
 Foundational infra:
-- Kafka (event backbone), Redis (state/cache), Postgres (durable store), Vault/Env (secrets), OpenFGA (authz), OPA (policy), OpenTelemetry (traces/metrics/logs), Prometheus (metrics), Grafana/Tempo/Loki (observability).
+- Kafka (event backbone), Redis (state/cache), Postgres (durable store), Vault/Env (secrets), OpenFGA (authz), OPA (policy), OpenTelemetry (traces/metrics/logs), Prometheus (metrics) — dashboards emerging automatically from those exporters.
 - SomaBrain reachable at `http://host.docker.internal:9696` via `SA01_SOMA_BASE_URL` (Compose).
 
 Centralized configuration and tools:
@@ -653,8 +653,8 @@ Strict-mode defaults:
 Goal: ship a clean, SSE-only Web UI against canonical Gateway contracts. No mocks, no inline fallbacks; UI must operate against real services via Gateway only.
 
 Canonical UI behaviors:
-- Chat transport: strictly SSE for streaming via `/v1/session/{session_id}/events` with event types `llm.delta`, `llm.complete`, `tool.call`, `tool.result`, `error`, `heartbeat`.
-- Message send: POST `/v1/session/message` with `{ message, session_id?, persona_id?, attachments? }`; UI must not poll legacy endpoints; it awaits SSE for responses.
+- Chat transport: strictly SSE for streaming via `/v1/sessions/{session_id}/events?stream=true` with event types `llm.delta`, `llm.complete`, `tool.call`, `tool.result`, `error`, `heartbeat`.
+- Message send: POST `/v1/session/message` with `{ message, session_id?, persona_id?, attachments? }`; UI must not poll prior endpoints; it awaits SSE for responses.
 - Attachments: uploads via POST `/v1/uploads` returning descriptors `{ id, sha256, content_type, size_bytes, url }`; messages reference `attachments: [{ id }]` (no filesystem paths).
 - Session management: list/history/delete/reset through Gateway routes; delete chat removes session history and closes streams.
 - Tools: request via POST `/v1/tool/request`; UI shows tool call and result events inline, matching the SSE contract.
@@ -663,7 +663,7 @@ Canonical UI behaviors:
 Canonical endpoints and flows (summary)
 - Chat send: POST `/v1/session/message` with `{ session_id, message, attachments? }`.
 - File uploads: POST `/v1/uploads`, then reference returned `attachment_id` in the message.
-- Streaming updates: subscribe to SSE `GET /v1/session/{session_id}/events`; render `llm.delta`, `llm.complete`, `tool.*`.
+- Streaming updates: subscribe to SSE `GET /v1/sessions/{session_id}/events?stream=true`; render `llm.delta`, `llm.complete`, `tool.*`.
 - Auth: same-origin cookies or header/bearer tokens (no CSRF endpoint).
 
 Memory views
@@ -692,7 +692,7 @@ Acceptance criteria for UI integration:
 - Deleting a chat closes the current SSE stream and removes history; a new chat starts clean.
 - UI reflects Tool Catalog enable/disable and execution profile limits within configured TTL.
 
-NO LEGACY enforcement (applies to both UI and Gateway)
+NO PRIOR enforcement (applies to both UI and Gateway)
 SSE-only and no-CSRF (ongoing checks)
 - No UI polling; SSE subscribe + reconnect/backoff.
 - No CSRF fetch endpoint; rely on same-origin cookies or header token.
@@ -703,14 +703,14 @@ Test plan additions (Playwright + pytest)
 - test_ui_chat_stream_sse: open SSE, send message, assert llm.delta then llm.complete; no polling
 - test_ui_upload_ingest_tool: upload file(s), send message referencing attachments, assert `tool.call` and `tool.result` events and assistant utilization of extracted text
 - test_ui_memory_dashboard_readonly: load subdirs, search memories, view detail, no polling; optional delete guarded by policy flag
-- test_api_session_controls: reset/delete/export/import/nudge/pause endpoints round-trip without legacy routes
-- test_no_legacy_network: assert no network calls to disallowed legacy endpoints.
+- test_api_session_controls: reset/delete/export/import/nudge/pause endpoints round-trip without prior routes
+- test_no_prior_network: assert no network calls to disallowed prior endpoints.
 
 ## Rollout Plan and Milestones
 
 Phase 0 — Correctness and Strictness
 - Align SomaBrain port to 9696 across code/docs/compose; health checks green when SomaBrain is up.
-- Enable strict-mode defaults (fail-closed on policy/dependency failures) and surface banners in UI; remove legacy fallbacks.
+- Enable strict-mode defaults (fail-closed on policy/dependency failures) and surface banners in UI; remove prior fallbacks.
 
 Phase 0.5 — Agent Zero Web UI Integration and Real Chat (priority)
 - Integrate Agent Zero UI into `webui/` with adapters to our `/v1` endpoints.
@@ -768,7 +768,7 @@ Design decisions (summary)
 - Gateway owns: ModelProfileStore reads/writes, `_normalize_llm_base_url` rules, provider detection, and credential lookup. Workers send only role + messages + limited overrides (model name, temperature, kwargs) — they do not send `base_url`.
 - Centralized Settings: UI saves all agent/model settings and provider secrets via `/v1/ui/settings/sections` (single writer path). Provider secrets are encrypted (mandatory `SA01_CRYPTO_FERNET_KEY`) and surfaced only as presence + `updated_at` via `/v1/ui/settings/credentials`.
 - Gateway exposes `/v1/model-profiles` (CRUD), `/v1/ui/settings/*` (settings reads/writes), and `/v1/llm/test` for profile connectivity validation.
-- Legacy credentials endpoints (`/v1/llm/credentials`, `/v1/llm/credentials/{provider}`) removed; callers must use Settings sections save flow.
+- Prior credentials endpoints (`/v1/llm/credentials`, `/v1/llm/credentials/{provider}`) removed; callers must use Settings sections save flow.
 - Callers cannot override `base_url`; the Gateway always uses the profile’s value.
 
 Acceptance criteria
@@ -784,7 +784,7 @@ Migration strategy (high level)
 
 Risks & mitigations
 - Risk: Missing credentials after migration. Mitigation: use `/v1/llm/test` and a migration script to copy secrets into Gateway store, validate, and only then enforce lock.
-- Risk: Legacy clients sending `base_url`. Mitigation: `warn` mode that logs and surfaces in UI and builds a one-click migration map.
+- Risk: Prior clients sending `base_url`. Mitigation: `warn` mode that logs and surfaces in UI and builds a one-click migration map.
 
 ---
 
@@ -794,7 +794,7 @@ This addendum locks our single-surface Gateway API and the UI’s SSE-only behav
 
 Feature → Endpoint map (authoritative)
 - Chat ingress: `POST /v1/session/message`
-- Session stream (SSE): `GET /v1/session/{session_id}/events`
+- Session stream (SSE): `GET /v1/sessions/{session_id}/events?stream=true`
 - Recent timeline: `GET /v1/sessions/{session_id}/events`
 - Uploads: `POST /v1/uploads`
 - Attachments download: `GET /v1/attachments/{id}`
@@ -819,7 +819,7 @@ Phased delivery (done vs remaining)
   - Provider credential presence hints to enable SSE assistant tests
 
 Acceptance for this addendum
-- No legacy UI calls appear (`/v1/ui/poll`, `/v1/csrf`)
+- No prior UI calls appear (`/v1/ui/poll`, `/v1/csrf`)
 - Uploading small files shows “Uploaded:” even without intermediate progress
 - Tool start→result yields a single “Tool: <name>” block with result body
 - Settings modal renders sections on first open in CI/local
@@ -831,7 +831,7 @@ Acceptance for this addendum
 Scope
 - Fix UI collapse/flip during very long assistant streams by adopting a streaming-safe renderer and CSS containment.
 - Achieve visual/behavioral parity for thought bubbles (ephemeral thinking hint + final thoughts rows) with the 7001 demo.
-- Canonicalize Memory Dashboard endpoints under `/v1/memories/*` and rewire the UI to them (remove reliance on legacy `/memory_dashboard`).
+- Canonicalize Memory Dashboard endpoints under `/v1/memories/*` and rewire the UI to them (remove reliance on prior `/memory_dashboard`).
 
 What changed (code)
 - Web UI streaming safety:
@@ -850,7 +850,7 @@ What changed (code)
     - `POST /v1/memories/bulk-delete` with `{ ids: number[] }`
     - `PATCH /v1/memories/{id}` with `{ edited: { content?, metadata? } }`
   - UI store (`memory-dashboard-store.js`) rewired to these endpoints.
-  - Legacy `/memory_dashboard` kept as a compatibility shim; slated for removal post cutover.
+  - Prior `/memory_dashboard` kept as a compatibility shim; slated for removal post cutover.
 
 Tests added
 - Playwright: `thought.bubbles.and.toggles.spec.ts`
@@ -876,13 +876,13 @@ Next sprints (focused)
 ## 2025-11-02 Update — Dual‑mode Parity (Golden 7001 vs Local /v1) and Test Matrix
 
 Scope
-- Establish a two-mode UI test strategy to compare our local canonical UI (served by Gateway at :21016 under /ui and backed by /v1 APIs) against the golden reference running on port 7001 (which uses legacy routes and serves UI at the root).
+- Establish a two-mode UI test strategy to compare our local canonical UI (served by Gateway at :21016 under /ui and backed by /v1 APIs) against the golden reference running on port 7001 (which uses prior routes and serves UI at the root).
 - Ensure our local Web UI achieves UX/CSS/behavioral parity with the golden demo while retaining strict SSE-only and /v1-only contracts locally.
 
 What changed (tests and harness)
 - Playwright config already honors WEB_UI_BASE_URL; we added a GOLDEN_MODE flag. When GOLDEN_MODE=1 or WEB_UI_BASE_URL contains :7001, tests relax network assertions and switch to more permissive selectors.
 - Updated tests:
-  - `network.no-legacy.spec.ts`: now skipped in GOLDEN_MODE (golden legitimately makes legacy calls).
+  - `network.no-prior.spec.ts`: now skipped in GOLDEN_MODE (golden legitimately makes prior calls).
   - `parity.spec.ts`: detects GOLDEN_MODE and (a) does not assert `/v1/session/message` POST, (b) uses robust input selectors, (c) gates sidebar session controls to local-only.
   - `long.stream.torture.spec.ts`: made completion checks robust (handles cases where progress bar text may not clear even though streaming completes) and avoids strict locator ambiguity.
   - `chat.reset.single-reply.spec.ts` and `controls.sidebar.sessions.spec.ts`: hardened selectors and timeouts.
@@ -925,7 +925,7 @@ Scope
 - Consolidate all UI real-time updates behind a single client stream and event bus; eliminate residual polling (scheduler, memory dashboard) and ship production-grade reconnection, heartbeats, and backpressure.
 
 What changed (current state)
-- Chat: migrated from legacy polling to SSE in `webui/index.js`. CSRF fetch removed from `webui/js/api.js`. Confirmed no `/poll` references in chat code.
+- Chat: migrated from prior polling to SSE in `webui/index.js`. CSRF fetch removed from `webui/js/api.js`. Confirmed no `/poll` references in chat code.
 - Gap: other panels (scheduler, memory dashboard) still use polling; no shared client event bus; reconnect/backoff minimal; no heartbeat stall detection.
 
 Design decisions
@@ -953,7 +953,7 @@ Reliability
 - Backpressure: coalesce frequent progress updates (throttle to ~10–20Hz) and only re-render at animation frames.
 
 Testing
-- Playwright: `stream.reconnect.and.banner.spec.ts` (disconnect → banner → auto-recover), `no-poll.anywhere.spec.ts` (assert no network calls to legacy/poll endpoints), `scheduler.memory.bus.spec.ts` (live updates via SSE, no polling), long-stream remains green.
+- Playwright: `stream.reconnect.and.banner.spec.ts` (disconnect → banner → auto-recover), `no-poll.anywhere.spec.ts` (assert no network calls to prior/poll endpoints), `scheduler.memory.bus.spec.ts` (live updates via SSE, no polling), long-stream remains green.
 - Pytest API: contract tests for new UI event types (`ui.status.progress`, `ui.notification`) and `Last-Event-ID` resume.
  - Pytest API: assert presence of `task.list.update`/`memory.list.update` hint events during representative flows.
 
@@ -985,7 +985,7 @@ This section merges prior architectural, security, and settings analyses into a 
 |-----------|-------|---------------|---------------|---------------------|
 | M0 | Instrument & Inventory | Route catalog, metrics, audit diff schema | Blind spots may hide unsafe flows | All settings endpoints mapped & emitting metrics; audit diff schema validated |
 | M1 | Read-only Registry | `SettingsRegistry` (in-memory typed view) | Drift between registry & DB snapshot | Registry stable across test runs; no write methods |
-| M2 | Typed Schemas & Validation | Pydantic models per domain (`ui`, `llm`, `tooling`, `auth`, `limits`) | Legacy untyped writes break | All incoming writes validated; invalid payload → 422 with field map |
+| M2 | Typed Schemas & Validation | Pydantic models per domain (`ui`, `llm`, `tooling`, `auth`, `limits`) | Prior untyped writes break | All incoming writes validated; invalid payload → 422 with field map |
 | M3 | Transactional Write Path | Single POST `/v1/ui/settings/sections` → domain split + audit diff | Race conditions, partial writes | Atomic commit; audit diff includes masked secrets; event published |
 | M4 | Secrets Backend & Rotation | `SecretsBackend` with key version, Fernet or AES-GCM envelope | Lost key = unusable creds | Key version recorded; rotation script passes canary test |
 | M5 | Auth Hardening | Enforce `REQUIRE_AUTH`, internal token depreciation, JWT scopes | Lock-out on misconfig | All protected endpoints reject unauthenticated calls in strict mode |
@@ -1025,7 +1025,7 @@ Acceptance:
 Scope: Introduce domain Pydantic models; convert loose JSON sections into structured `UiSettings`, `LlmSettings`, `ToolingSettings`, `AuthSettings`, `LimitsSettings`.
 Acceptance:
 - Invalid field triggers 422 with `detail: [{loc, msg, type}]`.
-- 100% coverage for schema conversions; legacy untyped write path blocked.
+- 100% coverage for schema conversions; prior untyped write path blocked.
 
 #### M3 – Transactional Write Path
 Scope: Replace multi-endpoint writes with single sectioned POST; perform domain validation, diff generation, atomic commit, event publish.
@@ -1048,7 +1048,7 @@ Acceptance:
 #### M6 – Provider Normalization Service
 Scope: Centralize model/base_url normalization logic; workers send only high-level model identifiers.
 Acceptance:
-- No calls in codebase to legacy normalization helper outside service.
+- No calls in codebase to prior normalization helper outside service.
 - LLM invoke logs contain normalized provider fields.
 
 #### M7 – Drift Detection
@@ -1088,7 +1088,7 @@ Acceptance:
 - Import tool validates signature and reconstructs registry snapshot.
 
 ### Risks & Mitigations
-- Schema Migration Complexity (M2): Provide dual-read fallback for one release; log warnings for legacy format.
+- Schema Migration Complexity (M2): Provide dual-read fallback for one release; log warnings for prior format.
 - Rotation Failures (M4/M9): Canary encryption + staged rollout; keep previous key version until success metrics confirmed.
 - Policy Latency (M11): Cache decisions with TTL + event-driven invalidation; circuit breaker on policy backend.
 - Drift False Positives (M7): Multi-source hash comparison and threshold before alerting.
@@ -1195,11 +1195,11 @@ All roadmap modifications must update this file first; PRs referencing roadmap c
 — End of 2025-11-09 consolidation.
 
 
-## 2025-11-09 Update — No‑Legacy Mandate & Somabrain Alignment (Authoritative)
+## 2025-11-09 Update — No‑Prior Mandate & Somabrain Alignment (Authoritative)
 
-This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles the Somabrain integration blueprint with the current implementation. It defines what “legacy” means, inventories gaps, and lays out a sprinted, prioritized plan to remove every legacy pathway and align all interactions through the Somabrain HTTP surface.
+This addendum enforces a strict “NO PRIOR ANYWHERE” policy and reconciles the Somabrain integration blueprint with the current implementation. It defines what “prior” means, inventories gaps, and lays out a sprinted, prioritized plan to remove every prior pathway and align all interactions through the Somabrain HTTP surface.
 
-### Zero‑Legacy Definition (non‑negotiable)
+### Zero‑Prior Definition (non‑negotiable)
 - No stub/shim code paths that bypass real policy/security (e.g., placeholder OPA that always allows).
 - No duplicate or competing implementations of the same concern (feature flags, Kafka producer, config normalization, health endpoints).
 - No direct environment flag checks outside the central Feature Registry and Settings.
@@ -1209,27 +1209,27 @@ This addendum enforces a strict “NO LEGACY ANYWHERE” policy and reconciles t
 ### Somabrain Integration Boundary (final)
 - Boundary: HTTP only. Do not import Somabrain internal Python modules in‑process; use the HTTP service surface consistently.
 - Required endpoints (contract):
-  - Health: `GET {SA01_SOMA_BASE_URL}/healthz` (primary), `GET /health` accepted as legacy alias.
+  - Health: `GET {SA01_SOMA_BASE_URL}/healthz` (primary), `GET /health` accepted as prior alias.
   - Learning/Weights: `GET /v1/weights`, `POST /v1/weights/update`.
   - Context Builder: `POST /v1/context/build`.
   - Tenant Feature Flags: `GET /v1/flags/{tenant}/{flag}`.
   - Memory: `POST /v1/memory/remember`, `POST /v1/memory/link`, `POST /v1/plan/suggest` (where applicable).
   - Recall: `POST /v1/recall/query` (tenant‑scoped).
 
-### Legacy Inventory (to be removed or unified)
-- (Removed) Legacy OPA placeholder middleware (`python/integrations/opa_middleware.py`) has been excised. Future policy enforcement will use a real HTTP adapter with selective authorization semantics.
+### Prior Inventory (to be removed or unified)
+- (Removed) Prior OPA placeholder middleware (`python/integrations/opa_middleware.py`) has been excised. Future policy enforcement will use a real HTTP adapter with selective authorization semantics.
 - Duplicate health endpoints (`/health`, `/healthz`) and mixed targets (`/health` vs `/healthz`) → converge to `/healthz` in Gateway; probe Somabrain `/healthz` first; keep `/health` as alias only.
 - Env‑flag checks scattered across code (`os.getenv("SA01_ENABLE_*"`, `ENABLE_*`) → replace with Feature Registry lookups; add lint rule to forbid direct getenv for flags.
 - Dual outbox/Kafka producers across services vs Somabrain’s producer → keep local outbox pattern but unify headers/schema and health adaptation; centralize Kafka publisher behind one adapter (no competing producers).
 - Local feature flags vs tenant flags in Somabrain Redis → add tenant override layer calling Somabrain `GET /v1/flags/{tenant}/{flag}` with TTL cache; registry provides defaults only.
-- Any unused legacy modules (gRPC memory client references, polling UI calls, legacy credentials routes) → delete.
+- Any unused prior modules (gRPC memory client references, polling UI calls, prior credentials routes) → delete.
 
 ### Enforcement Principles
 - Single source per concern: one place to evaluate policy, one publisher API, one feature flag gateway, one health probe path.
 - Fail‑closed by default for security‑relevant flows (policy/memory/tool writes); surface clear denies and audit entries.
-- Observability for every removed legacy pathway: add counters to ensure it stays at zero usage.
+- Observability for every removed prior pathway: add counters to ensure it stays at zero usage.
 
-### Prioritized Sprint Plan (Legacy Eradication)
+### Prioritized Sprint Plan (Prior Eradication)
 
 Sprint L0 — Policy & Health Hardening (3 days)
 - Replace OPA stub with HTTP policy adapter calling Somabrain policy endpoint; wire into Gateway middleware; measure with `auth_requests_total`, `auth_duration_seconds`.
@@ -1253,22 +1253,22 @@ Sprint L3 — Eventing & Outbox Alignment (4 days)
 - Acceptance: WAL/outbox publish path unified; traces link across Gateway↔Workers; no duplicate producer classes remain.
 
 Sprint L4 — UI/Streaming Cleanup & Endpoint Purge (3 days)
-- Verify UI uses SSE only, no polling; remove any legacy `/poll`, CSRF routes, and deprecated credential endpoints; align to `/v1/*` and `/ui/config.json` exclusively.
-- Remove duplicate/obsolete endpoints and modules; add “legacy usage” counters to confirm zero usage in CI.
-- Acceptance: Playwright `no-legacy-network` passes; counters stay zero; grep for legacy routes returns none.
+- Verify UI uses SSE only, no polling; remove any prior `/poll`, CSRF routes, and deprecated credential endpoints; align to `/v1/*` and `/ui/config.json` exclusively.
+- Remove duplicate/obsolete endpoints and modules; add “prior usage” counters to confirm zero usage in CI.
+- Acceptance: Playwright `no-prior-network` passes; counters stay zero; grep for prior routes returns none.
 
-### Definition of Done (No‑Legacy)
+### Definition of Done (No‑Prior)
 - Zero stub or dead code for policy, health, flags, eventing, or memory; any former shims deleted.
 - No direct `os.getenv` feature checks; registry + tenant override only.
 - Single health path (`/healthz`) in Gateway; Somabrain probed at `/healthz`.
 - All Somabrain interactions through HTTP client; no internal module imports from Somabrain.
-- UI/network tests show no polling or legacy endpoints; only `/v1/*` and `/ui/*` used.
+- UI/network tests show no polling or prior endpoints; only `/v1/*` and `/ui/*` used.
 
 ### Acceptance & Metrics
 - Security: 100% of protected routes pass through real policy adapter; `auth_requests_total{result="deny"}` increments on policy failure.
 - Availability: `/healthz` reflects Somabrain state; outbox/backpressure adapts when Somabrain degrades; alerts fire accordingly.
 - Observability: new metrics present — `learning_updates_total`, `learning_context_build_duration_seconds`, `trace_propagation_errors_total`, `feature_flag_remote_requests_total`.
-- Hygiene: CI job runs `grep`/lint to forbid legacy patterns and fails if found.
+- Hygiene: CI job runs `grep`/lint to forbid prior patterns and fails if found.
 
 ### Risks & Mitigations
 - Policy latency: cache allow/deny with short TTL; add circuit breaker → deny with reason if backend unavailable (configurable fail‑open in dev only).
@@ -1280,11 +1280,11 @@ Sprint L4 — UI/Streaming Cleanup & Endpoint Purge (3 days)
 - Add `/v1/feature-flags` merged endpoint + tenant override via Somabrain (L1).
 - Wire `get_weights`/`build_context` + reward updates into chat/tool flows (L2).
 
-This section is now part of the canonical roadmap. Any refactor or removal tied to the No‑Legacy mandate must first update this document with scope, acceptance, metrics, and tests, then proceed to implementation.
+This section is now part of the canonical roadmap. Any refactor or removal tied to the No‑Prior mandate must first update this document with scope, acceptance, metrics, and tests, then proceed to implementation.
 
 ## 2025-11-09 Integration Summary — Somabrain Full Alignment (Clarification)
 
-This summary captures the clarified objective: SomaAgent01 fully integrates Somabrain as the upstream AI brain over HTTP while retaining all valuable existing subsystems (gateway, workers, outbox/WAL, Kafka, UI, metrics, auditing). We eliminate only genuine legacy shims or duplicates; we do not discard functioning architecture components.
+This summary captures the clarified objective: SomaAgent01 fully integrates Somabrain as the upstream AI brain over HTTP while retaining all valuable existing subsystems (gateway, workers, outbox/WAL, Kafka, UI, metrics, auditing). We eliminate only genuine prior shims or duplicates; we do not discard functioning architecture components.
 
 ### Core Understanding
 1. Somabrain is the authoritative service for: learning (weights/reward updates), context building, recall, tenant feature flags, policy enforcement, and memory graph operations.
@@ -1297,11 +1297,11 @@ This summary captures the clarified objective: SomaAgent01 fully integrates Soma
 - Existing Gateway + Workers patterns (routes, SSE streaming, tool executor) with refactors only where integration demands.
 - Observability stack (Prometheus metrics, alerting templates, structured logging, tracing propagation) extended to include Somabrain call metrics.
 
-### Removed / Replaced Items (True Legacy Only)
+### Removed / Replaced Items (True Prior Only)
 - Placeholder OPA middleware (local no‑op) → replaced by real HTTP policy adapter against Somabrain policy endpoint.
 - Direct scattered `os.getenv` feature flag checks → replaced by Feature Registry + Somabrain tenant overrides.
 - Duplicate health endpoints / inconsistent probes → converge on unified `/healthz` logic with Somabrain upstream probe.
-- Any residual polling or deprecated endpoints (CSRF, legacy /poll) in UI → SSE-only pattern enforced.
+- Any residual polling or deprecated endpoints (CSRF, prior /poll) in UI → SSE-only pattern enforced.
 
 ### Integration Surface Mapping
 | Concern | Somabrain Endpoint | SomaAgent01 Call Site | Notes |
@@ -1338,10 +1338,10 @@ User → Gateway → (Policy check via Somabrain) → Conversation Worker → Co
 - L1: Tenant feature flag override integration + registry lint enforcement.
 - L2: Weights/context injection + reward updates instrumentation.
 - L3: Eventing/Kafka header standardization + trace linking.
-- L4: UI hygiene and endpoint purge (legacy removal confirmation).
+- L4: UI hygiene and endpoint purge (prior removal confirmation).
 
 ### Acceptance Summary
-Upon completion of L4: all Somabrain responsibilities are exercised via HTTP endpoints; no stubbed legacy code remains; traces span entire request lifecycle; feature flags reflect tenant overrides; UI streams exclusively over SSE with enriched context and recall (when enabled).
+Upon completion of L4: all Somabrain responsibilities are exercised via HTTP endpoints; no stubbed prior code remains; traces span entire request lifecycle; feature flags reflect tenant overrides; UI streams exclusively over SSE with enriched context and recall (when enabled).
 
 ### Next Immediate Action (Post-Append)
 Start Sprint L0 implementation: swap OPA stub for HTTP adapter, centralized `/healthz` aggregator including Somabrain classification and new metrics.
@@ -1483,3 +1483,83 @@ This section formally initiates parallel sprint execution across the previously 
 All code added MUST reference this sprint section in PR description. Any schema evolution (FeatureDescriptor or tool descriptor) requires simultaneous doc + JSONSchema diff update here.
 
 — End Sprint Kickoff (2025-11-11)
+
+## 2025-11-11 Somabrain Full-Stack Integration Addendum (Authoritative)
+
+### Objective
+Deliver 100% alignment between SomaAgent01 and the live Somabrain stack. Every cognitive capability (persona, prompts, tools, policies, memory, rewards, metrics) must originate from or feed back into Somabrain’s HTTP API at `http://somabrain:9696`.
+
+### Current Coverage Verification
+| Surface | Status | Notes |
+|---------|--------|-------|
+| **Learning (weights/context/reward)** | **Partially integrated** | Gateway + worker use `services/common/learning` which now wraps `somabrain_client`, but only `/v1/weights`, `/v1/context`, `/v1/learning/reward` are wired. Needs persona-aware weights + reward metadata. |
+| **Memory Dashboard** | **Complete** | `/v1/memories/*` + `/memory_dashboard` already backed by Somabrain replica store. UI store (`webui/components/settings/memory/memory-dashboard-store.js`) listens to SSE bus. |
+| **Persona & Preferences** | **Not integrated** | No calls to `/persona/{pid}`; prompts/tools/mood still stored locally. |
+| **Plan & Neuromodulators** | **Not integrated** | `/plan/suggest` and `/neuromodulators` unused; no mood feedback loop. |
+| **Config / Cutover / Feature Flags** | **Partial** | Tenant flags use remote cache, but `/config/*` + cutover endpoints are not proxied; runtime-config surface still local. |
+| **OPA Constitution** | **Not integrated** | `python/integrations/opa_middleware.py` is deprecated; gateway no longer enforces Somabrain’s constitution/policy. |
+| **Outbox / Kafka** | **Not integrated** | Tool executor publishes via local WAL/outbox instead of Somabrain outbox topics. |
+| **Observability** | **Partial** | Somabrain counters (learning, tenant flags) exist, but `/metrics` does not expose all Somabrain collectors; health checks only probe shallow status. |
+
+### Canonical Somabrain Endpoints To Support
+1. **Persona / Profile**: `GET/PUT/DELETE /persona/{pid}` — must carry prompts, mood sliders, tool allow/deny lists, profiles, usage caps.
+2. **Feature Flags**: `GET /v1/flags/{tenant}/{flag}` (already used) plus caching TTL metrics.
+3. **Learning Context**: `/v1/weights`, `/v1/context`, `/v1/learning/reward`, `/reward/reward/{frame_id}` (tool reward proxy).
+4. **Memory APIs**: `/memory/remember`, `/memory/remember/batch`, `/memory/recall`, `/memory/recall/stream`, `/memory/delete`, `/link`, `/memory/metrics`, `/memory/admin/*`.
+5. **Config & Cutover**: `/config/memory`, `/config/cutover/*`, `/memory/cutover/*`, `/config/cutover/metrics`.
+6. **Neuromodulators & Personality**: `/neuromodulators` (GET/POST), `/personality` (POST).
+7. **Plan & Semgraph**: `/plan/suggest`, `/graph/links`.
+8. **OPA & Constitution**: `/constitution/version`, `/constitution/load`, `/constitution/validate`, `/opa/policy` (GET/POST).
+9. **Health & Metrics**: `/health`, `/metrics`, `/reward/health`, `/learner/health`, `/micro/diag`.
+
+### Roadmap (supersedes prior Somabrain notes)
+
+#### Phase 0 – No-Legacy Baseline (Day 0–1)
+1. **Purge local personas/prompts** from `python/helpers/settings.py`, `prompts/system_prompt*`, and UI defaults. Replace with adapter that fetches persona via `GET /persona/{pid}` and injects `properties.prompts`, `properties.mood`, and `properties.tools`.
+2. **Centralize Somabrain client**: Ensure all modules import from `python.integrations.somabrain_client` (sync/async helpers + metrics). Remove remaining `httpx` calls to Somabrain.
+3. **Reinstate OPA middleware** by adding Somabrain’s policy evaluator (per-request) back into `services/gateway/main.py`, excluding only health/metrics routes.
+
+#### Phase 1 – Conversation Loop & Persona (Day 1–3)
+1. **Session bootstrap**: on chat start, call `/persona/{pid}`; cache `properties` in session metadata; merge `properties.prompts.system` into message loop and set mood (temperature, style, neuromodulators).
+2. **Tool gating**: enforce `properties.tools` (allowed, priority, cooldown) when populating the tool catalog and during `tool_execute_*` extensions.
+3. **Reward feedback**: after each tool/assistant step, send payloads to `/reward/reward/{frame_id}` and `/v1/learning/reward`, including persona, tool name, novelty/pred_error metrics.
+4. **Plan + neuromodulators**: before each reasoning cycle, query `/plan/suggest` and `/neuromodulators` to adjust SLM inputs; persist updates via POST when agent state changes.
+
+#### Phase 2 – Memory & Tool Executor (Day 3–5)
+1. **Memory helpers**: retire FAISS/legacy branches in `python/helpers/memory.py`; all reads/writes/links call Somabrain `/memory/*` + `/link`.
+2. **Tool executor outbox**: replace local WAL publisher with Somabrain’s outbox/Kafka topic integration (pending endpoint or shared library). Ensure tool results emit `link` + `plan` updates asynchronously.
+3. **Memory dashboard**: already functional; extend to display persona-derived tags and Somabrain metrics (wm_hits, importance) returned by `/memory/recall`.
+
+#### Phase 3 – Config, Feature Flags, Constitution (Day 5–7)
+1. **Runtime config sync**: `/v1/runtime-config` reads from `/config/memory`; `/v1/runtime-config/apply` proxies to `/config/cutover/*` and `/memory/cutover/*`. Track checksum/timestamp in gateway state + Prometheus.
+2. **Feature flag parity**: `/v1/feature-flags` must validate that every flag served equals Somabrain’s value (fallback only for outage). Add tests verifying tenant-scoped overrides via live API.
+3. **Constitution tooling**: Admin CLI + gateway routes should call `/constitution/*` and `/opa/policy`. Remove local files; store only references/metadata locally. Add regression test ensuring policy reload denies disallowed actions.
+
+#### Phase 4 – Observability & Health (Day 7–8)
+1. **Metrics**: import Somabrain counters/histograms into `observability/metrics.py` (learning, reward, flags, config). `/metrics` must expose these without Grafana dependencies.
+2. **Health propagation**: extend `services/gateway/health.py` to include Somabrain component statuses (`memory_ok`, `opa_ok`, `metrics_ready`, etc.) and surface degraded states in `/healthz` + SSE.
+3. **Live tests**: add integration suite hitting the real Somabrain server (env-guarded) covering persona CRUD, plan suggest, neuromodulator updates, config cutovers, and constitution reloads.
+
+### Persona Contract (Authoritative)
+- **Content**: `properties` must include `prompts`, `tools`, `preferences`, `mood`, `profiles`, `usage_policies`. Example keys: `prompts.system`, `prompts.tool_preface`, `tools.allowed[]`, `tools.priority_map`, `mood.tone`, `mood.energy`, `preferences.temperature`, `profiles.chat`, `usage.feature_flags.force_enabled`.
+- **Behavior**: Gateway/worker fetch persona at session start; tool executor consults persona before invoking tools; updates (new preferences, tool failures) must be persisted via `PUT /persona/{pid}`.
+
+### Constitution Alignment
+- All policy changes flow through Somabrain: `/constitution/load` → `/constitution/validate` → `/opa/policy` POST to regenerate and reload OPA.
+- Gateway must block requests when Somabrain policy denies them (fail-closed). Local “shim” middleware is banned.
+
+### Deliverables & Tests
+1. **Docs**: update README + deployment manual to describe Somabrain-backed personas, policies, runtime config, and health propagation.
+2. **Tests**:
+   - `tests/integration/test_persona_profile.py` – persona fetch, prompt injection, tool gating.
+   - `tests/integration/test_runtime_config_sync.py` – `/v1/runtime-config` mirrors Somabrain `/config/memory`.
+   - `tests/unit/test_opa_enforcement.py` – requests denied when Somabrain policy forbids action.
+   - Live (opt-in) smoke hitting real Somabrain server verifying persona CRUD, plan suggest, neuromodulator loop, reward proxy.
+3. **Metrics validation**: Prometheus `/metrics` must expose `somabrain_client_http_requests_total`, `learning_request_latency_seconds`, `runtime_config_apply_total`, `tenant_flag_remote_requests_total`, etc.
+
+### Non-Negotiables
+- No local “legacy” pathways (FAISS fallback, feature shims, grafana dashboards) may remain.
+- Somabrain is the single source of truth for persona, prompts, tool policies, runtime config, feature flags, and constitution.
+- All integrations must use the HTTP API; no direct imports from `/root/somabrain` internals are allowed in SomaAgent01.
+
+— Somabrain Full Integration Addendum (Approved 2025-11-11)

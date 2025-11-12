@@ -128,7 +128,7 @@ async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
         pytest.skip("gateway not reachable for stream test")
     # Consume SSE for a short window collecting event types
     types: set[str] = set()
-    url = f"{GATEWAY_BASE}/v1/session/{sid}/events"
+    url = f"{GATEWAY_BASE}/v1/sessions/{sid}/events?stream=true"
     try:
         async with httpx.AsyncClient(timeout=None) as client:
             # Expect timeout/read error due to test harness; narrow exception types
@@ -172,4 +172,4 @@ async def test_raw_error_constraint(store: PostgresSessionStore):
     # If insert succeeded, ensure backfill/normalization will fix it
     events = await store.list_events_after(sid, limit=5)
     assert events
-    assert any(e["payload"].get("type") == "error" for e in events), "legacy raw error inserted"
+    assert any(e["payload"].get("type") == "error" for e in events), "prior raw error inserted"

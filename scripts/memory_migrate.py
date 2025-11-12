@@ -1,6 +1,6 @@
 """CLI utility for migrating local FAISS snapshots into SomaBrain.
 
-The tool reads a memory sub-directory from the legacy FAISS store used by
+The tool reads a memory sub-directory from the prior FAISS store used by
 Agent Zero and converts every ``langchain`` document into the payload structure
 expected by ``SomaClient.migrate_import``.  Operators can dry-run the
 transformation, emit the intermediate JSON to disk, or stream the payloads to
@@ -53,7 +53,7 @@ class MigrationBatch:
 
 
 def _ensure_local_memory_mode() -> None:
-    """Force the memory helpers to load the legacy FAISS backend."""
+    """Force the memory helpers to load the prior FAISS backend."""
 
     if os.environ.get("SOMA_ENABLED") is None:
         os.environ["SOMA_ENABLED"] = "false"

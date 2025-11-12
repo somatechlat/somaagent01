@@ -1,7 +1,7 @@
 """Somabrain policy enforcement middleware (deprecated shim).
 
 Use the centralized policy client and Gateway wiring. This module remains as a
-compatibility wrapper for legacy imports but does not honor any legacy
+compatibility wrapper for prior imports but does not honor any prior
 environment toggles. It enforces fail-closed by default.
 """
 

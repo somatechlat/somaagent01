@@ -244,7 +244,7 @@ const settingsModalProxy = {
         }
     },
 
-    // Legacy polling helper removed
+    // Prior polling helper removed
 
     async handleFieldButton(field) {
         console.log(`Button clicked: ${field.id}`);

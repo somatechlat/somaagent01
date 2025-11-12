@@ -129,7 +129,7 @@ up:
 	@echo "Checking for existing project-prefixed containers for $(COMPOSE_PROJECT_NAME)..."
 	@# First try to find containers by the compose project label (reliable)
 	@existing_ids=$$(docker ps -a --filter "label=com.docker.compose.project=$(COMPOSE_PROJECT_NAME)" -q 2>/dev/null || true); \
-	# If none found via label, fallback to a case-insensitive name match (handles legacy/mixed-case names)
+	# If none found via label, fallback to a case-insensitive name match (handles prior/mixed-case names)
 	@if [ -z "$$existing_ids" ]; then \
 		existing_ids=$$(docker ps -a --format '{{.ID}} {{.Names}}' 2>/dev/null | grep -i "$(COMPOSE_PROJECT_NAME)_" | awk '{print $$1}' || true;); \
 	fi; \

@@ -70,3 +70,77 @@ def test_get_tenant_flag_success(monkeypatch):
         flag = get_tenant_flag("tenant123", "featureX")
         assert flag is True
         assert route.called
+
+
+@pytest.mark.asyncio
+async def test_get_weights_async(monkeypatch):
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
+    with respx.mock(base_url="http://example.com") as mock:
+        route = mock.get("/v1/weights").respond(json={"weights": [42]})
+        from python.integrations.somabrain_client import get_weights_async
+
+        result = await get_weights_async()
+        assert result == {"weights": [42]}
+        assert route.called
+
+
+@pytest.mark.asyncio
+async def test_build_context_async(monkeypatch):
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
+    payload = {"session_id": "s", "messages": []}
+    with respx.mock(base_url="http://example.com") as mock:
+        route = mock.post("/v1/context/build", json=payload).respond(json=[{"role": "system", "content": "ok"}])
+        from python.integrations.somabrain_client import build_context_async
+
+        result = await build_context_async(payload)
+        assert isinstance(result, list)
+        assert route.called
+
+
+@pytest.mark.asyncio
+async def test_publish_reward_async(monkeypatch):
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
+    payload = {"session_id": "s", "signal": "reward", "value": 1.0}
+    with respx.mock(base_url="http://example.com") as mock:
+        route = mock.post("/v1/learning/reward", json=payload).respond(json={"ok": True})
+        from python.integrations.somabrain_client import publish_reward_async
+
+        result = await publish_reward_async(payload)
+        assert result == {"ok": True}
+        assert route.called
+
+
+@pytest.mark.asyncio
+async def test_get_tenant_flag_async(monkeypatch):
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
+    with respx.mock(base_url="http://example.com") as mock:
+        route = mock.get("/v1/flags/public/test").respond(json={"enabled": False})
+        from python.integrations.somabrain_client import get_tenant_flag_async
+
+        flag = await get_tenant_flag_async("public", "test")
+        assert flag is False
+        assert route.called
+
+
+def test_get_persona(monkeypatch):
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
+    persona_doc = {"id": "persona-1", "properties": {"settings": {"foo": "bar"}}}
+    with respx.mock(base_url="http://example.com") as mock:
+        route = mock.get("/persona/persona-1").respond(json=persona_doc)
+        from python.integrations.somabrain_client import get_persona
+
+        result = get_persona("persona-1")
+        assert result == persona_doc
+        assert route.called
+
+
+def test_put_persona(monkeypatch):
+    monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
+    payload = {"id": "persona-1", "properties": {"settings": {"foo": "bar"}}}
+    with respx.mock(base_url="http://example.com") as mock:
+        route = mock.put("/persona/persona-1", json=payload).respond(json=payload)
+        from python.integrations.somabrain_client import put_persona
+
+        result = put_persona("persona-1", payload)
+        assert result == payload
+        assert route.called

@@ -95,7 +95,7 @@ class SettingsModel(BaseSettings):
     root_password: str | None = Field(default=None)
 
     # Miscellaneous flags (kept as a generic catch‑all)
-    # Enable LLM usage by default in production. The legacy codebase sometimes
+    # Enable LLM usage by default in production. The prior codebase sometimes
     # assumes LLMs are available; keep the default 'True' to avoid surprising
     # runtime errors when the settings file is missing or not yet persisted.
     USE_LLM: bool = Field(default=True)
@@ -103,7 +103,7 @@ class SettingsModel(BaseSettings):
     # Pydantic v2 config: allow unknown keys to keep backward compatibility
     model_config = ConfigDict(extra="allow")
 
-    # Provide dict‑style access for legacy code paths.
+    # Provide dict‑style access for prior code paths.
     def __getitem__(self, item: str) -> Any:  # pragma: no cover
         return getattr(self, item)
 

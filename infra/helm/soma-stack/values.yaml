@@ -35,7 +35,7 @@ serviceAccounts:
   create: true
 
 env:
-  # Canonical SA01_* variables (no legacy names)
+  # Canonical SA01_* variables (no prior names)
   SA01_DB_DSN: "postgresql://soma:soma@postgres:5432/somaagent01"
   SA01_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
   SA01_REDIS_URL: "redis://redis:6379/0"

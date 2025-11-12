@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Web UI now sources all configuration from Gateway Settings; credentials must be entered via Settings, not env vars.
 - Files UI wired to `/v1/workdir` and Memories UI to `/v1/memories` for live parity.
-- Restored SSE streaming path for chat via `/v1/session/{id}/events`.
+- Restored SSE streaming path for chat via `/v1/sessions/{id}/events?stream=true`.
 - Base URL normalization updated to remap OpenRouter paths ending in `/openai` to `/api`, preventing 405 errors.
 - Quick Start and Troubleshooting updated to reflect Gateway host port 21016 and Settings‑driven configuration.
 
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidated scattered READMEs into proper manual sections
 
 ### Removed
-- Legacy documentation files not aligned with ISO structure
+- Prior documentation files not aligned with ISO structure
 - Deprecated gRPC memory service documentation
 
 ## [1.2.0] - 2025-11-03
@@ -67,4 +67,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics server startup conflict during tests now degrades gracefully (no retry storms) when port is already in use.
 
 ### Notes
-- Continued enforcement of SSE-only streaming and canonical uploads + `document_ingest` tool flow; CSRF fully removed and legacy endpoints purged.
+- Continued enforcement of SSE-only streaming and canonical uploads + `document_ingest` tool flow; CSRF fully removed and prior endpoints purged.

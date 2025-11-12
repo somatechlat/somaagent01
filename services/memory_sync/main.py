@@ -15,6 +15,7 @@ from typing import Any, Mapping, Sequence
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.soma_client import SomaClient, SomaClientError
+from services.common import runtime_config as cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.lifecycle_metrics import (
     now as _lm_now,
@@ -42,8 +43,6 @@ def _kafka_settings() -> KafkaSettings:
 
 
 def _env_float(name: str, default: float) -> float:
-    from services.common import runtime_config as cfg
-
     try:
         return float(cfg.env(name, str(default)))
     except ValueError:
@@ -51,8 +50,6 @@ def _env_float(name: str, default: float) -> float:
 
 
 def _env_int(name: str, default: int) -> int:
-    from services.common import runtime_config as cfg
-
     try:
         return int(cfg.env(name, str(default)))
     except ValueError:
@@ -61,7 +58,6 @@ def _env_int(name: str, default: int) -> int:
 
 class MemorySyncWorker:
     def __init__(self) -> None:
-        from services.common import runtime_config as cfg
 
         self.store = MemoryWriteOutbox(dsn=cfg.db_dsn())
         self.bus = KafkaEventBus(_kafka_settings())
@@ -133,11 +129,11 @@ class MemorySyncWorker:
                 except json.JSONDecodeError as exc:
                     raise ValueError(f"invalid JSON payload: {exc}")
             elif isinstance(raw, Sequence):
-                # Accept legacy [[k,v], ...] form
+                # Accept prior [[k,v], ...] form
                 try:
                     payload = dict(raw)  # type: ignore[arg-type]
                 except Exception as exc:
-                    raise ValueError(f"unsupported legacy payload sequence: {exc}")
+                    raise ValueError(f"unsupported prior payload sequence: {exc}")
             else:
                 raise ValueError(f"unsupported payload type: {type(raw).__name__}")
         except Exception as exc:

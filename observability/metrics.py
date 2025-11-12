@@ -256,6 +256,12 @@ runtime_config_last_applied_ts = Gauge(
     "Unix timestamp when runtime config was last applied",
     registry=registry,
 )
+runtime_config_layer_total = Counter(
+    "runtime_config_layer_total",
+    "Count of config resolutions by layer",
+    ["layer"],
+    registry=registry,
+)
 
 # Deployment mode metric (LOCAL | PROD)
 deployment_mode_info = Info(
@@ -368,6 +374,12 @@ class MetricsCollector:
             runtime_config_updates_total.labels(source=source).inc()
             runtime_config_info.info({"version": version, "checksum": checksum, "source": source})
             runtime_config_last_applied_ts.set(time.time())
+        except Exception:
+            pass
+
+    def record_runtime_config_layer(self, layer: str) -> None:
+        try:
+            runtime_config_layer_total.labels(layer=layer).inc()
         except Exception:
             pass
 

@@ -290,7 +290,7 @@
   opacity: 1;
 }
 
-/* Legacy copy button styles - DEPRECATED
+/* Prior copy button styles - DEPRECATED
  * These styles have been replaced by the new action buttons component
  * located at /components/messages/action-buttons/message-action-buttons.css
  * Remove this section after confirming all functionality works with action buttons

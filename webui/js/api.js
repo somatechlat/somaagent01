@@ -24,8 +24,8 @@ export async function callJsonApi(endpoint, data) {
 }
 
 /**
- * Fetch wrapper for A0 APIs that ensures token exchange
- * Automatically adds CSRF token to request headers
+ * Fetch wrapper for A0 APIs
+ * No CSRF token flow; uses same-origin credentials only.
  * @param {string} url - The URL to fetch
  * @param {Object} [request] - The fetch request options
  * @returns {Promise<Response>} The fetch response
@@ -75,11 +75,8 @@ export async function fetchApi(url, request) {
     // perform the fetch with the provided request
     const response = await fetch(url, finalRequest);
 
-    // If the server returned Forbidden once, allow a single retry (no CSRF token flow)
-    if (response.status === 403 && retry) {
-      return await _wrap(false);
-    } else if (response.redirected && response.url.endsWith("/login")) {
-      // redirect to login
+    // If redirect to login, handle immediately
+    if (response.redirected && response.url.endsWith("/login")) {
       window.location.href = response.url;
       return;
     }
@@ -89,13 +86,8 @@ export async function fetchApi(url, request) {
   }
 
   // perform the request
-  const response = await _wrap(true);
+  const response = await _wrap(false);  // single attempt only
 
   // return the response
   return response;
 }
-
-// csrf token stored locally
-// CSRF token flow removed to avoid legacy/session CSRF handling.
-// All API calls use same-origin credentials where required and do not rely
-// on a separate /csrf_token endpoint.

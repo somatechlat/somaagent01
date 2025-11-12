@@ -41,8 +41,8 @@ class TestCanonicalBackendReal:
 
         assert SomaClient is not None
 
-    def test_no_legacy_endpoints(self):
-        """Test that legacy endpoints don't exist."""
+    def test_no_prior_endpoints(self):
+        """Test that prior endpoints don't exist."""
         response = self.client.post("/v1/ui/poll")
         assert response.status_code == 404
 

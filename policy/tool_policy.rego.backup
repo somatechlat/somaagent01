@@ -169,8 +169,7 @@ is_string(x) {
 }
 
 is_valid_timestamp_format(fmt) {
-  fmt in ["ISO", "UNIX", "RFC3339", "US"]
-}
+    fmt in ["ISO", "UNIX", "RFC3339", "US"]
 }
 
 # File size validation
@@ -191,3 +190,4 @@ is_sensitive_setting(key) {
 tenant_allows(input) {
   input.tenant == input.context.allowed_tenant
 }
+

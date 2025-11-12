@@ -1,4 +1,5 @@
 import os
+import pytest
 
 
 def test_settings_modal_opens_and_loads_sections(page):

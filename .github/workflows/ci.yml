@@ -180,9 +180,9 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Ensure no legacy polling endpoints
+          # Ensure no prior polling endpoints
           if grep -r "v1/ui/poll\|v1/csrf" services/gateway/; then
-            echo "ERROR: Legacy polling endpoints found" >&2
+            echo "ERROR: Prior polling endpoints found" >&2
             exit 1
           fi
           
@@ -238,7 +238,7 @@ jobs:
       - name: Guard: memory plane is SomaBrain-only
         run: |
           set -euo pipefail
-          # Ensure legacy memory_client is tombstoned if present
+          # Ensure prior memory_client is tombstoned if present
           if [ -f "services/common/memory_client.py" ] && ! grep -q "ImportError" services/common/memory_client.py; then
             echo "ERROR: memory_client.py exists and is not tombstoned with ImportError" >&2
             exit 1

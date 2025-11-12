@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import json
+import logging
 import os
 import subprocess
 from typing import Any, cast, Literal, TypedDict
@@ -11,6 +12,12 @@ from python.helpers import defer, git, runtime
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
 from python.helpers.secrets import SecretsManager
+
+from python.integrations.somabrain_client import (
+    SomaClientError,
+    get_persona as _sb_get_persona,
+    put_persona as _sb_put_persona,
+)
 
 # Local imports (alphabetical)
 from . import dotenv, files
@@ -69,6 +76,115 @@ API_KEY_PLACEHOLDER = "************"
 
 SETTINGS_FILE = files.get_abs_path("tmp/settings.json")
 _settings: Settings | None = None
+
+_PERSONA_ID_ENV_VARS = ("SA01_AGENT_PERSONA_ID", "AGENT_PERSONA_ID", "SA01_PERSONA_ID")
+
+
+def _persona_env_id() -> str | None:
+    for var in _PERSONA_ID_ENV_VARS:
+        value = os.getenv(var, "").strip()
+        if value:
+            return value
+    return None
+
+
+def _load_persona_profile(force_refresh: bool = False) -> dict[str, Any] | None:
+    global _PERSONA_PROFILE_CACHE
+    persona_id = _persona_env_id()
+    if not persona_id:
+        return None
+    if not force_refresh and _PERSONA_PROFILE_CACHE and _PERSONA_PROFILE_CACHE.get("id") == persona_id:
+        return _PERSONA_PROFILE_CACHE
+    try:
+        data = _sb_get_persona(persona_id)
+    except SomaClientError as exc:
+        LOGGER.debug("Somabrain persona fetch failed: %s", exc)
+        return None
+    if not isinstance(data, dict):
+        return None
+    data.setdefault("id", persona_id)
+    props = data.get("properties")
+    if not isinstance(props, dict):
+        data["properties"] = {}
+    _PERSONA_PROFILE_CACHE = data
+    return data
+
+
+def _extract_persona_settings(persona: dict[str, Any]) -> dict[str, Any]:
+    props = persona.get("properties")
+    if not isinstance(props, dict):
+        return {}
+    overrides = props.get("settings") or props.get("agent_settings")
+    return overrides if isinstance(overrides, dict) else {}
+
+
+def _apply_persona_profile(settings: Settings, persona: dict[str, Any]) -> None:
+    snapshot = {
+        "id": persona.get("id"),
+        "display_name": persona.get("display_name") or persona.get("name"),
+        "properties": persona.get("properties") or {},
+    }
+    settings["persona"] = snapshot
+    overrides = _extract_persona_settings(persona)
+    for key, value in overrides.items():
+        if key == "persona":
+            continue
+        try:
+            settings[key] = value
+        except Exception:
+            try:
+                setattr(settings, key, value)
+            except Exception:
+                LOGGER.debug("Failed to apply persona override %s", key, exc_info=True)
+
+
+def _settings_payload_for_persona(settings: Settings | dict[str, Any]) -> dict[str, Any]:
+    if hasattr(settings, "model_dump"):
+        payload = settings.model_dump()
+    elif isinstance(settings, dict):
+        payload = dict(settings)
+    else:
+        try:
+            payload = dict(settings)
+        except Exception:
+            payload = {}
+    payload = json.loads(json.dumps(payload, default=str)) if payload else {}
+    payload.pop("persona", None)
+    _remove_sensitive_settings(payload)
+    return payload
+
+
+def _update_persona_cache(doc: dict[str, Any]) -> None:
+    global _PERSONA_PROFILE_CACHE
+    if isinstance(doc, dict):
+        _PERSONA_PROFILE_CACHE = doc
+
+
+def _sync_persona_settings(settings_payload: dict[str, Any]) -> None:
+    persona_id = _persona_env_id()
+    if not persona_id or not settings_payload:
+        return
+    existing = _load_persona_profile()
+    properties: dict[str, Any]
+    if existing and isinstance(existing.get("properties"), dict):
+        properties = dict(existing["properties"])
+    else:
+        properties = {}
+    properties["settings"] = settings_payload
+    persona_payload: dict[str, Any] = {"id": persona_id, "properties": properties}
+    if existing and existing.get("display_name"):
+        persona_payload["display_name"] = existing.get("display_name")
+    try:
+        updated = _sb_put_persona(persona_id, persona_payload)
+        if isinstance(updated, dict):
+            updated.setdefault("properties", properties)
+            _update_persona_cache(updated)
+    except SomaClientError as exc:
+        LOGGER.warning("Failed to sync settings to Somabrain persona %s: %s", persona_id, exc)
+
+LOGGER = logging.getLogger(__name__)
+
+_PERSONA_PROFILE_CACHE: dict[str, Any] | None = None
 
 
 def convert_out(settings: Settings) -> SettingsOutput:
@@ -442,7 +558,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # basic auth section
     auth_fields: list[SettingsField] = []
 
-    # Legacy UI login/password fields have been removed. Authentication now relies on OIDC or JWT tokens.
+    # Prior UI login/password fields have been removed. Authentication now relies on OIDC or JWT tokens.
     # The root password field (for dockerized environments) is retained.
 
     if runtime.is_dockerized():
@@ -1400,11 +1516,16 @@ def _read_settings_from_gateway() -> Settings | None:
 def _write_settings_file(settings: Settings):
     settings = settings.copy()
     _write_sensitive_settings(settings)
+    persona_payload = _settings_payload_for_persona(settings)
     _remove_sensitive_settings(settings)
 
     # write settings
     content = json.dumps(settings, indent=4)
     files.write_file(SETTINGS_FILE, content)
+
+    # Persist sanitized settings back to Somabrain persona when configured
+    if persona_payload:
+        _sync_persona_settings(persona_payload)
 
 
 def _remove_sensitive_settings(settings: Settings):
@@ -1415,6 +1536,7 @@ def _remove_sensitive_settings(settings: Settings):
     settings["root_password"] = ""
     settings["mcp_server_token"] = ""
     settings["secrets"] = ""
+    settings["persona"] = {}
 
 
 def _write_sensitive_settings(settings: Settings):
@@ -1440,7 +1562,7 @@ def _write_sensitive_settings(settings: Settings):
 
 
 def get_default_settings() -> Settings:
-    return Settings(
+    settings = Settings(
         version=_get_version(),
         # Default all providers to Groq; users can change in Settings
         chat_model_provider="groq",
@@ -1528,6 +1650,14 @@ def get_default_settings() -> Settings:
         litellm_global_kwargs={},
         USE_LLM=True,
     )
+
+    persona_doc = _load_persona_profile()
+    if persona_doc:
+        _apply_persona_profile(settings, persona_doc)
+    else:
+        settings["persona"] = {}
+
+    return settings
 
 
 def _apply_settings(previous: Settings | None):

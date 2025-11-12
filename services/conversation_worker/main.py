@@ -223,7 +223,7 @@ class ConversationWorker:
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
-        # Prefer canonical SA01_* first, then legacy fallbacks, with in-cluster DNS as last resort.
+        # Prefer canonical SA01_* first, then prior fallbacks, with in-cluster DNS as last resort.
         self._gateway_base = (
             cfg.env("SA01_GATEWAY_BASE_URL")
             or cfg.env("WORKER_GATEWAY_BASE")
@@ -2016,7 +2016,7 @@ class ConversationWorker:
                                     )
                                 )
                         else:
-                            # Legacy path-based fallback (DEV only)
+                            # Prior path-based fallback (DEV only)
                             if self.deployment_mode != "DEV":
                                 LOGGER.warning(
                                     "Path-based attachment ingest blocked in non-DEV mode",

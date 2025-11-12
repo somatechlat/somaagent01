@@ -349,7 +349,7 @@ class PostgresSessionStore(SessionStore):
                     )
 
     async def backfill_error_events(self) -> dict[str, int]:
-        """Convert legacy raw error rows to enriched '*.error' format and fill missing fields.
+        """Convert prior raw error rows to enriched '*.error' format and fill missing fields.
 
         Returns a dict of counts for each update applied.
         """
@@ -359,7 +359,7 @@ class PostgresSessionStore(SessionStore):
         fill_missing_role = 0
         async with pool.acquire() as conn:
             async with conn.transaction():
-                # 1) Transform legacy payloads where type == 'error' into canonical '<role>.error'
+                # 1) Transform prior payloads where type == 'error' into canonical '<role>.error'
                 res1 = await conn.execute(
                     """
                     UPDATE session_events
@@ -874,7 +874,7 @@ CREATE INDEX IF NOT EXISTS idx_session_events_event_id ON session_events ((paylo
 CREATE UNIQUE INDEX IF NOT EXISTS uq_session_events_session_event ON session_events (session_id, (payload->>'event_id')) WHERE (payload ? 'event_id');
 
 -- Prevent future raw error events (payload->>'type' = 'error') by adding a CHECK constraint.
--- Add it only if missing and mark NOT VALID initially to avoid blocking on legacy rows.
+-- Add it only if missing and mark NOT VALID initially to avoid blocking on prior rows.
 DO $$
 BEGIN
     IF NOT EXISTS (
