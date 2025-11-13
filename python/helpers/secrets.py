@@ -316,6 +316,7 @@ class SecretsManager:
                 env[binding.key.upper()] = binding.value or ""
         return env
 
+    # Backward-compatible alias for callers using the old private method name
     def _parse_env_content(self, content: str) -> Dict[str, str]:
         return self.parse_env_content(content)
 
@@ -337,6 +338,7 @@ class SecretsManager:
             if binding.key and not binding.error:
                 # Determine key_part and inline_comment from original line
                 line_text = raw.rstrip("\n")
+                # Fallback to composed key_part if original not available
                 if "=" in line_text:
                     left, right = line_text.split("=", 1)
                     key_part = left

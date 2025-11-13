@@ -99,8 +99,11 @@ def import_module(file_path: str) -> ModuleType:
             # Prefer using the project's PrintStyle when available
             from python.helpers.print_style import PrintStyle
 
-            PrintStyle(font_color="yellow").print(f"Warning: failed importing {abs_path}: {e}")
+            PrintStyle(font_color="yellow").print(
+                f"Warning: failed importing {abs_path}: {e}"
+            )
         except Exception:
+            # Fallback to stderr
             import sys
             import traceback
 

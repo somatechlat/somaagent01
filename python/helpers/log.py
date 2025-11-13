@@ -28,6 +28,7 @@ Type = Literal[
     "warning",
 ]
 
+ProgressUpdate = Literal["persistent", "temporary", "none"]
 
 
 HEADING_MAX_LEN: int = 120

@@ -31,11 +31,15 @@ class LogFromStream(Extension):
             pipes = "|" * math.ceil(math.sqrt(len(thoughts)))
             heading = build_heading(self.agent, f"Thinking... {pipes}")
 
+        # create log message and store it in loop data temporary params
+        if "log_item_generating" not in loop_data.params_temporary:
+            loop_data.params_temporary["log_item_generating"] = self.agent.context.log.log(
                 type="agent",
                 heading=heading,
             )
 
         # update log message
+        log_item = loop_data.params_temporary["log_item_generating"]
 
         # keep reasoning from previous logs in kvps
         kvps = {}

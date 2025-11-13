@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+import os
 import tempfile
 import warnings
 
@@ -18,32 +19,20 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Whisper is optional in lightweight developer builds – only require the
 # package when audio support is explicitly enabled.
 LOGGER = logging.getLogger(__name__)
-try:
-    from services.common import runtime_config as _cfg
-
-    _feature_audio_enabled = bool(_cfg.flag("audio_support"))
-except Exception:
-    _feature_audio_enabled = False
-
-import os as _os
+_feature_audio = os.getenv("FEATURE_AUDIO", "none").lower()
 
 try:
-    if not _feature_audio_enabled:
+    if _feature_audio in {"none", "0", "false", "off"}:
         raise ImportError("audio features disabled")
     import whisper  # type: ignore
-except ImportError as exc:  # pragma: no cover - exercised in developer & CI builds
-    _testing_mode = _os.getenv("TESTING") == "1" or _os.getenv("PYTEST_CURRENT_TEST") is not None
-    _require_whisper = _os.getenv("SA01_REQUIRE_WHISPER") in {"1", "true", "yes"}
-    # In normal (non-test) operation with the feature enabled OR when explicitly required, fail fast.
-    if (_feature_audio_enabled and not _testing_mode) or _require_whisper:
+except ImportError as exc:  # pragma: no cover - exercised in developer builds
+    if _feature_audio not in {"none", "0", "false", "off"}:
         raise ImportError(
             "Whisper library is required for production audio transcription. "
             "Install with: pip install openai-whisper"
         ) from exc
-    # Otherwise degrade gracefully for tests / lightweight dev builds.
     whisper = None  # type: ignore
-    LOGGER.info(
-    )
+    LOGGER.info("Skipping Whisper preload – FEATURE_AUDIO disabled or package missing")
 
 _model = None
 _model_name = ""
@@ -113,6 +102,7 @@ async def is_downloaded():
     except Exception as e:
         # if not runtime.is_development():
         raise e
+        # Fallback to direct execution if RFC fails in development
         # return _is_downloaded()
 
 
@@ -122,14 +112,18 @@ def _is_downloaded():
 
 async def transcribe(model_name: str, audio_bytes_b64: str):
     if whisper is None:
-        raise RuntimeError("Audio transcription is disabled (audio_support feature off).")
+        raise RuntimeError(
+            "Audio transcription is disabled in this build. Set FEATURE_AUDIO to enable Whisper support."
+        )
     # return await runtime.call_development_function(_transcribe, model_name, audio_bytes_b64)
     return await _transcribe(model_name, audio_bytes_b64)
 
 
 async def _transcribe(model_name: str, audio_bytes_b64: str):
     if whisper is None:
-        raise RuntimeError("Audio transcription is disabled (audio_support feature off).")
+        raise RuntimeError(
+            "Audio transcription is disabled in this build. Set FEATURE_AUDIO to enable Whisper support."
+        )
     await _preload(model_name)
 
     # Decode audio bytes if encoded as a base64 string
@@ -138,6 +132,7 @@ async def _transcribe(model_name: str, audio_bytes_b64: str):
     # Create temp audio file
     import os
 
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
         audio_file.write(audio_bytes)
         temp_path = audio_file.name
     try:

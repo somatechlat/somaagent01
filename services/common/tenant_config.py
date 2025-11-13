@@ -21,9 +21,7 @@ class TenantConfig:
     """Loads tenant configuration from YAML with simple caching."""
 
     def __init__(self, path: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
-
-        self.path = path or cfg.env("TENANT_CONFIG_PATH", "conf/tenants.yaml")
+        self.path = path or os.getenv("TENANT_CONFIG_PATH", "conf/tenants.yaml")
         self._cache: dict[str, TenantSettings] | None = None
         self._mtime: float | None = None
 

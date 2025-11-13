@@ -2,28 +2,22 @@
 import base64
 import hashlib
 import json
-import logging
 import os
 import subprocess
 from typing import Any, cast, Literal, TypedDict
 
 # Third‑party imports (alphabetical)
-from python.helpers import defer, git, runtime
+from python.helpers import defer, git, runtime, whisper
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
 from python.helpers.secrets import SecretsManager
-
-from python.integrations.somabrain_client import (
-    SomaClientError,
-    get_persona as _sb_get_persona,
-    put_persona as _sb_put_persona,
-)
 
 # Local imports (alphabetical)
 from . import dotenv, files
 from .settings_model import SettingsModel as Settings
 
 
+# ``PartialSettings`` kept for compatibility – it behaves like ``Settings``
 # but allows any subset of fields to be provided when constructing the model.
 class PartialSettings(Settings):
     pass
@@ -75,115 +69,6 @@ API_KEY_PLACEHOLDER = "************"
 
 SETTINGS_FILE = files.get_abs_path("tmp/settings.json")
 _settings: Settings | None = None
-
-_PERSONA_ID_ENV_VARS = ("SA01_AGENT_PERSONA_ID", "AGENT_PERSONA_ID", "SA01_PERSONA_ID")
-
-
-def _persona_env_id() -> str | None:
-    for var in _PERSONA_ID_ENV_VARS:
-        value = os.getenv(var, "").strip()
-        if value:
-            return value
-    return None
-
-
-def _load_persona_profile(force_refresh: bool = False) -> dict[str, Any] | None:
-    global _PERSONA_PROFILE_CACHE
-    persona_id = _persona_env_id()
-    if not persona_id:
-        return None
-    if not force_refresh and _PERSONA_PROFILE_CACHE and _PERSONA_PROFILE_CACHE.get("id") == persona_id:
-        return _PERSONA_PROFILE_CACHE
-    try:
-        data = _sb_get_persona(persona_id)
-    except SomaClientError as exc:
-        LOGGER.debug("Somabrain persona fetch failed: %s", exc)
-        return None
-    if not isinstance(data, dict):
-        return None
-    data.setdefault("id", persona_id)
-    props = data.get("properties")
-    if not isinstance(props, dict):
-        data["properties"] = {}
-    _PERSONA_PROFILE_CACHE = data
-    return data
-
-
-def _extract_persona_settings(persona: dict[str, Any]) -> dict[str, Any]:
-    props = persona.get("properties")
-    if not isinstance(props, dict):
-        return {}
-    overrides = props.get("settings") or props.get("agent_settings")
-    return overrides if isinstance(overrides, dict) else {}
-
-
-def _apply_persona_profile(settings: Settings, persona: dict[str, Any]) -> None:
-    snapshot = {
-        "id": persona.get("id"),
-        "display_name": persona.get("display_name") or persona.get("name"),
-        "properties": persona.get("properties") or {},
-    }
-    settings["persona"] = snapshot
-    overrides = _extract_persona_settings(persona)
-    for key, value in overrides.items():
-        if key == "persona":
-            continue
-        try:
-            settings[key] = value
-        except Exception:
-            try:
-                setattr(settings, key, value)
-            except Exception:
-                LOGGER.debug("Failed to apply persona override %s", key, exc_info=True)
-
-
-def _settings_payload_for_persona(settings: Settings | dict[str, Any]) -> dict[str, Any]:
-    if hasattr(settings, "model_dump"):
-        payload = settings.model_dump()
-    elif isinstance(settings, dict):
-        payload = dict(settings)
-    else:
-        try:
-            payload = dict(settings)
-        except Exception:
-            payload = {}
-    payload = json.loads(json.dumps(payload, default=str)) if payload else {}
-    payload.pop("persona", None)
-    _remove_sensitive_settings(payload)
-    return payload
-
-
-def _update_persona_cache(doc: dict[str, Any]) -> None:
-    global _PERSONA_PROFILE_CACHE
-    if isinstance(doc, dict):
-        _PERSONA_PROFILE_CACHE = doc
-
-
-def _sync_persona_settings(settings_payload: dict[str, Any]) -> None:
-    persona_id = _persona_env_id()
-    if not persona_id or not settings_payload:
-        return
-    existing = _load_persona_profile()
-    properties: dict[str, Any]
-    if existing and isinstance(existing.get("properties"), dict):
-        properties = dict(existing["properties"])
-    else:
-        properties = {}
-    properties["settings"] = settings_payload
-    persona_payload: dict[str, Any] = {"id": persona_id, "properties": properties}
-    if existing and existing.get("display_name"):
-        persona_payload["display_name"] = existing.get("display_name")
-    try:
-        updated = _sb_put_persona(persona_id, persona_payload)
-        if isinstance(updated, dict):
-            updated.setdefault("properties", properties)
-            _update_persona_cache(updated)
-    except SomaClientError as exc:
-        LOGGER.warning("Failed to sync settings to Somabrain persona %s: %s", persona_id, exc)
-
-LOGGER = logging.getLogger(__name__)
-
-_PERSONA_PROFILE_CACHE: dict[str, Any] | None = None
 
 
 def convert_out(settings: Settings) -> SettingsOutput:
@@ -557,8 +442,27 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # basic auth section
     auth_fields: list[SettingsField] = []
 
-    # Prior UI login/password fields have been removed. Authentication now relies on OIDC or JWT tokens.
-    # The root password field (for dockerized environments) is retained.
+    auth_fields.append(
+        {
+            "id": "auth_login",
+            "title": "UI Login",
+            "description": "Set user name for web UI",
+            "type": "text",
+            "value": dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or "",
+        }
+    )
+
+    auth_fields.append(
+        {
+            "id": "auth_password",
+            "title": "UI Password",
+            "description": "Set user password for web UI",
+            "type": "password",
+            "value": (
+                PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) else ""
+            ),
+        }
+    )
 
     if runtime.is_dockerized():
         auth_fields.append(
@@ -1355,12 +1259,13 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
 
 def _get_api_key_field(settings: Settings, provider: str, title: str) -> SettingsField:
-    # UI-only field. Secrets are never persisted via settings.json; managed by Gateway.
+    key = settings["api_keys"].get(provider, "")
+    has_secret = isinstance(key, str) and key.strip() not in {"", "None"}
     return {
         "id": f"api_key_{provider}",
         "title": title,
         "type": "password",
-        "value": "",
+        "value": API_KEY_PLACEHOLDER if has_secret else "",
     }
 
 
@@ -1379,8 +1284,15 @@ def convert_in(settings: dict) -> Settings:
                     if field["id"] == "browser_http_headers" or field["id"].endswith("_kwargs"):
                         current[field["id"]] = _env_to_dict(field["value"])
                     elif field["id"].startswith("api_key_"):
-                        # Do not persist provider API keys via settings; handled by /v1/llm/credentials
-                        continue
+                        provider = field["id"][len("api_key_") :]
+                        if isinstance(current, dict):
+                            existing = current.get("api_keys")
+                        else:
+                            existing = getattr(current, "api_keys", None)
+                        if not isinstance(existing, dict):
+                            existing = {}
+                        existing[provider] = field["value"]
+                        current["api_keys"] = existing
                     else:
                         current[field["id"]] = field["value"]
     return current
@@ -1389,12 +1301,7 @@ def convert_in(settings: dict) -> Settings:
 def get_settings() -> Settings:
     global _settings
     if not _settings:
-        # Prefer centralized Gateway runtime settings when configured
-        runtime = _read_settings_from_gateway()
-        if runtime:
-            _settings = runtime
-        else:
-            _settings = _read_settings_file()
+        _settings = _read_settings_file()
     if not _settings:
         _settings = get_default_settings()
     norm = normalize_settings(_settings)
@@ -1429,9 +1336,7 @@ def normalize_settings(settings: Settings) -> Settings:
             copy = {}
 
     default_model = get_default_settings()
-    default = (
-        default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
-    )
+    default = default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
 
     # adjust settings values to match current version if needed
     if "version" not in copy or copy["version"] != default["version"]:
@@ -1476,55 +1381,14 @@ def _read_settings_file() -> Settings | None:
         return normalize_settings(parsed)
 
 
-def _read_settings_from_gateway() -> Settings | None:
-    """Fetch flattened runtime settings from the Gateway if configured.
-
-    Requires environment variable GATEWAY_BASE_URL (e.g. http://127.0.0.1:21016).
-    If GATEWAY_INTERNAL_TOKEN is present, it is sent as X-Internal-Token.
-    Returns None on any error.
-    """
-    base = (
-        os.getenv("GATEWAY_BASE_URL")
-        or os.getenv("WORKER_GATEWAY_BASE")
-        or os.getenv("SOMA_GATEWAY_URL")
-    )
-    if not base:
-        return None
-    url = base.rstrip("/") + "/internal/runtime/settings"
-    try:
-        import urllib.request
-
-        req = urllib.request.Request(url)
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN", "").strip()
-        if token:
-            req.add_header("X-Internal-Token", token)
-        with urllib.request.urlopen(req, timeout=3.0) as resp:  # nosec B310
-            data = resp.read().decode("utf-8")
-        obj = json.loads(data)
-        if not isinstance(obj, dict):
-            return None
-        settings_doc = obj.get("settings")
-        if not isinstance(settings_doc, dict):
-            return None
-        # Normalize into SettingsModel shape
-        return normalize_settings(settings_doc)  # type: ignore[arg-type]
-    except Exception:
-        return None
-
-
 def _write_settings_file(settings: Settings):
     settings = settings.copy()
     _write_sensitive_settings(settings)
-    persona_payload = _settings_payload_for_persona(settings)
     _remove_sensitive_settings(settings)
 
     # write settings
     content = json.dumps(settings, indent=4)
     files.write_file(SETTINGS_FILE, content)
-
-    # Persist sanitized settings back to Somabrain persona when configured
-    if persona_payload:
-        _sync_persona_settings(persona_payload)
 
 
 def _remove_sensitive_settings(settings: Settings):
@@ -1535,12 +1399,36 @@ def _remove_sensitive_settings(settings: Settings):
     settings["root_password"] = ""
     settings["mcp_server_token"] = ""
     settings["secrets"] = ""
-    settings["persona"] = {}
 
 
 def _write_sensitive_settings(settings: Settings):
-    # Stop writing provider API keys to .env to avoid env-based overrides.
-    # Provider credentials should be managed by the Gateway credentials store or SecretsManager.
+    # Persist provider API keys into .env using the conventional {PROVIDER}_API_KEY
+    # naming (e.g. OPENROUTER_API_KEY, GROQ_API_KEY). The internal api_keys
+    # dictionary stores entries keyed by provider id (e.g. "openrouter", "groq").
+    # Be tolerant to legacy shapes where keys might already be prefixed with
+    # "api_key_" from older UIs.
+    for key, val in settings["api_keys"].items():
+        if not isinstance(key, str):
+            continue
+        provider = key.strip()
+        if provider.startswith("api_key_"):
+            provider = provider[len("api_key_"):]
+        if not provider:
+            continue
+        if not isinstance(val, str) or val.strip() in {"", "None"}:
+            # Skip empty placeholders
+            continue
+        env_key = f"{provider.upper()}_API_KEY"
+        # One-time migration support: if old "API_KEY_{PROVIDER}" exists and new key is empty, copy it.
+        legacy_key = f"API_KEY_{provider.upper()}"
+        try:
+            cur = dotenv.get_dotenv_value(env_key)
+            legacy = dotenv.get_dotenv_value(legacy_key)
+            if (not cur) and legacy:
+                dotenv.save_dotenv_value(env_key, legacy)
+        except Exception:
+            pass
+        dotenv.save_dotenv_value(env_key, val)
 
     dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])
     if settings["auth_password"]:
@@ -1561,11 +1449,10 @@ def _write_sensitive_settings(settings: Settings):
 
 
 def get_default_settings() -> Settings:
-    settings = Settings(
+    return Settings(
         version=_get_version(),
-        # Default all providers to Groq; users can change in Settings
-        chat_model_provider="groq",
-        chat_model_name="llama-3.1-70b-versatile",
+        chat_model_provider="openrouter",
+        chat_model_name="openai/gpt-4.1",
         chat_model_api_base="",
         chat_model_kwargs={"temperature": "0"},
         chat_model_ctx_length=100000,
@@ -1574,8 +1461,8 @@ def get_default_settings() -> Settings:
         chat_model_rl_requests=0,
         chat_model_rl_input=0,
         chat_model_rl_output=0,
-        util_model_provider="groq",
-        util_model_name="llama-3.1-8b-instant",
+        util_model_provider="openrouter",
+        util_model_name="openai/gpt-4.1-mini",
         util_model_api_base="",
         util_model_ctx_length=100000,
         util_model_ctx_input=0.7,
@@ -1583,15 +1470,14 @@ def get_default_settings() -> Settings:
         util_model_rl_requests=0,
         util_model_rl_input=0,
         util_model_rl_output=0,
-        # Default embeddings to Groq as requested; can be changed to local/HF in UI
-        embed_model_provider="groq",
-        embed_model_name="text-embedding-3-large",
+        embed_model_provider="huggingface",
+        embed_model_name="sentence-transformers/all-MiniLM-L6-v2",
         embed_model_api_base="",
         embed_model_kwargs={},
         embed_model_rl_requests=0,
         embed_model_rl_input=0,
-        browser_model_provider="groq",
-        browser_model_name="llama-3.1-70b-versatile",
+        browser_model_provider="openrouter",
+        browser_model_name="openai/gpt-4.1",
         browser_model_api_base="",
         browser_model_vision=True,
         browser_model_rl_requests=0,
@@ -1649,14 +1535,6 @@ def get_default_settings() -> Settings:
         USE_LLM=True,
     )
 
-    persona_doc = _load_persona_profile()
-    if persona_doc:
-        _apply_persona_profile(settings, persona_doc)
-    else:
-        settings["persona"] = {}
-
-    return settings
-
 
 def _apply_settings(previous: Settings | None):
     global _settings
@@ -1675,15 +1553,9 @@ def _apply_settings(previous: Settings | None):
 
         # reload whisper model if necessary
         if not previous or _settings["stt_model_size"] != previous["stt_model_size"]:
-                # Lazy import of whisper to avoid ImportError when audio support is disabled.
-                try:
-                    from python.helpers import whisper as _whisper
-                except Exception:
-                    _whisper = None
-                if _whisper:
-                    defer.DeferredTask().start_task(
-                        _whisper.preload, _settings["stt_model_size"]
-                    )  # TODO overkill, replace with background task
+            defer.DeferredTask().start_task(
+                whisper.preload, _settings["stt_model_size"]
+            )  # TODO overkill, replace with background task
 
         # force memory reload on embedding model change
         if not previous or (
@@ -1870,17 +1742,11 @@ def get_runtime_config(set: Settings):
 
 
 def create_auth_token() -> str:
-    """Generate a deterministic token for internal authentication.
-
-    Historically this token incorporated the UI ``AUTH_LOGIN`` and ``AUTH_PASSWORD``
-    environment variables. Those variables have been deprecated and are no longer
-    required for the core system operation. The token now derives solely from the
-    persistent runtime identifier, ensuring uniqueness while simplifying the
-    configuration.
-    """
     runtime_id = runtime.get_persistent_id()
+    username = dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or ""
+    password = dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) or ""
     # use base64 encoding for a more compact token with alphanumeric chars
-    hash_bytes = hashlib.sha256(runtime_id.encode()).digest()
+    hash_bytes = hashlib.sha256(f"{runtime_id}:{username}:{password}".encode()).digest()
     # encode as base64 and remove any non-alphanumeric chars (like +, /, =)
     b64_token = base64.urlsafe_b64encode(hash_bytes).decode().replace("=", "")
     return b64_token[:16]

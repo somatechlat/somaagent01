@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
-
-from observability.log_redaction import install_redaction_filter
 
 _LOGGING_INITIALISED = False
 
@@ -69,9 +68,7 @@ def setup_logging(default_level: str | None = None) -> None:
     if _LOGGING_INITIALISED:
         return
 
-    from services.common import runtime_config as cfg
-
-    level_name = default_level or cfg.env("LOG_LEVEL", "INFO")
+    level_name = default_level or os.getenv("LOG_LEVEL", "INFO")
     level = getattr(logging, level_name.upper(), logging.INFO)
 
     root = logging.getLogger()
@@ -84,13 +81,5 @@ def setup_logging(default_level: str | None = None) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())
     root.addHandler(handler)
-
-    # Optional redaction (enabled by default for safety)
-    if cfg.env("LOG_REDACT_ENABLED", "true").lower() in {"true", "1", "yes", "on"}:
-        try:
-            install_redaction_filter(root)
-        except Exception:
-            # Defensive: never fail setup due to filter issues
-            pass
 
     _LOGGING_INITIALISED = True

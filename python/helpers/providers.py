@@ -52,7 +52,7 @@ class ProviderManager:
                     entry = {"id": pid, **(cfg or {})}
                     items.append(entry)
             elif isinstance(providers, list):
-                # Prior list format – use as-is
+                # Legacy list format – use as-is
                 items.extend(providers or [])
 
             normalised[p_type] = items

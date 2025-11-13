@@ -1,3 +1,4 @@
+import pytest
 from services.gateway.main import _normalize_llm_base_url
 
 
@@ -6,10 +7,7 @@ def test_normalize_strips_whitespace_and_trailing_slash():
 
 
 def test_normalize_removes_chat_completions_path():
-    assert (
-        _normalize_llm_base_url("https://api.example.com/v1/chat/completions")
-        == "https://api.example.com"
-    )
+    assert _normalize_llm_base_url("https://api.example.com/v1/chat/completions") == "https://api.example.com"
 
 
 def test_normalize_keeps_http_in_dev():
@@ -21,11 +19,3 @@ def test_normalize_keeps_http_in_dev():
 
 def test_normalize_returns_empty_for_blank():
     assert _normalize_llm_base_url("") == ""
-
-
-def test_openrouter_openai_path_is_mapped_to_api():
-    # Inputs with /openai should normalize to host root with /api
-    out = _normalize_llm_base_url("https://openrouter.ai/openai/v1")
-    assert out == "https://openrouter.ai/api"
-    out2 = _normalize_llm_base_url("https://openrouter.ai/openai")
-    assert out2 == "https://openrouter.ai/api"

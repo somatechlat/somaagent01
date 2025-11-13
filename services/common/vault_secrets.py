@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
@@ -77,23 +78,21 @@ def load_kv_secret(
         log.warning("Vault integration unavailable", extra={"reason": str(exc)})
         return None
 
-    from services.common import runtime_config as cfg
-
-    url = url or cfg.env("VAULT_ADDR")
-    namespace = namespace or cfg.env("VAULT_NAMESPACE")
+    url = url or os.getenv("VAULT_ADDR")
+    namespace = namespace or os.getenv("VAULT_NAMESPACE")
     token = _resolve_vault_token(
-        token=token or cfg.env("VAULT_TOKEN"),
-        token_file=token_file or cfg.env("VAULT_TOKEN_FILE"),
+        token=token or os.getenv("VAULT_TOKEN"),
+        token_file=token_file or os.getenv("VAULT_TOKEN_FILE"),
     )
     if not token:
         log.error("Vault token missing; cannot authenticate", extra={"path": path})
         return None
 
     if verify is None:
-        if cfg.env("VAULT_SKIP_VERIFY", "false").lower() in {"1", "true", "yes", "on"}:
+        if os.getenv("VAULT_SKIP_VERIFY", "false").lower() in {"1", "true", "yes", "on"}:
             verify_value: str | bool = False
         else:
-            verify_value = cfg.env("VAULT_CA_CERT") or True
+            verify_value = os.getenv("VAULT_CA_CERT") or True
     else:
         verify_value = _coerce_verify(verify)
 

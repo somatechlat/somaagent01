@@ -28,6 +28,7 @@ class RecallWait(Extension):
             if set["memory_recall_delayed"]:
                 if iter == loop_data.iteration:
                     delay_text = self.agent.read_prompt("memory.recall_delay_msg.md")
+                    loop_data.extras_temporary["memory_recall_delayed"] = delay_text
                     self.agent.context.log.log(
                         type="debug",
                         heading="RecallWait: delayed mode, inserted delay text",

@@ -4,20 +4,17 @@ from typing import Any, List, Sequence
 # Optional FAISS import: tolerate absence in minimal/dev images
 try:  # pragma: no cover - environment dependent
     import faiss  # type: ignore
-
     _FAISS_AVAILABLE = True
 except Exception:  # pragma: no cover
     faiss = None  # type: ignore
     _FAISS_AVAILABLE = False
 
+# LangChain imports with compatibility across versions
 try:  # Newer LC moved CacheBackedEmbeddings
-    from langchain.embeddings.cache import (
-        CacheBackedEmbeddings as LC_CacheBackedEmbeddings,  # type: ignore
-    )
+    from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+except Exception:  # pragma: no cover - fallback for older LC
     try:
-        from langchain.embeddings import (
-            CacheBackedEmbeddings as LC_CacheBackedEmbeddings,  # type: ignore
-        )
+        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
     except Exception:
         LC_CacheBackedEmbeddings = None  # type: ignore
 
@@ -27,7 +24,6 @@ try:
     from langchain_community.vectorstores import FAISS  # type: ignore
     from langchain_community.vectorstores.utils import DistanceStrategy  # type: ignore
     from langchain_core.documents import Document  # type: ignore
-
     _LC_AVAILABLE = True
 except Exception:  # pragma: no cover
     InMemoryByteStore = None  # type: ignore

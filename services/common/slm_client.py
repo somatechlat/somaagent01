@@ -1,12 +1,10 @@
-
-"""This client no longer reads any environment variables. All configuration must be
-provided explicitly by the caller (base_url, model, api_key, temperature, etc.).
-"""
+"""Async client for OSS SLM/LLM endpoints (OpenAI-compatible)."""
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple
 
@@ -22,18 +20,18 @@ class ChatMessage:
 
 
 class SLMClient:
-    def __init__(
-        self,
-        base_url: str | None = None,
-        model: str | None = None,
-        *,
-        api_key: str | None = None,
-        temperature: float | None = None,
-    ) -> None:
-        self.base_url = base_url or ""
-        self.default_model = model or ""
-        self.api_key = api_key or ""
-        self.default_temperature = 0.2 if temperature is None else float(temperature)
+    def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
+        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
+        self.default_model = model or os.getenv(
+            "SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct"
+        )
+        try:
+            # Lazy import to avoid tight coupling when helpers are unused in some runtimes
+            from python.helpers.dotenv import get_dotenv_value as _get
+        except Exception:
+            def _get(k: str, default: str | None = None):
+                return os.getenv(k, default)
+        self.api_key = _get("SLM_API_KEY")  # required for authenticated providers
         self._client = httpx.AsyncClient(timeout=30.0)
 
     async def chat(
@@ -46,18 +44,23 @@ class SLMClient:
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> Tuple[str, dict[str, int]]:
-        if not ((base_url or self.base_url) and (model or self.default_model)):
+        # No dev fallback: fail fast if misconfigured
+        if not (self.base_url and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
-            # Most providers require a key; enforce presence to avoid silent failures.
-            raise RuntimeError("API key missing: no LLM calls will succeed")
+            # Some providers allow no key; most require it. Enforce presence to avoid silent failures.
+            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": (temperature if temperature is not None else self.default_temperature),
+            "temperature": (
+                temperature
+                if temperature is not None
+                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
+            ),
             "stream": False,
         }
         if kwargs:
@@ -70,9 +73,7 @@ class SLMClient:
         if response.is_error:
             try:
                 body = response.text
-                LOGGER.error(
-                    "SLM error response", extra={"status": response.status_code, "body": body[:800]}
-                )
+                LOGGER.error("SLM error response", extra={"status": response.status_code, "body": body[:800]})
             except Exception:
                 pass
             response.raise_for_status()
@@ -100,17 +101,21 @@ class SLMClient:
         temperature: Optional[float] = None,
         **kwargs: Any,
     ) -> AsyncIterator[Dict[str, Any]]:
-        if not ((base_url or self.base_url) and (model or self.default_model)):
+        if not (self.base_url and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
-            raise RuntimeError("API key missing: no LLM calls will succeed")
+            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": (temperature if temperature is not None else self.default_temperature),
+            "temperature": (
+                temperature
+                if temperature is not None
+                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
+            ),
             "stream": True,
         }
         if kwargs:
@@ -123,13 +128,7 @@ class SLMClient:
             if response.is_error:
                 try:
                     body = await response.aread()
-                    LOGGER.error(
-                        "SLM stream error response",
-                        extra={
-                            "status": response.status_code,
-                            "body": body.decode("utf-8", errors="ignore")[:800],
-                        },
-                    )
+                    LOGGER.error("SLM stream error response", extra={"status": response.status_code, "body": body.decode("utf-8", errors="ignore")[:800]})
                 except Exception:
                     pass
                 response.raise_for_status()

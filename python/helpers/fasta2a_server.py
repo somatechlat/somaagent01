@@ -40,10 +40,12 @@ class AgentZeroWorker(Worker):  # type: ignore[misc]
             task_id = params["id"]
             message = params["message"]
 
+            _PRINTER.print(f"[A2A] Processing task {task_id} with new temporary context")
 
             # Convert A2A message to Agent Zero format
             agent_message = self._convert_message(message)
 
+            # Always create new temporary context for this A2A conversation
             cfg = initialize_agent()
             context = AgentContext(cfg, type=AgentContextType.BACKGROUND)
 
@@ -96,6 +98,7 @@ class AgentZeroWorker(Worker):  # type: ignore[misc]
         _PRINTER.print(f"[A2A] Cancelling task {task_id}")
         await self.storage.update_task(task_id=task_id, state="canceled")  # type: ignore[attr-defined]
 
+        # Note: No context cleanup needed since contexts are always temporary and cleaned up in run_task
 
     def build_message_history(self, history: List[Any]) -> List[Message]:  # type: ignore
         # Not used in this simplified implementation

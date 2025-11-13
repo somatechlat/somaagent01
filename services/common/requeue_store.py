@@ -17,12 +17,10 @@ class RequeueStore:
         prefix: Optional[str] = None,
     ) -> None:
         # Resolve Redis URL with environment variable expansion to support values like
-        # SA01_REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
-        from services.common import runtime_config as cfg
-
-        raw_url = url or cfg.settings().redis_url or "redis://localhost:6379/0"
+        # REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
+        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.url = os.path.expandvars(raw_url)
-        self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")
+        self.prefix = prefix or os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
 
@@ -33,14 +31,14 @@ class RequeueStore:
     def from_settings(cls, settings: Any) -> "RequeueStore":
         """Construct from settings object.
 
+        Expects attributes or env fallbacks:
         - redis_url (str)
         - policy_requeue_prefix (str)
         """
-        from services.common import runtime_config as cfg
-
-        url = getattr(settings, "redis_url", None) or cfg.settings().redis_url
-        prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env(
-            "POLICY_REQUEUE_PREFIX"
+        url = getattr(settings, "redis_url", None) or os.getenv("REDIS_URL")
+        prefix = (
+            getattr(settings, "policy_requeue_prefix", None)
+            or os.getenv("POLICY_REQUEUE_PREFIX")
         )
         return cls(url=url, prefix=prefix)
 
@@ -73,6 +71,7 @@ class RequeueStore:
                 await self.client.srem(self.keyset, identifier)
         return sorted(results, key=lambda item: item.get("timestamp", 0.0), reverse=True)
 
+    # --- Backwards-compatibility aliases used by gateway ---
     async def list_requeue(self) -> list[dict[str, Any]]:
         return await self.list()
 

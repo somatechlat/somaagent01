@@ -1,10 +1,4 @@
-"""API key storage and management utilities.
-
-This module provides both an in-memory and a Redis-backed API key store.
-
-Note: The RedisApiKeyStore constructor signature is designed to match
-callers in the gateway service, accepting `redis_url` and `redis_password`.
-"""
+"""API key storage and management utilities."""
 
 from __future__ import annotations
 
@@ -13,7 +7,6 @@ import base64
 import binascii
 import hashlib
 import json
-import os
 import secrets
 import time
 import uuid
@@ -164,21 +157,13 @@ def _key_id_from_value(api_key: str) -> Optional[str]:
 
 
 class RedisApiKeyStore(ApiKeyStore):
-    """Redis-backed key store suitable for production deployments.
+    """Redis-backed key store suitable for production deployments."""
 
-    Parameters
-    - redis_url: Redis connection URL (e.g., redis://localhost:6379/0). Env vars are expanded.
-    - redis_password: Optional password to authenticate with Redis.
-    """
-
-    def __init__(self, redis_url: str | None = None, redis_password: str | None = None) -> None:
-        raw_url = redis_url or "redis://localhost:6379/0"
+    def __init__(self, url: str | None = None) -> None:
+        raw_url = url or "redis://localhost:6379/0"
         # Expand env placeholders so URLs like redis://localhost:${REDIS_PORT}/0 work in local .env
         self.url = os.path.expandvars(raw_url)
-        client_kwargs: dict[str, Any] = {"decode_responses": True}
-        if redis_password:
-            client_kwargs["password"] = redis_password
-        self._client: redis.Redis = redis.from_url(self.url, **client_kwargs)
+        self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         self._namespace = "gateway:api_keys"
 
     async def create_key(self, label: str, *, created_by: str | None = None) -> ApiKeySecret:

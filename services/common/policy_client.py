@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -29,15 +30,11 @@ class PolicyClient:
         base_url: Optional[str] = None,
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
-        from services.common import runtime_config as cfg
-
-        self.base_url = base_url or cfg.env("POLICY_BASE_URL", "http://opa:8181")
-        # Default to the same decision path used by the gateway's OPA integration
-        # so selective authorize() calls evaluate the canonical rule.
-        self.data_path = cfg.env("POLICY_DATA_PATH", "/v1/data/soma/policy/allow")
+        self.base_url = base_url or os.getenv("POLICY_BASE_URL", "http://opa:8181")
+        self.data_path = os.getenv("POLICY_DATA_PATH", "/v1/data/soma/allow")
         self._client = httpx.AsyncClient(timeout=10.0)
-        self.cache_ttl = float(cfg.env("POLICY_CACHE_TTL", "2"))
-        # Fail-closed by default
+        self.cache_ttl = float(os.getenv("POLICY_CACHE_TTL", "2"))
+        # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored
         self.fail_open_default = False
         self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}
         self.tenant_config = tenant_config or TenantConfig()
