@@ -197,17 +197,7 @@ def build_default_registry() -> FeatureRegistry:
             enabled_env_var="SA01_ENABLE_REASONING_STREAM",
             stability="beta",
         ),
-        FeatureDescriptor(
-            key="conversation_policy_bypass",
-            description="Allow conversation policy bypass in LOCAL/dev mode for rapid iteration",
-            default_enabled=False,
-            profiles={"minimal": False, "standard": False, "enhanced": False, "max": False},
-            dependencies=[],
-            degrade_strategy="manual",
-            cost_impact="low",
-            tags=["dev", "policy"],
-            stability="experimental",
-        ),
+        # Removed legacy "conversation_policy_bypass" feature descriptor (dev‑only shim).
         # ------------------------------------------------------------------
         # Newly centralized service flags (deployment/profile aware)
         # ------------------------------------------------------------------

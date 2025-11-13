@@ -49,7 +49,9 @@ class VisionLoad(Tool):
                         PrintStyle().error(f"Error processing image {path}: {e}")
                         self.agent.context.log.log("warning", f"Error processing image {path}: {e}")
 
-        return Response(message="dummy", break_loop=False)
+        # Return actual processed image count
+        message = f"Processed {len([v for v in self.images_dict.values() if v is not None])} images successfully"
+        return Response(message=message, break_loop=False)
 
     async def after_execution(self, response: Response, **kwargs):
 

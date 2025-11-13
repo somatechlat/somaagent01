@@ -5,10 +5,11 @@ import threading
 from collections import OrderedDict
 from typing import Dict, List
 
-try:  # optional metrics
+# Metrics are required; fail fast if prometheus_client is unavailable.
+try:
     from prometheus_client import Counter
-except Exception:  # pragma: no cover
-    Counter = None  # type: ignore
+except Exception as exc:
+    raise ImportError("prometheus_client is required for EmbeddingCache metrics") from exc
 
 _CACHE_LOCK = threading.RLock()
 

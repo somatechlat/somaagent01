@@ -9982,6 +9982,7 @@ def _require_internal_token(request: Request) -> dict[str, str]:
 
     Returns a dict with optional tenant context derived from headers.
     """
+    # Retrieve the internal token from either the lowercase or canonical header name.
     provided = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
     from services.common import runtime_config as cfg
 

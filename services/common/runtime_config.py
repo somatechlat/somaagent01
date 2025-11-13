@@ -7,6 +7,19 @@ All access flows through FeatureRegistry with zero legacy patterns.
 from __future__ import annotations
 
 from services.common.registry import registry
+import os
+from typing import Optional
+
+def env(key: str, default: Optional[str] = None) -> str:
+    """Retrieve an environment variable with an optional default.
+
+    This helper restores the legacy ``cfg.env`` accessor expected by various
+    modules (e.g., ``settings_sa01``). It intentionally bypasses the feature
+    registry to provide a straightforward, fail‑closed configuration source.
+    """
+    # ``os.getenv`` returns ``None`` when the variable is missing; we coerce to
+    # ``str`` to match the original return type expectations.
+    return os.getenv(key, default) or ""
 
 # Canonical exports - no legacy patterns
 def deployment_mode() -> str:
