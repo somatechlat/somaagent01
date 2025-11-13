@@ -818,18 +818,14 @@ class MCPClientBase(ABC):
 
                     return result
                 except Exception as e:
-                    # Store the original exception and raise a dummy exception
+                    # Extract the real exception from ExceptionGroup if present
                     excs = getattr(e, "exceptions", None)  # Python 3.11+ ExceptionGroup
                     if excs:
                         original_exception = excs[0]
                     else:
                         original_exception = e
-                    # Create a dummy exception to break out of the async block
-                    raise RuntimeError("Dummy exception to break out of async block")
-        except Exception:
-            # Check if this is our dummy exception
-            if original_exception is not None:
-                e = original_exception
+                    raise original_exception
+        except Exception as e:
             # We have the original exception stored
             PrintStyle(background_color="#AA4455", font_color="white", padding=False).print(
                 f"MCPClientBase ({self.server.name} - {operation_name}): Error during operation: {type(e).__name__}: {e}"
@@ -981,6 +977,7 @@ class MCPClientLocal(MCPClientBase):
         import tempfile
 
         if not hasattr(self, "log_file") or self.log_file is None:
+            self.log_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".log")
 
         # use the stdio_client with our error log file
         stdio_transport = await current_exit_stack.enter_async_context(

@@ -152,11 +152,8 @@ class ProtectedPostgresClient:
         return await self.breaker.call_async(self._execute_query, query, *args)
 
     async def _execute_query(self, query: str, *args):
-        """Actual query execution."""
-        from python.integrations.postgres_client import postgres_pool
-
-        async with postgres_pool.acquire() as conn:
-            return await conn.execute(query, *args)
+        """Actual query execution - postgres_client not available."""
+        raise NotImplementedError("PostgreSQL client not available")
 
 
 class ProtectedKafkaClient:

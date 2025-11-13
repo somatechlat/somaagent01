@@ -270,12 +270,8 @@ class ConversationWorker:
         # Tool registry for model-led orchestration (no network hop)
         self.tool_registry = ToolRegistry()
         # Runtime LLM calls are made via Gateway; this object is not used for provider calls.
-        try:
-            import types  # noqa: WPS433 (std lib)
-
-            self.slm = types.SimpleNamespace(api_key=None)
-        except Exception:
-            # Last resort: dummy attr
+        # LLM credentials managed by Gateway; no local storage needed
+        self.slm = None
         # Persona cache (TTL seconds)
         # key: persona_id -> (cached_at_epoch_seconds, persona_dict | None)
         # Keeps outbound memory metadata enrichment fast and avoids repeated HTTP calls.
@@ -343,13 +339,11 @@ class ConversationWorker:
 
         Best-effort; returns empty string when not found.
         """
-        try:
-            for m in reversed(messages or []):
-                if getattr(m, "role", None) == "user":
-                    return str(getattr(m, "content", "") or "")
-        except Exception:
-            pass
-        return ""
+        # Return the most recent user message; raise if none found (no silent fallback).
+        for m in reversed(messages or []):
+            if getattr(m, "role", None) == "user":
+                return str(getattr(m, "content", "") or "")
+        raise RuntimeError("No user message found in conversation history")
 
     def _clamp_context_metadata(self, meta: Dict[str, Any]) -> Dict[str, Any]:
         """Clamp metadata payload for context.update to keep events lightweight.
@@ -607,13 +601,9 @@ class ConversationWorker:
     async def _ensure_llm_key(self) -> None:
         """No-op: credentials are not fetched by worker.
 
-        Runtime LLM calls go through Gateway which injects provider credentials
-        but does nothing now.
+        Runtime LLM calls go through Gateway which injects provider credentials.
         """
-        try:
-            self.slm.api_key = None
-        except Exception:
-            pass
+        pass
 
     async def _extract_text_from_path(self, path: str) -> str:
         """Best-effort text extraction for common file types.
@@ -623,7 +613,8 @@ class ConversationWorker:
         try:
             p = Path(path)
             if not p.exists() or not p.is_file():
-                return ""
+                # Fail fast – callers must provide a valid path.
+                raise FileNotFoundError(f"File not found or not a regular file: {path}")
             mime, _ = mimetypes.guess_type(str(p))
             mime = mime or "application/octet-stream"
             # Text-like
@@ -645,8 +636,9 @@ class ConversationWorker:
                         for page in doc:
                             text_parts.append(page.get_text("text"))
                     return "\n".join(text_parts)[:400_000]
-                except Exception:
-                    return ""
+                except Exception as exc:
+                    # Propagate the error – silent empty string hides problems.
+                    raise RuntimeError(f"Failed to read text file {path}: {exc}")
             # Images via pytesseract if available
             if mime.startswith("image/"):
                 try:
@@ -655,8 +647,8 @@ class ConversationWorker:
 
                     img = Image.open(str(p))
                     return pytesseract.image_to_string(img)[:200_000]
-                except Exception:
-                    return ""
+                except Exception as exc:
+                    raise RuntimeError(f"PDF extraction failed for {path}: {exc}")
             return ""
         except Exception:
             return ""
@@ -860,8 +852,8 @@ class ConversationWorker:
                         for page in doc:
                             parts.append(page.get_text("text"))
                     return "\n".join(parts)[:400_000]
-                except Exception:
-                    return ""
+                except Exception as exc:
+                    raise RuntimeError(f"Image OCR extraction failed for {path}: {exc}")
             if (mime or "").startswith("image/"):
                 try:
                     import io as _io
@@ -873,9 +865,10 @@ class ConversationWorker:
                     return pytesseract.image_to_string(img)[:200_000]
                 except Exception:
                     return ""
-            return ""
-        except Exception:
-            return ""
+            # If none of the handlers succeeded, raise a clear error.
+            raise RuntimeError(f"Unable to extract text from file {path}: unsupported MIME type {mime}")
+        except Exception as exc:
+            raise RuntimeError(f"Unexpected error during text extraction from {path}: {exc}")
 
     async def _ingest_attachment_by_id(
         self,

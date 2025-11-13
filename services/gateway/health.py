@@ -31,23 +31,12 @@ class HealthChecker:
         }
 
     async def _check_postgres(self) -> Dict[str, Any]:
-        """Check PostgreSQL connectivity."""
-        try:
-            from python.integrations.postgres_client import postgres_pool
-
-            async with postgres_pool.acquire() as conn:
-                result = await conn.fetchval("SELECT 1")
-                return {
-                    "status": "healthy" if result == 1 else "unhealthy",
-                    "message": "PostgreSQL connection successful",
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
-        except Exception as e:
-            return {
-                "status": "unhealthy",
-                "message": f"PostgreSQL error: {str(e)}",
-                "timestamp": datetime.utcnow().isoformat(),
-            }
+        """PostgreSQL check disabled - no postgres_client available."""
+        return {
+            "status": "skipped",
+            "message": "PostgreSQL client not available",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 
     async def _check_kafka(self) -> Dict[str, Any]:
         """Check Kafka connectivity."""

@@ -4,51 +4,29 @@ import math
 import threading
 from typing import Any, Dict, List, Tuple
 
-try:  # optional metrics
+# Metrics are mandatory; fail fast if prometheus_client is unavailable.
+try:
     from prometheus_client import Counter, Gauge, Histogram
-except Exception:  # pragma: no cover
-    Counter = Histogram = Gauge = None  # type: ignore
+except Exception as exc:  # pragma: no cover
+    raise ImportError(
+        "prometheus_client is required for semantic recall metrics but is not installed"
+    ) from exc
 
-if Counter and Histogram and Gauge:
-    SEMANTIC_RECALL_REQUESTS = Counter(
-        "semantic_recall_requests_total",
-        "Semantic recall requests",
-        labelnames=("result",),  # ok|disabled|error
-    )
-    SEMANTIC_RECALL_LATENCY = Histogram(
-        "semantic_recall_request_seconds",
-        "Latency of semantic recall operations",
-    )
-    SEMANTIC_RECALL_INDEX_SIZE = Gauge(
-        "semantic_recall_index_size",
-        "Current in-memory semantic recall index size",
-    )
-else:  # pragma: no cover
-
-    class _Dummy:
-        def labels(self, *_a, **_k):
-            return self
-
-        def inc(self, *_a, **_k):
-            pass
-
-        def set(self, *_a, **_k):
-            pass
-
-        def time(self):
-            class _Ctx:
-                def __enter__(self):
-                    return None
-
-                def __exit__(self, *exc):
-                    return False
-
-            return _Ctx()
-
-        def observe(self, *_a, **_k):
-            pass
-
-    SEMANTIC_RECALL_REQUESTS = SEMANTIC_RECALL_LATENCY = SEMANTIC_RECALL_INDEX_SIZE = _Dummy()  # type: ignore
+# Define Prometheus metrics – these will raise if the import succeeded but the
+# metric objects cannot be created for any reason, ensuring a hard failure.
+SEMANTIC_RECALL_REQUESTS = Counter(
+    "semantic_recall_requests_total",
+    "Semantic recall requests",
+    labelnames=("result",),  # ok|disabled|error
+)
+SEMANTIC_RECALL_LATENCY = Histogram(
+    "semantic_recall_request_seconds",
+    "Latency of semantic recall operations",
+)
+SEMANTIC_RECALL_INDEX_SIZE = Gauge(
+    "semantic_recall_index_size",
+    "Current in-memory semantic recall index size",
+)
 
 _LOCK = threading.RLock()
 
