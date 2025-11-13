@@ -1,6 +1,6 @@
-import base64
 import os
 import re
+import base64
 from typing import Any
 
 from dotenv import load_dotenv as _load_dotenv
@@ -22,6 +22,7 @@ def get_dotenv_file_path():
 
 
 def get_dotenv_value(key: str, default: Any = None):
+    """Return an environment value with production-friendly fallbacks.
 
     Resolution order (first non-empty wins):
     1) KEY

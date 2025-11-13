@@ -17,7 +17,6 @@ try:
     )
 except Exception:  # pragma: no cover - optional dependency
     KNOWLEDGE_AVAILABLE = False
-
     # Define no-op placeholders to avoid NameError at module import-time.
     class CSVLoader:
         def __init__(self, *args, **kwargs):
@@ -33,10 +32,7 @@ except Exception:  # pragma: no cover - optional dependency
 
     class UnstructuredHTMLLoader:
         def __init__(self, *args, **kwargs):
-            raise RuntimeError(
-                "langchain_community not installed; UnstructuredHTMLLoader unavailable"
-            )
-
+            raise RuntimeError("langchain_community not installed; UnstructuredHTMLLoader unavailable")
 
 from python.helpers.log import LogItem
 from python.helpers.print_style import PrintStyle
@@ -70,6 +66,7 @@ def load_knowledge(
     """
     Load knowledge files from a directory with change detection and metadata enhancement.
 
+    This function now includes enhanced error handling and compatibility with the
     intelligent memory consolidation system.
     """
 
@@ -77,9 +74,7 @@ def load_knowledge(
     # the UI and other services to start in minimal/dev containers.
     if not KNOWLEDGE_AVAILABLE:
         if log_item:
-            log_item.stream(
-                progress="\nKnowledge loading skipped: langchain_community not installed"
-            )
+            log_item.stream(progress="\nKnowledge loading skipped: langchain_community not installed")
         PrintStyle(font_color="yellow").print(
             "Knowledge loading skipped: langchain_community not installed"
         )
@@ -92,6 +87,8 @@ def load_knowledge(
         "pdf": PyPDFLoader,
         "csv": CSVLoader,
         "html": UnstructuredHTMLLoader,
+        "json": TextLoader,  # Use TextLoader for better consolidation compatibility
+        "md": TextLoader,  # Use TextLoader for better consolidation compatibility
     }
 
     cnt_files = 0
@@ -203,6 +200,7 @@ def load_knowledge(
                     )
                     documents = loader.load_and_split()
 
+                    # Enhanced metadata for better consolidation compatibility
                     enhanced_metadata = {
                         **metadata,
                         "source_file": os.path.basename(file_path),

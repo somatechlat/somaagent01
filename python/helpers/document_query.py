@@ -541,15 +541,19 @@ class DocumentQueryHelper:
         if scheme == "file":
             # Use RFC file operations to read the PDF file as binary
             file_content_bytes = files.read_file_bin(document)
+            # Create a temporary file for PyMuPDFLoader since it needs a file path
             import tempfile
 
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
                 temp_file.write(file_content_bytes)
                 temp_file_path = temp_file.name
         elif scheme in ["http", "https"]:
+            # download the file from the web url to a temporary file using python libraries for downloading
             import tempfile
 
             import requests
 
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
                 response = requests.get(document, timeout=10.0)
                 if response.status_code != 200:
                     raise ValueError(
@@ -562,6 +566,7 @@ class DocumentQueryHelper:
 
         if not os.path.exists(temp_file_path):
             raise ValueError(
+                f"DocumentQueryHelper::handle_pdf_document: Temporary file not found: {temp_file_path}"
             )
 
         try:
@@ -588,6 +593,7 @@ class DocumentQueryHelper:
                 import pytesseract
 
                 PrintStyle.debug(
+                    f"DocumentQueryHelper::handle_pdf_document: FALLBACK Converting PDF to images: {temp_file_path}"
                 )
 
                 # Convert PDF to images
@@ -614,11 +620,13 @@ class DocumentQueryHelper:
         elif scheme == "file":
             # Use RFC file operations to read the file as binary
             file_content_bytes = files.read_file_bin(document)
+            # Create a temporary file for UnstructuredLoader since it needs a file path
             import os
             import tempfile
 
             # Get file extension to preserve it for proper processing
             _, ext = os.path.splitext(document)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_file:
                 temp_file.write(file_content_bytes)
                 temp_file_path = temp_file.name
 
@@ -632,6 +640,7 @@ class DocumentQueryHelper:
                 )
                 elements = loader.load()
             finally:
+                # Clean up temporary file
                 os.unlink(temp_file_path)
         else:
             raise ValueError(f"Unsupported scheme: {scheme}")

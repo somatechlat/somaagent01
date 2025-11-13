@@ -16,19 +16,15 @@ import asyncpg
 
 class UiSettingsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
-
-        raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _pool_ensure(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(
-                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
-            )
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
     async def ensure_schema(self) -> None:
@@ -50,20 +46,7 @@ class UiSettingsStore:
             if not row:
                 return {}
             val = row["value"]
-            # Depending on asyncpg codecs, JSONB may arrive as a Python dict or a JSON string.
-            # Handle both shapes gracefully.
-            if isinstance(val, dict):
-                return dict(val)
-            if isinstance(val, str):
-                try:
-                    parsed = json.loads(val)
-                    return dict(parsed) if isinstance(parsed, dict) else {}
-                except Exception:
-                    return {}
-            try:
-                return dict(val)  # type: ignore[arg-type]
-            except Exception:
-                return {}
+            return dict(val) if isinstance(val, dict) else {}
 
     async def set(self, value: dict[str, Any]) -> None:
         pool = await self._pool_ensure()
@@ -76,3 +59,4 @@ class UiSettingsStore:
                 """,
                 json.dumps(value, ensure_ascii=False),
             )
+

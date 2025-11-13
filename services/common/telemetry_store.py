@@ -7,18 +7,15 @@ import os
 from typing import Any, Optional
 
 import asyncpg
+import os
 
 from services.common.settings_base import BaseServiceSettings
 
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
-
-        raw_dsn = (
-            dsn
-            or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
-            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        raw_dsn = dsn or os.getenv(
+            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
@@ -29,13 +26,9 @@ class TelemetryStore:
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            from services.common import runtime_config as cfg
-
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(
-                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
-            )
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
             await self._ensure_schema()
         return self._pool
 
@@ -107,48 +100,6 @@ class TelemetryStore:
                     extra JSONB,
                     UNIQUE(model, deployment_mode, window_start, window_end)
                 );
-
-                CREATE TABLE IF NOT EXISTS generic_metrics (
-                    id SERIAL PRIMARY KEY,
-                    metric_name TEXT NOT NULL,
-                    labels JSONB,
-                    value DOUBLE PRECISION,
-                    metadata JSONB,
-                    occurred_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                -- Helpful indexes for common queries and recent lookups
-                DO $$
-                BEGIN
-                    -- Composite index for metric_name and recency
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_class c
-                        JOIN pg_namespace n ON n.oid = c.relnamespace
-                        WHERE c.relkind = 'i' AND c.relname = 'idx_generic_metrics_name_time'
-                    ) THEN
-                        CREATE INDEX idx_generic_metrics_name_time
-                        ON generic_metrics (metric_name, occurred_at DESC);
-                    END IF;
-
-                    -- Standalone occurred_at index for time-based scans
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_class c
-                        JOIN pg_namespace n ON n.oid = c.relnamespace
-                        WHERE c.relkind = 'i' AND c.relname = 'idx_generic_metrics_occurred_at'
-                    ) THEN
-                        CREATE INDEX idx_generic_metrics_occurred_at
-                        ON generic_metrics (occurred_at DESC);
-                    END IF;
-
-                    -- GIN index on labels JSONB for generic key/value filters
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_class c
-                        JOIN pg_namespace n ON n.oid = c.relnamespace
-                        WHERE c.relkind = 'i' AND c.relname = 'idx_generic_metrics_labels'
-                    ) THEN
-                        CREATE INDEX idx_generic_metrics_labels
-                        ON generic_metrics USING GIN (labels jsonb_ops);
-                    END IF;
-                END$$;
                 """
             )
 
@@ -262,51 +213,3 @@ class TelemetryStore:
                 score,
                 json.dumps(extra, ensure_ascii=False),
             )
-
-    async def insert_generic_metric(
-        self,
-        *,
-        metric_name: str,
-        labels: dict[str, Any] | None,
-        value: float | int | None,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        pool = await self._ensure_pool()
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO generic_metrics (metric_name, labels, value, metadata)
-                VALUES ($1,$2,$3,$4)
-                """,
-                metric_name,
-                json.dumps(labels or {}, ensure_ascii=False),
-                float(value) if value is not None else None,
-                json.dumps(metadata or {}, ensure_ascii=False),
-            )
-
-    async def fetch_recent_generic(self, metric_name: str, limit: int = 25) -> list[dict[str, Any]]:
-        pool = await self._ensure_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT metric_name, labels, value, metadata, occurred_at
-                FROM generic_metrics
-                WHERE metric_name = $1
-                ORDER BY occurred_at DESC
-                LIMIT $2
-                """,
-                metric_name,
-                limit,
-            )
-        out: list[dict[str, Any]] = []
-        for r in rows:
-            out.append(
-                {
-                    "metric_name": r["metric_name"],
-                    "labels": r["labels"],
-                    "value": r["value"],
-                    "metadata": r["metadata"],
-                    "occurred_at": r["occurred_at"].isoformat() if r["occurred_at"] else None,
-                }
-            )
-        return out

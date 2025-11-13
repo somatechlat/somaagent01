@@ -3,25 +3,38 @@ from python.helpers.extension import Extension
 
 class MaskReasoningStreamChunk(Extension):
     async def execute(self, **kwargs):
-        # Get stream data from kwargs
+        # Get stream data and agent from kwargs
         stream_data = kwargs.get("stream_data")
-        if not stream_data:
+        agent = kwargs.get("agent")
+        if not agent or not stream_data:
             return
 
         try:
-            from services.common.masking import mask_text
+            from python.helpers.secrets import SecretsManager
 
-            chunk = stream_data.get("chunk") or ""
-            full = stream_data.get("full") or ""
-            masked_chunk, _ = mask_text(chunk)
-            masked_full, _ = mask_text(full)
-            stream_data["chunk"] = masked_chunk
-            stream_data["full"] = masked_full
+            secrets_mgr = SecretsManager.get_instance()
 
-            if masked_chunk:
+            # Initialize filter if not exists
+            filter_key = "_reason_stream_filter"
+            filter_instance = agent.get_data(filter_key)
+            if not filter_instance:
+                filter_instance = secrets_mgr.create_streaming_filter()
+                agent.set_data(filter_key, filter_instance)
+
+            # Process the chunk through the streaming filter
+            processed_chunk = filter_instance.process_chunk(stream_data["chunk"])
+
+            # Update the stream data with processed chunk
+            stream_data["chunk"] = processed_chunk
+
+            # Also mask the full text for consistency
+            stream_data["full"] = secrets_mgr.mask_values(stream_data["full"])
+
+            # Print the processed chunk (this is where printing should happen)
+            if processed_chunk:
                 from python.helpers.print_style import PrintStyle
 
-                PrintStyle().stream(masked_chunk)
+                PrintStyle().stream(processed_chunk)
         except Exception:
             # If masking fails, proceed without masking
             pass

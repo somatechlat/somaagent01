@@ -114,6 +114,7 @@ class TTYSession:
         except asyncio.TimeoutError:
             return None
 
+    # backward-compat alias:
     readline = read
 
     async def read_full_until_idle(self, idle_timeout, total_timeout):

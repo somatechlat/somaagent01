@@ -38,7 +38,6 @@ class TelemetryPublisher:
             "audio": "audio.metrics",
             "budget": "budget.events",
             "escalation": "llm.escalation.metrics",
-            "generic": "metrics.generic",
         }
 
     async def _publish(self, topic: str, event: dict[str, Any]) -> None:
@@ -159,28 +158,3 @@ class TelemetryPublisher:
         }
         await self._publish(self.topics["escalation"], event)
         await self.store.insert_escalation(event)
-
-    async def emit_generic_metric(
-        self,
-        *,
-        metric_name: str,
-        labels: dict[str, Any] | None = None,
-        value: float | int | None = None,
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> None:
-        event = {
-            "event_id": str(uuid.uuid4()),
-            "metric_name": metric_name,
-            "labels": labels or {},
-            "value": value,
-            "timestamp": time.time(),
-            "metadata": metadata or {},
-        }
-        # Publish lightweight; session/tenant may be absent for global metrics
-        await self._publish(self.topics["generic"], event)
-        await self.store.insert_generic_metric(
-            metric_name=metric_name,
-            labels=labels or {},
-            value=value,
-            metadata=metadata or {},
-        )

@@ -4,6 +4,7 @@ from python.helpers.tool import Response, Tool
 
 
 class A2AChatTool(Tool):
+    """Communicate with another FastA2A-compatible agent."""
 
     async def execute(self, **kwargs):
         if not is_client_available():

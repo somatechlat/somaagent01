@@ -20,6 +20,7 @@ _SCHEMA_FILES: Dict[str, str] = {
     "tool_result": "tool_result.json",
     "tool_event": "tool_event.json",
     "conversation_event": "conversation_event.json",
+    "delegation_task": "delegation_task.json",
     "tool_request": "tool_request.json",
 }
 

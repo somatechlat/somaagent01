@@ -3,15 +3,15 @@
 Stores attachment bytes inline in BYTEA with metadata. Provides schema ensure,
 insert, fetch, and TTL purge helpers.
 """
-
 from __future__ import annotations
 
 import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Any, AsyncIterator
 
+import os
 import asyncpg
 
 
@@ -32,21 +32,15 @@ class Attachment:
 
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
-
-        raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            from services.common import runtime_config as cfg
-
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(
-                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
-            )
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
     async def close(self) -> None:

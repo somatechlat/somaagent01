@@ -51,6 +51,7 @@ def normalize_name(name: str) -> str:
 
 
 def _determine_server_type(config_dict: dict) -> str:
+    """Determine the server type based on configuration, with backward compatibility."""
     # First check if type is explicitly specified
     if "type" in config_dict:
         server_type = config_dict["type"].lower()
@@ -70,6 +71,7 @@ def _determine_server_type(config_dict: dict) -> str:
             # This allows for graceful handling of new types
             pass
 
+    # Backward compatibility: if no type specified, use URL-based detection
     if "url" in config_dict or "serverUrl" in config_dict:
         return "MCPServerRemote"
     else:
@@ -173,6 +175,7 @@ class MCPTool(Tool):
         #     elif isinstance(content, str):
         #         user_message_text = content
         #     else:
+        #         # Fallback for any other types (e.g. list, if that were possible for content)
         #         user_message_text = str(content)
 
         # # Ensure user_message_text is a string before length check and slicing
@@ -413,7 +416,9 @@ class MCPConfig(BaseModel):
                         f"Error parsing MCP config string: {e_json}. Config string was: '{config_str}'"
                     )
 
+                    # # Fallback to DirtyJson or log error if standard json.loads fails
                     # PrintStyle(background_color="orange", font_color="black", padding=True).print(
+                    #     f"Standard json.loads failed for MCP config: {e_json}. Attempting DirtyJson as fallback."
                     # )
                     # try:
                     #     parsed_value = DirtyJson.parse_string(config_str)
@@ -794,6 +799,7 @@ class MCPClientBase(ABC):
     ) -> T:
         """
         Manages the lifecycle of an MCP session for a single operation.
+        Creates a temporary session, executes coro_func with it, and ensures cleanup.
         """
         operation_name = coro_func.__name__  # For logging
         # PrintStyle(font_color="cyan").print(f"MCPClientBase ({self.server.name}): Creating new session for operation '{operation_name}'...")
@@ -818,14 +824,18 @@ class MCPClientBase(ABC):
 
                     return result
                 except Exception as e:
-                    # Extract the real exception from ExceptionGroup if present
+                    # Store the original exception and raise a dummy exception
                     excs = getattr(e, "exceptions", None)  # Python 3.11+ ExceptionGroup
                     if excs:
                         original_exception = excs[0]
                     else:
                         original_exception = e
-                    raise original_exception
-        except Exception as e:
+                    # Create a dummy exception to break out of the async block
+                    raise RuntimeError("Dummy exception to break out of async block")
+        except Exception:
+            # Check if this is our dummy exception
+            if original_exception is not None:
+                e = original_exception
             # We have the original exception stored
             PrintStyle(background_color="#AA4455", font_color="white", padding=False).print(
                 f"MCPClientBase ({self.server.name} - {operation_name}): Error during operation: {type(e).__name__}: {e}"
@@ -976,8 +986,9 @@ class MCPClientLocal(MCPClientBase):
         # create a custom error log handler that will capture error output
         import tempfile
 
+        # use a temporary file for error logging (text mode) if not already present
         if not hasattr(self, "log_file") or self.log_file is None:
-            self.log_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".log")
+            self.log_file = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
 
         # use the stdio_client with our error log file
         stdio_transport = await current_exit_stack.enter_async_context(

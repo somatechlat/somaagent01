@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
@@ -41,10 +42,8 @@ class OpenFGAClient:
         cache_ttl: float = 2.0,
         fail_open: bool = True,
     ) -> None:
-        from services.common import runtime_config as cfg
-
-        self.base_url = base_url or cfg.env("OPENFGA_API_URL", "http://openfga:8080")
-        self.store_id = store_id or cfg.env("OPENFGA_STORE_ID")
+        self.base_url = base_url or os.getenv("OPENFGA_API_URL", "http://openfga:8080")
+        self.store_id = store_id or os.getenv("OPENFGA_STORE_ID")
         if not self.store_id:
             raise ValueError("OPENFGA_STORE_ID must be configured for OpenFGAClient")
         self.user_namespace = user_namespace

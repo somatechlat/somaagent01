@@ -18,52 +18,19 @@ from typing import (
 feature_ai_env = os.environ.get("FEATURE_AI", "").lower()
 _enable_ai = feature_ai_env not in ("none", "false", "0")
 
-# Attempt to import LiteLLM/OpenAI only when AI is enabled; otherwise provide
-# installing heavy dependencies.
-litellm = None
-openai = None
-acompletion = None
-completion = None
-embedding = None
-litellm_exceptions = None
-if _enable_ai:
-    try:
-        import litellm
-        import openai
-        from litellm import acompletion, completion, embedding
+# Production requires LiteLLM/OpenAI - no fallbacks
+import litellm
+import openai
+from litellm import acompletion, completion, embedding
+litellm_exceptions = getattr(litellm, "exceptions", None)
 
-        litellm_exceptions = getattr(litellm, "exceptions", None)
-    except Exception:
-        # Import failed; keep None values so code can detect absence.
-        litellm = None
-        openai = None
-        acompletion = None
-        completion = None
-        embedding = None
-        litellm_exceptions = None
-
-# so classes can be referenced even when browser-use isn't installed.
-try:
-    from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter
-except Exception:
-
-        def _fix_gemini_schema(self, s):
-            return s
-
-        pass
-
-        @staticmethod
-        def apply():
-            return None
-
-        @staticmethod
-        def gemini_clean_and_conform(s):
-            return s
-
+# Production requires browser-use - no fallbacks
+from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter
 
 try:
     # Older import path provided by the monolithic 'langchain' package
     from langchain.embeddings.base import Embeddings  # type: ignore
+except Exception:  # pragma: no cover - fallback for slim builds using langchain-core only
     # Newer, lighter-weight location provided by langchain-core
     from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
 from langchain_core.callbacks.manager import (
@@ -89,15 +56,11 @@ except Exception:
 import time
 import uuid
 
-from python.helpers import browser_use_monkeypatch, dirty_json, settings
+from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-
-try:
-    from pydantic import ConfigDict  # type: ignore
-    ConfigDict = dict  # type: ignore
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -119,11 +82,12 @@ llm_logger = logging.getLogger("agent_zero.llm")
 if not llm_logger.handlers:
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": %(message)s}'
+        "{\"timestamp\": \"%(asctime)s\", \"level\": \"%(levelname)s\", \"logger\": \"%(name)s\", \"message\": %(message)s}"
     )
     handler.setFormatter(formatter)
     llm_logger.addHandler(handler)
     llm_logger.setLevel(logging.INFO)
+
 
 
 # init
@@ -392,54 +356,20 @@ rate_limiters: dict[str, RateLimiter] = {}
 api_keys_round_robin: dict[str, int] = {}
 
 
-def _get_provider_secret_sync(provider: str) -> str:
-    """Retrieve provider secret from the centralized LLM credentials store.
-
-    This replaces any environment-based lookups. Fails fast when credentials
-    are not configured to avoid silent misconfiguration.
-    """
-    provider = (provider or "").strip().lower()
-    if not provider:
-        return ""
-    try:
-        import asyncio
-        import threading
-
-        from services.common.llm_credentials_store import LlmCredentialsStore  # type: ignore
-
-        async def _fetch() -> str:
-            store = LlmCredentialsStore()
-            secret = await store.get(provider)
-            return secret or ""
-
-        # If we're NOT already in an event loop, use asyncio.run directly
-        try:
-            asyncio.get_running_loop()
-            in_loop = True
-        except RuntimeError:
-            in_loop = False
-
-        if not in_loop:
-            return asyncio.run(_fetch())
-
-        # If already inside an event loop, run in a dedicated thread
-        result: dict[str, str] = {}
-        error: dict[str, BaseException] = {}
-
-        def _runner():
-            try:
-                result["value"] = asyncio.run(_fetch())
-            except BaseException as exc:
-                error["error"] = exc
-
-        t = threading.Thread(target=_runner, daemon=True)
-        t.start()
-        t.join()
-        if "error" in error:
-            raise error["error"]
-        return result.get("value", "")
-    except Exception:
-        return ""
+def get_api_key(service: str) -> str:
+    # get api key for the service
+    key = (
+        dotenv.get_dotenv_value(f"API_KEY_{service.upper()}")
+        or dotenv.get_dotenv_value(f"{service.upper()}_API_KEY")
+        or dotenv.get_dotenv_value(f"{service.upper()}_API_TOKEN")
+        or "None"
+    )
+    # if the key contains a comma, use round-robin
+    if "," in key:
+        api_keys = [k.strip() for k in key.split(",") if k.strip()]
+        api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
+        key = api_keys[api_keys_round_robin[service] % len(api_keys)]
+    return key
 
 
 def get_rate_limiter(
@@ -485,6 +415,7 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
             "BadGatewayError",
             "GatewayTimeoutError",
             "RateLimitError",
+            "MidStreamFallbackError",
             "GroqException",
         )
         if hasattr(litellm_exceptions, name)
@@ -520,38 +451,11 @@ def apply_rate_limiter_sync(
     if not model_config:
         return
     import asyncio
-    import threading
 
-    async_coro = apply_rate_limiter(model_config, input_text, rate_limiter_callback)
+    import nest_asyncio
 
-    # If we're NOT already in an event loop, it's safe to use asyncio.run directly.
-    try:
-        asyncio.get_running_loop()
-        in_loop = True
-    except RuntimeError:
-        in_loop = False
-
-    if not in_loop:
-        return asyncio.run(async_coro)
-
-    # When already inside a running event loop (e.g., FastAPI request handlers),
-    # run the coroutine in a dedicated thread with its own loop to avoid
-    # "event loop already running" errors.
-    result: dict[str, object] = {}
-    error: dict[str, BaseException] = {}
-
-    def _runner():
-        try:
-            result["value"] = asyncio.run(async_coro)
-        except BaseException as exc:  # propagate exact exception type
-            error["error"] = exc
-
-    t = threading.Thread(target=_runner, daemon=True)
-    t.start()
-    t.join()
-    if "error" in error:
-        raise error["error"]
-    return result.get("value")
+    nest_asyncio.apply()
+    return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
 
 
 class LiteLLMChatWrapper(SimpleChatModel):
@@ -559,12 +463,10 @@ class LiteLLMChatWrapper(SimpleChatModel):
     provider: str
     kwargs: dict = {}
 
-    # Pydantic v2 configuration (remove v1 Config to avoid conflicts)
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        extra="allow",
-        validate_assignment=False,
-    )
+    class Config:
+        arbitrary_types_allowed = True
+        extra = "allow"  # Allow extra attributes
+        validate_assignment = False  # Don't validate on assignment
 
     def __init__(
         self,
@@ -573,11 +475,10 @@ class LiteLLMChatWrapper(SimpleChatModel):
         model_config: Optional[ModelConfig] = None,
         **kwargs: Any,
     ):
-        # Initialize instance attributes
-        self.model_name = model
-        self.provider = provider
+        model_value = f"{provider}/{model}"
+        super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
+        # Set A0 model config as instance attribute after parent init
         self.a0_model_conf = model_config
-        self.kwargs = kwargs or {}
 
     @property
     def _llm_type(self) -> str:
@@ -825,11 +726,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 start_ts = time.time()
                 try:
                     # log a truncated preview (no secrets)
-                    preview = (
-                        msgs_conv[-1]["content"]
-                        if msgs_conv and isinstance(msgs_conv[-1], dict)
-                        else ""
-                    )
+                    preview = msgs_conv[-1]["content"] if msgs_conv and isinstance(msgs_conv[-1], dict) else ""
                     preview = (preview[:200] + "...") if len(preview) > 200 else preview
                     llm_logger.info(
                         "LLM unified_call start: id=%s provider=%s model=%s preview=%s",
@@ -910,7 +807,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     try:
                         llm_logger.exception(
                             "LLM unified_call error: id=%s provider=%s model=%s error=%s",
-                            req_id if "req_id" in locals() else "<na>",
+                            req_id if 'req_id' in locals() else '<na>',
                             getattr(self, "provider", "unknown"),
                             getattr(self, "model_name", "unknown"),
                             str(e),
@@ -940,6 +837,7 @@ class AsyncAIChatReplacement:
         self.chat = AsyncAIChatReplacement._Chat(wrapper)
 
 
+class BrowserCompatibleChatWrapper(ChatOpenRouter):
     """
     A wrapper for browser agent that can filter/sanitize messages
     before sending them to the LLM.
@@ -1145,12 +1043,16 @@ def _get_litellm_chat(
     except Exception:
         pass
 
-    api_key = kwargs.pop("api_key", None) or _get_provider_secret_sync(provider_name)
-    if not api_key:
+    # use api key from kwargs or env
+    api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
+
+    # Production validation - no placeholder API keys allowed
+    if api_key in ("None", "NA", None, ""):
         raise LLMNotConfiguredError(
-            f"Missing API key for provider '{provider_name}'. Save it in Settings → API Keys."
+            f"Invalid API key '{api_key}' for provider '{provider_name}'. Configure proper API key."
         )
-    kwargs["api_key"] = api_key
+    if api_key:
+        kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
     return cls(provider=provider_name, model=model_name, model_config=model_config, **kwargs)
@@ -1173,12 +1075,16 @@ def _get_litellm_embedding(
             **kwargs,
         )
 
-    api_key = kwargs.pop("api_key", None) or _get_provider_secret_sync(provider_name)
-    if not api_key:
+    # use api key from kwargs or env
+    api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
+
+    # Production validation - no placeholder API keys allowed
+    if api_key in ("None", "NA", None, ""):
         raise LLMNotConfiguredError(
-            f"Missing API key for embedding provider '{provider_name}'. Save it in Settings → API Keys."
+            f"Invalid API key '{api_key}' for embedding provider '{provider_name}'. Configure proper API key."
         )
-    kwargs["api_key"] = api_key
+    if api_key:
+        kwargs["api_key"] = api_key
 
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
     return LiteLLMEmbeddingWrapper(
@@ -1250,7 +1156,11 @@ def _merge_provider_defaults(
             for k, v in extra_kwargs.items():
                 kwargs.setdefault(k, v)
 
-    # Do not inject API keys from environment; credentials are managed centrally.
+    # Inject API key based on the *original* provider id if still missing
+    if "api_key" not in kwargs:
+        key = get_api_key(original_provider)
+        if key and key not in ("None", "NA"):
+            kwargs["api_key"] = key
 
     # Merge LiteLLM global kwargs (timeouts, stream_timeout, etc.)
     try:
@@ -1279,22 +1189,28 @@ def get_chat_model(
     from python.helpers.settings import get_settings
 
     use_llm = get_settings().get("USE_LLM", True)  # Default to True for production
+    api_key = kwargs.get("api_key")
 
     if not use_llm:
         raise LLMNotConfiguredError(
             f"LLM disabled in settings. Set USE_LLM=true for provider '{provider_name}'."
         )
 
-    # API key presence is enforced inside _get_litellm_chat via centralized store
+    if provider_name == "openai" and (not api_key or api_key in ("None", "NA")):
+        raise LLMNotConfiguredError(
+            f"Invalid OpenAI API key for provider '{provider_name}'. Configure proper API key."
+        )
 
     return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 
 
 def get_browser_model(
     provider: str, name: str, model_config: Optional[ModelConfig] = None, **kwargs: Any
+) -> BrowserCompatibleChatWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
     return _get_litellm_chat(
+        BrowserCompatibleChatWrapper, name, provider_name, model_config, **kwargs
     )
 
 

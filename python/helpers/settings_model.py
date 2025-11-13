@@ -4,6 +4,7 @@ The original implementation used a large ``TypedDict`` (see ``settings.py``).
 That approach works but provides no validation, default handling, or
 environment‑variable integration.  This file introduces a ``SettingsModel``
 subclass of ``pydantic.BaseSettings`` that mirrors the keys of the original
+TypedDict while keeping backward‑compatible attribute access.
 
 Only a representative subset of fields is defined explicitly – the rest are
 captured via ``extra = "allow"`` so that the model can still load the full JSON
@@ -19,12 +20,11 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from pydantic import ConfigDict
-
 try:
     # pydantic v2+: BaseSettings was moved to pydantic-settings
     from pydantic import Field
     from pydantic_settings import BaseSettings
+except Exception:  # pragma: no cover - fallback for older environments
     from pydantic import BaseSettings, Field
 
 
@@ -33,6 +33,7 @@ class SettingsModel(BaseSettings):
 
     The fields below cover the most commonly used configuration options.  Any
     additional keys present in the JSON file are accepted (``extra = "allow"``)
+    so the model remains compatible with the existing ``TypedDict`` schema.
     """
 
     # Core version information
@@ -92,14 +93,16 @@ class SettingsModel(BaseSettings):
     root_password: str | None = Field(default=None)
 
     # Miscellaneous flags (kept as a generic catch‑all)
-    # Enable LLM usage by default in production. The prior codebase sometimes
+    # Enable LLM usage by default in production. The legacy codebase sometimes
     # assumes LLMs are available; keep the default 'True' to avoid surprising
     # runtime errors when the settings file is missing or not yet persisted.
     USE_LLM: bool = Field(default=True)
 
-    model_config = ConfigDict(extra="allow")
+    class Config:
+        # Allow any extra keys from the historic JSON file.
+        extra = "allow"
 
-    # Provide dict‑style access for prior code paths.
+    # Provide dict‑style access for legacy code paths.
     def __getitem__(self, item: str) -> Any:  # pragma: no cover
         return getattr(self, item)
 

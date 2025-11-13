@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
+import os
 import asyncpg
 from prometheus_client import Counter, Histogram
-
-from services.common import runtime_config as cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,19 +53,16 @@ class OutboxMessage:
 
 class OutboxStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or (
-            cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
-            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        self.dsn = dsn or os.getenv(
+            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
         )
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(
-                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
-            )
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
     async def close(self) -> None:
@@ -228,25 +225,6 @@ class OutboxStore:
                 error[:8000],
             )
         OUTBOX_EVENTS.labels("nack", "failed").inc()
-
-    async def count_pending(self) -> int:
-        """Return count of pending outbox rows eligible for publishing.
-
-        Only counts rows whose next_attempt_at is due. Errors are surfaced so callers
-        can decide whether to skip metric update or log.
-        """
-        pool = await self._ensure_pool()
-        async with pool.acquire() as conn:
-            try:
-                val = await conn.fetchval(
-                    """
-                    SELECT COUNT(*) FROM message_outbox
-                    WHERE status = 'pending' AND next_attempt_at <= NOW()
-                    """
-                )
-                return int(val) if val is not None else 0
-            except Exception:
-                raise
 
 
 MIGRATION_SQL = """

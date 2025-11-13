@@ -7,6 +7,7 @@ def get_git_info():
     # Get the current working directory (assuming the repo is in the same folder as the script)
     repo_path = files.get_base_dir()
 
+    # GitPython is optional; if unavailable, use lightweight fallbacks that return
     # minimal metadata without importing ``git``.
     try:
         from git import Repo  # type: ignore
@@ -15,6 +16,7 @@ def get_git_info():
 
     # Ensure the repository is not bare
     if Repo is None:
+        # Fallback data when GitPython is not installed.
         return {
             "branch": "",
             "commit_hash": "",

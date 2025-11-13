@@ -13,20 +13,17 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-import time
+import os
 from contextlib import suppress
 from typing import Optional
+import time
 
-import httpx
 from aiokafka.errors import KafkaError
 from prometheus_client import Counter, Gauge, start_http_server
 
+import httpx
+
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.lifecycle_metrics import (
-    now as _lm_now,
-    observe_shutdown as _lm_stop,
-    observe_startup as _lm_start,
-)
 from services.common.outbox_repository import (
     ensure_schema,
     OUTBOX_PUBLISH_LATENCY,
@@ -55,39 +52,23 @@ EFFECTIVE_BATCH = Gauge(
     "Effective batch size used by outbox sync based on health state",
 )
 
-OUTBOX_BACKLOG = Gauge(
-    "outbox_sync_backlog",
-    "Number of pending outbox rows eligible for publishing",
-)
-
-OUTBOX_FAILURE_RATIO = Gauge(
-    "outbox_sync_failure_ratio",
-    "Recent failure ratio (failed / (failed+success)) observed by this worker",
-)
-
 
 def _env_float(name: str, default: float) -> float:
-    from services.common import runtime_config as cfg
-
     try:
-        return float(cfg.env(name, str(default)))
+        return float(os.getenv(name, str(default)))
     except ValueError:
         return default
 
 
 def _env_int(name: str, default: int) -> int:
-    from services.common import runtime_config as cfg
-
     try:
-        return int(cfg.env(name, str(default)))
+        return int(os.getenv(name, str(default)))
     except ValueError:
         return default
 
 
 class OutboxSyncWorker:
-    def __init__(
-        self, *, store: Optional[OutboxStore] = None, bus: Optional[KafkaEventBus] = None
-    ) -> None:
+    def __init__(self, *, store: Optional[OutboxStore] = None, bus: Optional[KafkaEventBus] = None) -> None:
         self.store = store or OutboxStore()
         self.bus = bus or KafkaEventBus(KafkaSettings.from_env())
         self.batch_size = _env_int("OUTBOX_SYNC_BATCH_SIZE", 100)
@@ -106,27 +87,13 @@ class OutboxSyncWorker:
         EFFECTIVE_BATCH.set(self.batch_size)
 
     async def start(self) -> None:
-        try:
-            _st = _lm_now()
-        except Exception:
-            _st = None
         await ensure_schema(self.store)
-        LOGGER.info(
-            "Outbox sync worker started",
-            extra={"batch_size": self.batch_size, "interval": self.interval},
-        )
-        if _st is not None:
-            _lm_start("outbox-sync", _st)
+        LOGGER.info("Outbox sync worker started",
+                    extra={"batch_size": self.batch_size, "interval": self.interval})
         while not self._stopping.is_set():
             await self._maybe_probe_health()
             effective_batch, effective_interval = self._compute_effective_limits()
             EFFECTIVE_BATCH.set(effective_batch)
-            # Update backlog gauge from store
-            try:
-                OUTBOX_BACKLOG.set(await self.store.count_pending())
-            except Exception:
-                # Non-fatal: keep loop healthy even if metrics query fails
-                pass
             # Note: Even if SomaBrain is down, continue publishing Kafka outbox messages.
             # Health only adjusts batch/interval; do not pause publishes entirely.
             msgs = await self.store.claim_batch(limit=effective_batch)
@@ -136,7 +103,6 @@ class OutboxSyncWorker:
             await self._publish_batch(msgs)
 
     async def stop(self) -> None:
-        _lm_stop("outbox-sync", _lm_now())
         self._stopping.set()
         with suppress(Exception):
             await self.bus.close()
@@ -170,10 +136,7 @@ class OutboxSyncWorker:
         self._health_checked_at = now
         new_state = await self._probe_somabrain_health()
         if new_state != self._health_state:
-            LOGGER.info(
-                "Outbox sync health state changed",
-                extra={"from": self._health_state, "to": new_state},
-            )
+            LOGGER.info("Outbox sync health state changed", extra={"from": self._health_state, "to": new_state})
             self._health_state = new_state
             for state in ("normal", "degraded", "down"):
                 HEALTH_STATE.labels(state).set(1.0 if state == self._health_state else 0.0)
@@ -185,9 +148,7 @@ class OutboxSyncWorker:
         - degraded: HTTP 200 but body not clearly ok
         - down: request error/timeout/non-200
         """
-        from services.common import runtime_config as cfg
-
-        base = cfg.soma_base_url().rstrip("/")
+        base = os.getenv("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
         try:
@@ -199,17 +160,13 @@ class OutboxSyncWorker:
                     body = resp.json()
                 except Exception:
                     body = None
-                if isinstance(body, dict) and (
-                    body.get("ok") is True or body.get("status") == "ok"
-                ):
+                if isinstance(body, dict) and (body.get("ok") is True or body.get("status") == "ok"):
                     return "normal"
                 return "degraded"
         except Exception:
             return "down"
 
     async def _publish_batch(self, messages: list[OutboxMessage]) -> None:
-        successes = 0
-        failures = 0
         for msg in messages:
             try:
                 with OUTBOX_PUBLISH_LATENCY.time():
@@ -218,39 +175,25 @@ class OutboxSyncWorker:
                     if isinstance(payload, str):
                         try:
                             import json as _json
-
                             payload = _json.loads(payload)
                         except Exception:
                             # Fall back to wrapping string payload
                             payload = {"payload": str(msg.payload)}
-                    # Rehydrate headers stored as JSON; ensure dict for KafkaEventBus
-                    hdrs = msg.headers if isinstance(msg.headers, dict) else {}
-                    await self.bus.publish(msg.topic, payload, headers=hdrs)
+                    await self.bus.publish(msg.topic, payload)
             except KafkaError as kerr:
-                failures += 1
                 await self._handle_failure(msg, kerr)
             except Exception as exc:  # safety net
-                failures += 1
                 await self._handle_failure(msg, exc)
             else:
                 await self.store.mark_sent(msg.id)
                 PUBLISH_OK.labels("success").inc()
-                successes += 1
-        try:
-            total = successes + failures
-            ratio = (failures / total) if total > 0 else 0.0
-            OUTBOX_FAILURE_RATIO.set(ratio)
-        except Exception:
-            pass
 
     async def _handle_failure(self, msg: OutboxMessage, exc: Exception) -> None:
         retry = msg.retry_count + 1
         if retry > self.max_retries:
             await self.store.mark_failed(msg.id, error=str(exc))
             PUBLISH_OK.labels("failed").inc()
-            LOGGER.warning(
-                "Outbox message failed permanently", extra={"id": msg.id, "topic": msg.topic}
-            )
+            LOGGER.warning("Outbox message failed permanently", extra={"id": msg.id, "topic": msg.topic})
             return
         backoff = self._compute_backoff(retry)
         await self.store.mark_retry(msg.id, backoff_seconds=backoff, error=str(exc))
@@ -262,12 +205,10 @@ class OutboxSyncWorker:
 
 
 async def main() -> None:
-    from services.common import runtime_config as cfg
-
-    logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
-    setup_tracing("outbox-sync", endpoint=cfg.settings().otlp_endpoint)
+    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    setup_tracing("outbox-sync", endpoint=os.getenv("OTLP_ENDPOINT"))
     # Optional metrics server
-    metrics_port = int(cfg.env("OUTBOX_SYNC_METRICS_PORT", "9469"))
+    metrics_port = int(os.getenv("OUTBOX_SYNC_METRICS_PORT", "9469"))
     start_http_server(metrics_port)
     worker = OutboxSyncWorker()
     try:
@@ -277,6 +218,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    from services.common.service_lifecycle import run_service
-
-    run_service(lambda: main(), service_name="outbox-sync")
+    asyncio.run(main())

@@ -13,3 +13,4 @@ class IncludeAgentInfo(Extension):
         )
 
         # add agent info to the prompt
+        loop_data.extras_temporary["agent_info"] = agent_info_prompt

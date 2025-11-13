@@ -8,6 +8,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
+import os
 import asyncpg
 
 from services.common.settings_base import BaseServiceSettings
@@ -28,13 +29,11 @@ class ModelProfile:
 
 class ModelProfileStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Align DSN resolution with other stores: prefer SA01_DB_DSN env override
+        # Align DSN resolution with other stores: prefer POSTGRES_DSN env override
         # (set by docker-compose) over any baked settings. Fall back to provided
         # dsn or a localhost dev default.
-        from services.common import runtime_config as cfg
-
-        raw_dsn = cfg.env(
-            "SA01_DB_DSN",
+        raw_dsn = os.getenv(
+            "POSTGRES_DSN",
             dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
         )
         self.dsn = os.path.expandvars(raw_dsn)
@@ -42,21 +41,15 @@ class ModelProfileStore:
 
     @classmethod
     def from_settings(cls, settings: BaseServiceSettings) -> "ModelProfileStore":
-        # Respect the same SA01_DB_DSN env override here too to avoid mismatches
-        # when SA01_DB_DSN is set in .env but docker provides SA01_DB_DSN.
-        from services.common import runtime_config as cfg
-
-        return cls(dsn=cfg.db_dsn(settings.postgres_dsn))
+        # Respect the same POSTGRES_DSN env override here too to avoid mismatches
+        # when SA01_POSTGRES_DSN is set in .env but docker provides POSTGRES_DSN.
+        return cls(dsn=os.getenv("POSTGRES_DSN", settings.postgres_dsn))
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            from services.common import runtime_config as cfg
-
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
-            self._pool = await asyncpg.create_pool(
-                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
-            )
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
     async def ensure_schema(self) -> None:
@@ -101,6 +94,7 @@ class ModelProfileStore:
                 json.dumps(profile.kwargs or {}, ensure_ascii=False),
             )
 
+    # Backward-compat helpers to match Gateway endpoint names
     async def create_profile(self, profile: ModelProfile) -> None:
         """Create or replace a model profile.
 
@@ -188,26 +182,21 @@ class ModelProfileStore:
             for row in rows
         ]
 
+    # Backward-compatible alias used by gateway endpoints
     async def list_profiles(self, deployment_mode: Optional[str] = None) -> list[ModelProfile]:
+        """Alias for list(); maintained for gateway handler compatibility."""
         return await self.list(deployment_mode)
 
     async def sync_from_settings(self, settings: BaseServiceSettings) -> None:
         """Upsert profiles defined in the shared ``model_profiles.yaml`` file."""
-        # Seed-only behavior: insert defaults for missing roles, but never overwrite
-        # profiles already created/updated via the Web UI. This ensures the UI remains
-        # the single source of truth in production while still allowing initial defaults.
+
         payload = settings.environment_profile()
         records = payload.get("profiles", []) if isinstance(payload, dict) else []
         for record in records:
             if not isinstance(record, dict):
                 continue
-            role = str(record.get("role", "default"))
-            # Skip when an existing profile is present for this role+deployment
-            existing = await self.get(role, settings.deployment_mode)
-            if existing is not None:
-                continue
             profile = ModelProfile(
-                role=role,
+                role=str(record.get("role", "default")),
                 deployment_mode=settings.deployment_mode,
                 model=str(record.get("model", "")),
                 base_url=str(record.get("base_url", "")),

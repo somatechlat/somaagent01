@@ -7,28 +7,25 @@ publishes memory.wal on success to keep the replica in sync.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
+import os
 import time
-from typing import Any, Mapping, Sequence
+from typing import Optional, Any, Mapping, Sequence
+import json
 
+import httpx
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from python.integrations.soma_client import SomaClient, SomaClientError
-from services.common import runtime_config as cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.lifecycle_metrics import (
-    now as _lm_now,
-    observe_shutdown as _lm_stop,
-    observe_startup as _lm_start,
-)
-from services.common.memory_write_outbox import (
-    ensure_schema as ensure_mw_schema,
-    MemoryWriteOutbox,
-)
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
+from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
+from services.common.memory_write_outbox import (
+    MemoryWriteOutbox,
+    ensure_schema as ensure_mw_schema,
+)
 from services.common.tracing import setup_tracing
+from python.integrations.soma_client import SomaClient, SomaClientError
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,25 +41,24 @@ def _kafka_settings() -> KafkaSettings:
 
 def _env_float(name: str, default: float) -> float:
     try:
-        return float(cfg.env(name, str(default)))
+        return float(os.getenv(name, str(default)))
     except ValueError:
         return default
 
 
 def _env_int(name: str, default: int) -> int:
     try:
-        return int(cfg.env(name, str(default)))
+        return int(os.getenv(name, str(default)))
     except ValueError:
         return default
 
 
 class MemorySyncWorker:
     def __init__(self) -> None:
-
-        self.store = MemoryWriteOutbox(dsn=cfg.db_dsn())
+        self.store = MemoryWriteOutbox(dsn=os.getenv("POSTGRES_DSN"))
         self.bus = KafkaEventBus(_kafka_settings())
         # Durable publisher requires an OutboxStore for reliability
-        self.outbox = OutboxStore(dsn=cfg.db_dsn())
+        self.outbox = OutboxStore(dsn=os.getenv("POSTGRES_DSN"))
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.soma = SomaClient.get()
         self.batch_size = _env_int("MEMORY_SYNC_BATCH_SIZE", 100)
@@ -73,23 +69,14 @@ class MemorySyncWorker:
         self._stopping = asyncio.Event()
 
     async def start(self) -> None:
-        try:
-            _st = _lm_now()
-        except Exception:
-            _st = None
         await ensure_mw_schema(self.store)
         try:
             await ensure_outbox_schema(self.outbox)
         except Exception:
             LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
-        metrics_port = int(cfg.env("MEMORY_SYNC_METRICS_PORT", "9471"))
+        metrics_port = int(os.getenv("MEMORY_SYNC_METRICS_PORT", "9471"))
         start_http_server(metrics_port)
-        LOGGER.info(
-            "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}
-        )
-        # Startup considered complete once we enter the processing loop.
-        if _st is not None:
-            _lm_start("memory-sync", _st)
+        LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
         while not self._stopping.is_set():
             pending = await self.store.count_pending()
             BACKLOG.set(pending)
@@ -102,7 +89,6 @@ class MemorySyncWorker:
                     await self._process(item)
 
     async def stop(self) -> None:
-        _lm_stop("memory-sync", _lm_now())
         self._stopping.set()
         await self.bus.close()
         try:
@@ -129,11 +115,11 @@ class MemorySyncWorker:
                 except json.JSONDecodeError as exc:
                     raise ValueError(f"invalid JSON payload: {exc}")
             elif isinstance(raw, Sequence):
-                # Accept prior [[k,v], ...] form
+                # Accept legacy [[k,v], ...] form
                 try:
                     payload = dict(raw)  # type: ignore[arg-type]
                 except Exception as exc:
-                    raise ValueError(f"unsupported prior payload sequence: {exc}")
+                    raise ValueError(f"unsupported legacy payload sequence: {exc}")
             else:
                 raise ValueError(f"unsupported payload type: {type(raw).__name__}")
         except Exception as exc:
@@ -171,9 +157,7 @@ class MemorySyncWorker:
 
         # Success: publish WAL and mark sent
         try:
-            from services.common import runtime_config as cfg
-
-            wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
             wal_event = {
                 "type": "memory.write",
                 "role": payload.get("role"),
@@ -202,10 +186,8 @@ class MemorySyncWorker:
 
 
 async def main() -> None:
-    from services.common import runtime_config as cfg
-
-    logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
-    setup_tracing("memory-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
+    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    setup_tracing("memory-sync", endpoint=os.getenv("OTLP_ENDPOINT"))
     worker = MemorySyncWorker()
     try:
         await worker.start()
@@ -214,6 +196,8 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    from services.common.service_lifecycle import run_service
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        LOGGER.info("memory_sync stopped")
 
-    run_service(lambda: main(), service_name="memory-sync")

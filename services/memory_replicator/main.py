@@ -6,21 +6,17 @@ admin inspection. Exposes Prometheus metrics for throughput and lag.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 import time
 from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from services.common import runtime_config as cfg
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.lifecycle_metrics import (
-    now as _lm_now,
-    observe_shutdown as _lm_stop,
-    observe_startup as _lm_start,
-)
 from services.common.logging_config import setup_logging
 from services.common.memory_replica_store import (
     ensure_schema as ensure_replica_schema,
@@ -52,11 +48,6 @@ REPL_LAG = Gauge(
     "Replication lag computed from wal_timestamp",
 )
 
-REPL_LAG_STATE = Gauge(
-    "memory_replicator_lag_state",
-    "State classification of replication lag (0=normal,1=degraded,2=critical)",
-)
-
 
 def ensure_metrics_server(settings: SA01Settings) -> None:
     global _METRICS_STARTED
@@ -64,9 +55,9 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
         return
     default_port = int(getattr(settings, "metrics_port", 9403))
     default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
-    port = int(cfg.env("REPLICATOR_METRICS_PORT", str(default_port)))
+    port = int(os.getenv("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
-        start_http_server(port, addr=cfg.env("REPLICATOR_METRICS_HOST", default_host))
+        start_http_server(port, addr=os.getenv("REPLICATOR_METRICS_HOST", default_host))
         LOGGER.info("Memory replicator metrics server started", extra={"port": port})
     else:
         LOGGER.warning("Memory replicator metrics disabled", extra={"port": port})
@@ -75,13 +66,13 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 
 def _kafka_settings() -> KafkaSettings:
     return KafkaSettings(
-        bootstrap_servers=cfg.env(
-            "SA01_KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
+        bootstrap_servers=os.getenv(
+            "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
+        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
+        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
     )
 
 
@@ -90,17 +81,13 @@ class MemoryReplicator:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.wal_topic = cfg.env("SA01_MEMORY_WAL_TOPIC") or cfg.env("SA01_MEMORY_WAL_TOPIC", "memory.wal")
-        self.group_id = cfg.env("MEMORY_REPLICATOR_GROUP", "memory-replicator")
+        self.wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+        self.group_id = os.getenv("MEMORY_REPLICATOR_GROUP", "memory-replicator")
         self.replica = MemoryReplicaStore(dsn=SERVICE_SETTINGS.postgres_dsn)
         self.dlq_store = DLQStore(dsn=SERVICE_SETTINGS.postgres_dsn)
         self.dlq = DeadLetterQueue(source_topic=self.wal_topic)
 
     async def start(self) -> None:
-        try:
-            _st = _lm_now()
-        except Exception:
-            _st = None
         try:
             await ensure_replica_schema(self.replica)
         except Exception:
@@ -109,8 +96,6 @@ class MemoryReplicator:
             await ensure_dlq_schema(self.dlq_store)
         except Exception:
             LOGGER.debug("DLQ schema ensure failed", exc_info=True)
-        if _st is not None:
-            _lm_start("memory-replicator", _st)
         await self.bus.consume(self.wal_topic, self.group_id, self._handle_wal)
 
     async def _handle_wal(self, event: dict[str, Any]) -> None:
@@ -140,17 +125,7 @@ class MemoryReplicator:
             try:
                 wal_ts = float(event.get("timestamp") or 0.0)
                 if wal_ts > 0:
-                    lag = max(0.0, time.time() - wal_ts)
-                    REPL_LAG.set(lag)
-                    # Classify lag using env thresholds (seconds)
-                    degraded = float(cfg.env("MEMORY_REPLICATOR_LAG_DEGRADED", "5"))
-                    critical = float(cfg.env("MEMORY_REPLICATOR_LAG_CRITICAL", "20"))
-                    state = 0
-                    if lag >= critical:
-                        state = 2
-                    elif lag >= degraded:
-                        state = 1
-                    REPL_LAG_STATE.set(state)
+                    REPL_LAG.set(max(0.0, time.time() - wal_ts))
             except Exception:
                 # Ignore malformed timestamps
                 pass
@@ -161,19 +136,8 @@ async def main() -> None:
     await worker.start()
 
 
-async def _shutdown() -> None:  # best-effort cleanup
-    try:
-        LOGGER.info("memory-replicator shutting down")
-    except Exception:
-        pass
-    try:
-        _lm_stop("memory-replicator", _lm_now())
-    except Exception:
-        pass
-
-
 if __name__ == "__main__":
-    # Use lifecycle helper for graceful SIGINT/SIGTERM handling.
-    from services.common.service_lifecycle import run_service
-
-    run_service(lambda: main(), service_name="memory-replicator", shutdown_coro=_shutdown)
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        LOGGER.info("Memory replicator stopped")

@@ -8,11 +8,11 @@ for tests via AUDIT_STORE_MODE=memory.
 from __future__ import annotations
 
 import json
-import logging
 import os
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 import asyncpg
 
@@ -73,9 +73,6 @@ class AuditStore:
         session_id: str | None = None,
         tenant: str | None = None,
         action: str | None = None,
-        subject: str | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]: ...
@@ -83,21 +80,15 @@ class AuditStore:
 
 class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
-
-        raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
+        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            from services.common import runtime_config as cfg
-
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(
-                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
-            )
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
     async def close(self) -> None:
@@ -155,9 +146,6 @@ class PostgresAuditStore(AuditStore):
         session_id: str | None = None,
         tenant: str | None = None,
         action: str | None = None,
-        subject: str | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]:
@@ -178,15 +166,6 @@ class PostgresAuditStore(AuditStore):
         if action:
             params.append(action)
             conditions.append(f"action = ${len(params)}")
-        if subject:
-            params.append(subject)
-            conditions.append(f"subject = ${len(params)}")
-        if from_ts is not None:
-            params.append(from_ts)
-            conditions.append(f"ts >= ${len(params)}")
-        if to_ts is not None:
-            params.append(to_ts)
-            conditions.append(f"ts <= ${len(params)}")
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
         params.append(limit)
         sql = f"""
@@ -259,33 +238,21 @@ class InMemoryAuditStore(AuditStore):
         session_id: str | None = None,
         tenant: str | None = None,
         action: str | None = None,
-        subject: str | None = None,
-        from_ts: datetime | None = None,
-        to_ts: datetime | None = None,
         limit: int = 1000,
         after_id: int | None = None,
     ) -> list[AuditEvent]:
-        rows = [
-            r
-            for r in self._rows
-            if (
-                (request_id is None or r.request_id == request_id)
-                and (session_id is None or r.session_id == session_id)
-                and (tenant is None or r.tenant == tenant)
-                and (action is None or r.action == action)
-                and (subject is None or r.subject == subject)
-                and (after_id is None or r.id > after_id)
-                and (from_ts is None or r.ts >= from_ts)
-                and (to_ts is None or r.ts <= to_ts)
-            )
-        ]
+        rows = [r for r in self._rows if (
+            (request_id is None or r.request_id == request_id) and
+            (session_id is None or r.session_id == session_id) and
+            (tenant is None or r.tenant == tenant) and
+            (action is None or r.action == action) and
+            (after_id is None or r.id > after_id)
+        )]
         return rows[:limit]
 
 
 def from_env() -> AuditStore:
-    from services.common import runtime_config as cfg
-
-    mode = (cfg.env("AUDIT_STORE_MODE", "postgres") or "postgres").lower()
+    mode = os.getenv("AUDIT_STORE_MODE", "postgres").lower()
     if mode == "memory":
         return InMemoryAuditStore()
-    return PostgresAuditStore(dsn=cfg.db_dsn())
+    return PostgresAuditStore(dsn=os.getenv("POSTGRES_DSN"))

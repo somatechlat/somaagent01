@@ -6,19 +6,21 @@ import asyncio
 import datetime
 import io
 import logging
+import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict
 
 import httpx
+import mimetypes
 
 try:
     import fitz  # PyMuPDF
 except Exception:  # pragma: no cover
     fitz = None  # type: ignore
 try:
-    import pytesseract  # type: ignore
     from PIL import Image  # type: ignore
+    import pytesseract  # type: ignore
 except Exception:  # pragma: no cover
     Image = None  # type: ignore
     pytesseract = None  # type: ignore
@@ -56,7 +58,9 @@ class EchoTool(BaseTool):
     def input_schema(self) -> Dict[str, Any] | None:
         return {
             "type": "object",
-            "properties": {"text": {"type": "string", "description": "Text to echo back"}},
+            "properties": {
+                "text": {"type": "string", "description": "Text to echo back"}
+            },
             "required": ["text"],
             "additionalProperties": False,
         }
@@ -162,9 +166,7 @@ class FileReadTool(BaseTool):
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
             raise ToolExecutionError("'path' argument is required")
-        from services.common import runtime_config as cfg
-
-        base_dir = Path(cfg.env("TOOL_WORK_DIR", "work_dir")).resolve()
+        base_dir = Path(os.getenv("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
             raise ToolExecutionError("Access outside work directory is not allowed")
@@ -228,9 +230,7 @@ class CanvasAppendTool(BaseTool):
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
 
-        from services.common import runtime_config as cfg
-
-        canvas_url = cfg.env("CANVAS_SERVICE_URL", "http://localhost:8014")
+        canvas_url = os.getenv("CANVAS_SERVICE_URL", "http://localhost:8014")
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
             "session_id": session_id,
@@ -240,7 +240,7 @@ class CanvasAppendTool(BaseTool):
             "persona_id": persona_id,
         }
         async with httpx.AsyncClient(
-            timeout=float(cfg.env("CANVAS_SERVICE_TIMEOUT", "5"))
+            timeout=float(os.getenv("CANVAS_SERVICE_TIMEOUT", "5"))
         ) as client:
             response = await client.post(endpoint, json=payload)
             response.raise_for_status()
@@ -291,19 +291,11 @@ class IngestDocumentTool(BaseTool):
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             raise ToolExecutionError("'attachment_id' is required")
 
-        from services.common import runtime_config as cfg
-
-        base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        # Harden internal token handling: only default in LOCAL, require explicit in PROD
-        try:
-            from services.common.runtime_config import deployment_mode as _dep_mode
-
-            mode = _dep_mode()
-        except Exception:
-            mode = "LOCAL"
-        default_token = "dev-internal-token" if mode == "LOCAL" else ""
-        # Use canonical SA01 internal token environment variable.
-        token = cfg.env("SA01_AUTH_INTERNAL_TOKEN", default_token)
+        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        # Harden internal token handling: only default in DEV, require explicit in non-DEV
+        mode = (os.getenv("SOMA_AGENT_MODE") or "DEV").upper()
+        default_token = "dev-internal-token" if mode == "DEV" else ""
+        token = os.getenv("GATEWAY_INTERNAL_TOKEN", default_token)
         if not token:
             raise ToolExecutionError("Internal token not configured for attachment fetch")
         url = f"{base}/internal/attachments/{attachment_id}/binary"
@@ -311,9 +303,7 @@ class IngestDocumentTool(BaseTool):
         if tenant_header:
             headers["X-Tenant-Id"] = str(tenant_header)
         try:
-            async with httpx.AsyncClient(
-                timeout=float(cfg.env("TOOL_FETCH_TIMEOUT", "15"))
-            ) as client:
+            async with httpx.AsyncClient(timeout=float(os.getenv("TOOL_FETCH_TIMEOUT", "15"))) as client:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:
                     raise ToolExecutionError("Attachment not found")
@@ -344,12 +334,9 @@ class IngestDocumentTool(BaseTool):
                 except Exception:
                     text = data.decode("latin-1", errors="ignore")
             # PDF
-            elif (
-                mime == "application/pdf" or (filename or "").lower().endswith(".pdf")
-            ) and fitz is not None:
+            elif (mime == "application/pdf" or (filename or "").lower().endswith(".pdf")) and fitz is not None:
                 try:
                     import io as _io
-
                     parts = []
                     with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
                         for page in doc:
@@ -361,31 +348,17 @@ class IngestDocumentTool(BaseTool):
             elif mime.startswith("image/") and Image is not None and pytesseract is not None:
                 try:
                     import io as _io
-
                     img = Image.open(_io.BytesIO(data))
                     text = pytesseract.image_to_string(img)
                 except Exception as exc:
                     LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
+            # Fallback: treat common text extensions as text even if MIME is octet-stream
             if not text:
                 try:
                     fname = (filename or "").lower()
                     text_exts = (
-                        ".md",
-                        ".txt",
-                        ".csv",
-                        ".tsv",
-                        ".yaml",
-                        ".yml",
-                        ".toml",
-                        ".ini",
-                        ".log",
-                        ".py",
-                        ".json",
-                        ".xml",
-                        ".html",
-                        ".htm",
-                        ".css",
-                        ".js",
+                        ".md", ".txt", ".csv", ".tsv", ".yaml", ".yml", ".toml", ".ini", ".log",
+                        ".py", ".json", ".xml", ".html", ".htm", ".css", ".js"
                     )
                     if (not mime or mime == "application/octet-stream") and any(
                         fname.endswith(ext) for ext in text_exts

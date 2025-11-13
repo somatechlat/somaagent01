@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
@@ -36,13 +37,11 @@ class ExecutionEngine:
         self._sandbox = sandbox
         self._resources = resources
         ensure_metrics_exporter()
-        from services.common import runtime_config as cfg
-
         self._circuit_failure_threshold = int(
-            cfg.env("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
+            os.getenv("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
         )
         self._circuit_reset_timeout = float(
-            cfg.env("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
+            os.getenv("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
         )
         self._tool_breakers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {}
 

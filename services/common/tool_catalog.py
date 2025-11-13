@@ -27,24 +27,21 @@ class ToolCatalogEntry:
 
 class ToolCatalogStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
-
-        raw_dsn = cfg.db_dsn(dsn or settings.postgres_dsn if (dsn or settings) else None)
+        raw_dsn = os.getenv(
+            "POSTGRES_DSN",
+            dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
+        )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
     def from_settings(cls, settings: BaseServiceSettings) -> "ToolCatalogStore":
-        from services.common import runtime_config as cfg
-
-        return cls(dsn=cfg.db_dsn(settings.postgres_dsn))
+        return cls(dsn=os.getenv("POSTGRES_DSN", settings.postgres_dsn))
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            from services.common import runtime_config as cfg
-
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

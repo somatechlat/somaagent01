@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib as _hashlib
+import os
 from typing import Any, Mapping, Optional
 
 
@@ -43,21 +44,19 @@ def generate_for_memory_payload(
     now_seconds: Optional[float] = None,
 ) -> str:
     meta = payload.get("metadata") or {}
-    from services.common import runtime_config as cfg
-
-    tenant = payload.get("tenant") or meta.get("tenant") or cfg.env("SOMA_TENANT_ID") or "default"
+    tenant = (payload.get("tenant") or meta.get("tenant") or os.getenv("SOMA_TENANT_ID") or "default")
+    # Memory sub-namespace fallback should use SOMA_MEMORY_NAMESPACE (e.g. "wm")
     ns = (
         payload.get("namespace")
         or meta.get("namespace")
         or namespace
-        or cfg.env("SOMA_MEMORY_NAMESPACE", "wm")
+        or os.getenv("SOMA_MEMORY_NAMESPACE", "wm")
     )
     session_id = str(payload.get("session_id") or meta.get("session_id") or "")
     role = str(payload.get("role") or meta.get("role") or "event")
-    ts = (
-        float(now_seconds if now_seconds is not None else float(meta.get("timestamp") or 0) or 0)
-        or __import__("time").time()
-    )
+    ts = float(now_seconds if now_seconds is not None else float(meta.get("timestamp") or 0) or 0) or __import__(
+        "time"
+    ).time()
     base = str(payload.get("id") or payload.get("message_id") or _hash16(str(payload)))
     return generate_key(
         tenant=str(tenant),

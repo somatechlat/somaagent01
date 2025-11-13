@@ -13,14 +13,14 @@ sensible defaults and exposes helpers for common headers and payload shapes.
 
 Environment variables:
 
-* ``SA01_SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
+* ``SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
     ``http://localhost:9696`` which matches the local development cluster.
 * ``SOMA_API_KEY``: Optional API key.  When provided the client sends it in an
   ``Authorization: Bearer`` header (or a custom header if
   ``SOMA_AUTH_HEADER`` is supplied).
-* ``SA01_SOMA_TENANT_ID``: Optional tenant identifier forwarded via
+* ``SOMA_TENANT_ID``: Optional tenant identifier forwarded via
   ``X-Tenant-ID`` (or a custom header defined by ``SOMA_TENANT_HEADER``).
-* ``SA01_SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
+* ``SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
   to outgoing request bodies under the ``universe`` key so that requests are
   automatically segmented per Agent Zero memory sub-directory.
 * ``SOMA_TIMEOUT_SECONDS``: Optional request timeout (float seconds).  Defaults
@@ -35,23 +35,11 @@ instead of instantiating the class directly.
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import (
-    Any,
-    AsyncIterator,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Sequence,
-)
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
@@ -85,11 +73,11 @@ MEMORY_WRITE_SECONDS = Histogram(
 )
 
 
-def _sanitize_prior_base_url(raw_base_url: str) -> str:
+def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     """Sanitize the provided base URL.
 
     - Ensures a non‑empty, well‑formed URL string
-    - If the prior port 9595 is detected, preserve the original host and
+    - If the legacy port 9595 is detected, preserve the original host and
       scheme but rewrite the port to 9696
     """
     candidate = (raw_base_url or "").strip()
@@ -101,10 +89,10 @@ def _sanitize_prior_base_url(raw_base_url: str) -> str:
     try:
         url = httpx.URL(normalized)
     except Exception:
-        logger.warning("Invalid SA01_SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
+        logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
         return "http://localhost:9696"
 
-    # Rewrite only the prior port 9595 to the current default (9696),
+    # Rewrite only the legacy port 9595 to the current default (9696),
     # preserving original host and scheme.
     if url.port == 9595:
         try:
@@ -112,7 +100,7 @@ def _sanitize_prior_base_url(raw_base_url: str) -> str:
         except Exception:
             override = httpx.URL("http://localhost:9696")
         logger.warning(
-            "Detected prior SomaBrain port on %s; redirecting to %s",
+            "Detected legacy SomaBrain port on %s; redirecting to %s",
             normalized,
             override,
         )
@@ -124,23 +112,23 @@ def _sanitize_prior_base_url(raw_base_url: str) -> str:
 def _default_base_url() -> str:
     """Return the base URL for SomaBrain.
 
-    The environment variable ``SA01_SOMA_BASE_URL`` can be used to point to a custom
+    The environment variable ``SOMA_BASE_URL`` can be used to point to a custom
     endpoint. If it is not set we default to ``http://localhost:9696``. The
-    function no longer performs any prior‑host sanitisation – that logic lives
-    in ``_sanitize_prior_base_url`` and is only applied when an explicit URL
+    function no longer performs any legacy‑host sanitisation – that logic lives
+    in ``_sanitize_legacy_base_url`` and is only applied when an explicit URL
     is provided.
     """
-    return os.getenv("SA01_SOMA_BASE_URL", "http://localhost:9696")
+    return os.getenv("SOMA_BASE_URL", "http://localhost:9696")
 
 
 DEFAULT_BASE_URL = _default_base_url()
 DEFAULT_TIMEOUT = float(os.environ.get("SOMA_TIMEOUT_SECONDS", "30"))
 # IMPORTANT: Distinguish logical universe vs. memory namespace
-# - SA01_SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
-# - SA01_SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
+# - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
+# - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
 #   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = os.environ.get("SA01_SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = os.environ.get("SA01_SOMA_MEMORY_NAMESPACE", "wm")
+DEFAULT_UNIVERSE = os.environ.get("SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = os.environ.get("SOMA_MEMORY_NAMESPACE", "wm")
 
 TENANT_HEADER = os.environ.get("SOMA_TENANT_HEADER", "X-Tenant-ID")
 AUTH_HEADER = os.environ.get("SOMA_AUTH_HEADER", "Authorization")
@@ -238,16 +226,16 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
+                "env_base_url": os.environ.get("SOMA_BASE_URL"),
             },
         )
-        sanitized_base_url = _sanitize_prior_base_url(base_url)
+        sanitized_base_url = _sanitize_legacy_base_url(base_url)
         self.base_url = _normalize_base_url(sanitized_base_url)
         # Memory namespace (e.g. "wm"). Not the same as the logical universe.
         self.namespace = namespace
         # Universe/context identifier (e.g. "somabrain_ns:public")
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or os.environ.get("SA01_SOMA_TENANT_ID")
+        self._tenant_id = tenant_id or os.environ.get("SOMA_TENANT_ID")
         self._api_key = api_key or os.environ.get("SOMA_API_KEY")
         verify_override = _boolean(os.environ.get("SOMA_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
@@ -375,7 +363,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
+                "env_base_url": os.environ.get("SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -433,9 +421,7 @@ class SomaClient:
                 return None
 
             # Retry on 5xx and 429 (Too Many Requests); honor Retry-After if present
-            if (
-                response.status_code >= 500 or response.status_code == 429
-            ) and attempt < self._max_retries:
+            if (response.status_code >= 500 or response.status_code == 429) and attempt < self._max_retries:
                 attempt += 1
                 # Baseline exponential backoff with jitter
                 backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
@@ -447,13 +433,13 @@ class SomaClient:
                         # Retry-After can be seconds or HTTP-date; try seconds first
                         ra_s = float(ra)
                     except ValueError:
+                        # Fallback: parse HTTP-date to seconds delta (simple/lenient)
                         try:
-                            import email.utils as _eutils
-                            import time as _time
+                            import email.utils as _eutils, time as _time
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:
-                                delta = ts.timestamp() - _time.time()
+                                delta = (ts.timestamp() - _time.time())
                                 ra_s = max(0.0, float(delta))
                             else:
                                 ra_s = 0.0
@@ -515,7 +501,7 @@ class SomaClient:
         """Store a memory item via SomaBrain.
 
         The new `/memory/remember` endpoint is attempted first; if the server
-        only supports the prior surface we fall back to `/remember`.
+        only supports the legacy surface we fall back to `/remember`.
         """
 
         payload_dict = dict(payload)
@@ -526,7 +512,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or os.getenv("SA01_SOMA_TENANT_ID", "").strip()
+            or os.getenv("SOMA_TENANT_ID", "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -539,39 +525,17 @@ class SomaClient:
         )
 
         # Determine the logical universe. Prefer explicit arg, then metadata.universe_id, then client default.
-        derived_universe = universe or metadata_dict.get("universe_id") or self.universe
-
-        # Derive a stable key: prefer payload.id, then explicit/idempotency keys, else a short hash of the value
-        candidate_key: Optional[str] = None
-        if isinstance(payload_dict.get("id"), (str, int)):
-            candidate_key = str(payload_dict.get("id"))
-        elif isinstance(payload_dict.get("idempotency_key"), (str, int)):
-            candidate_key = str(payload_dict.get("idempotency_key"))
-        elif isinstance(metadata_dict.get("idempotency_key"), (str, int)):
-            candidate_key = str(metadata_dict.get("idempotency_key"))
-        elif isinstance(payload_dict.get("session_id"), (str, int)) and isinstance(
-            payload_dict, Mapping
-        ):
-            # Combine session_id with value for stability if available
-            try:
-                blob = json.dumps(payload_dict, sort_keys=True, ensure_ascii=False).encode("utf-8")
-            except Exception:
-                blob = repr(payload_dict).encode("utf-8")
-            candidate_key = (
-                str(payload_dict.get("session_id")) + ":" + hashlib.sha256(blob).hexdigest()[:16]
-            )
-        else:
-            try:
-                blob = json.dumps(payload_dict, sort_keys=True, ensure_ascii=False).encode("utf-8")
-            except Exception:
-                blob = repr(payload_dict).encode("utf-8")
-            candidate_key = hashlib.sha256(blob).hexdigest()[:24]
+        derived_universe = (
+            universe
+            or metadata_dict.get("universe_id")
+            or self.universe
+        )
 
         body: Dict[str, Any] = {
             "value": payload_dict,
             "tenant": derived_tenant,
             "namespace": derived_namespace,
-            "key": candidate_key,
+            "key": payload_dict.get("id"),
         }
 
         # Ensure we do not send empty strings for key/tenant/namespace
@@ -582,8 +546,8 @@ class SomaClient:
         if not body["namespace"]:
             body["namespace"] = "default"
 
-        # IMPORTANT: do NOT send coord to /memory/remember (spec does not accept it). We still use coord when falling back
-        # to prior /remember (handled below).
+        if coord:
+            body["coord"] = coord
         if derived_universe:
             body["universe"] = derived_universe
             body["value"].setdefault("universe", derived_universe)
@@ -605,7 +569,7 @@ class SomaClient:
         with tracer.start_as_current_span("somabrain.remember"):
             # Prefer new endpoint; if unavailable (404) we fall back below.
             # Additionally, tolerate certain 4xx responses (e.g. "memory pool unavailable")
-            # by treating them as a signal to attempt the prior endpoint.
+            # by treating them as a signal to attempt the legacy endpoint.
             try:
                 response = await self._request(
                     "POST",
@@ -616,23 +580,23 @@ class SomaClient:
             except SomaClientError as exc:
                 msg = str(exc).lower()
                 # Some deployments respond 400 with detail "memory pool unavailable"
-                # while the prior /remember path continues to work. Fall back in that case.
+                # while the legacy /remember path continues to work. Fall back in that case.
                 if "memory pool unavailable" in msg or " 400 " in msg:
                     response = None
                 else:
                     raise
         if response is None:
-            prior_payload: Dict[str, Any] = {"payload": dict(payload)}
+            legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
             if coord:
-                # Prior endpoint supports coord
-                prior_payload["coord"] = coord
+                legacy_payload["coord"] = coord
+            # Use logical universe fallback, not memory namespace
             if universe or self.universe:
                 resolved_universe = universe or self.universe
                 if resolved_universe:
-                    prior_payload["universe"] = resolved_universe
-                    prior_payload.setdefault("payload", {})
-                    prior_payload["payload"]["universe"] = resolved_universe
-            response = await self._request("POST", "/remember", json=prior_payload)
+                    legacy_payload["universe"] = resolved_universe
+                    legacy_payload.setdefault("payload", {})
+                    legacy_payload["payload"]["universe"] = resolved_universe
+            response = await self._request("POST", "/remember", json=legacy_payload)
         duration = time.perf_counter() - start_ts
         MEMORY_WRITE_TOTAL.labels("ok").inc()
         MEMORY_WRITE_SECONDS.labels("ok").observe(duration)
@@ -658,15 +622,17 @@ class SomaClient:
     ) -> Mapping[str, Any]:
         """Recall memories for a query.
 
-        Prefer the richer `/memory/recall` endpoint but tolerate the prior
+        Prefer the richer `/memory/recall` endpoint but tolerate the legacy
+        `/recall` surface to remain compatible with older deployments.
         """
 
         body: Dict[str, Any] = {
-            "tenant": tenant or os.getenv("SA01_SOMA_TENANT_ID", "").strip() or "default",
+            "tenant": tenant or os.getenv("SOMA_TENANT_ID", "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,
         }
+        # Use logical universe fallback, not memory namespace
         if universe or self.universe:
             body["universe"] = universe or self.universe
         if layer:
@@ -688,39 +654,17 @@ class SomaClient:
         if chunk_index is not None:
             body["chunk_index"] = int(chunk_index)
 
-        # Spec prefers a query parameter named "payload" which may be a JSON string/object; send compact JSON string first
-        params_payload = None
-        try:
-            params_payload = json.dumps(
-                {k: v for k, v in body.items() if v is not None}, separators=(",", ":")
-            )
-        except Exception:
-            params_payload = None
-
-        response = None
-        if params_payload is not None:
-            try:
-                response = await self._request(
-                    "POST",
-                    "/memory/recall",
-                    params={"payload": params_payload},
-                    allow_404=True,
-                )
-            except SomaClientError:
-                response = None
-
+        response = await self._request(
+            "POST",
+            "/memory/recall",
+            json={k: v for k, v in body.items() if v is not None},
+            allow_404=True,
+        )
         if response is None:
-            response = await self._request(
-                "POST",
-                "/memory/recall",
-                json={k: v for k, v in body.items() if v is not None},
-                allow_404=True,
-            )
-        if response is None:
-            prior_body = {"query": query, "top_k": top_k}
+            legacy_body = {"query": query, "top_k": top_k}
             if universe or self.universe:
-                prior_body["universe"] = universe or self.universe
-            return await self._request("POST", "/recall", json=prior_body)
+                legacy_body["universe"] = universe or self.universe
+            return await self._request("POST", "/recall", json=legacy_body)
         return response
 
     async def recall_stream(
@@ -728,99 +672,7 @@ class SomaClient:
         payload: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         """Invoke the streaming recall endpoint."""
-        params_payload = None
-        try:
-            params_payload = json.dumps(dict(payload), separators=(",", ":"))
-        except Exception:
-            params_payload = None
-
-        response = None
-        if params_payload is not None:
-            try:
-                response = await self._request(
-                    "POST", "/memory/recall/stream", params={"payload": params_payload}
-                )
-            except SomaClientError:
-                response = None
-        if response is None:
-            response = await self._request("POST", "/memory/recall/stream", json=dict(payload))
-        return response
-
-    async def recall_stream_events(
-        self,
-        payload: Mapping[str, Any],
-        *,
-        request_timeout: Optional[float] = None,
-    ) -> AsyncIterator[Mapping[str, Any]]:
-        """Yield events from the streaming recall endpoint as they arrive.
-
-        Tries the spec-preferred query param (?payload=<json>) first, falling back to a JSON body
-        if necessary. Yields decoded JSON event dicts for each "data:" line; stops on [DONE].
-        """
-        # Prepare headers with tracing and request id; default headers are already on the client
-        request_headers: Dict[str, str] = {"X-Request-ID": str(uuid4())}
-        try:
-            inject(request_headers)
-        except Exception:
-            pass
-
-        timeout_val = request_timeout if (request_timeout is not None) else DEFAULT_TIMEOUT
-
-        # Build compact JSON params payload first
-        params_payload = None
-        try:
-            params_payload = json.dumps(dict(payload), separators=(",", ":"))
-        except Exception:
-            params_payload = None
-
-        async def _stream_with(
-            *,
-            use_params: bool,
-        ) -> AsyncIterator[Mapping[str, Any]]:
-            client = self._get_client()
-            kwargs: Dict[str, Any] = {
-                "headers": request_headers or None,
-                "timeout": httpx.Timeout(timeout_val),
-            }
-            if use_params and params_payload is not None:
-                kwargs["params"] = {"payload": params_payload}
-            else:
-                kwargs["json"] = dict(payload)
-            async with client.stream("POST", "/memory/recall/stream", **kwargs) as resp:
-                if resp.is_error:
-                    # Surface upstream error text for diagnostics
-                    try:
-                        body = await resp.aread()
-                        detail = body.decode("utf-8", errors="ignore")[:512]
-                    except Exception:
-                        detail = resp.reason_phrase or ""
-                    raise SomaClientError(
-                        f"SomaBrain recall stream error {resp.status_code}: {detail}"
-                    )
-                async for line in resp.aiter_lines():
-                    if not line or not line.startswith("data:"):
-                        continue
-                    data_str = line[5:].strip()
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        evt = json.loads(data_str)
-                    except Exception:
-                        continue
-                    yield evt
-
-        tried_params = False
-        if params_payload is not None:
-            tried_params = True
-            try:
-                async for evt in _stream_with(use_params=True):
-                    yield evt
-                return
-            except SomaClientError:
-                pass
-
-        async for evt in _stream_with(use_params=False):
-            yield evt
+        return await self._request("POST", "/memory/recall/stream", json=dict(payload))
 
     async def remember_batch(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         """Persist multiple memories in a single request."""
@@ -834,8 +686,7 @@ class SomaClient:
         return await self._request("GET", "/memory/metrics", params=params)
 
     async def rag_retrieve(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        # No longer supported by the live API; guard with a clear error to avoid accidental use
-        raise SomaClientError("/rag/retrieve is not supported by the current SomaBrain API")
+        return await self._request("POST", "/rag/retrieve", json=dict(payload))
 
     async def context_evaluate(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         return await self._request("POST", "/context/evaluate", json=dict(payload))
@@ -855,9 +706,7 @@ class SomaClient:
         etag: Optional[str] = None,
     ) -> Any:
         headers = {"If-Match": etag} if etag else None
-        return await self._request(
-            "PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers
-        )
+        return await self._request("PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers)
 
     async def get_persona(self, persona_id: str) -> Mapping[str, Any]:
         return await self._request("GET", f"/persona/{persona_id}")
