@@ -242,13 +242,14 @@ class ConversationWorker:
         # from tests via ``worker._background_recall_context``.
         # ---------------------------------------------------------------------
 
-    async def _ensure_llm_key(self) -> None:
-        """Best-effort fetch of provider API key from Gateway for DEV/compat.
+        async def _ensure_llm_key(self) -> None:
+            """Fetch provider API key from Gateway (DEV only) and clear it afterwards.
 
-        This does not participate in runtime LLM calls (those use Gateway directly),
-        but preserves prior unit-test expectations by storing the fetched key under
-        self.slm.api_key.
-        """
+            The worker never uses the key for actual LLM calls – those go through the
+            Gateway – but some unit tests inspect ``self.slm.api_key``. To avoid leaking
+            credentials between tests we always reset the attribute to ``None`` after the
+            fetch attempt, regardless of success.
+            """
         # Only attempt when internal token and gateway base are configured
         if not self._internal_token or not self._gateway_base:
             return
@@ -281,99 +282,125 @@ class ConversationWorker:
                         except Exception:
                             pass
         except Exception:
-            # Do not fail startup on missing/forbidden credentials
             LOGGER.debug("LLM key fetch via Gateway failed", exc_info=True)
-            # Clear any stored key to satisfy tests that expect no lingering API key
+        finally:
+            # Ensure the attribute is cleared after the attempt to prevent leakage.
             try:
                 self.slm.api_key = None
             except Exception:
                 pass
 
-        async def _background_recall_context(
-            self,
-            *,
-            session_id: str,
-            persona_id: str | None,
-            base_metadata: dict[str, Any],
-            analysis_metadata: dict[str, Any],
-            query: str,
-            stop_event: asyncio.Event,
-        ) -> None:
-            """Continuously recall memory for a session and publish updates.
+    async def _background_recall_context(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        base_metadata: dict[str, Any],
+        analysis_metadata: dict[str, Any],
+        query: str,
+        stop_event: asyncio.Event,
+    ) -> None:
+        """Continuously recall memory for a session and publish updates.
 
-            The recall loop respects the following environment configuration:
+        The recall loop respects the following environment configuration:
 
-            * ``SOMABRAIN_RECALL_TOPK`` – number of results per request.
-            * ``SOMABRAIN_RECALL_CHUNK_SIZE`` – page size for paging through results.
-            * ``SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS`` – maximum number of items to include in a single ``context.update`` payload.
-            * ``SOMABRAIN_CONTEXT_UPDATE_MAX_STRING`` – maximum length of any string field within the payload.
-            * ``SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES`` – overall size limit (UTF‑8 bytes) for the payload.
-            """
-            top_k = int(cfg.env("SOMABRAIN_RECALL_TOPK", "8"))
-            chunk_size = int(cfg.env("SOMABRAIN_RECALL_CHUNK_SIZE", "10"))
-            max_items = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS", "100"))
-            max_string = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_STRING", "1000"))
-            max_bytes = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES", "50000"))
+        * ``SOMABRAIN_RECALL_TOPK`` – number of results per request.
+        * ``SOMABRAIN_RECALL_CHUNK_SIZE`` – page size for paging through results.
+        * ``SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS`` – maximum number of items to include in a single ``context.update`` payload.
+        * ``SOMABRAIN_CONTEXT_UPDATE_MAX_STRING`` – maximum length of any string field within the payload.
+        * ``SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES`` – overall size limit (UTF‑8 bytes) for the payload.
+        """
+        top_k = int(cfg.env("SOMABRAIN_RECALL_TOPK", "8"))
+        chunk_size = int(cfg.env("SOMABRAIN_RECALL_CHUNK_SIZE", "10"))
+        max_items = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS", "100"))
+        max_string = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_STRING", "1000"))
+        max_bytes = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES", "50000"))
 
-            chunk_index = 0
-            while not stop_event.is_set():
-                try:
-                    resp = await self.soma.recall(
-                        query,
-                        top_k=top_k,
-                        chunk_size=chunk_size,
-                        chunk_index=chunk_index,
-                        session_id=session_id,
-                        universe=base_metadata.get("universe_id"),
-                    )
-                except Exception:
-                    LOGGER.debug("Recall request failed", exc_info=True)
-                    break
-                results = resp.get("results", [])
-                if not results:
-                    break
-                # Apply clamping limits
-                truncated = False
-                if len(results) > max_items:
-                    results = results[:max_items]
-                    truncated = True
-                # Enforce string length limits on payload fields if present
-                for item in results:
-                    for k, v in list(item.items()):
-                        if isinstance(v, str) and len(v) > max_string:
-                            item[k] = v[:max_string]
-                recall_payload: dict[str, Any] = {"results": results}
-                # Enforce total byte size limit
-                payload_bytes = len(json.dumps(recall_payload, ensure_ascii=False).encode("utf-8"))
-                if payload_bytes > max_bytes:
-                    recall_payload = {"_summary": "truncated"}
-                    truncated = True
-                if truncated and not recall_payload.get("_summary"):
-                    recall_payload["_summary"] = f"truncated to {max_items} items"
+        chunk_index = 0
+        while not stop_event.is_set():
+            try:
+                resp = await self.soma.recall(
+                    query,
+                    top_k=top_k,
+                    chunk_size=chunk_size,
+                    chunk_index=chunk_index,
+                    session_id=session_id,
+                    universe=base_metadata.get("universe_id"),
+                )
+            except Exception:
+                LOGGER.debug("Recall request failed", exc_info=True)
+                break
+            results = resp.get("results", [])
+            if not results:
+                break
+            # Apply clamping limits
+            truncated = False
+            if len(results) > max_items:
+                results = results[:max_items]
+                truncated = True
+            # Enforce string length limits on payload fields if present
+            for item in results:
+                for k, v in list(item.items()):
+                    if isinstance(v, str) and len(v) > max_string:
+                        item[k] = v[:max_string]
+            recall_payload: dict[str, Any] = {"results": results}
+            # Enforce total byte size limit
+            payload_bytes = len(json.dumps(recall_payload, ensure_ascii=False).encode("utf-8"))
+            if payload_bytes > max_bytes:
+                recall_payload = {"_summary": "truncated"}
+                truncated = True
+            if truncated and not recall_payload.get("_summary"):
+                recall_payload["_summary"] = f"truncated to {max_items} items"
 
-                event = {
-                    "type": "context.update",
-                    "metadata": {
-                        "source": "memory",
-                        "recall": recall_payload,
-                    },
-                    "session_id": session_id,
-                    "tenant": base_metadata.get("tenant"),
-                    "persona_id": persona_id,
-                }
-                # Publish – ignore errors to keep background task alive
-                try:
-                    await self.publisher.publish(
-                        self.settings["outbound"],
-                        event,
-                        session_id=session_id,
-                        tenant=base_metadata.get("tenant"),
-                    )
-                except Exception:
-                    LOGGER.debug("Failed to publish context.update", exc_info=True)
-                # Prepare next page
-                chunk_index += 1
-                await asyncio.sleep(0.05)
+            event = {
+                "type": "context.update",
+                "metadata": {
+                    "source": "memory",
+                    "recall": recall_payload,
+                },
+                "session_id": session_id,
+                "tenant": base_metadata.get("tenant"),
+                "persona_id": persona_id,
+            }
+            # Publish – ignore errors to keep background task alive
+            try:
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    event,
+                    session_id=session_id,
+                    tenant=base_metadata.get("tenant"),
+                )
+            except Exception:
+                LOGGER.debug("Failed to publish context.update", exc_info=True)
+            # Prepare next page
+            chunk_index += 1
+            await asyncio.sleep(0.05)
+
+    async def _background_recall(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        base_metadata: dict[str, Any],
+        analysis_metadata: dict[str, Any],
+        query: str,
+    ) -> tuple[asyncio.Task, asyncio.Event]:
+        """Start a background recall task and return the task and its stop event.
+
+        The caller can cancel the task by setting the returned ``stop_event``.
+        """
+        stop_event = asyncio.Event()
+        task = asyncio.create_task(
+            self._background_recall_context(
+                session_id=session_id,
+                persona_id=persona_id,
+                base_metadata=base_metadata,
+                analysis_metadata=analysis_metadata,
+                query=query,
+                stop_event=stop_event,
+            )
+        )
+        return task, stop_event
 
     async def _extract_text_from_path(self, path: str) -> str:
         """Best-effort text extraction for common file types.

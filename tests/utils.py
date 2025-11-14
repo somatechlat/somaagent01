@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import uuid
 from typing import Any, Callable, Dict, Optional
 
 from aiokafka import AIOKafkaConsumer
+
+from services.common import env
 
 
 def create_test_event(
@@ -54,7 +55,7 @@ async def wait_for_event(
 ) -> Dict[str, Any]:
     """Consume Kafka events until one matches ``predicate`` or timeout expires."""
 
-    bootstrap = os.getenv("SA01_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+    bootstrap = env.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092") or "kafka:9092"
     group_id = f"test-consumer-{uuid.uuid4()}"
     consumer = AIOKafkaConsumer(
         topic,

@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """S3 – Rotate encryption key and re-encrypt all settings."""
+
 import os
-import sys
+
 from python.helpers.vault_adapter import VaultAdapter
+from services.common import env
+
 
 def main():
-    old_key = os.getenv("SA01_CRYPTO_FERNET_KEY")
+    old_key = env.get("SA01_CRYPTO_FERNET_KEY")
     new_key = VaultAdapter.rotate_key()
     print(f"🔑 New key generated: {new_key}")
-    print("⚠️  Manual re-encrypt loop required (not implemented yet)")
+    if old_key:
+        print("⚠️  Manual re-encrypt loop required (not implemented yet)")
     os.environ["SA01_CRYPTO_FERNET_KEY"] = new_key
+    env.refresh()
+
 
 if __name__ == "__main__":
     main()

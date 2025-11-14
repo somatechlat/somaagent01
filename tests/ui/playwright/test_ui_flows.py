@@ -1,11 +1,12 @@
 import asyncio
-import os
 import time
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
 import httpx
 from playwright.async_api import async_playwright
+
+from services.common import env
 
 
 @asynccontextmanager
@@ -30,7 +31,7 @@ async def ensure_reachable(base_url: str, timeout_ms: int = 5000) -> bool:
 
 
 async def run_flows(base_url: str) -> dict:
-    headless_env = os.environ.get("HEADLESS", "1").lower()
+    headless_env = (env.get("HEADLESS", "1") or "1").lower()
     headless = headless_env not in ("0", "false", "no")
 
     results = {
@@ -186,9 +187,9 @@ async def run_flows(base_url: str) -> dict:
 
 
 async def main():
-    golden = os.environ.get("GOLDEN_UI_BASE_URL", "http://127.0.0.1:7001")
+    golden = env.get("GOLDEN_UI_BASE_URL", "http://127.0.0.1:7001") or "http://127.0.0.1:7001"
     local = (
-        os.environ.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}"
+        env.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}"
     )
 
     out = {"golden": None, "local": None}

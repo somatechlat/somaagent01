@@ -1,4 +1,3 @@
-import os
 import time
 import uuid
 from typing import Any, Dict, List
@@ -6,16 +5,18 @@ from typing import Any, Dict, List
 import httpx
 import pytest
 
+from services.common import env
+
 BASE_URL = (
-    os.getenv("SA01_GATEWAY_BASE_URL")
-    or os.getenv("BASE_URL")
-    or f"http://localhost:{os.getenv('GATEWAY_PORT','21016')}"
+    env.get("SA01_GATEWAY_BASE_URL")
+    or env.get("BASE_URL")
+    or f"http://localhost:{env.get('GATEWAY_PORT', '21016') or '21016'}"
 )
-TIMEOUT = float(os.getenv("E2E_HTTP_TIMEOUT", "20"))
-POLL_TIMEOUT = float(os.getenv("E2E_POLL_TIMEOUT", "20"))
-POLL_INTERVAL = float(os.getenv("E2E_POLL_INTERVAL", "0.5"))
-TENANT = os.getenv("SA01_SOMA_TENANT_ID", "public")
-EXPECT_MEMORY = os.getenv("E2E_EXPECT_MEMORY", "0") in {"1", "true", "yes"}
+TIMEOUT = float(env.get("E2E_HTTP_TIMEOUT", "20") or "20")
+POLL_TIMEOUT = float(env.get("E2E_POLL_TIMEOUT", "20") or "20")
+POLL_INTERVAL = float(env.get("E2E_POLL_INTERVAL", "0.5") or "0.5")
+TENANT = env.get("SA01_SOMA_TENANT_ID", "public") or "public"
+EXPECT_MEMORY = (env.get("E2E_EXPECT_MEMORY", "0") or "0").lower() in {"1", "true", "yes"}
 
 
 @pytest.mark.e2e

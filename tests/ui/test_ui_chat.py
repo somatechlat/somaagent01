@@ -1,8 +1,9 @@
 import asyncio
-import os
 
 import httpx
 import pytest
+
+from services.common import env
 
 # Skip module entirely if pytest-playwright isn't installed
 try:
@@ -12,7 +13,7 @@ except Exception:
 
 pytestmark = pytest.mark.e2e
 
-BASE_URL = os.getenv("SA01_GATEWAY_BASE_URL", "http://localhost:8010").rstrip("/")
+BASE_URL = (env.get("SA01_GATEWAY_BASE_URL", "http://localhost:8010") or "http://localhost:8010").rstrip("/")
 
 
 async def _health_ok() -> bool:
@@ -36,7 +37,7 @@ async def _health_ok() -> bool:
 @pytest.mark.asyncio
 async def test_ui_chat_happy_path(page, browser):  # type: ignore[no-redef]
     # Require explicit opt-in to run live E2E, to avoid CI flakes when backend isn't up.
-    if os.getenv("E2E_LIVE", "false").lower() not in {"1", "true", "yes", "on"}:
+    if (env.get("E2E_LIVE", "false") or "false").lower() not in {"1", "true", "yes", "on"}:
         pytest.skip("E2E_LIVE not set; skipping live UI chat test")
 
     if not await _health_ok():
