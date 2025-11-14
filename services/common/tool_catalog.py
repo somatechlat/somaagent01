@@ -15,6 +15,7 @@ from typing import Any, Optional
 import asyncpg
 
 from services.common.settings_base import BaseServiceSettings
+from services.common.admin_settings import ADMIN_SETTINGS
 
 
 @dataclass
@@ -27,16 +28,16 @@ class ToolCatalogEntry:
 
 class ToolCatalogStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = os.getenv(
-            "POSTGRES_DSN",
-            dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
-        )
+        # Prefer admin-wide Postgres DSN when not explicitly provided.
+        # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any environment overrides.
+        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
     def from_settings(cls, settings: BaseServiceSettings) -> "ToolCatalogStore":
-        return cls(dsn=os.getenv("POSTGRES_DSN", settings.postgres_dsn))
+        # Use admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any environment overrides.
+        return cls(dsn=ADMIN_SETTINGS.postgres_dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

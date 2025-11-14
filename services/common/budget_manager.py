@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from services.common.admin_settings import ADMIN_SETTINGS
 from dataclasses import dataclass
 from typing import Optional
 
@@ -22,7 +23,8 @@ class BudgetManager:
     def __init__(
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
-        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        # Use centralized admin settings for Redis URL, falling back to provided URL if given.
+        raw_url = url or ADMIN_SETTINGS.redis_url
         self.url = os.path.expandvars(raw_url)
         self.prefix = os.getenv("BUDGET_PREFIX", "budget:tokens")
         self.limit = int(os.getenv("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited

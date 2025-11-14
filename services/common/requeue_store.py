@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from services.common.admin_settings import ADMIN_SETTINGS
 from typing import Any, Optional
 
 import redis.asyncio as redis
@@ -18,7 +19,8 @@ class RequeueStore:
     ) -> None:
         # Resolve Redis URL with environment variable expansion to support values like
         # REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
-        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
+        raw_url = url or ADMIN_SETTINGS.redis_url
         self.url = os.path.expandvars(raw_url)
         self.prefix = prefix or os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
@@ -35,7 +37,7 @@ class RequeueStore:
         - redis_url (str)
         - policy_requeue_prefix (str)
         """
-        url = getattr(settings, "redis_url", None) or os.getenv("REDIS_URL")
+        url = getattr(settings, "redis_url", None) or ADMIN_SETTINGS.redis_url
         prefix = (
             getattr(settings, "policy_requeue_prefix", None)
             or os.getenv("POLICY_REQUEUE_PREFIX")

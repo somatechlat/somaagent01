@@ -191,5 +191,16 @@ else:  # lightweight developer fallback
     class ChatGoogle:  # type: ignore
         def _fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
             return schema
+    # Provide a minimal stub for the OpenRouter chat class used elsewhere in the
+    # codebase. The real implementation offers LLM‑specific methods; the tests
+    # only require the class to exist, so an empty placeholder is sufficient.
+    class ChatOpenRouter:  # type: ignore
+        def __init__(self, *_, **__):
+            pass
 
     LOGGER.info("browser_use not loaded – FEATURE_BROWSER disabled")
+
+    # Export a name ``browser_use_monkeypatch`` so that ``from ... import
+    # browser_use_monkeypatch`` works with this shim. The value is not used directly;
+    # it merely satisfies the import contract expected by ``models.py``.
+    browser_use_monkeypatch = None

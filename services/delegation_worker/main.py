@@ -14,6 +14,7 @@ from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
 from services.common.settings_sa01 import SA01Settings
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 
 setup_logging()
@@ -29,16 +30,14 @@ class DelegationWorker:
         self.group = os.getenv("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(
             KafkaSettings(
-                bootstrap_servers=os.getenv(
-                    "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
-                ),
+                bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
                 security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
                 sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
                 sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
             )
         )
-        self.store = DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
+        self.store = DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)
 
     async def start(self) -> None:
         await self.store.ensure_schema()

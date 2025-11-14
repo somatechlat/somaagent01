@@ -15,6 +15,32 @@ local ``python`` package takes precedence.
 import os
 import sys
 
+# Compatibility shim for tests that reference ``pytest.Request`` (which does not
+# exist in the public pytest API). The test suite only uses the type for type
+# hints, so we alias it to ``pytest.FixtureRequest`` which provides the same
+# runtime behaviour.
+# Ensure ``pytest.Request`` exists for type‑checking in the test suite.
+# Importing pytest here forces its module to load before any test files are
+# evaluated, allowing us to safely add the missing attribute.
+import pytest
+# Provide a minimal ``Request`` type for the test suite. If the internal
+# ``FixtureRequest`` class is importable we use it; otherwise we fall back to a
+# simple placeholder.
+try:
+    from _pytest.fixtures import FixtureRequest  # type: ignore
+    _req_type = FixtureRequest
+except Exception:
+    class _PlaceholderRequest:  # pragma: no cover
+        pass
+
+    _req_type = _PlaceholderRequest
+
+if not hasattr(pytest, "Request"):
+    pytest.Request = _req_type  # type: ignore[attr-defined]
+
+# Debug: confirm attribute is set
+print("sitecustomize: pytest.Request exists?", hasattr(pytest, "Request"))
+
 # Debug: indicate that sitecustomize has been imported (useful for pytest import path issues)
 print("sitecustomize loaded: repository root added to sys.path")
 

@@ -26,6 +26,8 @@ from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.settings_sa01 import SA01Settings
+from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 
 setup_logging()
@@ -61,12 +63,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    port = int(os.getenv("DELEGATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
+    port = int(os.getenv("DELEGATION_METRICS_PORT", str(ADMIN_SETTINGS.metrics_port)))
     if port <= 0:
         LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
-    host = os.getenv("DELEGATION_METRICS_HOST", APP_SETTINGS.metrics_host)
+    host = os.getenv("DELEGATION_METRICS_HOST", ADMIN_SETTINGS.metrics_host)
     start_http_server(port, addr=host)
     LOGGER.info(
         "Delegation gateway metrics server started",
@@ -77,9 +79,7 @@ def ensure_metrics_server() -> None:
 
 def get_bus() -> KafkaEventBus:
     kafka_settings = KafkaSettings(
-        bootstrap_servers=os.getenv(
-            "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
-        ),
+        bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
         security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
         sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
@@ -92,7 +92,7 @@ def get_publisher() -> DurablePublisher:
     # Shared durable publisher; construct lazily for DI, ensure outbox schema
     # on first use to avoid race at startup.
     bus = get_bus()
-    outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
+    outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
     # best-effort ensure schema
     try:
         import asyncio as _asyncio
@@ -112,7 +112,7 @@ def get_publisher() -> DurablePublisher:
 
 
 def get_store() -> DelegationStore:
-    return DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
+    return DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)
 
 
 class DelegationRequest(BaseModel):
@@ -130,7 +130,7 @@ class DelegationCallback(BaseModel):
 @app.on_event("startup")
 async def startup_event() -> None:
     ensure_metrics_server()
-    store = DelegationStore(dsn=APP_SETTINGS.postgres_dsn)
+    store = DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)
     await store.ensure_schema()
 
 

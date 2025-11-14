@@ -24,6 +24,7 @@ from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_schema,
 )
 from services.common.tracing import setup_tracing
+from services.common.admin_settings import ADMIN_SETTINGS
 from python.integrations.soma_client import SomaClient, SomaClientError
 
 
@@ -55,10 +56,12 @@ def _env_int(name: str, default: int) -> int:
 
 class MemorySyncWorker:
     def __init__(self) -> None:
-        self.store = MemoryWriteOutbox(dsn=os.getenv("POSTGRES_DSN"))
+        # Use centralized admin settings for Postgres DSN
+        self.store = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.bus = KafkaEventBus(_kafka_settings())
         # Durable publisher requires an OutboxStore for reliability
-        self.outbox = OutboxStore(dsn=os.getenv("POSTGRES_DSN"))
+        # Use centralized admin settings for Postgres DSN
+        self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.soma = SomaClient.get()
         self.batch_size = _env_int("MEMORY_SYNC_BATCH_SIZE", 100)
@@ -74,7 +77,8 @@ class MemorySyncWorker:
             await ensure_outbox_schema(self.outbox)
         except Exception:
             LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
-        metrics_port = int(os.getenv("MEMORY_SYNC_METRICS_PORT", "9471"))
+        # Prefer admin-wide metrics configuration; fallback to default if not set
+        metrics_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9471))
         start_http_server(metrics_port)
         LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
         while not self._stopping.is_set():

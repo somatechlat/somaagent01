@@ -35,6 +35,7 @@ from services.common.session_repository import (
     RedisSessionCache,
 )
 from services.common.settings_sa01 import SA01Settings
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.slm_client import ChatMessage
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
@@ -170,9 +171,7 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
-        bootstrap_servers = os.getenv(
-            "KAFKA_BOOTSTRAP_SERVERS", APP_SETTINGS.kafka_bootstrap_servers
-        )
+        bootstrap_servers = ADMIN_SETTINGS.kafka_bootstrap_servers
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
             security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -186,12 +185,12 @@ class ConversationWorker:
             "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.outbox = OutboxStore(dsn=APP_SETTINGS.postgres_dsn)
+        self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
-        redis_url = os.getenv("REDIS_URL", APP_SETTINGS.redis_url)
+        redis_url = ADMIN_SETTINGS.redis_url
         self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
         self.cache = RedisSessionCache(url=redis_url)
-        self.store = PostgresSessionStore(dsn=APP_SETTINGS.postgres_dsn)
+        self.store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
         self._gateway_base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         self._internal_token = os.getenv("GATEWAY_INTERNAL_TOKEN")
@@ -202,14 +201,14 @@ class ConversationWorker:
         )
         self.tenant_config = TenantConfig(path=tenant_config_path)
         self.budgets = BudgetManager(url=redis_url, tenant_config=self.tenant_config)
-        policy_base = os.getenv("POLICY_BASE_URL", APP_SETTINGS.opa_url)
+        policy_base = ADMIN_SETTINGS.opa_url
         self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         # SomaBrain HTTP client (centralized memory backend)
         self.soma = SomaBrainClient.get()
-        self.mem_outbox = MemoryWriteOutbox(dsn=APP_SETTINGS.postgres_dsn)
+        self.mem_outbox = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
         router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()

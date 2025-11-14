@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from services.common.admin_settings import ADMIN_SETTINGS
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Any, AsyncIterator
@@ -32,7 +33,8 @@ class Attachment:
 
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+        # Use centralized admin settings for Postgres DSN when not explicitly provided.
+        raw_dsn = dsn or getattr(ADMIN_SETTINGS, "postgres_dsn", os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"))
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from services.common.admin_settings import ADMIN_SETTINGS
 from typing import Any, Optional
 
 import asyncpg
@@ -16,7 +17,9 @@ import asyncpg
 
 class UiSettingsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+        # Prefer admin-wide Postgres DSN when not explicitly provided.
+        # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any environment overrides.
+        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

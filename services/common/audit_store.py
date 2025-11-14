@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Iterable, Optional
 
 import asyncpg
+from services.common.admin_settings import ADMIN_SETTINGS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,7 +81,9 @@ class AuditStore:
 
 class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+        # Prefer admin-wide Postgres DSN when not explicitly provided.
+        # Use the admin-wide Postgres DSN singleton; it already handles env fallback.
+        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -255,4 +258,5 @@ def from_env() -> AuditStore:
     mode = os.getenv("AUDIT_STORE_MODE", "postgres").lower()
     if mode == "memory":
         return InMemoryAuditStore()
-    return PostgresAuditStore(dsn=os.getenv("POSTGRES_DSN"))
+    # Use admin-wide Postgres DSN when not explicitly provided.
+    return PostgresAuditStore(dsn=ADMIN_SETTINGS.postgres_dsn)

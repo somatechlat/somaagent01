@@ -8,10 +8,13 @@ import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
-import os
 import asyncpg
 
 from services.common.settings_base import BaseServiceSettings
+# NOTE: Importing ADMIN_SETTINGS at module load time can cause circular import
+# issues (e.g., gateway imports ModelProfileStore before ADMIN_SETTINGS is
+# defined). To avoid this, we perform a lazy import within the methods that need
+# it.
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,9 +35,12 @@ class ModelProfileStore:
         # Align DSN resolution with other stores: prefer POSTGRES_DSN env override
         # (set by docker-compose) over any baked settings. Fall back to provided
         # dsn or a localhost dev default.
+        # Prefer admin-wide Postgres DSN when not explicitly provided.
+        # Lazy import to avoid circular dependency on ADMIN_SETTINGS during module import.
+        from services.common.admin_settings import ADMIN_SETTINGS as _ADMIN_SETTINGS
         raw_dsn = os.getenv(
             "POSTGRES_DSN",
-            dsn or "postgresql://soma:soma@localhost:5432/somaagent01",
+            dsn or getattr(_ADMIN_SETTINGS, "postgres_dsn", "postgresql://soma:soma@localhost:5432/somaagent01"),
         )
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
@@ -43,7 +49,9 @@ class ModelProfileStore:
     def from_settings(cls, settings: BaseServiceSettings) -> "ModelProfileStore":
         # Respect the same POSTGRES_DSN env override here too to avoid mismatches
         # when SA01_POSTGRES_DSN is set in .env but docker provides POSTGRES_DSN.
-        return cls(dsn=os.getenv("POSTGRES_DSN", settings.postgres_dsn))
+        # Use admin settings if POSTGRES_DSN not set.
+        from services.common.admin_settings import ADMIN_SETTINGS as _ADMIN_SETTINGS
+        return cls(dsn=os.getenv("POSTGRES_DSN", getattr(_ADMIN_SETTINGS, "postgres_dsn", settings.postgres_dsn)))
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

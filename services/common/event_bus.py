@@ -21,6 +21,7 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
+from opentelemetry.trace import SpanContext
 
 LOGGER = logging.getLogger(__name__)
 TRACER = trace.get_tracer(__name__)
@@ -152,6 +153,30 @@ class KafkaEventBus:
         if self._producer is not None:
             await self._producer.stop()
             self._producer = None
+
+
+# ---------------------------------------------------------------------------
+# Helper – build W3C trace headers for Kafka messages (module level)
+# ---------------------------------------------------------------------------
+def _build_trace_headers(sc: SpanContext) -> list[tuple[str, bytes]]:
+    """Return trace‑related headers for a given ``SpanContext``.
+
+    The test suite expects the *keys* to be plain ``str`` objects while the
+    *values* remain ``bytes``. Previously the function returned ``bytes`` keys,
+    causing look‑ups like ``"trace_id" in hmap`` to fail. This patch switches the
+    key type to ``str`` while preserving the original byte‑encoded values.
+    """
+    if not sc.trace_id or not sc.span_id:
+        return []
+    trace_id_hex = f"{sc.trace_id:032x}".lower()
+    span_id_hex = f"{sc.span_id:016x}".lower()
+    flags_hex = f"{int(sc.trace_flags):02x}"
+    traceparent = f"00-{trace_id_hex}-{span_id_hex}-{flags_hex}"
+    return [
+        ("trace_id", trace_id_hex.encode()),
+        ("span_id", span_id_hex.encode()),
+        ("traceparent", traceparent.encode()),
+    ]
 
 
 async def iterate_topic(
