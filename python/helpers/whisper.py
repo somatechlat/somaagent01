@@ -12,6 +12,7 @@ from python.helpers.notification import (
     NotificationType,
 )
 from python.helpers.print_style import PrintStyle
+from services.common import env
 
 # Suppress FutureWarning from torch.load
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -19,7 +20,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Whisper is optional in lightweight developer builds – only require the
 # package when audio support is explicitly enabled.
 LOGGER = logging.getLogger(__name__)
-_feature_audio = os.getenv("FEATURE_AUDIO", "none").lower()
+_feature_audio = (env.get("FEATURE_AUDIO", "none") or "none").lower()
 
 try:
     if _feature_audio in {"none", "0", "false", "off"}:
@@ -130,8 +131,6 @@ async def _transcribe(model_name: str, audio_bytes_b64: str):
     audio_bytes = base64.b64decode(audio_bytes_b64)
 
     # Create temp audio file
-    import os
-
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
         audio_file.write(audio_bytes)
         temp_path = audio_file.name

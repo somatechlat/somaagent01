@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Any, Iterator
 
 import httpx
@@ -8,6 +7,7 @@ from flask import Response
 
 from python.helpers.api import ApiHandler, Request
 from python.helpers.print_style import PrintStyle
+from services.common import env
 
 
 class GatewayStream(ApiHandler):
@@ -34,14 +34,15 @@ class GatewayStream(ApiHandler):
         if not session_id:
             return Response("Missing session_id", status=400, mimetype="text/plain")
 
-        base = os.getenv("UI_GATEWAY_BASE", os.getenv("GATEWAY_BASE_URL", "http://localhost:20016")).rstrip("/")
+        base = env.get("UI_GATEWAY_BASE", env.get("GATEWAY_BASE_URL", "http://localhost:20016") or "http://localhost:20016") or "http://localhost:20016"
+        base = base.rstrip("/")
         primary = f"{base}/v1/session/{session_id}/events"
-        host_alias = os.getenv("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal")
-        gw_port = os.getenv("GATEWAY_PORT", "21016")
+        host_alias = env.get("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal") or "host.docker.internal"
+        gw_port = env.get("GATEWAY_PORT", "21016") or "21016"
         fallback = f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events"
 
         headers = {}
-        if (bearer := os.getenv("UI_GATEWAY_BEARER")):
+        if (bearer := env.get("UI_GATEWAY_BEARER")):
             headers["Authorization"] = f"Bearer {bearer}"
 
         def stream_from(url: str) -> Iterator[bytes]:

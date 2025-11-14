@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Optional
 
@@ -21,6 +20,7 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
+from services.common import runtime_config as cfg
 from opentelemetry.trace import SpanContext
 
 LOGGER = logging.getLogger(__name__)
@@ -38,11 +38,11 @@ class KafkaSettings:
     @classmethod
     def from_env(cls) -> "KafkaSettings":
         return cls(
-            bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-            sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-            sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+            bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+            security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+            sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+            sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
 
 
@@ -75,7 +75,14 @@ class KafkaEventBus:
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
 
-    async def publish(self, topic: str, payload: Any) -> None:
+    async def publish(self, topic: str, payload: Any, headers: dict[str, Any] | None = None) -> None:
+        """Publish a payload to a Kafka topic.
+
+        ``headers`` is a mapping of header name → value that will be converted
+        to the ``list[tuple[bytes, bytes]]`` format expected by ``aiokafka``.
+        Header values are encoded as UTF‑8 bytes; keys remain ``str`` for easy
+        lookup in tests (see ``test_publisher_headers``).
+        """
         producer = await self._ensure_producer()
         with TRACER.start_as_current_span(
             "kafka.publish",
@@ -85,7 +92,7 @@ class KafkaEventBus:
                 "messaging.destination": topic,
             },
         ):
-            # Normalize payload to a dict for trace context injection
+            # Normalise payload for trace injection
             if not isinstance(payload, dict):
                 try:
                     if isinstance(payload, (bytes, bytearray)):
@@ -93,14 +100,20 @@ class KafkaEventBus:
                     elif isinstance(payload, str):
                         payload = json.loads(payload)
                     else:
-                        # Best-effort conversion via JSON round-trip
                         payload = json.loads(json.dumps(payload, ensure_ascii=False, default=str))
                 except Exception:
                     payload = {"payload": str(payload)}
             inject_trace_context(payload)
             message = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            await producer.send_and_wait(topic, message)
-        LOGGER.debug("Published event", extra={"topic": topic, "payload": payload})
+            # Convert header dict to list of (key, bytes) tuples expected by aiokafka
+            kafka_headers: list[tuple[str, bytes]] | None = None
+            if headers:
+                kafka_headers = [(k, str(v).encode()) for k, v in headers.items()]
+            await producer.send_and_wait(topic, message, headers=kafka_headers)
+        LOGGER.debug(
+            "Published event",
+            extra={"topic": topic, "payload": payload, "headers": headers},
+        )
 
     async def consume(
         self,

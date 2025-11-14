@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Any
 
 from jsonschema import ValidationError
@@ -16,6 +15,7 @@ from services.common.schema_validator import validate_event
 from services.common.settings_sa01 import SA01Settings
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
+from services.common import runtime_config as cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -26,15 +26,15 @@ setup_tracing("delegation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
 
 class DelegationWorker:
     def __init__(self) -> None:
-        self.topic = os.getenv("DELEGATION_TOPIC", "somastack.delegation")
-        self.group = os.getenv("DELEGATION_GROUP", "delegation-worker")
+        self.topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
+        self.group = cfg.env("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(
             KafkaSettings(
                 bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
-                security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-                sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-                sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-                sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+                security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+                sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+                sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+                sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
             )
         )
         self.store = DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)

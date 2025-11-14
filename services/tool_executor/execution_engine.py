@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
@@ -18,6 +17,7 @@ from services.tool_executor.sandbox_manager import (
     SandboxManager,
 )
 from services.tool_executor.tool_registry import ToolDefinition
+from services.common import runtime_config as cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,12 +37,18 @@ class ExecutionEngine:
         self._sandbox = sandbox
         self._resources = resources
         ensure_metrics_exporter()
-        self._circuit_failure_threshold = int(
-            os.getenv("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
-        )
-        self._circuit_reset_timeout = float(
-            os.getenv("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
-        )
+        try:
+            self._circuit_failure_threshold = int(
+                cfg.env("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
+            )
+        except (TypeError, ValueError):
+            self._circuit_failure_threshold = 5
+        try:
+            self._circuit_reset_timeout = float(
+                cfg.env("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
+            )
+        except (TypeError, ValueError):
+            self._circuit_reset_timeout = 30.0
         self._tool_breakers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {}
 
     async def execute(

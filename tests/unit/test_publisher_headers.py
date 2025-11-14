@@ -86,13 +86,21 @@ async def test_durable_publisher_header_injection_success(monkeypatch):
             raise RuntimeError("broker down")
 
     outbox = DummyOutbox()
-    pub = DurablePublisher(bus=FailingBus(), outbox=outbox)
+    failing_bus = FailingBus()
+    pub = DurablePublisher(bus=failing_bus, outbox=outbox)
     payload = {
         "event_id": "e999",
         "type": "system.event",
         "session_id": "sX",
         "metadata": {"tenant": "tY"},
     }
+    # Trigger publish on the failing bus to exercise fallback logic
+    res = await pub.publish(
+        "conversation.outbound",
+        payload,
+        session_id="sX",
+        tenant="tY",
+    )
     assert res["published"] is False and res["enqueued"] is True
     # Headers persisted to outbox
     hdrs = outbox.last.get("headers")

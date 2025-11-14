@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Optional
 
 import asyncpg
-import os
 
+from services.common import env
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.settings_base import BaseServiceSettings
 
 
@@ -16,7 +16,7 @@ class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any env overrides.
         raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
-        self.dsn = os.path.expandvars(raw_dsn)
+        self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
@@ -25,8 +25,8 @@ class TelemetryStore:
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
             await self._ensure_schema()
         return self._pool

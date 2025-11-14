@@ -22,12 +22,12 @@ Why we need it
 from __future__ import annotations
 
 import base64
-import os
-from services.common import runtime_config
 from typing import Optional, List
 
 import redis.asyncio as redis
 from cryptography.fernet import Fernet, InvalidToken
+
+from services.common import runtime_config, env
 
 # ---------------------------------------------------------------------------
 # Helper – validate / normalise the Fernet key supplied via env
@@ -40,7 +40,7 @@ def _load_fernet_key() -> Fernet:
     the behaviour of the previous implementation but raises a clear error if
     the resulting key is invalid.
     """
-    raw_key = os.getenv("SA01_CRYPTO_FERNET_KEY")
+    raw_key = env.get("SA01_CRYPTO_FERNET_KEY")
     if not raw_key:
         raise RuntimeError(
             "SA01_CRYPTO_FERNET_KEY is required – provide a urlsafe base64 32‑byte key"

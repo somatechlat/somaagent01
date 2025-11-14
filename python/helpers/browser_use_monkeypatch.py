@@ -1,11 +1,11 @@
 import logging
-import os
 from typing import Any
 
 from python.helpers import dirty_json
+from services.common import env
 
 LOGGER = logging.getLogger(__name__)
-_FEATURE_BROWSER = os.getenv("FEATURE_BROWSER", "false").strip().lower()
+_FEATURE_BROWSER = (env.get("FEATURE_BROWSER", "false") or "false").strip().lower()
 
 
 def _feature_enabled() -> bool:

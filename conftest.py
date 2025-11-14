@@ -9,6 +9,7 @@ works in the pytest environment.
 
 import os
 import sys
+from services.common import env as env_snapshot
 
 # Ensure ``pytest.Request`` exists for type‑hinting in the test suite. The
 # attribute is not provided by the public pytest API, so we add it here using the
@@ -53,7 +54,7 @@ try:
 
     _a0_load_dotenv()
     # Optional: reflect that OPENAI_API_KEY is visible to pytest skip markers
-    if os.getenv("OPENAI_API_KEY"):
+    if env_snapshot.get("OPENAI_API_KEY"):
         print("DEBUG .env loaded: OPENAI_API_KEY detected")
     else:
         print("DEBUG .env loaded: OPENAI_API_KEY not set")

@@ -25,13 +25,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
+from services.common import env
 
 
 @dataclass
@@ -70,15 +70,17 @@ class Stats:
 
 
 def _env_float(name: str, default: float) -> float:
+    raw = env.get(name, str(default))
     try:
-        return float(os.getenv(name, str(default)))
+        return float(raw) if raw is not None else default
     except ValueError:
         return default
 
 
 def _env_int(name: str, default: int) -> int:
+    raw = env.get(name, str(default))
     try:
-        return int(os.getenv(name, str(default)))
+        return int(raw) if raw is not None else default
     except ValueError:
         return default
 
@@ -120,15 +122,15 @@ async def _worker(
 
 
 async def main() -> None:
-    base_url = os.getenv("TARGET_URL", "http://127.0.0.1:8010")
-    path = os.getenv("PATH", "/v1/session/message")
+    base_url = env.get("TARGET_URL", "http://127.0.0.1:8010") or "http://127.0.0.1:8010"
+    path = env.get("PATH", "/v1/session/message") or "/v1/session/message"
     rps = _env_float("RPS", 5.0)
     duration = _env_int("DURATION", 30)
     concurrency = _env_int("CONCURRENCY", 20)
-    jwt = os.getenv("JWT")
-    tenant = os.getenv("TENANT")
-    persona_id = os.getenv("PERSONA_ID")
-    message = os.getenv("MESSAGE", "ping")
+    jwt = env.get("JWT")
+    tenant = env.get("TENANT")
+    persona_id = env.get("PERSONA_ID")
+    message = env.get("MESSAGE", "ping") or "ping"
 
     headers = {"content-type": "application/json"}
     if jwt:

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
 import asyncpg
 
+from services.common import env
 from services.common.settings_base import BaseServiceSettings
 # NOTE: Importing ADMIN_SETTINGS at module load time can cause circular import
 # issues (e.g., gateway imports ModelProfileStore before ADMIN_SETTINGS is
@@ -38,11 +38,11 @@ class ModelProfileStore:
         # Prefer admin-wide Postgres DSN when not explicitly provided.
         # Lazy import to avoid circular dependency on ADMIN_SETTINGS during module import.
         from services.common.admin_settings import ADMIN_SETTINGS as _ADMIN_SETTINGS
-        raw_dsn = os.getenv(
+        raw_dsn = env.get(
             "POSTGRES_DSN",
             dsn or getattr(_ADMIN_SETTINGS, "postgres_dsn", "postgresql://soma:soma@localhost:5432/somaagent01"),
-        )
-        self.dsn = os.path.expandvars(raw_dsn)
+        ) or getattr(_ADMIN_SETTINGS, "postgres_dsn", "postgresql://soma:soma@localhost:5432/somaagent01")
+        self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
@@ -51,12 +51,13 @@ class ModelProfileStore:
         # when SA01_POSTGRES_DSN is set in .env but docker provides POSTGRES_DSN.
         # Use admin settings if POSTGRES_DSN not set.
         from services.common.admin_settings import ADMIN_SETTINGS as _ADMIN_SETTINGS
-        return cls(dsn=os.getenv("POSTGRES_DSN", getattr(_ADMIN_SETTINGS, "postgres_dsn", settings.postgres_dsn)))
+        default_dsn = getattr(_ADMIN_SETTINGS, "postgres_dsn", settings.postgres_dsn)
+        return cls(dsn=env.get("POSTGRES_DSN", default_dsn) or default_dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 

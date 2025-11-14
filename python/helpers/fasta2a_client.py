@@ -2,6 +2,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from python.helpers.print_style import PrintStyle
+from services.common import env
 
 try:
     import httpx  # type: ignore
@@ -36,9 +37,7 @@ class AgentConnection:
         self.timeout = timeout
         # Auth headers
         if token is None:
-            import os
-
-            token = os.getenv("A2A_TOKEN")
+            token = env.get("A2A_TOKEN")
         headers = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"

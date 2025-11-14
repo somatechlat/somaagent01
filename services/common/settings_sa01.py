@@ -8,10 +8,10 @@ workers can run locally against the running infra.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from services.common import env
 from services.common.settings_base import BaseServiceSettings
 
 
@@ -38,24 +38,20 @@ class SA01Settings(BaseServiceSettings):
 
 	# Authentication toggle – mirrors the historic ``SA01_AUTH_REQUIRED`` flag.
 	# When false, policy checks are bypassed (tests set this to false).
-	# The value is read from the environment at construction time.
-	auth_required: bool = os.getenv("SA01_AUTH_REQUIRED", "false").lower() in {"true", "1", "yes"}
+	# The value is read from the canonical environment snapshot at construction time.
+	auth_required: bool = env.get_bool("SA01_AUTH_REQUIRED", False)
 
 	# Name of the cookie that may carry a JWT token.  The gateway reads this
 	# environment variable ``GATEWAY_JWT_COOKIE_NAME`` but the test suite also
 	# accesses it via ``APP_SETTINGS.jwt_cookie_name``.  Providing a default
 	# keeps backward‑compatibility.
-	jwt_cookie_name: str = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
-
-	# Authentication toggle – mirrors the historic SA01_AUTH_REQUIRED flag.
-	# When false, policy checks are bypassed (tests set this to false).
-	# The value is read from the environment at construction time.
-	auth_required: bool = os.getenv("SA01_AUTH_REQUIRED", "false").lower() in {"true", "1", "yes"}
+	jwt_cookie_name: str = env.get("GATEWAY_JWT_COOKIE_NAME", "jwt") or "jwt"
 
 	@classmethod
 	def default_environment(cls) -> str:
 		# Keep DEV as the standard local mode
-		return os.getenv("SA01_ENV", os.getenv("SOMA_AGENT_ENV", "DEV")).upper()
+		raw = env.get("SA01_ENV", env.get("SOMA_AGENT_ENV", "DEV") or "DEV") or "DEV"
+		return raw.upper()
 
 	@classmethod
 	def environment_defaults(cls) -> Mapping[str, Mapping[str, Any]]:
@@ -65,53 +61,60 @@ class SA01Settings(BaseServiceSettings):
 		  running gateway can connect to the infra containers.
 		- STAGING/PROD provide placeholders that should be overridden via env.
 		"""
+
+		def _str(key: str, default: str) -> str:
+			return env.get(key, default) or default
+
+		def _int(key: str, default: int) -> int:
+			return env.get_int(key, default)
+
 		dev_defaults = {
 			# BaseServiceSettings required fields
 			"deployment_mode": "DEV",
 			# Compose maps host ports: kafka 20000->9092, redis 20001->6379, pg 20002->5432, opa 20009->8181
-			"postgres_dsn": os.getenv("SA01_POSTGRES_DSN", "postgresql://soma:soma@localhost:20002/somaagent01"),
-			"kafka_bootstrap_servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:20000"),
-			"redis_url": os.getenv("REDIS_URL", "redis://localhost:20001/0"),
-			"otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
-			"model_profiles_path": os.getenv("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
+			"postgres_dsn": _str("SA01_POSTGRES_DSN", "postgresql://soma:soma@localhost:20002/somaagent01"),
+			"kafka_bootstrap_servers": _str("KAFKA_BOOTSTRAP_SERVERS", "localhost:20000"),
+			"redis_url": _str("REDIS_URL", "redis://localhost:20001/0"),
+			"otlp_endpoint": _str("OTLP_ENDPOINT", ""),
+			"model_profiles_path": _str("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
 			"extra": {},
 			# Extended fields
-			"metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
-			"metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
-			"opa_url": os.getenv("OPA_URL", "http://localhost:20009"),
-			"gateway_port": int(os.getenv("GATEWAY_PORT", "8010")),
-			"soma_base_url": os.getenv("SOMA_BASE_URL", "http://localhost:8010"),
+			"metrics_port": _int("GATEWAY_METRICS_PORT", 9400),
+			"metrics_host": _str("GATEWAY_METRICS_HOST", "0.0.0.0"),
+			"opa_url": _str("OPA_URL", "http://localhost:20009"),
+			"gateway_port": _int("GATEWAY_PORT", 8010),
+			"soma_base_url": _str("SOMA_BASE_URL", "http://localhost:8010"),
 		}
 
 		# Placeholders for non-DEV; expect env to provide concrete values
 		staging_defaults = {
 			"deployment_mode": "STAGING",
-			"postgres_dsn": os.getenv("SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"),
-			"kafka_bootstrap_servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-			"redis_url": os.getenv("REDIS_URL", "redis://redis:6379/0"),
-			"otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
-			"model_profiles_path": os.getenv("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
+			"postgres_dsn": _str("SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"),
+			"kafka_bootstrap_servers": _str("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+			"redis_url": _str("REDIS_URL", "redis://redis:6379/0"),
+			"otlp_endpoint": _str("OTLP_ENDPOINT", ""),
+			"model_profiles_path": _str("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
 			"extra": {},
-			"metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
-			"metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
-			"opa_url": os.getenv("OPA_URL", "http://opa:8181"),
-			"gateway_port": int(os.getenv("GATEWAY_PORT", "8010")),
-			"soma_base_url": os.getenv("SOMA_BASE_URL", "http://localhost:8010"),
+			"metrics_port": _int("GATEWAY_METRICS_PORT", 9400),
+			"metrics_host": _str("GATEWAY_METRICS_HOST", "0.0.0.0"),
+			"opa_url": _str("OPA_URL", "http://opa:8181"),
+			"gateway_port": _int("GATEWAY_PORT", 8010),
+			"soma_base_url": _str("SOMA_BASE_URL", "http://localhost:8010"),
 		}
 
 		prod_defaults = {
 			"deployment_mode": "PROD",
-			"postgres_dsn": os.getenv("SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"),
-			"kafka_bootstrap_servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-			"redis_url": os.getenv("REDIS_URL", "redis://redis:6379/0"),
-			"otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
-			"model_profiles_path": os.getenv("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
+			"postgres_dsn": _str("SA01_POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"),
+			"kafka_bootstrap_servers": _str("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+			"redis_url": _str("REDIS_URL", "redis://redis:6379/0"),
+			"otlp_endpoint": _str("OTLP_ENDPOINT", ""),
+			"model_profiles_path": _str("MODEL_PROFILES_PATH", "conf/model_profiles.yaml"),
 			"extra": {},
-			"metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
-			"metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
-			"opa_url": os.getenv("OPA_URL", "http://opa:8181"),
-			"gateway_port": int(os.getenv("GATEWAY_PORT", "8010")),
-			"soma_base_url": os.getenv("SOMA_BASE_URL", "http://localhost:8010"),
+			"metrics_port": _int("GATEWAY_METRICS_PORT", 9400),
+			"metrics_host": _str("GATEWAY_METRICS_HOST", "0.0.0.0"),
+			"opa_url": _str("OPA_URL", "http://opa:8181"),
+			"gateway_port": _int("GATEWAY_PORT", 8010),
+			"soma_base_url": _str("SOMA_BASE_URL", "http://localhost:8010"),
 		}
 
 		return {
@@ -119,4 +122,3 @@ class SA01Settings(BaseServiceSettings):
 			"STAGING": staging_defaults,
 			"PROD": prod_defaults,
 		}
-

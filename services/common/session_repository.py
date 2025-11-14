@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from services.common.admin_settings import ADMIN_SETTINGS
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -13,11 +11,12 @@ from time import perf_counter
 from typing import Any, Optional
 from uuid import UUID
 
-import os
 import asyncpg
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
 
+from services.common import env
+from services.common.admin_settings import ADMIN_SETTINGS
 LOGGER = logging.getLogger(__name__)
 
 
@@ -83,14 +82,11 @@ class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
         # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
         raw_url = url or ADMIN_SETTINGS.redis_url
-        self.url = os.path.expandvars(raw_url)
+        self.url = env.expand(raw_url)
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
         if ttl is None:
-            try:
-                ttl = int(os.getenv("SESSION_CACHE_TTL_SECONDS", "900"))
-            except ValueError:
-                ttl = 900
+            ttl = env.get_int("SESSION_CACHE_TTL_SECONDS", 900)
         self.default_ttl = ttl if ttl and ttl > 0 else 0
 
     async def get(self, key: str) -> Optional[dict[str, Any]]:
@@ -176,16 +172,14 @@ class SessionEnvelope:
 
 class PostgresSessionStore(SessionStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or os.getenv(
-            "POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
-        )
-        self.dsn = os.path.expandvars(raw_dsn)
+        raw_dsn = dsn or env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01") or "postgresql://soma:soma@localhost:5432/somaagent01"
+        self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 

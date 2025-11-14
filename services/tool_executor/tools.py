@@ -6,13 +6,14 @@ import asyncio
 import datetime
 import io
 import logging
-import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict
 
 import httpx
 import mimetypes
+
+from services.common import runtime_config as cfg
 
 try:
     import fitz  # PyMuPDF
@@ -166,7 +167,7 @@ class FileReadTool(BaseTool):
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
             raise ToolExecutionError("'path' argument is required")
-        base_dir = Path(os.getenv("TOOL_WORK_DIR", "work_dir")).resolve()
+        base_dir = Path(cfg.env("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
             raise ToolExecutionError("Access outside work directory is not allowed")
@@ -230,7 +231,7 @@ class CanvasAppendTool(BaseTool):
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
 
-        canvas_url = os.getenv("CANVAS_SERVICE_URL", "http://localhost:8014")
+        canvas_url = cfg.env("CANVAS_SERVICE_URL", "http://localhost:8014")
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
             "session_id": session_id,
@@ -240,7 +241,7 @@ class CanvasAppendTool(BaseTool):
             "persona_id": persona_id,
         }
         async with httpx.AsyncClient(
-            timeout=float(os.getenv("CANVAS_SERVICE_TIMEOUT", "5"))
+            timeout=float(cfg.env("CANVAS_SERVICE_TIMEOUT", "5"))
         ) as client:
             response = await client.post(endpoint, json=payload)
             response.raise_for_status()
@@ -291,11 +292,11 @@ class IngestDocumentTool(BaseTool):
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             raise ToolExecutionError("'attachment_id' is required")
 
-        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         # Harden internal token handling: only default in DEV, require explicit in non-DEV
-        mode = (os.getenv("SOMA_AGENT_MODE") or "DEV").upper()
+        mode = (cfg.env("SOMA_AGENT_MODE") or "DEV").upper()
         default_token = "dev-internal-token" if mode == "DEV" else ""
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN", default_token)
+        token = cfg.env("GATEWAY_INTERNAL_TOKEN", default_token)
         if not token:
             raise ToolExecutionError("Internal token not configured for attachment fetch")
         url = f"{base}/internal/attachments/{attachment_id}/binary"
@@ -303,7 +304,7 @@ class IngestDocumentTool(BaseTool):
         if tenant_header:
             headers["X-Tenant-Id"] = str(tenant_header)
         try:
-            async with httpx.AsyncClient(timeout=float(os.getenv("TOOL_FETCH_TIMEOUT", "15"))) as client:
+            async with httpx.AsyncClient(timeout=float(cfg.env("TOOL_FETCH_TIMEOUT", "15"))) as client:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:
                     raise ToolExecutionError("Attachment not found")

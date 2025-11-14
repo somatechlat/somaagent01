@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from typing import Any
 
@@ -25,6 +24,7 @@ from services.common.memory_replica_store import (
 from services.common.settings_sa01 import SA01Settings
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
+from services.common import runtime_config as cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -57,9 +57,9 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
     # Prefer admin-wide metrics configuration; fall back to provided defaults.
     default_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9403))
     default_host = str(getattr(ADMIN_SETTINGS, "metrics_host", "0.0.0.0"))
-    port = int(os.getenv("REPLICATOR_METRICS_PORT", str(default_port)))
+    port = int(cfg.env("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
-        start_http_server(port, addr=os.getenv("REPLICATOR_METRICS_HOST", default_host))
+        start_http_server(port, addr=cfg.env("REPLICATOR_METRICS_HOST", default_host))
         LOGGER.info("Memory replicator metrics server started", extra={"port": port})
     else:
         LOGGER.warning("Memory replicator metrics disabled", extra={"port": port})
@@ -69,13 +69,13 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
-        bootstrap_servers=os.getenv(
+        bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", ADMIN_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
 
 
@@ -84,8 +84,8 @@ class MemoryReplicator:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
-        self.group_id = os.getenv("MEMORY_REPLICATOR_GROUP", "memory-replicator")
+        self.wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+        self.group_id = cfg.env("MEMORY_REPLICATOR_GROUP", "memory-replicator")
         # Use centralized admin settings for Postgres DSN.
         self.replica = MemoryReplicaStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.dlq_store = DLQStore(dsn=ADMIN_SETTINGS.postgres_dsn)

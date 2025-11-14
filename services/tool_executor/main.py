@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import time
 import uuid
 from typing import Any
@@ -14,6 +13,7 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common import runtime_config as cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
@@ -25,6 +25,8 @@ from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore
 from services.common.settings_sa01 import SA01Settings
+# ADMIN_SETTINGS provides centralized configuration (e.g., Kafka, Redis, Postgres)
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
@@ -81,13 +83,13 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
     default_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9401))
     default_host = str(getattr(ADMIN_SETTINGS, "metrics_host", "0.0.0.0"))
 
-    port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
+    port = int(cfg.env("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
     if port <= 0:
         LOGGER.warning("Tool executor metrics disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
 
-    host = os.getenv("TOOL_EXECUTOR_METRICS_HOST", default_host)
+    host = cfg.env("TOOL_EXECUTOR_METRICS_HOST", default_host)
     start_http_server(port, addr=host)
     LOGGER.info("Tool executor metrics server started", extra={"host": host, "port": port})
     _METRICS_SERVER_STARTED = True
@@ -96,30 +98,30 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
-        bootstrap_servers=os.getenv(
+        bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", ADMIN_SETTINGS.kafka_bootstrap_servers
         ),
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
 
 
 def _redis_url() -> str:
     # Use admin-wide Redis URL configuration.
-    return os.getenv("REDIS_URL", ADMIN_SETTINGS.redis_url)
+    return cfg.env("REDIS_URL", ADMIN_SETTINGS.redis_url)
 
 
 def _tenant_config_path() -> str:
-    return os.getenv(
+    return cfg.env(
         "TENANT_CONFIG_PATH",
         SERVICE_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
     )
 
 
 def _policy_requeue_prefix() -> str:
-    return os.getenv(
+    return cfg.env(
         "POLICY_REQUEUE_PREFIX",
         SERVICE_SETTINGS.extra.get("policy_requeue_prefix", "policy:requeue"),
     )
@@ -134,7 +136,7 @@ class ToolExecutor:
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.tenant_config = TenantConfig(path=_tenant_config_path())
         self.policy = PolicyClient(
-            base_url=os.getenv("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
+            base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
             tenant_config=self.tenant_config,
         )
         self.store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
@@ -158,13 +160,13 @@ class ToolExecutor:
             },
         )
         self.streams = {
-            "requests": os.getenv(
+            "requests": cfg.env(
                 "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
             ),
-            "results": os.getenv(
+            "results": cfg.env(
                 "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
             ),
-            "group": os.getenv(
+            "group": cfg.env(
                 "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
             ),
         }
@@ -367,7 +369,7 @@ class ToolExecutor:
                 "type": "tool.start",
             }
             await self.publisher.publish(
-                os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
                 start_event,
                 dedupe_key=start_event.get("event_id"),
                 session_id=str(session_id),
@@ -549,7 +551,7 @@ class ToolExecutor:
                 "type": "tool.result",
             }
             await self.publisher.publish(
-                os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
                 outbound_event,
                 dedupe_key=outbound_event.get("event_id"),
                 session_id=str(result_event.get("session_id")),
@@ -639,7 +641,7 @@ class ToolExecutor:
             "metadata": {
                 **str_metadata,
                 "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
-                "universe_id": (result_event.get("metadata") or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                "universe_id": (result_event.get("metadata") or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
             },
             "status": result_event.get("status"),
         }
@@ -665,7 +667,7 @@ class ToolExecutor:
             except Exception:
                 LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if allow_memory:
-                wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self.soma.remember(memory_payload)
                 try:
                     wal_event = {

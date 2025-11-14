@@ -9,11 +9,11 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
-import os
 import time
 from typing import Any, Callable, TypeVar
 
 from prometheus_client import Counter, start_http_server
+from services.common import env
 
 T = TypeVar("T")
 
@@ -47,7 +47,7 @@ def ensure_metrics_exporter() -> None:
     if _EXPORTER_STARTED:
         return
 
-    raw_port = os.getenv("CIRCUIT_BREAKER_METRICS_PORT", "").strip()
+    raw_port = (env.get("CIRCUIT_BREAKER_METRICS_PORT", "") or "").strip()
     if not raw_port:
         return
 
@@ -68,7 +68,7 @@ def ensure_metrics_exporter() -> None:
         )
         return
 
-    host = os.getenv("CIRCUIT_BREAKER_METRICS_HOST", "0.0.0.0")
+    host = env.get("CIRCUIT_BREAKER_METRICS_HOST", "0.0.0.0") or "0.0.0.0"
     try:
         start_http_server(port, addr=host)
     except Exception as exc:  # pragma: no cover - binding failures depend on host env

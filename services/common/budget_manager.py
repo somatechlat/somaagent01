@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import os
 from services.common.admin_settings import ADMIN_SETTINGS
 from dataclasses import dataclass
 from typing import Optional
 
 import redis.asyncio as redis
 
+from services.common import env
 from services.common.tenant_config import TenantConfig
 
 
@@ -25,9 +25,9 @@ class BudgetManager:
     ) -> None:
         # Use centralized admin settings for Redis URL, falling back to provided URL if given.
         raw_url = url or ADMIN_SETTINGS.redis_url
-        self.url = os.path.expandvars(raw_url)
-        self.prefix = os.getenv("BUDGET_PREFIX", "budget:tokens")
-        self.limit = int(os.getenv("BUDGET_LIMIT_TOKENS", "0"))  # 0 = unlimited
+        self.url = env.expand(raw_url)
+        self.prefix = env.get("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
+        self.limit = env.get_int("BUDGET_LIMIT_TOKENS", 0)  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)
         self.tenant_config = tenant_config or TenantConfig()
 
@@ -65,9 +65,13 @@ class BudgetManager:
 
         env_key = f"BUDGET_LIMIT_{tenant.upper()}"
         persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
-        if persona_key in os.environ:
-            return int(os.getenv(persona_key, "0")) or None
-        limit = int(os.getenv(env_key, "0"))
+        persona_env = env.get(persona_key)
+        if persona_env is not None:
+            try:
+                return int(persona_env) or None
+            except ValueError:
+                return None
+        limit = env.get_int(env_key, 0)
         if limit == 0:
             limit = self.limit
         return limit or None

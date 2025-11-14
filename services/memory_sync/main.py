@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from typing import Optional, Any, Mapping, Sequence
 import json
@@ -24,6 +23,7 @@ from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_schema,
 )
 from services.common.tracing import setup_tracing
+from services.common import runtime_config as cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from python.integrations.soma_client import SomaClient, SomaClientError
 
@@ -41,16 +41,18 @@ def _kafka_settings() -> KafkaSettings:
 
 
 def _env_float(name: str, default: float) -> float:
+    raw = cfg.env(name, str(default))
     try:
-        return float(os.getenv(name, str(default)))
-    except ValueError:
+        return float(raw)
+    except (TypeError, ValueError):
         return default
 
 
 def _env_int(name: str, default: int) -> int:
+    raw = cfg.env(name, str(default))
     try:
-        return int(os.getenv(name, str(default)))
-    except ValueError:
+        return int(raw)
+    except (TypeError, ValueError):
         return default
 
 
@@ -161,7 +163,7 @@ class MemorySyncWorker:
 
         # Success: publish WAL and mark sent
         try:
-            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             wal_event = {
                 "type": "memory.write",
                 "role": payload.get("role"),
@@ -190,8 +192,8 @@ class MemorySyncWorker:
 
 
 async def main() -> None:
-    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-    setup_tracing("memory-sync", endpoint=os.getenv("OTLP_ENDPOINT"))
+    logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
+    setup_tracing("memory-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
     worker = MemorySyncWorker()
     try:
         await worker.start()
@@ -204,4 +206,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         LOGGER.info("memory_sync stopped")
-
