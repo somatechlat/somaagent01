@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import asyncio
 from typing import Any
 
 import asyncpg
+
+from services.common import env
 
 
 class PostgresPool:
@@ -32,7 +33,7 @@ class PostgresPool:
 
 
 # PRODUCTION ONLY - Always use real postgres
-dsn = os.getenv("SA01_DB_DSN")
+dsn = env.get("SA01_DB_DSN")
 if not dsn:
     raise RuntimeError("SA01_DB_DSN environment variable required")
 

@@ -10,10 +10,11 @@ compatibility.
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, List
 
 import httpx
+
+from services.common import env
 
 from python.integrations.soma_client import (
     SomaClient,
@@ -38,7 +39,7 @@ def _base_url() -> str:
     the underlying :class:`SomaClient` implementation.
     """
 
-    return os.getenv("SA01_SOMA_BASE_URL", "http://localhost:9696")
+    return env.get("SA01_SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"
 
 
 def _handle_response(resp: httpx.Response) -> Any:

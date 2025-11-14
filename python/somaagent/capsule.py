@@ -4,7 +4,6 @@ The functions use the public HTTP API exposed by ``services/capsule_registry/mai
 """
 
 import json
-import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -12,8 +11,10 @@ from typing import Any, Dict, List
 
 import httpx
 
+from services.common import env
+
 # Base URL – can be overridden via env var for testing / staging.
-BASE_URL = os.getenv("CAPSULE_REGISTRY_URL", "http://localhost:8000")
+BASE_URL = env.get("CAPSULE_REGISTRY_URL", "http://localhost:8000") or "http://localhost:8000"
 
 
 def list_capsules() -> List[Dict[str, Any]]:

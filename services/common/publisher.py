@@ -63,14 +63,14 @@ class DurablePublisher:
             timeout_s = 2.0
         try:
             # Build standard event headers expected by downstream consumers and tests
+            # Build a deterministic header map – ensure every key is present (empty string if missing)
             hdrs: dict[str, Any] = {}
-            # Prefer explicit arguments; fall back to payload fields if missing
-            hdrs["tenant_id"] = tenant or (payload.get("metadata") or {}).get("tenant")
-            hdrs["session_id"] = session_id or payload.get("session_id")
-            hdrs["persona_id"] = payload.get("persona_id")
-            hdrs["event_type"] = payload.get("type")
-            hdrs["event_id"] = payload.get("event_id")
-            hdrs["schema"] = payload.get("version") or payload.get("schema")
+            hdrs["tenant_id"] = tenant or (payload.get("metadata") or {}).get("tenant") or ""
+            hdrs["session_id"] = session_id or payload.get("session_id") or ""
+            hdrs["persona_id"] = payload.get("persona_id") or ""
+            hdrs["event_type"] = payload.get("type") or ""
+            hdrs["event_id"] = payload.get("event_id") or ""
+            hdrs["schema"] = payload.get("version") or payload.get("schema") or ""
             await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}

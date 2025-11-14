@@ -79,6 +79,8 @@ os.environ.setdefault("OTEL_EXPORTER_OTLP_DISABLED", "true")
 # Ensure test mode flag is set so selective authorization uses bypass logic
 os.environ.setdefault("TESTING", "1")
 
+env_snapshot.refresh()
+
 # Make tool catalog conveniently available as `catalog` for tests that reference it directly
 try:
     import builtins as _builtins
@@ -97,7 +99,7 @@ from pathlib import Path
 # Only enable the Playwright plugin when explicitly requested to avoid
 # importing heavy browser deps (and transitive packages like pyee.asyncio)
 # in environments where they are not installed.
-if os.getenv("RUN_PLAYWRIGHT"):
+if env_snapshot.get("RUN_PLAYWRIGHT"):
     pytest_plugins = ["playwright.sync_api"]
 else:
     pytest_plugins = []
@@ -110,13 +112,11 @@ def pytest_ignore_collect(collection_path: Path, config):
     directory when the ``RUN_PLAYWRIGHT`` environment variable is not set.
     All other test files are collected normally.
     """
-    import os
-
     path_str = str(collection_path)
-    if "playwright" in path_str and not os.getenv("RUN_PLAYWRIGHT"):
+    if "playwright" in path_str and not env_snapshot.get("RUN_PLAYWRIGHT"):
         return True
     # Skip heavy/live and integration-style suites unless explicitly enabled
-    run_integration = os.getenv("RUN_INTEGRATION") in {"1", "true", "yes"}
+    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
     if ("tests/integration" in path_str or "tests/context" in path_str) and not run_integration:
         return True
     if path_str.endswith("tests/test_outbox_repository.py") and not run_integration:
@@ -145,11 +145,9 @@ def pytest_collection_modifyitems(config, items):
     services. To run integration tests against real services, set the
     environment variable and bring up Kafka/Postgres as needed.
     """
-    import os
-
     import pytest
 
-    run_integration = os.getenv("RUN_INTEGRATION") in {"1", "true", "yes"}
+    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
     if run_integration:
         return
     skip_integration = pytest.mark.skip(reason="RUN_INTEGRATION not set")

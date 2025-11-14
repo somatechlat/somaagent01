@@ -1,7 +1,8 @@
-import os
+from services.common import env
 
 UI_BASE_URL = (
-    os.getenv("WEB_UI_BASE_URL") or f"http://127.0.0.1:{os.getenv('GATEWAY_PORT','21016')}/ui"
+    env.get("WEB_UI_BASE_URL")
+    or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}/ui"
 )
 
 
