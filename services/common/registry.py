@@ -8,6 +8,7 @@ All configuration flows through deterministic resolution via Somabrain APIs.
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,6 +41,7 @@ class FeatureRegistry:
     
     def __init__(self) -> None:
         self._settings = SA01Settings.from_env()
+        self._env_cache = self._snapshot_environment()
         self._config = self._build_canonical_config()
         
     def _build_canonical_config(self) -> RegistryConfig:
@@ -54,6 +56,10 @@ class FeatureRegistry:
             opa_url=self._settings.opa_url
         )
     
+    def _snapshot_environment(self) -> dict[str, str]:
+        """Capture environment variables once so downstream code stays deterministic."""
+        return {key: value for key, value in os.environ.items()}
+
     def _determine_deployment_mode(self) -> str:
         """Deterministic deployment mode without legacy mapping."""
         raw = self._settings.deployment_mode.upper()
@@ -118,6 +124,18 @@ class FeatureRegistry:
         except Exception:
             # In case of unexpected errors, be safe and return False.
             return False
+
+    def legacy_value(self, key: str, default: Optional[str] = None) -> str:
+        """Return immutable legacy configuration values captured during init."""
+        value = self._env_cache.get(key)
+        if value is not None:
+            return value
+        extras = getattr(self._settings, "extra", {})
+        if isinstance(extras, dict) and key in extras:
+            return str(extras[key])
+        if default is None:
+            return ""
+        return default
 
 
 # Singleton canonical instance

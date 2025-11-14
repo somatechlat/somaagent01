@@ -1,17 +1,22 @@
 """M3: Central secrets adapter for settings encryption & rotation"""
-import os
+
 import base64
 from cryptography.fernet import Fernet
 
+from services.common import env
+
+
 class VaultAdapter:
     """Encrypt/decrypt provider keys and all runtime settings."""
+
     _cipher: Fernet | None = None
 
     @classmethod
     def cipher(cls) -> Fernet:
         if cls._cipher is None:
-            key = os.getenv("SA01_CRYPTO_FERNET_KEY") or Fernet.generate_key()
-            cls._cipher = Fernet(key.encode() if isinstance(key, str) else key)
+            key = env.get("SA01_CRYPTO_FERNET_KEY")
+            material = key.encode() if isinstance(key, str) and key else Fernet.generate_key()
+            cls._cipher = Fernet(material)
         return cls._cipher
 
     @classmethod

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple
 
 import httpx
+
+from services.common import env
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,16 +22,19 @@ class ChatMessage:
 
 class SLMClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
-        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
-        self.default_model = model or os.getenv(
-            "SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct"
-        )
+        self.base_url = base_url or env.get("SLM_BASE_URL", "https://slm.somaagent01.dev/v1") or "https://slm.somaagent01.dev/v1"
+        self.default_model = model or env.get("SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct") or "meta-llama/Meta-Llama-3.1-8B-Instruct"
         try:
             # Lazy import to avoid tight coupling when helpers are unused in some runtimes
             from python.helpers.dotenv import get_dotenv_value as _get
         except Exception:
             def _get(k: str, default: str | None = None):
-                return os.getenv(k, default)
+                from services.common import env as _env
+
+                def _inner(k: str, default: str | None = None):
+                    return _env.get(k, default)
+
+                _get = _inner
         self.api_key = _get("SLM_API_KEY")  # required for authenticated providers
         self._client = httpx.AsyncClient(timeout=30.0)
 
@@ -59,7 +63,7 @@ class SLMClient:
             "temperature": (
                 temperature
                 if temperature is not None
-                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
+                else float(env.get("SLM_TEMPERATURE", "0.2") or "0.2")
             ),
             "stream": False,
         }
@@ -114,7 +118,7 @@ class SLMClient:
             "temperature": (
                 temperature
                 if temperature is not None
-                else float(os.getenv("SLM_TEMPERATURE", "0.2"))
+                else float(env.get("SLM_TEMPERATURE", "0.2") or "0.2")
             ),
             "stream": True,
         }

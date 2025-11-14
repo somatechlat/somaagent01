@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
 from dotenv import load_dotenv
+from services.common import env as env_snapshot
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -159,13 +160,13 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--host",
-        default=os.getenv("GATEWAY_HOST", "0.0.0.0"),
-        help="Gateway bind host (default: %(default)s)",
+        default=None,
+        help="Gateway bind host (default: env GATEWAY_HOST or 0.0.0.0)",
     )
     parser.add_argument(
         "--port",
-        default=os.getenv("GATEWAY_PORT", "8010"),
-        help="Gateway bind port (default: %(default)s)",
+        default=None,
+        help="Gateway bind port (default: env GATEWAY_PORT or 8010)",
     )
     return parser.parse_args(argv)
 
@@ -178,6 +179,12 @@ async def main(argv: List[str]) -> int:
     load_dotenv(dotenv_path=default_env_path, override=True)
     if args.env_files:
         _load_env_files(args.env_files)
+    env_snapshot.refresh()
+
+    if args.host is None:
+        args.host = env_snapshot.get("GATEWAY_HOST", "0.0.0.0") or "0.0.0.0"
+    if args.port is None:
+        args.port = env_snapshot.get("GATEWAY_PORT", "8010") or "8010"
 
     env = _default_env()
     specs = _process_specs(args.reload, args.host, args.port)

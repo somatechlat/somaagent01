@@ -6,9 +6,9 @@ All access flows through FeatureRegistry with zero legacy patterns.
 
 from __future__ import annotations
 
-import os
 from typing import Optional
 
+from services.common import env as env_snapshot
 from services.common.registry import registry
 from services.common.settings_sa01 import SA01Settings
 
@@ -42,6 +42,7 @@ def init_runtime_config() -> None:
     ``settings()`` reflect the updated environment.
     """
     global _STATE
+    env_snapshot.refresh()
     _STATE = _RuntimeState()
 
 
@@ -59,14 +60,11 @@ def settings() -> SA01Settings:
 
 
 def env(key: str, default: Optional[str] = None) -> str:
-    """Legacy ``cfg.env`` accessor – direct ``os.getenv`` fallback.
-
-    The zero‑legacy design discourages scattered ``os.getenv`` calls, but many
-    modules still rely on this helper.  It simply proxies to ``os.getenv`` and
-    returns an empty string when the variable is missing, matching the original
-    semantics.
-    """
-    return os.getenv(key, default) or ""
+    """Legacy ``cfg.env`` accessor backed by the canonical environment snapshot."""
+    value = env_snapshot.get(key, default)
+    if value is None:
+        return ""
+    return value
 
 # ---------------------------------------------------------------------------
 # Canonical getters – thin wrappers around the FeatureRegistry for new code.

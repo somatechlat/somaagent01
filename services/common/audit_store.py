@@ -8,14 +8,15 @@ for tests via AUDIT_STORE_MODE=memory.
 from __future__ import annotations
 
 import json
-import os
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Iterable, Optional
 
 import asyncpg
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common import runtime_config as cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,8 +90,8 @@ class PostgresAuditStore(AuditStore):
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
@@ -255,7 +256,7 @@ class InMemoryAuditStore(AuditStore):
 
 
 def from_env() -> AuditStore:
-    mode = os.getenv("AUDIT_STORE_MODE", "postgres").lower()
+    mode = cfg.env("AUDIT_STORE_MODE", "postgres").lower()
     if mode == "memory":
         return InMemoryAuditStore()
     # Use admin-wide Postgres DSN when not explicitly provided.

@@ -21,10 +21,10 @@ Limitations:
 from __future__ import annotations
 
 import logging
-import os
 import re
 from typing import Iterable
 
+from services.common import runtime_config as cfg
 DEFAULT_KEYS = {
     "authorization",
     "auth",
@@ -40,7 +40,7 @@ DEFAULT_KEYS = {
 
 
 def _env_key_set(name: str, base: set[str]) -> set[str]:
-    raw = os.getenv(name, "").strip()
+    raw = cfg.env(name, "").strip()
     if not raw:
         return base
     extra = {p.strip().lower() for p in raw.split(",") if p.strip()}
@@ -62,7 +62,7 @@ class RedactionFilter(logging.Filter):
         self.keys = _env_key_set("LOG_REDACT_KEYS", DEFAULT_KEYS)
         self.patterns = _compile_patterns(self.keys)
         # Token prefixes (e.g., sk-, xoxb-, ghp_) redacted when followed by token chars
-        raw_prefixes = os.getenv("LOG_REDACT_TOKEN_PREFIXES", "sk-,xoxb-,xoxp-,ghp_")
+        raw_prefixes = cfg.env("LOG_REDACT_TOKEN_PREFIXES", "sk-,xoxb-,xoxp-,ghp_")
         self.prefixes = [p.strip() for p in raw_prefixes.split(",") if p.strip()]
         if self.prefixes:
             pref_alt = "|".join(re.escape(p) for p in self.prefixes)

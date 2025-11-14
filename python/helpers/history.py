@@ -163,7 +163,6 @@ class Topic(Record):
         )
         large_msgs = []
         for m in (m for m in self.messages if not m.summary):
-            # TODO refactor this
             out = m.output()
             text = output_text(out)
             tok = m.get_tokens()
@@ -209,7 +208,7 @@ class Topic(Record):
         return False
 
     async def summarize_messages(self, messages: list[Message]):
-        # FIXME: vision bytes are sent to utility LLM, send summary instead
+        # Vision bytes are currently sent to the utility LLM; summarizing them first would reduce payload size.
         msg_txt = [m.output_text() for m in messages]
         summary = await self.history.agent.call_utility_model(
             system=self.history.agent.read_prompt("fw.topic_summary.sys.md"),

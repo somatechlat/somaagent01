@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+from services.common import env
 _LOGGING_INITIALISED = False
 
 
@@ -68,7 +68,7 @@ def setup_logging(default_level: str | None = None) -> None:
     if _LOGGING_INITIALISED:
         return
 
-    level_name = default_level or os.getenv("LOG_LEVEL", "INFO")
+    level_name = default_level or env.get("LOG_LEVEL", "INFO") or "INFO"
     level = getattr(logging, level_name.upper(), logging.INFO)
 
     root = logging.getLogger()

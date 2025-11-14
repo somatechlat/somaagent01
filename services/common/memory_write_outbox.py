@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-import os
 import asyncpg
+from services.common import runtime_config as cfg
 
 
 @dataclass(slots=True)
@@ -43,8 +43,8 @@ class MemoryWriteOutbox:
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(os.getenv("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(os.getenv("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 
@@ -232,4 +232,3 @@ async def ensure_schema(store: MemoryWriteOutbox) -> None:
     pool = await store._ensure_pool()
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
-

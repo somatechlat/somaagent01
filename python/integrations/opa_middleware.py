@@ -5,7 +5,6 @@ environment toggles. It enforces fail-closed by default.
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict
 
 import httpx
@@ -15,6 +14,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from observability.metrics import metrics_collector
+from services.common import env
 
 
 class EnforcePolicy(BaseHTTPMiddleware):
@@ -22,14 +22,14 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     def __init__(self, app, evaluate_url: str | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        base = os.getenv("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696").rstrip("/")
+        base = (env.get("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696") or "http://host.docker.internal:9696").rstrip("/")
         self.evaluate_url = (
-            evaluate_url or os.getenv("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
+            evaluate_url or env.get("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )
         # previous behaviour where the service being unavailable would not block
         # the request. This can be overridden via the ``SA01_OPA_FAIL_OPEN``
         # environment variable ("true"/"1" enables fail‑open).
-        env_fail_open = os.getenv("SA01_OPA_FAIL_OPEN", "true").lower()
+        env_fail_open = (env.get("SA01_OPA_FAIL_OPEN", "true") or "true").lower()
         self.fail_open = env_fail_open in {"true", "1", "yes", "on"}
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]

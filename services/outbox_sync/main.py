@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-import os
 from contextlib import suppress
 from typing import Optional
 import time
@@ -31,6 +30,7 @@ from services.common.outbox_repository import (
     OutboxStore,
 )
 from services.common.tracing import setup_tracing
+from services.common import runtime_config as cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,16 +54,18 @@ EFFECTIVE_BATCH = Gauge(
 
 
 def _env_float(name: str, default: float) -> float:
+    raw = cfg.env(name, str(default))
     try:
-        return float(os.getenv(name, str(default)))
-    except ValueError:
+        return float(raw)
+    except (TypeError, ValueError):
         return default
 
 
 def _env_int(name: str, default: int) -> int:
+    raw = cfg.env(name, str(default))
     try:
-        return int(os.getenv(name, str(default)))
-    except ValueError:
+        return int(raw)
+    except (TypeError, ValueError):
         return default
 
 
@@ -148,7 +150,7 @@ class OutboxSyncWorker:
         - degraded: HTTP 200 but body not clearly ok
         - down: request error/timeout/non-200
         """
-        base = os.getenv("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+        base = cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
         try:
@@ -205,10 +207,10 @@ class OutboxSyncWorker:
 
 
 async def main() -> None:
-    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-    setup_tracing("outbox-sync", endpoint=os.getenv("OTLP_ENDPOINT"))
+    logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
+    setup_tracing("outbox-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
     # Optional metrics server
-    metrics_port = int(os.getenv("OUTBOX_SYNC_METRICS_PORT", "9469"))
+    metrics_port = int(cfg.env("OUTBOX_SYNC_METRICS_PORT", "9469"))
     start_http_server(metrics_port)
     worker = OutboxSyncWorker()
     try:

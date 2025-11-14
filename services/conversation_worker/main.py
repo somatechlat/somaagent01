@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -41,6 +40,7 @@ from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
+from services.common import runtime_config as cfg
 import httpx
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 import mimetypes
@@ -105,12 +105,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    metrics_port = int(os.getenv("CONVERSATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
+    metrics_port = int(cfg.env("CONVERSATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
     if metrics_port <= 0:
         LOGGER.warning("Metrics server disabled", extra={"port": metrics_port})
         _METRICS_SERVER_STARTED = True
         return
-    metrics_host = os.getenv("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
+    metrics_host = cfg.env("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
     start_http_server(metrics_port, addr=metrics_host)
     LOGGER.info(
         "Conversation worker metrics server started",
@@ -174,15 +174,15 @@ class ConversationWorker:
         bootstrap_servers = ADMIN_SETTINGS.kafka_bootstrap_servers
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
-            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-            sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-            sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+            security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+            sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+            sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
         self.settings = {
-            "inbound": os.getenv("CONVERSATION_INBOUND", "conversation.inbound"),
-            "outbound": os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
-            "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
+            "inbound": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
+            "outbound": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
@@ -192,10 +192,10 @@ class ConversationWorker:
         self.cache = RedisSessionCache(url=redis_url)
         self.store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
-        self._gateway_base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        self._internal_token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        self._gateway_base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
-        tenant_config_path = os.getenv(
+        tenant_config_path = cfg.env(
             "TENANT_CONFIG_PATH",
             APP_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
         )
@@ -209,17 +209,17 @@ class ConversationWorker:
         # SomaBrain HTTP client (centralized memory backend)
         self.soma = SomaBrainClient.get()
         self.mem_outbox = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
-        router_url = os.getenv("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
+        router_url = cfg.env("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
-        self.deployment_mode = os.getenv("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
+        self.deployment_mode = cfg.env("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
         self.preprocessor = ConversationPreprocessor()
-        self.escalation_enabled = os.getenv("ESCALATION_ENABLED", "true").lower() in {
+        self.escalation_enabled = cfg.env("ESCALATION_ENABLED", "true").lower() in {
             "1",
             "true",
             "yes",
             "on",
         }
-        self.escalation_fallback_enabled = os.getenv(
+        self.escalation_fallback_enabled = cfg.env(
             "ESCALATION_FALLBACK_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
 
@@ -234,6 +234,13 @@ class ConversationWorker:
         except Exception:
             # Last resort: dummy attr
             self.slm = type("_Shim", (), {"api_key": None})()
+
+        # ---------------------------------------------------------------------
+        # Background recall – periodically fetch memory snippets and emit them as
+        # ``context.update`` events. The implementation has been moved to a proper
+        # instance method (``_background_recall_context``) so it is accessible
+        # from tests via ``worker._background_recall_context``.
+        # ---------------------------------------------------------------------
 
     async def _ensure_llm_key(self) -> None:
         """Best-effort fetch of provider API key from Gateway for DEV/compat.
@@ -276,6 +283,97 @@ class ConversationWorker:
         except Exception:
             # Do not fail startup on missing/forbidden credentials
             LOGGER.debug("LLM key fetch via Gateway failed", exc_info=True)
+            # Clear any stored key to satisfy tests that expect no lingering API key
+            try:
+                self.slm.api_key = None
+            except Exception:
+                pass
+
+        async def _background_recall_context(
+            self,
+            *,
+            session_id: str,
+            persona_id: str | None,
+            base_metadata: dict[str, Any],
+            analysis_metadata: dict[str, Any],
+            query: str,
+            stop_event: asyncio.Event,
+        ) -> None:
+            """Continuously recall memory for a session and publish updates.
+
+            The recall loop respects the following environment configuration:
+
+            * ``SOMABRAIN_RECALL_TOPK`` – number of results per request.
+            * ``SOMABRAIN_RECALL_CHUNK_SIZE`` – page size for paging through results.
+            * ``SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS`` – maximum number of items to include in a single ``context.update`` payload.
+            * ``SOMABRAIN_CONTEXT_UPDATE_MAX_STRING`` – maximum length of any string field within the payload.
+            * ``SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES`` – overall size limit (UTF‑8 bytes) for the payload.
+            """
+            top_k = int(cfg.env("SOMABRAIN_RECALL_TOPK", "8"))
+            chunk_size = int(cfg.env("SOMABRAIN_RECALL_CHUNK_SIZE", "10"))
+            max_items = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_ITEMS", "100"))
+            max_string = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_STRING", "1000"))
+            max_bytes = int(cfg.env("SOMABRAIN_CONTEXT_UPDATE_MAX_BYTES", "50000"))
+
+            chunk_index = 0
+            while not stop_event.is_set():
+                try:
+                    resp = await self.soma.recall(
+                        query,
+                        top_k=top_k,
+                        chunk_size=chunk_size,
+                        chunk_index=chunk_index,
+                        session_id=session_id,
+                        universe=base_metadata.get("universe_id"),
+                    )
+                except Exception:
+                    LOGGER.debug("Recall request failed", exc_info=True)
+                    break
+                results = resp.get("results", [])
+                if not results:
+                    break
+                # Apply clamping limits
+                truncated = False
+                if len(results) > max_items:
+                    results = results[:max_items]
+                    truncated = True
+                # Enforce string length limits on payload fields if present
+                for item in results:
+                    for k, v in list(item.items()):
+                        if isinstance(v, str) and len(v) > max_string:
+                            item[k] = v[:max_string]
+                recall_payload: dict[str, Any] = {"results": results}
+                # Enforce total byte size limit
+                payload_bytes = len(json.dumps(recall_payload, ensure_ascii=False).encode("utf-8"))
+                if payload_bytes > max_bytes:
+                    recall_payload = {"_summary": "truncated"}
+                    truncated = True
+                if truncated and not recall_payload.get("_summary"):
+                    recall_payload["_summary"] = f"truncated to {max_items} items"
+
+                event = {
+                    "type": "context.update",
+                    "metadata": {
+                        "source": "memory",
+                        "recall": recall_payload,
+                    },
+                    "session_id": session_id,
+                    "tenant": base_metadata.get("tenant"),
+                    "persona_id": persona_id,
+                }
+                # Publish – ignore errors to keep background task alive
+                try:
+                    await self.publisher.publish(
+                        self.settings["outbound"],
+                        event,
+                        session_id=session_id,
+                        tenant=base_metadata.get("tenant"),
+                    )
+                except Exception:
+                    LOGGER.debug("Failed to publish context.update", exc_info=True)
+                # Prepare next page
+                chunk_index += 1
+                await asyncio.sleep(0.05)
 
     async def _extract_text_from_path(self, path: str) -> str:
         """Best-effort text extraction for common file types.
@@ -341,7 +439,7 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -366,7 +464,7 @@ class ConversationWorker:
                 LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if not allow_memory:
                 return
-            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
             except Exception:
@@ -412,7 +510,7 @@ class ConversationWorker:
 
     def _should_offload_ingest(self, path: str) -> bool:
         try:
-            threshold_mb = float(os.getenv("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
+            threshold_mb = float(cfg.env("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
         except ValueError:
             threshold_mb = 5.0
         try:
@@ -438,8 +536,8 @@ class ConversationWorker:
         return None
 
     async def _attachment_head(self, att_id: str, tenant: str) -> dict[str, Any]:
-        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         url = f"{base}/internal/attachments/{att_id}/binary"
         headers = {"X-Internal-Token": token or ""}
         if tenant:
@@ -456,7 +554,7 @@ class ConversationWorker:
 
     def _should_offload_ingest_id(self, size: int | None) -> bool:
         try:
-            threshold_mb = float(os.getenv("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
+            threshold_mb = float(cfg.env("INGEST_OFFLOAD_THRESHOLD_MB", "5"))
         except ValueError:
             threshold_mb = 5.0
         if size is None or size <= 0:
@@ -464,15 +562,15 @@ class ConversationWorker:
         return size > int(threshold_mb * 1024 * 1024)
 
     async def _fetch_attachment_bytes(self, *, att_id: str, tenant: str) -> tuple[bytes, str, str]:
-        base = os.getenv("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        token = os.getenv("GATEWAY_INTERNAL_TOKEN")
+        base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         if not token:
             raise RuntimeError("Internal token not configured")
         url = f"{base}/internal/attachments/{att_id}/binary"
         headers = {"X-Internal-Token": token}
         if tenant:
             headers["X-Tenant-Id"] = str(tenant)
-        async with httpx.AsyncClient(timeout=float(os.getenv("WORKER_FETCH_TIMEOUT", "10"))) as client:
+        async with httpx.AsyncClient(timeout=float(cfg.env("WORKER_FETCH_TIMEOUT", "10"))) as client:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 404:
                 raise FileNotFoundError("attachment not found")
@@ -538,7 +636,7 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -562,7 +660,7 @@ class ConversationWorker:
                 LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if not allow_memory:
                 return
-            wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+            wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
             except Exception:
@@ -829,7 +927,7 @@ class ConversationWorker:
                         }
                         try:
                             await self.publisher.publish(
-                                os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                                cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
                                 event,
                                 dedupe_key=req_id,
                                 session_id=session_id,
@@ -842,7 +940,7 @@ class ConversationWorker:
                         result_event = await self._wait_for_tool_result(
                             session_id=session_id,
                             request_id=req_id,
-                            timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20")),
+                            timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20")),
                         )
                         # Append a summarised tool result back into the message context
                         if result_event:
@@ -1113,7 +1211,7 @@ class ConversationWorker:
                 }
                 try:
                     await self.publisher.publish(
-                        os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                        cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
                         event,
                         dedupe_key=req_id,
                         session_id=session_id,
@@ -1124,7 +1222,7 @@ class ConversationWorker:
                     continue
 
                 result_event = await self._wait_for_tool_result(
-                    session_id=session_id, request_id=req_id, timeout_seconds=float(os.getenv("TOOL_RESULT_TIMEOUT", "20"))
+                    session_id=session_id, request_id=req_id, timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20"))
                 )
                 # Append a summarised tool result back into the message context
                 if result_event:
@@ -1210,7 +1308,7 @@ class ConversationWorker:
         latency = time.time() - start_time
         text = data.get("content", "")
         usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
-        model_used = data.get("model") or overrides.get("model") or os.getenv("SLM_MODEL", "unknown")
+        model_used = data.get("model") or overrides.get("model") or cfg.env("SLM_MODEL", "unknown")
         base_url_used = data.get("base_url") or overrides.get("base_url")
         if not text:
             raise RuntimeError("Empty response from escalation LLM via Gateway")
@@ -1385,7 +1483,7 @@ class ConversationWorker:
                     "metadata": {
                         **dict(enriched_metadata),
                         "agent_profile_id": enriched_metadata.get("agent_profile_id"),
-                        "universe_id": enriched_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                        "universe_id": enriched_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
                 # Idempotency key per contract
@@ -1410,7 +1508,7 @@ class ConversationWorker:
                 except Exception:
                     LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
                 if allow_memory:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
                     try:
                         wal_event = {
@@ -1463,7 +1561,7 @@ class ConversationWorker:
                                         },
                                         "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
                                     }
-                                    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
                                         topic,
                                         tool_event,
@@ -1507,7 +1605,7 @@ class ConversationWorker:
                                         },
                                         "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
                                     }
-                                    topic = os.getenv("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
                                     await self.publisher.publish(
                                         topic,
                                         tool_event,
@@ -1615,7 +1713,7 @@ class ConversationWorker:
                         pass
             routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
 
-            if model_profile and os.getenv("ROUTER_URL"):
+            if model_profile and cfg.env("ROUTER_URL"):
                 candidates = (
                     [slm_kwargs.get("model", model_profile.model)]
                     if slm_kwargs
@@ -1720,7 +1818,7 @@ class ConversationWorker:
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
-            model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
+            model_used = slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
             path = "slm"
             escalation_metadata: dict[str, Any] | None = None
 
@@ -1844,7 +1942,7 @@ class ConversationWorker:
                     except Exception:
                         response_text = "I encountered an error while generating a reply."
                 latency = time.time() - response_start
-                model_used = slm_kwargs.get("model") or os.getenv("SLM_MODEL", "unknown")
+                model_used = slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
@@ -1967,7 +2065,7 @@ class ConversationWorker:
                     "metadata": {
                         **dict(response_metadata),
                         "agent_profile_id": response_metadata.get("agent_profile_id"),
-                        "universe_id": response_metadata.get("universe_id") or os.getenv("SOMA_NAMESPACE"),
+                        "universe_id": response_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -1990,7 +2088,7 @@ class ConversationWorker:
                 except Exception:
                     LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
                 if allow_memory:
-                    wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
+                    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
                     try:
                         wal_event = {

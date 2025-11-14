@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 import uuid
 from typing import Any
@@ -29,6 +28,7 @@ from services.common.settings_sa01 import SA01Settings
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
+from services.common import runtime_config as cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -63,12 +63,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    port = int(os.getenv("DELEGATION_METRICS_PORT", str(ADMIN_SETTINGS.metrics_port)))
+    port = int(cfg.env("DELEGATION_METRICS_PORT", str(ADMIN_SETTINGS.metrics_port)))
     if port <= 0:
         LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
-    host = os.getenv("DELEGATION_METRICS_HOST", ADMIN_SETTINGS.metrics_host)
+    host = cfg.env("DELEGATION_METRICS_HOST", ADMIN_SETTINGS.metrics_host)
     start_http_server(port, addr=host)
     LOGGER.info(
         "Delegation gateway metrics server started",
@@ -80,10 +80,10 @@ def ensure_metrics_server() -> None:
 def get_bus() -> KafkaEventBus:
     kafka_settings = KafkaSettings(
         bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
-        security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
-        sasl_username=os.getenv("KAFKA_SASL_USERNAME"),
-        sasl_password=os.getenv("KAFKA_SASL_PASSWORD"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
+        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
+        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
     )
     return KafkaEventBus(kafka_settings)
 
@@ -180,7 +180,7 @@ async def create_delegation_task(
         "callback_url": request.callback_url,
         "metadata": request.metadata or {},
     }
-    topic = os.getenv("DELEGATION_TOPIC", "somastack.delegation")
+    topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
     await publisher.publish(
         topic,
         event,
@@ -220,4 +220,4 @@ async def delegation_callback(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8015")))
+    uvicorn.run(app, host="0.0.0.0", port=int(cfg.env("PORT", "8015")))

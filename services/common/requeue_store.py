@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
-from services.common.admin_settings import ADMIN_SETTINGS
 from typing import Any, Optional
+
+from services.common.admin_settings import ADMIN_SETTINGS
+from services.common import runtime_config as cfg
 
 import redis.asyncio as redis
 
@@ -22,7 +24,7 @@ class RequeueStore:
         # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
         raw_url = url or ADMIN_SETTINGS.redis_url
         self.url = os.path.expandvars(raw_url)
-        self.prefix = prefix or os.getenv("POLICY_REQUEUE_PREFIX", "policy:requeue")
+        self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
 
@@ -38,10 +40,7 @@ class RequeueStore:
         - policy_requeue_prefix (str)
         """
         url = getattr(settings, "redis_url", None) or ADMIN_SETTINGS.redis_url
-        prefix = (
-            getattr(settings, "policy_requeue_prefix", None)
-            or os.getenv("POLICY_REQUEUE_PREFIX")
-        )
+        prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env("POLICY_REQUEUE_PREFIX")
         return cls(url=url, prefix=prefix)
 
     async def add(self, identifier: str, event: dict[str, Any]) -> None:

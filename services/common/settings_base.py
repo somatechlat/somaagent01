@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Mapping, Self
 
 import yaml
+
+from services.common import env
 
 
 @dataclass(slots=True)
@@ -51,7 +52,8 @@ class BaseServiceSettings:
         environment_var: str = "SOMA_AGENT_ENV",
         overrides: Mapping[str, Any] | None = None,
     ) -> Self:
-        environment = os.getenv(environment_var, cls.default_environment()).upper()
+        raw_env = env.get(environment_var, cls.default_environment()) or cls.default_environment()
+        environment = raw_env.upper()
         return cls.for_environment(environment, overrides=overrides)
 
     @classmethod
