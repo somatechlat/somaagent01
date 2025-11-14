@@ -1,81 +1,84 @@
-"""Redis-backed storage for provider LLM credentials, with optional encryption.
+"""Compatibility shim for LLM credential storage.
 
-This store is used by the Gateway to persist provider-specific API secrets that
-conversation workers can retrieve securely at runtime. Secrets are encrypted at
-rest using a symmetric key provided via the `GATEWAY_ENC_KEY` environment
-variable (Fernet-compatible urlsafe base64-encoded 32-byte key). If the key is
-missing, the Gateway refuses to store credentials.
+The original implementation stored encrypted provider keys directly using its own
+Fernet handling.  For the new architecture all secret handling is centralized
+in :class:`services.common.secret_manager.SecretManager`.  To avoid a massive
+refactor across the codebase we keep this module as a thin wrapper that proxies
+calls to the new manager.  New code should import :class:`SecretManager`
+directly; this shim exists solely for backward compatibility during the
+migration sprint.
 """
 
 from __future__ import annotations
 
-import base64
-import os
-from typing import Optional
+import warnings
+from typing import Optional, List
 
-import redis.asyncio as redis
-from cryptography.fernet import Fernet, InvalidToken
+from .secret_manager import SecretManager
+
+# A singleton instance – the underlying ``SecretManager`` caches Redis and
+# Fernet, so constructing it once per process is cheap.
+# Initialise a singleton SecretManager. The manager lazily creates the Fernet
+# instance, so importing this shim does not require the encryption key to be
+# present – useful for test environments.
+_manager = SecretManager()
 
 
 class LlmCredentialsStore:
-    def __init__(self, *, redis_url: Optional[str] = None, namespace: str = "gateway:llm_credentials") -> None:
-        self._r: redis.Redis = redis.from_url(redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
-        self._ns = namespace
-        self._fernet = self._load_fernet()
+    """Legacy API that forwards to :class:`SecretManager`.
 
-    def _load_fernet(self) -> Fernet:
-        key = os.getenv("GATEWAY_ENC_KEY")
-        if not key:
-            raise RuntimeError("GATEWAY_ENC_KEY is required to store LLM credentials securely")
-        # Accept raw urlsafe base64 key or plaintext that should be base64 encoded
-        try:
-            # Validate length by constructing Fernet
-            return Fernet(key.encode("utf-8") if not _looks_base64(key) else key.encode("utf-8"))
-        except Exception:
-            # Try to base64-url encode input bytes if not already
-            try:
-                k = base64.urlsafe_b64encode(key.encode("utf-8"))
-                return Fernet(k)
-            except Exception as exc:
-                raise RuntimeError("Invalid GATEWAY_ENC_KEY; must be 32-byte urlsafe base64") from exc
+    The public methods mirror the original async interface so existing callers
+    continue to work unchanged.  Each method emits a ``DeprecationWarning`` to
+    encourage migration to the new manager.
+    """
+
+    def __init__(self, *_, **__) -> None:
+        """Compatibility constructor.
+
+        The original class accepted ``redis_url`` and ``namespace`` arguments.
+        The shim ignores them because the underlying :class:`SecretManager`
+        handles connection details internally. Accepting arbitrary ``*args`` and
+        ``**kwargs`` ensures existing call sites remain functional.
+        """
+        # No state needed; the singleton manager is used for all operations.
+        return None
 
     async def set(self, provider: str, secret: str) -> None:
-        provider = provider.strip().lower()
-        token = self._fernet.encrypt(secret.encode("utf-8")).decode("ascii")
-        await self._r.hset(self._ns, provider, token)
+        warnings.warn(
+            "LlmCredentialsStore.set is deprecated – use SecretManager.set_provider_key",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await _manager.set_provider_key(provider, secret)
 
     async def get(self, provider: str) -> Optional[str]:
-        provider = provider.strip().lower()
-        token = await self._r.hget(self._ns, provider)
-        if not token:
-            return None
-        try:
-            return self._fernet.decrypt(token.encode("ascii")).decode("utf-8")
-        except InvalidToken:
-            return None
+        warnings.warn(
+            "LlmCredentialsStore.get is deprecated – use SecretManager.get_provider_key",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await _manager.get_provider_key(provider)
 
     async def delete(self, provider: str) -> None:
-        provider = provider.strip().lower()
-        await self._r.hdel(self._ns, provider)
+        warnings.warn(
+            "LlmCredentialsStore.delete is deprecated – use SecretManager.delete_provider_key",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await _manager.delete_provider_key(provider)
 
-    async def list_providers(self) -> list[str]:
-        try:
-            items = await self._r.hkeys(self._ns)
-        except Exception:
-            return []
-        return [str(p) for p in items]
+    async def list_providers(self) -> List[str]:
+        warnings.warn(
+            "LlmCredentialsStore.list_providers is deprecated – use SecretManager.list_providers",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await _manager.list_providers()
 
     async def has(self, provider: str) -> bool:
-        """Return True if a credential exists for the provider."""
-        try:
-            return (await self.get(provider)) is not None
-        except Exception:
-            return False
-
-
-def _looks_base64(s: str) -> bool:
-    try:
-        base64.urlsafe_b64decode(s.encode("utf-8"))
-        return True
-    except Exception:
-        return False
+        warnings.warn(
+            "LlmCredentialsStore.has is deprecated – use SecretManager.has_provider_key",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await _manager.has_provider_key(provider)

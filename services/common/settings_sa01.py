@@ -28,6 +28,29 @@ class SA01Settings(BaseServiceSettings):
 	metrics_port: int = 9400
 	metrics_host: str = "0.0.0.0"
 	opa_url: str = "http://localhost:8181"
+	# Base URL for the public gateway – used by other services to construct
+	# absolute URLs (e.g., health checks, OpenAPI docs). Defaults to the dev
+	# FastAPI bind address.
+	soma_base_url: str = "http://localhost:8010"
+	# The public gateway port – required by the registry and various services.
+	# Default matches the FastAPI app's bind port in development.
+	gateway_port: int = 8010
+
+	# Authentication toggle – mirrors the historic ``SA01_AUTH_REQUIRED`` flag.
+	# When false, policy checks are bypassed (tests set this to false).
+	# The value is read from the environment at construction time.
+	auth_required: bool = os.getenv("SA01_AUTH_REQUIRED", "false").lower() in {"true", "1", "yes"}
+
+	# Name of the cookie that may carry a JWT token.  The gateway reads this
+	# environment variable ``GATEWAY_JWT_COOKIE_NAME`` but the test suite also
+	# accesses it via ``APP_SETTINGS.jwt_cookie_name``.  Providing a default
+	# keeps backward‑compatibility.
+	jwt_cookie_name: str = os.getenv("GATEWAY_JWT_COOKIE_NAME", "jwt")
+
+	# Authentication toggle – mirrors the historic SA01_AUTH_REQUIRED flag.
+	# When false, policy checks are bypassed (tests set this to false).
+	# The value is read from the environment at construction time.
+	auth_required: bool = os.getenv("SA01_AUTH_REQUIRED", "false").lower() in {"true", "1", "yes"}
 
 	@classmethod
 	def default_environment(cls) -> str:
@@ -56,6 +79,8 @@ class SA01Settings(BaseServiceSettings):
 			"metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
 			"metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
 			"opa_url": os.getenv("OPA_URL", "http://localhost:20009"),
+			"gateway_port": int(os.getenv("GATEWAY_PORT", "8010")),
+			"soma_base_url": os.getenv("SOMA_BASE_URL", "http://localhost:8010"),
 		}
 
 		# Placeholders for non-DEV; expect env to provide concrete values
@@ -70,6 +95,8 @@ class SA01Settings(BaseServiceSettings):
 			"metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
 			"metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
 			"opa_url": os.getenv("OPA_URL", "http://opa:8181"),
+			"gateway_port": int(os.getenv("GATEWAY_PORT", "8010")),
+			"soma_base_url": os.getenv("SOMA_BASE_URL", "http://localhost:8010"),
 		}
 
 		prod_defaults = {
@@ -83,6 +110,8 @@ class SA01Settings(BaseServiceSettings):
 			"metrics_port": int(os.getenv("GATEWAY_METRICS_PORT", "9400")),
 			"metrics_host": os.getenv("GATEWAY_METRICS_HOST", "0.0.0.0"),
 			"opa_url": os.getenv("OPA_URL", "http://opa:8181"),
+			"gateway_port": int(os.getenv("GATEWAY_PORT", "8010")),
+			"soma_base_url": os.getenv("SOMA_BASE_URL", "http://localhost:8010"),
 		}
 
 		return {

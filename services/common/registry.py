@@ -92,17 +92,32 @@ class FeatureRegistry:
         return self._config.opa_url
     
     def flag(self, key: str, tenant: Optional[str] = None) -> bool:
-        """Resolve feature flag via Somabrain API.
-        
-        Args:
-            key: Feature flag key
-            tenant: Optional tenant ID for overrides
-            
-        Returns:
-            bool: Feature flag state from Somabrain
+        """Resolve a feature flag.
+
+        The original implementation only consulted a ``feature_flags`` dict on the
+        settings object, which is empty in the current ``SA01Settings`` and
+        caused ``cfg.flag`` to always return ``False``. For the ROAMDPO plan we
+        want ``cfg.flag`` to reflect the canonical feature registry logic – i.e.
+        the profile‑aware defaults defined in ``services.common.features``.
+
+        The implementation now falls back to the in‑process ``FeatureRegistry``
+        when the settings dict does not provide an explicit override. Tenant
+        information is ignored for now (remote overrides are handled elsewhere).
         """
-        # Canonical implementation: direct settings resolution
-        return self._settings.feature_flags.get(key, False)
+        # Prefer explicit overrides if present.
+        if hasattr(self._settings, "feature_flags"):
+            overrides = getattr(self._settings, "feature_flags", {})
+            if key in overrides:
+                return bool(overrides[key])
+        # Fallback to the default registry logic.
+        try:
+            from services.common.features import build_default_registry
+
+            registry = build_default_registry()
+            return registry.is_enabled(key)
+        except Exception:
+            # In case of unexpected errors, be safe and return False.
+            return False
 
 
 # Singleton canonical instance

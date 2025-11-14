@@ -23,6 +23,7 @@ from services.common.memory_replica_store import (
     MemoryReplicaStore,
 )
 from services.common.settings_sa01 import SA01Settings
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 
 setup_logging()
@@ -53,8 +54,9 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
     global _METRICS_STARTED
     if _METRICS_STARTED:
         return
-    default_port = int(getattr(settings, "metrics_port", 9403))
-    default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
+    # Prefer admin-wide metrics configuration; fall back to provided defaults.
+    default_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9403))
+    default_host = str(getattr(ADMIN_SETTINGS, "metrics_host", "0.0.0.0"))
     port = int(os.getenv("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
         start_http_server(port, addr=os.getenv("REPLICATOR_METRICS_HOST", default_host))
@@ -65,9 +67,10 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 
 
 def _kafka_settings() -> KafkaSettings:
+    # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
         bootstrap_servers=os.getenv(
-            "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
+            "KAFKA_BOOTSTRAP_SERVERS", ADMIN_SETTINGS.kafka_bootstrap_servers
         ),
         security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
@@ -83,8 +86,9 @@ class MemoryReplicator:
         self.bus = KafkaEventBus(self.kafka_settings)
         self.wal_topic = os.getenv("MEMORY_WAL_TOPIC", "memory.wal")
         self.group_id = os.getenv("MEMORY_REPLICATOR_GROUP", "memory-replicator")
-        self.replica = MemoryReplicaStore(dsn=SERVICE_SETTINGS.postgres_dsn)
-        self.dlq_store = DLQStore(dsn=SERVICE_SETTINGS.postgres_dsn)
+        # Use centralized admin settings for Postgres DSN.
+        self.replica = MemoryReplicaStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.dlq_store = DLQStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.dlq = DeadLetterQueue(source_topic=self.wal_topic)
 
     async def start(self) -> None:

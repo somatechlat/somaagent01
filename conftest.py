@@ -10,6 +10,22 @@ works in the pytest environment.
 import os
 import sys
 
+# Ensure ``pytest.Request`` exists for type‑hinting in the test suite. The
+# attribute is not provided by the public pytest API, so we add it here using the
+# internal ``FixtureRequest`` class. This runs after pytest has been imported,
+# guaranteeing the attribute is attached to the actual pytest module used by the
+# tests.
+try:
+    import pytest
+    from _pytest.fixtures import FixtureRequest
+
+    if not hasattr(pytest, "Request"):
+        pytest.Request = FixtureRequest  # type: ignore[attr-defined]
+except Exception:
+    # If pytest is not available for any reason, ignore – the tests that depend
+    # on the attribute will fail appropriately.
+    pass
+
 REPO_ROOT = os.path.abspath(os.path.dirname(__file__))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)

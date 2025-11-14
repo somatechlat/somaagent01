@@ -77,8 +77,9 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
     if _METRICS_SERVER_STARTED:
         return
 
-    default_port = int(getattr(settings, "metrics_port", 9401))
-    default_host = str(getattr(settings, "metrics_host", "0.0.0.0"))
+    # Use admin-wide metrics defaults; fallback to provided settings if missing.
+    default_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9401))
+    default_host = str(getattr(ADMIN_SETTINGS, "metrics_host", "0.0.0.0"))
 
     port = int(os.getenv("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
     if port <= 0:
@@ -93,9 +94,10 @@ def ensure_metrics_server(settings: SA01Settings) -> None:
 
 
 def _kafka_settings() -> KafkaSettings:
+    # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
         bootstrap_servers=os.getenv(
-            "KAFKA_BOOTSTRAP_SERVERS", SERVICE_SETTINGS.kafka_bootstrap_servers
+            "KAFKA_BOOTSTRAP_SERVERS", ADMIN_SETTINGS.kafka_bootstrap_servers
         ),
         security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM"),
@@ -105,7 +107,8 @@ def _kafka_settings() -> KafkaSettings:
 
 
 def _redis_url() -> str:
-    return os.getenv("REDIS_URL", SERVICE_SETTINGS.redis_url)
+    # Use admin-wide Redis URL configuration.
+    return os.getenv("REDIS_URL", ADMIN_SETTINGS.redis_url)
 
 
 def _tenant_config_path() -> str:
@@ -127,14 +130,14 @@ class ToolExecutor:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.outbox = OutboxStore(dsn=SERVICE_SETTINGS.postgres_dsn)
+        self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.tenant_config = TenantConfig(path=_tenant_config_path())
         self.policy = PolicyClient(
             base_url=os.getenv("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
             tenant_config=self.tenant_config,
         )
-        self.store = PostgresSessionStore(dsn=SERVICE_SETTINGS.postgres_dsn)
+        self.store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
         self.requeue = RequeueStore(url=_redis_url(), prefix=_policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
@@ -145,7 +148,7 @@ class ToolExecutor:
         self.requeue_prefix = _policy_requeue_prefix()
         # Use SomaBrain HTTP client for memory persistence
         self.soma = SomaBrainClient.get()
-        self.mem_outbox = MemoryWriteOutbox(dsn=SERVICE_SETTINGS.postgres_dsn)
+        self.mem_outbox = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
         stream_defaults = SERVICE_SETTINGS.extra.get(
             "tool_executor_topics",
             {

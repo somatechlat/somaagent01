@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from services.common.admin_settings import ADMIN_SETTINGS
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -80,7 +81,8 @@ class SessionCache(ABC):
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
-        raw_url = url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
+        raw_url = url or ADMIN_SETTINGS.redis_url
         self.url = os.path.expandvars(raw_url)
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
