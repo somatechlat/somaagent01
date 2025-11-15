@@ -111,7 +111,6 @@ const memoryDashboardStore = {
       if (response.success && response.memory_subdir) {
         this.selectedMemorySubdir = response.memory_subdir;
       } else {
-        // Fallback to default
         this.selectedMemorySubdir = "default";
       }
     } catch (error) {

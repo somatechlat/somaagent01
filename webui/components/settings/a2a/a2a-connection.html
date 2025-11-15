@@ -26,7 +26,7 @@
         <script>
             setTimeout(() => {
                 const url = window.location.origin;
-                // Try to get a2a_token first, fallback to mcp_server_token
+                // Get a2a_token or mcp_server_token
                 let tokenField = null;
                 try {
                     const allFields = settingsModalProxy.settings.sections.flatMap(s => s.fields);

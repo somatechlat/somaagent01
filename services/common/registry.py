@@ -13,8 +13,14 @@ from typing import Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
 
-from services.common.settings_sa01 import SA01Settings
 from observability.metrics import metrics_collector
+
+
+def _load_sa01_settings():
+    # Lazy import to avoid circular dependency during module import time.
+    from services.common.settings_sa01 import SA01Settings
+
+    return SA01Settings
 
 
 @dataclass(slots=True, frozen=True)
@@ -40,7 +46,8 @@ class FeatureRegistry:
     """
     
     def __init__(self) -> None:
-        self._settings = SA01Settings.from_env()
+        self._settings_cls = _load_sa01_settings()
+        self._settings = self._settings_cls.from_env()
         self._env_cache = self._snapshot_environment()
         self._config = self._build_canonical_config()
         

@@ -284,15 +284,6 @@ class ConversationWorker:
 
         # Tool registry for model‑led orchestration (no network hop)
         self.tool_registry = ToolRegistry()
-        # Back‑compat shim for older tests that expect a local SLM client with an ``api_key`` attribute.
-        # Runtime LLM calls are made via the Gateway; this shim is not used for provider calls.
-        try:
-            import types  # noqa: WPS433 (std lib)
-
-            self.slm = types.SimpleNamespace(api_key=None)
-        except Exception:
-            # Last resort: dummy attr
-            self.slm = type("_Shim", (), {"api_key": None})()
 
         # ---------------------------------------------------------------------
         # Fail‑safe state & health monitoring for SomaBrain
@@ -426,53 +417,7 @@ class ConversationWorker:
         except Exception:
             return 4096
 
-    async def _ensure_llm_key(self) -> None:
-        """Fetch provider API key from the Gateway (DEV only) and clear it afterwards.
-
-        The worker never uses the key for actual LLM calls – those go through the
-        Gateway – but some unit tests inspect ``self.slm.api_key``. To avoid leaking
-        credentials between tests we always reset the attribute to ``None`` after the
-        fetch attempt, regardless of success.
-        """
-        # Only attempt when internal token and gateway base are configured
-        if not self._internal_token or not self._gateway_base:
-            return
-        # Infer provider from current dialogue profile base_url (fallback: openai)
-        provider = "openai"
-        try:
-            profile = await self.profile_store.get("dialogue", self.deployment_mode)
-            host = (profile.base_url or "").lower() if profile else ""
-            if "groq" in host:
-                provider = "groq"
-            elif "openrouter" in host:
-                provider = "openrouter"
-            elif "openai" in host:
-                provider = "openai"
-        except Exception:
-            # keep default provider
-            pass
-        url = f"{self._gateway_base}/v1/llm/credentials/{provider}"
-        headers = {"X-Internal-Token": self._internal_token}
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    secret = data.get("secret")
-                    if secret:
-                        # store on shim for test visibility
-                        try:
-                            self.slm.api_key = secret
-                        except Exception:
-                            pass
-        except Exception:
-            LOGGER.debug("LLM key fetch via Gateway failed", exc_info=True)
-        finally:
-            # Ensure the attribute is cleared after the attempt to prevent leakage.
-            try:
-                self.slm.api_key = None
-            except Exception:
-                pass
+    
 
     async def _background_recall_context(
         self,
@@ -1609,11 +1554,7 @@ class ConversationWorker:
                 "message": "Conversation worker online",
             },
         )
-        # Ensure LLM credentials are available before consumption starts (DEV-friendly)
-        try:
-            await self._ensure_llm_key()
-        except Exception:
-            LOGGER.debug("LLM credential fetch failed/skipped at startup", exc_info=True)
+        
         LOGGER.info(
             "Starting consumer",
             extra={

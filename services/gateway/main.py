@@ -99,7 +99,7 @@ from services.common.ui_settings_store import UiSettingsStore
 from services.common.openfga_client import OpenFGAClient
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
-from services.common.llm_credentials_store import LlmCredentialsStore
+from services.common.secret_manager import SecretManager
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
@@ -667,7 +667,7 @@ async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request:
 
     # Fetch OpenAI credentials from managed store
     try:
-        secret = await get_llm_credentials_store().get("openai")
+        secret = await get_secret_manager().get_provider_key("openai")
     except Exception as exc:
         LOGGER.error("LLM credentials retrieval failed", extra={"provider": "openai", "error": str(exc)})
         raise HTTPException(status_code=500, detail="credentials_error")
@@ -1375,7 +1375,7 @@ async def get_runtime_config() -> dict[str, Any]:
 _API_KEY_STORE: Optional[ApiKeyStore] = None
 _DLQ_STORE: Optional[DLQStore] = None
 _REPLICA_STORE: Optional[MemoryReplicaStore] = None
-_LLM_CRED_STORE: Optional[LlmCredentialsStore] = None
+_SECRET_MANAGER: Optional[SecretManager] = None
 _UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
 _UI_SETTINGS_STORE: Optional[UiSettingsStore] = None
 
@@ -1881,17 +1881,17 @@ def get_export_job_store() -> ExportJobStore:
     return _EXPORT_STORE
 
 
-def get_llm_credentials_store() -> LlmCredentialsStore:
-    global _LLM_CRED_STORE
-    if _LLM_CRED_STORE is not None:
-        return _LLM_CRED_STORE
+def get_secret_manager() -> SecretManager:
+    global _SECRET_MANAGER
+    if _SECRET_MANAGER is not None:
+        return _SECRET_MANAGER
     # Enforce presence of encryption key; fail fast if missing
     try:
-        _LLM_CRED_STORE = LlmCredentialsStore(redis_url=_redis_url())
+        _SECRET_MANAGER = SecretManager()
     except Exception as exc:
-        LOGGER.error("Failed to initialize LLM credentials store", extra={"error": str(exc)})
+        LOGGER.error("Failed to initialize secret manager", extra={"error": str(exc)})
         raise
-    return _LLM_CRED_STORE
+    return _SECRET_MANAGER
 
 
 def get_ui_settings_store() -> UiSettingsStore:
@@ -5501,7 +5501,7 @@ async def get_ui_settings() -> dict[str, Any]:
             "kwargs": kwargs or {},
         }
 
-    creds = get_llm_credentials_store()
+    creds = get_secret_manager()
     try:
         providers = await creds.list_providers()
     except Exception:
@@ -5617,8 +5617,8 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
         provider = payload.llm_credentials.get("provider", "").strip().lower()
         secret = payload.llm_credentials.get("secret", "")
         if provider and secret:
-            store = get_llm_credentials_store()
-            await store.set(provider, secret)
+            store = get_secret_manager()
+            await store.set_provider_key(provider, secret)
 
     return {"ok": True}
 
@@ -5684,7 +5684,7 @@ async def ui_sections_get() -> dict[str, Any]:
 
         # Credentials overlay: mark providers with stored secrets using placeholder
         try:
-            creds_store = get_llm_credentials_store()
+            creds_store = get_secret_manager()
             providers_with_keys = set(await creds_store.list_providers())
         except Exception:
             providers_with_keys = set()
@@ -5985,8 +5985,8 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
         # If we recognized a provider (or user explicitly selected one), ensure a key exists
         if provider:
             try:
-                creds_store = get_llm_credentials_store()
-                have = await creds_store.has(provider)
+                creds_store = get_secret_manager()
+                have = await creds_store.has_provider_key(provider)
             except Exception:
                 have = False
             if not have and not any(c[0] == provider for c in creds):
@@ -6018,10 +6018,10 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
 
     # Store provider credentials
     if creds:
-        store = get_llm_credentials_store()
+        store = get_secret_manager()
         for provider, secret in creds:
             try:
-                await store.set(provider, secret)
+                await store.set_provider_key(provider, secret)
             except Exception as exc:
                 LOGGER.warning("Failed to store LLM credentials", extra={"provider": provider, "error": str(exc)})
 
@@ -6089,7 +6089,7 @@ async def ui_settings_credentials() -> dict[str, Any]:
     This exposes only presence/absence, never secrets.
     """
     try:
-        store = get_llm_credentials_store()
+        store = get_secret_manager()
         providers = await store.list_providers()
     except Exception:
         providers = []
@@ -6470,7 +6470,7 @@ class LlmCredPayload(BaseModel):
 async def upsert_llm_credentials(
     payload: LlmCredPayload,
     request: Request,
-    store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None,  # type: ignore[assignment]
+    store: Annotated[SecretManager, Depends(get_secret_manager)] = None,  # type: ignore[assignment]
 ) -> dict:
     # Require admin scope when auth is enabled
     auth = await authorize_request(request, payload.model_dump())
@@ -6497,7 +6497,7 @@ def _internal_token_ok(request: Request) -> bool:
 
 
 @app.get("/v1/llm/credentials/{provider}")
-async def get_llm_credentials(provider: str, request: Request, store: Annotated[LlmCredentialsStore, Depends(get_llm_credentials_store)] = None) -> dict:  # type: ignore[assignment]
+async def get_llm_credentials(provider: str, request: Request, store: Annotated[SecretManager, Depends(get_secret_manager)] = None) -> dict:  # type: ignore[assignment]
     # Only allow internal calls with X-Internal-Token; do not expose via normal auth
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
@@ -6532,9 +6532,9 @@ async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
 
     normalized = _normalize_llm_base_url(str(profile.base_url or ""))
     provider = _detect_provider_from_base(normalized)
-    creds_store = get_llm_credentials_store()
+    creds_store = get_secret_manager()
     try:
-        secret = await creds_store.get(provider)
+        secret = await creds_store.get_provider_key(provider)
         creds_present = bool(secret)
     except Exception:
         secret = None
@@ -6732,8 +6732,8 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
 
     provider = _detect_provider_from_base(base_url)
     # Fetch credentials (fail-closed)
-    store = get_llm_credentials_store()
-    secret = await store.get(provider)
+    store = get_secret_manager()
+    secret = await store.get_provider_key(provider)
     if not secret:
         raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
 
@@ -6788,7 +6788,7 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
         if not model or not base_url:
             raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
         provider = _detect_provider_from_base(base_url)
-        secret = await get_llm_credentials_store().get(provider)
+        secret = await get_secret_manager().get_provider_key(provider)
         if not secret:
             raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
         meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
@@ -7143,7 +7143,7 @@ async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
     if not model or not base_url:
         raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
     provider = _detect_provider_from_base(base_url)
-    secret = await get_llm_credentials_store().get(provider)
+    secret = await get_secret_manager().get_provider_key(provider)
     if not secret:
         raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
     meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
@@ -7209,7 +7209,7 @@ async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
         if not model or not base_url:
             raise HTTPException(status_code=400, detail="invalid model/base_url after normalization")
         provider = _detect_provider_from_base(base_url)
-        secret = await get_llm_credentials_store().get(provider)
+        secret = await get_secret_manager().get_provider_key(provider)
         if not secret:
             raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
         meta = {**extra_kwargs, "_provider": provider, "_secret": secret}
