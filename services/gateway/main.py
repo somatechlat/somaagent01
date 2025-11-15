@@ -123,6 +123,20 @@ except ImportError:
         "PyJWT is required for production JWT authentication. Install with: pip install PyJWT"
     )
 
+# Import degradation, circuit breaker, and metrics endpoints
+degradation_router = None
+circuit_router = None
+metrics_router = None
+
+try:
+    from services.gateway.degradation_endpoints import router as degradation_router
+    from services.gateway.circuit_endpoints import router as circuit_router
+    from services.gateway.metrics_endpoints import router as metrics_router
+except ImportError as e:
+    # Log the import error but don't fail - these endpoints are optional for core functionality
+    import logging
+    logging.getLogger(__name__).warning(f"Failed to import monitoring endpoints: {e}")
+
 # LOGGER configuration (no additional imports needed here)
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -166,6 +180,18 @@ try:
 except Exception as exc:  # pragma: no cover – defensive, should never fail in prod
     import logging
     logging.getLogger(__name__).warning("Failed to include features router: %s", exc)
+
+# Include monitoring endpoints (degradation, circuit breaker, metrics)
+try:
+    if degradation_router:
+        app.include_router(degradation_router, prefix="/v1")
+    if circuit_router:
+        app.include_router(circuit_router, prefix="/v1")
+    if metrics_router:
+        app.include_router(metrics_router, prefix="/v1")
+except Exception as exc:  # pragma: no cover – defensive, should never fail in prod
+    import logging
+    logging.getLogger(__name__).warning("Failed to include monitoring routers: %s", exc)
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)

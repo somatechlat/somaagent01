@@ -1,8 +1,8 @@
-# Canonical multi-stage build that installs the complete Agent Zero runtime.
+# Optimized multi-stage build for SomaAgent01 runtime
 
 FROM python:3.11-slim AS builder
 
-ARG INCLUDE_ML_DEPS=true
+ARG INCLUDE_ML_DEPS=false
 
 ENV PYTHONUNBUFFERED=1 \
         PYTHONDONTWRITEBYTECODE=1 \
@@ -10,6 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 ENV PATH="$VENV_PATH/bin:$PATH"
 
+# Install only essential build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
                 build-essential \
                 curl \
@@ -20,15 +21,16 @@ RUN python -m venv "$VENV_PATH" && \
         "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
 
 WORKDIR /opt/build
-COPY requirements.txt requirements-ml.txt requirements-dev.txt ./
 
-# Use lightweight requirements for dev builds, full requirements for ML builds
+# Copy only essential dependency files
+COPY requirements.txt requirements-dev.txt ./
+
+# Install core dependencies for development (no ML deps by default)
 RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
                 echo "Installing full dependencies with ML/document-processing deps" && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-ml.txt; \
+                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt; \
         else \
-                echo "Installing lightweight dev dependencies (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})" && \
+                echo "Installing essential dev dependencies (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})" && \
                 "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-dev.txt; \
         fi
 
