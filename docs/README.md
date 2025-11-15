@@ -16,5 +16,10 @@
 | Onboarding Manual | `docs/onboarding-manual/` | New hires, contractors |
 | Agent Onboarding | `docs/agent-onboarding/` | AI agents, automation bots |
 
+## Key Integration Guides
+- **[FastA2A Integration](./technical-manual/fasta2a-integration.md)** - Agent-to-agent communication protocol
+- **[System Architecture](./technical-manual/architecture.md)** - Complete system overview and data flow
+- **[Security Hardening](./agent-onboarding/security-hardening.md)** - Security guidelines and best practices
+
 ## Standards Compliance
 This documentation set follows ISO/IEC 26514 (user docs), 26515 (online delivery), 26512 (processes), and 42010 (architecture).

@@ -254,7 +254,7 @@ export async function sendMessage() {
 function toastFetchError(text, error) {
   console.error(text, error);
   const errorMessage = error?.message || error?.toString() || "Unknown error";
-  // Emit an SSE-style notification creation; fallback to console only
+  // Emit an SSE-style notification creation
   try {
     notificationsSseStore.create({ type: "error", title: text, body: errorMessage, severity: "error", ttl_seconds: 8 });
   } catch {}

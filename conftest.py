@@ -68,16 +68,10 @@ os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
 os.environ.setdefault("OTEL_LOGS_EXPORTER", "none")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 
-# Note: POLICY_FAIL_OPEN is deprecated and ignored (fail-closed default).
-# No override is set here; tests rely on local fixtures and bypass gating.
-
 # Also inform our internal tracing helper to skip creating an OTLP exporter.
 # This prevents attempts to connect to Jaeger during tests when modules import
 # setup_tracing() at import time (e.g., the gateway).
 os.environ.setdefault("OTEL_EXPORTER_OTLP_DISABLED", "true")
-
-# Ensure test mode flag is set so selective authorization uses bypass logic
-os.environ.setdefault("TESTING", "1")
 
 env_snapshot.refresh()
 

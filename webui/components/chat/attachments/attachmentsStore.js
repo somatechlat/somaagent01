@@ -379,7 +379,6 @@ const model = {
         status: attachment.status,
       };
     }
-    // Fallback string filename
     if (typeof attachment === "string") {
       const isImage = this.isImageFile(attachment);
       return {

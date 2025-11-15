@@ -16,6 +16,7 @@
 [SomaAgent01 Docker Stack](./docs/development/somaagent01_docker_compose.md) •
 [Extensibility](./docs/extensibility.md) •
 [Connectivity](./docs/connectivity.md) •
+[FastA2A Integration](./docs/technical-manual/fasta2a-integration.md) •
 [How to update](./docs/installation.md#how-to-update-agent-zero) •
 [Documentation](./docs/README.md) •
 [Usage](./docs/usage.md)

@@ -61,22 +61,12 @@ async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
         LEARNING_REQUESTS_TOTAL.labels(endpoint, "ok").inc()
         LEARNING_REQUEST_LATENCY_SECONDS.labels(endpoint).observe(time.perf_counter() - t0)
         return data if isinstance(data, dict) else {}
-    except (SomaClientError, httpx.HTTPError):
-        # Any HTTP‑related failure (including connection errors or 404) should
-        # returned a stub when the deployment mode was "LOCAL", causing the
-        # public /v1/weights endpoint to surface a 502 in the test suite.
-        # For the purpose of these canonical tests we provide a deterministic
-        # stub regardless of the deployment mode.
+    except (SomaClientError, httpx.HTTPError) as exc:
+        # Log the error clearly and return empty dict - no stub fallbacks allowed
         LEARNING_REQUESTS_TOTAL.labels(endpoint, "error").inc()
         LEARNING_REQUEST_LATENCY_SECONDS.labels(endpoint).observe(time.perf_counter() - t0)
-        return {
-            "models": {
-                "default": {
-                    "weight": 1.0,
-                    "capabilities": ["chat", "memory"],
-                }
-            }
-        }
+        LOGGER.error("Learning service request failed", extra={"endpoint": endpoint, "error": str(exc)})
+        return {}
 
 
 async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

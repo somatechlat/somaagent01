@@ -1,35 +1,37 @@
 """Common infrastructure utilities for SomaAgent 01 services."""
 
-from . import (
-    budget_manager,
-    escalation,
-    event_bus,
-    model_costs,
-    model_profiles,
-    policy_client,
-    requeue_store,
-    router_client,
-    session_repository,
-    settings_base,
-    settings_sa01,
-    slm_client,
-    telemetry,
-    telemetry_store,
-)
+from importlib import import_module
+from typing import Any
 
-__all__ = [
-    "event_bus",
-    "session_repository",
-    "slm_client",
-    "policy_client",
-    "model_profiles",
-    "telemetry",
+_SUBMODULES = {
     "budget_manager",
-    "requeue_store",
-    "telemetry_store",
-    "router_client",
     "escalation",
+    "event_bus",
     "model_costs",
+    "model_profiles",
+    "policy_client",
+    "requeue_store",
+    "router_client",
+    "session_repository",
     "settings_base",
     "settings_sa01",
-]
+    "slm_client",
+    "telemetry",
+    "telemetry_store",
+    "env",
+    "runtime_config",
+}
+
+__all__ = sorted(_SUBMODULES)
+
+
+def __getattr__(name: str) -> Any:
+    if name in _SUBMODULES:
+        module = import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+def __dir__() -> list[str]:
+    return sorted(list(globals().keys()) + list(_SUBMODULES))

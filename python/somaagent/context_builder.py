@@ -698,4 +698,3 @@ class ContextBuilder:
             "interaction_history_count": len(self.cognitive_state["interaction_history"]),
             "semantic_clusters_count": len(self.cognitive_state["semantic_clusters"])
         }
-*** End of File

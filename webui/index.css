@@ -322,7 +322,6 @@ img {
     black calc(100% - 20px),
     transparent 100%
   );
-  /* Fallback for browsers that do not support mask-image */
   background: linear-gradient(to bottom, calc(100% - 20px), transparent 100%);
   /* Add padding to account for fade */
   padding-bottom: 20px;

@@ -9,11 +9,11 @@ workers can run locally against the running infra.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from services.common import env
 from services.common.settings_base import BaseServiceSettings
-from services.common.registry import registry
 
 
 @dataclass(slots=True)
@@ -40,16 +40,16 @@ class SA01Settings(BaseServiceSettings):
 	# REAL IMPLEMENTATION - Authentication toggle via Feature Registry
 	# When false, policy checks are bypassed (tests set this to false).
 	# The value is read from the canonical Feature Registry.
-	auth_required: bool = registry().flag("auth_required")
+	auth_required: bool = field(default_factory=lambda: env.get_bool("SOMA_AUTH_REQUIRED", True))
 
 	# REAL IMPLEMENTATION - JWT cookie name via Feature Registry
 	# The gateway reads this from the canonical registry.
-	jwt_cookie_name: str = registry().legacy_value("GATEWAY_JWT_COOKIE_NAME", "jwt")
+	jwt_cookie_name: str = field(default_factory=lambda: env.get("SOMA_JWT_COOKIE_NAME", "jwt"))
 
 	@classmethod
 	def default_environment(cls) -> str:
-		"""REAL IMPLEMENTATION - Use Feature Registry for deployment mode."""
-		return registry().deployment_mode()
+		"""REAL IMPLEMENTATION - Derived from environment snapshot."""
+		return (env.get("SOMA_AGENT_ENV", None) or BaseServiceSettings.default_environment()).upper()
 
 	@classmethod
 	def environment_defaults(cls) -> Mapping[str, Mapping[str, Any]]:
@@ -62,59 +62,25 @@ class SA01Settings(BaseServiceSettings):
 		"""
 
 		# REAL IMPLEMENTATION - Use Feature Registry for all configuration
-		reg = registry()
-
-		dev_defaults = {
-			# BaseServiceSettings required fields
-			"deployment_mode": "DEV",
-			# Compose maps host ports: kafka 20000->9092, redis 20001->6379, pg 20002->5432, opa 20009->8181
-			"postgres_dsn": reg.postgres_dsn(),
-			"kafka_bootstrap_servers": reg.kafka_bootstrap_servers(),
-			"redis_url": reg.redis_url(),
-			"otlp_endpoint": "",
-			"model_profiles_path": "conf/model_profiles.yaml",
-			"extra": {},
-			# Extended fields
-			"metrics_port": 9400,
-			"metrics_host": "0.0.0.0",
-			"opa_url": reg.opa_url(),
-			"gateway_port": reg.gateway_port(),
-			"soma_base_url": reg.soma_base_url(),
-		}
-
-		# Placeholders for non-DEV; expect registry to provide concrete values
-		staging_defaults = {
-			"deployment_mode": "STAGING",
-			"postgres_dsn": reg.postgres_dsn(),
-			"kafka_bootstrap_servers": reg.kafka_bootstrap_servers(),
-			"redis_url": reg.redis_url(),
-			"otlp_endpoint": "",
-			"model_profiles_path": "conf/model_profiles.yaml",
-			"extra": {},
-			"metrics_port": 9400,
-			"metrics_host": "0.0.0.0",
-			"opa_url": reg.opa_url(),
-			"gateway_port": reg.gateway_port(),
-			"soma_base_url": reg.soma_base_url(),
-		}
-
-		prod_defaults = {
-			"deployment_mode": "PROD",
-			"postgres_dsn": reg.postgres_dsn(),
-			"kafka_bootstrap_servers": reg.kafka_bootstrap_servers(),
-			"redis_url": reg.redis_url(),
-			"otlp_endpoint": "",
-			"model_profiles_path": "conf/model_profiles.yaml",
-			"extra": {},
-			"metrics_port": 9400,
-			"metrics_host": "0.0.0.0",
-			"opa_url": reg.opa_url(),
-			"gateway_port": reg.gateway_port(),
-			"soma_base_url": reg.soma_base_url(),
-		}
-
+		def _shared_defaults(environment_label: str) -> dict[str, Any]:
+			return {
+				# BaseServiceSettings required fields
+				"deployment_mode": environment_label,
+				"postgres_dsn": env.get("SOMA_POSTGRES_DSN", "postgresql://postgres:postgres@localhost:20002/postgres"),
+				"kafka_bootstrap_servers": env.get("SOMA_KAFKA_BOOTSTRAP", "localhost:20000"),
+				"redis_url": env.get("SOMA_REDIS_URL", "redis://localhost:20001/0"),
+				"otlp_endpoint": env.get("OTLP_ENDPOINT", ""),
+				"model_profiles_path": env.get("SOMA_MODEL_PROFILES", "conf/model_profiles.yaml"),
+				"extra": {},
+				# Extended fields
+				"metrics_port": env.get_int("SOMA_METRICS_PORT", 9400),
+				"metrics_host": env.get("SOMA_METRICS_HOST", "0.0.0.0"),
+				"opa_url": env.get("SOMA_OPA_URL", "http://localhost:20009"),
+				"gateway_port": env.get_int("SOMA_GATEWAY_PORT", 8010),
+				"soma_base_url": env.get("SOMA_BASE_URL", "http://localhost:8010"),
+			}
 		return {
-			"DEV": dev_defaults,
-			"STAGING": staging_defaults,
-			"PROD": prod_defaults,
+			"DEV": _shared_defaults("DEV"),
+			"STAGING": _shared_defaults("STAGING"),
+			"PROD": _shared_defaults("PROD"),
 		}
