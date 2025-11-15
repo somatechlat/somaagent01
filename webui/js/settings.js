@@ -70,7 +70,7 @@ const settingsModalProxy = {
     async openModal() {
         console.log('Settings modal opening');
         const modalEl = document.getElementById('settingsModal');
-        const modalAD = Alpine.$data(modalEl);
+        const modalAD = modalEl ? Alpine.$data(modalEl) : null;
 
         // First, ensure the store is updated properly
         const store = Alpine.store('root');
@@ -82,6 +82,9 @@ const settingsModalProxy = {
         //get settings from backend
         try {
             const resp = await fetchApi('/v1/ui/settings/sections');
+            if (!resp.ok) {
+                throw new Error(await resp.text());
+            }
             const set = { settings: await resp.json() };
 
             // First load the settings data without setting the active tab
@@ -104,8 +107,10 @@ const settingsModalProxy = {
             }
 
             // Update modal data
-            modalAD.isOpen = true;
-            modalAD.settings = settings;
+            if (modalAD) {
+                modalAD.isOpen = true;
+                modalAD.settings = settings;
+            }
 
             // Now set the active tab after the modal is open
             // This ensures Alpine reactivity works as expected
@@ -115,7 +120,9 @@ const settingsModalProxy = {
                 console.log(`Setting initial tab to: ${savedTab}`);
 
                 // Directly set the active tab
-                modalAD.activeTab = savedTab;
+                if (modalAD) {
+                    modalAD.activeTab = savedTab;
+                }
 
                 // Also update the store
                 if (store) {
@@ -190,22 +197,38 @@ const settingsModalProxy = {
 
     async handleButton(buttonId) {
         if (buttonId === 'save') {
-
             const modalEl = document.getElementById('settingsModal');
-            const modalAD = Alpine.$data(modalEl);
+            const modalAD = modalEl ? Alpine.$data(modalEl) : null;
+            const sections = modalAD?.settings?.sections || [];
             try {
-                resp = await window.sendJsonData("/settings_set", modalAD.settings);
+                const response = await fetchApi('/v1/ui/settings/sections', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sections }),
+                });
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                const data = await response.json();
+                if (modalAD && Array.isArray(data?.sections)) {
+                    modalAD.settings.sections = data.sections;
+                }
+                document.dispatchEvent(new CustomEvent('settings-updated', { detail: data }));
+                if (typeof window.toastFrontendSuccess === 'function') {
+                    window.toastFrontendSuccess('Settings saved', 'Settings', 3);
+                }
+                this.resolvePromise?.({
+                    status: 'saved',
+                    data,
+                });
+                this.resolvePromise = null;
             } catch (e) {
-                window.toastFetchError("Error saving settings", e)
-                return
+                window.toastFetchError?.('Error saving settings', e);
+                return;
             }
-            document.dispatchEvent(new CustomEvent('settings-updated', { detail: resp.settings }));
-            this.resolvePromise({
-                status: 'saved',
-                data: resp.settings
-            });
         } else if (buttonId === 'cancel') {
             this.handleCancel();
+            return;
         }
 
         // Polling removed
@@ -224,10 +247,11 @@ const settingsModalProxy = {
     },
 
     async handleCancel() {
-        this.resolvePromise({
+        this.resolvePromise?.({
             status: 'cancelled',
             data: null
         });
+        this.resolvePromise = null;
 
         // Polling removed
 
@@ -264,6 +288,8 @@ const settingsModalProxy = {
         }
     }
 };
+
+globalThis.settingsModalProxy = settingsModalProxy;
 
 
 // function initSettingsModal() {

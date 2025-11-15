@@ -32,6 +32,101 @@ let context = "";
 let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
+let pendingSomabrainState = null;
+
+const SOMABRAIN_COPY = {
+  normal: {
+    tooltip: "SomaBrain online",
+    banner: "",
+  },
+  degraded: {
+    tooltip: "SomaBrain degraded – limited memory retrieval",
+    banner: "Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.",
+  },
+  down: {
+    tooltip: "SomaBrain offline – degraded mode",
+    banner: "Somabrain is offline. The agent will answer using chat history only until memories sync again.",
+  },
+  unknown: {
+    tooltip: "SomaBrain status unknown",
+    banner: "Somabrain status is unknown. We will keep retrying automatically.",
+  },
+};
+
+const SOMABRAIN_REASON_COPY = {
+  degraded: {
+    tooltip: "Somabrain degraded – retrying",
+    banner: "Limited signal from Somabrain; retrieval depth reduced temporarily.",
+  },
+  down: {
+    tooltip: "Somabrain offline",
+    banner: "Somabrain is unreachable right now. Responses may miss institutional knowledge.",
+  },
+  timeout: {
+    tooltip: "Somabrain timeouts detected",
+    banner: "Somabrain requests are timing out. The agent fell back to minimal context until requests succeed.",
+  },
+  circuit_open: {
+    tooltip: "Somabrain circuit breaker open",
+    banner: "Somabrain calls were failing frequently. Circuit breaker is open until retries succeed.",
+  },
+};
+
+function describeSomabrainState(state, detail = {}) {
+  const normalized = SOMABRAIN_COPY[state] ? state : "unknown";
+  const base = SOMABRAIN_COPY[normalized];
+  const reasonKey = detail.reason && SOMABRAIN_REASON_COPY[detail.reason];
+  const tooltip = detail.tooltip || reasonKey?.tooltip || base.tooltip;
+  let banner = detail.banner;
+  if (typeof banner === "undefined") {
+    banner = reasonKey?.banner ?? base.banner;
+  }
+  return { state: normalized, tooltip, banner };
+}
+
+function pushSomabrainState(state, detail = {}) {
+  const desc = describeSomabrainState(String(state || "unknown").toLowerCase(), detail);
+  const store = globalThis.Alpine?.store && globalThis.Alpine.store("somabrain");
+  if (!store) {
+    pendingSomabrainState = desc;
+    return;
+  }
+  store.state = desc.state;
+  store.tooltip = desc.tooltip;
+  store.banner = desc.banner;
+  store.lastUpdated = Date.now();
+  pendingSomabrainState = null;
+}
+
+function markSomabrainUnknown(reason) {
+  const overrides = reason
+    ? {
+        tooltip: `SomaBrain status unknown — ${reason}`,
+        banner: `SomaBrain status unknown — ${reason}.`,
+        reason: "unknown",
+      }
+    : {};
+  pushSomabrainState("unknown", overrides);
+}
+
+function updateSomabrainIndicatorFromMetadata(meta) {
+  try {
+    if (!meta) return;
+    const raw = meta.somabrain_state || meta.soma_state || meta.brain_state;
+    if (!raw) return;
+    const state = String(raw).toLowerCase();
+    const reasonRaw = meta.somabrain_reason || meta.soma_reason || state;
+    const note = meta.somabrain_note || meta.somabrain_message || meta.soma_note;
+    const tooltipHint = meta.somabrain_tooltip;
+    const detail = {
+      reason: typeof reasonRaw === "string" ? reasonRaw.toLowerCase() : undefined,
+    };
+    if (!detail.reason) detail.reason = state;
+    if (tooltipHint) detail.tooltip = String(tooltipHint);
+    if (note) detail.banner = String(note);
+    pushSomabrainState(state, detail);
+  } catch {}
+}
 
 // Initialize the toggle button
 setupSidebarToggle();
@@ -331,6 +426,7 @@ bus.on("stream.offline", (info) => {
   setConnectionStatus(false);
   try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = info?.reason ? `Offline — ${info.reason}` : 'Offline'; } } catch {}
   try { notificationsSseStore.create({ type: "system", title: "Disconnected", body: "Backend stream offline", severity: "warning", ttl_seconds: 15 }); } catch {}
+  markSomabrainUnknown("stream offline");
 });
 bus.on("stream.stale", (info) => {
   try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'stale'; const secs = Math.max(1, Math.round((info?.ms_since_heartbeat || 0)/1000)); s.tooltip = `Stale — ${secs}s since last heartbeat`; } } catch {}
@@ -347,6 +443,7 @@ bus.on("stream.retry.giveup", (info) => {
 });
 bus.on("sse:event", (ev) => {
   if (ev && (!ev.session_id || ev.session_id === context)) {
+    if (ev.metadata) updateSomabrainIndicatorFromMetadata(ev.metadata);
     renderEvent(ev);
   }
 });
@@ -859,6 +956,14 @@ document.addEventListener("DOMContentLoaded", () => {
       connBridge.status = connectionStatus ? 'online' : 'offline';
       connBridge.tooltip = connectionStatus ? 'Online' : 'Offline';
     }
+    const initialBrain = pendingSomabrainState || describeSomabrainState("unknown");
+    createAlpineStore('somabrain', {
+      state: initialBrain.state,
+      tooltip: initialBrain.tooltip,
+      banner: initialBrain.banner,
+      lastUpdated: Date.now(),
+    });
+    pendingSomabrainState = null;
   } catch (e) { console.warn("Failed to create Alpine notifications bridge", e); }
 
   // Ensure an active context exists so SSE connects (needed for notifications stream)

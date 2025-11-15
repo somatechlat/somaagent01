@@ -41,18 +41,15 @@ Notes:
 
 ### Enable live LLM chat via Groq (DEV)
 
-Use the Settings UI (preferred) or the helper script to persist your Groq API key and dialogue model profile in the Gateway. The Gateway securely stores LLM credentials in Redis (encrypted with `SA01_CRYPTO_FERNET_KEY`) and injects them into centralized `/v1/llm/invoke` calls used by the conversation worker.
+Use the Settings UI to persist your Groq API key and dialogue model profile in the Gateway. The Gateway securely stores LLM credentials in Redis (encrypted with `SA01_CRYPTO_FERNET_KEY`) and injects them into centralized `/v1/llm/invoke` calls used by the conversation worker.
 
-- Option A – through the UI:
-    - Open the app at http://localhost:${GATEWAY_PORT:-21016}/ui
-    - Open Settings → Model
-    - Set Provider: groq
-    - Set Model: e.g. `llama-3.1-8b-instant` (or another Groq-supported model)
-    - Leave API Base blank or set `https://api.groq.com/openai` (Gateway normalizes and appends `/v1` if needed)
-    - In API Keys section, set `api_key_groq` with your Groq API key
-    - Save; then start a chat. The worker uses Gateway `/v1/llm/invoke(/stream)` with stored credentials.
-
-Option B (prior helper script) has been removed; always use the Settings UI sections flow. External seeding scripts for provider credentials are intentionally unsupported to preserve a single write path.
+- Open the app at http://localhost:${GATEWAY_PORT:-21016}/ui
+- Open Settings → Model
+- Set Provider: groq
+- Set Model: e.g. `llama-3.1-8b-instant` (or another Groq-supported model)
+- Leave API Base blank or set `https://api.groq.com/openai` (Gateway normalizes and appends `/v1` if needed)
+- In API Keys section, set `api_key_groq` with your Groq API key
+- Save; then start a chat. The worker uses Gateway `/v1/llm/invoke(/stream)` with stored credentials.
 
 Notes:
 - LLM invoke endpoints are internal-token gated; in dev this is `dev-internal-token` and already configured for worker↔gateway calls.

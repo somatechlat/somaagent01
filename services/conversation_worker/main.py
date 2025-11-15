@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 import json
 
 from jsonschema import ValidationError
-from prometheus_client import Counter, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
@@ -41,6 +41,17 @@ from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.common import runtime_config as cfg
+from observability.metrics import (
+    ContextBuilderMetrics,
+    llm_call_latency_seconds,
+    llm_calls_total,
+    llm_input_tokens_total,
+    llm_output_tokens_total,
+    thinking_policy_seconds,
+    tokens_received_total,
+)
+from python.helpers.tokens import count_tokens
+from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 import httpx
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 import mimetypes
@@ -63,6 +74,14 @@ MESSAGE_LATENCY = Histogram(
     "Time spent handling conversation events",
     labelnames=("path",),
 )
+SOMABRAIN_STATUS_GAUGE = Gauge(
+    "conversation_worker_somabrain_status",
+    "Current SomaBrain connectivity status for this worker (1=up, 0=down)",
+)
+SOMABRAIN_BUFFER_GAUGE = Gauge(
+    "conversation_worker_somabrain_buffered_items",
+    "Number of memory payloads buffered locally while SomaBrain is unavailable",
+)
 ESCALATION_ATTEMPTS = Counter(
     "conversation_worker_escalations_total",
     "Count of escalation attempts",
@@ -73,6 +92,37 @@ SESSION_CACHE_SYNC = Counter(
     "Conversation worker attempts to synchronise session cache entries",
     labelnames=("result",),
 )
+
+
+def _normalize_usage(raw: Dict[str, Any] | None) -> dict[str, int]:
+    """Coerce provider usage payloads into {input_tokens, output_tokens} ints."""
+    payload: Dict[str, Any] = raw or {}
+    prompt = payload.get("input_tokens", payload.get("prompt_tokens", 0))
+    completion = payload.get("output_tokens", payload.get("completion_tokens", 0))
+    try:
+        prompt_val = int(prompt) if prompt is not None else 0
+    except Exception:
+        prompt_val = 0
+    try:
+        completion_val = int(completion) if completion is not None else 0
+    except Exception:
+        completion_val = 0
+    return {"input_tokens": max(prompt_val, 0), "output_tokens": max(completion_val, 0)}
+
+
+def _record_llm_success(model: str | None, input_tokens: int, output_tokens: int, elapsed: float) -> None:
+    label = (model or "unknown").strip() or "unknown"
+    llm_calls_total.labels(model=label, result="success").inc()
+    llm_call_latency_seconds.labels(model=label).observe(max(elapsed, 0.0))
+    if input_tokens:
+        llm_input_tokens_total.labels(model=label).inc(max(input_tokens, 0))
+    if output_tokens:
+        llm_output_tokens_total.labels(model=label).inc(max(output_tokens, 0))
+
+
+def _record_llm_failure(model: str | None) -> None:
+    label = (model or "unknown").strip() or "unknown"
+    llm_calls_total.labels(model=label, result="error").inc()
 
 _METRICS_SERVER_STARTED = False
 
@@ -208,6 +258,15 @@ class ConversationWorker:
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         # SomaBrain HTTP client (centralized memory backend)
         self.soma = SomaBrainClient.get()
+        self._somabrain_degraded_until = 0.0
+        self.context_metrics = ContextBuilderMetrics()
+        self.context_builder = ContextBuilder(
+            somabrain=self.soma,
+            metrics=self.context_metrics,
+            token_counter=count_tokens,
+            health_provider=self._somabrain_health_state,
+            on_degraded=self._mark_somabrain_degraded,
+        )
         self.mem_outbox = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
         router_url = cfg.env("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
@@ -223,10 +282,10 @@ class ConversationWorker:
             "ESCALATION_FALLBACK_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
 
-        # Tool registry for model-led orchestration (no network hop)
+        # Tool registry for model‑led orchestration (no network hop)
         self.tool_registry = ToolRegistry()
-        # Back-compat shim for older tests that expect a local SLM client with an api_key attr.
-        # Runtime LLM calls are made via Gateway; this object is not used for provider calls.
+        # Back‑compat shim for older tests that expect a local SLM client with an ``api_key`` attribute.
+        # Runtime LLM calls are made via the Gateway; this shim is not used for provider calls.
         try:
             import types  # noqa: WPS433 (std lib)
 
@@ -236,20 +295,145 @@ class ConversationWorker:
             self.slm = type("_Shim", (), {"api_key": None})()
 
         # ---------------------------------------------------------------------
-        # Background recall – periodically fetch memory snippets and emit them as
-        # ``context.update`` events. The implementation has been moved to a proper
-        # instance method (``_background_recall_context``) so it is accessible
-        # from tests via ``worker._background_recall_context``.
+        # Fail‑safe state & health monitoring for SomaBrain
         # ---------------------------------------------------------------------
+        self._soma_brain_up: bool = True  # optimistic start
+        self._transient_memory: list[dict[str, Any]] = []  # buffer when SomaBrain is down
+        # Start background health monitor (runs for the lifetime of the worker)
+        self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())
 
-        async def _ensure_llm_key(self) -> None:
-            """Fetch provider API key from Gateway (DEV only) and clear it afterwards.
+        # ``__init__`` ends here – subsequent methods are defined at the class level.
 
-            The worker never uses the key for actual LLM calls – those go through the
-            Gateway – but some unit tests inspect ``self.slm.api_key``. To avoid leaking
-            credentials between tests we always reset the attribute to ``None`` after the
-            fetch attempt, regardless of success.
-            """
+    # ---------------------------------------------------------------------
+    # Helper methods – health monitor & safe SomaBrain wrappers
+    # ---------------------------------------------------------------------
+
+    async def _monitor_soma_brain(self) -> None:
+        """Periodically ping SomaBrain and update ``self._soma_brain_up``.
+
+        Uses the shared :class:`SomaBrainClient` instance so that health checks
+        respect the same base URL, TLS and auth configuration as normal memory
+        operations. When the service becomes reachable again, any buffered
+        memory items are flushed.
+        """
+        while True:
+            try:
+                # ``health()`` raises ``SomaClientError`` (or ``httpx`` errors)
+                # on non‑2xx responses, which we treat as "down".
+                await self.soma.health()  # type: ignore[attr-defined]
+                up = True
+            except Exception:
+                up = False
+            previous = self._soma_brain_up
+            self._soma_brain_up = up
+            SOMABRAIN_STATUS_GAUGE.set(1.0 if self._soma_brain_up else 0.0)
+            if self._soma_brain_up and not previous:
+                await self._flush_transient_memory()
+            await asyncio.sleep(5)
+
+    async def _flush_transient_memory(self) -> None:
+        """Attempt to persist any buffered memory items now that SomaBrain is up."""
+        if not self._transient_memory:
+            SOMABRAIN_BUFFER_GAUGE.set(0.0)
+            return
+        pending = list(self._transient_memory)
+        self._transient_memory.clear()
+        SOMABRAIN_BUFFER_GAUGE.set(0.0)
+        for payload in pending:
+            try:
+                await self.soma.save_memory(payload)
+            except Exception:
+                # If it fails again, re‑buffer the item and break to avoid busy loop
+                self._transient_memory.append(payload)
+                SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
+                break
+
+    async def _safe_recall(self, *args, **kwargs) -> dict[str, Any]:
+        """Wrap ``self.soma.recall`` with fail‑safe behaviour.
+
+        Returns an empty dict when SomaBrain is unavailable.
+        """
+        if not self._soma_brain_up:
+            return {}
+        try:
+            return await self.soma.recall(*args, **kwargs)
+        except Exception:
+            LOGGER.debug("SomaBrain recall failed – entering degraded mode", exc_info=True)
+            self._soma_brain_up = False
+            return {}
+
+    async def _safe_save_memory(self, payload: dict[str, Any]) -> None:
+        """Wrap ``self.soma.save_memory`` with buffering when the service is down."""
+        if not self._soma_brain_up:
+            self._transient_memory.append(payload)
+            SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
+            return
+        try:
+            await self.soma.save_memory(payload)
+        except Exception:
+            LOGGER.debug("SomaBrain save_memory failed – buffering payload", exc_info=True)
+            self._soma_brain_up = False
+            self._transient_memory.append(payload)
+            SOMABRAIN_STATUS_GAUGE.set(0.0)
+            SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
+
+    def _somabrain_health_state(self) -> SomabrainHealthState:
+        if not self._soma_brain_up:
+            return SomabrainHealthState.DOWN
+        if time.time() < self._somabrain_degraded_until:
+            return SomabrainHealthState.DEGRADED
+        return SomabrainHealthState.NORMAL
+
+    def _mark_somabrain_degraded(self, duration: float) -> None:
+        self._somabrain_degraded_until = max(self._somabrain_degraded_until, time.time() + duration)
+
+    def _history_events_to_messages(self, events: list[dict[str, Any]]) -> list[dict[str, str]]:
+        messages: list[dict[str, str]] = []
+        for entry in events:
+            if not isinstance(entry, dict):
+                continue
+            role = entry.get("type")
+            if role == "user":
+                content = entry.get("message") or ""
+                if content:
+                    messages.append({"role": "user", "content": str(content)})
+            elif role == "assistant":
+                content = entry.get("message") or ""
+                if content:
+                    messages.append({"role": "assistant", "content": str(content)})
+        return messages
+
+    def _legacy_prompt_messages(
+        self,
+        history: list[dict[str, Any]],
+        event: dict[str, Any],
+        analysis_prompt: ChatMessage,
+    ) -> list[ChatMessage]:
+        messages: list[ChatMessage] = []
+        for item in reversed(history):
+            if item.get("type") == "user":
+                messages.append(ChatMessage(role="user", content=item.get("message", "")))
+            elif item.get("type") == "assistant":
+                messages.append(ChatMessage(role="assistant", content=item.get("message", "")))
+        if not messages or messages[-1].role != "user":
+            messages.append(ChatMessage(role="user", content=event.get("message", "")))
+        messages.insert(0, analysis_prompt)
+        return messages
+
+    def _context_builder_max_tokens(self) -> int:
+        try:
+            return max(512, int(cfg.env("CONTEXT_BUILDER_MAX_TOKENS", "4096")))
+        except Exception:
+            return 4096
+
+    async def _ensure_llm_key(self) -> None:
+        """Fetch provider API key from the Gateway (DEV only) and clear it afterwards.
+
+        The worker never uses the key for actual LLM calls – those go through the
+        Gateway – but some unit tests inspect ``self.slm.api_key``. To avoid leaking
+        credentials between tests we always reset the attribute to ``None`` after the
+        fetch attempt, regardless of success.
+        """
         # Only attempt when internal token and gateway base are configured
         if not self._internal_token or not self._gateway_base:
             return
@@ -319,7 +503,7 @@ class ConversationWorker:
         chunk_index = 0
         while not stop_event.is_set():
             try:
-                resp = await self.soma.recall(
+                resp = await self._safe_recall(
                     query,
                     top_k=top_k,
                     chunk_size=chunk_size,
@@ -330,6 +514,14 @@ class ConversationWorker:
             except Exception:
                 LOGGER.debug("Recall request failed", exc_info=True)
                 break
+            # When SomaBrain is marked down, _safe_recall returns an empty
+            # payload and flips ``self._soma_brain_up`` to ``False``. In that
+            # case we stay in a degraded loop and rely on the health monitor
+            # to flip the flag back to True instead of treating this as an
+            # end-of-stream condition.
+            if not self._soma_brain_up:
+                await asyncio.sleep(0.5)
+                continue
             results = resp.get("results", [])
             if not results:
                 break
@@ -473,20 +665,21 @@ class ConversationWorker:
             # Fail-closed: default to deny when OPA is unavailable
             allow_memory = False
             try:
-                allow_memory = await self.policy_client.evaluate(
-                    PolicyRequest(
-                        tenant=tenant,
-                        persona_id=persona_id,
-                        action="memory.write",
-                        resource="somabrain",
-                        context={
-                            "payload_type": payload.get("type"),
-                            "role": payload.get("role"),
-                            "session_id": session_id,
-                            "metadata": payload.get("metadata", {}),
-                        },
+                with thinking_policy_seconds.labels(policy="memory.write").time():
+                    allow_memory = await self.policy_client.evaluate(
+                        PolicyRequest(
+                            tenant=tenant,
+                            persona_id=persona_id,
+                            action="memory.write",
+                            resource="somabrain",
+                            context={
+                                "payload_type": payload.get("type"),
+                                "role": payload.get("role"),
+                                "session_id": session_id,
+                                "metadata": payload.get("metadata", {}),
+                            },
+                        )
                     )
-                )
             except Exception:
                 LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if not allow_memory:
@@ -669,20 +862,21 @@ class ConversationWorker:
             payload["idempotency_key"] = generate_for_memory_payload(payload)
             allow_memory = False
             try:
-                allow_memory = await self.policy_client.evaluate(
-                    PolicyRequest(
-                        tenant=tenant,
-                        persona_id=persona_id,
-                        action="memory.write",
-                        resource="somabrain",
-                        context={
-                            "payload_type": payload.get("type"),
-                            "role": payload.get("role"),
-                            "session_id": session_id,
-                            "metadata": payload.get("metadata", {}),
-                        },
+                with thinking_policy_seconds.labels(policy="memory.write").time():
+                    allow_memory = await self.policy_client.evaluate(
+                        PolicyRequest(
+                            tenant=tenant,
+                            persona_id=persona_id,
+                            action="memory.write",
+                            resource="somabrain",
+                            context={
+                                "payload_type": payload.get("type"),
+                                "role": payload.get("role"),
+                                "session_id": session_id,
+                                "metadata": payload.get("metadata", {}),
+                            },
+                        )
                     )
-                )
             except Exception:
                 LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if not allow_memory:
@@ -740,10 +934,20 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
         role: str = "dialogue",
+        model_hint: str | None = None,
     ) -> tuple[str, dict[str, int]]:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
+        model_label = (model_hint or slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        start_time = time.perf_counter()
+
+        def _finalize(text_value: str, usage_value: dict[str, int]) -> tuple[str, dict[str, int]]:
+            elapsed = time.perf_counter() - start_time
+            normalized = _normalize_usage(usage_value)
+            _record_llm_success(model_label, normalized["input_tokens"], normalized["output_tokens"], elapsed)
+            return text_value, normalized
+
         # Build overrides but omit empty strings (e.g. base_url="") while allowing 0/0.0
         ov: dict[str, Any] = {}
         for k, v in {
@@ -767,99 +971,105 @@ class ConversationWorker:
             "overrides": ov,
         }
         headers = {"X-Internal-Token": self._internal_token or ""}
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as resp:
-                if resp.is_error:
-                    # Surface upstream error text for telemetry/debugging
-                    body = await resp.aread()
-                    raise RuntimeError(f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}")
-                async for line in resp.aiter_lines():
-                    if not line or not line.startswith("data:"):
-                        continue
-                    data_str = line[5:].strip()
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(data_str)
-                    except Exception:
-                        continue
-                    # Pass-through OpenAI-style chunk
-                    choices = chunk.get("choices")
-                    if not choices:
-                        continue
-                    choice = choices[0]
-                    delta = choice.get("delta", {})
-                    content_piece = delta.get("content", "")
-                    if content_piece:
-                        buffer.append(content_piece)
-                        metadata = _compose_outbound_metadata(
-                            base_metadata,
-                            source="slm",
-                            status="streaming",
-                            analysis=analysis_metadata,
-                            extra={"stream_index": len(buffer)},
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                async with client.stream("POST", url, json=payload, headers=headers) as resp:
+                    if resp.is_error:
+                        # Surface upstream error text for telemetry/debugging
+                        body = await resp.aread()
+                        raise RuntimeError(
+                            f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}"
                         )
-                        streaming_event = {
-                            "event_id": str(uuid.uuid4()),
-                            "session_id": session_id,
-                            "persona_id": persona_id,
-                            "role": "assistant",
-                            "message": "".join(buffer),
-                            "metadata": metadata,
-                            "version": "sa01-v1",
-                            "type": "assistant.stream",
-                        }
-                        await self.publisher.publish(
-                            self.settings["outbound"],
-                            streaming_event,
-                            dedupe_key=streaming_event.get("event_id"),
-                            session_id=session_id,
-                            tenant=(metadata or {}).get("tenant"),
-                        )
-                    chunk_usage = chunk.get("usage")
-                    if isinstance(chunk_usage, dict):
-                        usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                        usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
-        text = "".join(buffer)
-        if not text:
-            # Fallback: call non-streaming invoke once to get a definitive answer
-            try:
-                url2 = f"{self._gateway_base}/v1/llm/invoke"
-                ov2: dict[str, Any] = {}
-                for k, v in {
-                    "model": slm_kwargs.get("model"),
-                    "base_url": slm_kwargs.get("base_url"),
-                    "temperature": slm_kwargs.get("temperature"),
-                    "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
-                }.items():
-                    if v is None:
-                        continue
-                    if isinstance(v, str) and v.strip() == "":
-                        continue
-                    ov2[k] = v
-                body2 = {
-                    "role": "dialogue",
-                    "session_id": session_id,
-                    "persona_id": persona_id,
-                    "tenant": (base_metadata or {}).get("tenant"),
-                    "messages": [m.__dict__ for m in messages],
-                    "overrides": ov2,
-                }
-                headers2 = {"X-Internal-Token": self._internal_token or ""}
-                async with httpx.AsyncClient(timeout=30.0) as client2:
-                    resp2 = await client2.post(url2, json=body2, headers=headers2)
-                    if resp2.is_error:
-                        raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
-                    data2 = resp2.json()
-                    content2 = data2.get("content", "")
-                    usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
-                    if content2:
-                        return content2, usage2
-            except Exception:
-                # Bubble up to callers; higher-level handler will surface a meaningful error
-                pass
-            raise RuntimeError("Empty response from streaming Gateway/SLM")
-        return text, usage
+                    async for line in resp.aiter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                        except Exception:
+                            continue
+                        # Pass-through OpenAI-style chunk
+                        choices = chunk.get("choices")
+                        if not choices:
+                            continue
+                        choice = choices[0]
+                        delta = choice.get("delta", {})
+                        content_piece = delta.get("content", "")
+                        if content_piece:
+                            buffer.append(content_piece)
+                            metadata = _compose_outbound_metadata(
+                                base_metadata,
+                                source="slm",
+                                status="streaming",
+                                analysis=analysis_metadata,
+                                extra={"stream_index": len(buffer)},
+                            )
+                            streaming_event = {
+                                "event_id": str(uuid.uuid4()),
+                                "session_id": session_id,
+                                "persona_id": persona_id,
+                                "role": "assistant",
+                                "message": "".join(buffer),
+                                "metadata": metadata,
+                                "version": "sa01-v1",
+                                "type": "assistant.stream",
+                            }
+                            await self.publisher.publish(
+                                self.settings["outbound"],
+                                streaming_event,
+                                dedupe_key=streaming_event.get("event_id"),
+                                session_id=session_id,
+                                tenant=(metadata or {}).get("tenant"),
+                            )
+                        chunk_usage = chunk.get("usage")
+                        if isinstance(chunk_usage, dict):
+                            usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
+                            usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+            text = "".join(buffer)
+            if not text:
+                # Fallback: call non-streaming invoke once to get a definitive answer
+                try:
+                    url2 = f"{self._gateway_base}/v1/llm/invoke"
+                    ov2: dict[str, Any] = {}
+                    for k, v in {
+                        "model": slm_kwargs.get("model"),
+                        "base_url": slm_kwargs.get("base_url"),
+                        "temperature": slm_kwargs.get("temperature"),
+                        "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                    }.items():
+                        if v is None:
+                            continue
+                        if isinstance(v, str) and v.strip() == "":
+                            continue
+                        ov2[k] = v
+                    body2 = {
+                        "role": "dialogue",
+                        "session_id": session_id,
+                        "persona_id": persona_id,
+                        "tenant": (base_metadata or {}).get("tenant"),
+                        "messages": [m.__dict__ for m in messages],
+                        "overrides": ov2,
+                    }
+                    headers2 = {"X-Internal-Token": self._internal_token or ""}
+                    async with httpx.AsyncClient(timeout=30.0) as client2:
+                        resp2 = await client2.post(url2, json=body2, headers=headers2)
+                        if resp2.is_error:
+                            raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                        data2 = resp2.json()
+                        content2 = data2.get("content", "")
+                        usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                        if content2:
+                            return _finalize(content2, usage2)
+                except Exception:
+                    # Bubble up to callers; higher-level handler will surface a meaningful error
+                    pass
+                raise RuntimeError("Empty response from streaming Gateway/SLM")
+            return _finalize(text, usage)
+        except Exception:
+            _record_llm_failure(model_label)
+            raise
 
     async def _generate_response(
         self,
@@ -871,6 +1081,7 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
+        model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
         try:
             return await self._stream_response_via_gateway(
                 session_id=session_id,
@@ -880,6 +1091,7 @@ class ConversationWorker:
                 analysis_metadata=analysis_metadata,
                 base_metadata=base_metadata,
                 role="dialogue",
+                model_hint=model_label,
             )
         except Exception as exc:
             LOGGER.warning(
@@ -911,106 +1123,126 @@ class ConversationWorker:
                 "overrides": ov,
             }
             headers = {"X-Internal-Token": self._internal_token or ""}
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(url, json=body, headers=headers)
-                if resp.is_error:
-                    raise RuntimeError(f"Gateway invoke error {resp.status_code}: {resp.text[:512]}")
-                data = resp.json()
-                content = data.get("content", "")
-                usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
-                # If provider returned tool_calls (via Gateway pass-through), execute tools then re-ask once.
-                tool_calls = data.get("tool_calls")
-                if (not content) and isinstance(tool_calls, list) and tool_calls:
-                    # Execute declared tool calls using local tool executor
-                    for call in tool_calls:
-                        try:
-                            fn = (call or {}).get("function") or {}
-                            tool_name = fn.get("name") or (call.get("name") if isinstance(call, dict) else "")
-                            raw_args = fn.get("arguments") if fn else (call.get("arguments") if isinstance(call, dict) else "")
-                        except Exception:
-                            tool_name = ""
-                            raw_args = ""
-                        if not tool_name:
-                            continue
-                        try:
-                            args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
-                        except Exception:
-                            args = {"_raw": raw_args}
+            start_time = time.perf_counter()
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.post(url, json=body, headers=headers)
+                    if resp.is_error:
+                        raise RuntimeError(f"Gateway invoke error {resp.status_code}: {resp.text[:512]}")
+                    data = resp.json()
+                    content = data.get("content", "")
+                    usage = _normalize_usage(data.get("usage"))
+                    tool_calls = data.get("tool_calls")
+                    if (not content) and isinstance(tool_calls, list) and tool_calls:
+                        _record_llm_success(
+                            model_label,
+                            usage["input_tokens"],
+                            usage["output_tokens"],
+                            time.perf_counter() - start_time,
+                        )
+                        for call in tool_calls:
+                            try:
+                                fn = (call or {}).get("function") or {}
+                                tool_name = fn.get("name") or (call.get("name") if isinstance(call, dict) else "")
+                                raw_args = fn.get("arguments") if fn else (call.get("arguments") if isinstance(call, dict) else "")
+                            except Exception:
+                                tool_name = ""
+                                raw_args = ""
+                            if not tool_name:
+                                continue
+                            try:
+                                args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+                            except Exception:
+                                args = {"_raw": raw_args}
 
-                        req_id = str(uuid.uuid4())
-                        metadata = {
-                            **dict(base_metadata or {}),
-                            "tenant": (base_metadata or {}).get("tenant", "default"),
-                            "request_id": req_id,
-                            "source": "tool_orchestrator",
-                        }
-                        event = {
-                            "event_id": req_id,
+                            req_id = str(uuid.uuid4())
+                            metadata = {
+                                **dict(base_metadata or {}),
+                                "tenant": (base_metadata or {}).get("tenant", "default"),
+                                "request_id": req_id,
+                                "source": "tool_orchestrator",
+                            }
+                            event = {
+                                "event_id": req_id,
+                                "session_id": session_id,
+                                "persona_id": persona_id,
+                                "tool_name": tool_name,
+                                "args": args,
+                                "metadata": metadata,
+                            }
+                            try:
+                                await self.publisher.publish(
+                                    cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
+                                    event,
+                                    dedupe_key=req_id,
+                                    session_id=session_id,
+                                    tenant=metadata.get("tenant"),
+                                )
+                            except Exception:
+                                LOGGER.debug("Failed to publish tool request (non-stream)", exc_info=True)
+                                continue
+
+                            result_event = await self._wait_for_tool_result(
+                                session_id=session_id,
+                                request_id=req_id,
+                                timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20")),
+                            )
+                            if result_event:
+                                payload = result_event.get("payload")
+                                try:
+                                    tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                                except Exception:
+                                    tool_text = str(payload)
+                                messages.append(
+                                    ChatMessage(
+                                        role="system",
+                                        content=f"Tool {tool_name} result: {tool_text[:4000]}",
+                                    )
+                                )
+                            else:
+                                messages.append(
+                                    ChatMessage(
+                                        role="system",
+                                        content=f"Tool {tool_name} did not return a result in time.",
+                                    )
+                                )
+
+                        body2 = {
+                            "role": "dialogue",
                             "session_id": session_id,
                             "persona_id": persona_id,
-                            "tool_name": tool_name,
-                            "args": args,
-                            "metadata": metadata,
+                            "tenant": (base_metadata or {}).get("tenant"),
+                            "messages": [m.__dict__ for m in messages],
+                            "overrides": ov,
                         }
-                        try:
-                            await self.publisher.publish(
-                                cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"),
-                                event,
-                                dedupe_key=req_id,
-                                session_id=session_id,
-                                tenant=metadata.get("tenant"),
-                            )
-                        except Exception:
-                            LOGGER.debug("Failed to publish tool request (non-stream)", exc_info=True)
-                            continue
-
-                        result_event = await self._wait_for_tool_result(
-                            session_id=session_id,
-                            request_id=req_id,
-                            timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20")),
+                        second_start = time.perf_counter()
+                        resp2 = await client.post(url, json=body2, headers=headers)
+                        if resp2.is_error:
+                            raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                        data2 = resp2.json()
+                        content2 = data2.get("content", "")
+                        usage2 = _normalize_usage(data2.get("usage"))
+                        if not content2:
+                            raise RuntimeError("Empty response from Gateway invoke after tools")
+                        _record_llm_success(
+                            model_label,
+                            usage2["input_tokens"],
+                            usage2["output_tokens"],
+                            time.perf_counter() - second_start,
                         )
-                        # Append a summarised tool result back into the message context
-                        if result_event:
-                            payload = result_event.get("payload")
-                            try:
-                                tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
-                            except Exception:
-                                tool_text = str(payload)
-                            messages.append(
-                                ChatMessage(
-                                    role="system",
-                                    content=f"Tool {tool_name} result: {tool_text[:4000]}",
-                                )
-                            )
-                        else:
-                            messages.append(
-                                ChatMessage(
-                                    role="system",
-                                    content=f"Tool {tool_name} did not return a result in time.",
-                                )
-                            )
-
-                    # After executing tools, ask once more via non-stream for a natural-language answer
-                    body2 = {
-                        "role": "dialogue",
-                        "session_id": session_id,
-                        "persona_id": persona_id,
-                        "tenant": (base_metadata or {}).get("tenant"),
-                        "messages": [m.__dict__ for m in messages],
-                        "overrides": ov,
-                    }
-                    resp2 = await client.post(url, json=body2, headers=headers)
-                    if resp2.is_error:
-                        raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
-                    data2 = resp2.json()
-                    content2 = data2.get("content", "")
-                    usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
-                    if not content2:
-                        raise RuntimeError("Empty response from Gateway invoke after tools")
-                    return content2, usage2
-                if not content:
-                    raise RuntimeError("Empty response from Gateway invoke")
-                return content, usage
+                        return content2, usage2
+                    if not content:
+                        raise RuntimeError("Empty response from Gateway invoke")
+                    _record_llm_success(
+                        model_label,
+                        usage["input_tokens"],
+                        usage["output_tokens"],
+                        time.perf_counter() - start_time,
+                    )
+                    return content, usage
+            except Exception:
+                _record_llm_failure(model_label)
+                raise
 
     def _tools_openai_schema(self) -> list[dict[str, Any]]:
         """Build OpenAI-style tools array from local registry."""
@@ -1128,83 +1360,92 @@ class ConversationWorker:
         tc_args_acc: dict[int, dict[str, Any]] = {}
         tc_name_acc: dict[int, str] = {}
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as resp:
-                if resp.is_error:
-                    body = await resp.aread()
-                    raise RuntimeError(
-                        f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}"
-                    )
-                async for line in resp.aiter_lines():
-                    if not line or not line.startswith("data:"):
-                        continue
-                    data_str = line[5:].strip()
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(data_str)
-                    except Exception:
-                        continue
-                    choices = chunk.get("choices")
-                    if not choices:
-                        continue
-                    ch0 = choices[0]
-                    delta = ch0.get("delta", {})
-                    # Accumulate content for normal chat
-                    content_piece = delta.get("content")
-                    if content_piece:
-                        buffer.append(content_piece)
-                        metadata = _compose_outbound_metadata(
-                            base_metadata,
-                            source="slm",
-                            status="streaming",
-                            analysis=analysis_metadata,
-                            extra={"stream_index": len(buffer)},
+        model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        start_time = time.perf_counter()
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                async with client.stream("POST", url, json=payload, headers=headers) as resp:
+                    if resp.is_error:
+                        body = await resp.aread()
+                        raise RuntimeError(
+                            f"Gateway invoke stream error {resp.status_code}: {body.decode('utf-8', errors='ignore')[:512]}"
                         )
-                        streaming_event = {
-                            "event_id": str(uuid.uuid4()),
-                            "session_id": session_id,
-                            "persona_id": persona_id,
-                            "role": "assistant",
-                            "message": "".join(buffer),
-                            "metadata": metadata,
-                            "version": "sa01-v1",
-                            "type": "assistant.stream",
-                        }
-                        await self.publisher.publish(
-                            self.settings["outbound"],
-                            streaming_event,
-                            dedupe_key=streaming_event.get("event_id"),
-                            session_id=session_id,
-                            tenant=(metadata or {}).get("tenant"),
-                        )
-                    # Detect tool call deltas
-                    tc = delta.get("tool_calls")
-                    if isinstance(tc, list) and tc:
-                        for item in tc:
-                            try:
-                                idx = int(item.get("index", 0))
-                            except Exception:
-                                idx = 0
-                            func = (item.get("function") or {})
-                            name_part = func.get("name")
-                            if name_part:
-                                tc_name_acc[idx] = name_part
-                            args_part = func.get("arguments")
-                            if isinstance(args_part, str) and args_part:
-                                prev = tc_args_acc.get(idx, {}).get("_raw", "")
-                                tc_args_acc.setdefault(idx, {})["_raw"] = prev + args_part
-                    # Capture usage if present
-                    chunk_usage = chunk.get("usage")
-                    if isinstance(chunk_usage, dict):
-                        usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                        usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
-                    # If finish_reason indicates tool calls, stop accumulating content and break
-                    if ch0.get("finish_reason") == "tool_calls":
-                        break
+                    async for line in resp.aiter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                        except Exception:
+                            continue
+                        choices = chunk.get("choices")
+                        if not choices:
+                            continue
+                        ch0 = choices[0]
+                        delta = ch0.get("delta", {})
+                        content_piece = delta.get("content")
+                        if content_piece:
+                            buffer.append(content_piece)
+                            metadata = _compose_outbound_metadata(
+                                base_metadata,
+                                source="slm",
+                                status="streaming",
+                                analysis=analysis_metadata,
+                                extra={"stream_index": len(buffer)},
+                            )
+                            streaming_event = {
+                                "event_id": str(uuid.uuid4()),
+                                "session_id": session_id,
+                                "persona_id": persona_id,
+                                "role": "assistant",
+                                "message": "".join(buffer),
+                                "metadata": metadata,
+                                "version": "sa01-v1",
+                                "type": "assistant.stream",
+                            }
+                            await self.publisher.publish(
+                                self.settings["outbound"],
+                                streaming_event,
+                                dedupe_key=streaming_event.get("event_id"),
+                                session_id=session_id,
+                                tenant=(metadata or {}).get("tenant"),
+                            )
+                        tc = delta.get("tool_calls")
+                        if isinstance(tc, list) and tc:
+                            for item in tc:
+                                try:
+                                    idx = int(item.get("index", 0))
+                                except Exception:
+                                    idx = 0
+                                func = (item.get("function") or {})
+                                name_part = func.get("name")
+                                if name_part:
+                                    tc_name_acc[idx] = name_part
+                                args_part = func.get("arguments")
+                                if isinstance(args_part, str) and args_part:
+                                    prev = tc_args_acc.get(idx, {}).get("_raw", "")
+                                    tc_args_acc.setdefault(idx, {})["_raw"] = prev + args_part
+                        chunk_usage = chunk.get("usage")
+                        if isinstance(chunk_usage, dict):
+                            usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
+                            usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                        if ch0.get("finish_reason") == "tool_calls":
+                            break
+        except Exception:
+            _record_llm_failure(model_label)
+            raise
 
         # If we received tool call data, execute tools; otherwise return text
         if tc_args_acc or tc_name_acc:
+            usage_norm = _normalize_usage(usage)
+            _record_llm_success(
+                model_label,
+                usage_norm["input_tokens"],
+                usage_norm["output_tokens"],
+                time.perf_counter() - start_time,
+            )
             # Compose final tool_calls list
             max_index = max(list(tc_name_acc.keys()) + list(tc_args_acc.keys())) if (tc_name_acc or tc_args_acc) else -1
             for i in range(max_index + 1):
@@ -1284,8 +1525,16 @@ class ConversationWorker:
         else:
             text = "".join(buffer)
             if not text:
+                _record_llm_failure(model_label)
                 raise RuntimeError("Empty response from streaming Gateway/SLM")
-            return text, usage
+            usage_norm = _normalize_usage(usage)
+            _record_llm_success(
+                model_label,
+                usage_norm["input_tokens"],
+                usage_norm["output_tokens"],
+                time.perf_counter() - start_time,
+            )
+            return text, usage_norm
 
     async def _invoke_escalation_response(
         self,
@@ -1435,7 +1684,13 @@ class ConversationWorker:
 
             LOGGER.info("Processing message", extra={"session_id": session_id})
 
-            analysis = self.preprocessor.analyze(event.get("message", ""))
+            raw_message = event.get("message", "")
+            if isinstance(raw_message, str) and raw_message:
+                try:
+                    tokens_received_total.inc(count_tokens(raw_message))
+                except Exception:
+                    LOGGER.debug("Token counting failed for inbound message", exc_info=True)
+            analysis = self.preprocessor.analyze(raw_message if isinstance(raw_message, str) else str(raw_message))
             analysis_dict = analysis.to_dict()
             enriched_metadata = dict(event.get("metadata", {}))
             enriched_metadata["analysis"] = analysis_dict
@@ -1446,12 +1701,13 @@ class ConversationWorker:
             persona_id = event.get("persona_id")
 
             # Always enforce conversation policy (fail-closed)
-            allowed = await self.policy_enforcer.check_message_policy(
-                tenant=tenant,
-                persona_id=persona_id,
-                message=event.get("message", ""),
-                metadata=enriched_metadata,
-            )
+            with thinking_policy_seconds.labels(policy="conversation").time():
+                allowed = await self.policy_enforcer.check_message_policy(
+                    tenant=tenant,
+                    persona_id=persona_id,
+                    message=event.get("message", ""),
+                    metadata=enriched_metadata,
+                )
             if not allowed:
                 policy_record = {
                     "type": "policy_denied",
@@ -1513,27 +1769,27 @@ class ConversationWorker:
                         "universe_id": enriched_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
-                # Idempotency key per contract
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
-                # Pre-write OPA policy check: memory.write (fail-closed)
                 allow_memory = False
                 try:
-                    allow_memory = await self.policy_client.evaluate(
-                        PolicyRequest(
-                            tenant=tenant,
-                            persona_id=event.get("persona_id"),
-                            action="memory.write",
-                            resource="somabrain",
-                            context={
-                                "payload_type": payload.get("type"),
-                                "role": payload.get("role"),
-                                "session_id": session_id,
-                                "metadata": payload.get("metadata", {}),
-                            },
+                    with thinking_policy_seconds.labels(policy="memory.write").time():
+                        allow_memory = await self.policy_client.evaluate(
+                            PolicyRequest(
+                                tenant=tenant,
+                                persona_id=event.get("persona_id"),
+                                action="memory.write",
+                                resource="somabrain",
+                                context={
+                                    "payload_type": payload.get("type"),
+                                    "role": payload.get("role"),
+                                    "session_id": session_id,
+                                    "metadata": payload.get("metadata", {}),
+                                },
+                            )
                         )
-                    )
                 except Exception:
                     LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+
                 if allow_memory:
                     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                     result = await self.soma.remember(payload)
@@ -1561,99 +1817,99 @@ class ConversationWorker:
                         )
                     except Exception:
                         LOGGER.debug("Failed to publish memory WAL (user)", exc_info=True)
-                # Best-effort: ingest attachments in background (parse → remember)
-                try:
-                    attach_list = event.get("attachments") or []
-                    for a in attach_list:
-                        if not isinstance(a, str) or not a.strip():
-                            continue
-                        raw = a.strip()
-                        att_id = self._attachment_id_from_str(raw)
-                        if att_id:
-                            # ID-based path
-                            size_info = await self._attachment_head(att_id, tenant)
-                            offload = self._should_offload_ingest_id(size_info.get("size") if isinstance(size_info, dict) else None)
-                            if offload:
-                                try:
-                                    tool_event = {
-                                        "event_id": str(uuid.uuid4()),
-                                        "session_id": session_id,
-                                        "persona_id": event.get("persona_id"),
-                                        "tool_name": "document_ingest",
-                                        "args": {
-                                            "attachment_id": att_id,
-                                            "session_id": session_id,
-                                            "persona_id": event.get("persona_id"),
-                                            "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
-                                        },
-                                        "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
-                                    }
-                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
-                                    await self.publisher.publish(
-                                        topic,
-                                        tool_event,
-                                        dedupe_key=tool_event.get("event_id"),
-                                        session_id=session_id,
-                                        tenant=tenant,
-                                    )
-                                except Exception:
-                                    LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
-                            else:
-                                asyncio.create_task(
-                                    self._ingest_attachment_by_id(
-                                        att_id=att_id,
-                                        session_id=session_id,
-                                        persona_id=event.get("persona_id"),
-                                        tenant=tenant,
-                                        metadata=enriched_metadata,
-                                    )
-                                )
-                        else:
-                            # Legacy path-based fallback (DEV only)
-                            if self.deployment_mode != "DEV":
-                                LOGGER.warning(
-                                    "Path-based attachment ingest blocked in non-DEV mode",
-                                    extra={"session_id": session_id},
-                                )
+
+                    try:
+                        attach_list = event.get("attachments") or []
+                        for a in attach_list:
+                            if not isinstance(a, str) or not a.strip():
                                 continue
-                            fullpath = raw
-                            if self._should_offload_ingest(fullpath):
-                                try:
-                                    tool_event = {
-                                        "event_id": str(uuid.uuid4()),
-                                        "session_id": session_id,
-                                        "persona_id": event.get("persona_id"),
-                                        "tool_name": "document_ingest",
-                                        "args": {
-                                            "path": fullpath,
+                            raw = a.strip()
+                            att_id = self._attachment_id_from_str(raw)
+                            if att_id:
+                                size_info = await self._attachment_head(att_id, tenant)
+                                offload = self._should_offload_ingest_id(
+                                    size_info.get("size") if isinstance(size_info, dict) else None
+                                )
+                                if offload:
+                                    try:
+                                        tool_event = {
+                                            "event_id": str(uuid.uuid4()),
                                             "session_id": session_id,
                                             "persona_id": event.get("persona_id"),
-                                            "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
-                                        },
-                                        "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
-                                    }
-                                    topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
-                                    await self.publisher.publish(
-                                        topic,
-                                        tool_event,
-                                        dedupe_key=tool_event.get("event_id"),
-                                        session_id=session_id,
-                                        tenant=tenant,
+                                            "tool_name": "document_ingest",
+                                            "args": {
+                                                "attachment_id": att_id,
+                                                "session_id": session_id,
+                                                "persona_id": event.get("persona_id"),
+                                                "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                            },
+                                            "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                        }
+                                        topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                        await self.publisher.publish(
+                                            topic,
+                                            tool_event,
+                                            dedupe_key=tool_event.get("event_id"),
+                                            session_id=session_id,
+                                            tenant=tenant,
+                                        )
+                                    except Exception:
+                                        LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                                else:
+                                    asyncio.create_task(
+                                        self._ingest_attachment_by_id(
+                                            att_id=att_id,
+                                            session_id=session_id,
+                                            persona_id=event.get("persona_id"),
+                                            tenant=tenant,
+                                            metadata=enriched_metadata,
+                                        )
                                     )
-                                except Exception:
-                                    LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
                             else:
-                                asyncio.create_task(
-                                    self._ingest_attachment(
-                                        path=fullpath,
-                                        session_id=session_id,
-                                        persona_id=event.get("persona_id"),
-                                        tenant=tenant,
-                                        metadata=enriched_metadata,
+                                if self.deployment_mode != "DEV":
+                                    LOGGER.warning(
+                                        "Path-based attachment ingest blocked in non-DEV mode",
+                                        extra={"session_id": session_id},
                                     )
-                                )
-                except Exception:
-                    LOGGER.debug("Scheduling attachment ingest failed", exc_info=True)
+                                    continue
+                                fullpath = raw
+                                if self._should_offload_ingest(fullpath):
+                                    try:
+                                        tool_event = {
+                                            "event_id": str(uuid.uuid4()),
+                                            "session_id": session_id,
+                                            "persona_id": event.get("persona_id"),
+                                            "tool_name": "document_ingest",
+                                            "args": {
+                                                "path": fullpath,
+                                                "session_id": session_id,
+                                                "persona_id": event.get("persona_id"),
+                                                "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                            },
+                                            "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                        }
+                                        topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
+                                        await self.publisher.publish(
+                                            topic,
+                                            tool_event,
+                                            dedupe_key=tool_event.get("event_id"),
+                                            session_id=session_id,
+                                            tenant=tenant,
+                                        )
+                                    except Exception:
+                                        LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                                else:
+                                    asyncio.create_task(
+                                        self._ingest_attachment(
+                                            path=fullpath,
+                                            session_id=session_id,
+                                            persona_id=event.get("persona_id"),
+                                            tenant=tenant,
+                                            metadata=enriched_metadata,
+                                        )
+                                    )
+                    except Exception:
+                        LOGGER.debug("Scheduling attachment ingest failed", exc_info=True)
                 else:
                     LOGGER.info(
                         "memory.write denied by policy",
@@ -1691,31 +1947,45 @@ class ConversationWorker:
             else:
                 SESSION_CACHE_SYNC.labels("success").inc()
 
-            history = await self.store.list_events(session_id, limit=20)
-            # LLM credentials are managed by Gateway; worker does not fetch or store keys
-            messages: list[ChatMessage] = []
-            for item in reversed(history):
-                if item.get("type") == "user":
-                    messages.append(ChatMessage(role="user", content=item.get("message", "")))
-                elif item.get("type") == "assistant":
-                    messages.append(ChatMessage(role="assistant", content=item.get("message", "")))
+        history = await self.store.list_events(session_id, limit=20)
+        history_messages = self._history_events_to_messages(history)
+        summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
+        analysis_prompt = ChatMessage(
+            role="system",
+            content=(
+                "The following classification is for internal guidance only. Do not repeat or mention it in your reply. "
+                "Use it silently to tailor your response. Classification: intent={intent}; sentiment={sentiment}; tags={tags}."
+            ).format(
+                intent=analysis_dict["intent"],
+                sentiment=analysis_dict["sentiment"],
+                tags=summary_tags,
+            ),
+        )
 
-            if not messages or messages[-1].role != "user":
-                messages.append(ChatMessage(role="user", content=event.get("message", "")))
-
-            summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
-            analysis_prompt = ChatMessage(
-                role="system",
-                content=(
-                    "The following classification is for internal guidance only. Do not repeat or mention it in your reply. "
-                    "Use it silently to tailor your response. Classification: intent={intent}; sentiment={sentiment}; tags={tags}."
-                ).format(
-                    intent=analysis_dict["intent"],
-                    sentiment=analysis_dict["sentiment"],
-                    tags=summary_tags,
-                ),
+        try:
+            turn_envelope = {
+                "tenant_id": tenant,
+                "session_id": session_id,
+                "system_prompt": analysis_prompt.content,
+                "user_message": event.get("message", ""),
+                "history": history_messages,
+            }
+            max_tokens = self._context_builder_max_tokens()
+            built_context = await self.context_builder.build_for_turn(turn_envelope, max_prompt_tokens=max_tokens)
+            messages = [ChatMessage(role=msg.get("role", "user"), content=str(msg.get("content", ""))) for msg in built_context.messages]
+            session_metadata["somabrain_state"] = (
+                built_context.debug.get("somabrain_state")
+                or self._somabrain_health_state().value
             )
-            messages.insert(0, analysis_prompt)
+            session_metadata["somabrain_reason"] = (
+                built_context.debug.get("somabrain_reason")
+                or session_metadata["somabrain_state"]
+            )
+        except Exception:
+            LOGGER.exception("Context builder failed; falling back to legacy prompt assembly")
+            messages = self._legacy_prompt_messages(history, event, analysis_prompt)
+            session_metadata.setdefault("somabrain_state", self._somabrain_health_state().value)
+            session_metadata.setdefault("somabrain_reason", session_metadata["somabrain_state"])
 
             model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
             slm_kwargs: dict[str, Any] = {}
@@ -1878,10 +2148,17 @@ class ConversationWorker:
                     )
                     if cost_estimate is not None:
                         escalation_metadata["cost_estimate_usd"] = cost_estimate
+                    _record_llm_success(
+                        model_used,
+                        usage.get("input_tokens", 0),
+                        usage.get("output_tokens", 0),
+                        latency,
+                    )
                     ESCALATION_ATTEMPTS.labels("success").inc()
                 except Exception as exc:
                     path = "slm"
                     result_label = "escalation_error"
+                    _record_llm_failure(model_used)
                     LOGGER.exception("Escalation LLM invocation failed")
                     error_metadata = {
                         "error": str(exc),
@@ -1909,7 +2186,7 @@ class ConversationWorker:
                     ESCALATION_ATTEMPTS.labels("error").inc()
 
             if path == "slm":
-                response_start = time.time()
+                response_start = time.perf_counter()
                 try:
                     response_text, usage = await self._generate_with_tools(
                         session_id=session_id,
@@ -1919,7 +2196,14 @@ class ConversationWorker:
                         analysis_metadata=analysis_dict,
                         base_metadata=session_metadata,
                     )
+                    _record_llm_success(
+                        model_used,
+                        usage.get("input_tokens", 0),
+                        usage.get("output_tokens", 0),
+                        time.perf_counter() - response_start,
+                    )
                 except Exception as exc:
+                    _record_llm_failure(model_used)
                     LOGGER.exception("SLM request failed")
                     # Attempt a non-streaming fallback via Gateway once more before giving up
                     result_label = "generation_error"
@@ -1964,6 +2248,12 @@ class ConversationWorker:
                                     response_text = fallback_text
                                 else:
                                     response_text = "I encountered an error while generating a reply."
+                                _record_llm_success(
+                                    data_ns.get("model") or model_used,
+                                    usage.get("input_tokens", 0),
+                                    usage.get("output_tokens", 0),
+                                    time.perf_counter() - response_start,
+                                )
                             else:
                                 response_text = "I encountered an error while generating a reply."
                     except Exception:
@@ -2098,20 +2388,21 @@ class ConversationWorker:
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
                 allow_memory = False
                 try:
-                    allow_memory = await self.policy_client.evaluate(
-                        PolicyRequest(
-                            tenant=tenant,
-                            persona_id=event.get("persona_id"),
-                            action="memory.write",
-                            resource="somabrain",
-                            context={
-                                "payload_type": payload.get("type"),
-                                "role": payload.get("role"),
-                                "session_id": session_id,
-                                "metadata": payload.get("metadata", {}),
-                            },
+                    with thinking_policy_seconds.labels(policy="memory.write").time():
+                        allow_memory = await self.policy_client.evaluate(
+                            PolicyRequest(
+                                tenant=tenant,
+                                persona_id=event.get("persona_id"),
+                                action="memory.write",
+                                resource="somabrain",
+                                context={
+                                    "payload_type": payload.get("type"),
+                                    "role": payload.get("role"),
+                                    "session_id": session_id,
+                                    "metadata": payload.get("metadata", {}),
+                                },
+                            )
                         )
-                    )
                 except Exception:
                     LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
                 if allow_memory:
