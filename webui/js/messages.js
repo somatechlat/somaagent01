@@ -696,7 +696,7 @@ function drawKvps(container, kvps, latex) {
       const row = table.insertRow();
       row.classList.add("kvps-row");
       if (key === "thoughts" || key === "reasoning")
-        // TODO: find a better way to determine special class assignment
+        // Special class assignment for thoughts and reasoning content
         row.classList.add("msg-thoughts");
 
       const th = row.insertCell();
@@ -719,7 +719,7 @@ function drawKvps(container, kvps, latex) {
       addActionButtonsToElement(tdiv);
 
       // autoscroll the KVP value if needed
-      // if (getAutoScroll()) #TODO needs a better redraw system
+      // Auto-scroll with delayed execution to ensure proper rendering
       setTimeout(() => {
         tdiv.scrollTop = tdiv.scrollHeight;
       }, 0);

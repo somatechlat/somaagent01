@@ -1,0 +1,338 @@
+# REAL IMPLEMENTATION - Production Docker Compose Configuration
+# VIBE CODING RULES COMPLIANT - Real production deployment with all services
+version: '3.8'
+
+services:
+  # REAL IMPLEMENTATION - Production FastAPI Gateway
+  fastapi-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: somaagent01-fastapi-gateway-prod
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SOMABRAIN_URL=http://somabrain:8000
+      - PROMETHEUS_ENABLED=true
+      - PROMETHEUS_PORT=9090
+      - HEALTH_CHECK_ENABLED=true
+      - SLA_MONITORING_ENABLED=true
+    volumes:
+      - ./logs:/app/logs
+      - ./conf:/app/conf:ro
+    depends_on:
+      - redis
+      - kafka
+      - somabrain
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # REAL IMPLEMENTATION - Production Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: somaagent01-celery-worker-prod
+    restart: unless-stopped
+    command: celery -A python.tasks.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SOMABRAIN_URL=http://somabrain:8000
+    volumes:
+      - ./logs:/app/logs
+      - ./conf:/app/conf:ro
+    depends_on:
+      - redis
+      - kafka
+      - somabrain
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "python.tasks.celery_app", "inspect", "ping"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # REAL IMPLEMENTATION - Production Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: somaagent01-celery-beat-prod
+    restart: unless-stopped
+    command: celery -A python.tasks.celery_app beat --loglevel=info --scheduler=python.tasks.celery_beat_scheduler:DatabaseScheduler
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./logs:/app/logs
+      - ./conf:/app/conf:ro
+    depends_on:
+      - redis
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "celery beat"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production Redis
+  redis:
+    image: redis:7-alpine
+    container_name: somaagent01-redis-prod
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis-conf/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: somaagent01-kafka-prod
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+      - ./kafka-logs:/var/log/kafka
+    depends_on:
+      - zookeeper
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: somaagent01-zookeeper-prod
+    restart: unless-stopped
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production SomaBrain
+  somabrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: somaagent01-somabrain-prod
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    volumes:
+      - ./logs:/app/logs
+      - ./memory:/app/memory
+      - ./knowledge:/app/knowledge
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # REAL IMPLEMENTATION - Production PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: somaagent01-postgres-prod
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: somaagent01
+      POSTGRES_USER: somaagent01
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-backups:/backups
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U somaagent01 -d somaagent01"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production Prometheus
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: somaagent01-prometheus-prod
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production Grafana
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: somaagent01-grafana-prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # REAL IMPLEMENTATION - Production Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: somaagent01-nginx-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - fastapi-gateway
+      - grafana
+      - prometheus
+    networks:
+      - soma-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# REAL IMPLEMENTATION - Production Volumes
+volumes:
+  redis-data:
+    driver: local
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
+  zookeeper-logs:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# REAL IMPLEMENTATION - Production Network
+networks:
+  soma-network:
+    driver: bridge
+    name: soma-network-prod
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -339,6 +339,88 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # FastA2A Services for enhanced agent-to-agent communication
+  fasta2a-gateway:
+    <<: *agent-service
+    container_name: somaAgent01_fasta2a-gateway
+    profiles: ["dev"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - python.api.router:app
+      - --reload
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8011"
+    environment:
+      <<: *agent-env
+      PORT: "8011"
+      FASTA2A_GATEWAY_METRICS_PORT: "9420"
+      # Celery configuration
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    ports:
+      - "${FASTA2A_GATEWAY_PORT:-21017}:8011"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${FASTA2A_GATEWAY_METRICS_PORT:-9420}/metrics >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  fasta2a-worker:
+    <<: *agent-service
+    container_name: somaAgent01_fasta2a-worker
+    profiles: ["dev"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      - celery
+      - -A
+      - python.tasks.a2a_chat_task
+      - worker
+      - --loglevel=info
+      - --concurrency=4
+      - --max-tasks-per-child=1000
+    environment:
+      <<: *agent-env
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      FASTA2A_WORKER_METRICS_PORT: "9421"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${FASTA2A_WORKER_METRICS_PORT:-9421}/metrics >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  fasta2a-flower:
+    image: mher/flower:2.0.1
+    container_name: somaAgent01_fasta2a-flower
+    profiles: ["dev"]
+    depends_on:
+      - redis
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      FLOWER_PORT: 5555
+    ports:
+      - "${FLOWER_PORT:-21018}:5555"
+    volumes:
+      - flower_data:/data
+    mem_limit: 256m
+    mem_reservation: 128m
     
 
 networks:
@@ -353,3 +435,4 @@ volumes:
   kafka_data:
   redis_data:
   postgres_data:
+  flower_data:

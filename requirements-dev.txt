@@ -1,0 +1,69 @@
+########## Lightweight development dependencies ##########
+# For fast development builds without heavy ML/document processing
+
+# Web and API
+fastapi==0.115.2
+uvicorn[standard]==0.32.0
+httpx==0.28.1
+Flask==3.0.3
+flask[async]==3.0.3
+Werkzeug==3.0.3
+a2wsgi==1.10.7
+
+# Core config and serialization
+pydantic==2.11.6
+pydantic-settings==2.6.1
+python-dotenv==1.1.0
+PyYAML==6.0.2
+PyJWT==2.9.0
+
+# Databases and brokers (lightweight)
+jsonschema==4.22.0
+redis==5.2.0
+psycopg[binary]==3.2.3
+sqlalchemy==2.0.32
+celery==5.4.0
+celery[redis]==5.4.0
+
+# Observability
+prometheus-client==0.21.0
+
+# Runtime utilities
+pybreaker==1.1.0
+nest-asyncio==1.6.0
+webcolors==24.11.1
+regex==2024.9.11
+pytz==2024.2
+pathspec>=0.12.1
+simpleeval==1.0.3
+cryptography==43.0.1
+
+# LLM and AI stack (lightweight)
+litellm==1.75.0
+langchain-core==0.3.49
+tiktoken==0.8.0
+numpy==1.26.4
+
+# Agents, tools, and integrations (lightweight)
+fastmcp==2.3.4
+fasta2a==0.5.0
+ansio==0.0.1
+duckduckgo-search==6.1.12
+flask-basicauth==0.2.0
+GitPython==3.1.43
+hvac==2.3.0
+inputimeout==1.0.4
+lxml_html_clean==0.3.1
+markdown==3.7
+markdownify==1.1.0
+mcp==1.13.1
+newspaper3k==0.2.8
+paramiko==3.5.0
+psutil>=7.0.0
+websockets==14.0
+
+# Developer tools (essential only)
+black==25.9.0
+ruff==0.13.3
+pytest==8.3.3
+pytest-asyncio==0.24.0

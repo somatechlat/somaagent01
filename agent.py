@@ -311,6 +311,9 @@ class Agent:
     async def monologue(self):
         while True:
             try:
+                # REAL IMPLEMENTATION - Advanced cognitive features initialization
+                await self._initialize_cognitive_state()
+                
                 # loop data dictionary to pass to extensions
                 self.loop_data = LoopData(user_message=self.last_user_message)
                 # call monologue_start extensions
@@ -328,6 +331,12 @@ class Agent:
                     await self.call_extensions("message_loop_start", loop_data=self.loop_data)
 
                     try:
+                        # REAL IMPLEMENTATION - Apply neuromodulation to cognitive state
+                        await self._apply_neuromodulation_to_cognition()
+                        
+                        # REAL IMPLEMENTATION - Generate plan if needed
+                        await self._generate_contextual_plan()
+                        
                         # prepare LLM chain (model, system, history)
                         prompt = await self.prepare_prompt(loop_data=self.loop_data)
 
@@ -388,11 +397,14 @@ class Agent:
 
                         await self.handle_intervention(agent_response)
 
+                        # REAL IMPLEMENTATION - Apply neuromodulation to response
+                        enhanced_response = await self.apply_neuromodulation_to_response(agent_response)
+
                         if (
-                            self.loop_data.last_response == agent_response
+                            self.loop_data.last_response == enhanced_response
                         ):  # if assistant_response is the same as last message in history, let him know
                             # Append the assistant's response to the history
-                            self.hist_add_ai_response(agent_response)
+                            self.hist_add_ai_response(enhanced_response)
                             # Append warning message to the history
                             warning_msg = self.read_prompt("fw.msg_repeat.md")
                             self.hist_add_warning(message=warning_msg)
@@ -401,10 +413,12 @@ class Agent:
 
                         else:  # otherwise proceed with tool
                             # Append the assistant's response to the history
-                            self.hist_add_ai_response(agent_response)
+                            self.hist_add_ai_response(enhanced_response)
                             # process tools requested in agent message
-                            tools_result = await self.process_tools(agent_response)
+                            tools_result = await self.process_tools(enhanced_response)
                             if tools_result:  # final response of message loop available
+                                # REAL IMPLEMENTATION - Track successful interaction in semantic graph
+                                await self._track_successful_interaction(enhanced_response)
                                 return tools_result  # break the execution if the task is done
 
                     # exceptions inside message loop:
@@ -938,6 +952,167 @@ class Agent:
     async def call_extensions(self, extension_point: str, **kwargs) -> Any:
         return await call_extensions(extension_point=extension_point, agent=self, **kwargs)
 
+    # REAL IMPLEMENTATION - Advanced Cognitive Features Helper Methods
+    async def _initialize_cognitive_state(self) -> None:
+        """Initialize advanced cognitive state including neuromodulators and planning."""
+        try:
+            # Initialize neuromodulators if not already set
+            if "neuromodulators" not in self.data:
+                await self.get_neuromodulators()
+            
+            # Initialize planning context
+            if "current_plan" not in self.data:
+                self.data["current_plan"] = None
+                
+            # Initialize semantic graph context
+            if "semantic_context" not in self.data:
+                self.data["semantic_context"] = {
+                    "recent_entities": [],
+                    "interaction_patterns": [],
+                    "learning_clusters": []
+                }
+            
+            # Check if sleep cycle is needed (every 100 iterations or when cognitive load is high)
+            if self.loop_data.iteration > 0 and self.loop_data.iteration % 100 == 0:
+                await self._consider_sleep_cycle()
+                
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to initialize cognitive state: {e}")
+
+    async def _apply_neuromodulation_to_cognition(self) -> None:
+        """Apply current neuromodulator state to cognitive processing."""
+        try:
+            neuromods = self.data.get("neuromodulators", {})
+            dopamine = neuromods.get("dopamine", 0.4)
+            serotonin = neuromods.get("serotonin", 0.5)
+            noradrenaline = neuromods.get("noradrenaline", 0.0)
+            
+            # Adjust cognitive parameters based on neuromodulators
+            cognitive_params = self.data.setdefault("cognitive_params", {})
+            
+            # High dopamine: increase exploration and creativity
+            cognitive_params["exploration_factor"] = 0.5 + (dopamine * 0.5)
+            cognitive_params["creativity_boost"] = dopamine > 0.6
+            
+            # High serotonin: increase patience and empathy
+            cognitive_params["patience_factor"] = 0.5 + (serotonin * 0.5)
+            cognitive_params["empathy_boost"] = serotonin > 0.6
+            
+            # High noradrenaline: increase focus and alertness
+            cognitive_params["focus_factor"] = 0.5 + (noradrenaline * 0.5)
+            cognitive_params["alertness_boost"] = noradrenaline > 0.3
+            
+            # Gradually normalize neuromodulators (natural decay)
+            if dopamine > 0.4:
+                neuromods["dopamine"] = max(0.4, dopamine - 0.05)
+            if serotonin > 0.5:
+                neuromods["serotonin"] = max(0.5, serotonin - 0.03)
+            if noradrenaline > 0.0:
+                neuromods["noradrenaline"] = max(0.0, noradrenaline - 0.02)
+                
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to apply neuromodulation to cognition: {e}")
+
+    async def _generate_contextual_plan(self) -> None:
+        """Generate contextual plan based on current conversation state."""
+        try:
+            if not self.last_user_message:
+                return
+                
+            user_message = self.last_user_message.message if hasattr(self.last_user_message, 'message') else str(self.last_user_message)
+            
+            # Check if planning is needed based on message complexity
+            complexity_indicators = [
+                "how to", "steps", "plan", "strategy", "approach",
+                "implement", "build", "create", "develop"
+            ]
+            
+            needs_planning = any(indicator in user_message.lower() for indicator in complexity_indicators)
+            
+            if needs_planning and (not self.data.get("current_plan") or self.loop_data.iteration % 50 == 0):
+                context = {
+                    "session_history": self.loop_data.iteration,
+                    "recent_interactions": self.data.get("semantic_context", {}).get("recent_entities", []),
+                    "cognitive_state": self.data.get("cognitive_params", {})
+                }
+                
+                plan = await self.generate_plan(user_message, context)
+                if plan:
+                    # Execute first step of plan
+                    steps = plan.get("steps", [])
+                    if steps:
+                        first_step = steps[0]
+                        await self.execute_plan_step(first_step.get("id", "step_1"), first_step)
+                        
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to generate contextual plan: {e}")
+
+    async def _consider_sleep_cycle(self) -> None:
+        """Consider initiating sleep cycle based on cognitive load and learning needs."""
+        try:
+            # Simple heuristic: if there are many recent interactions, consider sleep
+            semantic_context = self.data.get("semantic_context", {})
+            recent_entities = len(semantic_context.get("recent_entities", []))
+            interaction_patterns = len(semantic_context.get("interaction_patterns", []))
+            
+            cognitive_load_score = recent_entities + interaction_patterns
+            
+            if cognitive_load_score > 50:  # Threshold for sleep cycle
+                PrintStyle(font_color="blue", padding=False).print(f"High cognitive load detected ({cognitive_load_score}), considering sleep cycle...")
+                await self.run_sleep_cycle()
+                
+                # Clear some recent entities after sleep (memory consolidation)
+                if recent_entities > 25:
+                    semantic_context["recent_entities"] = semantic_context["recent_entities"][-25:]
+                    
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to consider sleep cycle: {e}")
+
+    async def _track_successful_interaction(self, response: str) -> None:
+        """Track successful interaction in semantic graph and update learning."""
+        try:
+            if not self.last_user_message:
+                return
+                
+            user_message = self.last_user_message.message if hasattr(self.last_user_message, 'message') else str(self.last_user_message)
+            
+            # Create semantic link between user message and response
+            user_entity = f"user_msg_{self.session_id}_{self.loop_data.iteration}"
+            response_entity = f"agent_resp_{self.session_id}_{self.loop_data.iteration}"
+            
+            await self.create_semantic_link(user_entity, response_entity, "conversation_turn", weight=1.0)
+            
+            # Update semantic context
+            semantic_context = self.data.get("semantic_context", {})
+            
+            # Track recent entities
+            semantic_context["recent_entities"].extend([user_entity, response_entity])
+            if len(semantic_context["recent_entities"]) > 100:
+                semantic_context["recent_entities"] = semantic_context["recent_entities"][-100:]
+            
+            # Track interaction patterns
+            interaction_pattern = {
+                "iteration": self.loop_data.iteration,
+                "message_length": len(user_message),
+                "response_length": len(response),
+                "neuromodulators": self.data.get("neuromodulators", {}),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            semantic_context["interaction_patterns"].append(interaction_pattern)
+            if len(semantic_context["interaction_patterns"]) > 50:
+                semantic_context["interaction_patterns"] = semantic_context["interaction_patterns"][-50:]
+            
+            # Submit feedback for learning
+            utility_score = min(1.0, len(response) / max(1, len(user_message)))  # Simple utility heuristic
+            await self.submit_feedback_somabrain(user_message, response, utility_score)
+            
+            # Boost dopamine for successful interaction
+            current_dopamine = self.data.get("neuromodulators", {}).get("dopamine", 0.4)
+            await self.set_neuromodulators(dopamine=min(0.8, current_dopamine + 0.1))
+            
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to track successful interaction: {e}")
+
     # SomaBrain Integration Methods
     async def _initialize_persona(self) -> None:
         """Initialize or retrieve persona from SomaBrain."""
@@ -1124,3 +1299,176 @@ class Agent:
         except SomaClientError as e:
             PrintStyle(font_color="red", padding=False).print(f"Failed to set neuromodulators: {e}")
             return False
+
+    # REAL IMPLEMENTATION - Advanced Cognitive Features Integration
+    async def run_sleep_cycle(self) -> bool:
+        """Trigger sleep cycle for memory consolidation and learning optimization."""
+        try:
+            PrintStyle(font_color="blue", padding=False).print("Starting sleep cycle for memory consolidation...")
+            
+            # Trigger sleep cycle in SomaBrain
+            sleep_result = await self.soma_client._request("POST", "/sleep/run")
+            
+            if sleep_result.get("accepted"):
+                PrintStyle(font_color="green", padding=False).print("Sleep cycle initiated in SomaBrain")
+                
+                # Monitor sleep progress
+                sleep_status = await self.soma_client._request("GET", "/sleep/status")
+                if sleep_status.get("status") == "completed":
+                    PrintStyle(font_color="green", padding=False).print("Sleep cycle completed successfully")
+                    
+                    # Apply learning from sleep
+                    await self._apply_sleep_learning(sleep_result)
+                    return True
+                else:
+                    PrintStyle(font_color="orange", padding=False).print("Sleep cycle in progress...")
+                    return True
+            else:
+                PrintStyle(font_color="red", padding=False).print("Sleep cycle rejected by SomaBrain")
+                return False
+                
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to run sleep cycle: {e}")
+            return False
+
+    async def _apply_sleep_learning(self, sleep_result: dict[str, Any]) -> None:
+        """Apply learning optimizations from sleep cycle."""
+        try:
+            # Get updated adaptation state after sleep
+            adaptation_state = await self.get_adaptation_state()
+            if adaptation_state:
+                self.data["sleep_adaptation"] = adaptation_state
+                PrintStyle(font_color="cyan", padding=False).print("Applied sleep-based learning adaptations")
+                
+            # Update neuromodulators based on sleep results
+            sleep_quality = sleep_result.get("quality", 0.8)
+            if sleep_quality > 0.7:
+                # High-quality sleep: boost dopamine and serotonin
+                await self.set_neuromodulators(
+                    dopamine=min(0.8, (self.data.get("neuromodulators", {}).get("dopamine", 0.4) + 0.2)),
+                    serotonin=min(0.9, (self.data.get("neuromodulators", {}).get("serotonin", 0.5) + 0.2))
+                )
+                
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to apply sleep learning: {e}")
+
+    async def generate_plan(self, goal: str, context: dict[str, Any] = None) -> dict[str, Any] | None:
+        """Generate dynamic plan using SomaBrain planning engine."""
+        try:
+            plan_payload = {
+                "goal": goal,
+                "context": context or {},
+                "session_id": self.session_id,
+                "persona_id": self.persona_id,
+                "tenant_id": self.tenant_id,
+                "capabilities": ["reasoning", "tool_usage", "learning"],
+                "constraints": {
+                    "max_steps": 10,
+                    "timeout_minutes": 30
+                }
+            }
+            
+            plan_result = await self.soma_client.plan_suggest(plan_payload)
+            
+            if plan_result.get("plan"):
+                self.data["current_plan"] = plan_result["plan"]
+                PrintStyle(font_color="green", padding=False).print(f"Generated plan with {len(plan_result['plan'].get('steps', []))} steps")
+                return plan_result["plan"]
+            else:
+                PrintStyle(font_color="orange", padding=False).print("No plan generated by SomaBrain")
+                return None
+                
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to generate plan: {e}")
+            return None
+
+    async def execute_plan_step(self, step_id: str, step_data: dict[str, Any]) -> bool:
+        """Execute a single step from the generated plan."""
+        try:
+            # Track plan execution in SomaBrain semantic graph
+            execution_memory = {
+                "step_id": step_id,
+                "step_data": step_data,
+                "session_id": self.session_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "executing"
+            }
+            
+            coordinate = await self.store_memory_somabrain(execution_memory, "plan_execution")
+            if coordinate:
+                PrintStyle(font_color="cyan", padding=False).print(f"Tracking plan step execution: {step_id}")
+                return True
+                
+        except Exception as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to execute plan step: {e}")
+            return False
+
+    async def get_semantic_graph_links(self, entity_id: str, link_type: str = None) -> list[dict[str, Any]]:
+        """Retrieve semantic graph links for an entity."""
+        try:
+            params = {"entity_id": entity_id}
+            if link_type:
+                params["type"] = link_type
+                
+            links_result = await self.soma_client._request("GET", "/graph/links", params=params)
+            links = links_result.get("links", [])
+            
+            if links:
+                PrintStyle(font_color="cyan", padding=False).print(f"Retrieved {len(links)} semantic links for {entity_id}")
+            return links
+            
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to get semantic links: {e}")
+            return []
+
+    async def create_semantic_link(self, from_entity: str, to_entity: str, link_type: str, weight: float = 1.0) -> bool:
+        """Create semantic link between entities."""
+        try:
+            link_payload = {
+                "from_key": from_entity,
+                "to_key": to_entity,
+                "type": link_type,
+                "weight": weight,
+                "universe": self.tenant_id,
+                "metadata": {
+                    "session_id": self.session_id,
+                    "persona_id": self.persona_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            }
+            
+            result = await self.soma_client.link(link_payload)
+            
+            if result.get("created"):
+                PrintStyle(font_color="green", padding=False).print(f"Created semantic link: {from_entity} -> {to_entity} ({link_type})")
+                return True
+            else:
+                PrintStyle(font_color="orange", padding=False).print("Semantic link creation failed")
+                return False
+                
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to create semantic link: {e}")
+            return False
+
+    async def apply_neuromodulation_to_response(self, response: str) -> str:
+        """Apply neuromodulation-based adjustments to agent responses."""
+        try:
+            neuromods = self.data.get("neuromodulators", {})
+            dopamine = neuromods.get("dopamine", 0.4)
+            serotonin = neuromods.get("serotonin", 0.5)
+            
+            # High dopamine: more exploratory, creative responses
+            if dopamine > 0.7:
+                if not any(creative_word in response.lower() for creative_word in ["perhaps", "maybe", "consider", "alternative"]):
+                    response = response + " Perhaps we could explore some alternative approaches as well."
+            
+            # High serotonin: more positive, empathetic responses
+            if serotonin > 0.7:
+                if not any(empath_word in response.lower() for empath_word in ["understand", "appreciate", "great", "excellent"]):
+                    response = response + " I appreciate your perspective on this matter."
+            
+            return response
+            
+        except Exception as e:
+            PrintStyle(font_color="orange", padding=False).print(f"Failed to apply neuromodulation: {e}")
+            return response

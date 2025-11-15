@@ -2468,6 +2468,277 @@ class ConversationWorker:
                 pass
             LOGGER.exception("Unhandled error while processing conversation event")
 
+    # REAL IMPLEMENTATION - Enhanced Learning & Adaptation Features
+    async def submit_enhanced_feedback(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        query: str,
+        response: str,
+        utility_score: float,
+        metadata: Dict[str, Any],
+        reward: float | None = None,
+    ) -> bool:
+        """Submit enhanced feedback to SomaBrain with learning context."""
+        try:
+            # Get current adaptation state to inform feedback
+            adaptation_state = await self.soma.adaptation_state(metadata.get("tenant", "default"))
+            
+            feedback_payload = {
+                "session_id": session_id,
+                "query": query,
+                "prompt": metadata.get("system_prompt", ""),
+                "response_text": response,
+                "utility": utility_score,
+                "reward": reward,
+                "tenant_id": metadata.get("tenant", "default"),
+                "metadata": {
+                    "persona_id": persona_id,
+                    "analysis": metadata.get("analysis", {}),
+                    "cognitive_params": metadata.get("cognitive_params", {}),
+                    "neuromodulators": metadata.get("neuromodulators", {}),
+                    "interaction_patterns": metadata.get("interaction_patterns", []),
+                    "timestamp": time.time(),
+                    "adaptation_state": adaptation_state
+                }
+            }
+            
+            result = await self.soma.context_feedback(feedback_payload)
+            if result.get("accepted"):
+                LOGGER.info(
+                    "Enhanced feedback submitted to SomaBrain",
+                    extra={
+                        "session_id": session_id,
+                        "utility": utility_score,
+                        "adaptation_weights": len(adaptation_state.get("weights", {})) if adaptation_state else 0
+                    }
+                )
+                return True
+            else:
+                LOGGER.warning("Enhanced feedback rejected by SomaBrain")
+                return False
+        except SomaClientError as e:
+            LOGGER.error(f"Failed to submit enhanced feedback: {e}")
+            return False
+
+    async def get_adaptive_persona_config(self, persona_id: str, tenant: str = "default") -> Dict[str, Any]:
+        """Get adaptive persona configuration based on learning state."""
+        try:
+            # Get base persona
+            persona = await self.soma.get_persona(persona_id)
+            if not persona:
+                return {}
+            
+            # Get adaptation state
+            adaptation_state = await self.soma.adaptation_state(tenant)
+            
+            # Apply learned adaptations to persona
+            adaptive_config = dict(persona)
+            
+            if adaptation_state:
+                weights = adaptation_state.get("weights", {})
+                
+                # Adjust behavior based on learning weights
+                if weights.get("creativity_boost", 0) > 0.7:
+                    adaptive_config["properties"]["creativity_level"] = "high"
+                elif weights.get("creativity_boost", 0) < 0.3:
+                    adaptive_config["properties"]["creativity_level"] = "low"
+                
+                if weights.get("empathy_boost", 0) > 0.7:
+                    adaptive_config["properties"]["empathy_level"] = "high"
+                elif weights.get("empathy_boost", 0) < 0.3:
+                    adaptive_config["properties"]["empathy_level"] = "low"
+                
+                if weights.get("focus_factor", 0.5) > 0.7:
+                    adaptive_config["properties"]["focus_level"] = "high"
+                elif weights.get("focus_factor", 0.5) < 0.3:
+                    adaptive_config["properties"]["focus_level"] = "low"
+            
+            return adaptive_config
+            
+        except SomaClientError as e:
+            LOGGER.error(f"Failed to get adaptive persona config: {e}")
+            return {}
+
+    async def track_semantic_tool_usage(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        result: Any,
+        success: bool,
+        tenant: str = "default",
+    ) -> bool:
+        """Track tool usage in semantic graph with learning context."""
+        try:
+            # Create tool execution memory
+            tool_memory = {
+                "tool_name": tool_name,
+                "tool_args": tool_args,
+                "result": str(result)[:500],  # Truncate for storage
+                "success": success,
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "tenant": tenant,
+                "timestamp": time.time()
+            }
+            
+            # Store in SomaBrain
+            memory_result = await self.soma.remember(tool_memory)
+            coordinate = memory_result.get("coordinate")
+            
+            if coordinate:
+                # Create semantic links for tool usage patterns
+                tool_entity = f"tool_{tool_name}_{session_id}"
+                session_entity = f"session_{session_id}"
+                
+                # Link tool to session
+                link_payload = {
+                    "from_key": session_entity,
+                    "to_key": coordinate,
+                    "type": "used_tool",
+                    "weight": 1.0 if success else 0.1,
+                    "universe": tenant,
+                    "metadata": {
+                        "tool_name": tool_name,
+                        "success": success,
+                        "timestamp": time.time()
+                    }
+                }
+                await self.soma.link(link_payload)
+                
+                # Link similar tools based on success patterns
+                if success:
+                    await self._link_similar_successful_tools(tool_name, coordinate, tenant)
+                
+                LOGGER.info(
+                    "Tracked semantic tool usage",
+                    extra={
+                        "session_id": session_id,
+                        "tool_name": tool_name,
+                        "success": success,
+                        "coordinate": coordinate[:3] + "..."
+                    }
+                )
+                return True
+            return False
+            
+        except SomaClientError as e:
+            LOGGER.error(f"Failed to track semantic tool usage: {e}")
+            return False
+
+    async def _link_similar_successful_tools(
+        self,
+        tool_name: str,
+        current_coordinate: str,
+        tenant: str,
+    ) -> None:
+        """Link current tool to similar successful tools for learning transfer."""
+        try:
+            # Find similar tools based on name patterns or categories
+            similar_tools = await self._find_similar_tools(tool_name)
+            
+            for similar_tool in similar_tools:
+                # Create link for learning transfer
+                link_payload = {
+                    "from_key": current_coordinate,
+                    "to_key": f"tool_pattern_{similar_tool}",
+                    "type": "similar_success_pattern",
+                    "weight": 0.8,
+                    "universe": tenant,
+                    "metadata": {
+                        "original_tool": tool_name,
+                        "similar_tool": similar_tool,
+                        "transfer_type": "success_pattern"
+                    }
+                }
+                await self.soma.link(link_payload)
+                
+        except Exception as e:
+            LOGGER.debug(f"Failed to link similar tools: {e}")
+
+    async def _find_similar_tools(self, tool_name: str) -> List[str]:
+        """Find tools similar to the given tool name."""
+        similar_tools = []
+        
+        # Simple pattern matching for tool similarity
+        tool_categories = {
+            "search": ["find", "search", "lookup", "query"],
+            "create": ["make", "create", "build", "generate"],
+            "modify": ["update", "change", "edit", "modify"],
+            "analyze": ["examine", "analyze", "inspect", "review"],
+            "communicate": ["send", "notify", "message", "communicate"]
+        }
+        
+        tool_lower = tool_name.lower()
+        for category, patterns in tool_categories.items():
+            if any(pattern in tool_lower for pattern in patterns):
+                similar_tools.extend(patterns)
+                break
+                
+        return similar_tools
+
+    async def get_learning_insights(
+        self,
+        *,
+        session_id: str,
+        persona_id: str | None,
+        tenant: str = "default",
+    ) -> Dict[str, Any]:
+        """Get learning insights and adaptation recommendations."""
+        try:
+            # Get adaptation state
+            adaptation_state = await self.soma.adaptation_state(tenant)
+            
+            # Get semantic graph insights
+            insights = {
+                "adaptation_state": adaptation_state,
+                "learning_recommendations": [],
+                "performance_metrics": {},
+                "behavioral_patterns": {}
+            }
+            
+            if adaptation_state:
+                weights = adaptation_state.get("weights", {})
+                
+                # Generate learning recommendations
+                if weights.get("creativity_boost", 0) < 0.3:
+                    insights["learning_recommendations"].append({
+                        "type": "creativity_enhancement",
+                        "priority": "medium",
+                        "suggestion": "Introduce more diverse problem-solving approaches"
+                    })
+                
+                if weights.get("empathy_boost", 0) < 0.3:
+                    insights["learning_recommendations"].append({
+                        "type": "empathy_development",
+                        "priority": "medium",
+                        "suggestion": "Focus on understanding user perspectives more deeply"
+                    })
+                
+                if weights.get("focus_factor", 0.5) < 0.3:
+                    insights["learning_recommendations"].append({
+                        "type": "focus_improvement",
+                        "priority": "high",
+                        "suggestion": "Reduce distractions and improve task concentration"
+                    })
+                
+                # Calculate performance metrics
+                insights["performance_metrics"] = {
+                    "adaptation_rate": len([w for w in weights.values() if w > 0.7]) / max(1, len(weights)),
+                    "learning_velocity": weights.get("learning_velocity", 0.5),
+                    "stability_score": weights.get("stability", 0.5)
+                }
+            
+            return insights
+            
+        except SomaClientError as e:
+            LOGGER.error(f"Failed to get learning insights: {e}")
+            return {}
+
 
 
 
