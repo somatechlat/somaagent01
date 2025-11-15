@@ -121,6 +121,14 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 - **Logging**: Structured JSON logs
 - **Health**: `/v1/health`, `/ready`, `/live` endpoints
 
+### Somabrain Degradation Metrics (new)
+- `conversation_worker_somabrain_status` – worker-level gauge (1=Somabrain reachable).
+- `conversation_worker_somabrain_buffered_items` – pending memory writes waiting for replay.
+- `conversation_worker_tokens_received_total` – raw token count of inbound user text.
+- `thinking_policy_seconds{policy="conversation|memory.write"}` – latency of each OPA policy decision.
+- `conversation_worker_llm_calls_total{model,result}` and `conversation_worker_llm_latency_seconds{model}` – track LLM invocation health and latency.
+- `conversation_worker_llm_input_tokens_total` / `conversation_worker_llm_output_tokens_total` – enforce prompt/completion budgets per model.
+
 ## Configuration
 
 - **Runtime Config**: `services.common.runtime_config` (centralized env facade)

@@ -353,6 +353,26 @@
                 <!-- Notification Toggle positioned next to time-date -->
                 <x-component path="notifications/notification-icons.html"></x-component>
             </div>
+            <div class="somabrain-banner"
+                 x-data
+                 x-cloak
+                 :class="[
+                    $store.somabrain?.state || 'unknown',
+                    ($store.somabrain?.state !== 'normal' && $store.somabrain?.banner) ? 'somabrain-visible' : ''
+                 ]"
+                 x-show="$store.somabrain && $store.somabrain.state !== 'normal' && $store.somabrain.banner">
+                <span class="material-symbols-outlined somabrain-banner-icon"
+                      x-text="$store.somabrain?.state === 'down' ? 'priority_high' : 'info'"></span>
+                <div class="somabrain-banner-body">
+                    <span class="somabrain-banner-title"
+                          x-text="$store.somabrain?.state === 'down'
+                                   ? 'Somabrain Offline'
+                                   : ($store.somabrain?.state === 'degraded'
+                                        ? 'Somabrain Degraded'
+                                        : 'Somabrain Status Unknown')"></span>
+                    <p class="somabrain-banner-text" x-text="$store.somabrain?.banner"></p>
+                </div>
+            </div>
             <div id="chat-history">
             </div>
 

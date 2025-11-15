@@ -30,6 +30,15 @@
              aria-live="polite"
              x-bind:aria-label="$store.conn?.tooltip || 'Offline'">
         </div>
+
+        <!-- SomaBrain health indicator -->
+        <div class="brain-indicator"
+             :class="`brain-${$store.somabrain?.state || 'unknown'}`"
+             :title="$store.somabrain?.tooltip || 'SomaBrain status unknown'"
+             aria-live="polite"
+             x-bind:aria-label="$store.somabrain?.tooltip || 'SomaBrain status unknown'">
+            <span class="material-symbols-outlined">psychology_alt</span>
+        </div>
     </div>
 </body>
 </html>

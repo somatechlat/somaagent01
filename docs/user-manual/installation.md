@@ -72,7 +72,7 @@ OPA_PORT=20009
 5. Set **Model**: `llama-3.1-8b-instant`
 6. Navigate to **Settings → API Keys**
 7. Add key: `api_key_groq` with your Groq API key
-8. Click **Save**
+8. Click **Save** (keys are stored server-side; no `.env` secrets are used)
 
 **Note**: Credentials are encrypted in Redis. Never put API keys in `.env`.
 

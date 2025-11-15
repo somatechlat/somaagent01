@@ -24,7 +24,7 @@ Navigate to: http://localhost:21016/ui
    - **Model**: `llama-3.1-8b-instant`
 4. Go to **API Keys** tab
 5. Add: `api_key_groq` = `your-groq-api-key`
-6. Click **Save**
+6. Click **Save** (this UI flow is the single source of truth for LLM secrets)
 
 ### 4. Start a Chat
 

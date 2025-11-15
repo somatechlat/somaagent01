@@ -8,11 +8,10 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
-from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server
-from prometheus_client.core import CollectorRegistry
+from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server, REGISTRY
 
-# Registry for canonical backend metrics (must be defined before metric declarations)
-registry = CollectorRegistry()
+# Registry for canonical backend metrics (reuse default so every service exports consistently)
+registry = REGISTRY
 
 # Feature profile/state gauges (mirrors gateway local collectors)
 feature_profile_info = Gauge(
@@ -213,6 +212,161 @@ chaos_events_total = Counter(
     registry=registry,
 )
 
+# ---------------------------------------------------------------------------
+# Context builder metrics (token budgets, latency per thinking stage)
+# ---------------------------------------------------------------------------
+
+context_tokens_before_budget = Gauge(
+    "context_tokens_before_budget",
+    "Token count before applying prompt budget",
+    registry=registry,
+)
+
+context_tokens_after_budget = Gauge(
+    "context_tokens_after_budget",
+    "Token count after applying prompt budget",
+    registry=registry,
+)
+
+context_tokens_after_redaction = Gauge(
+    "context_tokens_after_redaction",
+    "Token count after PII redaction",
+    registry=registry,
+)
+
+context_prompt_tokens = Gauge(
+    "context_prompt_tokens",
+    "Token count for final rendered prompt",
+    registry=registry,
+)
+
+context_builder_prompt_total = Counter(
+    "context_builder_prompt_total",
+    "Number of prompts built by context builder",
+    registry=registry,
+)
+
+tokens_received_total = Counter(
+    "conversation_worker_tokens_received_total",
+    "Raw tokens received from user messages",
+    registry=registry,
+)
+
+thinking_policy_seconds = Histogram(
+    "conversation_worker_policy_seconds",
+    "Time spent evaluating policies",
+    ["policy"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
+    registry=registry,
+)
+
+llm_calls_total = Counter(
+    "conversation_worker_llm_calls_total",
+    "LLM call outcomes",
+    ["model", "result"],
+    registry=registry,
+)
+
+llm_call_latency_seconds = Histogram(
+    "conversation_worker_llm_latency_seconds",
+    "Latency of Gateway LLM invocations",
+    ["model"],
+    buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
+    registry=registry,
+)
+
+llm_input_tokens_total = Counter(
+    "conversation_worker_llm_input_tokens_total",
+    "Prompt tokens sent to the LLM",
+    ["model"],
+    registry=registry,
+)
+
+llm_output_tokens_total = Counter(
+    "conversation_worker_llm_output_tokens_total",
+    "Completion tokens received from the LLM",
+    ["model"],
+    registry=registry,
+)
+
+context_builder_snippets_total = Counter(
+    "context_builder_snippets_total",
+    "Total memory snippets considered",
+    ["stage"],
+    registry=registry,
+)
+
+thinking_total_seconds = Histogram(
+    "thinking_total_seconds",
+    "Overall context-building latency",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0],
+    registry=registry,
+)
+
+thinking_tokenisation_seconds = Histogram(
+    "thinking_tokenisation_seconds",
+    "Latency of tokenisation/budget stage",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0],
+    registry=registry,
+)
+
+thinking_retrieval_seconds = Histogram(
+    "thinking_retrieval_seconds",
+    "Latency of Somabrain retrieval stage",
+    ["state"],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0],
+    registry=registry,
+)
+
+thinking_salience_seconds = Histogram(
+    "thinking_salience_seconds",
+    "Latency of local salience scoring",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0],
+    registry=registry,
+)
+
+thinking_ranking_seconds = Histogram(
+    "thinking_ranking_seconds",
+    "Latency of ranking/filtering",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0],
+    registry=registry,
+)
+
+thinking_redaction_seconds = Histogram(
+    "thinking_redaction_seconds",
+    "Latency of redaction stage",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0],
+    registry=registry,
+)
+
+thinking_prompt_seconds = Histogram(
+    "thinking_prompt_seconds",
+    "Latency of prompt rendering stage",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0],
+    registry=registry,
+)
+
+event_published_total = Counter(
+    "context_builder_events_total",
+    "Number of context-builder events published",
+    ["event_type"],
+    registry=registry,
+)
+
+event_publish_latency_seconds = Histogram(
+    "context_builder_event_publish_seconds",
+    "Latency of publishing context-builder events",
+    ["event_type"],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0],
+    registry=registry,
+)
+
+event_publish_failure_total = Counter(
+    "context_builder_event_publish_failure_total",
+    "Number of failed event publish attempts",
+    registry=registry,
+)
+
 # SLA metrics
 sla_violations_total = Counter(
     "sla_violations_total",
@@ -393,6 +547,66 @@ class MetricsCollector:
 
 # Global metrics collector
 metrics_collector = MetricsCollector()
+
+
+class ContextBuilderMetrics:
+    """Helper for recording context-builder metrics consistently."""
+
+    def record_tokens(
+        self,
+        *,
+        before_budget: int | None = None,
+        after_budget: int | None = None,
+        after_redaction: int | None = None,
+        prompt_tokens: int | None = None,
+    ) -> None:
+        if before_budget is not None:
+            context_tokens_before_budget.set(before_budget)
+        if after_budget is not None:
+            context_tokens_after_budget.set(after_budget)
+        if after_redaction is not None:
+            context_tokens_after_redaction.set(after_redaction)
+        if prompt_tokens is not None:
+            context_prompt_tokens.set(prompt_tokens)
+
+    def inc_prompt(self) -> None:
+        context_builder_prompt_total.inc()
+
+    def inc_snippets(self, *, stage: str, count: int) -> None:
+        if count <= 0:
+            return
+        context_builder_snippets_total.labels(stage=stage).inc(count)
+
+    def time_total(self):
+        return thinking_total_seconds.time()
+
+    def time_tokenisation(self):
+        return thinking_tokenisation_seconds.time()
+
+    def time_retrieval(self, *, state: str):
+        return thinking_retrieval_seconds.labels(state=state).time()
+
+    def time_salience(self):
+        return thinking_salience_seconds.time()
+
+    def time_ranking(self):
+        return thinking_ranking_seconds.time()
+
+    def time_redaction(self):
+        return thinking_redaction_seconds.time()
+
+    def time_prompt(self):
+        return thinking_prompt_seconds.time()
+
+    def record_event_publish(self, event_type: str, *, duration: float | None = None) -> None:
+        if duration is None:
+            event_published_total.labels(event_type=event_type).inc()
+            return
+        event_published_total.labels(event_type=event_type).inc()
+        event_publish_latency_seconds.labels(event_type=event_type).observe(duration)
+
+    def record_event_failure(self) -> None:
+        event_publish_failure_total.inc()
 
 
 def measure_duration(metric_name: str):
