@@ -27,6 +27,7 @@ from python.helpers.extension import call_extensions
 from python.helpers.history import output_text
 from python.helpers.localization import Localization
 from python.helpers.print_style import PrintStyle
+from python.integrations.soma_client import SomaClient, SomaClientError
 
 
 class AgentContextType(Enum):
@@ -296,6 +297,15 @@ class Agent:
         self.intervention: UserMessage | None = None
         self.data: dict[str, Any] = {}  # free data object all the tools can use
 
+        # SomaBrain integration
+        self.soma_client = SomaClient.get()
+        self.persona_id = config.profile or f"agent_{number}"
+        self.tenant_id = config.profile or "default"
+        self.session_id = context.id if context else f"session_{number}"
+        
+        # Initialize persona in SomaBrain if not exists
+        asyncio.run(self._initialize_persona())
+
         asyncio.run(self.call_extensions("agent_init"))
 
     async def monologue(self):
@@ -537,7 +547,7 @@ class Agent:
         asyncio.run(self.call_extensions("hist_add_before", content_data=content_data, ai=ai))
         return self.history.add_message(ai=ai, content=content_data["content"], tokens=tokens)
 
-    def hist_add_user_message(self, message: UserMessage, intervention: bool = False):
+    async def hist_add_user_message(self, message: UserMessage, intervention: bool = False):
         self.history.new_topic()  # user message starts a new topic in history
 
         # load message template based on intervention
@@ -563,12 +573,36 @@ class Agent:
         # add to history
         msg = self.hist_add_message(False, content=content)  # type: ignore
         self.last_user_message = msg
+        
+        # Store in SomaBrain
+        memory_content = {
+            "message": message.message,
+            "attachments": message.attachments,
+            "system_message": message.system_message,
+            "intervention": intervention,
+            "content": content
+        }
+        await self.store_memory_somabrain(memory_content, "user_message")
+        
         return msg
 
-    def hist_add_ai_response(self, message: str):
+    async def hist_add_ai_response(self, message: str):
         self.loop_data.last_response = message
         content = self.parse_prompt("fw.ai_response.md", message=message)
-        return self.hist_add_message(True, content=content)
+        msg = self.hist_add_message(True, content=content)
+        
+        # Store in SomaBrain
+        memory_content = {
+            "message": message,
+            "content": content,
+            "loop_data": {
+                "iteration": self.loop_data.iteration,
+                "last_response": self.loop_data.last_response
+            }
+        }
+        await self.store_memory_somabrain(memory_content, "ai_response")
+        
+        return msg
 
     def hist_add_warning(self, message: history.MessageContent):
         content = self.parse_prompt("fw.warning.md", message=message)
@@ -903,3 +937,190 @@ class Agent:
 
     async def call_extensions(self, extension_point: str, **kwargs) -> Any:
         return await call_extensions(extension_point=extension_point, agent=self, **kwargs)
+
+    # SomaBrain Integration Methods
+    async def _initialize_persona(self) -> None:
+        """Initialize or retrieve persona from SomaBrain."""
+        try:
+            # Try to get existing persona
+            persona = await self.soma_client.get_persona(self.persona_id)
+            if persona:
+                self.data["persona"] = persona
+                PrintStyle(font_color="green", padding=False).print(f"Loaded persona '{self.persona_id}' from SomaBrain")
+        except SomaClientError:
+            # Create new persona if not found
+            try:
+                persona_payload = {
+                    "id": self.persona_id,
+                    "display_name": f"Agent {self.number}",
+                    "properties": {
+                        "agent_number": self.number,
+                        "profile": self.config.profile,
+                        "capabilities": ["reasoning", "tool_usage", "learning"],
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+                await self.soma_client.put_persona(self.persona_id, persona_payload)
+                self.data["persona"] = persona_payload
+                PrintStyle(font_color="blue", padding=False).print(f"Created new persona '{self.persona_id}' in SomaBrain")
+            except Exception as e:
+                PrintStyle(font_color="orange", padding=False).print(f"Failed to initialize persona: {e}")
+
+    async def store_memory_somabrain(self, content: dict[str, Any], memory_type: str = "interaction") -> str | None:
+        """Store memory in SomaBrain with proper metadata."""
+        try:
+            memory_payload = {
+                "value": {
+                    "content": content,
+                    "type": memory_type,
+                    "agent_number": self.number,
+                    "persona_id": self.persona_id,
+                    "session_id": self.session_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                },
+                "tenant": self.tenant_id,
+                "namespace": "wm",  # working memory
+                "key": f"{memory_type}_{self.session_id}_{datetime.now(timezone.utc).timestamp()}",
+                "tags": [memory_type, f"agent_{self.number}"],
+                "importance": 0.8,  # Default importance
+                "novelty": 0.7,  # Default novelty
+                "trace_id": self.session_id
+            }
+            
+            result = await self.soma_client.remember(memory_payload)
+            coordinate = result.get("coordinate")
+            if coordinate:
+                PrintStyle(font_color="cyan", padding=False).print(f"Stored {memory_type} memory in SomaBrain: {coordinate[:3]}...")
+                return str(coordinate)
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to store memory in SomaBrain: {e}")
+        return None
+
+    async def recall_memories_somabrain(self, query: str, top_k: int = 5, memory_type: str | None = None) -> list[dict[str, Any]]:
+        """Recall memories from SomaBrain based on query."""
+        try:
+            filters = {}
+            if memory_type:
+                filters["type"] = memory_type
+            
+            result = await self.soma_client.recall(
+                query=query,
+                top_k=top_k,
+                tenant=self.tenant_id,
+                namespace="wm",
+                tags=[memory_type] if memory_type else None
+            )
+            
+            memories = result.get("results", [])
+            if memories:
+                PrintStyle(font_color="cyan", padding=False).print(f"Recalled {len(memories)} memories from SomaBrain")
+            return memories
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to recall memories from SomaBrain: {e}")
+            return []
+
+    async def submit_feedback_somabrain(self, query: str, response: str, utility_score: float, reward: float | None = None) -> bool:
+        """Submit feedback to SomaBrain for reinforcement learning."""
+        try:
+            feedback_payload = {
+                "session_id": self.session_id,
+                "query": query,
+                "prompt": "",  # Will be filled by context if available
+                "response_text": response,
+                "utility": utility_score,
+                "reward": reward,
+                "tenant_id": self.tenant_id,
+                "metadata": {
+                    "agent_number": self.number,
+                    "persona_id": self.persona_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            }
+            
+            result = await self.soma_client.context_feedback(feedback_payload)
+            if result.get("accepted"):
+                PrintStyle(font_color="green", padding=False).print(f"Feedback submitted to SomaBrain (utility: {utility_score})")
+                return True
+            else:
+                PrintStyle(font_color="orange", padding=False).print("Feedback rejected by SomaBrain")
+                return False
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to submit feedback to SomaBrain: {e}")
+            return False
+
+    async def get_adaptation_state(self) -> dict[str, Any] | None:
+        """Get current adaptation state from SomaBrain."""
+        try:
+            state = await self.soma_client.adaptation_state(self.tenant_id)
+            if state:
+                PrintStyle(font_color="blue", padding=False).print(f"Retrieved adaptation state for tenant '{self.tenant_id}'")
+                return state
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to get adaptation state: {e}")
+        return None
+
+    async def link_tool_execution(self, tool_name: str, tool_args: dict[str, Any], result: Any, success: bool) -> bool:
+        """Create semantic link for tool execution in SomaBrain."""
+        try:
+            # Create memory for tool execution
+            tool_memory = {
+                "tool_name": tool_name,
+                "tool_args": tool_args,
+                "result": str(result)[:500],  # Truncate for storage
+                "success": success,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+            coordinate = await self.store_memory_somabrain(tool_memory, "tool_execution")
+            if coordinate:
+                # Link to current session/persona if possible
+                try:
+                    link_payload = {
+                        "from_key": f"session_{self.session_id}",
+                        "to_key": coordinate,
+                        "type": "used_tool",
+                        "weight": 1.0 if success else 0.1,
+                        "universe": self.tenant_id
+                    }
+                    await self.soma_client.link(link_payload)
+                    PrintStyle(font_color="cyan", padding=False).print(f"Linked tool execution '{tool_name}' in SomaBrain")
+                    return True
+                except SomaClientError:
+                    # Link creation failed but memory was stored
+                    pass
+            return False
+        except Exception as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to link tool execution: {e}")
+            return False
+
+    async def get_neuromodulators(self) -> dict[str, float] | None:
+        """Get current neuromodulator state from SomaBrain."""
+        try:
+            neuromod_state = await self.soma_client._request("GET", "/neuromodulators")
+            if neuromod_state:
+                self.data["neuromodulators"] = neuromod_state
+                PrintStyle(font_color="blue", padding=False).print(f"Retrieved neuromodulator state: dopamine={neuromod_state.get('dopamine', 0):.2f}")
+                return neuromod_state
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to get neuromodulators: {e}")
+        return None
+
+    async def set_neuromodulators(self, dopamine: float = None, serotonin: float = None, noradrenaline: float = None, acetylcholine: float = None) -> bool:
+        """Set neuromodulator state in SomaBrain."""
+        try:
+            current_state = await self.get_neuromodulators() or {}
+            
+            neuromod_payload = {
+                "dopamine": dopamine if dopamine is not None else current_state.get("dopamine", 0.4),
+                "serotonin": serotonin if serotonin is not None else current_state.get("serotonin", 0.5),
+                "noradrenaline": noradrenaline if noradrenaline is not None else current_state.get("noradrenaline", 0.0),
+                "acetylcholine": acetylcholine if acetylcholine is not None else current_state.get("acetylcholine", 0.0)
+            }
+            
+            result = await self.soma_client._request("POST", "/neuromodulators", json=neuromod_payload)
+            self.data["neuromodulators"] = neuromod_payload
+            PrintStyle(font_color="green", padding=False).print(f"Set neuromodulator state in SomaBrain")
+            return True
+        except SomaClientError as e:
+            PrintStyle(font_color="red", padding=False).print(f"Failed to set neuromodulators: {e}")
+            return False
