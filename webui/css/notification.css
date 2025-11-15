@@ -286,6 +286,62 @@
     border-color: rgba(97, 97, 97, 0.3);
 }
 
+/* System Issues Monitoring Styles */
+.somabrain-banner.system-issues {
+    border-color: rgba(255, 152, 0, 0.6) !important;
+    background: rgba(255, 152, 0, 0.1) !important;
+}
+
+.somabrain-banner.system-issues .somabrain-banner-icon {
+    color: #ff9800 !important;
+}
+
+.system-issues-details {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.system-issue-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+}
+
+.system-issue-item:last-child {
+    margin-bottom: 0;
+}
+
+.issue-icon {
+    margin-right: 8px;
+    font-size: 1em;
+}
+
+.issue-text {
+    flex: 1;
+}
+
+.issue-critical {
+    color: #ff5252;
+    font-weight: 500;
+}
+
+.issue-warning {
+    color: #ff9800;
+    font-weight: 400;
+}
+
+/* Light mode styles for system issues */
+.light-mode .somabrain-banner.system-issues {
+    border-color: rgba(255, 152, 0, 0.4) !important;
+    background: rgba(255, 152, 0, 0.08) !important;
+}
+
+.light-mode .system-issue-item {
+    color: #333;
+}
+
 /* Animations */
 @keyframes pulse {
     0%, 100% { transform: scale(1); }

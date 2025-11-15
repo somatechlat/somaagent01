@@ -1,6 +1,112 @@
 [build-system]
-requires = ["setuptools>=65", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "somaagent01"
+version = "0.1.0"
+description = "SomaAgent01 - Production-ready AI agent system"
+authors = ["SomaTech <team@somatech.com>"]
+readme = "README.md"
+packages = [{include = "python", from = "."}, {include = "services", from = "."}]
+
+[tool.poetry.dependencies]
+python = "^3.11,<3.13"
+# Web and API
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+httpx = "^0.28.0"
+flask = "^3.0.0"
+a2wsgi = "^1.10.0"
+
+# Core config and serialization
+pydantic = "^2.11.0"
+pydantic-settings = "^2.6.0"
+python-dotenv = "^1.1.0"
+pyyaml = "^6.0.0"
+pyjwt = "^2.9.0"
+
+# Databases and brokers
+jsonschema = "^4.22.0"
+aiokafka = "^0.11.0"
+redis = "^5.2.0"
+psycopg = {extras = ["binary"], version = "^3.2.0"}
+asyncpg = "^0.29.0"
+sqlalchemy = "^2.0.0"
+celery = {extras = ["redis"], version = "^5.4.0"}
+
+# gRPC and protobuf
+grpcio = "^1.67.0"
+grpcio-tools = "^1.67.0"
+protobuf = "^5.27.0"
+
+# Observability
+prometheus-client = "^0.21.0"
+opentelemetry-api = "^1.29.0"
+opentelemetry-sdk = "^1.29.0"
+opentelemetry-instrumentation = "^0.50b0"
+opentelemetry-instrumentation-asgi = "^0.50b0"
+opentelemetry-instrumentation-fastapi = "^0.50b0"
+opentelemetry-instrumentation-httpx = "^0.50b0"
+opentelemetry-semantic-conventions = "^0.50b0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.29.0"
+
+# Runtime utilities
+pybreaker = "^1.1.0"
+nest-asyncio = "^1.6.0"
+webcolors = "^24.11.0"
+regex = "^2024.9.0"
+pytz = "^2024.2"
+pathspec = "^0.12.0"
+simpleeval = "^1.0.0"
+cryptography = "^43.0.0"
+
+# LLM and AI stack
+litellm = "^1.75.0"
+langchain-core = "^0.3.0"
+langchain-community = "^0.3.0"
+tiktoken = "^0.8.0"
+numpy = "^1.26.0"
+
+# Agents, tools, and integrations
+browser-use = "^0.5.0"
+fastmcp = "^2.3.0"
+fasta2a = "^0.5.0"
+ansio = "^0.0.1"
+duckduckgo-search = "^6.1.0"
+flask-basicauth = "^0.2.0"
+gitpython = "^3.1.0"
+hvac = "^2.3.0"
+inputimeout = "^1.0.0"
+kokoro = "^0.9.0"
+lxml-html-clean = "^0.3.0"
+markdown = "^3.7.0"
+markdownify = "^1.1.0"
+mcp = "^1.13.0"
+newspaper3k = "^0.2.0"
+paramiko = "^3.5.0"
+psutil = "^7.0.0"
+unstructured-client = {version = "^0.31.0", markers = "python_version < '3.12'"}
+websockets = "^14.0.0"
+
+[tool.poetry.group.dev.dependencies]
+# Developer tools
+black = "^25.9.0"
+ruff = "^0.13.0"
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+pytest-playwright = "^0.5.0"
+testcontainers = {extras = ["kafka", "postgres", "redis"], version = "^4.8.0"}
+
+[tool.poetry.group.ml.dependencies]
+# ML/NLP extras (optional heavy dependencies)
+torch = "^2.0.0"
+transformers = "^4.35.0"
+unstructured = {extras = ["all"], version = "^0.12.0", markers = "python_version < '3.12'"}
+pdf2image = "^1.16.0"
+pytesseract = "^0.3.10"
+soundfile = "^0.12.0"
+librosa = "^0.10.0"
 
 [tool.black]
 line-length = 100

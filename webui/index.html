@@ -99,6 +99,7 @@
     <!-- Load module scripts first -->
     <script type="module" src="js/scheduler.js"></script>
     <script type="module" src="js/history.js"></script>
+    <script type="module" src="js/monitoring.js"></script>
     <!-- Removed prior stream status banner; using bell-adjacent indicator -->
 
     <script type="module" src="index.js"></script>
@@ -354,23 +355,87 @@
                 <x-component path="notifications/notification-icons.html"></x-component>
             </div>
             <div class="somabrain-banner"
-                 x-data
+                 x-data="{ 
+                     somabrainState: $store.somabrain?.state || 'unknown',
+                     monitoringIssues: $store.monitoring?.healthSummary?.issues || [],
+                     hasSystemIssues: false,
+                     
+                     init() {
+                         this.$watch('$store.somabrain.state', (state) => {
+                             this.somabrainState = state || 'unknown';
+                         });
+                         
+                         this.$watch('$store.monitoring.healthSummary', (summary) => {
+                             this.monitoringIssues = summary?.issues || [];
+                             this.hasSystemIssues = this.monitoringIssues.length > 0;
+                         });
+                     },
+                     
+                     get shouldShow() {
+                         return this.somabrainState !== 'normal' || this.hasSystemIssues;
+                     },
+                     
+                     get bannerClass() {
+                         let classes = [this.somabrainState];
+                         if (this.hasSystemIssues) classes.push('system-issues');
+                         if (this.shouldShow) classes.push('somabrain-visible');
+                         return classes;
+                     },
+                     
+                     get bannerIcon() {
+                         if (this.hasSystemIssues) return 'warning';
+                         return this.somabrainState === 'down' ? 'priority_high' : 'info';
+                     },
+                     
+                     get bannerTitle() {
+                         if (this.hasSystemIssues) {
+                             return 'System Issues Detected';
+                         }
+                         if (this.somabrainState === 'down') return 'Somabrain Offline';
+                         if (this.somabrainState === 'degraded') return 'Somabrain Degraded';
+                         return 'System Status';
+                     },
+                     
+                     get bannerText() {
+                         if (this.hasSystemIssues) {
+                             const criticalIssues = this.monitoringIssues.filter(i => i.level === 'critical');
+                             const warningIssues = this.monitoringIssues.filter(i => i.level === 'warning');
+                             
+                             let text = '';
+                             if (criticalIssues.length > 0) {
+                                 text += `Critical: ${criticalIssues.map(i => i.message).join('; ')}. `;
+                             }
+                             if (warningIssues.length > 0) {
+                                 text += `Warnings: ${warningIssues.map(i => i.message).join('; ')}. `;
+                             }
+                             
+                             if (this.somabrainState !== 'normal' && $store.somabrain?.banner) {
+                                 text += $store.somabrain.banner;
+                             }
+                             
+                             return text || 'Multiple system issues detected.';
+                         }
+                         return $store.somabrain?.banner || 'System status monitoring active.';
+                     }
+                 }"
                  x-cloak
-                 :class="[
-                    $store.somabrain?.state || 'unknown',
-                    ($store.somabrain?.state !== 'normal' && $store.somabrain?.banner) ? 'somabrain-visible' : ''
-                 ]"
-                 x-show="$store.somabrain && $store.somabrain.state !== 'normal' && $store.somabrain.banner">
+                 :class="bannerClass"
+                 x-show="shouldShow">
                 <span class="material-symbols-outlined somabrain-banner-icon"
-                      x-text="$store.somabrain?.state === 'down' ? 'priority_high' : 'info'"></span>
+                      x-text="bannerIcon"></span>
                 <div class="somabrain-banner-body">
-                    <span class="somabrain-banner-title"
-                          x-text="$store.somabrain?.state === 'down'
-                                   ? 'Somabrain Offline'
-                                   : ($store.somabrain?.state === 'degraded'
-                                        ? 'Somabrain Degraded'
-                                        : 'Somabrain Status Unknown')"></span>
-                    <p class="somabrain-banner-text" x-text="$store.somabrain?.banner"></p>
+                    <span class="somabrain-banner-title" x-text="bannerTitle"></span>
+                    <p class="somabrain-banner-text" x-text="bannerText"></p>
+                    
+                    <!-- System Issues Details -->
+                    <div class="system-issues-details" x-show="hasSystemIssues" x-cloak>
+                        <template x-for="issue in monitoringIssues" :key="issue.type + issue.level">
+                            <div class="system-issue-item" :class="'issue-' + issue.level">
+                                <span class="issue-icon" x-text="issue.level === 'critical' ? '⚠️' : '⚡'"></span>
+                                <span class="issue-text" x-text="issue.message"></span>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
             <div id="chat-history">
