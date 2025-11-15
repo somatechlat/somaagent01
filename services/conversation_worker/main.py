@@ -1581,6 +1581,12 @@ class ConversationWorker:
             MESSAGE_LATENCY.labels(label).observe(duration)
 
         session_id = event.get("session_id")
+        
+        # Extract tenant at the top level to ensure it's available throughout _handle_event
+        try:
+            tenant = (event.get("metadata") or {}).get("tenant", "default")
+        except Exception:
+            tenant = "default"
 
         async def _process() -> None:
             nonlocal path, result_label
@@ -1605,12 +1611,10 @@ class ConversationWorker:
             # with worker activity during debugging and Playwright runs.
             try:
                 event_id = event.get("event_id") or str(uuid.uuid4())
-                tenant = (event.get("metadata") or {}).get("tenant", "default")
                 preview = (event.get("message") or "")[:200]
             except Exception:
                 # Defensive fallback - never fail message processing due to logging
                 event_id = event.get("event_id") if isinstance(event, dict) else ""
-                tenant = "default"
                 preview = ""
 
             LOGGER.info(
@@ -1890,20 +1894,30 @@ class ConversationWorker:
 
         history = await self.store.list_events(session_id, limit=20)
         history_messages = self._history_events_to_messages(history)
-        summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict["tags"] else "none"
+        
+        # Get analysis data from metadata or provide defaults to prevent NameError
+        analysis_dict = event.get("metadata", {}).get("analysis", {
+            "intent": "general",
+            "sentiment": "neutral", 
+            "tags": []
+        })
+        
+        summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict.get("tags") else "none"
         analysis_prompt = ChatMessage(
             role="system",
             content=(
                 "The following classification is for internal guidance only. Do not repeat or mention it in your reply. "
                 "Use it silently to tailor your response. Classification: intent={intent}; sentiment={sentiment}; tags={tags}."
             ).format(
-                intent=analysis_dict["intent"],
-                sentiment=analysis_dict["sentiment"],
+                intent=analysis_dict.get("intent", "general"),
+                sentiment=analysis_dict.get("sentiment", "neutral"),
                 tags=summary_tags,
             ),
         )
 
         try:
+            # Initialize session_metadata for context builder path
+            session_metadata = {}
             turn_envelope = {
                 "tenant_id": tenant,
                 "session_id": session_id,
@@ -1925,6 +1939,9 @@ class ConversationWorker:
         except Exception:
             LOGGER.exception("Context builder failed; falling back to legacy prompt assembly")
             messages = self._legacy_prompt_messages(history, event, analysis_prompt)
+            # Initialize session_metadata if not already defined
+            if 'session_metadata' not in locals():
+                session_metadata = {}
             session_metadata.setdefault("somabrain_state", self._somabrain_health_state().value)
             session_metadata.setdefault("somabrain_reason", session_metadata["somabrain_state"])
 

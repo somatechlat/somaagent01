@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0");
 
 /* Add box-sizing globally for better cross-browser consistency */
 *,
@@ -2711,4 +2712,211 @@ nav ul li a img {
 }
 .spin {
   animation: spin 1s linear infinite;
+}
+
+/* Degradation Monitoring Styles */
+.somabrain-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--color-panel);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.875rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.somabrain-banner.healthy {
+  background: linear-gradient(135deg, var(--color-panel), rgba(0, 128, 0, 0.1));
+  border-bottom-color: rgba(0, 128, 0, 0.3);
+}
+
+.somabrain-banner.degraded {
+  background: linear-gradient(135deg, var(--color-panel), rgba(255, 165, 0, 0.1));
+  border-bottom-color: rgba(255, 165, 0, 0.3);
+}
+
+.somabrain-banner.critical {
+  background: linear-gradient(135deg, var(--color-panel), rgba(255, 0, 0, 0.1));
+  border-bottom-color: rgba(255, 0, 0, 0.3);
+  animation: pulse-critical 2s infinite;
+}
+
+@keyframes pulse-critical {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.somabrain-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.somabrain-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.somabrain-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-secondary);
+  transition: all 0.3s ease;
+}
+
+.somabrain-indicator.healthy {
+  background: #4caf50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.somabrain-indicator.degraded {
+  background: #ff9800;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+  animation: flicker 2s infinite;
+}
+
+.somabrain-indicator.critical {
+  background: #f44336;
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.8);
+  animation: blink 1s infinite;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes blink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0.3; }
+}
+
+.somabrain-details {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: 0.8rem;
+}
+
+.somabrain-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 2px var(--spacing-sm);
+  background: var(--color-background);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.somabrain-metric-label {
+  color: var(--color-secondary);
+  font-size: 0.75rem;
+}
+
+.somabrain-metric-value {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.somabrain-metric-value.warning {
+  color: #ff9800;
+}
+
+.somabrain-metric-value.critical {
+  color: #f44336;
+}
+
+.somabrain-metric.healthy .somabrain-metric-value {
+  color: #4caf50;
+}
+
+.somabrain-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.somabrain-button {
+  padding: 4px var(--spacing-sm);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.somabrain-button:hover {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+.somabrain-tooltip {
+  position: relative;
+}
+
+.somabrain-tooltip-content {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 1001;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.somabrain-tooltip:hover .somabrain-tooltip-content {
+  opacity: 1;
+  visibility: visible;
+}
+
+.somabrain-tooltip-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-xs) 0;
+}
+
+.somabrain-tooltip-label {
+  color: var(--color-secondary);
+}
+
+.somabrain-tooltip-value {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .somabrain-content {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .somabrain-details {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .somabrain-actions {
+    justify-content: center;
+  }
 }

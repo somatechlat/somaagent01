@@ -1,188 +1,425 @@
-// Import a component into a target element
-// Import a component and recursively load its nested components
-// Returns the parsed document for additional processing
+// Enhanced component import system with improved caching, error handling, and performance
+import { emit, on } from "/js/event-bus.js";
+import { handleError, createErrorBoundary } from "/js/error-handling.js";
 
-// cache object to store loaded components
-const componentCache = {};
+// Create error boundary for component system
+const componentErrorBoundary = createErrorBoundary('ComponentSystem', (errorData) => {
+  return {
+    type: 'error',
+    html: `<div class="component-error-boundary">
+      <h3>Component Error</h3>
+      <p>${errorData.userMessage}</p>
+      <button onclick="window.location.reload()">Reload Page</button>
+    </div>`
+  };
+});
 
-// Lock map to prevent multiple simultaneous imports of the same component
+// Advanced cache with metadata and versioning
+const componentCache = new Map();
+const cacheStats = {
+  hits: 0,
+  misses: 0,
+  errors: 0,
+  lastCleanup: Date.now()
+};
+
+// Enhanced lock system with timeout and metadata
 const importLocks = new Map();
+const lockTimeouts = new Map();
 
-export async function importComponent(path, targetElement) {
+// Component loading configuration
+const config = {
+  cacheMaxAge: 5 * 60 * 1000, // 5 minutes
+  cacheMaxSize: 100,
+  lockTimeout: 30000, // 30 seconds
+  retryAttempts: 2,
+  retryDelay: 1000,
+  enableDebug: false,
+  enablePreloading: true
+};
+
+// Enhanced cache management utilities
+function cleanupCache() {
+  const now = Date.now();
+  if (now - cacheStats.lastCleanup < config.cacheMaxAge) return;
+
+  for (const [url, data] of componentCache.entries()) {
+    if (now - data.timestamp > config.cacheMaxAge) {
+      componentCache.delete(url);
+    }
+  }
+  
+  if (componentCache.size > config.cacheMaxSize) {
+    const entries = Array.from(componentCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = entries.slice(0, entries.length - config.cacheMaxSize);
+    toRemove.forEach(([url]) => componentCache.delete(url));
+  }
+  
+  cacheStats.lastCleanup = now;
+}
+
+function getFromCache(url) {
+  const cached = componentCache.get(url);
+  if (cached && Date.now() - cached.timestamp < config.cacheMaxAge) {
+    cacheStats.hits++;
+    if (config.enableDebug) {
+      console.log(`Cache hit for ${url}`);
+    }
+    return cached.data;
+  }
+  cacheStats.misses++;
+  return null;
+}
+
+function setInCache(url, data) {
+  componentCache.set(url, {
+    data,
+    timestamp: Date.now(),
+    size: new Blob([data]).size
+  });
+  cleanupCache();
+  
+  if (config.enableDebug) {
+    console.log(`Cached ${url} (${componentCache.size} items)`);
+  }
+}
+
+// Enhanced lock management with timeout
+function acquireLock(lockKey) {
+  if (importLocks.has(lockKey)) {
+    if (config.enableDebug) {
+      console.log(`Component already loading for ${lockKey}`);
+    }
+    return false;
+  }
+  
+  importLocks.set(lockKey, Date.now());
+  
+  // Set up timeout for lock release
+  const timeoutId = setTimeout(() => {
+    if (importLocks.has(lockKey)) {
+      console.warn(`Lock timeout for ${lockKey}`);
+      releaseLock(lockKey);
+    }
+  }, config.lockTimeout);
+  
+  lockTimeouts.set(lockKey, timeoutId);
+  return true;
+}
+
+function releaseLock(lockKey) {
+  importLocks.delete(lockKey);
+  const timeoutId = lockTimeouts.get(lockKey);
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+    lockTimeouts.delete(lockKey);
+  }
+}
+
+export const importComponent = componentErrorBoundary.wrapAsync(async function(path, targetElement) {
   // Create a unique key for this import based on the target element
-  const lockKey = targetElement.id || targetElement.getAttribute('data-component-id') || targetElement;
+  const lockKey = `${targetElement.id || targetElement.getAttribute('data-component-id') || 'anonymous'}-${path}`;
   
   // If this component is already being loaded, return early
-  if (importLocks.get(lockKey)) {
-    console.log(`Component ${path} is already being loaded for target`, targetElement);
+  if (!acquireLock(lockKey)) {
+    if (config.enableDebug) {
+      console.log(`Component ${path} is already being loaded for target`, targetElement);
+    }
     return;
   }
   
-  // Set the lock
-  importLocks.set(lockKey, true);
+  const startTime = Date.now();
+  let attempt = 0;
   
   try {
     if (!targetElement) {
       throw new Error("Target element is required");
     }
 
-    // Show loading indicator
-    targetElement.innerHTML = '<div class="loading"></div>';
+    // Show enhanced loading indicator with path info
+    targetElement.innerHTML = `
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading ${path}...</div>
+      </div>
+    `;
 
-    // full component url
-    const componentUrl = "components/" + path;
-
-    // get html from cache or fetch it
-    let html;
-    if (componentCache[componentUrl]) {
-      html = componentCache[componentUrl];
-    } else {
-      const response = await fetch(componentUrl);
-      if (!response.ok) {
-        throw new Error(
-          `Error loading component ${path}: ${response.statusText}`
-        );
+    // Full component URL with error handling
+    const componentUrl = path.startsWith('/') ? path.slice(1) : `components/${path}`;
+    
+    // Get HTML from cache or fetch with retry logic
+    let html = getFromCache(componentUrl);
+    
+    if (!html) {
+      let lastError;
+      
+      for (attempt = 0; attempt <= config.retryAttempts; attempt++) {
+        try {
+          const response = await fetch(componentUrl, {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+            cache: 'no-store'
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `HTTP ${response.status} loading component ${path}: ${response.statusText} - ${errorText}`
+            );
+          }
+          
+          html = await response.text();
+          
+          // Validate HTML content
+          if (!html || html.trim().length === 0) {
+            throw new Error(`Empty content received for component ${path}`);
+          }
+          
+          // Store in cache with metadata
+          setInCache(componentUrl, html);
+          break;
+          
+        } catch (error) {
+          lastError = error;
+          cacheStats.errors++;
+          
+          if (attempt < config.retryAttempts) {
+            await new Promise(resolve => setTimeout(resolve, config.retryDelay * (attempt + 1)));
+          }
+        }
       }
-      html = await response.text();
-      // store in cache
-      componentCache[componentUrl] = html;
+      
+      if (!html) {
+        throw lastError || new Error(`Failed to load component ${path} after ${config.retryAttempts + 1} attempts`);
+      }
     }
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
+    
+    // Parse HTML with error handling
+    let doc;
+    try {
+      const parser = new DOMParser();
+      doc = parser.parseFromString(html, "text/html");
+      
+      // Check for parsing errors
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        throw new Error(`HTML parsing error in component ${path}: ${parserError.textContent}`);
+      }
+    } catch (parseError) {
+      throw new Error(`Failed to parse HTML for component ${path}: ${parseError.message}`);
+    }
 
+    // Process all nodes with enhanced error handling and tracking
     const allNodes = [
       ...doc.querySelectorAll("style"),
       ...doc.querySelectorAll("script"),
       ...doc.body.childNodes,
-    ];
+    ].filter(node => node && node.nodeType === 1); // Only element nodes
 
     const loadPromises = [];
+    const loadedResources = new Set();
     let blobCounter = 0;
 
     for (const node of allNodes) {
-      if (node.nodeName === "SCRIPT") {
-        const isModule =
-          node.type === "module" || node.getAttribute("type") === "module";
+      try {
+        if (node.nodeName === "SCRIPT") {
+          const isModule = node.type === "module" || node.getAttribute("type") === "module";
 
-        if (isModule) {
-          if (node.src) {
-            // For <script type="module" src="..." use dynamic import
-            const resolvedUrl = new URL(
-              node.src,
-              globalThis.location.origin
-            ).toString();
+          if (isModule) {
+            if (node.src) {
+              // For <script type="module" src="..." use dynamic import
+              const resolvedUrl = new URL(node.src, globalThis.location.origin).toString();
 
-            // Check if module is already in cache
-            if (!componentCache[resolvedUrl]) {
-              const modulePromise = import(resolvedUrl);
-              componentCache[resolvedUrl] = modulePromise;
-              loadPromises.push(modulePromise);
+              // Check if module is already being loaded
+              if (!loadedResources.has(resolvedUrl)) {
+                loadedResources.add(resolvedUrl);
+                
+                const modulePromise = import(resolvedUrl)
+                  .catch((err) => {
+                    console.error(`Failed to load module ${resolvedUrl}:`, err);
+                    emit('component.error', { type: 'module', url: resolvedUrl, error: err.message });
+                    throw err;
+                  });
+                
+                loadPromises.push(modulePromise);
+              }
+            } else {
+              // Handle inline module scripts
+              const virtualUrl = `${componentUrl.replace(/\//g, '_')}.${++blobCounter}.js`;
+
+              if (!loadedResources.has(virtualUrl)) {
+                loadedResources.add(virtualUrl);
+                
+                // Transform relative import paths to absolute URLs with enhanced regex
+                let content = node.textContent.replace(
+                  /import\s+([^'"]+)\s+from\s+["']([^"']+)["']/g,
+                  (match, bindings, importPath) => {
+                    // Convert relative OR root-based (e.g. /src/...) to absolute URLs
+                    if (!/^https?:\/\//.test(importPath)) {
+                      const absoluteUrl = new URL(importPath, globalThis.location.origin).href;
+                      return `import ${bindings} from "${absoluteUrl}"`;
+                    }
+                    return match;
+                  }
+                );
+
+                // Add sourceURL for debugging and error tracking
+                content += `\n//# sourceURL=${virtualUrl}`;
+
+                // Create a Blob from the rewritten content
+                const blob = new Blob([content], { type: "text/javascript" });
+                const blobUrl = URL.createObjectURL(blob);
+
+                const modulePromise = import(blobUrl)
+                  .catch((err) => {
+                    console.error(`Failed to load inline module ${virtualUrl}:`, err);
+                    emit('component.error', { type: 'inline-module', url: virtualUrl, error: err.message });
+                    throw err;
+                  })
+                  .finally(() => {
+                    // Clean up blob URL to prevent memory leaks
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                  });
+
+                loadPromises.push(modulePromise);
+              }
             }
           } else {
-            const virtualUrl = `${componentUrl.replaceAll(
-              "/",
-              "_"
-            )}.${++blobCounter}.js`;
+            // Non-module script with enhanced handling
+            const script = document.createElement("script");
+            
+            // Copy all attributes with filtering
+            Array.from(node.attributes || []).forEach((attr) => {
+              if (attr.name !== 'type' || attr.value !== 'module') {
+                script.setAttribute(attr.name, attr.value);
+              }
+            });
+            
+            script.textContent = node.textContent;
 
-            // For inline module scripts, use cache or create blob
-            if (!componentCache[virtualUrl]) {
-              // Transform relative import paths to absolute URLs
-              let content = node.textContent.replace(
-                /import\s+([^'"]+)\s+from\s+["']([^"']+)["']/g,
-                (match, bindings, importPath) => {
-                  // Convert relative OR root-based (e.g. /src/...) to absolute URLs
-                  if (!/^https?:\/\//.test(importPath)) {
-                    const absoluteUrl = new URL(
-                      importPath,
-                      globalThis.location.origin
-                    ).href;
-                    return `import ${bindings} from "${absoluteUrl}"`;
-                  }
-                  return match;
-                }
-              );
-
-              // Add sourceURL to the content
-              content += `\n//# sourceURL=${virtualUrl}`;
-
-              // Create a Blob from the rewritten content
-              const blob = new Blob([content], {
-                type: "text/javascript",
+            if (script.src) {
+              const promise = new Promise((resolve, reject) => {
+                script.onload = () => {
+                  emit('component.loaded', { type: 'script', src: script.src });
+                  resolve();
+                };
+                script.onerror = () => {
+                  const error = new Error(`Failed to load script: ${script.src}`);
+                  emit('component.error', { type: 'script', src: script.src, error: error.message });
+                  reject(error);
+                };
               });
-              const blobUrl = URL.createObjectURL(blob);
-
-              const modulePromise = import(blobUrl)
-                .catch((err) => {
-                  console.error("Failed to load inline module", err);
-                  throw err;
-                })
-                .finally(() => URL.revokeObjectURL(blobUrl));
-
-              componentCache[virtualUrl] = modulePromise;
-              loadPromises.push(modulePromise);
+              loadPromises.push(promise);
             }
-          }
-        } else {
-          // Non-module script
-          const script = document.createElement("script");
-          Array.from(node.attributes || []).forEach((attr) => {
-            script.setAttribute(attr.name, attr.value);
-          });
-          script.textContent = node.textContent;
 
-          if (script.src) {
+            targetElement.appendChild(script);
+          }
+        } else if (node.nodeName === "STYLE" || (node.nodeName === "LINK" && node.rel === "stylesheet")) {
+          // Enhanced style/link handling
+          const clone = node.cloneNode(true);
+
+          if (clone.tagName === "LINK" && clone.rel === "stylesheet") {
             const promise = new Promise((resolve, reject) => {
-              script.onload = resolve;
-              script.onerror = reject;
+              clone.onload = () => {
+                emit('component.loaded', { type: 'stylesheet', href: clone.href });
+                resolve();
+              };
+              clone.onerror = () => {
+                const error = new Error(`Failed to load stylesheet: ${clone.href}`);
+                emit('component.error', { type: 'stylesheet', href: clone.href, error: error.message });
+                reject(error);
+              };
             });
             loadPromises.push(promise);
           }
 
-          targetElement.appendChild(script);
+          targetElement.appendChild(clone);
+        } else {
+          // Enhanced DOM node cloning with error handling
+          try {
+            const clone = node.cloneNode(true);
+            targetElement.appendChild(clone);
+          } catch (cloneError) {
+            console.warn(`Failed to clone node ${node.nodeName}:`, cloneError);
+            emit('component.warning', { type: 'clone-error', nodeName: node.nodeName, error: cloneError.message });
+          }
         }
-      } else if (
-        node.nodeName === "STYLE" ||
-        (node.nodeName === "LINK" && node.rel === "stylesheet")
-      ) {
-        const clone = node.cloneNode(true);
-
-        if (clone.tagName === "LINK" && clone.rel === "stylesheet") {
-          const promise = new Promise((resolve, reject) => {
-            clone.onload = resolve;
-            clone.onerror = reject;
-          });
-          loadPromises.push(promise);
-        }
-
-        targetElement.appendChild(clone);
-      } else {
-        const clone = node.cloneNode(true);
-        targetElement.appendChild(clone);
+      } catch (nodeError) {
+        console.error(`Error processing node ${node.nodeName}:`, nodeError);
+        emit('component.error', { type: 'node-processing', nodeName: node.nodeName, error: nodeError.message });
       }
     }
 
-    // Wait for all tracked external scripts/styles to finish loading
-    await Promise.all(loadPromises);
-
-    // Remove loading indicator
-    const loadingEl = targetElement.querySelector(':scope > .loading');
-    if (loadingEl) {
-      targetElement.removeChild(loadingEl);
+    // Wait for all tracked external scripts/styles to finish loading with enhanced error handling
+    try {
+      await Promise.all(loadPromises);
+    } catch (loadError) {
+      console.error(`Error loading resources for component ${path}:`, loadError);
+      throw new Error(`Component resource loading failed: ${loadError.message}`);
     }
 
-    // // Load any nested components
-    // await loadComponents([targetElement]);
+    // Remove loading indicator with enhanced cleanup
+    const loadingEl = targetElement.querySelector(':scope > .loading');
+    if (loadingEl) {
+      loadingEl.remove();
+    }
+
+    // Load any nested components with error handling
+    try {
+      await loadComponents([targetElement]);
+    } catch (nestedError) {
+      console.warn(`Error loading nested components for ${path}:`, nestedError);
+      emit('component.warning', { type: 'nested-components', path, error: nestedError.message });
+    }
+
+    // Emit component loaded event
+    const loadTime = Date.now() - startTime;
+    emit('component.loaded', { 
+      type: 'component', 
+      path, 
+      loadTime, 
+      attempt: attempt + 1,
+      cacheHit: getFromCache(componentUrl) !== null
+    });
+
+    if (config.enableDebug) {
+      console.log(`Component ${path} loaded in ${loadTime}ms`);
+    }
 
     // Return parsed document
     return doc;
   } catch (error) {
-    console.error("Error importing component:", error);
+    // Enhanced error handling with the new system
+    await handleError(error, {
+      component: 'ComponentSystem',
+      function: 'importComponent',
+      path,
+      targetElementId: targetElement.id || 'unknown',
+      lockKey
+    });
+    
+    // Show error in UI
+    targetElement.innerHTML = `
+      <div class="component-error">
+        <div class="error-title">Component Loading Error</div>
+        <div class="error-path">${path}</div>
+        <div class="error-message">${error.message}</div>
+        <div class="error-actions">
+          <button class="error-retry" onclick="importComponent('${path}', this.parentElement.parentElement.parentElement)">Retry</button>
+          <button class="error-refresh" onclick="window.location.reload()">Reload Page</button>
+        </div>
+      </div>
+    `;
+    
     throw error;
   } finally {
     // Release the lock when done, regardless of success or failure
-    importLocks.delete(lockKey);
+    releaseLock(lockKey);
   }
-}
+});
 
 // Load all x-component tags starting from root elements
 export async function loadComponents(roots = [document.documentElement]) {

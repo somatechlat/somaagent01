@@ -6,6 +6,26 @@ import * as stream from "/js/stream.js";
 import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
+import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "/js/error-handling.js";
+
+// Create error boundary for main application
+const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
+  // Show critical error UI
+  const errorContainer = document.createElement('div');
+  errorContainer.className = 'app-error-container';
+  errorContainer.innerHTML = `
+    <div class="app-error-content">
+      <h2>Application Error</h2>
+      <p>${errorData.userMessage}</p>
+      <div class="error-actions">
+        <button onclick="window.location.reload()">Reload Application</button>
+        <button onclick="this.closest('.app-error-container').remove()">Dismiss</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(errorContainer);
+  return errorContainer;
+});
 // Prior notification store (toast + polling-era compatibility)
 // Consolidated SSE + REST notifications store (prior polling/ toast removed)
 import { store as notificationsSseStore } from "/components/notifications/notificationsStore.js";
@@ -195,7 +215,7 @@ function setupSidebarToggle() {
 }
 document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 
-export async function sendMessage() {
+export const sendMessage = appErrorBoundary.wrapAsync(async function() {
   try {
     const message = chatInput.value.trim();
     const hasLocalAttachments = (attachmentsStore.attachments || []).length > 0;
@@ -219,6 +239,12 @@ export async function sendMessage() {
           const descriptors = await attachmentsStore.uploadAll(context);
           attachmentIds = (descriptors || []).map(d => d.id);
         } catch (e) {
+          await handleError(e, {
+            component: 'MainApplication',
+            function: 'sendMessage',
+            operation: 'uploadAttachments',
+            context
+          });
           toastFetchError("Attachment upload failed", e);
           // proceed with message without attachments
         }
@@ -247,9 +273,15 @@ export async function sendMessage() {
       attachmentsStore.clearAttachments();
     }
   } catch (e) {
+    await handleError(e, {
+      component: 'MainApplication',
+      function: 'sendMessage',
+      context,
+      messageLength: chatInput.value.length
+    });
     toastFetchError("Error sending message", e); // Will use new notification system
   }
-}
+});
 
 function toastFetchError(text, error) {
   console.error(text, error);
@@ -903,6 +935,9 @@ globalThis.restart = async function () {
 
 // Modify this part
 document.addEventListener("DOMContentLoaded", () => {
+  // Setup global error handlers if not already done
+  setupGlobalErrorHandlers();
+  
   const isDarkMode = localStorage.getItem("darkMode") !== "false";
   toggleDarkMode(isDarkMode);
   // Initialize and subscribe SSE notifications store once DOM ready
@@ -933,38 +968,137 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   } catch (e) { console.warn("Failed to init SSE notifications store", e); }
 
-  // Bridge SSE notifications to an Alpine store for UI bindings
-  try {
-    const notifBridge = createAlpineStore("notificationSse", { unreadCount: 0, count: 0, list: [], toastStack: [] });
-    // Seed initial values if already loaded
-    if (notificationsSseStore?.state) {
-      notifBridge.unreadCount = notificationsSseStore.state.unreadCount || 0;
-      notifBridge.count = (notificationsSseStore.state.list || []).length;
-      notifBridge.list = notificationsSseStore.state.list || [];
-      notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
+  // Bridge SSE notifications to an Alpine store for UI bindings with improved error handling
+  const initAlpineStores = () => {
+    try {
+      // Ensure Alpine is available before creating stores
+      if (!globalThis.Alpine) {
+        console.warn('Alpine.js not available yet, delaying store initialization');
+        setTimeout(initAlpineStores, 100);
+        return;
+      }
+
+      // Create notification store with proper initialization
+      const notifBridge = createAlpineStore("notificationSse", { 
+        unreadCount: 0, 
+        count: 0, 
+        list: [], 
+        toastStack: [],
+        lastSync: Date.now()
+      });
+      
+      // Seed initial values if already loaded
+      if (notificationsSseStore?.state) {
+        notifBridge.unreadCount = notificationsSseStore.state.unreadCount || 0;
+        notifBridge.count = (notificationsSseStore.state.list || []).length;
+        notifBridge.list = notificationsSseStore.state.list || [];
+        notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
+      }
+      
+      // Set up event listener with error handling
+      bus.on("notifications.updated", ({ unread, count }) => {
+        try {
+          notifBridge.unreadCount = unread || 0;
+          notifBridge.count = count || 0;
+          notifBridge.list = notificationsSseStore.state.list || [];
+          notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
+          notifBridge.lastSync = Date.now();
+        } catch (e) {
+          console.warn('Error updating notification store:', e);
+        }
+      });
+
+      // Connection status Alpine store (used by bell-adjacent indicator)
+      const connBridge = createAlpineStore('conn', { 
+        status: 'offline', 
+        tooltip: 'Offline',
+        lastUpdate: Date.now()
+      });
+      
+      // If connection already established before DOM ready, reflect it
+      if (typeof connectionStatus === 'boolean') {
+        connBridge.status = connectionStatus ? 'online' : 'offline';
+        connBridge.tooltip = connectionStatus ? 'Online' : 'Offline';
+        connBridge.lastUpdate = Date.now();
+      }
+
+      // SomaBrain state store with proper initialization
+      const initialBrain = pendingSomabrainState || describeSomabrainState("unknown");
+      const somabrainStore = createAlpineStore('somabrain', {
+        state: initialBrain.state,
+        tooltip: initialBrain.tooltip,
+        banner: initialBrain.banner,
+        lastUpdated: Date.now(),
+        history: []
+      });
+      
+      // Clear pending state after successful initialization
+      pendingSomabrainState = null;
+      
+      // Create monitoring store for degradation monitoring with enhanced structure
+      const monitoringStore = createAlpineStore('monitoring', {
+        healthStatus: 'unknown',
+        degradationLevel: 'none',
+        circuitBreakerStatus: 'unknown',
+        systemMetrics: {
+          cpu: 0,
+          memory: 0,
+          disk: 0,
+          lastUpdate: Date.now()
+        },
+        lastUpdated: Date.now(),
+        healthSummary: {
+          healthy: 0,
+          degraded: 0,
+          critical: 0,
+          lastCheck: Date.now()
+        },
+        degradationAnalysis: {
+          level: 'NONE',
+          affectedComponents: [],
+          recommendations: [],
+          lastAnalysis: Date.now()
+        },
+        circuitAnalysis: {
+          open: 0,
+          halfOpen: 0,
+          closed: 0,
+          lastCheck: Date.now()
+        },
+        resourceAnalysis: {
+          cpuUtilization: 0,
+          memoryUtilization: 0,
+          diskUtilization: 0,
+          isUnderStress: false,
+          lastCheck: Date.now()
+        },
+        monitoringActive: false,
+        lastError: null
+      });
+
+      // Initialize monitoring after a short delay to ensure Alpine is ready
+      setTimeout(() => {
+        try {
+          if (monitoringStore && monitoringStore.startMonitoring) {
+            monitoringStore.startMonitoring();
+            monitoringStore.monitoringActive = true;
+          }
+        } catch (e) {
+          console.warn('Failed to start monitoring:', e);
+          monitoringStore.lastError = e.message;
+        }
+      }, 200);
+
+      console.log('Alpine stores initialized successfully');
+    } catch (e) {
+      console.error("Failed to create Alpine stores:", e);
+      // Retry initialization after delay
+      setTimeout(initAlpineStores, 500);
     }
-    bus.on("notifications.updated", ({ unread, count }) => {
-      notifBridge.unreadCount = unread || 0;
-      notifBridge.count = count || 0;
-      notifBridge.list = notificationsSseStore.state.list || [];
-      notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
-    });
-    // Connection status Alpine store (used by bell-adjacent indicator)
-    const connBridge = createAlpineStore('conn', { status: 'offline', tooltip: 'Offline' });
-    // If connection already established before DOM ready, reflect it
-    if (typeof connectionStatus === 'boolean') {
-      connBridge.status = connectionStatus ? 'online' : 'offline';
-      connBridge.tooltip = connectionStatus ? 'Online' : 'Offline';
-    }
-    const initialBrain = pendingSomabrainState || describeSomabrainState("unknown");
-    createAlpineStore('somabrain', {
-      state: initialBrain.state,
-      tooltip: initialBrain.tooltip,
-      banner: initialBrain.banner,
-      lastUpdated: Date.now(),
-    });
-    pendingSomabrainState = null;
-  } catch (e) { console.warn("Failed to create Alpine notifications bridge", e); }
+  };
+
+  // Initialize stores with proper timing
+  initAlpineStores();
 
   // Ensure an active context exists so SSE connects (needed for notifications stream)
   try {
