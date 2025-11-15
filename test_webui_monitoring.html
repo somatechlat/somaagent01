@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web UI Monitoring Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+        }
+        .error {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+        .info {
+            background-color: rgba(33, 150, 243, 0.2);
+            border: 1px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Web UI Monitoring Integration Test</h1>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        async function runTests() {
+            const results = document.getElementById('test-results');
+            
+            // Test 1: Check if Web UI is accessible
+            try {
+                const response = await fetch('/ui/index.html');
+                if (response.ok) {
+                    results.innerHTML += '<div class="test-result success">✓ Web UI index.html is accessible</div>';
+                } else {
+                    results.innerHTML += '<div class="test-result error">✗ Web UI index.html not accessible: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">✗ Web UI index.html fetch failed: ' + error.message + '</div>';
+            }
+
+            // Test 2: Check if monitoring.js is accessible
+            try {
+                const response = await fetch('/ui/js/monitoring.js');
+                if (response.ok) {
+                    const jsContent = await response.text();
+                    if (jsContent.includes('SystemMonitor')) {
+                        results.innerHTML += '<div class="test-result success">✓ monitoring.js is accessible and contains SystemMonitor class</div>';
+                    } else {
+                        results.innerHTML += '<div class="test-result error">✗ monitoring.js does not contain SystemMonitor class</div>';
+                    }
+                } else {
+                    results.innerHTML += '<div class="test-result error">✗ monitoring.js not accessible: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">✗ monitoring.js fetch failed: ' + error.message + '</div>';
+            }
+
+            // Test 3: Check if CSS is accessible and contains styles
+            try {
+                const response = await fetch('/ui/css/notification.css');
+                if (response.ok) {
+                    const cssContent = await response.text();
+                    if (cssContent.includes('system-issues')) {
+                        results.innerHTML += '<div class="test-result success">✓ notification.css is accessible and contains system-issues styles</div>';
+                    } else {
+                        results.innerHTML += '<div class="test-result error">✗ notification.css does not contain system-issues styles</div>';
+                    }
+                } else {
+                    results.innerHTML += '<div class="test-result error">✗ notification.css not accessible: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">✗ notification.css fetch failed: ' + error.message + '</div>';
+            }
+
+            // Test 4: Check if health endpoint is working
+            try {
+                const response = await fetch('/v1/health');
+                if (response.ok) {
+                    const healthData = await response.json();
+                    if (healthData.status && healthData.components) {
+                        results.innerHTML += '<div class="test-result success">✓ Health endpoint is working and returning valid data</div>';
+                        results.innerHTML += '<div class="test-result info">Health status: ' + healthData.status + '</div>';
+                        results.innerHTML += '<div class="test-result info">Components checked: ' + Object.keys(healthData.components).length + '</div>';
+                    } else {
+                        results.innerHTML += '<div class="test-result error">✗ Health endpoint data format is invalid</div>';
+                    }
+                } else {
+                    results.innerHTML += '<div class="test-result error">✗ Health endpoint not accessible: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">✗ Health endpoint fetch failed: ' + error.message + '</div>';
+            }
+
+            // Test 5: Check if index.html contains monitoring integration
+            try {
+                const response = await fetch('/ui/index.html');
+                if (response.ok) {
+                    const htmlContent = await response.text();
+                    const hasMonitoringJs = htmlContent.includes('js/monitoring.js');
+                    const hasSystemIssues = htmlContent.includes('system-issues');
+                    const hasSystemMonitor = htmlContent.includes('SystemMonitor');
+                    
+                    if (hasMonitoringJs && hasSystemIssues && hasSystemMonitor) {
+                        results.innerHTML += '<div class="test-result success">✓ index.html contains all monitoring integration elements</div>';
+                    } else {
+                        results.innerHTML += '<div class="test-result error">✗ index.html missing monitoring integration elements:</div>';
+                        if (!hasMonitoringJs) results.innerHTML += '<div class="test-result error">  - monitoring.js script not included</div>';
+                        if (!hasSystemIssues) results.innerHTML += '<div class="test-result error">  - system-issues classes not found</div>';
+                        if (!hasSystemMonitor) results.innerHTML += '<div class="test-result error">  - SystemMonitor reference not found</div>';
+                    }
+                }
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">✗ index.html monitoring check failed: ' + error.message + '</div>';
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

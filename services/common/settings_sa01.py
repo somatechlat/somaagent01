@@ -66,16 +66,16 @@ class SA01Settings(BaseServiceSettings):
 			return {
 				# BaseServiceSettings required fields
 				"deployment_mode": environment_label,
-				"postgres_dsn": env.get("SOMA_POSTGRES_DSN", "postgresql://postgres:postgres@localhost:20002/postgres"),
-				"kafka_bootstrap_servers": env.get("SOMA_KAFKA_BOOTSTRAP", "localhost:20000"),
-				"redis_url": env.get("SOMA_REDIS_URL", "redis://localhost:20001/0"),
+				"postgres_dsn": env.get("SA01_DB_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"),
+				"kafka_bootstrap_servers": env.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+				"redis_url": env.get("SA01_REDIS_URL", "redis://redis:6379/0"),
 				"otlp_endpoint": env.get("OTLP_ENDPOINT", ""),
 				"model_profiles_path": env.get("SOMA_MODEL_PROFILES", "conf/model_profiles.yaml"),
 				"extra": {},
 				# Extended fields
 				"metrics_port": env.get_int("SOMA_METRICS_PORT", 9400),
 				"metrics_host": env.get("SOMA_METRICS_HOST", "0.0.0.0"),
-				"opa_url": env.get("SOMA_OPA_URL", "http://localhost:20009"),
+				"opa_url": env.get("SA01_POLICY_URL", "http://opa:8181"),
 				"gateway_port": env.get_int("SOMA_GATEWAY_PORT", 8010),
 				"soma_base_url": env.get("SOMA_BASE_URL", "http://localhost:8010"),
 			}

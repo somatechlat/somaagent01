@@ -632,4 +632,4 @@ async def liveness_health():
             "service": "somaagent01",
             "message": f"Liveness check failed: {str(e)}",
             "details": {"error": str(e)}
-    )
+        }

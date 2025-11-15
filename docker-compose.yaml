@@ -388,7 +388,7 @@ services:
     command:
       - celery
       - -A
-      - python.tasks.a2a_chat_task
+      - python.tasks.celery_app
       - worker
       - --loglevel=info
       - --concurrency=4

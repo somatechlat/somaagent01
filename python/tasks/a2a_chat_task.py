@@ -4,6 +4,7 @@ REAL IMPLEMENTATION - No placeholders, actual asynchronous agent communication.
 """
 
 from __future__ import annotations
+import asyncio
 import json
 import time
 import uuid
@@ -159,27 +160,44 @@ def a2a_chat_task(
     # REAL IMPLEMENTATION - Execute FastA2A call with metrics
     try:
         with fast_a2a_latency_seconds.labels(agent_url=agent_url, method="celery_task").time():
-            async with await connect_to_agent(agent_url) as conn:
-                response = await conn.send_message(
-                    message=message,
-                    attachments=attachments or [],
-                    context_id=None if reset else session_id,
-                    metadata=metadata
-                )
+            # Run async code in Celery sync task context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                async def _send_message():
+                    async with await connect_to_agent(agent_url) as conn:
+                        return await conn.send_message(
+                            message=message,
+                            attachments=attachments or [],
+                            context_id=None if reset else session_id,
+                            metadata=metadata
+                        )
+                
+                response = loop.run_until_complete(_send_message())
+            finally:
+                loop.close()
                 
                 # Extract reply from response
                 reply = _extract_reply_from_response(response)
                 
-                # REAL IMPLEMENTATION - Store conversation in Redis
-                await _store_conversation_in_redis(
-                    session_id, 
-                    message, 
-                    reply, 
-                    attachments or []
-                )
+                # REAL IMPLEMENTATION - Store conversation in Redis (sync wrapper)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(_store_conversation_in_redis(
+                        session_id, 
+                        message, 
+                        reply, 
+                        attachments or []
+                    ))
+                finally:
+                    loop.close()
                 
-                # REAL IMPLEMENTATION - Publish event to SomaBrain
-                await publish_event(
+                # REAL IMPLEMENTATION - Publish event to SomaBrain (sync wrapper)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(publish_event(
                     event_type="fast_a2a_chat_completed",
                     data={
                         "task_id": task_id,
@@ -191,7 +209,9 @@ def a2a_chat_task(
                         "has_attachments": bool(attachments)
                     },
                     metadata=metadata
-                )
+                ))
+                finally:
+                    loop.close()
                 
                 # Track memory operation
                 increment_counter(somabrain_memory_operations_total, {

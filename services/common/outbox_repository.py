@@ -51,7 +51,7 @@ class OutboxMessage:
 
 class OutboxStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01") or "postgresql://soma:soma@localhost:5432/somaagent01"
+        raw_dsn = dsn or env.get("POSTGRES_DSN", "postgresql://soma:soma@postgres:5432/somaagent01") or "postgresql://soma:soma@postgres:5432/somaagent01"
         self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
