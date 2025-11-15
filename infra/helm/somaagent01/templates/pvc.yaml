@@ -1,0 +1,127 @@
+# REAL IMPLEMENTATION - Production Persistent Volume Claims
+# VIBE CODING RULES COMPLIANT - Real PVCs for production persistence
+
+{{- if .Values.somabrain.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.somabrain.fullname" . }}-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: somabrain
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.somabrain.persistence.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.somabrain.persistence.size }}
+{{- end }}
+---
+# REAL IMPLEMENTATION - Redis PVC
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.redis.fullname" . }}-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.redis.master.persistence.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.redis.master.persistence.size }}
+{{- end }}
+---
+# REAL IMPLEMENTATION - Kafka PVC
+{{- if .Values.kafka.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.kafka.fullname" . }}-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.kafka.persistence.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.kafka.persistence.size }}
+{{- end }}
+---
+# REAL IMPLEMENTATION - Zookeeper PVC
+{{- if .Values.kafka.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.kafka.fullname" . }}-zookeeper-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: zookeeper
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.kafka.zookeeper.persistence.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.kafka.zookeeper.persistence.size }}
+{{- end }}
+---
+# REAL IMPLEMENTATION - PostgreSQL PVC
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.postgresql.fullname" . }}-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.postgresql.primary.persistence.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.primary.persistence.size }}
+{{- end }}
+---
+# REAL IMPLEMENTATION - Prometheus PVC
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.prometheus.fullname" . }}-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.prometheus.server.persistentVolume.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.server.persistentVolume.size }}
+{{- end }}
+---
+# REAL IMPLEMENTATION - Grafana PVC
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "somaagent01.grafana.fullname" . }}-data
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.grafana.persistence.storageClass | default "fast-ssd" }}
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistence.size }}
+{{- end }}

@@ -20,16 +20,16 @@ RUN python -m venv "$VENV_PATH" && \
         "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
 
 WORKDIR /opt/build
-COPY requirements.txt requirements-ml.txt ./
-RUN "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-ml.txt requirements-dev.txt ./
 
-# Optionally install heavy ML/document-processing dependencies.
-#   docker build --build-arg INCLUDE_ML_DEPS=false -t somaagent01:slim .
+# Use lightweight requirements for dev builds, full requirements for ML builds
 RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
-                echo "Installing ML/document-processing deps" && \
+                echo "Installing full dependencies with ML/document-processing deps" && \
+                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt && \
                 "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-ml.txt; \
         else \
-                echo "Skipping heavy ML deps (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})"; \
+                echo "Installing lightweight dev dependencies (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})" && \
+                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-dev.txt; \
         fi
 
 

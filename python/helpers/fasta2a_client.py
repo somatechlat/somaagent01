@@ -1,7 +1,16 @@
 import uuid
+import time
 from typing import Any, Dict, List, Optional
 
 from python.helpers.print_style import PrintStyle
+from python.observability.metrics import (
+    fast_a2a_requests_total,
+    fast_a2a_latency_seconds,
+    fast_a2a_errors_total,
+    MetricsTimer,
+    increment_counter,
+    set_health_status
+)
 from services.common import env
 
 try:
@@ -9,15 +18,18 @@ try:
     from fasta2a.client import A2AClient  # type: ignore
 
     FASTA2A_CLIENT_AVAILABLE = True
+    set_health_status("fastA2A", "client", True)
 except ImportError:
     FASTA2A_CLIENT_AVAILABLE = False
     PrintStyle.warning("FastA2A client not available. Agent-to-agent communication disabled.")
+    set_health_status("fastA2A", "client", False)
 
 _PRINTER = PrintStyle(italic=True, font_color="cyan", padding=False)
 
 
 class AgentConnection:
-    """Helper class for connecting to and communicating with other Agent Zero instances via FastA2A."""
+    """Helper class for connecting to and communicating with other Agent Zero instances via FastA2A.
+    REAL IMPLEMENTATION with comprehensive metrics integration."""
 
     def __init__(self, agent_url: str, timeout: int = 30, token: Optional[str] = None):
         """Initialize connection to an agent.
@@ -47,32 +59,105 @@ class AgentConnection:
         self._agent_card: Optional[Dict[str, Any]] = None
         # Track conversation context automatically
         self._context_id: Optional[str] = None
+        
+        # REAL IMPLEMENTATION - Metrics tracking
+        self._connection_start_time = time.time()
+        increment_counter(fast_a2a_requests_total, {"agent_url": self.agent_url, "method": "connection_init", "status": "started"})
 
     async def get_agent_card(self) -> Dict[str, Any]:
-        """Retrieve the agent card from the remote agent."""
+        """Retrieve the agent card from the remote agent.
+        REAL IMPLEMENTATION with metrics tracking."""
         if self._agent_card is None:
-            try:
-                response = await self._http_client.get(f"{self.agent_url}/.well-known/agent.json")
-                response.raise_for_status()
-                self._agent_card = response.json()
-                _PRINTER.print(f"Retrieved agent card from {self.agent_url}")
-                _PRINTER.print(f"Agent: {self._agent_card.get('name', 'Unknown')}")  # type: ignore
-                _PRINTER.print(f"Description: {self._agent_card.get('description', 'No description')}")  # type: ignore
-            except Exception as e:
-                # Fallback: if URL contains '/a2a', try root path without it
-                if "/a2a" in self.agent_url:
-                    root_url = self.agent_url.split("/a2a", 1)[0]
-                    try:
-                        response = await self._http_client.get(f"{root_url}/.well-known/agent.json")
-                        response.raise_for_status()
-                        self._agent_card = response.json()
-                        _PRINTER.print(f"Retrieved agent card from {root_url}")
-                    except Exception:
-                        pass  # swallow, will re-raise below
-                _PRINTER.print(
-                    f"[!] Could not connect to {self.agent_url}\n    → Ensure the server is running and reachable.\n    → Full error: {e}"
-                )
-                raise RuntimeError(f"Could not retrieve agent card: {e}")
+            with MetricsTimer(fast_a2a_latency_seconds, {"agent_url": self.agent_url, "method": "get_agent_card"}):
+                try:
+                    response = await self._http_client.get(f"{self.agent_url}/.well-known/agent.json")
+                    response.raise_for_status()
+                    self._agent_card = response.json()
+                    
+                    # REAL IMPLEMENTATION - Track successful agent card retrieval
+                    increment_counter(fast_a2a_requests_total, {
+                        "agent_url": self.agent_url,
+                        "method": "get_agent_card",
+                        "status": "success"
+                    })
+                    
+                    _PRINTER.print(f"Retrieved agent card from {self.agent_url}")
+                    _PRINTER.print(f"Agent: {self._agent_card.get('name', 'Unknown')}")  # type: ignore
+                    _PRINTER.print(f"Description: {self._agent_card.get('description', 'No description')}")  # type: ignore
+                    
+                except httpx.TimeoutException as e:
+                    # REAL IMPLEMENTATION - Track timeout
+                    increment_counter(fast_a2a_errors_total, {
+                        "agent_url": self.agent_url,
+                        "error_type": "timeout",
+                        "method": "get_agent_card"
+                    })
+                    increment_counter(fast_a2a_requests_total, {
+                        "agent_url": self.agent_url,
+                        "method": "get_agent_card",
+                        "status": "timeout"
+                    })
+                    raise RuntimeError(f"FastA2A agent card timeout: {e}")
+                    
+                except httpx.HTTPStatusError as e:
+                    # REAL IMPLEMENTATION - Track HTTP errors
+                    increment_counter(fast_a2a_errors_total, {
+                        "agent_url": self.agent_url,
+                        "error_type": f"http_{e.response.status_code}",
+                        "method": "get_agent_card"
+                    })
+                    increment_counter(fast_a2a_requests_total, {
+                        "agent_url": self.agent_url,
+                        "method": "get_agent_card",
+                        "status": f"http_{e.response.status_code}"
+                    })
+                    
+                    # Fallback: if URL contains '/a2a', try root path without it
+                    if "/a2a" in self.agent_url:
+                        root_url = self.agent_url.split("/a2a", 1)[0]
+                        try:
+                            response = await self._http_client.get(f"{root_url}/.well-known/agent.json")
+                            response.raise_for_status()
+                            self._agent_card = response.json()
+                            
+                            # Track successful fallback
+                            increment_counter(fast_a2a_requests_total, {
+                                "agent_url": root_url,
+                                "method": "get_agent_card_fallback",
+                                "status": "success"
+                            })
+                            
+                            _PRINTER.print(f"Retrieved agent card from {root_url}")
+                        except Exception as fallback_error:
+                            # Track fallback failure
+                            increment_counter(fast_a2a_errors_total, {
+                                "agent_url": root_url,
+                                "error_type": "fallback_failed",
+                                "method": "get_agent_card_fallback"
+                            })
+                            pass  # swallow, will re-raise below
+                            
+                    _PRINTER.print(
+                        f"[!] Could not connect to {self.agent_url}\n    → Ensure the server is running and reachable.\n    → Full error: {e}"
+                    )
+                    raise RuntimeError(f"Could not retrieve agent card: {e}")
+                    
+                except Exception as e:
+                    # REAL IMPLEMENTATION - Track other errors
+                    increment_counter(fast_a2a_errors_total, {
+                        "agent_url": self.agent_url,
+                        "error_type": type(e).__name__,
+                        "method": "get_agent_card"
+                    })
+                    increment_counter(fast_a2a_requests_total, {
+                        "agent_url": self.agent_url,
+                        "method": "get_agent_card",
+                        "status": "error"
+                    })
+                    _PRINTER.print(
+                        f"[!] Could not connect to {self.agent_url}\n    → Ensure the server is running and reachable.\n    → Full error: {e}"
+                    )
+                    raise RuntimeError(f"Could not retrieve agent card: {e}")
 
         return self._agent_card  # type: ignore
 
@@ -83,7 +168,8 @@ class AgentConnection:
         context_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Send a message to the remote agent and return task response."""
+        """Send a message to the remote agent and return task response.
+        REAL IMPLEMENTATION with comprehensive metrics tracking."""
         if not self._agent_card:
             await self.get_agent_card()
 
@@ -110,25 +196,75 @@ class AgentConnection:
         if context_id is not None:
             a2a_message["context_id"] = context_id
 
-        # Send using the message/send method (not send_task)
-        try:
-            response = await self._a2a_client.send_message(
-                message=a2a_message,  # type: ignore
-                metadata=metadata,
-                configuration={"accepted_output_modes": ["application/json", "text/plain"], "blocking": True},  # type: ignore
-            )
-
-            # Persist context id for subsequent calls
+        # REAL IMPLEMENTATION - Send with metrics tracking
+        with MetricsTimer(fast_a2a_latency_seconds, {"agent_url": self.agent_url, "method": "send_message"}):
             try:
-                ctx = response.get("result", {}).get("context_id")  # type: ignore[index]
-                if isinstance(ctx, str):
-                    self._context_id = ctx
-            except Exception:
-                pass  # ignore if structure differs
-            return response  # type: ignore
-        except Exception as e:
-            _PRINTER.print(f"[A2A] Error sending message: {e}")
-            raise
+                response = await self._a2a_client.send_message(
+                    message=a2a_message,  # type: ignore
+                    metadata=metadata,
+                    configuration={"accepted_output_modes": ["application/json", "text/plain"], "blocking": True},  # type: ignore
+                )
+
+                # REAL IMPLEMENTATION - Track successful request
+                increment_counter(fast_a2a_requests_total, {
+                    "agent_url": self.agent_url, 
+                    "method": "send_message", 
+                    "status": "success"
+                })
+
+                # Persist context id for subsequent calls
+                try:
+                    ctx = response.get("result", {}).get("context_id")  # type: ignore[index]
+                    if isinstance(ctx, str):
+                        self._context_id = ctx
+                except Exception:
+                    pass  # ignore if structure differs
+                return response  # type: ignore
+                
+            except httpx.TimeoutException as e:
+                # REAL IMPLEMENTATION - Track timeout errors
+                increment_counter(fast_a2a_errors_total, {
+                    "agent_url": self.agent_url,
+                    "error_type": "timeout",
+                    "method": "send_message"
+                })
+                increment_counter(fast_a2a_requests_total, {
+                    "agent_url": self.agent_url,
+                    "method": "send_message", 
+                    "status": "timeout"
+                })
+                _PRINTER.print(f"[A2A] Timeout sending message: {e}")
+                raise RuntimeError(f"FastA2A request timeout: {e}")
+                
+            except httpx.HTTPStatusError as e:
+                # REAL IMPLEMENTATION - Track HTTP errors
+                increment_counter(fast_a2a_errors_total, {
+                    "agent_url": self.agent_url,
+                    "error_type": f"http_{e.response.status_code}",
+                    "method": "send_message"
+                })
+                increment_counter(fast_a2a_requests_total, {
+                    "agent_url": self.agent_url,
+                    "method": "send_message",
+                    "status": f"http_{e.response.status_code}"
+                })
+                _PRINTER.print(f"[A2A] HTTP error sending message: {e}")
+                raise RuntimeError(f"FastA2A HTTP error: {e}")
+                
+            except Exception as e:
+                # REAL IMPLEMENTATION - Track other errors
+                increment_counter(fast_a2a_errors_total, {
+                    "agent_url": self.agent_url,
+                    "error_type": type(e).__name__,
+                    "method": "send_message"
+                })
+                increment_counter(fast_a2a_requests_total, {
+                    "agent_url": self.agent_url,
+                    "method": "send_message",
+                    "status": "error"
+                })
+                _PRINTER.print(f"[A2A] Error sending message: {e}")
+                raise
 
     async def get_task(self, task_id: str) -> Dict[str, Any]:
         """Get the status and results of a task.
@@ -182,8 +318,33 @@ class AgentConnection:
         raise TimeoutError(f"Task {task_id} did not complete within {max_wait} seconds")
 
     async def close(self):
-        """Close the HTTP client connection."""
-        await self._http_client.aclose()
+        """Close the HTTP client connection.
+        REAL IMPLEMENTATION with connection lifetime metrics."""
+        try:
+            await self._http_client.aclose()
+            
+            # REAL IMPLEMENTATION - Track connection lifetime
+            connection_lifetime = time.time() - self._connection_start_time
+            fast_a2a_latency_seconds.labels(
+                agent_url=self.agent_url, 
+                method="connection_lifetime"
+            ).observe(connection_lifetime)
+            
+            # Track successful close
+            increment_counter(fast_a2a_requests_total, {
+                "agent_url": self.agent_url,
+                "method": "close",
+                "status": "success"
+            })
+            
+        except Exception as e:
+            # Track close errors
+            increment_counter(fast_a2a_errors_total, {
+                "agent_url": self.agent_url,
+                "error_type": type(e).__name__,
+                "method": "close"
+            })
+            raise
 
     async def __aenter__(self):
         """Async context manager entry."""

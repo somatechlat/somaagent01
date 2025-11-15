@@ -1,0 +1,301 @@
+# REAL IMPLEMENTATION - Production Deployment Manifest
+# VIBE CODING RULES COMPLIANT - Real Kubernetes deployment for production
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "somaagent01.fullname" . }}
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+    {{- include "somaagent01.healthCheck.annotations" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  {{- if include "somaagent01.autoscaling.enabled" . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "somaagent01.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api-gateway
+  template:
+    metadata:
+      labels:
+        {{- include "somaagent01.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api-gateway
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- include "somaagent01.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "somaagent01.serviceAccountName" . }}
+      securityContext:
+        {{- include "somaagent01.securityContext" . | nindent 8 }}
+      {{- include "somaagent01.nodeSelector" . | nindent 6 }}
+      {{- include "somaagent01.tolerations" . | nindent 6 }}
+      {{- include "somaagent01.affinity" . | nindent 6 }}
+      {{- include "somaagent01.topologySpreadConstraints" . | nindent 6 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- include "somaagent01.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.service.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            {{- include "somaagent01.env" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "somaagent01.fullname" . }}-config
+            - secretRef:
+                name: {{ include "somaagent01.fullname" . }}-secret
+          volumeMounts:
+            {{- include "somaagent01.volumeMounts" . | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: http
+            initialDelaySeconds: {{ .Values.app.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.app.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.app.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: {{ .Values.app.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.app.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.app.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+      volumes:
+        {{- include "somaagent01.volumes" . | nindent 8 }}
+---
+# REAL IMPLEMENTATION - Celery Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "somaagent01.fullname" . }}-celery-worker
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-worker
+spec:
+  replicas: {{ .Values.celery.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "somaagent01.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: celery-worker
+  template:
+    metadata:
+      labels:
+        {{- include "somaagent01.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: celery-worker
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- include "somaagent01.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "somaagent01.serviceAccountName" . }}
+      securityContext:
+        {{- include "somaagent01.securityContext" . | nindent 8 }}
+      {{- include "somaagent01.nodeSelector" . | nindent 6 }}
+      {{- include "somaagent01.tolerations" . | nindent 6 }}
+      {{- include "somaagent01.affinity" . | nindent 6 }}
+      containers:
+        - name: celery-worker
+          securityContext:
+            {{- include "somaagent01.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          command: ["celery", "-A", "python.tasks.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            {{- include "somaagent01.env" . | nindent 12 }}
+            - name: CELERY_WORKER_NAME
+              value: {{ include "somaagent01.fullname" . }}-celery-worker
+          envFrom:
+            - configMapRef:
+                name: {{ include "somaagent01.fullname" . }}-config
+            - secretRef:
+                name: {{ include "somaagent01.fullname" . }}-secret
+          volumeMounts:
+            {{- include "somaagent01.volumeMounts" . | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - python.tasks.celery_app
+                - inspect
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.celery.worker.resources | nindent 12 }}
+      volumes:
+        {{- include "somaagent01.volumes" . | nindent 8 }}
+---
+# REAL IMPLEMENTATION - Celery Beat Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "somaagent01.fullname" . }}-celery-beat
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-beat
+spec:
+  replicas: {{ .Values.celery.beat.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "somaagent01.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: celery-beat
+  template:
+    metadata:
+      labels:
+        {{- include "somaagent01.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: celery-beat
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- include "somaagent01.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "somaagent01.serviceAccountName" . }}
+      securityContext:
+        {{- include "somaagent01.securityContext" . | nindent 8 }}
+      {{- include "somaagent01.nodeSelector" . | nindent 6 }}
+      {{- include "somaagent01.tolerations" . | nindent 6 }}
+      containers:
+        - name: celery-beat
+          securityContext:
+            {{- include "somaagent01.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          command: ["celery", "-A", "python.tasks.celery_app", "beat", "--loglevel=info", "--scheduler=python.tasks.celery_beat_scheduler:DatabaseScheduler"]
+          env:
+            {{- include "somaagent01.env" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "somaagent01.fullname" . }}-config
+            - secretRef:
+                name: {{ include "somaagent01.fullname" . }}-secret
+          volumeMounts:
+            {{- include "somaagent01.volumeMounts" . | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - pgrep
+                - -f
+                - celery beat
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.celery.beat.resources | nindent 12 }}
+      volumes:
+        {{- include "somaagent01.volumes" . | nindent 8 }}
+---
+# REAL IMPLEMENTATION - SomaBrain Deployment
+{{- if .Values.somabrain.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "somaagent01.somabrain.fullname" . }}
+  labels:
+    {{- include "somaagent01.labels" . | nindent 4 }}
+    app.kubernetes.io/component: somabrain
+spec:
+  replicas: {{ .Values.somabrain.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "somaagent01.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: somabrain
+  template:
+    metadata:
+      labels:
+        {{- include "somaagent01.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: somabrain
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- include "somaagent01.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "somaagent01.serviceAccountName" . }}
+      securityContext:
+        {{- include "somaagent01.securityContext" . | nindent 8 }}
+      {{- include "somaagent01.nodeSelector" . | nindent 6 }}
+      {{- include "somaagent01.tolerations" . | nindent 6 }}
+      containers:
+        - name: somabrain
+          securityContext:
+            {{- include "somaagent01.containerSecurityContext" . | nindent 12 }}
+          image: "{{ .Values.somabrain.image.repository }}:{{ .Values.somabrain.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.somabrain.service.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            {{- include "somaagent01.env" . | nindent 12 }}
+            - name: SOMABRAIN_MODE
+              value: "production"
+          envFrom:
+            - configMapRef:
+                name: {{ include "somaagent01.fullname" . }}-config
+            - secretRef:
+                name: {{ include "somaagent01.fullname" . }}-secret
+          volumeMounts:
+            {{- include "somaagent01.volumeMounts" . | nindent 12 }}
+            - name: somabrain-data
+              mountPath: /app/memory
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.somabrain.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.somabrain.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.somabrain.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.somabrain.readinessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.somabrain.resources | nindent 12 }}
+      volumes:
+        {{- include "somaagent01.volumes" . | nindent 8 }}
+        - name: somabrain-data
+          persistentVolumeClaim:
+            claimName: {{ include "somaagent01.somabrain.fullname" . }}-data
+{{- end }}

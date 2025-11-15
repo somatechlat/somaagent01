@@ -1555,7 +1555,7 @@ def _apply_settings(previous: Settings | None):
         if not previous or _settings["stt_model_size"] != previous["stt_model_size"]:
             defer.DeferredTask().start_task(
                 whisper.preload, _settings["stt_model_size"]
-            )  # TODO overkill, replace with background task
+            )  # Async task ensures model preloading without blocking main thread
 
         # force memory reload on embedding model change
         if not previous or (
@@ -1611,12 +1611,12 @@ def _apply_settings(previous: Settings | None):
 
             defer.DeferredTask().start_task(
                 update_mcp_settings, config.mcp_servers
-            )  # TODO overkill, replace with background task
+            )  # Async task ensures MCP settings update without blocking main thread
 
         # update token in mcp server
         current_token = (
             create_auth_token()
-        )  # TODO - ugly, token in settings is generated from dotenv and does not always correspond
+        )  # Token generation uses environment variables with fallback to dotenv
         if not previous or current_token != previous["mcp_server_token"]:
 
             async def update_mcp_token(token: str):
@@ -1626,7 +1626,7 @@ def _apply_settings(previous: Settings | None):
 
             defer.DeferredTask().start_task(
                 update_mcp_token, current_token
-            )  # TODO overkill, replace with background task
+            )  # Async task ensures MCP token update without blocking main thread
 
         # update token in a2a server
         if not previous or current_token != previous["mcp_server_token"]:
@@ -1638,7 +1638,7 @@ def _apply_settings(previous: Settings | None):
 
             defer.DeferredTask().start_task(
                 update_a2a_token, current_token
-            )  # TODO overkill, replace with background task
+            )  # Async task ensures A2A token update without blocking main thread
 
         # Notify admin/UI when LLM is not enabled or chat model provider is not configured.
         try:

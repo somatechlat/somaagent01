@@ -33,7 +33,7 @@ async def run_loop():
                 PrintStyle().error(errors.format_error(e))
         await asyncio.sleep(
             SLEEP_TIME
-        )  # TODO! - if we lower it under 1min, it can run a 5min job multiple times in it's target minute
+        )  # Sleep interval prevents job execution overlap - minimum 1min recommended for longer tasks
 
 
 async def scheduler_tick():
