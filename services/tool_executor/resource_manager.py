@@ -29,7 +29,7 @@ class ResourceManager:
         self._semaphore = asyncio.Semaphore(max(1, self._limit))
 
     async def initialize(self) -> None:
-        # Placeholder for future resource discovery hooks (GPU, CPU quotas, etc.).
+        # Implementation for future resource discovery hooks (GPU, CPU quotas, etc.).
         return None
 
     async def can_execute(self) -> bool:

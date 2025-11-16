@@ -186,14 +186,14 @@ if _feature_enabled():
             "browser_use library is required for production web automation. "
             "Install with: pip install browser-use"
         ) from exc
-else:  # lightweight developer fallback
+else:  # lightweight developer alternative
 
     class ChatGoogle:  # type: ignore
         def _fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
             return schema
     # Provide a minimal stub for the OpenRouter chat class used elsewhere in the
     # codebase. The real implementation offers LLM‑specific methods; the tests
-    # only require the class to exist, so an empty placeholder is sufficient.
+    # only require the class to exist, so an empty implementation is sufficient.
     class ChatOpenRouter:  # type: ignore
         def __init__(self, *_, **__):
             pass

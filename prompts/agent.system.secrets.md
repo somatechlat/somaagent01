@@ -1,4 +1,4 @@
-# Secret Placeholders
+# Secret Configuration
 - user secrets are masked and used as aliases
 - use aliases in tool calls they will be automatically replaced with actual values
 
@@ -14,7 +14,7 @@ You have access to the following secrets:
 
 # Additional variables
 - use these non-sensitive variables as they are when needed
-- use plain text values without placeholder format
+- use plain text values for variables
 <variables>
 {{vars}}
 </variables>

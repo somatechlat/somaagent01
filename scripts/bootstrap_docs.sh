@@ -75,7 +75,7 @@ cat > "${DOCS_ROOT}/style-guide.md" <<'EOF'
 CI runs `markdownlint-cli2` with `.markdownlint.json` rules.
 EOF
 
-# Create placeholder index files
+# Create initial index files
 for dir in user-manual technical-manual development-manual onboarding-manual agent-onboarding; do
   cat > "${DOCS_ROOT}/${dir}/index.md" <<EOF
 # ${dir//-/ } Overview

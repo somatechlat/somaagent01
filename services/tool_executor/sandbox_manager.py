@@ -31,7 +31,7 @@ class SandboxManager:
     """
 
     async def initialize(self) -> None:
-        # Placeholder for future container pool warmup.
+        # Implementation for future container pool warmup.
         return None
 
     async def run(

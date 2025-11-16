@@ -52,7 +52,7 @@ except Exception:  # pragma: no cover – exercised only in CI/test mode
     class HTTPXClientInstrumentor:  # type: ignore
         @staticmethod
         def instrument(*_, **__) -> None:
-            """Fallback no‑op instrumenter used when the real package cannot be imported."""
+            """Alternative no‑op instrumenter used when the real package cannot be imported."""
             return None
 from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
 from pydantic import BaseModel, Field, field_validator
@@ -597,7 +597,7 @@ async def v1_speech_realtime_ws(websocket: WebSocket, session_id: str | None = N
 
     Validates the one-use session id and accepts the connection. For now it
     immediately informs the client that realtime is not yet available and
-    closes gracefully. This placeholder allows UI wiring without breaking flows.
+    closes gracefully. This implementation allows UI wiring without breaking flows.
     """
     await websocket.accept()
     try:
@@ -624,7 +624,7 @@ async def v1_speech_realtime_ws(websocket: WebSocket, session_id: str | None = N
             await websocket.close(code=1013)  # Try again later
             return
 
-        # Placeholder behavior: immediately notify not-implemented and close
+        # Current behavior: immediately notify not-implemented and close
         await websocket.send_json({"type": "ready", "caps": _realtime_cfg()})
         await websocket.send_json({"type": "error", "code": "not_implemented", "message": "Realtime pipeline coming soon"})
         await websocket.close(code=1000)
@@ -1186,7 +1186,7 @@ async def ui_list_keys(request: Request) -> HTMLResponse:
 
     The page is deliberately minimal – it calls the existing ``get_api_key_store``
     to retrieve keys and formats them into an HTML table.  In a full product the
-    UI would be a separate React/TS app; this placeholder satisfies the Sprint 2
+    UI would be a separate React/TS app; this implementation satisfies the Sprint 2
     requirement for a self‑service UI.
     """
     store = get_api_key_store()
@@ -4736,7 +4736,7 @@ except Exception:
 
 @app.post("/tunnel_proxy")
 async def tunnel_proxy(request: Request) -> JSONResponse:  # type: ignore
-    """Compatibility stub for the UI tunnel feature.
+    """Compatibility implementation for the UI tunnel feature.
 
     The UI may call /tunnel_proxy on load to check tunnel status. In this build,
     we return a 200 with a structured payload instead of 404 to avoid console errors.

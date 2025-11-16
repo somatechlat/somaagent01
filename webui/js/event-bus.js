@@ -60,7 +60,7 @@ export function on(event, fn, options = {}) {
   handlers.get(event).add(handlerData);
   
   if (config.enableDebug) {
-    console.log(`Event handler subscribed: ${event}`, handlerData.metadata);
+    // Debug: Event handler subscribed:, event, handlerData.metadata
   }
 
   // Return unsubscribe function with cleanup
@@ -77,7 +77,7 @@ export function off(event, fn) {
         set.delete(handlerData);
         
         if (config.enableDebug) {
-          console.log(`Event handler unsubscribed: ${event}`, handlerData.metadata);
+          // Debug: Event handler unsubscribed:, event, handlerData.metadata
         }
         
         break;
@@ -188,6 +188,7 @@ export function emit(event, payload) {
                 });
               }
             });
+          }
         }
       };
 
@@ -209,7 +210,7 @@ export function emit(event, payload) {
     }
 
     if (config.enableDebug) {
-      console.log(`Event emitted: ${event}`, { payload, handlerCount: set?.size || 0 });
+      // Debug: Event emitted:, event, payload, handlerCount
     }
 
   } catch (error) {

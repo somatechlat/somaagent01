@@ -70,7 +70,7 @@ const model = {
       if (device != this.selectedDevice) {
         this.selectedDevice = device;
         this.microphoneInput = null;
-        console.log("Device changed, microphoneInput reset");
+
       }
 
       if (!this.microphoneInput) {
@@ -125,7 +125,7 @@ const model = {
     const enableAudio = () => {
       if (!this.userHasInteracted) {
         this.userHasInteracted = true;
-        console.log("User interaction detected - audio playback enabled");
+
 
         // Create a dummy audio context to "unlock" audio
         try {
@@ -133,7 +133,7 @@ const model = {
             window.webkitAudioContext)();
           this.audioContext.resume();
         } catch (e) {
-          console.log("AudioContext not available");
+
         }
       }
     };
@@ -359,7 +359,7 @@ const model = {
     if (window.toast) {
       window.toast("Click anywhere to enable audio playback", "info", 5000);
     } else {
-      console.log("Please click anywhere on the page to enable audio playback");
+
     }
   },
 
@@ -668,7 +668,7 @@ class MicrophoneInput {
 
     const oldStatus = this._status;
     this._status = newStatus;
-    console.log(`Mic status changed from ${oldStatus} to ${newStatus}`);
+
 
     this.handleStatusChange(oldStatus, newStatus);
   }
@@ -764,7 +764,7 @@ class MicrophoneInput {
     if (!this.hasStartedRecording && this.mediaRecorder.state !== "recording") {
       this.hasStartedRecording = true;
       this.mediaRecorder.start(1000);
-      console.log("Speech started");
+
     }
     if (this.waitingTimer) {
       clearTimeout(this.waitingTimer);
@@ -873,7 +873,7 @@ class MicrophoneInput {
       const text = this.filterResult(result.text || "");
 
       if (text) {
-        console.log("Transcription:", result.text);
+
         await this.updateCallback(result.text, true);
       }
     } catch (error) {
@@ -908,7 +908,7 @@ class MicrophoneInput {
       ok = true;
     }
     if (ok) return text;
-    else console.log(`Discarding transcription: ${text}`);
+    else {}
   }
 
   // Toggle microphone between active and inactive states

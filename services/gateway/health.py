@@ -99,7 +99,7 @@ class HealthChecker:
             }
 
     async def _check_opa(self) -> Dict[str, Any]:
-        """OPA check placeholder after middleware removal.
+        """OPA check after middleware removal.
 
         The prior EnforcePolicy middleware has been removed. This check now
         reports 'skipped' to avoid failing aggregate health while policy

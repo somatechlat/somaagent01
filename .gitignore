@@ -66,6 +66,11 @@ webui/css/a0-parity-overrides.css
 webui/test/
 webui/tests/
 
+# Playwright tests
+tests/playwright/
+tests/ui_smoke_http.py
+test_webui_monitoring.html
+
 # Node modules
 node_modules/
 

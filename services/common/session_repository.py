@@ -245,14 +245,25 @@ class PostgresSessionStore(SessionStore):
         async with pool.acquire() as conn:
             envelope_payload = self._compose_envelope_payload(event)
             async with conn.transaction():
-                await conn.execute(
-                    """
-                    INSERT INTO session_events (session_id, payload)
-                    VALUES ($1, $2)
-                    """,
-                    session_id,
-                    json.dumps(event, ensure_ascii=False),
-                )
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO session_events (session_id, payload)
+                        VALUES ($1, $2)
+                        """,
+                        session_id,
+                        json.dumps(event, ensure_ascii=False),
+                    )
+                except asyncpg.exceptions.UniqueViolationError:
+                    LOGGER.debug(
+                        "Duplicate session event skipped",
+                        extra={
+                            "session_id": session_id,
+                            "event_id": event.get("event_id"),
+                        },
+                    )
+                    return
+
                 if envelope_payload:
                     await self._upsert_envelope(
                         conn,

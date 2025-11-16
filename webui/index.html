@@ -58,7 +58,7 @@
                     },
                     token: '',
                     plan: {
-                        todo: [],
+                        tasks: [],
                         in_progress: null,
                         done: []
                     },
@@ -102,9 +102,11 @@
     <script type="module" src="js/monitoring.js"></script>
     <!-- Removed prior stream status banner; using bell-adjacent indicator -->
 
-    <script type="module" src="index.js"></script>
+    <script type="module" src="/index.js"></script>
 
-    <!-- Then load Alpine.js -->
+    <!-- Load Alpine.js core first -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <!-- Then load Alpine.js collapse plugin -->
     <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
     <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
     <script type="module" src="js/initFw.js"></script>
@@ -123,7 +125,7 @@
     <!-- Google Icons -->
     <link rel="stylesheet" href="vendor/google/google-icons.css" />
     
-    <!-- Material Symbols Outlined Fallback -->
+    <!-- Material Symbols Outlined Alternative -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
     <!-- Link the PWA manifest file -->

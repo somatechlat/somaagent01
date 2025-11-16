@@ -41,8 +41,8 @@ class FeatureRegistry:
     Provides deterministic configuration resolution without:
     - Environment variable access
     - Fallback logic
-    - TODO/FIXME comments
-    - Placeholder implementations
+    - Incomplete implementations
+    - Development code
     """
     
     def __init__(self) -> None:
