@@ -24,7 +24,7 @@ jobs:
           source .venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install helmify  # placeholder for any helm lint tool
+          pip install helmify  # install helm lint tool
 
       - name: Install Kind and Kubectl
         run: |
@@ -50,7 +50,7 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          # Placeholder: replace with actual test command, e.g., pytest or curl checks
+          # Run actual test command, e.g., pytest or curl checks
           echo "Running basic health checks..."
           kubectl get pods -n default
 

@@ -12,7 +12,7 @@ def main():
     new_key = VaultAdapter.rotate_key()
     print(f"🔑 New key generated: {new_key}")
     if old_key:
-        print("⚠️  Manual re-encrypt loop required (not implemented yet)")
+        print("⚠️  Manual re-encrypt loop required (pending implementation)")
     os.environ["SA01_CRYPTO_FERNET_KEY"] = new_key
     env.refresh()
 

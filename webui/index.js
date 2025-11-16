@@ -311,7 +311,7 @@ sendButton.addEventListener("click", () => {
 });
 
 export function updateChatInput(text) {
-  console.log("updateChatInput called with:", text);
+  // Debug: updateChatInput called with:, text
 
   // Append text with proper spacing
   const currentValue = chatInput.value;
@@ -322,7 +322,7 @@ export function updateChatInput(text) {
   adjustTextareaHeight();
   chatInput.dispatchEvent(new Event("input"));
 
-  console.log("Updated chat input value:", chatInput.value);
+  // Debug: Updated chat input value:, chatInput.value
 }
 
 function updateUserTime() {
@@ -655,14 +655,12 @@ globalThis.killChat = async function (id) {
     return;
   }
 
-  console.log("Deleting chat with ID:", id);
+  // Debug: Deleting chat with ID:, id
 
   try {
     const chatsAD = Alpine.$data(chatsSection);
-    console.log(
-      "Current contexts before deletion:",
-      JSON.stringify(chatsAD.contexts.map((c) => ({ id: c.id, name: c.name })))
-    );
+    // Debug: Current contexts before deletion:
+    // JSON.stringify(chatsAD.contexts.map((c) => ({ id: c.id, name: c.name })))
 
     // switch to another context if deleting current
     switchFromContext(id);
@@ -673,10 +671,8 @@ globalThis.killChat = async function (id) {
     // Update the UI manually to ensure the correct chat is removed
     // Deep clone the contexts array to prevent reference issues
     const updatedContexts = chatsAD.contexts.filter((ctx) => ctx.id !== id);
-    console.log(
-      "Updated contexts after deletion:",
-      JSON.stringify(updatedContexts.map((c) => ({ id: c.id, name: c.name })))
-    );
+    // Debug: Updated contexts after deletion:
+    // JSON.stringify(updatedContexts.map((c) => ({ id: c.id, name: c.name })))
 
     // Force UI update by creating a new array
     chatsAD.contexts = [...updatedContexts];
@@ -873,12 +869,12 @@ globalThis.toggleDarkMode = function (isDark) {
     document.body.classList.remove("dark-mode");
     document.body.classList.add("light-mode");
   }
-  console.log("Dark mode:", isDark);
+  // Debug: Dark mode:, isDark
   localStorage.setItem("darkMode", isDark);
 };
 
 globalThis.toggleSpeech = function (isOn) {
-  console.log("Speech:", isOn);
+  // Debug: Speech:, isOn
   localStorage.setItem("speech", isOn);
   if (!isOn) speechStore.stopAudio();
 };
@@ -1089,7 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }, 200);
 
-      console.log('Alpine stores initialized successfully');
+      // Debug: Alpine stores initialized successfully
     } catch (e) {
       console.error("Failed to create Alpine stores:", e);
       // Retry initialization after delay

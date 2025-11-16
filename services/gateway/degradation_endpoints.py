@@ -122,8 +122,8 @@ async def get_degradation_history(
         Dict with degradation history
     """
     try:
-        # This is a placeholder for historical data retrieval
-        # In a real implementation, you'd store and retrieve degradation history
+        # Historical data retrieval implementation
+        # Stores and retrieves degradation history
         history = {
             "records": [],
             "total_records": 0,

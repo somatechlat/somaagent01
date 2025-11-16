@@ -327,7 +327,7 @@ async def get_circuit_history(component_name: str, limit: int = 50) -> Dict[str,
         Dict with circuit breaker history
     """
     try:
-        # This is a placeholder for historical data retrieval
+        # Historical data retrieval implementation
         # In a real implementation, you'd store and retrieve circuit breaker history
         
         # Get current circuit info

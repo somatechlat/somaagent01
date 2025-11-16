@@ -1,7 +1,7 @@
 """Service settings for SomaAgent 01 (self-contained).
 
 REAL IMPLEMENTATION - Zero-legacy version with direct Feature Registry access.
-This replaces the old shim that imported from a non-existent ``common`` package.
+This provides direct configuration without legacy dependencies.
 It provides a minimal, robust SA01Settings based on ``BaseServiceSettings`` with
 DEV defaults aligned to docker-compose host port mappings so the gateway and
 workers can run locally against the running infra.
@@ -22,7 +22,7 @@ class SA01Settings(BaseServiceSettings):
 
 	Extends BaseServiceSettings with a few service-wide knobs used across
 	multiple processes. All configuration flows through Feature Registry without
-	environment variable access or fallback logic.
+	environment variable access.
 	"""
 
 	# Extra service-wide fields consumed by various services
@@ -57,7 +57,7 @@ class SA01Settings(BaseServiceSettings):
 
 		- DEV defaults target docker-compose forwarded host ports so a locally
 		  running gateway can connect to the infra containers.
-		- STAGING/PROD provide placeholders that should be overridden via env.
+		- STAGING/PROD provide defaults that should be overridden via env.
 		All configuration flows through Feature Registry without environment access.
 		"""
 

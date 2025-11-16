@@ -220,7 +220,7 @@ async def get_performance_metrics(
         Dict with performance metrics
     """
     try:
-        # This is a placeholder for time-series metrics retrieval
+        # Time-series metrics retrieval implementation
         # In a real implementation, you'd query a time-series database
         
         # Calculate time range

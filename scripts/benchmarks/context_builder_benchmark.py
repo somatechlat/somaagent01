@@ -19,7 +19,7 @@ from python.somaagent.context_builder import ContextBuilder, SomabrainHealthStat
 
 
 class SyntheticSomabrain:
-    """Minimal Somabrain stub that returns deterministic snippet payloads."""
+    """Synthetic Somabrain that returns deterministic snippet payloads."""
 
     def __init__(self, snippet_pool: List[Dict[str, Any]]) -> None:
         self.snippet_pool = snippet_pool

@@ -82,7 +82,7 @@ const model = {
 
   // Setup drag and drop event handlers
   setupDragDropHandlers() {
-    console.log("Setting up drag and drop handlers...");
+
     let dragCounter = 0;
 
     // Prevent default drag behaviors
@@ -101,10 +101,10 @@ const model = {
     document.addEventListener(
       "dragenter",
       (e) => {
-        console.log("Drag enter detected");
+
         dragCounter++;
         if (dragCounter === 1) {
-          console.log("Showing drag drop overlay");
+
           this.showDragDropOverlay();
         }
       },

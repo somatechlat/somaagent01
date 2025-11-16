@@ -40,7 +40,7 @@ const settingsModalProxy = {
 
             // When switching to the scheduler tab, initialize Flatpickr components
             if (tabName === 'scheduler') {
-                console.log('Switching to scheduler tab, initializing Flatpickr');
+                // Debug: Switching to scheduler tab, initializing Flatpickr
                 const schedulerElement = document.querySelector('[x-data="schedulerSettings"]');
                 if (schedulerElement) {
                     const schedulerData = Alpine.$data(schedulerElement);
@@ -68,7 +68,7 @@ const settingsModalProxy = {
     },
 
     async openModal() {
-        console.log('Settings modal opening');
+        // Debug: Settings modal opening
         const modalEl = document.getElementById('settingsModal');
         const modalAD = modalEl ? Alpine.$data(modalEl) : null;
 
@@ -85,11 +85,13 @@ const settingsModalProxy = {
             if (!resp.ok) {
                 throw new Error(await resp.text());
             }
-            const set = { settings: await resp.json() };
+            const payload = await resp.json();
+            const sectionsPayload = payload?.sections || payload?.settings?.sections || [];
+            const configTitle = payload?.title || "Settings";
 
             // First load the settings data without setting the active tab
             const settings = {
-                "title": "Settings",
+                "title": configTitle,
                 "buttons": [
                     {
                         "id": "save",
@@ -103,7 +105,7 @@ const settingsModalProxy = {
                         "classes": "btn btn-cancel"
                     }
                 ],
-                "sections": set.settings.sections
+                "sections": sectionsPayload
             }
 
             // Update modal data
@@ -117,7 +119,7 @@ const settingsModalProxy = {
             setTimeout(() => {
                 // Get stored tab or default to 'agent'
                 const savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
-                console.log(`Setting initial tab to: ${savedTab}`);
+                // Debug: Setting initial tab to:, savedTab
 
                 // Directly set the active tab
                 if (modalAD) {
@@ -139,8 +141,8 @@ const settingsModalProxy = {
                     }
                     // Debug log
                     const schedulerTab = document.querySelector('.settings-tab[title="Task Scheduler"]');
-                    console.log(`Current active tab after direct set: ${modalAD.activeTab}`);
-                    console.log('Scheduler tab active after direct initialization?',
+                    // Debug: Current active tab after direct set:, modalAD.activeTab
+                    // Debug: Scheduler tab active after direct initialization?,
                         schedulerTab && schedulerTab.classList.contains('active'));
 
                     // Polling removed; just fetch if scheduler is active
@@ -210,8 +212,9 @@ const settingsModalProxy = {
                     throw new Error(await response.text());
                 }
                 const data = await response.json();
-                if (modalAD && Array.isArray(data?.sections)) {
-                    modalAD.settings.sections = data.sections;
+                const updatedSections = data?.sections || data?.settings?.sections || [];
+                if (modalAD && Array.isArray(updatedSections) && updatedSections.length > 0) {
+                    modalAD.settings.sections = updatedSections;
                 }
                 document.dispatchEvent(new CustomEvent('settings-updated', { detail: data }));
                 if (typeof window.toastFrontendSuccess === 'function') {

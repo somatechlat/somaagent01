@@ -93,12 +93,12 @@ Show task details for scheduler task with the given uuid.
 ~~~json
 {
     "thoughts": [
-        "I need details of task xxx-yyy-zzz",
+        "I need details of task abc-123-def",
     ],
     "headline": "Retrieving task details and configuration",
     "tool_name": "scheduler:show_task",
     "tool_args": {
-        "uuid": "xxx-yyy-zzz",
+        "uuid": "abc-123-def",
     }
 }
 ~~~
@@ -210,9 +210,9 @@ The adhoc type of tasks is being run manually by "scheduler:run_task" tool or by
     "headline": "Creating on-demand email task",
     "tool_name": "scheduler:create_adhoc_task",
     "tool_args": {
-        "name": "XXX",
+        "name": "EmailTask",
         "system_prompt": "You are a software developer",
-        "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: xxx@yyy.zzz",
+        "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: user@example.com",
         "attachments": [],
         "dedicated_context": false
     }
@@ -242,9 +242,9 @@ The planned type of tasks is being run by a fixed plan, a list of datetimes that
     "headline": "Creating planned task for specific datetime",
     "tool_name": "scheduler:create_planned_task",
     "tool_args": {
-        "name": "XXX",
+        "name": "EmailTask",
         "system_prompt": "You are a software developer",
-        "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: xxx@yyy.zzz",
+        "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: user@example.com",
         "attachments": [],
         "plan": ["2025-04-29T18:25:00"],
         "dedicated_context": false

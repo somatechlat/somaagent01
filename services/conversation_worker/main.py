@@ -293,6 +293,7 @@ class ConversationWorker:
         self._transient_memory: list[dict[str, Any]] = []  # buffer when SomaBrain is down
         # Start background health monitor (runs for the lifetime of the worker)
         self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())
+        self._last_degraded_reason: str | None = None
 
         # ``__init__`` ends here – subsequent methods are defined at the class level.
 
@@ -323,6 +324,29 @@ class ConversationWorker:
                 await self._flush_transient_memory()
             await asyncio.sleep(5)
 
+    def _enter_somabrain_degraded(self, reason: str, duration: float = 60.0) -> None:
+        """Mark SomaBrain as degraded/down and remember the reason."""
+        if not self._soma_brain_up:
+            # Already marked down; extend degradation window and record latest reason.
+            self._mark_somabrain_degraded(duration)
+            self._last_degraded_reason = reason
+            return
+        LOGGER.warning(
+            "Somabrain degraded – switching to degraded mode",
+            extra={"reason": reason},
+        )
+        self._soma_brain_up = False
+        SOMABRAIN_STATUS_GAUGE.set(0.0)
+        self._mark_somabrain_degraded(duration)
+        self._last_degraded_reason = reason
+
+    def _degraded_response_text(self, hint: str | None = None) -> str:
+        reason = hint or self._last_degraded_reason or "connectivity issues"
+        return (
+            "SomaBrain is currently unavailable, so I'm answering with the recent "
+            f"conversation context only (reason: {reason})."
+        )
+
     async def _flush_transient_memory(self) -> None:
         """Attempt to persist any buffered memory items now that SomaBrain is up."""
         if not self._transient_memory:
@@ -351,7 +375,7 @@ class ConversationWorker:
             return await self.soma.recall(*args, **kwargs)
         except Exception:
             LOGGER.debug("SomaBrain recall failed – entering degraded mode", exc_info=True)
-            self._soma_brain_up = False
+            self._enter_somabrain_degraded("recall_failure")
             return {}
 
     async def _safe_save_memory(self, payload: dict[str, Any]) -> None:
@@ -364,7 +388,7 @@ class ConversationWorker:
             await self.soma.save_memory(payload)
         except Exception:
             LOGGER.debug("SomaBrain save_memory failed – buffering payload", exc_info=True)
-            self._soma_brain_up = False
+            self._enter_somabrain_degraded("save_memory_failure")
             self._transient_memory.append(payload)
             SOMABRAIN_STATUS_GAUGE.set(0.0)
             SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
@@ -635,6 +659,7 @@ class ConversationWorker:
                 result = await self.soma.remember(payload)
             except Exception:
                 # best-effort: enqueue to mem outbox for retry
+                self._enter_somabrain_degraded("remember_failure")
                 try:
                     await self.mem_outbox.enqueue(
                         payload=payload,
@@ -831,6 +856,7 @@ class ConversationWorker:
             try:
                 result = await self.soma.remember(payload)
             except Exception:
+                self._enter_somabrain_degraded("remember_failure")
                 try:
                     await self.mem_outbox.enqueue(
                         payload=payload,
@@ -1744,31 +1770,48 @@ class ConversationWorker:
 
                 if allow_memory:
                     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
-                    result = await self.soma.remember(payload)
                     try:
-                        wal_event = {
-                            "type": "memory.write",
-                            "role": "user",
-                            "session_id": session_id,
-                            "persona_id": event.get("persona_id"),
-                            "tenant": tenant,
-                            "payload": payload,
-                            "result": {
-                                "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
-                                "trace_id": (result or {}).get("trace_id"),
-                                "request_id": (result or {}).get("request_id"),
-                            },
-                            "timestamp": time.time(),
-                        }
-                        await self.publisher.publish(
-                            wal_topic,
-                            wal_event,
-                            dedupe_key=str(payload.get("id")),
-                            session_id=session_id,
-                            tenant=tenant,
-                        )
+                        result = await self.soma.remember(payload)
                     except Exception:
-                        LOGGER.debug("Failed to publish memory WAL (user)", exc_info=True)
+                        self._enter_somabrain_degraded("remember_failure")
+                        try:
+                            await self.mem_outbox.enqueue(
+                                payload=payload,
+                                tenant=tenant,
+                                session_id=session_id,
+                                persona_id=event.get("persona_id"),
+                                idempotency_key=payload.get("idempotency_key"),
+                                dedupe_key=str(payload.get("id")),
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to enqueue memory write for retry (user)", exc_info=True)
+                        result = None
+                        allow_memory = False
+                    if allow_memory:
+                        try:
+                            wal_event = {
+                                "type": "memory.write",
+                                "role": "user",
+                                "session_id": session_id,
+                                "persona_id": event.get("persona_id"),
+                                "tenant": tenant,
+                                "payload": payload,
+                                "result": {
+                                    "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                                    "trace_id": (result or {}).get("trace_id"),
+                                    "request_id": (result or {}).get("request_id"),
+                                },
+                                "timestamp": time.time(),
+                            }
+                            await self.publisher.publish(
+                                wal_topic,
+                                wal_event,
+                                dedupe_key=str(payload.get("id")),
+                                session_id=session_id,
+                                tenant=tenant,
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to publish memory WAL (user)", exc_info=True)
 
                     try:
                         attach_list = event.get("attachments") or []
@@ -1941,16 +1984,21 @@ class ConversationWorker:
             )
             session_metadata["somabrain_reason"] = (
                 built_context.debug.get("somabrain_reason")
+                or self._last_degraded_reason
                 or session_metadata["somabrain_state"]
             )
         except Exception:
             LOGGER.exception("Context builder failed; falling back to legacy prompt assembly")
+            self._enter_somabrain_degraded("context_builder_failure")
             messages = self._legacy_prompt_messages(history, event, analysis_prompt)
             # Initialize session_metadata if not already defined
             if 'session_metadata' not in locals():
                 session_metadata = {}
             session_metadata.setdefault("somabrain_state", self._somabrain_health_state().value)
-            session_metadata.setdefault("somabrain_reason", session_metadata["somabrain_state"])
+            session_metadata.setdefault(
+                "somabrain_reason",
+                self._last_degraded_reason or session_metadata["somabrain_state"],
+            )
 
             model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
             slm_kwargs: dict[str, Any] = {}
@@ -2294,6 +2342,14 @@ class ConversationWorker:
                     "metadata": decision.metadata,
                 }
 
+            if not response_text.strip():
+                response_text = self._degraded_response_text()
+
+            # Refresh somabrain markers right before publishing
+            if self._somabrain_health_state() != SomabrainHealthState.NORMAL:
+                session_metadata["somabrain_state"] = self._somabrain_health_state().value
+                session_metadata["somabrain_reason"] = self._last_degraded_reason or session_metadata["somabrain_state"]
+
             response_metadata = _compose_outbound_metadata(
                 session_metadata,
                 source=response_source,
@@ -2372,7 +2428,23 @@ class ConversationWorker:
                     LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
                 if allow_memory:
                     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
-                    result = await self.soma.remember(payload)
+                    try:
+                        result = await self.soma.remember(payload)
+                    except Exception:
+                        self._enter_somabrain_degraded("remember_failure")
+                        try:
+                            await self.mem_outbox.enqueue(
+                                payload=payload,
+                                tenant=tenant,
+                                session_id=session_id,
+                                persona_id=event.get("persona_id"),
+                                idempotency_key=payload.get("idempotency_key"),
+                                dedupe_key=str(payload.get("id")),
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
+                        allow_memory = False
+                        result = None
                     try:
                         wal_event = {
                             "type": "memory.write",
@@ -2552,7 +2624,11 @@ class ConversationWorker:
             }
             
             # Store in SomaBrain
-            memory_result = await self.soma.remember(tool_memory)
+            try:
+                memory_result = await self.soma.remember(tool_memory)
+            except Exception:
+                self._enter_somabrain_degraded("remember_failure")
+                return False
             coordinate = memory_result.get("coordinate")
             
             if coordinate:

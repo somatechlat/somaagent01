@@ -194,7 +194,6 @@ function createModalElement(name) {
     throw new Error(`Failed to create modal: ${error.message}`);
   }
 }
-}
 
 // Enhanced modal opening with proper lifecycle management and error handling
 export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, options = {}) {
