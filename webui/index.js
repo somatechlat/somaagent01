@@ -104,6 +104,57 @@ function describeSomabrainState(state, detail = {}) {
   return { state: normalized, tooltip, banner };
 }
 
+const initialSomabrainState = describeSomabrainState("unknown");
+const defaultSomabrainStore = createAlpineStore('somabrain', {
+  state: initialSomabrainState.state,
+  tooltip: initialSomabrainState.tooltip,
+  banner: initialSomabrainState.banner,
+  lastUpdated: Date.now(),
+  history: []
+});
+pendingSomabrainState = null;
+
+const defaultMonitoringStore = createAlpineStore('monitoring', {
+  healthStatus: 'unknown',
+  degradationLevel: 'none',
+  circuitBreakerStatus: 'unknown',
+  systemMetrics: {
+    cpu: 0,
+    memory: 0,
+    disk: 0,
+    lastUpdate: Date.now(),
+  },
+  lastUpdated: Date.now(),
+  healthSummary: {
+    healthy: 0,
+    degraded: 0,
+    critical: 0,
+    lastCheck: Date.now(),
+    issues: [],
+  },
+  degradationAnalysis: {
+    level: 'NONE',
+    affectedComponents: [],
+    recommendations: [],
+    lastAnalysis: Date.now(),
+  },
+  circuitAnalysis: {
+    open: 0,
+    halfOpen: 0,
+    closed: 0,
+    lastCheck: Date.now(),
+  },
+  resourceAnalysis: {
+    cpuUtilization: 0,
+    memoryUtilization: 0,
+    diskUtilization: 0,
+    isUnderStress: false,
+    lastCheck: Date.now(),
+  },
+  monitoringActive: false,
+  lastError: null,
+});
+
 function pushSomabrainState(state, detail = {}) {
   const desc = describeSomabrainState(String(state || "unknown").toLowerCase(), detail);
   const store = globalThis.Alpine?.store && globalThis.Alpine.store("somabrain");
@@ -1017,73 +1068,6 @@ document.addEventListener("DOMContentLoaded", () => {
         connBridge.tooltip = connectionStatus ? 'Online' : 'Offline';
         connBridge.lastUpdate = Date.now();
       }
-
-      // SomaBrain state store with proper initialization
-      const initialBrain = pendingSomabrainState || describeSomabrainState("unknown");
-      const somabrainStore = createAlpineStore('somabrain', {
-        state: initialBrain.state,
-        tooltip: initialBrain.tooltip,
-        banner: initialBrain.banner,
-        lastUpdated: Date.now(),
-        history: []
-      });
-      
-      // Clear pending state after successful initialization
-      pendingSomabrainState = null;
-      
-      // Create monitoring store for degradation monitoring with enhanced structure
-      const monitoringStore = createAlpineStore('monitoring', {
-        healthStatus: 'unknown',
-        degradationLevel: 'none',
-        circuitBreakerStatus: 'unknown',
-        systemMetrics: {
-          cpu: 0,
-          memory: 0,
-          disk: 0,
-          lastUpdate: Date.now()
-        },
-        lastUpdated: Date.now(),
-        healthSummary: {
-          healthy: 0,
-          degraded: 0,
-          critical: 0,
-          lastCheck: Date.now()
-        },
-        degradationAnalysis: {
-          level: 'NONE',
-          affectedComponents: [],
-          recommendations: [],
-          lastAnalysis: Date.now()
-        },
-        circuitAnalysis: {
-          open: 0,
-          halfOpen: 0,
-          closed: 0,
-          lastCheck: Date.now()
-        },
-        resourceAnalysis: {
-          cpuUtilization: 0,
-          memoryUtilization: 0,
-          diskUtilization: 0,
-          isUnderStress: false,
-          lastCheck: Date.now()
-        },
-        monitoringActive: false,
-        lastError: null
-      });
-
-      // Initialize monitoring after a short delay to ensure Alpine is ready
-      setTimeout(() => {
-        try {
-          if (monitoringStore && monitoringStore.startMonitoring) {
-            monitoringStore.startMonitoring();
-            monitoringStore.monitoringActive = true;
-          }
-        } catch (e) {
-          console.warn('Failed to start monitoring:', e);
-          monitoringStore.lastError = e.message;
-        }
-      }, 200);
 
       // Debug: Alpine stores initialized successfully
     } catch (e) {

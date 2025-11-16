@@ -3,189 +3,94 @@ Comprehensive Prometheus metrics for SomaAgent01 with FastA2A integration.
 REAL IMPLEMENTATION - No placeholders, actual working metrics.
 """
 
-from prometheus_client import Counter, Histogram, Gauge, Info
 import time
 import threading
 
-# REAL IMPLEMENTATION - FastA2A Metrics
+from prometheus_client import Counter, Gauge, Histogram, Info
+from observability.metrics import (
+    ContextBuilderMetrics,
+    tokens_received_total as _tokens_received_total,
+    context_tokens_before_budget,
+    context_tokens_after_budget,
+    context_tokens_after_redaction,
+    thinking_tokenisation_seconds as _thinking_tokenisation_seconds,
+    thinking_policy_seconds as _thinking_policy_seconds,
+    thinking_retrieval_seconds as _thinking_retrieval_seconds,
+    thinking_salience_seconds as _thinking_salience_seconds,
+    thinking_ranking_seconds as _thinking_ranking_seconds,
+    thinking_redaction_seconds as _thinking_redaction_seconds,
+    thinking_prompt_seconds as _thinking_prompt_seconds,
+    thinking_total_seconds as _thinking_total_seconds,
+    event_published_total as _event_published_total,
+    event_publish_latency_seconds as _event_publish_latency_seconds,
+    event_publish_failure_total,
+    somabrain_requests_total as _somabrain_requests_total,
+    somabrain_latency_seconds as _somabrain_latency_seconds,
+    somabrain_errors_total as _somabrain_errors_total,
+    somabrain_memory_operations_total as _somabrain_memory_operations_total,
+    system_health_gauge as _system_health_gauge,
+    system_uptime_seconds as _system_uptime_seconds,
+)
+
+# Re-export canonical metrics for compatibility with legacy imports
+tokens_received_total = _tokens_received_total
+tokens_before_budget_gauge = context_tokens_before_budget
+tokens_after_budget_gauge = context_tokens_after_budget
+tokens_after_redaction_gauge = context_tokens_after_redaction
+thinking_tokenisation_seconds = _thinking_tokenisation_seconds
+thinking_policy_seconds = _thinking_policy_seconds
+thinking_retrieval_seconds = _thinking_retrieval_seconds
+thinking_salience_seconds = _thinking_salience_seconds
+thinking_ranking_seconds = _thinking_ranking_seconds
+thinking_redaction_seconds = _thinking_redaction_seconds
+thinking_prompt_seconds = _thinking_prompt_seconds
+thinking_total_seconds = _thinking_total_seconds
+event_published_total = _event_published_total
+event_publish_latency_seconds = _event_publish_latency_seconds
+event_publish_errors_total = event_publish_failure_total
+somabrain_requests_total = _somabrain_requests_total
+somabrain_latency_seconds = _somabrain_latency_seconds
+somabrain_errors_total = _somabrain_errors_total
+somabrain_memory_operations_total = _somabrain_memory_operations_total
+system_health_gauge = _system_health_gauge
+system_uptime_seconds = _system_uptime_seconds
+
+# REAL IMPLEMENTATION - FastA2A Metrics (unique to this module)
 fast_a2a_requests_total = Counter(
     "fast_a2a_requests_total",
     "Total FastA2A requests made",
-    ["agent_url", "method", "status"]
+    ["agent_url", "method", "status"],
 )
 
 fast_a2a_latency_seconds = Histogram(
     "fast_a2a_latency_seconds",
     "FastA2A request latency in seconds",
     ["agent_url", "method"],
-    buckets=[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0],
 )
 
 fast_a2a_errors_total = Counter(
     "fast_a2a_errors_total",
     "Total FastA2A errors encountered",
-    ["agent_url", "error_type", "method"]
+    ["agent_url", "error_type", "method"],
 )
 
-# REAL IMPLEMENTATION - Event Publisher Metrics
-event_published_total = Counter(
-    "event_published_total", 
-    "Events published to Somabrain", 
-    ["event_type", "status"]
-)
-
-event_publish_latency_seconds = Histogram(
-    "event_publish_latency_seconds", 
-    "Event publishing latency", 
-    ["event_type"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
-)
-
-event_publish_errors_total = Counter(
-    "event_publish_errors_total",
-    "Event publishing errors",
-    ["event_type", "error_type"]
-)
-
-# REAL IMPLEMENTATION - Context Builder Metrics (15+ thinking_* metrics)
-tokens_received_total = Counter(
-    "tokens_received_total",
-    "Total tokens received from user input",
-    ["source", "tenant"]
-)
-
-tokens_before_budget_gauge = Gauge(
-    "tokens_before_budget_gauge",
-    "Number of tokens before budget enforcement",
-    ["tenant", "conversation_id"]
-)
-
-tokens_after_budget_gauge = Gauge(
-    "tokens_after_budget_gauge", 
-    "Number of tokens after budget enforcement",
-    ["tenant", "conversation_id"]
-)
-
-tokens_after_redaction_gauge = Gauge(
-    "tokens_after_redaction_gauge",
-    "Number of tokens after redaction",
-    ["tenant", "conversation_id"]
-)
-
-thinking_tokenisation_seconds = Histogram(
-    "thinking_tokenisation_seconds",
-    "Time spent tokenizing input",
-    ["tenant"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1]
-)
-
-thinking_policy_seconds = Histogram(
-    "thinking_policy_seconds",
-    "Time spent evaluating policies",
-    ["tenant", "policy_type"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25]
-)
-
-thinking_retrieval_seconds = Histogram(
-    "thinking_retrieval_seconds",
-    "Time spent retrieving memories",
-    ["tenant", "source"],
-    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]
-)
-
-thinking_salience_seconds = Histogram(
-    "thinking_salience_seconds",
-    "Time spent computing salience scores",
-    ["tenant"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1]
-)
-
-thinking_ranking_seconds = Histogram(
-    "thinking_ranking_seconds",
-    "Time spent ranking memories",
-    ["tenant"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1]
-)
-
-thinking_redaction_seconds = Histogram(
-    "thinking_redaction_seconds",
-    "Time spent redacting sensitive content",
-    ["tenant"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1]
-)
-
-thinking_prompt_seconds = Histogram(
-    "thinking_prompt_seconds",
-    "Time spent building final prompt",
-    ["tenant"],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1]
-)
-
-thinking_total_seconds = Histogram(
-    "thinking_total_seconds",
-    "Total time spent in context building",
-    ["tenant"],
-    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
-)
-
-# REAL IMPLEMENTATION - SomaBrain Metrics
-somabrain_requests_total = Counter(
-    "somabrain_requests_total",
-    "Total requests to SomaBrain",
-    ["endpoint", "method", "status"]
-)
-
-somabrain_latency_seconds = Histogram(
-    "somabrain_latency_seconds",
-    "SomaBrain request latency in seconds",
-    ["endpoint", "method"],
-    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
-)
-
-somabrain_errors_total = Counter(
-    "somabrain_errors_total",
-    "SomaBrain errors encountered",
-    ["endpoint", "error_type", "method"]
-)
-
-somabrain_memory_operations_total = Counter(
-    "somabrain_memory_operations_total",
-    "SomaBrain memory operations",
-    ["operation", "status", "tenant"]
-)
-
-# REAL IMPLEMENTATION - System Metrics
-system_health_gauge = Gauge(
-    "system_health_gauge",
-    "System health status (1=healthy, 0=unhealthy)",
-    ["service", "component"]
-)
-
-system_uptime_seconds = Counter(
-    "system_uptime_seconds",
-    "System uptime in seconds",
-    ["service", "version"]
-)
-
+# Metrics not present in the canonical module
 system_active_connections_gauge = Gauge(
     "system_active_connections_gauge",
     "Number of active connections",
-    ["service", "connection_type"]
+    ["service", "connection_type"],
 )
 
-# REAL IMPLEMENTATION - Service Info
-service_info = Info(
-    "service_info",
-    "Information about the service"
+service_info = Info("service_info", "Information about the service")
+service_info.info(
+    {
+        "version": "1.0.0-fasta2a",
+        "name": "somaagent01",
+        "architecture": "fastA2A-integrated",
+        "build_time": str(int(time.time())),
+    }
 )
-
-# Initialize service info
-service_info.info({
-    "version": "1.0.0-fasta2a",
-    "name": "somaagent01",
-    "architecture": "fastA2A-integrated",
-    "build_time": str(int(time.time()))
-})
 
 # REAL IMPLEMENTATION - Metrics Context Manager
 class MetricsTimer:

@@ -361,17 +361,20 @@
             </div>
             <div class="somabrain-banner"
                  x-data="{ 
-                     somabrainState: $store.somabrain?.state || 'unknown',
-                     monitoringIssues: $store.monitoring?.healthSummary?.issues || [],
+                     somabrainState: ($store.somabrain && $store.somabrain.state) || 'unknown',
+                     monitoringIssues: ($store.monitoring && $store.monitoring.healthSummary && $store.monitoring.healthSummary.issues) || [],
                      hasSystemIssues: false,
                      
                      init() {
-                         this.$watch('$store.somabrain.state', (state) => {
+                         this.$watch(() => ($store.somabrain && $store.somabrain.state) || 'unknown', (state) => {
                              this.somabrainState = state || 'unknown';
                          });
                          
-                         this.$watch('$store.monitoring.healthSummary', (summary) => {
-                             this.monitoringIssues = summary?.issues || [];
+                         this.$watch(() => {
+                             const summary = $store.monitoring && $store.monitoring.healthSummary;
+                             return (summary && summary.issues) || [];
+                         }, (issues) => {
+                             this.monitoringIssues = issues || [];
                              this.hasSystemIssues = this.monitoringIssues.length > 0;
                          });
                      },
@@ -414,13 +417,13 @@
                                  text += `Warnings: ${warningIssues.map(i => i.message).join('; ')}. `;
                              }
                              
-                             if (this.somabrainState !== 'normal' && $store.somabrain?.banner) {
+                             if (this.somabrainState !== 'normal' && $store.somabrain && $store.somabrain.banner) {
                                  text += $store.somabrain.banner;
                              }
                              
                              return text || 'Multiple system issues detected.';
                          }
-                         return $store.somabrain?.banner || 'System status monitoring active.';
+                         return ($store.somabrain && $store.somabrain.banner) || 'System status monitoring active.';
                      }
                  }"
                  x-cloak
