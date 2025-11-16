@@ -123,19 +123,10 @@ except ImportError:
         "PyJWT is required for production JWT authentication. Install with: pip install PyJWT"
     )
 
-# Import degradation, circuit breaker, and metrics endpoints
-degradation_router = None
-circuit_router = None
-metrics_router = None
-
-try:
-    from services.gateway.degradation_endpoints import router as degradation_router
-    from services.gateway.circuit_endpoints import router as circuit_router
-    from services.gateway.metrics_endpoints import router as metrics_router
-except ImportError as e:
-    # Log the import error but don't fail - these endpoints are optional for core functionality
-    import logging
-    logging.getLogger(__name__).warning(f"Failed to import monitoring endpoints: {e}")
+# Import degradation, circuit breaker, and metrics endpoints - required for production
+from services.gateway.degradation_endpoints import router as degradation_router
+from services.gateway.circuit_endpoints import router as circuit_router
+from services.gateway.metrics_endpoints import router as metrics_router
 
 # LOGGER configuration (no additional imports needed here)
 setup_logging()

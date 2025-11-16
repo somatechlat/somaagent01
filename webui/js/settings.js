@@ -1,3 +1,15 @@
+const safeToast = (text, error) => {
+  if (typeof window !== 'undefined' && typeof window.toastFetchError === 'function') {
+    window.toastFetchError(text, error);
+  } else {
+    console.error(text, error);
+  }
+};
+
+if (typeof window !== 'undefined' && typeof window.toastFetchError !== 'function') {
+  window.toastFetchError = safeToast;
+}
+
 const settingsModalProxy = {
     isOpen: false,
     settings: {},
@@ -139,14 +151,11 @@ const settingsModalProxy = {
                     if (activeTabElement) {
                         activeTabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                     }
-                    // Debug log
                     const schedulerTab = document.querySelector('.settings-tab[title="Task Scheduler"]');
-                    // Debug: Current active tab after direct set:, modalAD.activeTab
-                    // Debug: Scheduler tab active after direct initialization?,
-                        schedulerTab && schedulerTab.classList.contains('active'));
+                    const schedulerTabActive = !!(schedulerTab && schedulerTab.classList.contains('active'));
 
                     // Polling removed; just fetch if scheduler is active
-                    if (modalAD.activeTab === 'scheduler') {
+                    if (modalAD.activeTab === 'scheduler' && schedulerTabActive) {
                         const schedulerElement = document.querySelector('[x-data="schedulerSettings"]');
                         const schedulerData = schedulerElement && Alpine.$data(schedulerElement);
                         if (schedulerData && typeof schedulerData.fetchTasks === 'function') {
@@ -193,7 +202,7 @@ const settingsModalProxy = {
             });
 
         } catch (e) {
-            window.toastFetchError("Error getting settings", e)
+            safeToast("Error getting settings", e);
         }
     },
 

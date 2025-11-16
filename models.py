@@ -52,12 +52,13 @@ from langchain_core.messages import (
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
 
-# sentence-transformers is optional for developer-mode; attempt import and
-# fall back to None if not present.
+# sentence-transformers is required for embedding functionality
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
-except Exception:
-    SentenceTransformer = None
+except ImportError:
+    raise ImportError(
+        "sentence-transformers is required for embedding functionality. Install with: pip install sentence-transformers"
+    )
 
 import time
 import uuid

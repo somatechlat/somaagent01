@@ -248,17 +248,17 @@ export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, 
         .then((doc) => {
           try {
             // Set the title from the document with fallback
-            modal.title.innerHTML = doc?.title || modalPath;
+            modal.title.innerHTML = (doc && doc.title) || modalPath;
             
             // Apply CSS classes from document if available
-            if (doc?.html?.classList) {
+            if (doc && doc.html && doc.html.classList) {
               const inner = modal.element.querySelector(".modal-inner");
               if (inner) {
                 inner.classList.add(...Array.from(doc.html.classList));
               }
             }
             
-            if (doc?.body?.classList) {
+            if (doc && doc.body && doc.body.classList) {
               modal.body.classList.add(...Array.from(doc.body.classList));
             }
 
@@ -355,18 +355,22 @@ export function closeModal(modalName = null) {
 
     // Remove modal-specific styles and scripts with proper cleanup
     try {
-      modal.styles?.forEach((styleId) => {
-        const styleElement = document.querySelector(`[data-modal-style="${styleId}"]`);
-        if (styleElement) {
-          styleElement.remove();
-        }
-      });
-      modal.scripts?.forEach((scriptId) => {
-        const scriptElement = document.querySelector(`[data-modal-script="${scriptId}"]`);
-        if (scriptElement) {
-          scriptElement.remove();
-        }
-      });
+      if (Array.isArray(modal.styles)) {
+        modal.styles.forEach((styleId) => {
+          const styleElement = document.querySelector(`[data-modal-style="${styleId}"]`);
+          if (styleElement) {
+            styleElement.remove();
+          }
+        });
+      }
+      if (Array.isArray(modal.scripts)) {
+        modal.scripts.forEach((scriptId) => {
+          const scriptElement = document.querySelector(`[data-modal-script="${scriptId}"]`);
+          if (scriptElement) {
+            scriptElement.remove();
+          }
+        });
+      }
     } catch (cleanupError) {
       console.warn('Error cleaning up modal resources:', cleanupError);
     }

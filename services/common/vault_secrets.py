@@ -13,13 +13,12 @@ LOGGER = logging.getLogger(__name__)
 try:
     import hvac  # type: ignore
 except ImportError:
-    hvac = None
-    LOGGER.warning("hvac library not available - Vault integration disabled")  # type: ignore
+    raise ImportError(
+        "hvac library is required for Vault integration. Install with: pip install hvac"
+    )
 
 
 def _ensure_hvac() -> Any:
-    if hvac is None:
-        raise RuntimeError("hvac library is not installed; cannot load secrets from Vault")
     return hvac
 
 

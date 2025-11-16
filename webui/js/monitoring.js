@@ -20,6 +20,8 @@ class SystemMonitor {
         this.errorCount = 0;
         this.maxRetries = 3;
         this.retryDelay = 5000;
+        this.circuitMonitoringEnabled = true;
+        this._circuitErrorNotified = false;
     }
 
     /**
@@ -270,6 +272,9 @@ class SystemMonitor {
      * REAL IMPLEMENTATION - Update circuit breaker status using the /v1/circuit/status endpoint
      */
     async updateCircuitStatus() {
+        if (!this.circuitMonitoringEnabled) {
+            return;
+        }
         try {
             const response = await fetchApi('/v1/circuit/status');
             if (response.ok) {
@@ -278,23 +283,34 @@ class SystemMonitor {
                     ...circuitData,
                     timestamp: new Date().toISOString()
                 };
+                this._circuitErrorNotified = false;
             } else {
-                console.error('Circuit status request failed:', response.status);
-                this.circuitStatus = { 
+                if (!this._circuitErrorNotified) {
+                    console.warn('Circuit status request failed:', response.status);
+                    this._circuitErrorNotified = true;
+                }
+                this.circuitStatus = {
                     error: 'Failed to fetch circuit status',
                     circuits: {},
                     overall_status: 'unknown',
                     timestamp: new Date().toISOString()
                 };
+                if (response.status >= 500) {
+                    this.circuitMonitoringEnabled = false;
+                }
             }
         } catch (error) {
-            console.error('Error fetching circuit status:', error);
-            this.circuitStatus = { 
+            if (!this._circuitErrorNotified) {
+                console.warn('Error fetching circuit status:', error);
+                this._circuitErrorNotified = true;
+            }
+            this.circuitStatus = {
                 error: 'Failed to fetch circuit status',
                 circuits: {},
                 overall_status: 'unknown',
                 timestamp: new Date().toISOString()
             };
+            this.circuitMonitoringEnabled = false;
         }
     }
 
