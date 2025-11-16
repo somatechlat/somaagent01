@@ -24,16 +24,10 @@ from python.observability.metrics import (
     set_health_status
 )
 from python.observability.event_publisher import publish_event
+from python.tasks.config import create_redis_client
 
 # REAL IMPLEMENTATION - Redis connection
-redis_client = Redis.from_url(
-    url="redis://localhost:6379/0",  # Real configuration
-    decode_responses=True,
-    socket_connect_timeout=5,
-    socket_timeout=5,
-    retry_on_timeout=True,
-    health_check_interval=30
-)
+redis_client: Redis = create_redis_client()
 
 # REAL IMPLEMENTATION - Task base class with metrics
 class BaseTask(Task):

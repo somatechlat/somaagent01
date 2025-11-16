@@ -67,7 +67,6 @@ jobs:
       kafka:
         image: confluentinc/cp-kafka:latest
         env:
-          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
           KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
         ports:

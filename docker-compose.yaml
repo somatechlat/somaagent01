@@ -205,6 +205,7 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *agent-env
+      DISABLE_CONVERSATION_POLICY: "true"
       CONVERSATION_METRICS_PORT: "9410"
     command:
       - python3
@@ -436,3 +437,8 @@ volumes:
   redis_data:
   postgres_data:
   flower_data:
+  # -----------------------------------------------------------------
+  # Production & Monitoring Volumes (added for prod profile)
+  # -----------------------------------------------------------------
+  prometheus-data:
+  grafana-data:

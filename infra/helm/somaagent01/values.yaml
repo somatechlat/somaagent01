@@ -178,12 +178,6 @@ kafka:
     enabled: true
     size: 100Gi
     storageClass: "fast-ssd"
-  zookeeper:
-    replicaCount: 3
-    persistence:
-      enabled: true
-      size: 10Gi
-      storageClass: "fast-ssd"
   metrics:
     kafka:
       enabled: true
