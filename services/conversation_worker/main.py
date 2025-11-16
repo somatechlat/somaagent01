@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List
 import json
+import asyncpg
 
 from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
@@ -1589,7 +1590,7 @@ class ConversationWorker:
             tenant = "default"
 
         async def _process() -> None:
-            nonlocal path, result_label
+            nonlocal path, result_label, tenant
 
             if not session_id:
                 LOGGER.warning("Received event without session_id", extra={"event": event})
@@ -1697,7 +1698,13 @@ class ConversationWorker:
                 record_metrics("policy_denied", "policy")
                 return
 
-            await self.store.append_event(session_id, {"type": "user", **event})
+            try:
+                await self.store.append_event(session_id, {"type": "user", **event})
+            except asyncpg.exceptions.UniqueViolationError:
+                LOGGER.debug(
+                    "Session event already persisted; skipping duplicate append",
+                    extra={"session_id": session_id, "event_id": event.get("event_id")},
+                )
             # Save user message to SomaBrain as a memory (non-blocking semantics with error shielding)
             try:
                 payload = {

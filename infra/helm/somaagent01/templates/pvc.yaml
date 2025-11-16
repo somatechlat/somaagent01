@@ -53,25 +53,6 @@ spec:
     requests:
       storage: {{ .Values.kafka.persistence.size }}
 {{- end }}
----
-# REAL IMPLEMENTATION - Zookeeper PVC
-{{- if .Values.kafka.enabled }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "somaagent01.kafka.fullname" . }}-zookeeper-data
-  labels:
-    {{- include "somaagent01.labels" . | nindent 4 }}
-    app.kubernetes.io/component: zookeeper
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: {{ .Values.kafka.zookeeper.persistence.storageClass | default "fast-ssd" }}
-  resources:
-    requests:
-      storage: {{ .Values.kafka.zookeeper.persistence.size }}
-{{- end }}
----
 # REAL IMPLEMENTATION - PostgreSQL PVC
 {{- if .Values.postgresql.enabled }}
 apiVersion: v1

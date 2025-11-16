@@ -9,19 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any
 import time
-import uuid
-from celery.result import AsyncResult
 
-from python.tasks.a2a_chat_task import a2a_chat_task, get_task_result, get_conversation_history
 from python.observability.metrics import (
-    fast_a2a_requests_total,
     fast_a2a_latency_seconds,
-    fast_a2a_errors_total,
     system_health_gauge,
+    fast_a2a_requests_total,
+    fast_a2a_errors_total,
     increment_counter,
-    set_health_status
 )
-from python.observability.event_publisher import publish_event
+from python.tasks.orchestrator import (
+    enqueue_chat_request,
+    fetch_task_status,
+    fetch_conversation_history,
+    celery_health_status,
+    ChatQueueError,
+)
 
 # REAL IMPLEMENTATION - FastAPI app configuration
 app = FastAPI(
@@ -110,66 +112,27 @@ async def chat_endpoint(
     REAL IMPLEMENTATION - FastA2A request endpoint.
     Queues a chat task for asynchronous processing.
     """
-    start_time = time.time()
-    
     try:
-        # REAL IMPLEMENTATION - Generate session ID if not provided
-        session_id = request.session_id or str(uuid.uuid4())
-        
-        # REAL IMPLEMENTATION - Enqueue Celery task
-        task = a2a_chat_task.delay(
+        queue_result = await enqueue_chat_request(
             agent_url=request.agent_url,
             message=request.message,
             attachments=request.attachments,
             reset=request.reset,
-            session_id=session_id,
-            metadata=request.metadata
+            session_id=request.session_id,
+            metadata=request.metadata,
         )
-        
-        # REAL IMPLEMENTATION - Track successful request
-        increment_counter(fast_a2a_requests_total, {
-            "agent_url": request.agent_url,
-            "method": "chat_endpoint",
-            "status": "queued"
-        })
-        
-        # REAL IMPLEMENTATION - Publish event
-        await publish_event(
-            event_type="fast_a2a_chat_queued",
-            data={
-                "task_id": task.id,
-                "agent_url": request.agent_url,
-                "session_id": session_id,
-                "message_length": len(request.message),
-                "has_attachments": bool(request.attachments),
-                "reset": request.reset
-            },
-            metadata=request.metadata
-        )
-        
-        set_health_status("fastapi", "chat_endpoint", True)
-        
+
         return ChatResponse(
-            task_id=task.id,
+            task_id=queue_result.task_id,
             status="queued",
             message="FastA2A request accepted and queued for processing",
-            session_id=session_id
+            session_id=queue_result.session_id,
         )
-        
-    except Exception as e:
-        # REAL IMPLEMENTATION - Track errors
-        increment_counter(fast_a2a_errors_total, {
-            "agent_url": request.agent_url,
-            "error_type": type(e).__name__,
-            "method": "chat_endpoint"
-        })
-        
-        set_health_status("fastapi", "chat_endpoint", False)
-        
+    except ChatQueueError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to queue FastA2A request: {str(e)}"
-        )
+            detail=f"Failed to queue FastA2A request: {str(exc)}",
+        ) from exc
 
 @router.get("/chat/status/{task_id}", response_model=TaskStatusResponse)
 async def chat_status_endpoint(task_id: str, timing: float = Depends(log_request_time)):
@@ -179,7 +142,7 @@ async def chat_status_endpoint(task_id: str, timing: float = Depends(log_request
     """
     try:
         # REAL IMPLEMENTATION - Get task result from Redis
-        task_result = get_task_result(task_id)
+        task_result = fetch_task_status(task_id)
         
         if task_result.get("status") == "not_found":
             raise HTTPException(
@@ -237,7 +200,7 @@ async def chat_history_endpoint(
     """
     try:
         # REAL IMPLEMENTATION - Get conversation from Redis
-        messages = get_conversation_history(session_id, limit)
+        messages = fetch_conversation_history(session_id, limit)
         
         # REAL IMPLEMENTATION - Track history request
         increment_counter(fast_a2a_requests_total, {
@@ -272,43 +235,41 @@ async def health_endpoint():
     Returns the health status of the FastAPI service and dependencies.
     """
     try:
-        from python.tasks.a2a_chat_task import check_celery_health
-        
         # REAL IMPLEMENTATION - Check all services
         services = {
             "fastapi": {"status": "healthy", "version": "1.0.0-fasta2a"},
-            "celery": check_celery_health(),
-            "redis": {"status": "healthy", "connected": True}
+            "celery": celery_health_status(),
+            "redis": {"status": "healthy", "connected": True},
         }
-        
+
         # Determine overall status
         all_healthy = all(
-            service.get("status") == "healthy" 
-            for service in services.values() 
+            service.get("status") == "healthy"
+            for service in services.values()
             if isinstance(service, dict)
         )
-        
+
         overall_status = "healthy" if all_healthy else "degraded"
-        
+
         # REAL IMPLEMENTATION - Update health gauge
         system_health_gauge.labels(service="fastapi", component="api").set(1 if all_healthy else 0)
-        
+
         return HealthResponse(
             status=overall_status,
             timestamp=time.time(),
             services=services,
-            version="1.0.0-fasta2a"
+            version="1.0.0-fasta2a",
         )
-        
+
     except Exception as e:
         # REAL IMPLEMENTATION - Track health check failure
         system_health_gauge.labels(service="fastapi", component="api").set(0)
-        
+
         return HealthResponse(
             status="unhealthy",
             timestamp=time.time(),
             services={"error": str(e)},
-            version="1.0.0-fasta2a"
+            version="1.0.0-fasta2a",
         )
 
 @router.get("/metrics")
