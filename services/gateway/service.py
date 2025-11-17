@@ -91,11 +91,18 @@ class GatewayService(BaseService):
         LOGGER.info(f"Mounted gateway app for {self.service_name} service")
 
     def as_dict(self) -> Dict[str, Any]:
-        """Return a serialisable representation of the gateway service."""
+        """Return a serialisable representation of the gateway service.
+
+        The legacy implementation accessed ``gateway_port`` and
+        ``gateway_host`` attributes directly on the configuration.  With
+        the new configuration model these values are available under the
+        ``service`` model.  The method now uses ``self.config.service`` to
+        maintain compatibility.
+        """
         base_info = super().as_dict()
         base_info.update({
-            "port": self.config.gateway_port,
-            "host": self.config.gateway_host,
+            "port": self.config.service.port,
+            "host": self.config.service.host,
             "api_version": "v1",
             "endpoints": len(self._gateway_app.routes) if self._gateway_app else 0,
         })

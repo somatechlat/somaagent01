@@ -77,7 +77,7 @@ class SA01Settings(BaseServiceSettings):
 				"metrics_host": env.get("SOMA_METRICS_HOST", "0.0.0.0"),
 				"opa_url": env.get("SA01_POLICY_URL", "http://opa:8181"),
 				"gateway_port": env.get_int("SOMA_GATEWAY_PORT", 8010),
-				"soma_base_url": env.get("SOMA_BASE_URL", "http://localhost:8010"),
+				"soma_base_url": env.get("SA01_SOMA_BASE_URL", env.get("SOMA_BASE_URL", "http://localhost:8010")),
 			}
 		return {
 			"DEV": _shared_defaults("DEV"),

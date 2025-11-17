@@ -115,13 +115,13 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
 def _default_base_url() -> str:
     """Return the base URL for SomaBrain.
 
-    The environment variable ``SOMA_BASE_URL`` must be set to point to the
+    The environment variable ``SA01_SOMA_BASE_URL`` or ``SOMA_BASE_URL`` must be set to point to the
     SomaBrain service endpoint.
     """
-    url = env.get("SOMA_BASE_URL")
+    url = env.get("SA01_SOMA_BASE_URL") or env.get("SOMA_BASE_URL")
     if not url:
         raise ValueError(
-            "SOMA_BASE_URL environment variable is required. "
+            "SA01_SOMA_BASE_URL or SOMA_BASE_URL environment variable is required. "
             "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
         )
     return url
