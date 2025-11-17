@@ -61,7 +61,12 @@ def get_celery_settings() -> CelerySettings:
     """Return memoized Celery settings derived from runtime_config."""
     _ensure_runtime_config()
 
-    redis_default = cfg.redis_url() or "redis://localhost:6379/0"
+    redis_default = cfg.redis_url()
+    if not redis_default:
+        raise ValueError(
+            "REDIS_URL environment variable is required. "
+            "Set it to your Redis service URL (e.g., redis://redis:6379/0)"
+        )
     broker = cfg.env("CELERY_BROKER_URL", redis_default) or redis_default
     backend = cfg.env("CELERY_RESULT_BACKEND", broker) or broker
     queue = cfg.env("CELERY_DEFAULT_QUEUE", "fast_a2a") or "fast_a2a"
@@ -93,7 +98,12 @@ def get_redis_settings() -> RedisSettings:
     """
     _ensure_runtime_config()
 
-    redis_default = cfg.redis_url() or "redis://localhost:6379/0"
+    redis_default = cfg.redis_url()
+    if not redis_default:
+        raise ValueError(
+            "REDIS_URL environment variable is required. "
+            "Set it to your Redis service URL (e.g., redis://redis:6379/0)"
+        )
     backend = get_celery_settings().result_backend
     redis_url = cfg.env("FAST_A2A_TASK_REDIS_URL", backend) or backend or redis_default
 

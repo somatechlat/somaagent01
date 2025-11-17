@@ -61,8 +61,20 @@ def is_development() -> bool:
 
 def get_local_url():
     if is_dockerized():
-        return "host.docker.internal"
-    return "127.0.0.1"
+        host_alias = dotenv.get_dotenv_value("SOMA_CONTAINER_HOST_ALIAS")
+        if not host_alias:
+            raise ValueError(
+                "SOMA_CONTAINER_HOST_ALIAS environment variable is required when running in Docker. "
+                "Set it to the host alias (e.g., host.docker.internal)"
+            )
+        return host_alias
+    local_host = dotenv.get_dotenv_value("LOCAL_HOST")
+    if not local_host:
+        raise ValueError(
+            "LOCAL_HOST environment variable is required. "
+            "Set it to your local host address (e.g., 127.0.0.1 or localhost)"
+        )
+    return local_host
 
 
 def get_runtime_id() -> str:
