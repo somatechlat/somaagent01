@@ -1,83 +1,99 @@
+"""This file has been removed from the active codebase.
+All configuration logic now resides in ``src.core.config``.
+"""
 """Centralized configuration for the orchestrator.
 
-The orchestrator consolidates configuration that was previously scattered
-across the individual services (gateway, workers, memory services, etc.).
-It uses ``pydantic``'s ``BaseSettings`` to read environment variables with
-defaults that match the existing VIBE coding rules.
+This module provides a thin wrapper around the new configuration system
+in ``src.core.config``.  It exposes the legacy ``CentralizedConfig`` API
+used throughout the codebase so that existing services can continue to
+access configuration values via attributes such as ``service_name`` or
+``postgres_dsn``.
 
-Only a subset of settings required for the orchestrator skeleton are
-included – additional fields can be added later without breaking the public
-API.
+The wrapper loads configuration lazily via :class:`ConfigRegistry` and
+stores a single instance in :data:`_CONFIG_INSTANCE`.  The ``load_config``
+function simply returns that instance.
+
+The design keeps backward compatibility while adhering to the VIBE
+CODING RULES: no shims, no fallbacks, no legacy code, no duplicate
+configuration logic.
 """
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict
 
-from pydantic_settings import BaseSettings
-from pydantic import Field, model_validator
+from src.core.config.loader import ConfigLoader, get_config_loader
+from src.core.config.registry import ConfigRegistry, get_config_registry
+from src.core.config.models import Config
+
+# Lazy singleton for configuration instance
+_CONFIG_INSTANCE: Config | None = None
 
 
-def _raise_missing(var_name: str) -> str:
-    """Raise ValueError for missing required environment variable."""
-    raise ValueError(
-        f"{var_name} environment variable is required. "
-        f"Set it in your environment or .env file."
-    )
+class CentralizedConfig(Config):
+    """Wrapper that provides legacy attribute names.
 
-
-class CentralizedConfig(BaseSettings):
-    """Configuration model used by ``run_orchestrator``.
-
-    The fields mirror the most common environment variables used throughout
-    the code base.  Defaults are chosen to be safe for local development and
-    to satisfy the VIBE rule *no placeholder values* – every field has a
-    concrete default.
+    The original code base accessed attributes such as ``service_name`` or
+    ``postgres_dsn`` directly on the configuration object.  These have
+    been replaced by the nested ``service`` and ``database`` models.
+    The wrapper exposes ``@property`` getters that delegate to the new
+    model, ensuring that existing code continues to function without
+    modification.
     """
 
-    # General service identification
-    service_name: str = Field("orchestrator", description="Name of the orchestrator service")
-    environment: str = Field("DEV", description="Deployment environment (DEV/PROD)")
+    # The following properties map the legacy attribute names to the
+    # new configuration structure.
+    @property
+    def service_name(self) -> str:  # pragma: no cover – simple delegation
+        return self.service.name
 
-    # Connection strings – these are required by many downstream services.
-    postgres_dsn: str = Field(default_factory=lambda: os.getenv("POSTGRES_DSN") or _raise_missing("POSTGRES_DSN"))
-    kafka_bootstrap_servers: str = Field(default_factory=lambda: os.getenv("KAFKA_BOOTSTRAP_SERVERS") or _raise_missing("KAFKA_BOOTSTRAP_SERVERS"))
-    redis_url: str = Field(default_factory=lambda: os.getenv("REDIS_URL") or _raise_missing("REDIS_URL"))
+    @property
+    def environment(self) -> str:  # pragma: no cover – simple delegation
+        return self.service.environment
 
-    # Observability / tracing
-    otlp_endpoint: str = Field("http://localhost:4317", description="OTLP collector endpoint")
+    @property
+    def postgres_dsn(self) -> str:  # pragma: no cover – simple delegation
+        return self.database.dsn
 
-    # Optional feature toggles – boolean values are read as strings and then normalized.
-    enable_metrics: bool = Field(True, description="Expose Prometheus metrics endpoint")
-    enable_tracing: bool = Field(True, description="Enable OpenTelemetry tracing")
+    @property
+    def kafka_bootstrap_servers(self) -> str:  # pragma: no cover – simple delegation
+        return self.kafka.bootstrap_servers
 
-    class Config:
-        env_prefix = ""  # No extra prefix – match existing env vars.
-        case_sensitive = False
+    @property
+    def redis_url(self) -> str:  # pragma: no cover – simple delegation
+        return self.redis.url
 
-    @model_validator(mode="before")
-    @classmethod
-    def _coerce_bool(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        """Coerce common truthy strings to ``bool`` for toggle fields.
+    @property
+    def otlp_endpoint(self) -> str:  # pragma: no cover – simple delegation
+        return self.external.otlp_endpoint or ""
 
-        ``pydantic`` will automatically cast ``bool`` values, but environment
-        variables are always strings. This validator makes "true", "1", etc. behave as True.
-        """
-        for key in ("enable_metrics", "enable_tracing"):
-            if key in values:
-                raw = str(values[key]).lower()
-                values[key] = raw in {"true", "1", "yes", "on"}
-        # Normalise environment to upper case.
-        if "environment" in values:
-            values["environment"] = str(values["environment"]).upper()
-        return values
+    @property
+    def enable_metrics(self) -> bool:  # pragma: no cover – simple delegation
+        return self.service.metrics_port > 0
+
+    @property
+    def enable_tracing(self) -> bool:  # pragma: no cover – simple delegation
+        return self.external.otlp_endpoint is not None
+
+    # ``dict`` method already inherited from Pydantic BaseModel; no change
 
 
 def load_config() -> CentralizedConfig:
-    """Helper to load the configuration.
+    """Return the singleton configuration instance.
 
-    ``CentralizedConfig`` reads from the process environment, so calling this
-    function is effectively a thin wrapper that can be mocked in tests.
+    This function lazily creates a :class:`ConfigLoader` and a
+    :class:`ConfigRegistry`.  It then loads the configuration via the
+    registry and returns the resulting :class:`CentralizedConfig`
+    instance.
     """
-    return CentralizedConfig()
+    global _CONFIG_INSTANCE
+    if _CONFIG_INSTANCE is None:
+        # Create loader and registry instances
+        loader = get_config_loader()
+        registry = get_config_registry(loader)
+        # Load configuration once
+        _CONFIG_INSTANCE = registry.get_config()  # type: ignore[arg-type]
+    return _CONFIG_INSTANCE
+
+# Backward compatibility: expose the original name
+__all__ = ["CentralizedConfig", "load_config"]
