@@ -48,8 +48,15 @@ class EventPublisher:
         """Initialize the event publisher."""
         if self._initialized:
             return
-            
-        self.somabrain_url = "http://localhost:9696/v1/event"
+        
+        import os
+        somabrain_base = os.getenv("SA01_SOMA_BASE_URL")
+        if not somabrain_base:
+            raise ValueError(
+                "SA01_SOMA_BASE_URL environment variable is required for event publishing. "
+                "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
+            )
+        self.somabrain_url = f"{somabrain_base.rstrip('/')}/v1/event"
         self.batch_size = DEFAULT_BATCH_SIZE
         self.flush_interval = DEFAULT_FLUSH_INTERVAL
         self.event_buffer: List[Dict] = []

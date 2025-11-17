@@ -34,12 +34,15 @@ class SomaBrainClient(SomaClient):
 def _base_url() -> str:
     """Return the base URL for the SomaBrain service.
 
-    The tests set the ``SA01_SOMA_BASE_URL`` environment variable.  If it is
-    missing we fall back to ``http://localhost:9696`` – the same default used by
-    the underlying :class:`SomaClient` implementation.
+    The ``SA01_SOMA_BASE_URL`` environment variable must be set.
     """
-
-    return env.get("SA01_SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"
+    url = env.get("SA01_SOMA_BASE_URL")
+    if not url:
+        raise ValueError(
+            "SA01_SOMA_BASE_URL environment variable is required. "
+            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
+        )
+    return url
 
 
 def _handle_response(resp: httpx.Response) -> Any:

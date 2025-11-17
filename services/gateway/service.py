@@ -15,9 +15,6 @@ from fastapi import FastAPI, Request
 from orchestrator.base_service import BaseService
 from orchestrator.config import CentralizedConfig
 
-# Import the main gateway module to access its functionality
-import services.gateway.main as gateway_module
-
 # LOGGER configuration
 LOGGER = logging.getLogger(__name__)
 
@@ -31,8 +28,8 @@ class GatewayService(BaseService):
         # Initialize BaseService
         super().__init__(config)
         
-        # We'll copy the routes from the existing gateway app
-        # This maintains backward compatibility while integrating with orchestrator
+        # Store reference to gateway app for cleanup
+        self._gateway_app = None
 
     async def startup(self) -> None:
         """Initialize gateway service and all its dependencies."""
@@ -41,33 +38,17 @@ class GatewayService(BaseService):
         # Initialize all the stores and services that the original gateway needs
         # These are normally initialized in the original gateway's startup events
         
-        # Import the necessary startup functions from the original gateway
         try:
-            from .main import (
-                get_event_bus,
-                get_publisher,
-                get_session_cache,
-                get_session_store,
-                get_audit_store,
-                get_api_key_store,
-                get_dlq_store,
-                get_replica_store,
-                get_export_job_store,
-                get_secret_manager,
-                get_ui_settings_store,
-                get_attachments_store,
-                PROFILE_STORE,
-                CATALOG_STORE,
-                TELEMETRY_STORE,
-                REQUEUE_STORE,
-                _start_metrics_server,
-                start_background_services,
-            )
+            # Import the main gateway app to access its state
+            from .main import app as gateway_app
+            self._gateway_app = gateway_app
             
-            # Start the background services
+            # Start the background services from the original gateway
+            from .main import start_background_services
             await start_background_services()
             
-            # Start metrics server (this is a sync function)
+            # Start metrics server (this is a sync function from original gateway)
+            from .main import _start_metrics_server
             _start_metrics_server()
             
             LOGGER.info(f"{self.service_name} service startup completed")
@@ -83,8 +64,8 @@ class GatewayService(BaseService):
         # Clean up resources
         try:
             # Clean up HTTP client if it exists
-            if hasattr(gateway_app, 'state') and hasattr(gateway_app.state, 'http_client'):
-                await gateway_app.state.http_client.aclose()
+            if self._gateway_app and hasattr(self._gateway_app, 'state') and hasattr(self._gateway_app.state, 'http_client'):
+                await self._gateway_app.state.http_client.aclose()
             
             # Clean up other resources as needed
             LOGGER.info(f"{self.service_name} service shutdown completed")
@@ -116,6 +97,6 @@ class GatewayService(BaseService):
             "port": self.config.gateway_port,
             "host": self.config.gateway_host,
             "api_version": "v1",
-            "endpoints": len(gateway_app.routes),
+            "endpoints": len(self._gateway_app.routes) if self._gateway_app else 0,
         })
         return base_info

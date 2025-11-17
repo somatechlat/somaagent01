@@ -83,15 +83,17 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     """
     candidate = (raw_base_url or "").strip()
     if not candidate:
-        return "http://localhost:9696"
+        raise ValueError(
+            "SOMA_BASE_URL is required. Set it to your SomaBrain service URL "
+            "(e.g., http://somabrain:9696)"
+        )
 
     normalized = candidate.rstrip("/")
 
     try:
         url = httpx.URL(normalized)
-    except Exception:
-        logger.warning("Invalid SOMA_BASE_URL %s; falling back to localhost:9696", candidate)
-        return "http://localhost:9696"
+    except Exception as exc:
+        raise ValueError(f"Invalid SOMA_BASE_URL '{candidate}': {exc}") from exc
 
     # Rewrite only the legacy port 9595 to the current default (9696),
     # preserving original host and scheme.
@@ -113,13 +115,16 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
 def _default_base_url() -> str:
     """Return the base URL for SomaBrain.
 
-    The environment variable ``SOMA_BASE_URL`` can be used to point to a custom
-    endpoint. If it is not set we default to ``http://localhost:9696``. The
-    function no longer performs any legacy‑host sanitisation – that logic lives
-    in ``_sanitize_legacy_base_url`` and is only applied when an explicit URL
-    is provided.
+    The environment variable ``SOMA_BASE_URL`` must be set to point to the
+    SomaBrain service endpoint.
     """
-    return env.get("SOMA_BASE_URL", "http://localhost:9696") or "http://localhost:9696"
+    url = env.get("SOMA_BASE_URL")
+    if not url:
+        raise ValueError(
+            "SOMA_BASE_URL environment variable is required. "
+            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
+        )
+    return url
 
 
 DEFAULT_BASE_URL = _default_base_url()
@@ -172,7 +177,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = env.get("SOMA_CONTAINER_HOST_ALIAS", "host.docker.internal") or "host.docker.internal"
+        override_host = env.get("SOMA_CONTAINER_HOST_ALIAS")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")

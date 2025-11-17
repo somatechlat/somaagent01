@@ -14,7 +14,16 @@ import httpx
 from services.common import env
 
 # Base URL – can be overridden via env var for testing / staging.
-BASE_URL = env.get("CAPSULE_REGISTRY_URL", "http://localhost:8000") or "http://localhost:8000"
+def _get_capsule_registry_url() -> str:
+    url = env.get("CAPSULE_REGISTRY_URL")
+    if not url:
+        raise ValueError(
+            "CAPSULE_REGISTRY_URL environment variable is required. "
+            "Set it to your Capsule Registry service URL (e.g., http://capsule-registry:8000)"
+        )
+    return url
+
+BASE_URL = _get_capsule_registry_url()
 
 
 def list_capsules() -> List[Dict[str, Any]]:

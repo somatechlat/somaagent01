@@ -19,6 +19,14 @@ from pydantic_settings import BaseSettings
 from pydantic import Field, model_validator
 
 
+def _raise_missing(var_name: str) -> str:
+    """Raise ValueError for missing required environment variable."""
+    raise ValueError(
+        f"{var_name} environment variable is required. "
+        f"Set it in your environment or .env file."
+    )
+
+
 class CentralizedConfig(BaseSettings):
     """Configuration model used by ``run_orchestrator``.
 
@@ -33,9 +41,9 @@ class CentralizedConfig(BaseSettings):
     environment: str = Field("DEV", description="Deployment environment (DEV/PROD)")
 
     # Connection strings – these are required by many downstream services.
-    postgres_dsn: str = Field(default_factory=lambda: os.getenv("POSTGRES_DSN", "postgresql://postgres:postgres@localhost:5432/postgres"))
-    kafka_bootstrap_servers: str = Field(default_factory=lambda: os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"))
-    redis_url: str = Field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379"))
+    postgres_dsn: str = Field(default_factory=lambda: os.getenv("POSTGRES_DSN") or _raise_missing("POSTGRES_DSN"))
+    kafka_bootstrap_servers: str = Field(default_factory=lambda: os.getenv("KAFKA_BOOTSTRAP_SERVERS") or _raise_missing("KAFKA_BOOTSTRAP_SERVERS"))
+    redis_url: str = Field(default_factory=lambda: os.getenv("REDIS_URL") or _raise_missing("REDIS_URL"))
 
     # Observability / tracing
     otlp_endpoint: str = Field("http://localhost:4317", description="OTLP collector endpoint")
