@@ -1,21 +1,17 @@
-"""This file has been removed from the active codebase.
-All configuration logic now resides in ``src.core.config``.
-"""
 """Centralized configuration for the orchestrator.
 
 This module provides a thin wrapper around the new configuration system
-in ``src.core.config``.  It exposes the legacy ``CentralizedConfig`` API
+in ``src.core.config``. It exposes the legacy ``CentralizedConfig`` API
 used throughout the codebase so that existing services can continue to
 access configuration values via attributes such as ``service_name`` or
 ``postgres_dsn``.
 
 The wrapper loads configuration lazily via :class:`ConfigRegistry` and
-stores a single instance in :data:`_CONFIG_INSTANCE`.  The ``load_config``
+stores a single instance in :data:`_CONFIG_INSTANCE`. The ``load_config``
 function simply returns that instance.
 
 The design keeps backward compatibility while adhering to the VIBE
-CODING RULES: no shims, no fallbacks, no legacy code, no duplicate
-configuration logic.
+CODING RULES: no shims, no fallbacks, no duplicate configuration logic.
 """
 
 from __future__ import annotations

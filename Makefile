@@ -169,6 +169,18 @@ clean: down
 	docker volume rm $(COMPOSE_PROJECT_NAME)_postgres_data || true
 	@echo "Cleanup complete."
 
+# ---------------------------------------------------------------------------
+# Testing helpers
+# ---------------------------------------------------------------------------
+# Run the pytest suite in the background while you continue development.
+# The helper script ``run_tests_background.sh`` activates the virtual environment
+# and starts ``pytest -q`` in a detached process, logging to ``pytest_background.log``.
+# Use ``make test-bg`` to invoke it.
+.PHONY: test-bg
+test-bg:
+	@chmod +x ./run_tests_background.sh
+	@./run_tests_background.sh
+
 # ------------------------------------------------------------------------------
 # Lightweight developer stack helpers (docker-compose.dev.yaml)
 # ------------------------------------------------------------------------------
