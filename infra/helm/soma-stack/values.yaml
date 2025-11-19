@@ -31,6 +31,19 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+# Orchestrator specific configuration
+orchestrator:
+  enabled: true
+  replicas: 1
+  port: 8010
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
 serviceAccounts:
   create: true
 

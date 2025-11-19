@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-stack.fullname" . }}-orchestrator
+  labels:
+    {{- include "soma-stack.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.image.port | default 8010 }}
+      targetPort: {{ .Values.image.port | default 8010 }}
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ include "soma-stack.name" . }}-orchestrator

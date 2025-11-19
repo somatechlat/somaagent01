@@ -1,3 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [master, CENTRALIZATION]
+  pull_request:
+    branches: [master, CENTRALIZATION]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      # Provide dependent services for integration tests
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run lint (ruff)
+        run: |
+          source .venv/bin/activate
+          ruff check .
+
+      - name: Run tests
+        env:
+          POSTGRES_DSN: postgresql://test:test@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          source .venv/bin/activate
+          pytest -q
+
+      - name: Build Docker images
+        run: |
+          docker compose -f docker-compose.yaml build
 name: Canonical Backend CI/CD Matrix
 
 on:

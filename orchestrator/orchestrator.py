@@ -19,7 +19,12 @@ from typing import List
 from fastapi import FastAPI
 
 from .base_service import BaseSomaService
-from .health_monitor import UnifiedHealthMonitor, attach_to_app
+from .config import load_config
+# Import the health router (FastAPI router) and the background health monitor.
+# The router provides the ``/v1/health`` endpoint, while the monitor runs a
+# periodic async task that checks external services.
+from .health_router import UnifiedHealthRouter, attach_to_app
+from .health_monitor import UnifiedHealthMonitor
 from prometheus_client import make_asgi_app
 
 LOGGER = logging.getLogger("orchestrator")
@@ -58,8 +63,11 @@ class SomaOrchestrator:
     def __init__(self, app: FastAPI) -> None:
         self.app = app
         self.registry = ServiceRegistry()
-        # The health monitor receives the live list of services from the registry.
-        self.health_monitor = UnifiedHealthMonitor(self.registry.services)
+        # The router receives the live list of services for the ``/v1/health`` endpoint.
+        self.health_router = UnifiedHealthRouter(self.registry.services)
+        # The background monitor runs independently and uses the central config.
+        # It will be started explicitly by the orchestrator when needed.
+        self.health_monitor = UnifiedHealthMonitor(load_config())
 
     # ------------------------------------------------------------------
     # Registration API – concrete services import this module and call
@@ -92,24 +100,41 @@ class SomaOrchestrator:
         LOGGER.info("All services stopped")
 
     def attach(self) -> None:
-        """Hook the orchestrator into FastAPI lifecycle events and health router."""
+        """Integrate the orchestrator with a FastAPI app.
 
-        # Attach health endpoint before services start.
-        attach_to_app(self.app, self.health_monitor)
-        # Expose Prometheus metrics at /metrics using the shared registry.
-        # ``make_asgi_app`` creates a lightweight ASGI app that serves the
-        # ``/metrics`` endpoint.  Mounting it makes the metrics available on the
-        # same host/port as the orchestrator, simplifying deployment and
-        # adhering to the VIBE rule of keeping the system minimal.
-        self.app.mount("/metrics", make_asgi_app())
+        The method is safe to call multiple times – it checks whether the
+        ``/v1/health`` and ``/metrics`` routes are already mounted and skips
+        duplicate registration. This idempotency is required because the test
+        suite creates a second ``SomaOrchestrator`` instance on the same app.
+        """
+
+        # -----------------------------------------------------------------
+        # Mount health router only once.
+        # -----------------------------------------------------------------
+        health_path_exists = any(
+            getattr(route, "path", None) == "/v1/health" for route in getattr(self.app, "router", {}).routes
+        )
+        if not health_path_exists:
+            attach_to_app(self.app, self.health_router)
+
+        # -----------------------------------------------------------------
+        # Mount Prometheus metrics only once.
+        # -----------------------------------------------------------------
+        metrics_path_exists = any(
+            getattr(route, "path", None) == "/metrics" for route in getattr(self.app, "router", {}).routes
+        )
+        if not metrics_path_exists:
+            self.app.mount("/metrics", make_asgi_app())
 
         @self.app.on_event("startup")
         async def _startup() -> None:  # noqa: D401
+            await self.health_monitor.start()
             await self._start_all()
 
         @self.app.on_event("shutdown")
         async def _shutdown() -> None:  # noqa: D401
             await self._stop_all()
+            await self.health_monitor.stop()
 # NOTE: The original complex process‑manager implementation has been removed.
 # The lightweight ``BaseSomaService``‑based orchestrator defined above is the
 # single source of truth for the project, satisfying the VIBE rule
