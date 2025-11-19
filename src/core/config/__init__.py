@@ -1,3 +1,132 @@
+"""Centralised configuration package.
+
+The *VIBE* refactor requires a **single source of truth** for all runtime
+configuration.  This module provides a lightweight façade – ``cfg`` – that
+exposes an ``env`` helper mirroring the historic ``runtime_config.env`` API but
+delegates to a ``Settings`` object built with *pydantic* ``BaseSettings``.  The
+implementation respects the precedence rules defined in the roadmap:
+
+1. ``SA01_*`` environment variables (highest priority)
+2. Raw environment variables (fallback)
+3. Optional YAML/JSON configuration files (not yet implemented – placeholder)
+4. Hard‑coded defaults
+
+Only the ``env`` helper is required by the existing codebase; additional
+structured access can be added later via ``Settings`` fields.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any, Dict
+
+# Pydantic v2 split ``BaseSettings`` into the ``pydantic-settings`` package.
+# The original code only needed ``BaseSettings`` for the empty ``Settings``
+# placeholder, so we import it conditionally. ``Field`` is not used anywhere in
+# this shim, and ``ValidationError`` is only required for type‑checking when
+# the class is expanded later.
+try:
+    from pydantic_settings import BaseSettings  # type: ignore
+except Exception:  # pragma: no cover – fallback for environments without the extra package
+    class BaseSettings:  # minimal stub to keep type‑checkers happy
+        def __init__(self, *args, **kwargs):
+            pass
+
+from pydantic import ValidationError
+
+
+class Settings(BaseSettings):
+    """Pydantic settings model – currently empty because the project loads
+    configuration lazily via ``cfg.env``.  Concrete fields can be added as the
+    refactor progresses (e.g. ``kafka_bootstrap_servers: str`` etc.).
+    """
+
+    class Config:
+        env_prefix = "SA01_"  # All ``SA01_*`` vars are automatically read
+        case_sensitive = False
+
+    # Example placeholder – real fields will be added later
+    dummy: str | None = None
+
+
+# Singleton instance – created at import time so that ``env`` works immediately.
+_settings = Settings()
+
+
+def _load_file_config() -> Dict[str, Any]:
+    """Placeholder for future file‑based configuration loading.
+
+    The roadmap mentions YAML/JSON config files with a clear precedence order.
+    For now we simply return an empty dict; the function exists so that later
+    implementation can plug in a file loader without touching callers.
+    """
+    # Look for a conventional ``config.yaml`` in the repository root.
+    config_path = Path(__file__).resolve().parents[3] / "config.yaml"
+    if not config_path.is_file():
+        return {}
+    try:
+        import yaml  # type: ignore
+
+        with config_path.open("r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        # If the optional yaml library is missing or parsing fails we fall back
+        # to an empty dict – the ``env`` helper will still honour env vars.
+        return {}
+
+
+_file_cfg: Dict[str, Any] = _load_file_config()
+
+
+def env(name: str, default: Any = None) -> Any:
+    """Return a configuration value using the **real** loader.
+
+    The VIBE roadmap defines the following precedence (high → low):
+    1. ``SA01_``‑prefixed environment variables (handled by the ``Config``
+       model's ``env_prefix``).
+    2. Plain environment variables (no prefix).
+    3. YAML/JSON file configuration (if present).
+    4. The caller‑provided ``default``.
+
+    This implementation delegates to :func:`src.core.config.registry.get_config`
+    which returns a validated ``Config`` instance built by ``loader.py``.  The
+    function also supports *dot‑notation* (e.g. ``DATABASE_DSN`` maps to
+    ``cfg.database.dsn``) for backward compatibility with historic code.
+    """
+    # The loader caches the configuration, so a cheap call is fine.
+    from .registry import get_config  # Imported lazily to avoid circular imports.
+
+    cfg_obj = get_config()
+
+    # Support dot‑notation: split on '_' and walk the nested Pydantic model.
+    if "_" in name:
+        parts = name.lower().split("_")
+        current: Any = cfg_obj
+        for part in parts:
+            if hasattr(current, part):
+                current = getattr(current, part)
+            else:
+                current = None
+                break
+        if current is not None:
+            return current
+
+    # Direct attribute access for flat keys (e.g., DEPLOYMENT_MODE).
+    if hasattr(cfg_obj, name.lower()):
+        return getattr(cfg_obj, name.lower())
+
+    # Fallback to the caller supplied default.
+    return default
+
+
+# Export a convenient singleton that mimics the historic ``runtime_config``
+class _CfgFacade:
+    def env(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper
+        return env(name, default)
+
+
+cfg = _CfgFacade()
 """Centralized Configuration System for SomaAgent01.
 
 VIBE CODING RULES COMPLIANT:

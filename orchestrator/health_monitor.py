@@ -1,3 +1,48 @@
+"""Aggregates health information from all registered services.
+
+The orchestrator registers each service instance (sub‑class of
+``BaseSomaService``).  This module provides a FastAPI router that exposes a
+single ``/v1/health`` endpoint which returns an overall health flag and a
+per‑service breakdown.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter
+from typing import Dict, List
+
+router = APIRouter()
+
+
+class UnifiedHealthMonitor:
+    """Collect health from a list of ``BaseSomaService`` instances."""
+
+    def __init__(self, services: List[object]) -> None:
+        self._services = services
+
+    async def _gather(self) -> Dict[str, Dict]:
+        results: Dict[str, Dict] = {}
+        for svc in self._services:
+            try:
+                results[svc.name] = await svc.health()
+            except Exception as exc:  # pragma: no cover – defensive
+                results[svc.name] = {"healthy": False, "error": str(exc)}
+        return results
+
+    async def health_endpoint(self) -> Dict:
+        per = await self._gather()
+        overall = all(v.get("healthy", False) for v in per.values())
+        return {"healthy": overall, "services": per}
+
+
+def attach_to_app(app, monitor: UnifiedHealthMonitor) -> None:
+    """Mount the health router onto the provided FastAPI app."""
+
+    @router.get("/v1/health")
+    async def health() -> Dict:
+        return await monitor.health_endpoint()
+
+    app.include_router(router)
 """Unified Health Monitor for SomaAgent01 Orchestrator.
 
 The UnifiedHealthMonitor aggregates health status from all services and

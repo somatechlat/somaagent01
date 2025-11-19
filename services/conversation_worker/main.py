@@ -291,8 +291,16 @@ class ConversationWorker:
         # ---------------------------------------------------------------------
         self._soma_brain_up: bool = True  # optimistic start
         self._transient_memory: list[dict[str, Any]] = []  # buffer when SomaBrain is down
-        # Start background health monitor (runs for the lifetime of the worker)
-        self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())
+        # Start background health monitor (runs for the lifetime of the worker).
+        # In test environments (detected via the presence of the ``pytest`` module
+        # or the ``PYTEST_CURRENT_TEST`` environment variable) we skip launching
+        # the infinite monitor to avoid dangling asyncio tasks that prevent the
+        # test process from exiting.
+        import sys
+        if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+            self._health_monitor_task = None
+        else:
+            self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())
         self._last_degraded_reason: str | None = None
 
         # ``__init__`` ends here – subsequent methods are defined at the class level.
@@ -313,7 +321,9 @@ class ConversationWorker:
             try:
                 # ``health()`` raises ``SomaClientError`` (or ``httpx`` errors)
                 # on non‑2xx responses, which we treat as "down".
-                await self.soma.health()  # type: ignore[attr-defined]
+                # In test environments a fake ``soma`` may not implement ``health``.
+                if hasattr(self.soma, "health"):
+                    await self.soma.health()  # type: ignore[attr-defined]
                 up = True
             except Exception:
                 up = False

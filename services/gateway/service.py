@@ -14,6 +14,11 @@ from fastapi import FastAPI, Request
 
 from orchestrator.base_service import BaseService
 from orchestrator.config import CentralizedConfig
+# Import the new chat router (absolute import from the src package)
+from src.gateway.routers import chat as chat_router
+from src.gateway.routers import session as session_router
+from src.gateway.routers import sse as sse_router
+from src.gateway.routers import message as message_router
 
 # LOGGER configuration
 LOGGER = logging.getLogger(__name__)
@@ -79,9 +84,15 @@ class GatewayService(BaseService):
         # Import the main gateway app from the module
         from .main import app as gateway_app
         
-        # Include all routes from the gateway app
-        # Mount the entire gateway app under /v1 prefix to avoid conflicts
+        # Include all routes from the original gateway app (legacy)
+        # Mount the entire gateway app under /v1 – preserves backward compatibility
         app.mount("/v1", gateway_app)
+
+        # Register the new routers – reachable under /v1/*
+        app.include_router(chat_router.router)
+        app.include_router(session_router.router)
+        app.include_router(sse_router.router)
+        app.include_router(message_router.router)
         
         # Add a health check endpoint for the orchestrator
         @app.get("/health")

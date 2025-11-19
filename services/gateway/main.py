@@ -86,10 +86,9 @@ from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
-from services.common.memory_replica_store import MemoryReplicaStore
+from src.core.domain.memory.replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.attachments_store import AttachmentsStore
-from services.common.memory_replica_store import ensure_schema as ensure_replica_schema
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema
 from services.common.model_profiles import ModelProfile, ModelProfileStore
@@ -167,7 +166,11 @@ app = FastAPI(title="SomaAgent 01 Gateway")
 # Import locally to avoid circular imports during app start‑up.
 try:
     from services.gateway.features import router as features_router
+    # New health router (VIBE‑compliant, tiny liveness endpoint)
+    from src.gateway.routers.health import router as health_router
     app.include_router(features_router)
+    # Register the lightweight health endpoint – useful for liveness probes
+    app.include_router(health_router)
 except Exception as exc:  # pragma: no cover – defensive, should never fail in prod
     import logging
     logging.getLogger(__name__).warning("Failed to include features router: %s", exc)
@@ -3149,7 +3152,7 @@ async def authorize_request(request: Request, payload: Dict[str, Any]) -> Dict[s
     return auth_metadata
 
 
-@app.post("/v1/session/message")
+# @app.post("/v1/session/message")  # Disabled: endpoint now provided via modular router
 async def enqueue_message(
     payload: MessagePayload,
     request: Request,
@@ -3374,7 +3377,7 @@ async def enqueue_message(
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
 
-@app.post("/v1/uploads")
+# @app.post("/v1/uploads")  # Disabled: endpoint now provided via modular router
 async def upload_files(
     request: Request,
     files: List[UploadFile] = File(...),
@@ -3596,7 +3599,7 @@ async def upload_files(
     return JSONResponse(results)
 
 
-@app.post("/v1/session/action")
+# @app.post("/v1/session/action")  # Disabled: endpoint now provided via modular router
 async def enqueue_quick_action(
     payload: QuickActionPayload,
     request: Request,

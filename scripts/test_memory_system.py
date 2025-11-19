@@ -17,7 +17,7 @@ def run_sync_tests():
 
     # Import and test components
     try:
-        from services.common.memory_replica_store import MemoryReplicaStore
+        from src.core.domain.memory.replica_store import MemoryReplicaStore
         from services.common.memory_write_outbox import MemoryWriteOutbox
 
         # Test basic functionality
