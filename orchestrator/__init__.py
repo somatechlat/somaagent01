@@ -1,3 +1,10 @@
+"""Orchestrator package – entry point for the unified SomaAgent01 process.
+
+The orchestrator starts all services (gateway, conversation worker, tool executor,
+memory services, etc.) in a deterministic order, provides a single health
+endpoint, and ensures graceful shutdown.  It replaces the previous ad‑hoc
+service‑specific entry points.
+"""
 """Orchestrator package for SomaAgent01.
 
 Provides a single entry point that coordinates the lifecycle of all
