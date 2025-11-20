@@ -1,6 +1,18 @@
-"""Conversation worker for SomaAgent 01."""
+"""Compatibility shim and full implementation for the ConversationWorker.
+
+The original project exposed a ``ConversationWorker`` class directly from this
+module.  After the refactor the functional code lives in
+``services.conversation_worker.service`` as ``ConversationWorkerService``.  To
+maintain backward compatibility (the test suite still imports this path) we
+re‑export the service class under the historic name **and** keep the original
+implementation here.  The shim is lightweight – it simply aliases the new
+class – and does not duplicate any business logic.
+"""
 
 from __future__ import annotations
+
+# Re‑export the new service implementation under the legacy name.
+from .service import ConversationWorkerService as ConversationWorker
 
 import asyncio
 import logging
