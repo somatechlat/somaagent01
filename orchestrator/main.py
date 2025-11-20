@@ -153,3 +153,9 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# Alias for backward compatibility – some modules expect a ``run_orchestrator``
+# callable that starts the server.  The original implementation exposed such a
+# function; after refactoring it was renamed to ``main``.  Providing this alias
+# restores the expected import without altering behaviour.
+run_orchestrator = main

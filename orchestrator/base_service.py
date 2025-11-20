@@ -87,3 +87,6 @@ class BaseSomaService(ABC):
 	async def register_metrics(self) -> None:
 		"""Hook for Prometheus metrics – optional for a concrete service."""
 		return None
+
+# Backward‑compatible alias used by legacy imports.
+BaseService = BaseSomaService
