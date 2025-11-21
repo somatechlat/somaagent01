@@ -113,13 +113,15 @@ class CircuitBreakerHealth:
 
         for name, service in circuit_breakers.items():
             breaker = service.breaker
+            state_obj = getattr(breaker, "current_state", None)
+            state_name = getattr(state_obj, "name", str(state_obj))
             status[name] = {
-                "state": breaker.current_state.name,
-                "fail_count": breaker._fail_counter,
-                "fail_max": breaker._fail_max,
-                "reset_timeout": breaker._reset_timeout,
+                "state": state_name,
+                "fail_count": getattr(breaker, "_fail_counter", None),
+                "fail_max": getattr(breaker, "_fail_max", None),
+                "reset_timeout": getattr(breaker, "_reset_timeout", None),
                 "last_failure_time": getattr(breaker, "_last_failure_time", None),
-                "failure_count": getattr(breaker, "_failure_count", 0),
+                "failure_count": getattr(breaker, "_failure_count", None),
             }
 
         return {"circuit_breakers": status, "timestamp": datetime.utcnow().isoformat()}

@@ -1,4 +1,9 @@
-"""Common infrastructure utilities for SomaAgent 01 services."""
+"""Common infrastructure utilities for SomaAgent 01 services.
+
+This package now re‑exports the central configuration singleton ``cfg`` from
+``src.core.config`` so callers can simply do ``from services.common import cfg``
+without needing a separate shim module.
+"""
 
 from importlib import import_module
 from typing import Any
@@ -21,7 +26,8 @@ _SUBMODULES = {
     "env",
 }
 
-__all__ = sorted(_SUBMODULES)
+# Export the configuration singleton alongside the other sub‑modules.
+__all__ = sorted(_SUBMODULES | {"cfg"})
 
 
 def __getattr__(name: str) -> Any:
@@ -33,4 +39,7 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> list[str]:
-    return sorted(list(globals().keys()) + list(_SUBMODULES))
+    return sorted(list(globals().keys()) + list(_SUBMODULES) + ["cfg"])
+
+# Import the real configuration singleton from the core package.
+from src.core.config import cfg  # noqa: E402  (import after definitions is intentional)

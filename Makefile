@@ -273,7 +273,8 @@ prune-soma:
 # Start core + ui profiles without editing docker files
 dev-up-ui:
 	@echo "Starting developer stack with UI profile..."
-	$(MAKE) up COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,dev COMPOSE_PROJECT_NAME=somaagent01_dev
+	# Include the UI profile so the web UI container is started alongside core and dev services.
+	$(MAKE) up COMPOSE_FILE=$(DEV_COMPOSE_FILE) PROFILES=core,dev,ui COMPOSE_PROJECT_NAME=somaagent01_dev
 
 dev-restart-ui:
 	@echo "Rebuilding developer stack with UI profile..."

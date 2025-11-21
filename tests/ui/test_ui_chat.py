@@ -43,7 +43,8 @@ async def test_ui_chat_happy_path(page, browser):  # type: ignore[no-redef]
     if not await _health_ok():
         pytest.skip("Backend not healthy at /v1/health; skipping live UI chat test")
 
-    ui_url = f"{BASE_URL}/ui/index.html"
+    # UI is now served at the root path; index.html is directly under the base URL.
+    ui_url = f"{BASE_URL}/index.html"
 
     # Navigate to UI and wait for main elements
     await page.goto(ui_url, wait_until="domcontentloaded")

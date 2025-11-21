@@ -37,9 +37,8 @@ async def ui_top_level(filename: str):
 
 @router.get("/{folder}/{path:path}", include_in_schema=False)
 async def ui_assets(folder: str, path: str):
-    if folder not in ALLOWED_DIRS:
-        raise HTTPException(status_code=404, detail="not_found")
     candidate = WEBUI_ROOT / folder / path
+    # Allow serving any file under webui (base path guard already applied in _safe_path)
     return FileResponse(_safe_path(candidate))
 
 
