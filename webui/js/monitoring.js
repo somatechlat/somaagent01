@@ -331,14 +331,21 @@ class SystemMonitor {
                 this.metricsData = {
                     system: {
                         status: this.healthStatus?.status || 'unknown',
-                        cpu_percent: metricsData.cpu.percent,
-                        memory_percent: metricsData.memory.percent,
-                        disk_percent: metricsData.disk.percent,
+                        cpu_percent: metricsData.cpu?.percent ?? 0,
+                        memory_percent: metricsData.memory?.percent ?? 0,
+                        disk_percent: metricsData.disk?.percent ?? 0,
                         components: Object.keys(this.healthStatus?.components || {}).length,
                         healthy_components: Object.values(this.healthStatus?.components || {}).filter(c => c.status === 'ok').length
                     },
                     timestamp: new Date().toISOString()
                 };
+
+                // Brain status for banner/icons
+                const brainStatus = metricsData.components?.somabrain?.status || 'unknown';
+                const brainBacklog = metricsData.components?.somabrain?.backlog ?? -1;
+                this.brainStatus = brainStatus;
+                this.brainBacklog = brainBacklog;
+                this.updateBrainUI(brainStatus, brainBacklog);
             } else {
                 console.error('System metrics request failed:', response.status);
                 this.systemMetrics = { 
@@ -361,6 +368,33 @@ class SystemMonitor {
                 timestamp: new Date().toISOString()
             };
         }
+    }
+
+    updateBrainUI(status, backlog) {
+        // Map status to banner/icon states
+        const banner = document.querySelector('.brain-banner');
+        const brainIcon = document.querySelector('.icon-brain');
+        const bellBrain = document.querySelector('.bell-brain-indicator');
+
+        const showDegraded = (status === 'degraded' || status === 'buffering' || status === 'unknown');
+        const text = status === 'healthy'
+            ? 'SomaBrain connected'
+            : status === 'buffering'
+                ? `SomaBrain buffering${backlog >= 0 ? ` (${backlog} pending)` : ''}`
+                : 'SomaBrain unreachable';
+
+        if (banner) {
+            banner.style.display = showDegraded ? 'block' : 'none';
+            banner.textContent = text;
+        }
+        const setClass = (el, s) => {
+            if (!el) return;
+            el.classList.remove('state-healthy','state-buffering','state-degraded','state-unknown');
+            el.classList.add(`state-${s}`);
+            el.title = text;
+        };
+        setClass(brainIcon, status);
+        setClass(bellBrain, status);
     }
 
     /**

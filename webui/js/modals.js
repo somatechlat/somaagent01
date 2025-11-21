@@ -198,130 +198,98 @@ function createModalElement(name) {
 // Enhanced modal opening with proper lifecycle management and error handling
 export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, options = {}) {
   try {
+    // Store the currently focused element for later restoration
+    const activeElement = document.activeElement;
+    if (activeElement) {
+      activeElement.setAttribute('data-last-focused', 'true');
+    }
+
+    // Create new modal instance with name
+    const modalName = options.name || modalPath || `modal-${Date.now()}`;
+    const modal = createModalElement(modalName);
+
+    // Set loading state
+    modal.body.innerHTML = `
+      <div class="modal-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading ${modalPath}...</div>
+      </div>
+    `;
+
+    // Add modal to stack immediately for proper state management
+    modalStack.push(modal);
+
+    // Handle body overflow for proper modal behavior
+    if (modalStack.length === 1) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = "hidden";
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    const componentPath = modalPath.startsWith('/') ? modalPath.slice(1) : modalPath;
+
     try {
-      // Store the currently focused element for later restoration
-      const activeElement = document.activeElement;
-      if (activeElement) {
-        activeElement.setAttribute('data-last-focused', 'true');
-      }
+      const doc = await importComponent(componentPath, modal.body);
+      // Set the title from the document with fallback
+      modal.title.innerHTML = (doc && doc.title) || modalPath;
 
-      // Create new modal instance with name
-      const modalName = options.name || modalPath || `modal-${Date.now()}`;
-      const modal = createModalElement(modalName);
-
-      // Set up mutation observer for modal removal detection
-      const observer = new MutationObserver((_, obs) => {
-        if (!document.contains(modal.element)) {
-          obs.disconnect();
-          resolve();
+      // Apply CSS classes from document if available
+      if (doc && doc.html && doc.html.classList) {
+        const inner = modal.element.querySelector(".modal-inner");
+        if (inner) {
+          inner.classList.add(...Array.from(doc.html.classList));
         }
-      });
-      
-      observer.observe(document.body, { 
-        childList: true, 
-        subtree: true 
-      });
-
-      // Set loading state with better UX
-      modal.body.innerHTML = `
-        <div class="modal-loading">
-          <div class="loading-spinner"></div>
-          <div class="loading-text">Loading ${modalPath}...</div>
-        </div>
-      `;
-
-      // Add modal to stack immediately for proper state management
-      modalStack.push(modal);
-
-      // Handle body overflow for proper modal behavior
-      if (modalStack.length === 1) {
-        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-        document.body.style.overflow = "hidden";
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
       }
 
-      // Use importComponent to load the modal content with enhanced error handling
-      const componentPath = modalPath.startsWith('/') ? modalPath.slice(1) : modalPath;
+      if (doc && doc.body && doc.body.classList) {
+        modal.body.classList.add(...Array.from(doc.body.classList));
+      }
 
-      // Load modal content with proper error handling and timing
-      importComponent(componentPath, modal.body)
-        .then((doc) => {
-          try {
-            // Set the title from the document with fallback
-            modal.title.innerHTML = (doc && doc.title) || modalPath;
-            
-            // Apply CSS classes from document if available
-            if (doc && doc.html && doc.html.classList) {
-              const inner = modal.element.querySelector(".modal-inner");
-              if (inner) {
-                inner.classList.add(...Array.from(doc.html.classList));
-              }
-            }
-            
-            if (doc && doc.body && doc.body.classList) {
-              modal.body.classList.add(...Array.from(doc.body.classList));
-            }
+      modal.element.dispatchEvent(new CustomEvent('modalReady', {
+        detail: { modal, path: modalPath }
+      }));
 
-            // Trigger modal ready event
-            modal.element.dispatchEvent(new CustomEvent('modalReady', {
-              detail: { modal, path: modalPath }
-            }));
-
-            // Focus management for accessibility
-            setTimeout(() => {
-              if (modal.element && document.contains(modal.element)) {
-                modal.element.focus();
-                
-                // Move focus to first focusable element if available
-                const firstFocusable = modal.element.querySelector(
-                  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-                );
-                if (firstFocusable) {
-                  firstFocusable.focus();
-                }
-              }
-            }, 100);
-
-          } catch (renderError) {
-            console.error('Error rendering modal content:', renderError);
-            modal.body.innerHTML = `
-              <div class="modal-error">
-                <div class="error-title">Rendering Error</div>
-                <div class="error-message">Failed to render modal content: ${renderError.message}</div>
-              </div>
-            `;
+      // Focus management for accessibility
+      setTimeout(() => {
+        if (modal.element && document.contains(modal.element)) {
+          modal.element.focus();
+          const firstFocusable = modal.element.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (firstFocusable) {
+            firstFocusable.focus();
           }
-        })
-        .catch((error) => {
-          console.error("Error loading modal content:", error);
-          modal.body.innerHTML = `
-            <div class="modal-error">
-              <div class="error-title">Loading Error</div>
-              <div class="error-message">Failed to load modal content: ${error.message}</div>
-              <button class="error-retry" onclick="openModal('${modalPath}')">Retry</button>
-            </div>
-          `;
-          
-          // Reject promise if modal loading fails critically
-          if (options.rejectOnError) {
-            reject(error);
-          }
-        })
-        .finally(() => {
-          // Update modal z-indexes regardless of load outcome
-          updateModalZIndexes();
-        });
+        }
+      }, 100);
 
     } catch (error) {
-      await handleError(error, {
-        component: 'ModalSystem',
-        function: 'openModal',
-        modalPath,
-        options: JSON.stringify(options)
-      });
-      throw error;
+      console.error("Error loading modal content:", error);
+      modal.body.innerHTML = `
+        <div class="modal-error">
+          <div class="error-title">Loading Error</div>
+          <div class="error-message">Failed to load modal content: ${error.message}</div>
+          <button class="error-retry" onclick="openModal('${modalPath}')">Retry</button>
+        </div>
+      `;
+      if (options.rejectOnError) {
+        throw error;
+      }
+    } finally {
+      updateModalZIndexes();
     }
-  });
+
+    return modal;
+
+  } catch (error) {
+    await handleError(error, {
+      component: 'ModalSystem',
+      function: 'openModal',
+      modalPath,
+      options: JSON.stringify(options)
+    });
+    throw error;
+  }
+});
 
 // Enhanced modal close function with proper lifecycle management
 export function closeModal(modalName = null) {

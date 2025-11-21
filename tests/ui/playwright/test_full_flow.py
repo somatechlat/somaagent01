@@ -1,8 +1,9 @@
 from services.common import env
 
+# UI is now served at the root path without a '/ui' prefix.
 UI_BASE_URL = (
     env.get("WEB_UI_BASE_URL")
-    or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}/ui"
+    or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}"
 )
 
 

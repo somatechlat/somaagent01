@@ -294,6 +294,10 @@ class ConversationWorker:
         self.escalation_fallback_enabled = cfg.env(
             "ESCALATION_FALLBACK_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
+        # Optional hard-disable of SomaBrain (degradation mode) via env
+        self._somabrain_disabled = (
+            cfg.env("SA01_DISABLE_SOMABRAIN", "false").lower() in {"1", "true", "yes", "on"}
+        )
 
         # Tool registry for model‑led orchestration (no network hop)
         self.tool_registry = ToolRegistry()
@@ -301,15 +305,14 @@ class ConversationWorker:
         # ---------------------------------------------------------------------
         # Fail‑safe state & health monitoring for SomaBrain
         # ---------------------------------------------------------------------
-        self._soma_brain_up: bool = True  # optimistic start
-        self._transient_memory: list[dict[str, Any]] = []  # buffer when SomaBrain is down
+        self._soma_brain_up: bool = not self._somabrain_disabled  # forced down if disabled
         # Start background health monitor (runs for the lifetime of the worker).
         # In test environments (detected via the presence of the ``pytest`` module
         # or the ``PYTEST_CURRENT_TEST`` environment variable) we skip launching
         # the infinite monitor to avoid dangling asyncio tasks that prevent the
         # test process from exiting.
         import sys
-        if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+        if self._somabrain_disabled or "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
             self._health_monitor_task = None
         else:
             self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())
@@ -329,6 +332,10 @@ class ConversationWorker:
         operations. When the service becomes reachable again, any buffered
         memory items are flushed.
         """
+        if self._somabrain_disabled:
+            self._soma_brain_up = False
+            SOMABRAIN_STATUS_GAUGE.set(0.0)
+            return
         while True:
             try:
                 # ``health()`` raises ``SomaClientError`` (or ``httpx`` errors)
@@ -342,8 +349,12 @@ class ConversationWorker:
             previous = self._soma_brain_up
             self._soma_brain_up = up
             SOMABRAIN_STATUS_GAUGE.set(1.0 if self._soma_brain_up else 0.0)
-            if self._soma_brain_up and not previous:
-                await self._flush_transient_memory()
+            # Always refresh buffer gauge from durable outbox
+            try:
+                pending = await self.mem_outbox.count_pending()
+                SOMABRAIN_BUFFER_GAUGE.set(pending)
+            except Exception:
+                LOGGER.debug("Failed to refresh SomaBrain buffer gauge", exc_info=True)
             await asyncio.sleep(5)
 
     def _enter_somabrain_degraded(self, reason: str, duration: float = 60.0) -> None:
@@ -370,28 +381,19 @@ class ConversationWorker:
         )
 
     async def _flush_transient_memory(self) -> None:
-        """Attempt to persist any buffered memory items now that SomaBrain is up."""
-        if not self._transient_memory:
-            SOMABRAIN_BUFFER_GAUGE.set(0.0)
-            return
-        pending = list(self._transient_memory)
-        self._transient_memory.clear()
-        SOMABRAIN_BUFFER_GAUGE.set(0.0)
-        for payload in pending:
-            try:
-                await self.soma.save_memory(payload)
-            except Exception:
-                # If it fails again, re‑buffer the item and break to avoid busy loop
-                self._transient_memory.append(payload)
-                SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
-                break
+        """No-op: durable outbox + memory_sync handles replay. Refresh gauge only."""
+        try:
+            pending = await self.mem_outbox.count_pending()
+            SOMABRAIN_BUFFER_GAUGE.set(pending)
+        except Exception:
+            LOGGER.debug("Failed to refresh SomaBrain buffer gauge", exc_info=True)
 
     async def _safe_recall(self, *args, **kwargs) -> dict[str, Any]:
         """Wrap ``self.soma.recall`` with fail‑safe behaviour.
 
         Returns an empty dict when SomaBrain is unavailable.
         """
-        if not self._soma_brain_up:
+        if self._somabrain_disabled or not self._soma_brain_up:
             return {}
         try:
             return await self.soma.recall(*args, **kwargs)
@@ -402,18 +404,36 @@ class ConversationWorker:
 
     async def _safe_save_memory(self, payload: dict[str, Any]) -> None:
         """Wrap ``self.soma.save_memory`` with buffering when the service is down."""
-        if not self._soma_brain_up:
-            self._transient_memory.append(payload)
-            SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
+        async def _enqueue_outbox(reason: str) -> None:
+            tenant = (payload.get("metadata") or {}).get("tenant")
+            session_id = payload.get("session_id")
+            persona_id = payload.get("persona_id")
+            idem = payload.get("idempotency_key") or payload.get("id")
+            dedupe = payload.get("id") or payload.get("dedupe_key")
+            try:
+                await self.mem_outbox.enqueue(
+                    payload=payload,
+                    tenant=tenant,
+                    session_id=session_id,
+                    persona_id=persona_id,
+                    idempotency_key=idem,
+                    dedupe_key=dedupe,
+                )
+                pending = await self.mem_outbox.count_pending()
+                SOMABRAIN_BUFFER_GAUGE.set(pending)
+            except Exception:
+                LOGGER.debug("Failed to enqueue memory payload during %s", reason, exc_info=True)
+
+        if self._somabrain_disabled or not self._soma_brain_up:
+            await _enqueue_outbox("somabrain_down")
             return
         try:
             await self.soma.save_memory(payload)
         except Exception:
             LOGGER.debug("SomaBrain save_memory failed – buffering payload", exc_info=True)
             self._enter_somabrain_degraded("save_memory_failure")
-            self._transient_memory.append(payload)
             SOMABRAIN_STATUS_GAUGE.set(0.0)
-            SOMABRAIN_BUFFER_GAUGE.set(len(self._transient_memory))
+            await _enqueue_outbox("save_memory_failure")
 
     def _somabrain_health_state(self) -> SomabrainHealthState:
         if not self._soma_brain_up:

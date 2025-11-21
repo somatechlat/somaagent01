@@ -41,6 +41,12 @@ class LlmCredentialsStore:
     """
 
     def __init__(self) -> None:
+        # Prefer SA01_REDIS_URL/REDIS_URL; SecretManager reads from env.
+        import os
+
+        redis_url = os.getenv("SA01_REDIS_URL") or os.getenv("REDIS_URL")
+        if redis_url:
+            os.environ["REDIS_URL"] = redis_url
         self._manager = SecretManager()
 
     async def list_providers(self) -> List[str]:

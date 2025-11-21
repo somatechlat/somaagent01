@@ -3,10 +3,11 @@ from playwright.sync_api import expect
 
 from services.common import env
 
+# Default to the UI root path (no trailing '/ui') as the UI is now served at '/'.
 BASE_URL = (
     env.get("WEB_UI_BASE_URL")
     or env.get("UI_BASE_URL")
-    or f"http://localhost:{env.get('GATEWAY_PORT', '21016') or '21016'}/ui"
+    or f"http://localhost:{env.get('GATEWAY_PORT', '21016') or '21016'}"
 )
 
 
