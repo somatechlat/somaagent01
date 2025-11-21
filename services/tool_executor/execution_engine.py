@@ -17,7 +17,7 @@ from services.tool_executor.sandbox_manager import (
     SandboxManager,
 )
 from services.tool_executor.tool_registry import ToolDefinition
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 

@@ -19,7 +19,6 @@ from typing import List
 from fastapi import FastAPI
 
 from .base_service import BaseSomaService
-from .config import load_config
 # Import the health router (FastAPI router) and the background health monitor.
 # The router provides the ``/v1/health`` endpoint, while the monitor runs a
 # periodic async task that checks external services.
@@ -41,8 +40,11 @@ class ServiceRegistry:
         self._services: List[BaseSomaService] = []
 
     def register(self, service: BaseSomaService, critical: bool = False) -> None:
-        # Attach a ``_critical`` attribute used by the orchestrator during startup.
+        # Attach orchestrator metadata.
         setattr(service, "_critical", critical)
+        # Preserve explicit startup ordering if provided on the service; default to 0.
+        order = getattr(service, "_startup_order", 0)
+        setattr(service, "_startup_order", order)
         self._services.append(service)
 
     @property
@@ -67,7 +69,7 @@ class SomaOrchestrator:
         self.health_router = UnifiedHealthRouter(self.registry.services)
         # The background monitor runs independently and uses the central config.
         # It will be started explicitly by the orchestrator when needed.
-        self.health_monitor = UnifiedHealthMonitor(load_config())
+        self.health_monitor = UnifiedHealthMonitor(self.registry.services)
 
     # ------------------------------------------------------------------
     # Registration API – concrete services import this module and call
@@ -80,8 +82,9 @@ class SomaOrchestrator:
     # Lifecycle management.
     # ------------------------------------------------------------------
     async def _start_all(self) -> None:
-        LOGGER.info("Starting %d services", len(self.registry.services))
-        for svc in self.registry.services:
+        services = sorted(self.registry.services, key=lambda s: getattr(s, "_startup_order", 0))
+        LOGGER.info("Starting %d services", len(services))
+        for svc in services:
             try:
                 await svc.start()
             except Exception as exc:
@@ -128,13 +131,11 @@ class SomaOrchestrator:
 
         @self.app.on_event("startup")
         async def _startup() -> None:  # noqa: D401
-            await self.health_monitor.start()
             await self._start_all()
 
         @self.app.on_event("shutdown")
         async def _shutdown() -> None:  # noqa: D401
             await self._stop_all()
-            await self.health_monitor.stop()
 # NOTE: The original complex process‑manager implementation has been removed.
 # The lightweight ``BaseSomaService``‑based orchestrator defined above is the
 # single source of truth for the project, satisfying the VIBE rule

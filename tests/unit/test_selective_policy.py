@@ -61,7 +61,7 @@ def test_deny(monkeypatch, app):
     monkeypatch.setattr(client, "evaluate", _eval_deny)
 
     # Enable auth to ensure policy is enforced.
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     original_settings = cfg._STATE.settings if cfg._STATE else None
     try:
@@ -88,7 +88,7 @@ def test_error(monkeypatch, app):
     monkeypatch.setattr(client, "evaluate", _eval_error)
 
     # Enable auth to ensure policy is enforced.
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     original_settings = cfg._STATE.settings if cfg._STATE else None
     try:

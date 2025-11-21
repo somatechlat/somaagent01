@@ -24,7 +24,7 @@ import logging
 import re
 from typing import Iterable
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 DEFAULT_KEYS = {
     "authorization",
     "auth",

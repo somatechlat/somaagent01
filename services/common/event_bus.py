@@ -20,7 +20,7 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from opentelemetry.trace import SpanContext
 
 LOGGER = logging.getLogger(__name__)

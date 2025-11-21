@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 
 @dataclass

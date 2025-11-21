@@ -24,7 +24,7 @@ from src.core.domain.memory.replica_store import (
 from services.common.settings_sa01 import SA01Settings
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)

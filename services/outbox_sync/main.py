@@ -30,7 +30,7 @@ from services.common.outbox_repository import (
     OutboxStore,
 )
 from services.common.tracing import setup_tracing
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 

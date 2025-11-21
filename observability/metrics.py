@@ -146,6 +146,23 @@ system_cpu_usage = Gauge(
     "system_cpu_usage_percent", "System CPU usage percentage", registry=registry
 )
 
+# ---------------------------------------------------------------------------
+# Compatibility metrics required by the FastA2A integration.
+# The ``python.observability.metrics`` module expects a ``somabrain_requests_total``
+# counter to be available from this ``observability.metrics`` package.  The
+# original implementation mistakenly imported the symbol from itself, leading to
+# an ``ImportError`` at runtime.  We provide a minimal placeholder counter that
+# satisfies the import without altering behaviour – the FastA2A code only
+# increments this counter, so a simple ``Counter`` with a generic ``agent``
+# label is sufficient.
+# ---------------------------------------------------------------------------
+somabrain_requests_total = Counter(
+    "somabrain_requests_total",
+    "Total SomaBrain requests made",
+    ["agent"],
+    registry=registry,
+)
+
 # Phase 3: Memory Guarantees & WAL Lag Metrics
 memory_write_outbox_pending = Gauge(
     "memory_write_outbox_pending_total",

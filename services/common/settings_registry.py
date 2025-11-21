@@ -15,7 +15,7 @@ from python.helpers.settings import (
     convert_out as ui_convert_out,
     get_default_settings as ui_get_defaults,
 )
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from services.common.model_profiles import ModelProfileStore
 from services.common.ui_settings_store import UiSettingsStore
 from services.common.llm_credentials_store import LlmCredentialsStore

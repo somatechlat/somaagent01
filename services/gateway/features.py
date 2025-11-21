@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram
 
 from observability.metrics import metrics_collector
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 router = APIRouter()
 

@@ -18,6 +18,24 @@ from typing import Any, Optional
 
 # The new central config lives in ``src.core.config``.  Import the ``cfg``
 # singleton that mimics the historic ``runtime_config`` API.
+# Ensure the ``src`` package is discoverable when running inside the Docker
+# container. The Dockerfile sets ``PYTHONPATH`` to ``/app`` which means the
+# ``src`` directory (located at ``/app/src``) is not automatically on the
+# import path. Adding it here avoids a hard‑coded change to the Docker image
+# while keeping the shim functional in all environments (local dev, tests,
+# Docker). This adjustment is safe because it only appends the path if it is
+# not already present.
+import os
+import sys
+# Determine the absolute path to the ``src`` package relative to this file.
+# ``runtime_config.py`` lives in ``services/common``; two directories up is the
+# repository root (mounted at ``/app`` in the Docker image). Adding ``src`` to
+# ``sys.path`` ensures ``import src.core.config`` succeeds both inside the
+# container and during local development.
+_src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+if _src_path not in sys.path:
+    sys.path.append(_src_path)
+
 from src.core.config import cfg as _new_cfg
 
 # ---------------------------------------------------------------------------

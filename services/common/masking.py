@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 try:  # Metrics are optional in some test contexts
     from prometheus_client import Counter

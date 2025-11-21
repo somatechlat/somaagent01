@@ -7,7 +7,7 @@ from typing import Dict, Optional
 
 import yaml
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 @dataclass
 class TenantSettings:

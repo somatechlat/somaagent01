@@ -14,7 +14,7 @@ import datetime as _dt
 import hashlib as _hashlib
 from typing import Any, Mapping, Optional
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 
 def _iso(ts: float) -> str:

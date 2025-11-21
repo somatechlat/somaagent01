@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 import asyncpg
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 from services.common.settings_base import BaseServiceSettings
 from services.common.admin_settings import ADMIN_SETTINGS

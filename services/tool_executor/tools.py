@@ -13,7 +13,7 @@ from typing import Any, Dict
 import httpx
 import mimetypes
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 try:
     import fitz  # PyMuPDF
