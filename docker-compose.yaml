@@ -34,11 +34,14 @@ x-agent-service: &agent-service
   working_dir: /git/agent-zero
   environment:
       <<: *agent-env
+  # Load the canonical env file (production‑style settings) and the memory‑override file.
   env_file:
     - ${SOMA_ENV_FILE:-.env}
-    # Optimized memory for 15GB dev environment - allocated based on actual usage patterns
-  mem_limit: 3g
-  mem_reservation: 1g
+    - .env.memory
+  # Production‑style memory limits, but tuned for a 10 GB development host.
+  # The generic limits act as a fallback if a specific service does not provide its own.
+  mem_limit: "${AGENT_MEM_LIMIT:-1024m}"
+  mem_reservation: "${AGENT_MEM_RESERVATION:-512m}"
   volumes:
     - ./memory:/git/agent-zero/memory
     - ./logs:/git/agent-zero/logs

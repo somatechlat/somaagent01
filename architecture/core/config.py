@@ -1,4 +1,14 @@
-# architecture/core/config.py - SINGLE SOURCE OF TRUTH
+# Deprecated configuration module.
+
+# This file previously contained a standalone configuration implementation.
+# The project now uses the single source of truth located in
+# ``src.core.config``. Importing this module will raise an ImportError to make
+# the deprecation explicit and to prevent accidental usage.
+
+raise ImportError(
+    "The module 'architecture.core.config' is deprecated. "
+    "Please import configuration from 'src.core.config' instead."
+)
 import os
 from typing import Any, Dict
 

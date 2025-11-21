@@ -151,7 +151,13 @@ from .loader import (
     EnvironmentMapping,
     get_config_loader,
     reload_config,
+    load_config as _load_config,
 )
+
+# Expose the ``load_config`` function at the package level.  This replaces the
+# previous shim‑style indirection and provides a single, real implementation for
+# callers such as ``orchestrator.config`` or ``services.common.central_config``.
+load_config = _load_config
 from .registry import (
     ConfigRegistry,
     ConfigSubscription,
@@ -188,6 +194,7 @@ __all__ = [
     "EnvironmentMapping",
     "get_config_loader",
     "reload_config",
+    "load_config",
     # Registry
     "ConfigRegistry",
     "ConfigSubscription",
