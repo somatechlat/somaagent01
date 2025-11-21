@@ -46,28 +46,41 @@ from weakref import WeakKeyDictionary
 import httpx
 from opentelemetry import trace
 from opentelemetry.propagate import inject
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Histogram, REGISTRY
 from services.common import env
 
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics for SomaBrain client
-SOMA_REQUESTS_TOTAL = Counter(
+# Avoid duplicate registration when imported multiple times (Celery workers, reloaders).
+def _get_metric(factory, name: str, *args, **kwargs):
+    existing = REGISTRY._names_to_collectors.get(name)
+    if existing:
+        return existing
+    metric = factory(name, *args, **kwargs)
+    return metric
+
+
+SOMA_REQUESTS_TOTAL = _get_metric(
+    Counter,
     "somabrain_requests_total",
     "Total SomaBrain HTTP requests",
     labelnames=("method", "path", "status"),
 )
-SOMA_REQUEST_SECONDS = Histogram(
+SOMA_REQUEST_SECONDS = _get_metric(
+    Histogram,
     "somabrain_request_seconds",
     "Latency of SomaBrain HTTP requests",
     labelnames=("method", "path", "status"),
 )
-MEMORY_WRITE_TOTAL = Counter(
+MEMORY_WRITE_TOTAL = _get_metric(
+    Counter,
     "somabrain_memory_write_total",
     "Count of memory writes via SomaBrain",
     labelnames=("result",),
 )
-MEMORY_WRITE_SECONDS = Histogram(
+MEMORY_WRITE_SECONDS = _get_metric(
+    Histogram,
     "somabrain_memory_write_seconds",
     "Latency of memory writes via SomaBrain",
     labelnames=("result",),

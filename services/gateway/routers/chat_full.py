@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
-from services.common.session_repository import SessionNotFoundError
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
@@ -33,9 +32,7 @@ async def get_chat_session(
         await ensure_session_schema(store)
         session = await store.get(session_id)
         if session is None:
-            raise SessionNotFoundError(session_id)
+            raise HTTPException(status_code=404, detail="session_not_found")
         return {"session_id": session_id, "persona_id": session.persona_id, "tenant": session.tenant}
-    except SessionNotFoundError:
-        raise HTTPException(status_code=404, detail="session_not_found")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"session_error: {type(exc).__name__}")
