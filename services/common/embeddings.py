@@ -31,7 +31,7 @@ class OpenAIEmbeddings(EmbeddingsProvider):
     def __init__(
         self, *, api_key: str | None = None, base_url: str | None = None, model: str | None = None
     ) -> None:
-        from services.common import runtime_config as cfg
+        from src.core.config import cfg
 
         self.api_key = api_key or cfg.env("OPENAI_API_KEY") or ""
         self.base_url = (
@@ -53,7 +53,7 @@ class OpenAIEmbeddings(EmbeddingsProvider):
                 }
                 payload = {"input": list(texts), "model": self.model}
                 url = f"{self.base_url}/embeddings"
-                from services.common import runtime_config as cfg
+                from src.core.config import cfg
 
                 async with httpx.AsyncClient(
                     timeout=float(cfg.env("EMBEDDINGS_TIMEOUT", "15"))
@@ -83,7 +83,7 @@ async def maybe_embed(text: str) -> list[float] | None:
     - Respects EMBEDDINGS_MAX_CHARS limit before sending to provider.
     """
     # Centralized feature toggle via runtime_config facade (C1 migration)
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     use_feature = cfg.flag("embeddings_ingest")
     if not use_feature:
@@ -91,7 +91,7 @@ async def maybe_embed(text: str) -> list[float] | None:
     if not isinstance(text, str) or not text.strip():
         return None
     try:
-        from services.common import runtime_config as cfg
+        from src.core.config import cfg
 
         max_chars = int(cfg.env("EMBEDDINGS_MAX_CHARS", "2000"))
     except ValueError:

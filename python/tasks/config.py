@@ -11,7 +11,7 @@ from typing import Dict, Any
 
 from redis import Redis
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 
 @dataclass(frozen=True)

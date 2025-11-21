@@ -3,7 +3,8 @@
 
 x-agent-env: &agent-env
   # Prioritize mounted repo code over baked image to enable live development
-  PYTHONPATH: "/git/agent-zero:/app"
+  # Include the project root and the src package for proper imports inside containers.
+  PYTHONPATH: "/git/agent-zero:/git/agent-zero/src:/app"
   LOG_LEVEL: INFO
   # prior envs removed in favor of SA01_* canonical variables
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal

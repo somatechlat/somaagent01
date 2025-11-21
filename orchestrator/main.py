@@ -20,13 +20,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import sys
 from typing import Any, Dict
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
-from .config import load_config, CentralizedConfig
 from .orchestrator import SomaOrchestrator
 from .health_monitor import UnifiedHealthMonitor
 from .gateway_service import GatewayService
@@ -34,6 +32,9 @@ from .unified_memory_service import UnifiedMemoryService
 from .base_service import BaseSomaService
 
 LOGGER = logging.getLogger(__name__)
+
+# Global orchestrator instance used by HTTP endpoints.
+_orchestrator: SomaOrchestrator | None = None
 
 
 def create_app() -> FastAPI:
@@ -56,21 +57,28 @@ def create_app() -> FastAPI:
     # Initialise a temporary orchestrator solely to register services.
     orchestrator = SomaOrchestrator(app)
     try:
-        orchestrator.register(GatewayService(), critical=False)
-        orchestrator.register(UnifiedMemoryService(), critical=False)
+        gateway = GatewayService()
+        gateway._startup_order = 10  # deterministic order
+        orchestrator.register(gateway, critical=True)
+
+        memory = UnifiedMemoryService()
+        memory._startup_order = 20
+        orchestrator.register(memory, critical=True)
     except Exception as exc:  # pragma: no cover – defensive
         LOGGER.error("Service registration failed during app creation: %s", exc)
 
     # Attach health router and Prometheus metrics.
     orchestrator.attach()
+
+    # Expose orchestrator for endpoints and external callers.
+    global _orchestrator
+    _orchestrator = orchestrator
+    app.state.orchestrator = orchestrator
     return app
 
 
 # Global FastAPI app used by the production server.
 app = create_app()
-
-# Global orchestrator instance used by the HTTP endpoints.
-_orchestrator: SomaOrchestrator | None = None
 
 
 def get_orchestrator() -> SomaOrchestrator:
@@ -80,43 +88,19 @@ def get_orchestrator() -> SomaOrchestrator:
     return _orchestrator
 
 
-@app.on_event("startup")
-async def _startup() -> None:
-    """Startup hook – load config, create the orchestrator and start services."""
-    global _orchestrator
-    config = load_config()
-    _orchestrator = SomaOrchestrator(config)
-    await _orchestrator.start()
-    # Start background health monitor.
-    await _orchestrator.health_monitor.start()
-    LOGGER.info("Orchestrator started")
-
-
-@app.on_event("shutdown")
-async def _shutdown() -> None:
-    """Shutdown hook – stop services and health monitor gracefully."""
-    global _orchestrator
-    if _orchestrator:
-        await _orchestrator.shutdown()
-        await _orchestrator.health_monitor.stop()
-        LOGGER.info("Orchestrator shut down")
-
-
 @app.get("/v1/health")
 async def health_check() -> Dict[str, Any]:
-    """Return the aggregated health status of all registered services."""
+    """Return aggregated health across all registered services."""
     orchestrator = get_orchestrator()
-    return orchestrator.get_service_status()
+    return await orchestrator.health_router.health_endpoint()
 
 
 @app.get("/v1/status")
 async def orchestrator_status() -> Dict[str, Any]:
-    """Detailed status including health‑monitor information."""
+    """Detailed status including service health and monitor view."""
     orchestrator = get_orchestrator()
-    status = orchestrator.get_service_status()
-    if hasattr(orchestrator, "health_monitor"):
-        status["health_monitor"] = orchestrator.health_monitor.get_overall_health()
-    return status
+    services = await orchestrator.health_router.health_endpoint()
+    return {"services": services}
 
 
 @app.post("/v1/shutdown")

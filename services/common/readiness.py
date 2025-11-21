@@ -46,7 +46,7 @@ COMPONENTS = ["postgres", "kafka", "redis"]
 
 
 def _timeout_seconds() -> float:
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     try:
         return float(cfg.env("READINESS_CHECK_TIMEOUT", "2.0"))
@@ -55,7 +55,7 @@ def _timeout_seconds() -> float:
 
 
 async def _check_postgres() -> Dict[str, Any]:
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     dsn = cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
     try:
@@ -74,7 +74,7 @@ async def _check_postgres() -> Dict[str, Any]:
 
 async def _check_kafka() -> Dict[str, Any]:
     # Allow tests to disable Kafka probe to avoid noisy resource warnings when broker absent
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     if cfg.env("READINESS_DISABLE_KAFKA", "false").lower() in {"true", "1", "yes", "on"}:
         return {"status": "healthy", "message": "Kafka probe disabled"}
@@ -95,7 +95,7 @@ async def _check_kafka() -> Dict[str, Any]:
 
 async def _check_redis() -> Dict[str, Any]:
     try:
-        from services.common import runtime_config as cfg
+        from src.core.config import cfg
 
         cache = RedisSessionCache(url=cfg.settings().redis_url or "redis://localhost:6379/0")
         await cache.ping()

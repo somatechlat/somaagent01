@@ -43,7 +43,7 @@ class HealthChecker:
         try:
             from kafka import KafkaProducer
 
-            from services.common import runtime_config as cfg
+            from src.core.config import cfg
 
             bootstrap_servers = cfg.settings().kafka_bootstrap_servers or "localhost:9092"
             producer = KafkaProducer(

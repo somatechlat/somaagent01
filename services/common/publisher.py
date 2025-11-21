@@ -22,7 +22,7 @@ from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus
 from services.common.outbox_repository import OutboxStore
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 

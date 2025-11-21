@@ -53,7 +53,7 @@ from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from observability.metrics import (
     ContextBuilderMetrics,
     llm_call_latency_seconds,

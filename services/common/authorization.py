@@ -62,7 +62,7 @@ async def authorize(
     persona = request.headers.get("X-Persona-Id")
 
     # Short‑circuit when authentication/policy enforcement is disabled.
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     if not cfg.settings().auth_required:
         # Record a successful (allowed) decision for observability.

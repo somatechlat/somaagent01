@@ -40,7 +40,7 @@ async def test_operations_admin_deny(monkeypatch):
     monkeypatch.setattr(auth_mod.PolicyClient, "evaluate", deny_eval)
     # When SA01_AUTH_REQUIRED=false, policy evaluation is bypassed and no exception is raised.
     # To test the deny path, we must enable auth.
-    from services.common import runtime_config as cfg
+    from src.core.config import cfg
 
     # Temporarily override the settings singleton to enable auth.
     original_settings = cfg._STATE.settings if cfg._STATE else None

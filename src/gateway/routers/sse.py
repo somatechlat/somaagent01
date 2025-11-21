@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 # Re‑use the configuration helper from the monolith.
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from services.common.event_bus import iterate_topic, KafkaSettings
 
 LOGGER = logging.getLogger(__name__)

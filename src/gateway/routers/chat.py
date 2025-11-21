@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 
 # Project imports – verified against the existing code base
 from python.helpers.settings import set_settings
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from services.common.audit_store import get_audit_store
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 

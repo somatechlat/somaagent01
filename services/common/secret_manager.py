@@ -27,7 +27,7 @@ from typing import Optional, List
 import redis.asyncio as redis
 from cryptography.fernet import Fernet, InvalidToken
 
-from services.common import runtime_config, env
+from src.core.config import env
 
 # ---------------------------------------------------------------------------
 # Helper – validate / normalise the Fernet key supplied via env

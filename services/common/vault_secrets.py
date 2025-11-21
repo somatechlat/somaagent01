@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 LOGGER = logging.getLogger(__name__)
 
 try:

@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from prometheus_client import Counter, Histogram
 
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 import httpx
 from python.integrations.somabrain_client import SomaClientError
 

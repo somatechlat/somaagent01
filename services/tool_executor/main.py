@@ -13,7 +13,7 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore

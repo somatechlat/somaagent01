@@ -120,6 +120,43 @@ def env(name: str, default: Any = None) -> Any:
     return default
 
 
+# -----------------------------------------------------------------------------
+# Convenience getters mirroring legacy runtime_config API (to ease migration).
+# -----------------------------------------------------------------------------
+def flag(key: str, tenant: Any = None) -> bool:
+    env_key = f"SA01_ENABLE_{key.upper()}"
+    val = env(env_key, default="false")
+    return str(val).lower() in {"true", "1", "yes", "on"}
+
+
+def deployment_mode() -> str:
+    return str(env("DEPLOYMENT_MODE", "DEV"))
+
+
+def gateway_port() -> int:
+    return int(env("GATEWAY_PORT", 8000))
+
+
+def soma_base_url() -> str:
+    return str(env("SOMA_BASE_URL", "http://localhost:9696"))
+
+
+def postgres_dsn() -> str:
+    return str(env("POSTGRES_DSN", "postgresql://postgres:postgres@localhost:5432/soma"))
+
+
+def redis_url() -> str:
+    return str(env("REDIS_URL", "redis://localhost:6379/0"))
+
+
+def kafka_bootstrap_servers() -> str:
+    return str(env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"))
+
+
+def opa_url() -> str:
+    return str(env("OPA_URL", "http://openfga:8080"))
+
+
 # Export a convenient singleton that mimics the historic ``runtime_config``
 class _CfgFacade:
     def env(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper

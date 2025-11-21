@@ -81,7 +81,7 @@ except ImportError:
 from python.helpers.settings import set_settings
 from python.helpers.settings import convert_out as ui_convert_out, get_default_settings as ui_get_defaults
 from python.helpers.dotenv import get_dotenv_value
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from services.common.api_key_store import ApiKeyStore, RedisApiKeyStore
 from services.common.dlq_store import DLQStore
 from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
@@ -158,22 +158,18 @@ def _redis_url() -> str:
 app = FastAPI(title="SomaAgent 01 Gateway")
 
 # ---------------------------------------------------------------
-# Register feature flag router (and any other modular routers)
+# Register feature flag router and decomposed modular routers
 # ---------------------------------------------------------------
-# The features module provides the `/v1/feature-flags` and `/v1/features`
-# endpoints required by the ROAMDPO plan and unit tests. Previously the
-# router was defined but never attached to the FastAPI app, resulting in a 404.
 # Import locally to avoid circular imports during app start‑up.
 try:
     from services.gateway.features import router as features_router
-    # New health router (VIBE‑compliant, tiny liveness endpoint)
-    from src.gateway.routers.health import router as health_router
+    from services.gateway.routers import build_router as build_modular_router
+
     app.include_router(features_router)
-    # Register the lightweight health endpoint – useful for liveness probes
-    app.include_router(health_router)
+    app.include_router(build_modular_router())
 except Exception as exc:  # pragma: no cover – defensive, should never fail in prod
     import logging
-    logging.getLogger(__name__).warning("Failed to include features router: %s", exc)
+    logging.getLogger(__name__).warning("Failed to include feature/modular routers: %s", exc)
 
 # Include monitoring endpoints (degradation, circuit breaker, metrics)
 try:
@@ -186,6 +182,9 @@ try:
 except Exception as exc:  # pragma: no cover – defensive, should never fail in prod
     import logging
     logging.getLogger(__name__).warning("Failed to include monitoring routers: %s", exc)
+
+# Import degradation monitor for startup initialization
+from services.gateway.degradation_monitor import degradation_monitor
 
 # Instrument FastAPI and httpx client used for external calls (after app creation)
 FastAPIInstrumentor().instrument_app(app)
@@ -1060,6 +1059,14 @@ async def _config_update_listener() -> None:
 @app.on_event("startup")
 async def start_background_services() -> None:
     """Initialize shared resources and background services."""
+    # Initialize degradation monitor (production resilience)
+    try:
+        await degradation_monitor.initialize()
+        await degradation_monitor.start_monitoring()
+        LOGGER.info("Degradation monitor initialized and started")
+    except Exception as exc:
+        LOGGER.error("Failed to start degradation monitor", extra={"error": str(exc)})
+    
     # Initialize shared event bus for reuse across requests
     event_bus = KafkaEventBus(_kafka_settings())
     # No explicit start() on our KafkaEventBus; producer is initialized lazily.
@@ -4810,6 +4817,13 @@ async def _stop_uploads_janitor() -> None:
 @app.on_event("shutdown")
 async def shutdown_background_services() -> None:
     """Ensure all shared resources are properly closed on shutdown."""
+    
+    # Stop degradation monitor
+    try:
+        await degradation_monitor.stop_monitoring()
+        LOGGER.info("Degradation monitor stopped")
+    except Exception as exc:
+        LOGGER.debug("Error stopping degradation monitor", extra={"error": str(exc)})
 
     # Close shared event bus
     if hasattr(app.state, "event_bus"):

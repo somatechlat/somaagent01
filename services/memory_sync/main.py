@@ -23,7 +23,7 @@ from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_schema,
 )
 from services.common.tracing import setup_tracing
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from python.integrations.soma_client import SomaClient, SomaClientError
 

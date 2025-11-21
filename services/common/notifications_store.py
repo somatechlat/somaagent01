@@ -36,7 +36,7 @@ SEVERITIES = {"info", "success", "warning", "error"}
 
 class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common import runtime_config as cfg
+        from src.core.config import cfg
 
         raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
         self.dsn = os.path.expandvars(raw_dsn)

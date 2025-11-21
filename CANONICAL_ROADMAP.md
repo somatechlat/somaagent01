@@ -1,109 +1,59 @@
-# 📍 Canonical Roadmap – Centralized Architecture for SomaAgent01
-
----
+# 📍 Canonical Roadmap — Single Entry SomaAgent01
 
 ## 🎯 Vision
-Create a **single‑point‑of‑entry, production‑grade architecture** that satisfies all VIBE CODING RULES, eliminates duplication, and provides deterministic startup/shutdown, unified configuration, and consistent observability.
+Operate SomaAgent01 through **one executable orchestrator** with **one configuration source of truth**, **one health/metrics surface**, and **zero legacy duplicates**, delivering production‑grade lifecycle control, observability, and compliance.
 
----
+## 🚦 Non‑Negotiables
+- **Single point of entry:** `python -m orchestrator.main` (or the orchestrator container) is the only way services start.
+- **Single config:** `src/core/config` (and its shim `orchestrator/config.py`) is the only configuration API; ENV precedence is documented and tested.
+- **Single health/metrics:** `/v1/health` and `/metrics` exposed once by the orchestrator; services register into it, not vice‑versa.
+- **No legacy paths:** Remove `services.common.runtime_config`, duplicate orchestrators, and redundant memory/gateway entry points.
+- **Real implementations only:** No fallbacks, stubs, or silent degradation.
 
-## 📚 High‑Level Goals
-| Goal | Description | VIBE Rule Addressed |
-|------|-------------|----------------------|
-| **Single Orchestrator** | One executable (`orchestrator/main.py`) that starts, monitors, and stops *all* services. | ✅ Complete Context Understanding, ✅ Real Implementations Only |
-| **Unified Configuration** | All env variables flow through a `CentralizedConfig` class; no scattered `.env` files. | ✅ Zero Assumptions, ✅ Documentation Verification |
-| **Consistent Health & Metrics** | One health endpoint (`/v1/health`) and a shared Prometheus metrics server. | ✅ Evidence‑Based Development, ✅ Quality Over Speed |
-| **Memory Service Consolidation** | Merge `memory‑replicator`, `memory‑sync`, and `outbox‑sync` into `UnifiedMemoryService`. | ✅ Real Implementations Only |
-| **Standardised Service Lifecycle** | All services inherit from `BaseSomaService` (start/stop hooks, graceful shutdown). | ✅ Incremental Progress, ✅ Real Implementations Only |
-| **Production‑Ready Observability** | Centralised tracing, logging, and alerting (OTLP, Prometheus, Loki). | ✅ Production‑Ready Level 4 |
+## 🧭 Workstreams & Milestones
+### 1) Orchestrator Unification (Week 1)
+- Merge `ServiceRegistry` into `SomaOrchestrator`; align constructor signature and use registry for startup order/critical flags.
+- Keep one health router; delete duplicate monitor/router code after integration.
+- Add CI smoke (`python -m orchestrator.main --dry-run` + `/v1/health`).
 
----
+### 2) Configuration Convergence (Week 2)
+- Replace all imports of `services.common.runtime_config` with `orchestrator/config.py` (backed by `src/core/config`).
+- Remove obsolete loaders/env helpers; document precedence in `docs/architecture.md`.
+- Guardrail test that fails on new `runtime_config` imports.
 
-## 🗺️ Roadmap Phases
-### **Phase 1 – Foundations (Weeks 1‑2)**
-1. **Create Orchestrator package** (`orchestrator/`)
-   - `SomaOrchestrator` – orchestrates start/stop of services.
-   - `ServiceRegistry` – declarative list of services, startup order, critical flag.
-2. **Define `BaseSomaService`** – common init, metrics, health, shutdown.
-3. **Implement `CentralizedConfig`** – loads `.env` once, validates, exposes typed getters.
-4. **Add `UnifiedHealthMonitor`** – aggregates health from all services.
-5. **Add CI test to verify orchestrator can start all services in `dev` profile.**
+### 3) Service Lifecycle Standardization (Week 3)
+- Register gateway + workers (conversation, tool, memory pipeline) in `ServiceRegistry` with health adapters.
+- Choose one launch mode (subprocess or in‑proc) and delete the other; ensure graceful SIGTERM.
+- Mount services via the orchestrator FastAPI app; ensure `/v1/health` reflects registry state.
 
-### **Phase 2 – Service Consolidation (Weeks 3‑4)**
-1. **Unified Memory Service** (`UnifiedMemoryService`)
-   - Wraps `MemoryReplicator`, `MemorySync`, `OutboxSync`.
-   - Exposes a single start/stop API.
-2. **Refactor existing services** to inherit `BaseSomaService`.
-3. **Remove duplicate entry points** (`runstack.py`, individual `uvicorn` commands) – keep only orchestrator.
-4. **Update Docker‑Compose**:
-   - Replace 8+ service containers with a single `orchestrator` container.
-   - Keep only infrastructure containers (Kafka, Redis, Postgres, OPA).
-5. **Standardise health checks** – every service registers a `/health` route; orchestrator aggregates.
+### 4) Gateway Decomposition (Week 4)
+- Split `services/gateway/main.py` into routers + middleware per concern (chat, admin, health, tools, memory, sessions, uploads).
+- Enforce ≤500 lines per module; add lint to block regressions.
 
-### **Phase 3 – Observability & Production‑Readiness (Weeks 5‑6)**
-1. **Central OTLP tracing** – all services use `setup_tracing` from orchestrator.
-2. **Prometheus metrics server** – single port, metrics from all services via shared registry.
-3. **Logging** – JSON‑structured logs with request‑ID correlation.
-4. **Graceful shutdown** – SIGTERM handling propagates to all services, ensures DB connections close.
-5. **Production‑grade Helm/K8s manifests** – `orchestrator` as a Deployment with side‑car init‑containers for DB migrations.
-6. **Documentation update** – `ARCHITECTURE.md` fully reflects new design.
+### 5) Memory Path Unification (Week 5)
+- Decide “single memory service” model (unified tasks under orchestrator or orchestrated subprocess set).
+- Keep `UnifiedMemoryService` as schema/health owner; delete unused memory entry points after migration.
 
-### **Phase 4 – Validation & Cut‑over (Weeks 7‑8)**
-1. **End‑to‑end smoke tests** against a full stack (orchestrator + infra).
-2. **Load‑testing** – verify the orchestrator can handle 500 RPS without service‑startup bottlenecks.
-3. **Rollback plan** – keep previous Docker‑Compose as a fallback until green.
-4. **Production release** – tag `v1.0‑central‑orchestrator`.
+### 6) Observability & Logging (Week 5)
+- Central OTLP tracing, shared Prometheus registry, structured JSON logging with request/trace correlation.
+- Ensure every service registers metrics via orchestrator bootstrap; expose `/metrics` only once.
 
----
+### 7) Compose/K8s Cutover (Week 6)
+- Simplify `docker-compose.yaml` to **one** app container (`orchestrator`) plus infra (Kafka/Redis/Postgres/OPA); remove per‑service app containers.
+- Provide Helm/K8s manifests mirroring the single entry pattern.
 
-## 🏗️ Architectural Patterns Employed
-| Pattern | Why it’s used | VIBE Compliance |
-|---------|---------------|-----------------|
-| **Orchestrator / Supervisor** | Guarantees deterministic start‑up order, single point of control, and graceful shutdown. | ✅ Complete Context Understanding, ✅ Real Implementations Only |
-| **Microservice‑style services with shared runtime** | Keeps services independent but managed centrally; allows independent scaling later. | ✅ Zero Assumptions, ✅ Quality Over Speed |
-| **Centralized Configuration (Config‑as‑Code)** | Eliminates scattered `.env` files, provides typed access, and validation at boot. | ✅ Documentation Verification, ✅ Evidence‑Based Development |
-| **Base Service Class (Template Method)** | Enforces uniform lifecycle, health, metrics, and logging across all components. | ✅ Incremental Progress, ✅ Real Implementations Only |
-| **Unified Health Aggregator** | Provides a single health endpoint for monitoring tools (Kubernetes, Prometheus). | ✅ Evidence‑Based Development |
-| **Observability Stack (OTLP, Prometheus, Loki)** | Gives production‑grade tracing, metrics, and log aggregation. | ✅ Production‑Ready Level 4 |
-| **Docker‑Compose → Single‑Container Orchestrator** | Reduces container sprawl, simplifies CI/CD, and matches the “single entry point” VIBE rule. | ✅ Real Implementations Only |
+### 8) Validation & Release (Week 6)
+- E2E smoke + load test (500 RPS target) through orchestrator; verify graceful shutdown.
+- Tag `v1.0-single-entry`; publish migration notes and rollback plan.
 
----
+## ✅ Success Criteria
+- `python -m orchestrator.main` starts all required services deterministically; `/v1/health` green; `/metrics` scrapes combined registry.
+- No references to `services.common.runtime_config`; static guardrail enforces this.
+- Gateway modularized; no file >500 lines; routers/middleware separated.
+- Memory services consolidated per chosen model; no duplicate entry points.
+- Docker Compose contains only the orchestrator app + infra; CI smoke passes.
 
-## 🚀 Production‑Ready Level After Completion
-Following the roadmap, SomaAgent01 will achieve **Production‑Ready Level 4** (Enterprise‑grade) as defined in the internal VIBE maturity model:
-1. **Level 1 – Prototype** – ad‑hoc scripts, many duplicated configs.
-2. **Level 2 – Development** – separate services, manual health checks.
-3. **Level 3 – Staging** – Docker‑Compose, basic metrics, limited observability.
-4. **Level 4 – Production‑Grade** –
-   - Single orchestrator with deterministic lifecycle.
-   - Centralized, validated configuration.
-   - Unified health endpoint & Prometheus metrics.
-   - Structured JSON logging + OTLP tracing.
-   - Graceful shutdown, zero‑downtime roll‑outs.
-   - Helm/K8s manifests ready for multi‑region deployment.
-
-At Level 4 the system satisfies **all VIBE CODING RULES**, provides **zero‑downtime upgrades**, and is **ready for high‑availability production** (multiple replicas of the orchestrator can be run behind a load‑balancer).
-
----
-
-## 📅 Timeline Overview
-| Week | Milestone |
-|------|-----------|
-| 1‑2 | Orchestrator, Base Service, Central Config, Health Monitor (all unit‑tested). |
-| 3‑4 | Unified Memory Service, refactor existing services, Docker‑Compose simplification. |
-| 5‑6 | Central observability, tracing, logging, Helm charts, production docs. |
-| 7‑8 | End‑to‑end validation, load‑testing, production release. |
-
----
-
-## 📌 Next Steps (Implementation Kick‑off)
-1. **Create `orchestrator/` package** with the skeleton classes (Orchestrator, ServiceRegistry, BaseSomaService, CentralizedConfig, UnifiedHealthMonitor).  
-2. **Add a CI job** that runs `python -m orchestrator.main --dry-run` to verify service definitions.
-3. **Refactor `services/gateway/main.py`** to inherit from `BaseSomaService` and register with the orchestrator.
-4. **Update Docker‑Compose** to replace individual service containers with a single `orchestrator` container (keep only infra).
-
-Once the skeleton is in place, we can iteratively migrate each existing service (conversation‑worker, tool‑executor, memory services) under the orchestrator.
-
----
-
-*Prepared according to the VIBE CODING RULES – no placeholders, all statements are verifiable against the current code base.*
+## 📌 Immediate Next Actions
+1) Patch orchestrator to use `ServiceRegistry` end‑to‑end and remove duplicate health code.
+2) Sweep codebase to drop `runtime_config` imports; add lint/test blocker.
+3) Draft gateway split structure and begin extraction of health/chat/tool routers.

@@ -1,5 +1,5 @@
 import os
-from services.common import runtime_config as cfg
+from src.core.config import cfg
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional
 
