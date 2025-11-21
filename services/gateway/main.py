@@ -387,10 +387,6 @@ JANITOR_LAST_RUN = _get_or_create_gauge(
 # -----------------------------
 # /v1/speech/transcribe (STT)
 # -----------------------------
-@app.post("/v1/speech/transcribe")
-async def v1_speech_transcribe(req: TranscribeRequest) -> JSONResponse:
-    """Speech-to-text transcription endpoint (Gateway-only).
-
     Accepts base64-encoded WAV audio and returns recognized text using faster-whisper.
     This endpoint returns 501 if ML dependencies are not installed in the environment.
     """
@@ -454,10 +450,6 @@ class KokoroSynthesizeRequest(BaseModel):
     voice: Optional[str] = None  # comma-separated for blends, per kokoro_tts helper
     speed: Optional[float] = None
 
-
-@app.post("/v1/speech/tts/kokoro")
-async def v1_speech_tts_kokoro(req: KokoroSynthesizeRequest) -> JSONResponse:
-    """Text-to-speech synthesis using Kokoro.
 
     Returns base64-encoded WAV audio. If Kokoro dependencies are not available
     in this environment, returns 501 to allow the UI to fallback to browser TTS.
@@ -544,10 +536,6 @@ def _build_ws_url(request: Request, path: str, query: str) -> str:
     return urlunparse(new)
 
 
-@app.post("/v1/speech/realtime/session", response_model=RealtimeSessionResponse)
-async def v1_speech_realtime_session(payload: RealtimeSessionRequest, request: Request) -> RealtimeSessionResponse:
-    """Mint a short-lived realtime speech session and return WS URL.
-
     This is a scaffold endpoint. When realtime is disabled, returns 503 to let
     the UI fallback gracefully. When enabled, creates a one-use session id in
     cache with a small TTL and returns the websocket URL.
@@ -583,10 +571,6 @@ async def v1_speech_realtime_session(payload: RealtimeSessionRequest, request: R
         caps=caps,
     )
 
-
-@app.websocket("/v1/speech/realtime/ws")
-async def v1_speech_realtime_ws(websocket: WebSocket, session_id: str | None = None):
-    """Realtime speech WS scaffold.
 
     Validates the one-use session id and accepts the connection. For now it
     immediately informs the client that realtime is not yet available and
@@ -667,10 +651,6 @@ def _normalize_openai_realtime_base(endpoint: str | None) -> str:
     except Exception:
         return "https://api.openai.com/v1/realtime"
 
-
-@app.post("/v1/speech/openai/realtime/offer", response_model=OpenAIRealtimeAnswer)
-async def v1_speech_openai_realtime_offer(payload: OpenAIRealtimeOffer, request: Request) -> OpenAIRealtimeAnswer:
-    """Accept a browser WebRTC SDP offer and return OpenAI's SDP answer.
 
     This keeps OpenAI API keys on the server (single point of configuration). The media
     flows directly between the browser and OpenAI; Gateway only relays SDP.
@@ -1496,58 +1476,6 @@ async def login_page(request: Request) -> HTMLResponse:
     return HTMLResponse(content=html)
 
 
-@app.get("/v1/auth/login")
-async def auth_login(request: Request, provider: str = "google") -> RedirectResponse:
-    if not _oidc_enabled():
-        raise HTTPException(status_code=503, detail="OIDC not enabled")
-    disc = await _oidc_discovery()
-    cli = _oidc_client()
-    auth_url = disc.get("authorization_endpoint")
-    if not auth_url:
-        raise HTTPException(status_code=500, detail="OIDC discovery failed")
-    state = secrets.token_urlsafe(24)
-    nonce = secrets.token_urlsafe(24)
-    # Cache state+nonce to validate callback
-    try:
-        cache = get_session_cache()
-        await cache.set(f"oidc:state:{state}", {"nonce": nonce}, ex=300)
-    except Exception:
-        LOGGER.debug("Failed to save OIDC state in cache", exc_info=True)
-    params = {
-        "response_type": "code",
-        "client_id": cli["client_id"],
-        "redirect_uri": cli["redirect_uri"],
-        "scope": cli["scopes"],
-        "state": state,
-        "nonce": nonce,
-    }
-    url = auth_url + ("?" + urlencode(params))
-    return RedirectResponse(url)
-
-
-@app.get("/v1/auth/callback")
-async def auth_callback(request: Request, code: str | None = None, state: str | None = None) -> Response:
-    if not _oidc_enabled():
-        raise HTTPException(status_code=503, detail="OIDC not enabled")
-    if not code or not state:
-        raise HTTPException(status_code=400, detail="missing code/state")
-    disc = await _oidc_discovery()
-    token_url = disc.get("token_endpoint")
-    if not token_url:
-        raise HTTPException(status_code=500, detail="OIDC discovery incomplete")
-    cli = _oidc_client()
-    # Validate state and retrieve nonce
-    nonce_expected = None
-    try:
-        cache = get_session_cache()
-        item = await cache.get(f"oidc:state:{state}")
-        if isinstance(item, dict):
-            nonce_expected = item.get("nonce")
-        await cache.delete(f"oidc:state:{state}")
-    except Exception:
-        LOGGER.debug("Failed to read OIDC state from cache", exc_info=True)
-    if not nonce_expected:
-        raise HTTPException(status_code=400, detail="state expired or invalid")
 
     # Exchange code for tokens
     data = {
@@ -1651,14 +1579,6 @@ async def root_entry(request: Request) -> Response:
         return RedirectResponse(url="/login")
     return RedirectResponse(url="/ui/index.html")
 
-
-@app.post("/v1/auth/logout")
-async def auth_logout(request: Request) -> Response:
-    cookie_name = cfg.env("GATEWAY_JWT_COOKIE_NAME", "jwt")
-    resp = JSONResponse({"status": "ok"})
-    flags = _jwt_cookie_flags(request)
-    resp.delete_cookie(key=cookie_name, path=flags["path"], domain=flags["domain"])
-    return resp
 
 
 def _cached_openapi_schema() -> dict[str, Any]:
@@ -1875,14 +1795,6 @@ class MigrateImportPayload(BaseModel):
     replace: bool = False
 
 
-@app.get("/v1/admin/memory/metrics")
-async def admin_memory_metrics(
-    request: Request,
-    tenant: str = Query(..., description="Tenant identifier"),
-    namespace: str = Query(..., description="Memory namespace (e.g., wm, ltm)"),
-) -> JSONResponse:
-    """Proxy to ``SomaBrainClient.memory_metrics``.
-
     Returns the raw JSON mapping from the SomaBrain service.
     """
     await _enforce_admin_rate_limit(request)
@@ -1912,8 +1824,6 @@ class MemoryBatchPayload(BaseModel):
     items: list[dict[str, Any]] = Field(default_factory=list, description="Memory payloads to persist")
 
 MemoryBatchPayload.model_rebuild()
-
-@app.post("/v1/memory/batch")
 
 async def memory_batch_write(
     request: Request,
@@ -1988,21 +1898,6 @@ async def memory_batch_write(
 
     return {"items": results}
 
-
-@app.delete("/v1/memory/{mem_id}")
-async def memory_delete(
-    mem_id: str,
-    request: Request,
-) -> dict:
-    auth = await authorize_request(request, {"id": mem_id})
-    _require_admin_scope(auth)
-    soma = SomaBrainClient.get()
-    # Prefer recall_delete that can accept identifiers; fall back to no-op if unsupported
-    try:
-        res = await soma.recall_delete({"id": mem_id})  # type: ignore[arg-type]
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"delete failed: {exc}") from exc
-    return {"deleted": True, "result": res}
 
 
 def _export_semaphore() -> asyncio.Semaphore:
@@ -3142,14 +3037,6 @@ async def enqueue_quick_action(
     return JSONResponse({"session_id": session_id, "event_id": event_id})
 
 
-@app.get("/v1/sessions", response_model=list[SessionSummary])
-async def list_sessions_endpoint(
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-    limit: int = Query(50, ge=1, le=200),
-    tenant: str | None = Query(None, description="Filter sessions by tenant identifier"),
-) -> list[SessionSummary]:
-    """List sessions; seed a default welcome session if none exist (A0 parity).
-
     The UI expects one chat with a welcome assistant message on first load.
     We create a real assistant.final event to back that behavior when the
     store is empty.
@@ -3213,15 +3100,6 @@ async def list_sessions_endpoint(
         )
     return summaries
 
-
-@app.post("/v1/sessions/import", response_model=SessionsImportResponse)
-async def import_sessions_endpoint(
-    payload: SessionsImportPayload,
-    request: Request,
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-) -> SessionsImportResponse:
-    # Auth hint for auditing/tenant context; not currently restricting
-    _ = await authorize_request(request, {"count": len(payload.chats)})
 
     def _parse_dt(value: Any) -> datetime | None:
         try:
@@ -3298,14 +3176,6 @@ async def import_sessions_endpoint(
     return SessionsImportResponse(ctxids=imported_ids)
 
 
-@app.post("/v1/sessions/export", response_model=SessionExportResponse)
-async def export_session_endpoint(
-    payload: SessionExportPayload,
-    request: Request,
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-) -> SessionExportResponse:
-    _ = await authorize_request(request, {"session_id": payload.session_id})
-
     # Gather envelope
     envelope = await store.get_envelope(payload.session_id)
     env_obj: dict[str, Any] | None = None
@@ -3347,114 +3217,6 @@ async def export_session_endpoint(
         # Fallback minimal content
         content = json.dumps({"session_id": payload.session_id, "events": timeline_payloads})
     return SessionExportResponse(ctxid=payload.session_id, content=content)
-@app.delete("/v1/sessions/{session_id}")
-async def delete_session_endpoint(
-    session_id: str,
-    request: Request,
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
-) -> dict[str, Any]:
-    # Authz: reuse request auth to hydrate tenant for auditing
-    auth_metadata = await authorize_request(request, {"session_id": session_id})
-    _ = auth_metadata  # currently unused for decision; can enforce ownership with OpenFGA later
-    result = await store.delete_session(session_id)
-    try:
-        await cache.delete(cache.format_key(session_id))
-    except Exception:
-        LOGGER.debug("Failed to delete session cache key", exc_info=True)
-    return {"status": "deleted", "result": result}
-
-@app.post("/v1/sessions/{session_id}/reset")
-async def reset_session_endpoint(
-    session_id: str,
-    request: Request,
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-) -> dict[str, Any]:
-    auth_metadata = await authorize_request(request, {"session_id": session_id})
-    _ = auth_metadata
-    result = await store.reset_session(session_id)
-    return {"status": "reset", "result": result}
-
-@app.post("/v1/sessions/{session_id}/pause")
-async def pause_session_endpoint(
-    session_id: str,
-    payload: dict[str, Any],
-    request: Request,
-    cache: Annotated[RedisSessionCache, Depends(get_session_cache)],
-) -> dict[str, Any]:
-    # payload expects {"paused": true|false}
-    auth_metadata = await authorize_request(request, {"session_id": session_id})
-    _ = auth_metadata
-    paused = bool(payload.get("paused"))
-    try:
-        # Preserve existing persona/metadata if present; otherwise seed
-        existing = await cache.get(cache.format_key(session_id)) or {}
-        persona_id = existing.get("persona_id") or ""
-        md = dict((existing.get("metadata") or {}))
-        md["paused"] = paused
-        await cache.write_context(session_id, persona_id, md)
-    except Exception:
-        LOGGER.debug("Failed to update session paused flag in cache", exc_info=True)
-        raise HTTPException(status_code=500, detail="failed to update pause state")
-    return {"status": "ok", "paused": paused}
-
-@app.post("/v1/tool/request")
-async def request_tool_execution(
-    payload: ToolRequestPayload,
-    request: Request,
-    publisher: Annotated[DurablePublisher, Depends(get_publisher)],
-) -> dict[str, Any]:
-    auth_metadata = await authorize_request(request, payload.model_dump())
-    metadata, persona_hdr = _apply_header_metadata(request, {**payload.metadata, **auth_metadata})
-    persona_id = payload.persona_id or persona_hdr
-    # Enforce tool catalog: deny execution if disabled
-    try:
-        await CATALOG_STORE.ensure_schema()
-        enabled = await CATALOG_STORE.is_enabled(payload.tool_name)
-    except Exception as exc:
-        # Fail-closed posture for catalog errors
-        raise HTTPException(status_code=503, detail=f"tool catalog unavailable: {exc}")
-    if not enabled:
-        # Audit denial best-effort
-        try:
-            from opentelemetry import trace as _trace
-            ctx = _trace.get_current_span().get_span_context()
-            trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
-        except Exception:
-            trace_id_hex = None
-        try:
-            req_id = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
-            await get_audit_store().log(
-                request_id=req_id,
-                trace_id=trace_id_hex,
-                session_id=payload.session_id,
-                tenant=metadata.get("tenant"),
-                subject=auth_metadata.get("subject"),
-                action="tool.request.denied",
-                resource="tool.request",
-                target_id=None,
-                details={"tool_name": payload.tool_name, "reason": "disabled in catalog"},
-                diff=None,
-                ip=getattr(request.client, "host", None) if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-            )
-        except Exception:
-            LOGGER.debug("Failed to write audit log for tool.request.denied", exc_info=True)
-        raise HTTPException(status_code=403, detail=f"tool '{payload.tool_name}' is disabled")
-    event_id = str(uuid.uuid4())
-    event = {
-        "event_id": event_id,
-        "session_id": payload.session_id,
-        "persona_id": persona_id,
-        "tool_name": payload.tool_name,
-        "args": payload.args,
-        "metadata": metadata,
-    }
-    try:
-        validate_event(event, "tool_request")
-    except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid tool request: {exc}") from exc
-
     topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
     await publisher.publish(
         topic,
@@ -3513,42 +3275,12 @@ class ToolCatalogListResponse(BaseModel):
     count: int
 
 
-@app.get("/v1/tool-catalog", response_model=ToolCatalogListResponse)
-async def get_tool_catalog() -> ToolCatalogListResponse:
-    # Return current catalog entries; note that tools absent in catalog are implicitly enabled
-    try:
-        await CATALOG_STORE.ensure_schema()
-        entries = await CATALOG_STORE.list_all()
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"tool catalog unavailable: {exc}")
-    items = [
-        ToolCatalogItem(name=e.name, enabled=e.enabled, description=e.description, params=e.params or {})
-        for e in entries
-    ]
-    return ToolCatalogListResponse(items=items, count=len(items))
-
 
 class ToolCatalogUpsertPayload(BaseModel):
     enabled: bool
     description: str | None = None
     params: dict[str, Any] | None = None
 
-
-@app.put("/v1/tool-catalog/{name}")
-async def upsert_tool_catalog_item(name: str, payload: ToolCatalogUpsertPayload, request: Request) -> dict[str, Any]:
-    # Enforce policy; treat as admin-level change via OPA
-    try:
-        tenant = request.headers.get("x-tenant-id") or cfg.env("SOMA_TENANT_ID", "public")
-        await _evaluate_opa(
-            request,
-            {"action": "tool.catalog.update", "resource": "tool.catalog", "tenant": tenant, "name": name},
-            {},
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        if OPA_URL:
-            raise HTTPException(status_code=502, detail=f"policy evaluation failed: {exc}")
 
     try:
         await CATALOG_STORE.ensure_schema()
@@ -3559,59 +3291,7 @@ async def upsert_tool_catalog_item(name: str, payload: ToolCatalogUpsertPayload,
     return {"ok": True, "name": name, "enabled": payload.enabled}
 
 
-@app.post("/v1/keys", response_model=ApiKeyCreateResponse)
-async def create_api_key(
-    payload: ApiKeyCreatePayload,
-    request: Request,
-    store: Annotated[ApiKeyStore, Depends(get_api_key_store)],
-) -> ApiKeyCreateResponse:
-    auth_metadata = await authorize_request(request, payload.model_dump())
-    _require_admin_scope(auth_metadata)
-    created = await store.create_key(payload.label, created_by=auth_metadata.get("subject"))
-    return ApiKeyCreateResponse(
-        key_id=created.key_id,
-        label=created.label,
-        created_at=created.created_at,
-        created_by=created.created_by,
-        prefix=created.prefix,
-        last_used_at=created.last_used_at,
-        revoked=created.revoked,
-        secret=created.secret,
-    )
 
-
-@app.get("/v1/keys", response_model=list[ApiKeyResponse])
-async def list_api_keys(
-    request: Request,
-    store: Annotated[ApiKeyStore, Depends(get_api_key_store)],
-) -> list[ApiKeyResponse]:
-    auth_metadata = await authorize_request(request, {})
-    _require_admin_scope(auth_metadata)
-    items = await store.list_keys()
-    return [
-        ApiKeyResponse(
-            key_id=item.key_id,
-            label=item.label,
-            created_at=item.created_at,
-            created_by=item.created_by,
-            prefix=item.prefix,
-            last_used_at=item.last_used_at,
-            revoked=item.revoked,
-        )
-        for item in items
-    ]
-
-
-@app.delete("/v1/keys/{key_id}", status_code=204)
-async def revoke_api_key(
-    key_id: str,
-    request: Request,
-    store: Annotated[ApiKeyStore, Depends(get_api_key_store)],
-) -> Response:
-    auth_metadata = await authorize_request(request, {"key_id": key_id})
-    _require_admin_scope(auth_metadata)
-    await store.revoke_key(key_id)
-    return Response(status_code=204)
 
 
 async def stream_events(session_id: str) -> AsyncIterator[dict[str, str]]:
@@ -3624,26 +3304,6 @@ async def stream_events(session_id: str) -> AsyncIterator[dict[str, str]]:
         if payload.get("session_id") == session_id:
             yield payload
 
-
-@app.websocket("/v1/session/{session_id}/stream")
-async def websocket_stream(
-    websocket: WebSocket,
-    session_id: str,
-) -> None:
-    await websocket.accept()
-    try:
-        async for event in stream_events(session_id):
-            await websocket.send_json(event)
-    except WebSocketDisconnect:
-        LOGGER.info("WebSocket disconnected", extra={"session_id": session_id})
-    except Exception as exc:
-        LOGGER.error(
-            "WebSocket streaming error",
-            extra={"error": str(exc), "error_type": type(exc).__name__, "session_id": session_id},
-        )
-    finally:
-        if not websocket.client_state.closed:
-            await websocket.close()
 
 
 # Note: SSE endpoint is defined later with a per-connection consumer group to avoid
@@ -3792,66 +3452,8 @@ def _list_dir_payload(cur: Path) -> dict:
     }
 
 
-@app.get("/v1/workdir/list")
-async def workdir_list(path: str | None = None) -> JSONResponse:
-    cur = _resolve_workdir(path)
-    return JSONResponse(_list_dir_payload(cur))
 
 
-@app.post("/v1/workdir/delete")
-async def workdir_delete(request: Request) -> JSONResponse:
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
-    target_path = str(data.get("path") or "")
-    cur = _resolve_workdir(data.get("currentPath") or None)
-    target = Path(target_path).expanduser().resolve()
-    base = _workdir_base()
-    if not str(target).startswith(str(base)):
-        raise HTTPException(status_code=400, detail="invalid path")
-    if target.is_file():
-        try:
-            target.unlink()
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"delete failed: {type(exc).__name__}: {exc}")
-    return JSONResponse(_list_dir_payload(cur))
-
-
-@app.post("/v1/workdir/upload")
-async def workdir_upload(request: Request) -> JSONResponse:
-    form = await request.form()
-    path = form.get("path")
-    cur = _resolve_workdir(str(path) if path else None)
-    failed: list[dict[str,str]] = []
-    os.makedirs(cur, exist_ok=True)
-    for key, file in form.items():
-        if key != "files[]":
-            continue
-        try:
-            filename = getattr(file, "filename", None) or "upload.bin"
-            dest = (cur / filename).resolve()
-            # ensure inside base
-            base = _workdir_base()
-            if not str(dest).startswith(str(base)):
-                failed.append({"name": filename, "error": "invalid path"})
-                continue
-            contents = await file.read()  # type: ignore[attr-defined]
-            with open(dest, "wb") as fh:
-                fh.write(contents)
-        except Exception as exc:
-            failed.append({"name": getattr(file, "filename", "unknown"), "error": str(exc)})
-    payload = _list_dir_payload(cur)
-    payload.update({"failed": failed})
-    return JSONResponse(payload)
-
-
-@app.get("/v1/workdir/download")
-async def workdir_download(path: str) -> FileResponse:
-    target = _resolve_workdir(path)
-    if not target.is_file():
-        raise HTTPException(status_code=404, detail="file not found")
-    return FileResponse(str(target), filename=target.name)
 
 
 def _capsule_registry_url(path: str) -> str:
@@ -3861,45 +3463,7 @@ def _capsule_registry_url(path: str) -> str:
     return f"{base}{path}"
 
 
-@app.get("/v1/capsules")
-async def proxy_list_capsules() -> JSONResponse:
-    url = _capsule_registry_url("/capsules")
-    try:
-        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
-    return JSONResponse(response.json())
 
-
-@app.post("/v1/capsules/{capsule_id}/install")
-async def proxy_install_capsule(capsule_id: str) -> JSONResponse:
-    url = _capsule_registry_url(f"/capsules/{capsule_id}/install")
-    try:
-        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
-            response = await client.post(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
-    return JSONResponse(response.json())
-
-
-@app.get("/v1/capsules/{capsule_id}")
-async def proxy_download_capsule(capsule_id: str) -> Response:
-    url = _capsule_registry_url(f"/capsules/{capsule_id}")
-    try:
-        async with httpx.AsyncClient(timeout=CAPSULE_REGISTRY_TIMEOUT) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="Capsule registry unavailable") from exc
 
     headers: dict[str, str] = {}
     disposition = response.headers.get("content-disposition")
@@ -4181,12 +3745,6 @@ async def shutdown_background_services() -> None:
     if hasattr(app.state, "_dlq_refresher_stop"):
         app.state._dlq_refresher_stop.set()
 
-@app.get("/v1/health")
-async def health_check_proxy() -> JSONResponse:
-    """Delegate to the modular health router to avoid duplication."""
-    from services.gateway.routers.health_full import health_check
-    return await health_check()  # type: ignore[func-returns-value]
-
     return JSONResponse({"status": overall_status, "components": components})
 
 
@@ -4196,10 +3754,6 @@ async def health_check_proxy() -> JSONResponse:
 
 
 # (moved earlier above the StaticFiles mount)
-
-@app.get("/v1/av/test")
-async def av_test() -> JSONResponse:
-    """Lightweight connectivity test for ClamAV.
 
     Returns status ok if a TCP connection to the configured host/port succeeds.
     When antivirus is disabled via settings/env, returns status disabled.
@@ -4714,36 +4268,11 @@ async def healthz(
 # -----------------------------
 
 
-@app.get("/v1/model-profiles")
-async def list_profiles() -> list[ModelProfile]:
-    """List all model profiles."""
-    return await PROFILE_STORE.list_profiles()
 
 
-@app.post("/v1/model-profiles", status_code=201)
-async def create_profile(profile: ModelProfile) -> None:
-    """Create a new model profile."""
-    await PROFILE_STORE.create_profile(profile)
-
-
-@app.put("/v1/model-profiles/{role}/{deployment_mode}")
-async def update_profile(role: str, deployment_mode: str, profile: ModelProfile) -> None:
-    """Update an existing model profile."""
-    await PROFILE_STORE.update_profile(role, deployment_mode, profile)
-
-
-@app.delete("/v1/model-profiles/{role}/{deployment_mode}")
-async def delete_profile(role: str, deployment_mode: str) -> None:
-    """Delete a model profile."""
-    await PROFILE_STORE.delete_profile(role, deployment_mode)
 
 
 # Alias endpoint aligned with roadmap naming
-@app.get("/v1/agents/profiles")
-async def list_agent_profiles() -> list[ModelProfile]:
-    """List agent model profiles (alias for /v1/model-profiles)."""
-    return await PROFILE_STORE.list_profiles()
-
 
 # -----------------------------
 # Composite UI settings (single source of truth)
@@ -4757,13 +4286,6 @@ def _default_ui_agent() -> dict[str, str]:
         "agent_knowledge_subdir": "custom",
     }
 
-
-@app.get("/v1/ui/settings")
-async def get_ui_settings() -> dict[str, Any]:
-    ui_store = get_ui_settings_store()
-    agent_cfg = await ui_store.get()
-    if not agent_cfg:
-        agent_cfg = _default_ui_agent()
 
     deployment = APP_SETTINGS.deployment_mode
     profile = await PROFILE_STORE.get("dialogue", deployment)
@@ -4872,12 +4394,6 @@ def _detect_provider_from_base(base_url: str) -> str:
     return "other"
 
 
-@app.put("/v1/ui/settings")
-async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
-    if payload.agent:
-        agent_cfg = _default_ui_agent() | payload.agent
-        await get_ui_settings_store().set(agent_cfg)
-
     if payload.model_profile:
         mp = payload.model_profile
         deployment = APP_SETTINGS.deployment_mode
@@ -4917,10 +4433,6 @@ async def put_ui_settings(payload: UiSettingsPayload) -> dict[str, Any]:
 # UI-shaped settings endpoints (compatibility for SPA "sections")
 # -----------------------------
 
-
-@app.get("/v1/ui/settings/sections")
-async def ui_sections_get() -> dict[str, Any]:
-    """Return the UI modal 'sections' structure assembled from Gateway stores.
 
     This preserves the simple front-end contract while centralizing the source
     of truth in the Gateway. It overlays agent settings and model profile values
@@ -5102,10 +4614,6 @@ async def ui_sections_get() -> dict[str, Any]:
 class UiSectionsPayload(BaseModel):
     sections: list[Dict[str, Any]]
 
-
-@app.post("/v1/ui/settings/sections")
-async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[str, Any]:
-    """Accept UI 'sections' and persist to Gateway stores.
 
     - Persists agent settings (ui_settings table).
     - Upserts the dialogue model profile.
@@ -5372,10 +4880,6 @@ async def ui_sections_set(payload: UiSectionsPayload, request: Request) -> dict[
     return await ui_sections_get()
 
 
-@app.get("/v1/ui/settings/credentials")
-async def ui_settings_credentials() -> dict[str, Any]:
-    """Return presence map of stored LLM credentials by provider.
-
     This exposes only presence/absence, never secrets.
     """
     try:
@@ -5386,35 +4890,6 @@ async def ui_settings_credentials() -> dict[str, Any]:
     return {"has_secret": {p: True for p in providers}}
 
 
-@app.get("/v1/av/test")
-async def av_test() -> dict[str, Any]:
-    """Connectivity check to ClamAV daemon using current settings (or env defaults)."""
-    # Determine current AV config (merge store values on top of defaults)
-    doc = await get_ui_settings_store().get()
-    cfg = dict(doc.get("antivirus")) if isinstance(doc, dict) and isinstance(doc.get("antivirus"), dict) else {}
-    host = str(cfg.get("av_host") or cfg.env("CLAMAV_HOST", "clamav"))
-    try:
-        port = int(cfg.get("av_port") or int(cfg.env("CLAMAV_PORT", "3310")))
-    except Exception:
-        port = 3310
-    # Attempt TCP connect with short timeout
-    try:
-        fut = asyncio.open_connection(host, port)
-        reader, writer = await asyncio.wait_for(fut, timeout=2.0)
-        try:
-            writer.close()
-            with contextlib.suppress(Exception):
-                await writer.wait_closed()
-        except Exception:
-            pass
-        return {"status": "ok", "host": host, "port": port}
-    except Exception as exc:
-        return {"status": "error", "host": host, "port": port, "detail": str(exc)}
-
-
-@app.get("/v1/ui/settings/backup")
-async def backup_ui_settings() -> dict[str, Any]:
-    """Return a JSON backup of current UI settings.
 
     This includes agent config, dialogue model profile, credential presence map,
     and metadata with an export timestamp.
@@ -5427,10 +4902,6 @@ async def backup_ui_settings() -> dict[str, Any]:
         "data": data,
     }
 
-
-@app.get("/v1/attachments/{att_id}")
-async def download_attachment(att_id: str, request: Request):
-    """Download an attachment stored in Postgres (no local files).
 
     Enforces auth/tenant scoping and quarantine policy.
     """
@@ -5578,20 +5049,6 @@ class RouteResponse(BaseModel):
     score: Optional[float] = None
 
 
-@app.post("/v1/route", response_model=RouteResponse)
-async def route_decision(payload: RouteRequest) -> RouteResponse:
-    """Route model selection among candidates using telemetry and memory fallback."""
-    # Try telemetry scoring first
-    try:
-        scores = await TELEMETRY_STORE.get_model_scores(
-            tenant=payload.tenant, persona=payload.persona, candidates=payload.candidates
-        )
-        if scores:
-            best = max(scores, key=lambda x: x["score"])  # dicts with 'model' and 'score'
-            return RouteResponse(chosen=best["model"], score=best["score"])
-    except Exception:
-        LOGGER.debug("Telemetry routing failed, falling back to memory", exc_info=True)
-
     # Final fallback
     chosen = payload.candidates[0] if payload.candidates else ""
     return RouteResponse(chosen=chosen, score=None)
@@ -5602,18 +5059,6 @@ async def route_decision(payload: RouteRequest) -> RouteResponse:
 # -----------------------------
 
 
-@app.get("/v1/requeue")
-async def list_requeue() -> list[dict]:
-    """List items pending requeue."""
-    return await REQUEUE_STORE.list_requeue()
-
-
-@app.post("/v1/requeue/{requeue_id}/resolve")
-async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
-    """Resolve a requeue item and optionally publish it to the tool requests topic."""
-    item = await REQUEUE_STORE.get_requeue(requeue_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="requeue item not found")
 
     if publish and APP_SETTINGS.tool_requests_topic:
         try:
@@ -5639,12 +5084,6 @@ async def resolve_requeue(requeue_id: str, publish: bool = True) -> dict:
     return {"status": "resolved"}
 
 
-@app.delete("/v1/requeue/{requeue_id}")
-async def delete_requeue(requeue_id: str) -> dict:
-    """Delete a requeue item."""
-    await REQUEUE_STORE.delete_requeue(requeue_id)
-    return {"status": "deleted"}
-
 
 # -----------------------------
 # DLQ admin endpoints
@@ -5659,49 +5098,7 @@ class DLQItem(BaseModel):
     created_at: datetime
 
 
-@app.get("/v1/admin/dlq/{topic}", response_model=list[DLQItem])
-async def list_dlq(
-    topic: str,
-    request: Request,
-    limit: int = Query(100, ge=1, le=1000),
-    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
-) -> list[DLQItem]:
-    auth = await authorize_request(request, {"topic": topic})
-    _require_admin_scope(auth)
-    items = await store.list_recent(topic=topic, limit=limit)
-    return [
-        DLQItem(
-            id=i.id,
-            topic=i.topic,
-            event=i.event,
-            error=i.error,
-            created_at=i.created_at,
-        )
-        for i in items
-    ]
 
-
-@app.delete("/v1/admin/dlq/{topic}")
-async def purge_dlq(
-    topic: str,
-    request: Request,
-    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
-) -> dict:
-    auth = await authorize_request(request, {"topic": topic})
-    _require_admin_scope(auth)
-    deleted = await store.purge(topic=topic)
-    return {"status": "purged", "deleted": int(deleted)}
-
-
-@app.post("/v1/admin/dlq/{topic}/{item_id}/reprocess")
-async def reprocess_dlq_item(
-    topic: str,
-    item_id: int,
-    request: Request,
-    store: Annotated[DLQStore, Depends(get_dlq_store)] = None,  # type: ignore[assignment]
-    publisher: Annotated[DurablePublisher, Depends(get_publisher)] = None,  # type: ignore[assignment]
-) -> dict:
-    """Replay a DLQ message back to its original topic (typically memory.wal).
 
     By convention, topics ending with ".dlq" are mapped back to their base
     topic for replay. On success, the DLQ row is deleted.
@@ -5756,27 +5153,6 @@ class LlmCredPayload(BaseModel):
     secret: str
 
 
-@app.post("/v1/llm/credentials")
-async def upsert_llm_credentials(
-    payload: LlmCredPayload,
-    request: Request,
-    store: Annotated[SecretManager, Depends(get_secret_manager)] = None,  # type: ignore[assignment]
-) -> dict:
-    # Require admin scope when auth is enabled
-    auth = await authorize_request(request, payload.model_dump())
-    _require_admin_scope(auth)
-    provider = payload.provider.strip().lower()
-    if not provider or not payload.secret:
-        raise HTTPException(status_code=400, detail="provider and secret required")
-    await store.set(provider, payload.secret)
-    # Broadcast config update so workers may refresh
-    try:
-        publisher: DurablePublisher = app.state.publisher
-        await publisher.publish("config_updates", {"type": "llm.credentials.updated", "provider": provider})
-    except Exception:
-        LOGGER.debug("Failed to publish config update (llm credentials)", exc_info=True)
-    return {"ok": True}
-
 
 def _internal_token_ok(request: Request) -> bool:
     expected = cfg.env("GATEWAY_INTERNAL_TOKEN")
@@ -5786,27 +5162,10 @@ def _internal_token_ok(request: Request) -> bool:
     return bool(got and got == expected)
 
 
-@app.get("/v1/llm/credentials/{provider}")
-async def get_llm_credentials(provider: str, request: Request, store: Annotated[SecretManager, Depends(get_secret_manager)] = None) -> dict:  # type: ignore[assignment]
-    # Only allow internal calls with X-Internal-Token; do not expose via normal auth
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
-    provider = (provider or "").strip().lower()
-    if not provider:
-        raise HTTPException(status_code=400, detail="missing provider")
-    secret = await store.get(provider)
-    if not secret:
-        raise HTTPException(status_code=404, detail="not found")
-    return {"provider": provider, "secret": secret}
-
 
 class LlmTestRequest(BaseModel):
     role: str = Field(..., pattern="^(dialogue|escalation)$")
 
-
-@app.post("/v1/llm/test")
-async def llm_test(payload: LlmTestRequest, request: Request) -> dict:
-    """Admin/test endpoint: validate profile resolution, credentials presence, and perform a lightweight connectivity check.
 
     Requires X-Internal-Token (internal) to avoid exposing secrets publicly.
     """
@@ -5874,16 +5233,6 @@ class AuditExportQuery(BaseModel):
     tenant: Optional[str] = None
     action: Optional[str] = None
 
-
-@app.get("/v1/admin/audit/export")
-async def audit_export(
-    request: Request,
-    request_id: Optional[str] = Query(None),
-    session_id: Optional[str] = Query(None),
-    tenant: Optional[str] = Query(None),
-    action: Optional[str] = Query(None),
-) -> StreamingResponse:
-    """Export audit events as NDJSON (admin-only).
 
     Filters are optional; when absent, returns recent events in ascending id order.
     """
@@ -6036,12 +5385,6 @@ async def _resolve_profile_and_creds(payload: LlmInvokeRequest) -> tuple[str, st
 
 ## Note: legacy tuple-to-dict resolver helper removed; handlers now resolve profiles inline
 
-
-@app.post("/v1/llm/invoke")
-async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
-    # Only allow internal calls
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
 
     # Resolve profile and credentials inline to avoid tuple-unpack pitfalls
     try:
@@ -6378,10 +5721,6 @@ async def llm_invoke(payload: LlmInvokeRequest, request: Request) -> dict:
     )
 
 
-@app.post("/v1/llm/invoke.debug")
-async def llm_invoke_debug(payload: Dict[str, Any], request: Request) -> dict:  # type: ignore[type-arg]
-    """Lightweight debug endpoint to validate routing and request parsing.
-
     Accepts an untyped JSON body to bypass Pydantic model parsing and helps isolate
     pre-handler errors (e.g., validation issues). Internal-token gated.
     """
@@ -6393,12 +5732,6 @@ async def llm_invoke_debug(payload: Dict[str, Any], request: Request) -> dict:  
         keys = []
     return {"ok": True, "received_keys": keys}
 
-
-@app.post("/v1/llm/invoke2")
-async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
-    # This endpoint mirrors llm_invoke but exists to bypass any stale route registration issues during debugging.
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
 
     # Inline resolution
     profile = await PROFILE_STORE.get(payload.role, APP_SETTINGS.deployment_mode)
@@ -6458,12 +5791,6 @@ async def llm_invoke2(payload: LlmInvokeRequest, request: Request) -> dict:
         pass
     return {"content": content, "usage": usage, "model": model, "base_url": base_url}
 
-
-@app.post("/v1/llm/invoke/stream")
-async def llm_invoke_stream(payload: LlmInvokeRequest, request: Request):
-    # Only allow internal calls
-    if not _internal_token_ok(request):
-        raise HTTPException(status_code=403, detail="forbidden")
 
     # Resolve profile and credentials inline for stream as well
     try:
