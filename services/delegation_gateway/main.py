@@ -21,7 +21,7 @@ from starlette.responses import Response
 
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
+from services.common.central.logging import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.settings_sa01 import SA01Settings

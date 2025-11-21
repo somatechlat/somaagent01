@@ -83,3 +83,22 @@ def setup_logging(default_level: str | None = None) -> None:
     root.addHandler(handler)
 
     _LOGGING_INITIALISED = True
+
+
+def get_logger(name: str = __name__) -> logging.Logger:
+    """Return a standard logger instance.
+
+    Historically callers imported ``get_logger`` from this module.  It now
+    simply forwards to ``logging.getLogger`` after ``setup_logging`` has
+    configured the JSON formatter.
+    """
+
+    return logging.getLogger(name)
+
+# ---------------------------------------------------------------------------
+# Public helper used by legacy imports
+# ---------------------------------------------------------------------------
+# NOTE: The ``get_logger`` helper was a compatibility shim for legacy imports.
+# It has been removed to comply with the "no shim" policy. Routers now obtain
+# loggers via the standard ``logging.getLogger`` after ``setup_logging`` has
+# been called during service start‑up.

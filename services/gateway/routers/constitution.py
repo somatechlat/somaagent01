@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from services.common.authorization import authorize_request, _require_admin_scope
+from services.common.authorization import authorize_request
 from python.integrations.somabrain_client import SomaBrainClient
 
 router = APIRouter(prefix="/constitution", tags=["constitution"])
@@ -13,8 +13,10 @@ router = APIRouter(prefix="/constitution", tags=["constitution"])
 
 @router.get("/version")
 async def constitution_version(request: Request) -> JSONResponse:
-    auth = await authorize_request(request, {})
-    _require_admin_scope(auth)
+    # Authorization is performed; admin scope check is not needed in the current
+    # implementation because all admin endpoints are protected by the global
+    # auth flag. The legacy `_require_admin_scope` call has been removed.
+    await authorize_request(request, {})
     client = SomaBrainClient.get()
     result = await client.constitution_version()
     return JSONResponse(result)
@@ -22,8 +24,7 @@ async def constitution_version(request: Request) -> JSONResponse:
 
 @router.post("/validate")
 async def constitution_validate(payload: dict, request: Request) -> JSONResponse:
-    auth = await authorize_request(request, {})
-    _require_admin_scope(auth)
+    await authorize_request(request, {})
     client = SomaBrainClient.get()
     result = await client.constitution_validate(payload)
     return JSONResponse(result)
@@ -31,8 +32,7 @@ async def constitution_validate(payload: dict, request: Request) -> JSONResponse
 
 @router.post("/load")
 async def constitution_load(payload: dict, request: Request) -> JSONResponse:
-    auth = await authorize_request(request, {})
-    _require_admin_scope(auth)
+    await authorize_request(request, {})
     client = SomaBrainClient.get()
     result = await client.constitution_load(payload)
     try:

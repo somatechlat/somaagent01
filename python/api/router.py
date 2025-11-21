@@ -16,6 +16,7 @@ from python.observability.metrics import (
     fast_a2a_requests_total,
     fast_a2a_errors_total,
     increment_counter,
+    set_health_status,
 )
 from python.tasks.orchestrator import (
     enqueue_chat_request,

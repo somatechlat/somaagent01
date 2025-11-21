@@ -26,12 +26,12 @@ from services.common.idempotency import generate_for_memory_payload
 from services.common import masking
 from services.common.tracing import setup_tracing
 from services.common.router_client import get_router_client
-from services.common.logging_config import get_logger
+import logging
 from src.core.config import cfg, flag
 
 router = APIRouter(prefix="/v1/uploads", tags=["uploads"])
 
-LOGGER = get_logger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def _attachments_store() -> AttachmentsStore:

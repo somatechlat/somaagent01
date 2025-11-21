@@ -62,3 +62,13 @@ class LlmCredentialsStore:
     async def delete_provider_key(self, provider: str) -> None:
         """Delete the stored key for *provider* if present."""
         await self._manager.delete_provider_key(provider)
+
+    # Backwards-compatibility aliases (legacy code expects `.get` / `.set` / `.delete`)
+    async def get(self, provider: str):
+        return await self.get_provider_key(provider)
+
+    async def set(self, provider: str, api_key: str):
+        await self.set_provider_key(provider, api_key)
+
+    async def delete(self, provider: str):
+        await self.delete_provider_key(provider)

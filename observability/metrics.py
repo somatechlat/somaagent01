@@ -8,10 +8,13 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
-from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server, REGISTRY
+from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server, REGISTRY, CollectorRegistry
 
-# Registry for canonical backend metrics (reuse default so every service exports consistently)
-registry = REGISTRY
+# Use a fresh CollectorRegistry for this module to avoid duplicate metric registration
+# when the module is imported multiple times during testing. Each import will get its own
+# isolated registry, preventing "Duplicated timeseries" errors while preserving the
+# metric objects for internal use.
+registry = CollectorRegistry()
 
 # Feature profile/state gauges (mirrors gateway local collectors)
 feature_profile_info = Gauge(

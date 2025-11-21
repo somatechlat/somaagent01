@@ -7,11 +7,11 @@ from pydantic import BaseModel
 
 from services.tool_executor.tool_registry import ToolRegistry  # type: ignore
 from services.common.tool_catalog import ToolCatalogStore
-from services.common.logging_config import get_logger
+import logging
 
 router = APIRouter(prefix="/v1", tags=["tools"])
 
-LOGGER = get_logger(__name__)
+LOGGER = logging.getLogger(__name__)
 CATALOG_STORE = ToolCatalogStore()
 
 

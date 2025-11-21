@@ -19,7 +19,7 @@ from . import (
     sessions,
     tools,
     uploads,
-    runtime_config,
+    # Legacy runtime_config shim removed – services now import the canonical config directly.
     admin_memory,
     admin_migrate,
     constitution,
@@ -42,12 +42,13 @@ from . import (
     requeue,
     dlq,
     memory_mutations,
-    capsules,
     route,
     profiles,
     speech,
     av,
     websocket,
+    runtime_config,
+    root_ui,
 )
 
 
@@ -80,18 +81,18 @@ def build_router() -> APIRouter:
         requeue.router,
         dlq.router,
         memory_mutations.router,
-        capsules.router,
         route.router,
         profiles.router,
         speech.router,
         av.router,
         websocket.router,
+        runtime_config.router,
+        root_ui.router,
         celery_api.router,
         memory.router,
         sessions.router,
         tools.router,
         uploads.router,
-        runtime_config.router,
     ):
         router.include_router(sub)
     return router
