@@ -14,13 +14,13 @@ from fastapi.responses import JSONResponse
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.logging_config import get_logger
+import logging
 from services.common import degradation_monitor
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1", tags=["health"])
 
-LOGGER = get_logger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def _kafka_settings() -> KafkaSettings:

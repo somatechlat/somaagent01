@@ -163,6 +163,43 @@ somabrain_requests_total = Counter(
     registry=registry,
 )
 
+# Additional SomaBrain + health metrics required by FastA2A & gateway integrations.
+somabrain_latency_seconds = Histogram(
+    "somabrain_latency_seconds",
+    "Latency of SomaBrain interactions",
+    ["agent", "operation"],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+    registry=registry,
+)
+
+somabrain_errors_total = Counter(
+    "somabrain_errors_total",
+    "Total SomaBrain errors",
+    ["agent", "operation", "error_type"],
+    registry=registry,
+)
+
+somabrain_memory_operations_total = Counter(
+    "somabrain_memory_operations_total",
+    "Memory operation invocations to SomaBrain",
+    ["agent", "operation", "status"],
+    registry=registry,
+)
+
+system_health_gauge = Gauge(
+    "system_health_status",
+    "Health status of service components (1=healthy,0=unhealthy)",
+    ["service", "component"],
+    registry=registry,
+)
+
+system_uptime_seconds = Counter(
+    "system_uptime_seconds",
+    "Uptime counter by service/version",
+    ["service", "version"],
+    registry=registry,
+)
+
 # Phase 3: Memory Guarantees & WAL Lag Metrics
 memory_write_outbox_pending = Gauge(
     "memory_write_outbox_pending_total",

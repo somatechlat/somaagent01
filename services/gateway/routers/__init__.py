@@ -47,6 +47,7 @@ from . import (
     profiles,
     speech,
     av,
+    websocket,
 )
 
 
