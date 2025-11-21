@@ -1242,16 +1242,6 @@ def get_attachments_store() -> AttachmentsStore:
 # -----------------------------
 
 
-from services.gateway.routers.runtime_config import router as runtime_config_router
-
-# Delegate legacy runtime-config endpoint to modular router
-@app.get("/v1/runtime-config")
-async def runtime_config_proxy():
-    from services.gateway.routers.runtime_config import get_runtime_config
-    return await get_runtime_config()
-
-
-
     # SSE flag
     sse_cfg = {"enabled": not _sse_disabled()}
 
@@ -2024,23 +2014,6 @@ def _export_semaphore() -> asyncio.Semaphore:
     return sem
 
 
-@app.get("/v1/memory/export", tags=["admin"], summary="Export memory as NDJSON stream")
-async def memory_export(
-    request: Request,
-    tenant: str | None = Query(None),
-    persona_id: str | None = Query(None),
-    role: str | None = Query(None),
-    session_id: str | None = Query(None),
-    universe: str | None = Query(None),
-    namespace: str | None = Query(None),
-    q: str | None = Query(None),
-    min_ts: float | None = Query(None),
-    max_ts: float | None = Query(None),
-    limit_total: int | None = Query(None, ge=1),
-    store: Annotated[MemoryReplicaStore, Depends(get_replica_store)] = None,  # type: ignore[assignment]
-):
-    """Stream an NDJSON export of memory replica rows.
-
     Applies filters similar to the admin list endpoint. Concurrency is
     bounded by a semaphore; optional rate limits can also apply.
     """
@@ -2150,55 +2123,10 @@ def _exports_dir() -> str:
     return path
 
 
-@app.post("/v1/memory/export/jobs", response_model=dict, tags=["admin"], summary="Create async export job")
-async def export_jobs_create(request: Request, payload: ExportJobCreate) -> dict:
-    if _file_saving_disabled():
-        raise HTTPException(status_code=403, detail="File export is disabled")
-    await _enforce_admin_rate_limit(request)
-    auth = await authorize_request(request, payload.model_dump())
-    _require_admin_scope(auth)
-    if cfg.env("GATEWAY_EXPORT_REQUIRE_TENANT", "false").lower() in {"true", "1", "yes", "on"} and not payload.tenant:
-        raise HTTPException(status_code=400, detail="tenant parameter required for export jobs")
-
     job_id = await get_export_job_store().create(params=payload.model_dump(), tenant=payload.tenant)
     return {"job_id": job_id, "status": "queued"}
 
 
-@app.get("/v1/memory/export/jobs/{job_id}", response_model=ExportJobStatus, tags=["admin"], summary="Get export job status")
-async def export_jobs_status(job_id: int, request: Request) -> ExportJobStatus:
-    if _file_saving_disabled():
-        raise HTTPException(status_code=403, detail="File export is disabled")
-    await _enforce_admin_rate_limit(request)
-    auth = await authorize_request(request, {"job_id": job_id})
-    _require_admin_scope(auth)
-    job = await get_export_job_store().get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
-    download = None
-    if job.status == "completed" and job.file_path:
-        download = f"/v1/memory/export/jobs/{job_id}/download"
-    return ExportJobStatus(
-        id=job.id,
-        status=job.status,
-        row_count=job.row_count,
-        byte_size=job.byte_size,
-        error=job.error,
-        download_url=download,
-    )
-
-
-@app.get("/v1/memory/export/jobs/{job_id}/download", tags=["admin"], summary="Download export result")
-async def export_jobs_download(job_id: int, request: Request):
-    if _file_saving_disabled():
-        raise HTTPException(status_code=403, detail="File export is disabled")
-    await _enforce_admin_rate_limit(request)
-    auth = await authorize_request(request, {"job_id": job_id})
-    _require_admin_scope(auth)
-    job = await get_export_job_store().get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
-    if job.status != "completed" or not job.file_path:
-        raise HTTPException(status_code=409, detail="job not completed")
 
     try:
         fh = open(job.file_path, "rb")
@@ -3723,33 +3651,10 @@ async def websocket_stream(
 # duplicate route registration and shared group_ids across clients.
 
 
-@app.get("/v1/sessions/{session_id}/events", response_model=SessionEventsResponse)
-async def list_session_events(
-    session_id: str,
-    store: Annotated[PostgresSessionStore, Depends(get_session_store)],
-    after: int | None = Query(None, ge=0, description="Return events with database id greater than this cursor"),
-    limit: int = Query(100, ge=1, le=500),
-) -> SessionEventsResponse:
-    events = await store.list_events_after(session_id, after_id=after, limit=limit)
-    payload = [
-        SessionEventEntry(id=item["id"], occurred_at=item["occurred_at"], payload=item["payload"])
-        for item in events
-    ]
-    next_cursor = payload[-1].id if payload else after
-    return SessionEventsResponse(session_id=session_id, events=payload, next_cursor=next_cursor)
-
 
 # -----------------------------
 # Session history and context-window (UI helpers)
 # -----------------------------
-
-@app.get("/v1/sessions/{session_id}/history")
-async def get_session_history(
-    session_id: str,
-    limit: int = Query(500, ge=1, le=2000),
-    store: PostgresSessionStore = Depends(get_session_store),
-) -> JSONResponse:
-    """Return a simple, human-readable conversation history for the session.
 
     The UI displays this in a read-only modal. Token count is an estimate.
     """
@@ -3783,14 +3688,6 @@ async def get_session_history(
     token_estimate = int(max(1, round(len(history_md) / 4)))
     return JSONResponse({"history": history_md, "tokens": token_estimate})
 
-
-@app.get("/v1/sessions/{session_id}/context-window")
-async def get_session_context_window(
-    session_id: str,
-    limit: int = Query(300, ge=1, le=2000),
-    store: PostgresSessionStore = Depends(get_session_store),
-) -> JSONResponse:
-    """Return an approximate context window projection used for the last interaction.
 
     This is a best-effort concatenation of envelope metadata and recent messages.
     """
@@ -4329,10 +4226,6 @@ async def av_test() -> JSONResponse:
     except Exception as exc:
         return JSONResponse({"status": "error", "detail": str(exc), "host": host, "port": port})
 
-
-@app.get("/v1/session/{session_id}/events")
-async def sse_session_events(session_id: str) -> StreamingResponse:
-    """Server-Sent Events stream of outbound conversation events for a session.
 
     Streams events from the Kafka topic configured as CONVERSATION_OUTBOUND and
     filters by session_id.

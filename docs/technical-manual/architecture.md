@@ -131,7 +131,7 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 
 ## Configuration
 
-- **Runtime Config**: `services.common.runtime_config` (centralized env facade)
+- **Runtime Config**: `src.core.config` (centralized env facade)
 - **Feature Flags**: `SA01_ENABLE_*` environment variables
 - **Model Profiles**: Managed via UI Settings → Model
 - **Tool Catalog**: Centralized in Gateway, distributed to workers
