@@ -46,3 +46,6 @@ jobs:
       - name: Gateway runtime-config probe (in-process)
         run: |
           python - <<'PY'\nfrom fastapi.testclient import TestClient\nfrom orchestrator.main import app\nclient = TestClient(app)\nresp = client.get(\"/v1/runtime-config\")\nprint(resp.status_code, resp.json())\nassert resp.status_code == 200\nPY
+      - name: Gateway tools probe (in-process)
+        run: |
+          python - <<'PY'\nfrom fastapi.testclient import TestClient\nfrom orchestrator.main import app\nclient = TestClient(app)\nresp = client.get(\"/v1/tools\")\nprint(resp.status_code, resp.json())\nassert resp.status_code == 200\nPY

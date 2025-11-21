@@ -75,7 +75,7 @@ Errors are emitted as `assistant.error` (or `<role>.error` when tool/system sour
 
 ### Runtime Config & Flags
 
-- Use `services.common.runtime_config.env()` for environment reads in business logic and `services.common.runtime_config.flag()` for feature checks. Avoid `os.getenv` directly except in settings/bootstrap modules.
+- Use `src.core.config.env()` (via `cfg`) for environment reads in business logic and `src.core.config.flag()` for feature checks. Avoid `os.getenv` directly except in settings/bootstrap modules.
 - Newly centralized keys (guarded by tests): `EXPORT_JOBS_DIR`, `GATEWAY_EXPORT_REQUIRE_TENANT`, `MEMORY_EXPORT_MAX_ROWS`, `MEMORY_EXPORT_PAGE_SIZE`, `EXPORT_JOBS_MAX_ROWS`, `EXPORT_JOBS_PAGE_SIZE`, `UPLOAD_TMP_DIR`.
 - CI guardrails: `tests/unit/test_no_direct_env_feature_flags.py` prevents direct feature-flag env reads; `tests/unit/test_no_direct_env_centralized_keys.py` blocks raw `os.getenv` for the keys above.
 
@@ -123,7 +123,7 @@ Timeline uniqueness enforced by index `(session_id, payload->>'event_id')`. Raw 
 
 ## Canonical Metrics & Config Signals
 
-- `runtime_config_info`, `runtime_config_updates_total{source}`, `runtime_config_layer_total{layer}`, and `runtime_config_last_applied_timestamp_seconds` expose the checksum + source layer (default|environment|dynamic). Scrape these to detect config drift and verify when governance updates land.
+- `runtime_config_info`, `runtime_config_updates_total{source}`, `runtime_config_layer_total{layer}`, and `runtime_config_last_applied_timestamp_seconds` expose the checksum + source layer (default|environment|dynamic) from the centralized config. Scrape these to detect config drift and verify when governance updates land.
 - `sse_active_connections`, `sse_messages_sent_total`, and `sse_message_duration_seconds` span the streaming surface so you can monitor cardiovascular health per session.
 - `gateway_requests_total`, `gateway_request_duration_seconds`, and the `config_update_apply_total{result}` counter capture command volume + config listener outcomes.
 - `/v1/runtime-config` (GET) reports the current checksum and timestamp; `/v1/runtime-config/apply` (internal token-only POST) lets you push validated config docs via Kafka while keeping `config_updates` acked.

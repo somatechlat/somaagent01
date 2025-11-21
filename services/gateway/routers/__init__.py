@@ -9,7 +9,30 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from . import admin, chat, chat_full, health, health_full, memory, sessions, tools, uploads, runtime_config, admin_memory, admin_migrate, constitution, admin_kafka, uploads_full, tools_full
+from . import (
+    admin,
+    chat,
+    chat_full,
+    health,
+    health_full,
+    memory,
+    sessions,
+    tools,
+    uploads,
+    runtime_config,
+    admin_memory,
+    admin_migrate,
+    constitution,
+    admin_kafka,
+    uploads_full,
+    tools_full,
+    sse,
+    sessions_full,
+    celery_api,
+    sessions_events,
+    attachments,
+    memory_exports,
+)
 
 
 def build_router() -> APIRouter:
@@ -26,6 +49,12 @@ def build_router() -> APIRouter:
         admin_kafka.router,
         uploads_full.router,
         tools_full.router,
+        sse.router,
+        sessions_full.router,
+        sessions_events.router,
+        attachments.router,
+        memory_exports.router,
+        celery_api.router,
         memory.router,
         sessions.router,
         tools.router,
