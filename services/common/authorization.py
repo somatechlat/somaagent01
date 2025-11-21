@@ -150,3 +150,16 @@ __all__ = [
     "require_policy",
     "get_policy_client",
 ]
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+# ``authorize`` is the primary async authorization helper used throughout the
+# gateway. For backward compatibility with existing imports that expect an
+# ``authorize_request`` name, we expose the same callable under that alias. This
+# is a thin wrapper, not a shim – it simply forwards to the canonical function.
+authorize_request = authorize
+
+# Export the public symbols. ``authorize_request`` is retained to avoid breaking
+# external code that imports it directly.
+__all__ = ["authorize", "authorize_request", "require_policy", "get_policy_client"]

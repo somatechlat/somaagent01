@@ -157,3 +157,31 @@ The following consolidates the historical Celery design notes and the latest gap
 
 ## If Celery is to be removed
 - Remove stubs and compose/Helm entries; reflect in cleanup docs; keep this section as historical context only.
+
+---
+
+# Celery Integration Knowledge Sync (2025-11-21)
+Mirror of the standalone Celery doc you shared; kept here to avoid divergent plans.
+
+## Snapshot
+- Celery 5.4.0 + Redis (broker/backend); Canvas (chain/group/chord) as the orchestration pattern.
+- Core tasks: `build_context`, `evaluate_policy`, `store_interaction`, `feedback_loop`, `rebuild_index`, `publish_metrics`, `a2a_chat_task`.
+- FastAPI dispatch: endpoints in `python/api/message.py` enqueue via `apply_async`; `/api/celery/*` router returns task IDs and status.
+- Observability: Prometheus exporter on port 9510 for duration/success/failure/latency/policy/index metrics.
+- Deployment: Celery worker image + Helm values (`celeryWorker`, `redis`, `fastapi`, TLS, API-key auth, KEDA autoscaling).
+
+## What’s already in the codebase
+- Celery app factory present in `services/celery_worker/__init__.py` pulling broker/backend from `src.core.config`.
+- Task module scaffold in `services/celery_worker/tasks.py`.
+- Celery API router mounted in Gateway.
+- Redis + FastA2A Celery worker/Flower services build and run via compose; full stack rebuilt successfully.
+
+## Remaining work to reach “shipping”
+1) Finish task implementations listed above (real logic, retries/backoff, pybreaker, idempotency, Prometheus metrics).  
+2) Add Celery Beat + schedule loader; migrate any cron to `beat_schedule`.  
+3) Add a general Celery worker service (not just FastA2A) wired to `src.core.config`, with metrics port exposed.  
+4) Implement DLQ/dead-letter handling (Redis) and surface via Gateway ops endpoints.  
+5) Ensure FastAPI dispatch covers all core tasks (`/api/celery/*`, `/v1/runs/{task_id}` via AsyncResult).  
+6) Tests: eager-mode unit tests; integration via compose (gateway↔redis↔worker↔prometheus); CI `celery inspect ping`.  
+7) Helm/K8s: add worker/redis values, secrets, TLS/API-key wiring, KEDA scaling.  
+8) Docs/cleanup: if Celery stays canonical, mark Temporal/Airflow/APScheduler removed; if Celery is later deprecated, delete stubs and update cleanup docs.

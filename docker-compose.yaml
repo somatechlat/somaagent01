@@ -51,6 +51,7 @@ x-agent-service: &agent-service
     - ./conf:/git/agent-zero/conf:ro
     - ./services:/git/agent-zero/services:ro
     - ./python:/git/agent-zero/python:ro
+    - ./src:/git/agent-zero/src:ro
     - ./knowledge:/git/agent-zero/knowledge:ro
     - ./instruments:/git/agent-zero/instruments:ro
     - ./agents:/git/agent-zero/agents:ro

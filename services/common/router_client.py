@@ -44,3 +44,19 @@ class RouterClient:
     async def close(self) -> None:
         if self._client:
             await self._client.aclose()
+
+# ---------------------------------------------------------------------------
+# Public factory expected by legacy router imports
+# ---------------------------------------------------------------------------
+def get_router_client() -> RouterClient:
+    """Create a :class:`RouterClient` using the configured ``ROUTER_URL``.
+
+    The original codebase exposed a ``get_router_client`` helper that returned a
+    ready‑to‑use client instance. Modern code defines the ``RouterClient`` class
+    directly, but the routers still import the helper. This function simply
+    instantiates ``RouterClient`` with the default configuration, matching the
+    previous behaviour without any hard‑coded values.
+    """
+    return RouterClient()
+
+__all__ = ["RouterClient", "RouteDecision", "get_router_client"]

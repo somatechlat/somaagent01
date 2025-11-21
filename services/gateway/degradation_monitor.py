@@ -107,6 +107,15 @@ class DegradationMonitor:
         self._monitoring_active = True
         self._monitor_task = asyncio.create_task(self._monitor_loop())
         logger.info("Degradation monitoring started")
+
+    def is_monitoring(self) -> bool:
+        """Return whether the degradation monitor is currently active.
+
+        The health endpoint checks this method to decide if it should report the
+        monitor status. It simply reflects the internal ``_monitoring_active``
+        flag.
+        """
+        return self._monitoring_active
     
     async def stop_monitoring(self) -> None:
         """Stop degradation monitoring."""

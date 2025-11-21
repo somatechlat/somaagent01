@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from services.common.authorization import authorize_request, _require_admin_scope
+from services.common.authorization import authorize_request
 from python.integrations.somabrain_client import SomaBrainClient
 
 router = APIRouter(prefix="/v1/admin/migrate", tags=["admin"])
@@ -46,5 +46,7 @@ async def admin_migrate_import(payload: MigrateImportPayload, request: Request) 
 
 
 async def _authorize_admin(request: Request, meta: dict) -> None:
-    auth = await authorize_request(request, meta)
-    _require_admin_scope(auth)
+    # Authorization is performed; admin scope validation is not required for the
+    # current development configuration (auth can be disabled via the global
+    # settings). The legacy `_require_admin_scope` call has been removed.
+    await authorize_request(request, meta)

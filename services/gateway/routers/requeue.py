@@ -5,10 +5,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from services.common.requeue_store import RequeueStore
-from services.common.admin_settings import ADMIN_SETTINGS
 
 router = APIRouter(prefix="/v1/requeue", tags=["requeue"])
-STORE = RequeueStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+STORE = RequeueStore()
 
 
 class RequeueItem(BaseModel):
@@ -19,20 +18,19 @@ class RequeueItem(BaseModel):
 
 @router.get("")
 async def list_requeue():
-    return await STORE.list_items()
+    return await STORE.list()
 
 
 @router.post("/{requeue_id}/resolve")
 async def resolve_requeue(requeue_id: str):
-    ok = await STORE.resolve(requeue_id)
-    if not ok:
+    item = await STORE.get(requeue_id)
+    if item is None:
         raise HTTPException(status_code=404, detail="requeue_not_found")
+    await STORE.remove(requeue_id)
     return {"resolved": requeue_id}
 
 
 @router.delete("/{requeue_id}")
 async def delete_requeue(requeue_id: str):
-    ok = await STORE.delete(requeue_id)
-    if not ok:
-        raise HTTPException(status_code=404, detail="requeue_not_found")
+    await STORE.remove(requeue_id)
     return {"deleted": requeue_id}
