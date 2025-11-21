@@ -19,7 +19,6 @@ _SUBMODULES = {
     "telemetry",
     "telemetry_store",
     "env",
-    "runtime_config",
 }
 
 __all__ = sorted(_SUBMODULES)

@@ -21,39 +21,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-# Pydantic v2 split ``BaseSettings`` into the ``pydantic-settings`` package.
-# The original code only needed ``BaseSettings`` for the empty ``Settings``
-# placeholder, so we import it conditionally. ``Field`` is not used anywhere in
-# this shim, and ``ValidationError`` is only required for type‑checking when
-# the class is expanded later.
-try:
-    from pydantic_settings import BaseSettings  # type: ignore
-except Exception:  # pragma: no cover – fallback for environments without the extra package
-    class BaseSettings:  # minimal stub to keep type‑checkers happy
-        def __init__(self, *args, **kwargs):
-            pass
-
-from pydantic import ValidationError
-
-
-class Settings(BaseSettings):
-    """Pydantic settings model – currently empty because the project loads
-    configuration lazily via ``cfg.env``.  Concrete fields can be added as the
-    refactor progresses (e.g. ``kafka_bootstrap_servers: str`` etc.).
-    """
-
-    class Config:
-        env_prefix = "SA01_"  # All ``SA01_*`` vars are automatically read
-        case_sensitive = False
-
-    # Example placeholder – real fields will be added later
-    dummy: str | None = None
-
-
-# Singleton instance – created at import time so that ``env`` works immediately.
-_settings = Settings()
-
-
 def _load_file_config() -> Dict[str, Any]:
     """Placeholder for future file‑based configuration loading.
 
@@ -120,6 +87,13 @@ def env(name: str, default: Any = None) -> Any:
     return default
 
 
+def settings():
+    """Backward-compatible accessor returning the validated Config object."""
+    from .registry import get_config
+
+    return get_config()
+
+
 # -----------------------------------------------------------------------------
 # Convenience getters mirroring legacy runtime_config API (to ease migration).
 # -----------------------------------------------------------------------------
@@ -161,6 +135,9 @@ def opa_url() -> str:
 class _CfgFacade:
     def env(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper
         return env(name, default)
+
+    def settings(self):
+        return settings()
 
 
 cfg = _CfgFacade()

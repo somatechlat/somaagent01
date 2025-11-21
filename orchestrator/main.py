@@ -26,6 +26,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 
 from .orchestrator import SomaOrchestrator
+from .config import load_config
 from .health_monitor import UnifiedHealthMonitor
 from .gateway_service import GatewayService
 from .unified_memory_service import UnifiedMemoryService
@@ -124,7 +125,21 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0", help="HTTP host")
     parser.add_argument("--port", type=int, default=8000, help="HTTP port")
     parser.add_argument("--config", help="Path to configuration file")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Start and stop services once, then exit (for CI smoke checks)",
+    )
     args = parser.parse_args()
+
+    if args.dry_run:
+        async def _smoke():
+            orch = app.state.orchestrator
+            await orch._start_all()
+            await orch._stop_all()
+        asyncio.run(_smoke())
+        LOGGER.info("Dry-run completed successfully")
+        return
 
     uvicorn.run(
         "orchestrator.main:app",

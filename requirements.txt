@@ -8,6 +8,7 @@ Flask==3.0.3
 flask[async]==3.0.3
 Werkzeug==3.0.3
 a2wsgi==1.10.7
+python-multipart==0.0.9  # required by FastAPI form parser; removes deprecation warning
 
 # Core config and serialization
 pydantic==2.11.6
