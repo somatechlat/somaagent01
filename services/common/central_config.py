@@ -1,68 +1,36 @@
-"""Centralized configuration for the SomaAgent01 codebase.
+"""Legacy shim for configuration – forwards everything to the canonical
+``src.core.config`` package.
 
-This module defines a single source of truth for all environment variables
-required by the application.  It uses ``pydantic.BaseSettings`` so values are
-validated on start‑up and can be overridden via the environment, a ``.env``
-file, or explicit arguments.
+Historically the project used a bespoke ``CentralizedConfig`` class defined
+here and exported a module‑level singleton ``cfg``.  The modern refactor has
+consolidated all settings into the **single source of truth** located in
+``src.core.config`` (a Pydantic ``Config`` model with a ``cfg`` facade).
 
-The class is instantiated exactly once (a module‑level singleton) and is
-exported as ``cfg`` – matching the historic ``services.common.runtime_config``
-API that many modules still import.  The existing ``runtime_config`` shim now
-delegates to this implementation, allowing a gradual migration without
-breaking imports.
+To keep existing imports working without duplicating any logic we simply
+re‑export that canonical singleton.  The ``CentralizedConfig`` name is kept
+as an alias so that ``isinstance(cfg, CentralizedConfig)`` continues to
+behave as expected, but it points to the same underlying object.
 """
 
 from __future__ import annotations
 
-import os
-from typing import Any, Dict
-
-from pydantic import BaseSettings, Field, validator
+# Import the canonical configuration objects.
+from src.core.config import cfg as _cfg, Config as _Config
 
 
-class CentralizedConfig(BaseSettings):
-    """Application configuration loaded from environment variables.
+class CentralizedConfig(_Config):
+    """Compatibility alias – behaves exactly like the canonical ``Config``.
 
-    Only a subset of settings required for the current test suite are
-    declared explicitly; additional settings can be added later without
-    changing the public interface.
+    The class does not add any new behaviour; it merely exists so that code
+    importing ``CentralizedConfig`` continues to resolve.  Instantiating the
+    class returns the shared singleton ``_cfg``.
     """
 
-    # Example core settings – extend as needed
-    otlp_endpoint: str = Field(
-        default="",
-        description="OpenTelemetry collector endpoint (e.g. http://localhost:4317)",
-    )
-    metrics_port: int = Field(
-        default=8000,
-        description="Port on which the Prometheus metrics server should listen",
-    )
-    metrics_host: str = Field(
-        default="0.0.0.0",
-        description="Host for the metrics HTTP server",
-    )
-
-    # Feature‑flags – can be toggled via env var FEATURE_X=1/0
-    enable_tool_executor: bool = Field(default=True)
-    enable_conversation_worker: bool = Field(default=True)
-    enable_outbox_sync: bool = Field(default=True)
-    enable_delegation_worker: bool = Field(default=True)
-    enable_gateway: bool = Field(default=True)
-    enable_memory_sync: bool = Field(default=True)
-
-    class Config:
-        env_prefix = "SA01_"  # All vars are prefixed with SA01_
-        case_sensitive = False
-
-    # Helper to fetch raw env values – mirrors the historic ``runtime_config.env``
-    @staticmethod
-    def env(name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper
-        return os.getenv(name, default)
-
-    # Generic getter used by the old shim
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
+    def __new__(cls, *args, **kwargs):  # pragma: no cover – simple delegation
+        return _cfg
 
 
-# Instantiate a singleton that will be imported by the shim module.
-cfg = CentralizedConfig()
+# Export the shared singleton under the historic name.
+cfg = _cfg
+
+__all__ = ["CentralizedConfig", "cfg"]
