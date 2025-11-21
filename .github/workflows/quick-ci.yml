@@ -22,3 +22,27 @@ jobs:
       - name: Compile gateway
         run: |
           python -m compileall -q services/gateway
+
+  smoke-orchestrator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies (minimal)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install python-multipart
+      - name: Orchestrator dry-run smoke
+        run: |
+          make smoke-orchestrator
+      - name: Orchestrator health probe (in-process)
+        run: |
+          python - <<'PY'\nfrom fastapi.testclient import TestClient\nfrom orchestrator.main import app\nclient = TestClient(app)\nresp = client.get(\"/v1/health\")\nprint(resp.status_code, resp.json())\nassert resp.status_code == 200 and resp.json().get(\"healthy\") is True\nPY
+      - name: Gateway runtime-config probe (in-process)
+        run: |
+          python - <<'PY'\nfrom fastapi.testclient import TestClient\nfrom orchestrator.main import app\nclient = TestClient(app)\nresp = client.get(\"/v1/runtime-config\")\nprint(resp.status_code, resp.json())\nassert resp.status_code == 200\nPY

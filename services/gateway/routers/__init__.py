@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from . import admin, chat, health, memory, sessions, tools, uploads
+from . import admin, chat, chat_full, health, health_full, memory, sessions, tools, uploads, runtime_config, admin_memory, admin_migrate, constitution, admin_kafka, uploads_full, tools_full
 
 
 def build_router() -> APIRouter:
@@ -17,11 +17,20 @@ def build_router() -> APIRouter:
     for sub in (
         admin.router,
         chat.router,
+        chat_full.router,
         health.router,
+        health_full.router,
+        admin_memory.router,
+        admin_migrate.router,
+        constitution.router,
+        admin_kafka.router,
+        uploads_full.router,
+        tools_full.router,
         memory.router,
         sessions.router,
         tools.router,
         uploads.router,
+        runtime_config.router,
     ):
         router.include_router(sub)
     return router

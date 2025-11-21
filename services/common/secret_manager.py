@@ -27,7 +27,7 @@ from typing import Optional, List
 import redis.asyncio as redis
 from cryptography.fernet import Fernet, InvalidToken
 
-from src.core.config import env
+from src.core.config import cfg
 
 # ---------------------------------------------------------------------------
 # Helper – validate / normalise the Fernet key supplied via env
@@ -40,7 +40,7 @@ def _load_fernet_key() -> Fernet:
     the behaviour of the previous implementation but raises a clear error if
     the resulting key is invalid.
     """
-    raw_key = env.get("SA01_CRYPTO_FERNET_KEY")
+    raw_key = cfg.env("SA01_CRYPTO_FERNET_KEY")
     if not raw_key:
         raise RuntimeError(
             "SA01_CRYPTO_FERNET_KEY is required – provide a urlsafe base64 32‑byte key"
@@ -78,14 +78,7 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
-        # ``SA01_REDIS_URL`` is the canonical variable – fallback to the older
-        # name only for backward compatibility during the migration window.
-        # Use the canonical runtime_config helper for env access – this is the
-        # only place allowed to call ``os.getenv`` directly according to the
-        # VIBE rules and the ``test_no_direct_getenv`` guard test.
-        redis_url = runtime_config.env(
-            "SA01_REDIS_URL", runtime_config.env("REDIS_URL", "redis://localhost:6379/0")
-        )
+        redis_url = cfg.env("SA01_REDIS_URL", cfg.env("REDIS_URL", "redis://localhost:6379/0"))
         self._redis = redis.from_url(redis_url, decode_responses=True)
         # Defer Fernet creation until first use. This allows the manager to be
         # instantiated in test environments where the encryption key may be

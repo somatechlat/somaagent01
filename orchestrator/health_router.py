@@ -17,9 +17,7 @@ router without starting the monitor automatically.
 from __future__ import annotations
 
 from fastapi import APIRouter
-from typing import Dict, List
-
-router = APIRouter()
+from typing import Dict, List, Callable, Optional
 
 
 class UnifiedHealthRouter:
@@ -29,12 +27,20 @@ class UnifiedHealthRouter:
     registry's ``services`` list so the router always sees the current set.
     """
 
-    def __init__(self, services: List[object]) -> None:
-        self._services = services
+    def __init__(self, services: List[object] | None = None, registry=None, services_provider: Optional[Callable[[], List[object]]] = None) -> None:
+        self._services = services or []
+        self._registry = registry
+        self._services_provider = services_provider
 
     async def _gather(self) -> Dict[str, Dict]:
         results: Dict[str, Dict] = {}
-        for svc in self._services:
+        if self._services_provider is not None:
+            services = self._services_provider()
+        elif self._registry is not None:
+            services = self._registry.services
+        else:
+            services = self._services
+        for svc in services:
             try:
                 results[svc.name] = await svc.health()
             except Exception as exc:  # pragma: no cover – defensive
@@ -53,6 +59,8 @@ def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
     ``router_obj`` is an instance of :class:`UnifiedHealthRouter`. The function
     registers a ``/v1/health`` endpoint that delegates to ``router_obj``.
     """
+
+    router = APIRouter()
 
     @router.get("/v1/health")
     async def health() -> Dict:  # pragma: no cover – exercised via API tests

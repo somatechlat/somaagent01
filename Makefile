@@ -520,3 +520,9 @@ typecheck:
 test:
 	@echo "Running tests..."
 	pytest --cov=services --cov=python --cov-report=term-missing
+
+.PHONY: smoke-orchestrator
+smoke-orchestrator:
+	@echo "Running orchestrator dry-run smoke..."
+	python -m orchestrator.main --dry-run
+	python - <<'PY'\nfrom fastapi.testclient import TestClient\nfrom orchestrator.main import app\nclient = TestClient(app)\nresp = client.get(\"/v1/health\")\nprint(resp.status_code, resp.json())\nassert resp.status_code == 200 and resp.json().get(\"healthy\") is True\nPY

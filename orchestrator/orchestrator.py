@@ -25,6 +25,7 @@ from .base_service import BaseSomaService
 from .health_router import UnifiedHealthRouter, attach_to_app
 from .health_monitor import UnifiedHealthMonitor
 from prometheus_client import make_asgi_app
+from contextlib import asynccontextmanager
 
 LOGGER = logging.getLogger("orchestrator")
 
@@ -65,8 +66,10 @@ class SomaOrchestrator:
     def __init__(self, app: FastAPI) -> None:
         self.app = app
         self.registry = ServiceRegistry()
-        # The router receives the live list of services for the ``/v1/health`` endpoint.
-        self.health_router = UnifiedHealthRouter(self.registry.services)
+        # The router receives the live list of services via a provider so it is always current.
+        self.health_router = UnifiedHealthRouter(
+            services_provider=lambda: self.registry.services, registry=self.registry
+        )
         # The background monitor runs independently and uses the central config.
         # It will be started explicitly by the orchestrator when needed.
         self.health_monitor = UnifiedHealthMonitor(self.registry.services)
@@ -112,30 +115,23 @@ class SomaOrchestrator:
         """
 
         # -----------------------------------------------------------------
-        # Mount health router only once.
+        # Mount health router and metrics endpoints.
         # -----------------------------------------------------------------
-        health_path_exists = any(
-            getattr(route, "path", None) == "/v1/health" for route in getattr(self.app, "router", {}).routes
-        )
-        if not health_path_exists:
-            attach_to_app(self.app, self.health_router)
+        attach_to_app(self.app, self.health_router)
+        self.app.mount("/metrics", make_asgi_app())
 
         # -----------------------------------------------------------------
-        # Mount Prometheus metrics only once.
+        # Lifespan handler (FastAPI-recommended replacement for on_event).
         # -----------------------------------------------------------------
-        metrics_path_exists = any(
-            getattr(route, "path", None) == "/metrics" for route in getattr(self.app, "router", {}).routes
-        )
-        if not metrics_path_exists:
-            self.app.mount("/metrics", make_asgi_app())
-
-        @self.app.on_event("startup")
-        async def _startup() -> None:  # noqa: D401
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
             await self._start_all()
+            try:
+                yield
+            finally:
+                await self._stop_all()
 
-        @self.app.on_event("shutdown")
-        async def _shutdown() -> None:  # noqa: D401
-            await self._stop_all()
+        self.app.router.lifespan_context = lifespan
 # NOTE: The original complex process‑manager implementation has been removed.
 # The lightweight ``BaseSomaService``‑based orchestrator defined above is the
 # single source of truth for the project, satisfying the VIBE rule
