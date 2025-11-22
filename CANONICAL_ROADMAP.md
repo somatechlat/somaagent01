@@ -60,6 +60,33 @@ Operate SomaAgent01 through **one executable orchestrator** with **one configura
 
 ---
 
+# 🚦 Degraded Mode & Single Chat Entry (Current Sprint)
+
+## Goals
+- Agent fully functional via one chat entrypoint (`POST /v1/session/message` + SSE `/v1/sessions/{id}/events?stream=true`).
+- LLM streaming works with Groq while SomaBrain stays offline; memory writes buffer to Postgres outbox.
+- Degraded state visible in UI (banner/icon), no duplicate UIs or endpoints.
+
+## Current State
+- Gateway emits schema‑correct `conversation_event` (role/message/attachments/metadata/version).
+- Worker consumes from `memory.wal`, LLM proxy `/v1/llm/invoke/stream` live (Groq key stored). SomaBrain down by design; outbox buffering in place.
+- UI streaming wired; banners show degraded; attachment preview restored.
+- Blocker: OPA denies `conversation.send` / `memory.write` because required inputs are missing/mismatched; assistant replies not emitted.
+
+## Sprint Tasks (immediate)
+1. **OPA alignment (no bypass):** Read OPA policies in `policy/`; add required metadata (tenant/persona/auth, etc.) to gateway payload so `conversation.send` allows. Ensure `DISABLE_CONVERSATION_POLICY` only for tests.
+2. **Memory write allow in degraded mode:** If policy expects SomaBrain up, add a policy input flag for degraded mode so writes buffer but are not denied (still no bypass toggle).
+3. **SSE verify end‑to‑end:** Send message → user event stored → assistant stream events published → UI renders streamed response. Add a minimal dev smoke script.
+4. **Observability:** `/v1/metrics/system` reflects probe/backlog; log noisy SomaBrain failures at debug.
+5. **Docs:** Update this roadmap section with policy requirements and the single chat/SSE flow; mark `/v1/chat/completions` as utility only.
+
+## Exit Criteria
+- POST `/v1/session/message` returns 200 and SSE delivers user + assistant messages while SomaBrain is down.
+- No policy_denied events in normal dev flow; buffering continues; UI shows degraded state.
+- Single chat entrypoint documented; no duplicate send paths in UI/backend.
+
+---
+
 # SomaAgent01 v1.0 — Celery‑Only Architecture & Implementation Guide
 **Date:** 2025-11-09 17:37:55  
 **Owner:** gpubroker / Adrian Cadena  

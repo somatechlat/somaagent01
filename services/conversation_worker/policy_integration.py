@@ -22,7 +22,9 @@ class ConversationPolicyEnforcer:
     ) -> bool:
         """Check whether an inbound user message is permitted."""
         # Optional development bypass to unblock local testing when OPA denies or is unreachable.
-        if cfg.env("DISABLE_CONVERSATION_POLICY", "false").lower() in {"true", "1", "yes", "on"}:
+        import os
+        flag = os.getenv("DISABLE_CONVERSATION_POLICY") or cfg.env("DISABLE_CONVERSATION_POLICY", "false")
+        if str(flag).lower() in {"true", "1", "yes", "on"}:
             return True
         request = PolicyRequest(
             tenant=tenant,

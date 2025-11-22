@@ -72,33 +72,17 @@ async def metrics_system():
     except Exception:
         pass
 
-    # Compute brain status from degradation + backlog
-    brain_status = "unknown"
+    # Compute brain status from live health probe + outbox backlog
+    probe_ok = await _probe_somabrain()
     brain_backlog = await _pending_outbox()
-    try:
-        brain_health = await degradation_monitor.get_degradation_status()
-        # If overall is healthy and backlog == 0 => healthy
-        if getattr(brain_health, "overall_level", None) == getattr(degradation_monitor, "DegradationLevel", None):
-            pass  # Defensive; not expected here
-    except Exception:
-        brain_health = None
 
-    try:
-        # Simple rule: backlog>0 or degraded => buffering
-        degraded = False
-        try:
-            status = await degradation_monitor.get_degradation_status()
-            degraded = status.overall_level.name.lower() != "none" if hasattr(status, "overall_level") else False
-        except Exception:
-            pass
-        if brain_backlog and brain_backlog > 0:
-            brain_status = "buffering"
-        if degraded:
-            brain_status = "degraded"
-        if (brain_backlog == 0 or brain_backlog == -1) and not degraded:
-            brain_status = "healthy"
-    except Exception:
-        brain_status = "unknown"
+    brain_status = "unknown"
+    if probe_ok and brain_backlog == 0:
+        brain_status = "healthy"
+    elif probe_ok and brain_backlog > 0:
+        brain_status = "buffering"
+    elif not probe_ok:
+        brain_status = "degraded"
 
     return {
         "status": "ok",
@@ -108,7 +92,7 @@ async def metrics_system():
         "disk": {"percent": disk_percent},
         "components": {
             "gateway": {"status": "healthy"},
-            "somabrain": {"status": brain_status, "backlog": brain_backlog},
+            "somabrain": {"status": brain_status, "backlog": brain_backlog, "probe_ok": probe_ok},
         },
     }
 
@@ -137,3 +121,19 @@ async def _pending_outbox() -> int:
         return count
     except Exception:
         return -1  # signal error
+
+
+async def _probe_somabrain() -> bool:
+    """Lightweight health probe to SomaBrain service.
+
+    Returns ``True`` on HTTP 200, ``False`` on error/timeouts to keep the
+    Web UI responsive even when the service is unreachable.
+    """
+    base = os.getenv("SA01_SOMA_BASE_URL") or "http://localhost:9696"
+    url = base.rstrip("/") + "/health"
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(url)
+            return resp.status_code == 200
+    except Exception:
+        return False

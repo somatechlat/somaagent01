@@ -45,48 +45,28 @@ class SystemMonitor {
      */
     async checkSomabrainHealth() {
         try {
-            const response = await fetch('http://localhost:9696/health', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            if (response.ok) {
-                const somabrainData = await response.json();
-                
-                // Update somabrain store based on SomaBrain health
-                if (globalThis.Alpine?.store('somabrain')) {
-                    const somabrainStore = globalThis.Alpine.store('somabrain');
-                    
-                    if (somabrainData.ready === true) {
-                        somabrainStore.state = 'normal';
-                        somabrainStore.tooltip = 'SomaBrain online';
-                        somabrainStore.banner = '';
-                    } else {
-                        somabrainStore.state = 'degraded';
-                        somabrainStore.tooltip = 'SomaBrain degraded – limited memory retrieval';
-                        somabrainStore.banner = 'Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.';
-                    }
-                    somabrainStore.lastUpdated = Date.now();
-                }
-                
-                return somabrainData;
-            } else {
-                throw new Error(`SomaBrain health check failed: ${response.status}`);
+            const response = await fetchApi('/v1/somabrain/health');
+            if (!response.ok) throw new Error(`SomaBrain health check failed: ${response.status}`);
+
+            const somabrainData = await response.json();
+            if (globalThis.Alpine?.store('somabrain')) {
+                const store = globalThis.Alpine.store('somabrain');
+                const ready = somabrainData.ready === true || somabrainData.status === 'ok';
+                store.state = ready ? 'normal' : 'degraded';
+                store.tooltip = ready ? 'SomaBrain online' : 'SomaBrain degraded – limited memory retrieval';
+                store.banner = ready ? '' : 'SomaBrain responses may be limited until connectivity stabilizes.';
+                store.lastUpdated = Date.now();
             }
+            return somabrainData;
         } catch (error) {
             console.error('Error checking SomaBrain health:', error);
-            
-            // Update somabrain store to reflect error
             if (globalThis.Alpine?.store('somabrain')) {
-                const somabrainStore = globalThis.Alpine.store('somabrain');
-                somabrainStore.state = 'down';
-                somabrainStore.tooltip = 'SomaBrain offline – degraded mode';
-                somabrainStore.banner = 'SomaBrain is offline. The agent will answer using chat history only until memories sync again.';
-                somabrainStore.lastUpdated = Date.now();
+                const store = globalThis.Alpine.store('somabrain');
+                store.state = 'down';
+                store.tooltip = 'SomaBrain offline – degraded mode';
+                store.banner = 'SomaBrain is offline. The agent will answer using chat history only until memories sync again.';
+                store.lastUpdated = Date.now();
             }
-            
             return null;
         }
     }
@@ -372,11 +352,10 @@ class SystemMonitor {
 
     updateBrainUI(status, backlog) {
         // Map status to banner/icon states
-        const banner = document.querySelector('.brain-banner');
-        const brainIcon = document.querySelector('.icon-brain');
-        const bellBrain = document.querySelector('.bell-brain-indicator');
+        const banner = document.querySelector('.somabrain-banner');
+        const brainIcon = document.querySelector('.brain-indicator');
 
-        const showDegraded = (status === 'degraded' || status === 'buffering' || status === 'unknown');
+        const showDegraded = status === 'degraded' || status === 'buffering' || status === 'unknown';
         const text = status === 'healthy'
             ? 'SomaBrain connected'
             : status === 'buffering'
@@ -384,17 +363,22 @@ class SystemMonitor {
                 : 'SomaBrain unreachable';
 
         if (banner) {
-            banner.style.display = showDegraded ? 'block' : 'none';
-            banner.textContent = text;
+            banner.classList.remove('degraded', 'down', 'unknown', 'buffering');
+            if (showDegraded) banner.classList.add('somabrain-visible'); else banner.classList.remove('somabrain-visible');
+            if (status === 'degraded') banner.classList.add('down');
+            else if (status === 'buffering') banner.classList.add('degraded');
+            else if (status === 'unknown') banner.classList.add('unknown');
+            banner.querySelector('.somabrain-banner-title')?.textContent = showDegraded ? 'SomaBrain Status' : 'System Status';
+            banner.querySelector('.somabrain-banner-text')?.textContent = text;
         }
-        const setClass = (el, s) => {
-            if (!el) return;
-            el.classList.remove('state-healthy','state-buffering','state-degraded','state-unknown');
-            el.classList.add(`state-${s}`);
-            el.title = text;
-        };
-        setClass(brainIcon, status);
-        setClass(bellBrain, status);
+        if (brainIcon) {
+            brainIcon.classList.remove('brain-down', 'brain-degraded', 'brain-unknown', 'brain-normal');
+            if (status === 'degraded') brainIcon.classList.add('brain-down');
+            else if (status === 'buffering') brainIcon.classList.add('brain-degraded');
+            else if (status === 'unknown') brainIcon.classList.add('brain-unknown');
+            else brainIcon.classList.add('brain-normal');
+            brainIcon.title = text;
+        }
     }
 
     /**

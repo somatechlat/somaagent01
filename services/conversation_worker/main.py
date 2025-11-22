@@ -32,7 +32,7 @@ from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.central.logging import setup_logging
+from services.common.logging_config import setup_logging
 from services.common.model_costs import estimate_escalation_cost
 from services.common.model_profiles import ModelProfileStore
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
@@ -242,10 +242,11 @@ class ConversationWorker:
             sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
             sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
+        import os
         self.settings = {
-            "inbound": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
-            "outbound": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
-            "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
+            "inbound": os.getenv("CONVERSATION_INBOUND", "conversation.inbound"),
+            "outbound": os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
@@ -294,25 +295,20 @@ class ConversationWorker:
         self.escalation_fallback_enabled = cfg.env(
             "ESCALATION_FALLBACK_ENABLED", "false"
         ).lower() in {"1", "true", "yes", "on"}
-        # Optional hard-disable of SomaBrain (degradation mode) via env
-        self._somabrain_disabled = (
-            cfg.env("SA01_DISABLE_SOMABRAIN", "false").lower() in {"1", "true", "yes", "on"}
-        )
-
         # Tool registry for model‑led orchestration (no network hop)
         self.tool_registry = ToolRegistry()
 
         # ---------------------------------------------------------------------
         # Fail‑safe state & health monitoring for SomaBrain
         # ---------------------------------------------------------------------
-        self._soma_brain_up: bool = not self._somabrain_disabled  # forced down if disabled
+        self._soma_brain_up: bool = True
         # Start background health monitor (runs for the lifetime of the worker).
         # In test environments (detected via the presence of the ``pytest`` module
         # or the ``PYTEST_CURRENT_TEST`` environment variable) we skip launching
         # the infinite monitor to avoid dangling asyncio tasks that prevent the
         # test process from exiting.
         import sys
-        if self._somabrain_disabled or "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+        if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
             self._health_monitor_task = None
         else:
             self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())
@@ -332,10 +328,6 @@ class ConversationWorker:
         operations. When the service becomes reachable again, any buffered
         memory items are flushed.
         """
-        if self._somabrain_disabled:
-            self._soma_brain_up = False
-            SOMABRAIN_STATUS_GAUGE.set(0.0)
-            return
         while True:
             try:
                 # ``health()`` raises ``SomaClientError`` (or ``httpx`` errors)
@@ -393,7 +385,7 @@ class ConversationWorker:
 
         Returns an empty dict when SomaBrain is unavailable.
         """
-        if self._somabrain_disabled or not self._soma_brain_up:
+        if not self._soma_brain_up:
             return {}
         try:
             return await self.soma.recall(*args, **kwargs)
@@ -424,7 +416,7 @@ class ConversationWorker:
             except Exception:
                 LOGGER.debug("Failed to enqueue memory payload during %s", reason, exc_info=True)
 
-        if self._somabrain_disabled or not self._soma_brain_up:
+        if not self._soma_brain_up:
             await _enqueue_outbox("somabrain_down")
             return
         try:
@@ -893,7 +885,7 @@ class ConversationWorker:
             except Exception:
                 LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
             if not allow_memory:
-                return
+                LOGGER.info("memory.write denied by policy; continuing without long-term write", extra={"session_id": session_id})
             wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
             try:
                 result = await self.soma.remember(payload)
@@ -910,7 +902,7 @@ class ConversationWorker:
                     )
                 except Exception:
                     pass
-                return
+                # Continue without blocking the user flow
             try:
                 wal_event = {
                     "type": "memory.write",
@@ -1095,7 +1087,26 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
+        # Ensure model/base_url defaults are populated even if profiles/routing are absent.
+        slm_kwargs = dict(slm_kwargs or {})
+        if not slm_kwargs.get("model"):
+            env_model = os.getenv("SLM_MODEL") or cfg.env("SLM_MODEL")
+            if env_model:
+                slm_kwargs["model"] = env_model
+        if not slm_kwargs.get("base_url"):
+            env_base = os.getenv("SLM_BASE_URL") or cfg.env("SLM_BASE_URL")
+            if env_base:
+                slm_kwargs["base_url"] = env_base
+
         model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        LOGGER.info(
+            "Invoking LLM via gateway",
+            extra={
+                "session_id": session_id,
+                "model": slm_kwargs.get("model"),
+                "base_url": slm_kwargs.get("base_url"),
+            },
+        )
         try:
             return await self._stream_response_via_gateway(
                 session_id=session_id,
@@ -2089,6 +2100,13 @@ class ConversationWorker:
                         slm_kwargs["model"] = routed.model
                         slm_kwargs.setdefault("metadata", {})
                         slm_kwargs["metadata"]["router_score"] = routed.score
+
+            # Ensure we have a concrete model/base_url even if no profile is present.
+            if not slm_kwargs:
+                env_model = cfg.env("SLM_MODEL")
+                env_base = cfg.env("SLM_BASE_URL")
+                if env_model and env_base:
+                    slm_kwargs = {"model": env_model, "base_url": env_base}
 
             metadata_for_decision = dict(enriched_metadata)
             metadata_for_decision.pop("analysis", None)

@@ -157,6 +157,9 @@ async def enqueue_message(
     if "message" not in payload:
         raise HTTPException(status_code=400, detail="Missing 'message' field")
 
+    # Ensure required role field for downstream schema
+    payload.setdefault("role", "user")
+
     meta = await _extract_metadata(request, payload)
     # Merge extracted metadata into the payload's metadata field so tests see it.
     merged_meta = {**payload.get("metadata", {}), **meta}
@@ -169,14 +172,17 @@ async def enqueue_message(
     payload["idempotency_key"] = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
-    # Construct the event payload expected by downstream consumers.
+    # Construct the conversation_event expected by the worker (schema enforced).
     event = {
-        "session_id": session_id,
         "event_id": event_id,
-        "payload": payload,
-        # Keep a top‑level metadata field for backward compatibility (tests use
-        # the nested payload metadata).
+        "session_id": session_id,
+        "persona_id": payload.get("persona_id"),
+        "role": payload.get("role", "user"),
+        "message": payload.get("message", ""),
+        "attachments": payload.get("attachments", []),
         "metadata": merged_meta,
+        "version": "sa01-v1",
+        "trace_context": payload.get("trace_context", {}),
     }
     # Publish to the memory WAL topic – the exact topic name is configurable.
     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
@@ -217,10 +223,15 @@ async def enqueue_quick_action(
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
     event = {
-        "session_id": session_id,
         "event_id": event_id,
-        "payload": payload,
+        "session_id": session_id,
+        "persona_id": payload.get("persona_id"),
+        "role": payload.get("role", "user"),
+        "message": payload.get("message", ""),
+        "attachments": payload.get("attachments", []),
         "metadata": merged_meta,
+        "version": "sa01-v1",
+        "trace_context": payload.get("trace_context", {}),
     }
     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
     await publisher.publish(
@@ -252,11 +263,17 @@ async def upload_files(
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
     filenames = [f.filename for f in files]
+    # Represent upload as a conversation event with attachments only.
     event = {
-        "session_id": session_id,
         "event_id": event_id,
-        "payload": {"attachments": filenames, **payload},
+        "session_id": session_id,
+        "persona_id": payload.get("persona_id"),
+        "role": payload.get("role", "user"),
+        "message": payload.get("message", ""),
+        "attachments": filenames,
         "metadata": meta,
+        "version": "sa01-v1",
+        "trace_context": payload.get("trace_context", {}),
     }
     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
     await publisher.publish(

@@ -16,7 +16,7 @@ from prometheus_client import Counter, Gauge, Histogram, start_http_server
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.central.logging import setup_logging
+from services.common.logging_config import setup_logging
 from src.core.domain.memory.replica_store import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
