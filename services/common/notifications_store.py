@@ -30,22 +30,30 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import asyncpg
+from services.common import env
 
 SEVERITIES = {"info", "success", "warning", "error"}
 
 
 class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from src.core.config import cfg
+        from services.common.admin_settings import ADMIN_SETTINGS
 
-        raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
+        # Use admin settings for Postgres DSN when not explicitly provided.
+        # Default DSN for Postgres; use admin settings if provided.
+        default_dsn = getattr(
+            ADMIN_SETTINGS,
+            "postgres_dsn",
+            "postgresql://soma:soma@localhost:5432/somaagent01",
+        )
+        raw_dsn = dsn or default_dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _pool_ensure(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(env.get("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(env.get("PG_POOL_MAX_SIZE", "2"))
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

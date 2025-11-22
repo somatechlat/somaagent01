@@ -429,21 +429,17 @@ document.addEventListener('alpine:init', function () {
                         }
                     }
 
-                    // Prepare data
-                    const formData = {};
-                    for (const section of this.settingsData.sections) {
-                        for (const field of section.fields) {
-                            formData[field.id] = field.value;
-                        }
-                    }
+                    // Prepare payload matching the backend schema (sections array)
+                    const payload = { sections: this.settingsData.sections };
 
-                    // Send request
-                    const response = await fetchApi('/api/settings_save', {
+                    // Send request to the correct endpoint. The backend will split
+                    // secret vs non‑secret fields and persist them.
+                    const response = await fetchApi('/v1/ui/settings/sections', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(formData)
+                        body: JSON.stringify(payload)
                     });
 
                     if (response.ok) {
@@ -578,24 +574,64 @@ document.addEventListener('alpine:init', function () {
 });
 
 // Show toast notification - now uses new notification system
+/**
+ * Unified toast helper for Settings UI.
+ * The original implementation attempted to use an Alpine store named
+ * `notificationStore`, but the application actually registers the store as
+ * `notificationSse` (see `webui/index.js`). As a result the lookup always
+ * failed and the function fell back to a console.log, producing no visible
+ * toast messages. This also meant the UI appeared as if the save operation
+ * never succeeded.
+ *
+ * The new implementation first tries the modern `notificationSse` store. If
+ * that is unavailable (e.g., during early page load), it falls back to the
+ * global helper functions (`toastFrontendInfo`, `toastFrontendSuccess`,
+ * `toastFrontendError`, `toastFrontendWarning`) that are always defined by
+ * `webui/index.js`. This guarantees a visible toast regardless of the store
+ * initialization timing.
+ */
 function showToast(message, type = 'info') {
-    // Use new frontend notification system based on type
-    if (window.Alpine && window.Alpine.store && window.Alpine.store('notificationStore')) {
-        const store = window.Alpine.store('notificationStore');
+    try {
+        // Preferred: use the SSE notification Alpine store if present
+        if (window.Alpine && window.Alpine.store && window.Alpine.store('notificationSse')) {
+            const store = window.Alpine.store('notificationSse');
+            // The store expects a payload; we map the toast type accordingly.
+            const payload = {
+                type: type.toLowerCase(),
+                title: 'Settings',
+                body: message,
+                severity: type.toLowerCase(),
+                ttl_seconds: type === 'error' ? 5 : 3,
+            };
+            // Directly push to the store's toast stack if method exists
+            if (typeof store.create === 'function') {
+                store.create(payload);
+                return;
+            }
+        }
+    } catch (e) {
+        // Silently ignore and fall back
+    }
+
+    // Fallback to the global toast helpers defined in index.js
+    if (typeof globalThis.toastFrontendInfo === 'function' &&
+        typeof globalThis.toastFrontendSuccess === 'function' &&
+        typeof globalThis.toastFrontendError === 'function' &&
+        typeof globalThis.toastFrontendWarning === 'function') {
         switch (type.toLowerCase()) {
             case 'error':
-                return store.frontendError(message, "Settings", 5);
+                return globalThis.toastFrontendError(message, 'Settings');
             case 'success':
-                return store.frontendInfo(message, "Settings", 3);
+                return globalThis.toastFrontendSuccess(message, 'Settings');
             case 'warning':
-                return store.frontendWarning(message, "Settings", 4);
+                return globalThis.toastFrontendWarning(message, 'Settings');
             case 'info':
             default:
-                return store.frontendInfo(message, "Settings", 3);
+                return globalThis.toastFrontendInfo(message, 'Settings');
         }
-    } else {
-        // Fallback if Alpine/store not ready
-        console.log(`SETTINGS ${type.toUpperCase()}: ${message}`);
-        return null;
     }
+
+    // Last resort: log to console so developers can see the message.
+    console.log(`SETTINGS ${type.toUpperCase()}: ${message}`);
+    return null;
 }

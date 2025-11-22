@@ -19,6 +19,8 @@ from services.gateway.routers import (
     root_ui,
     ui_static,
     ui_settings_sections,
+    # New notifications API used by the UI toast/notification system
+    notifications,
 )
 
 
@@ -41,6 +43,7 @@ def build_router() -> APIRouter:
     router.include_router(websocket.router)
     router.include_router(metrics_endpoints.router)
     router.include_router(ui_settings_sections.router)
+    router.include_router(notifications.router)
     # Static/UI catch-alls last so they do not shadow API prefixes
     router.include_router(root_ui.router)
     router.include_router(ui_static.router)

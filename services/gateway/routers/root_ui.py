@@ -8,6 +8,14 @@ from fastapi.responses import FileResponse
 
 router = APIRouter()
 
+# The web UI assets live at the repository root in the ``webui`` directory.
+# ``root_ui.py`` resides in ``services/gateway/routers``.  Inside the Docker
+# container the file path resolves to ``/git/agent-zero/services/gateway/routers``.
+# The repository root (containing the ``webui`` directory) is therefore
+# ``parents[3]`` (``/git/agent-zero``).  Using ``parents[4]`` points to ``/git``
+# which does not contain ``webui`` and results in a 404 for the index page.
+# We adjust to ``parents[3]`` so the UI loads correctly both in the container
+# and when run locally.
 WEBUI_ROOT = Path(__file__).resolve().parents[3] / "webui"
 ALLOWED_DIRS = {"css", "js", "vendor", "public", "components", "assets"}
 
