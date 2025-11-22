@@ -27,7 +27,6 @@ class BaseServiceSettings:
     kafka_bootstrap_servers: str
     redis_url: str
     otlp_endpoint: str
-    model_profiles_path: str = "conf/model_profiles.yaml"
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -69,21 +68,6 @@ class BaseServiceSettings:
             raise ValueError(f"Unknown environment '{environment}' for {cls.__name__}")
         merged: Dict[str, Any] = {**defaults, **(overrides or {})}
         return cls(environment=env_key, **merged)
-
-    # ------------------------------------------------------------------
-    # Derived helpers
-    # ------------------------------------------------------------------
-    def model_profiles(self) -> dict[str, Any]:
-        path = Path(self.model_profiles_path)
-        if not path.exists():
-            return {}
-        with path.open("r", encoding="utf-8") as handle:
-            data = yaml.safe_load(handle) or {}
-        return data
-
-    def environment_profile(self) -> dict[str, Any]:
-        profiles = self.model_profiles()
-        return profiles.get(self.deployment_mode, {})
 
     def copy_with(self, **updates: Any) -> Self:
         payload = {**self.__dict__, **updates}

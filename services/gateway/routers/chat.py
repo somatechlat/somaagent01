@@ -78,8 +78,8 @@ async def _resolve_credentials(base_url: str) -> str:
 
 @router.post("/completions")
 async def chat_completions(payload: ChatCompletionRequest):
-    model = (payload.model or os.getenv("SLM_MODEL", "")).strip()
-    base_url_raw = payload.base_url or os.getenv("SLM_BASE_URL", "")
+    model = (payload.model or os.getenv("SA01_LLM_MODEL", "")).strip()
+    base_url_raw = payload.base_url or os.getenv("SA01_LLM_BASE_URL", "")
     base_url = _normalize_llm_base_url(base_url_raw)
     if not model or not base_url:
         raise HTTPException(status_code=400, detail="model and base_url are required")

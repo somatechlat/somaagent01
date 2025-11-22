@@ -945,7 +945,7 @@ class ConversationWorker:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
-        model_label = (model_hint or slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (model_hint or slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")).strip() or "unknown"
         start_time = time.perf_counter()
 
         def _finalize(text_value: str, usage_value: dict[str, int]) -> tuple[str, dict[str, int]]:
@@ -1090,15 +1090,15 @@ class ConversationWorker:
         # Ensure model/base_url defaults are populated even if profiles/routing are absent.
         slm_kwargs = dict(slm_kwargs or {})
         if not slm_kwargs.get("model"):
-            env_model = os.getenv("SLM_MODEL") or cfg.env("SLM_MODEL")
+            env_model = os.getenv("SA01_LLM_MODEL") or cfg.env("SA01_LLM_MODEL")
             if env_model:
                 slm_kwargs["model"] = env_model
         if not slm_kwargs.get("base_url"):
-            env_base = os.getenv("SLM_BASE_URL") or cfg.env("SLM_BASE_URL")
+            env_base = os.getenv("SA01_LLM_BASE_URL") or cfg.env("SA01_LLM_BASE_URL")
             if env_base:
                 slm_kwargs["base_url"] = env_base
 
-        model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")).strip() or "unknown"
         LOGGER.info(
             "Invoking LLM via gateway",
             extra={
@@ -1385,7 +1385,7 @@ class ConversationWorker:
         tc_args_acc: dict[int, dict[str, Any]] = {}
         tc_name_acc: dict[int, str] = {}
 
-        model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")).strip() or "unknown"
         start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -1609,7 +1609,7 @@ class ConversationWorker:
         latency = time.time() - start_time
         text = data.get("content", "")
         usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
-        model_used = data.get("model") or overrides.get("model") or cfg.env("SLM_MODEL", "unknown")
+        model_used = data.get("model") or overrides.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")
         base_url_used = data.get("base_url") or overrides.get("base_url")
         if not text:
             raise RuntimeError("Empty response from escalation LLM via Gateway")
@@ -2103,8 +2103,8 @@ class ConversationWorker:
 
             # Ensure we have a concrete model/base_url even if no profile is present.
             if not slm_kwargs:
-                env_model = cfg.env("SLM_MODEL")
-                env_base = cfg.env("SLM_BASE_URL")
+                env_model = cfg.env("SA01_LLM_MODEL")
+                env_base = cfg.env("SA01_LLM_BASE_URL")
                 if env_model and env_base:
                     slm_kwargs = {"model": env_model, "base_url": env_base}
 
@@ -2188,7 +2188,7 @@ class ConversationWorker:
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
-            model_used = slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
+            model_used = slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")
             path = "slm"
             escalation_metadata: dict[str, Any] | None = None
 
@@ -2332,7 +2332,7 @@ class ConversationWorker:
                     except Exception:
                         response_text = "I encountered an error while generating a reply."
                 latency = time.time() - response_start
-                model_used = slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
+                model_used = slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
