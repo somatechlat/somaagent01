@@ -202,6 +202,14 @@ class CircuitBreaker:
     def current_state(self):
         """Get current circuit breaker state."""
         return self._state
+    
+    @property
+    def state(self):
+        """Compatibility alias returning an object with .value."""
+        class StateWrapper:
+            def __init__(self, val):
+                self.value = val
+        return StateWrapper(self._state)
         
     def record_failure(self):
         """Record a failure and potentially open the circuit."""

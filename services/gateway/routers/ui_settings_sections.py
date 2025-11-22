@@ -128,6 +128,11 @@ async def get_sections():
     return {"sections": sections}
 
 
+@router.get("/ping")
+async def ping():
+    return {"status": "ok", "timestamp": __import__("time").time()}
+
+
 @router.post("")
 async def set_sections(doc: SettingsDoc, request: Request):
     sections = _ensure_minimal_llm_section(doc.sections)

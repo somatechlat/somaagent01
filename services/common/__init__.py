@@ -13,7 +13,6 @@ _SUBMODULES = {
     "escalation",
     "event_bus",
     "model_costs",
-    "model_profiles",
     "policy_client",
     "requeue_store",
     "router_client",
