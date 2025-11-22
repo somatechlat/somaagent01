@@ -34,7 +34,6 @@ from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.model_costs import estimate_escalation_cost
-from services.common.model_profiles import ModelProfileStore
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
@@ -70,6 +69,35 @@ from services.conversation_worker.policy_integration import ConversationPolicyEn
 import mimetypes
 from pathlib import Path
 from services.tool_executor.tool_registry import ToolRegistry
+import os
+
+
+async def _load_llm_settings() -> dict[str, Any]:
+    """Fetch LLM config from centralized UI settings sections."""
+    dsn = ADMIN_SETTINGS.postgres_dsn
+    conn: asyncpg.Connection
+    async with asyncpg.create_pool(dsn, min_size=1, max_size=2) as pool:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT value FROM ui_settings WHERE key='sections'")
+            sections = row["value"] if row else []
+    model = base_url = None
+    temperature: float | None = None
+    if isinstance(sections, list):
+        for sec in sections:
+            for fld in sec.get("fields", []):
+                fid = fld.get("id")
+                if fid == "llm_model":
+                    model = fld.get("value")
+                elif fid == "llm_base_url":
+                    base_url = fld.get("value")
+                elif fid == "llm_temperature":
+                    try:
+                        temperature = float(fld.get("value"))
+                    except Exception:
+                        temperature = None
+    if not model or not base_url:
+        raise RuntimeError("LLM settings missing in ui_settings sections (llm_model/llm_base_url)")
+    return {"model": model, "base_url": base_url, "temperature": temperature}
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -231,6 +259,14 @@ class ConversationPreprocessor:
         return AnalysisResult(intent=intent, sentiment=sentiment, tags=tags)
 
 
+class _NullProfileStore:
+    async def get(self, *args, **kwargs):
+        return None
+
+    async def ensure_schema(self, *args, **kwargs):
+        return None
+
+
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
@@ -258,7 +294,8 @@ class ConversationWorker:
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
         self._gateway_base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
-        self.profile_store = ModelProfileStore.from_settings(APP_SETTINGS)
+        # Model profiles removed; LLM config is centralized via UI settings.
+        self.profile_store = _NullProfileStore()
         tenant_config_path = cfg.env(
             "TENANT_CONFIG_PATH",
             APP_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
@@ -945,7 +982,7 @@ class ConversationWorker:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
-        model_label = (model_hint or slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (model_hint or slm_kwargs.get("model") or "unknown").strip()
         start_time = time.perf_counter()
 
         def _finalize(text_value: str, usage_value: dict[str, int]) -> tuple[str, dict[str, int]]:
@@ -1089,16 +1126,20 @@ class ConversationWorker:
     ) -> tuple[str, dict[str, int]]:
         # Ensure model/base_url defaults are populated even if profiles/routing are absent.
         slm_kwargs = dict(slm_kwargs or {})
-        if not slm_kwargs.get("model"):
-            env_model = os.getenv("SA01_LLM_MODEL") or cfg.env("SA01_LLM_MODEL")
-            if env_model:
-                slm_kwargs["model"] = env_model
-        if not slm_kwargs.get("base_url"):
-            env_base = os.getenv("SA01_LLM_BASE_URL") or cfg.env("SA01_LLM_BASE_URL")
-            if env_base:
-                slm_kwargs["base_url"] = env_base
+        if not slm_kwargs.get("model") or not slm_kwargs.get("base_url"):
+            try:
+                central = await _load_llm_settings()
+                slm_kwargs.setdefault("model", central.get("model"))
+                slm_kwargs.setdefault("base_url", central.get("base_url"))
+                if central.get("temperature") is not None:
+                    slm_kwargs.setdefault("temperature", central.get("temperature"))
+            except Exception as exc:
+                raise RuntimeError(f"LLM settings unavailable: {exc}")
 
-        model_label = (slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")).strip() or "unknown"
+        model_label_raw = slm_kwargs.get("model")
+        if not model_label_raw:
+            raise RuntimeError("LLM model not configured")
+        model_label = str(model_label_raw).strip() or "unknown"
         LOGGER.info(
             "Invoking LLM via gateway",
             extra={
@@ -1385,7 +1426,7 @@ class ConversationWorker:
         tc_args_acc: dict[int, dict[str, Any]] = {}
         tc_name_acc: dict[int, str] = {}
 
-        model_label = (slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (slm_kwargs.get("model") or "unknown").strip()
         start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -1569,20 +1610,20 @@ class ConversationWorker:
         messages: List[ChatMessage],
         slm_kwargs: Dict[str, Any],
     ) -> tuple[str, dict[str, int], float, str, str | None]:
-        # Prepare overrides from profile + provided kwargs
-        profile = await self.profile_store.get("escalation", self.deployment_mode)
+        # Prepare overrides from centralized settings + provided kwargs
         overrides: Dict[str, Any] = {}
-        if profile:
-            # Only include base_url when non-empty to avoid sending an empty string
-            overrides.update({
-                "model": profile.model,
-                "temperature": profile.temperature,
-            })
-            if isinstance(profile.base_url, str) and profile.base_url.strip():
-                overrides["base_url"] = profile.base_url
-            if isinstance(profile.kwargs, dict):
-                overrides["kwargs"] = profile.kwargs
-        # Allow explicit slm_kwargs to override profile
+        try:
+            central = await _load_llm_settings()
+            overrides.update(
+                {
+                    "model": central.get("model"),
+                    "base_url": central.get("base_url"),
+                    "temperature": central.get("temperature"),
+                }
+            )
+        except Exception:
+            pass
+        # Allow explicit slm_kwargs to override central
         for k in ("model", "base_url", "temperature", "kwargs", "metadata"):
             if k in slm_kwargs and slm_kwargs[k] is not None:
                 if k == "metadata" and overrides.get("kwargs") is None:
@@ -1609,7 +1650,7 @@ class ConversationWorker:
         latency = time.time() - start_time
         text = data.get("content", "")
         usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
-        model_used = data.get("model") or overrides.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")
+        model_used = data.get("model") or overrides.get("model") or "unknown"
         base_url_used = data.get("base_url") or overrides.get("base_url")
         if not text:
             raise RuntimeError("Empty response from escalation LLM via Gateway")
@@ -1625,7 +1666,12 @@ class ConversationWorker:
             await ensure_mw_outbox_schema(self.mem_outbox)
         except Exception:
             LOGGER.debug("Memory write outbox schema ensure failed", exc_info=True)
-        await self.profile_store.ensure_schema()
+        if not self.profile_store:
+            self.profile_store = _NullProfileStore()
+        try:
+            await self.profile_store.ensure_schema()
+        except Exception:
+            LOGGER.debug("Profile store ensure_schema skipped", exc_info=True)
         await self.store.append_event(
             "system",
             {
@@ -2053,60 +2099,18 @@ class ConversationWorker:
                 self._last_degraded_reason or session_metadata["somabrain_state"],
             )
 
-            model_profile = await self.profile_store.get("dialogue", self.deployment_mode)
             slm_kwargs: dict[str, Any] = {}
-            if model_profile:
+            try:
+                central = await _load_llm_settings()
                 slm_kwargs.update(
                     {
-                        "model": model_profile.model,
-                        "base_url": model_profile.base_url,
-                        "temperature": model_profile.temperature,
+                        "model": central.get("model"),
+                        "base_url": central.get("base_url"),
+                        "temperature": central.get("temperature"),
                     }
                 )
-                # Be defensive: only merge kwargs when it's a dict
-                if isinstance(model_profile.kwargs, dict) and model_profile.kwargs:
-                    slm_kwargs.update(model_profile.kwargs)
-                elif model_profile.kwargs is not None and not isinstance(model_profile.kwargs, dict):
-                    try:
-                        LOGGER.warning(
-                            "Ignoring non-dict model_profile.kwargs",
-                            extra={"type": str(type(model_profile.kwargs))},
-                        )
-                    except Exception:
-                        pass
-            routing_allow, routing_deny = self.tenant_config.get_routing_policy(tenant)
-
-            if model_profile and cfg.env("ROUTER_URL"):
-                candidates = (
-                    [slm_kwargs.get("model", model_profile.model)]
-                    if slm_kwargs
-                    else [model_profile.model]
-                )
-                if routing_allow:
-                    candidates = [
-                        candidate for candidate in candidates if candidate in routing_allow
-                    ]
-                if routing_deny:
-                    candidates = [
-                        candidate for candidate in candidates if candidate not in routing_deny
-                    ]
-                if candidates:
-                    routed = await self.router.route(
-                        role="dialogue",
-                        deployment_mode=self.deployment_mode,
-                        candidates=candidates,
-                    )
-                    if routed:
-                        slm_kwargs["model"] = routed.model
-                        slm_kwargs.setdefault("metadata", {})
-                        slm_kwargs["metadata"]["router_score"] = routed.score
-
-            # Ensure we have a concrete model/base_url even if no profile is present.
-            if not slm_kwargs:
-                env_model = cfg.env("SA01_LLM_MODEL")
-                env_base = cfg.env("SA01_LLM_BASE_URL")
-                if env_model and env_base:
-                    slm_kwargs = {"model": env_model, "base_url": env_base}
+            except Exception as exc:
+                raise RuntimeError(f"LLM settings unavailable: {exc}")
 
             metadata_for_decision = dict(enriched_metadata)
             metadata_for_decision.pop("analysis", None)
@@ -2188,7 +2192,7 @@ class ConversationWorker:
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
-            model_used = slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")
+            model_used = slm_kwargs.get("model") or "unknown"
             path = "slm"
             escalation_metadata: dict[str, Any] | None = None
 
@@ -2332,7 +2336,7 @@ class ConversationWorker:
                     except Exception:
                         response_text = "I encountered an error while generating a reply."
                 latency = time.time() - response_start
-                model_used = slm_kwargs.get("model") or cfg.env("SA01_LLM_MODEL", "unknown")
+                model_used = slm_kwargs.get("model") or "unknown"
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)

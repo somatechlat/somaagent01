@@ -24,9 +24,6 @@ x-agent-env: &agent-env
   SA01_CRYPTO_FERNET_KEY: "${SA01_CRYPTO_FERNET_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
   # Streaming feature toggle (centralized)
   SA01_SSE_ENABLED: "true"
-  # Default LLM routing for dev (Groq OpenAI-compatible endpoint)
-  SLM_MODEL: "openai/gpt-oss-120b"
-  SLM_BASE_URL: "https://api.groq.com/openai/v1"
 
 x-agent-service: &agent-service
   image: somaagent01-dev:latest

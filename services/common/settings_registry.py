@@ -116,30 +116,6 @@ class SettingsRegistry:
                     if fid in {"variables", "secrets"} and fid in agent_cfg:
                         fld["value"] = agent_cfg.get(fid) or ""
 
-        # Model profile overlay
-        if profile:
-            provider = ""
-            host = (profile.base_url or "").lower()
-            if "groq" in host:
-                provider = "groq"
-            for sec in sections:
-                for fld in sec.get("fields", []):
-                    fid = fld.get("id")
-                    if fid == "chat_model_provider" and provider:
-                        fld["value"] = provider
-                    elif fid == "chat_model_name" and profile.model:
-                        fld["value"] = profile.model
-                    elif fid == "chat_model_api_base" and profile.base_url:
-                        fld["value"] = profile.base_url
-                    elif fid == "chat_model_api_path" and profile.api_path:
-                        fld["value"] = profile.api_path
-                    elif fid == "chat_model_kwargs" and profile.kwargs:
-                        kv = profile.kwargs or {}
-                        try:
-                            fld["value"] = "\n".join(f"{k}={v}" for k, v in kv.items())
-                        except Exception:
-                            fld["value"] = kv
-
         # Credentials presence overlay
         try:
             providers_with_keys = set(await LlmCredentialsStore().list_providers())

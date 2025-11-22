@@ -13,6 +13,7 @@ from services.gateway.routers.chat import (
     _normalize_llm_base_url,
     _detect_provider_from_base,
     _resolve_credentials,
+    _load_llm_settings,
 )
 
 router = APIRouter(prefix="/v1/llm", tags=["llm"])
@@ -27,12 +28,19 @@ class InvokePayload(BaseModel):
     overrides: Optional[Dict[str, Any]] = None
 
 
-def _extract_overrides(payload: InvokePayload) -> tuple[str, str, float | None, dict]:
+async def _extract_overrides(payload: InvokePayload) -> tuple[str, str, float | None, dict]:
     ov = payload.overrides or {}
     model = (ov.get("model") or "").strip()
     base_url = _normalize_llm_base_url((ov.get("base_url") or "").strip())
     temperature = ov.get("temperature") if ov.get("temperature") is not None else None
     kwargs = ov.get("kwargs") or {}
+    # Centralized fallback
+    if not model or not base_url:
+        settings = await _load_llm_settings()  # type: ignore
+        model = settings["model"]
+        base_url = settings["base_url"]
+        if temperature is None:
+            temperature = settings.get("temperature")
     return model, base_url, temperature, kwargs
 
 
@@ -61,7 +69,7 @@ async def invoke(req: InvokePayload) -> dict:
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages_required")
 
-    model, base_url, temperature, kwargs = _extract_overrides(req)
+    model, base_url, temperature, kwargs = await _extract_overrides(req)
     client = await _resolve_client(model, base_url)
     messages = _to_messages(req.messages)
 
@@ -85,7 +93,7 @@ async def invoke_stream(req: InvokePayload):
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages_required")
 
-    model, base_url, temperature, kwargs = _extract_overrides(req)
+    model, base_url, temperature, kwargs = await _extract_overrides(req)
     client = await _resolve_client(model, base_url)
     messages = _to_messages(req.messages)
 
