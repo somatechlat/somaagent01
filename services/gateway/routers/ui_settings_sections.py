@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, validator
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.secret_manager import SecretManager
+from services.common.settings_registry import SettingsRegistry
 import asyncpg
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
@@ -88,9 +89,33 @@ async def _save_sections(sections: List[Dict[str, Any]]):
         )
 
 
+def _ensure_minimal_llm_section(sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Ensure the UI receives an LLM section with required fields if missing."""
+    ids = {f.get("id") for sec in sections for f in sec.get("fields", [])}
+    if {"llm_model", "llm_base_url"} <= ids:
+        return sections
+    llm_section = {
+        "id": "llm",
+        "title": "LLM",
+        "tab": "agent",
+        "fields": [
+            {"id": "llm_model", "title": "Model", "type": "text", "required": True, "value": ""},
+            {"id": "llm_base_url", "title": "Base URL", "type": "text", "required": True, "value": ""},
+            {"id": "llm_temperature", "title": "Temperature", "type": "number", "required": False, "value": 0.2},
+            {"id": "api_key_llm", "title": "LLM API Key", "type": "password", "secret": True, "value": ""},
+        ],
+    }
+    return sections + [llm_section]
+
+
 @router.get("")
 async def get_sections():
-    sections = await _load_sections()
+    try:
+        sections = await SettingsRegistry().snapshot_sections()
+    except Exception:
+        # Fallback to raw persisted sections if registry fails
+        sections = await _load_sections()
+    sections = _ensure_minimal_llm_section(sections)
     # Mask secrets
     for section in sections:
         for field in section.get("fields", []):
@@ -105,7 +130,7 @@ async def get_sections():
 
 @router.post("")
 async def set_sections(doc: SettingsDoc, request: Request):
-    sections = doc.sections
+    sections = _ensure_minimal_llm_section(doc.sections)
     plain, secrets = _split_sections(sections)
 
     # Persist non-secret
