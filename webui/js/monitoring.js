@@ -22,6 +22,8 @@ class SystemMonitor {
         this.retryDelay = 5000;
         this.circuitMonitoringEnabled = true;
         this._circuitErrorNotified = false;
+        // Track previous SomaBrain status to emit toast notifications on change
+        this._lastBrainStatus = null;
     }
 
     /**
@@ -52,20 +54,40 @@ class SystemMonitor {
             if (globalThis.Alpine?.store('somabrain')) {
                 const store = globalThis.Alpine.store('somabrain');
                 const ready = somabrainData.ready === true || somabrainData.status === 'ok';
-                store.state = ready ? 'normal' : 'degraded';
+                const newState = ready ? 'normal' : 'degraded';
+                store.state = newState;
                 store.tooltip = ready ? 'SomaBrain online' : 'SomaBrain degraded – limited memory retrieval';
                 store.banner = ready ? '' : 'SomaBrain responses may be limited until connectivity stabilizes.';
                 store.lastUpdated = Date.now();
+
+                // Emit toast on state change
+                if (this._lastBrainStatus && this._lastBrainStatus !== newState) {
+                    const msg = `SomaBrain status changed to ${newState}`;
+                    // Use global toast helper for visibility
+                    if (typeof globalThis.toastFrontendInfo === 'function') {
+                        globalThis.toastFrontendInfo(msg, 'SomaBrain');
+                    }
+                }
+                this._lastBrainStatus = newState;
             }
             return somabrainData;
         } catch (error) {
             console.error('Error checking SomaBrain health:', error);
             if (globalThis.Alpine?.store('somabrain')) {
                 const store = globalThis.Alpine.store('somabrain');
-                store.state = 'down';
+                const newState = 'down';
+                store.state = newState;
                 store.tooltip = 'SomaBrain offline – degraded mode';
                 store.banner = 'SomaBrain is offline. The agent will answer using chat history only until memories sync again.';
                 store.lastUpdated = Date.now();
+
+                if (this._lastBrainStatus && this._lastBrainStatus !== newState) {
+                    const msg = `SomaBrain status changed to ${newState}`;
+                    if (typeof globalThis.toastFrontendError === 'function') {
+                        globalThis.toastFrontendError(msg, 'SomaBrain');
+                    }
+                }
+                this._lastBrainStatus = newState;
             }
             return null;
         }
@@ -350,33 +372,62 @@ class SystemMonitor {
         }
     }
 
+    /**
+     * Update the UI banner and icon that reflect SomaBrain health.
+     * The CSS defines three modifier classes on `.somabrain-banner`:
+     *   .healthy  – green gradient
+     *   .degraded – orange gradient
+     *   .critical – red gradient (used for down/unknown states)
+     * The previous implementation used class names (`down`, `degraded`, `unknown`)
+     * that did not correspond to the stylesheet, resulting in missing colour
+     * cues. This method now maps the runtime status to the correct CSS class
+     * and ensures the banner visibility flag is applied.
+     */
     updateBrainUI(status, backlog) {
-        // Map status to banner/icon states
         const banner = document.querySelector('.somabrain-banner');
         const brainIcon = document.querySelector('.brain-indicator');
 
-        const showDegraded = status === 'degraded' || status === 'buffering' || status === 'unknown';
-        const text = status === 'healthy'
-            ? 'SomaBrain connected'
-            : status === 'buffering'
-                ? `SomaBrain buffering${backlog >= 0 ? ` (${backlog} pending)` : ''}`
-                : 'SomaBrain unreachable';
+        // Determine human‑readable text for the banner
+        const text = (() => {
+            if (status === 'healthy') return 'SomaBrain connected';
+            if (status === 'buffering') {
+                return `SomaBrain buffering${backlog >= 0 ? ` (${backlog} pending)` : ''}`;
+            }
+            // For any non‑healthy state use a generic unreachable message
+            return 'SomaBrain unreachable';
+        })();
+
+        // Determine which CSS modifier class to apply to the banner
+        let bannerClass = '';
+        if (status === 'healthy') {
+            bannerClass = 'healthy';
+        } else if (status === 'degraded' || status === 'buffering') {
+            bannerClass = 'degraded';
+        } else {
+            // Treat unknown / down as critical
+            bannerClass = 'critical';
+        }
 
         if (banner) {
-            banner.classList.remove('degraded', 'down', 'unknown', 'buffering');
-            if (showDegraded) banner.classList.add('somabrain-visible'); else banner.classList.remove('somabrain-visible');
-            if (status === 'degraded') banner.classList.add('down');
-            else if (status === 'buffering') banner.classList.add('degraded');
-            else if (status === 'unknown') banner.classList.add('unknown');
-            banner.querySelector('.somabrain-banner-title')?.textContent = showDegraded ? 'SomaBrain Status' : 'System Status';
-            banner.querySelector('.somabrain-banner-text')?.textContent = text;
+            // Reset all possible modifier classes
+            banner.classList.remove('healthy', 'degraded', 'critical', 'somabrain-visible');
+            // Show banner only when not healthy (degraded/critical)
+            if (bannerClass !== 'healthy') {
+                banner.classList.add('somabrain-visible');
+            }
+            banner.classList.add(bannerClass);
+            const titleEl = banner.querySelector('.somabrain-banner-title');
+            const textEl = banner.querySelector('.somabrain-banner-text');
+            if (titleEl) titleEl.textContent = bannerClass !== 'healthy' ? 'SomaBrain Status' : 'System Status';
+            if (textEl) textEl.textContent = text;
         }
+
+        // Update the small brain indicator icon – keep existing naming scheme
         if (brainIcon) {
             brainIcon.classList.remove('brain-down', 'brain-degraded', 'brain-unknown', 'brain-normal');
-            if (status === 'degraded') brainIcon.classList.add('brain-down');
-            else if (status === 'buffering') brainIcon.classList.add('brain-degraded');
-            else if (status === 'unknown') brainIcon.classList.add('brain-unknown');
-            else brainIcon.classList.add('brain-normal');
+            if (status === 'healthy') brainIcon.classList.add('brain-normal');
+            else if (status === 'degraded' || status === 'buffering') brainIcon.classList.add('brain-degraded');
+            else brainIcon.classList.add('brain-down');
             brainIcon.title = text;
         }
     }

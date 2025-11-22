@@ -39,7 +39,11 @@ async def test_chat_message_roundtrip():
 
         # Wait for backend acknowledgement so we know the message really went out.
         # This ensures we don't race ahead before Kafka/SSE start streaming.
-        await page.wait_for_response(
+        # Playwright's async API may not expose ``wait_for_response`` on the ``Page``
+        # object in some versions. Use ``wait_for_event('response')`` with a predicate
+        # that matches the POST request to the chat session endpoint.
+        await page.wait_for_event(
+            "response",
             lambda resp: resp.request.method == "POST"
             and "/v1/session/message" in resp.url,
             timeout=20000,

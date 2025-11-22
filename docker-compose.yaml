@@ -1,6 +1,6 @@
 # Canonical Docker Compose file for Agent Zero
 # This file defines all services for the development environment.
-version: "3.9"
+# NOTE: The `version` key is omitted as it is obsolete in Docker Compose V2.
 
 x-agent-env: &agent-env
   # Prioritize mounted repo code over baked image to enable live development
@@ -80,7 +80,6 @@ services:
   kafka-init:
     image: confluentinc/cp-kafka:7.4.0
     container_name: somaAgent01_kafka_init
-    profiles: ["dev"]
     depends_on:
       kafka:
         condition: service_healthy
@@ -96,7 +95,6 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     container_name: somaAgent01_kafka
-    profiles: ["core"]
     user: "0:0"
     environment:
       # KRaft mode: controller+broker in a single node for local dev
@@ -145,7 +143,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: somaAgent01_redis
-    profiles: ["core"]
     command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec"]
     ports:
       - "${REDIS_PORT:-20001}:6379"
@@ -165,7 +162,6 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaAgent01_postgres
-    profiles: ["core"]
     command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
     environment:
       POSTGRES_USER: soma
@@ -194,7 +190,6 @@ services:
   opa:
     image: openpolicyagent/opa:0.64.0
     container_name: somaAgent01_opa
-    profiles: ["core"]
     command: ["run", "--server", "--watch", "/policy", "--set=decision_logs.console=true"]
     ports:
       - "${OPA_PORT:-20009}:8181"
@@ -205,7 +200,6 @@ services:
   conversation-worker:
     <<: *agent-service
     container_name: somaAgent01_conversation-worker
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -224,7 +218,6 @@ services:
   tool-executor:
     <<: *agent-service
     container_name: somaAgent01_tool-executor
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -240,7 +233,6 @@ services:
   memory-replicator:
     <<: *agent-service
     container_name: somaAgent01_memory-replicator
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -256,7 +248,6 @@ services:
   memory-sync:
     <<: *agent-service
     container_name: somaAgent01_memory-sync
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -274,7 +265,6 @@ services:
   gateway:
     <<: *agent-service
     container_name: somaAgent01_gateway
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -310,7 +300,6 @@ services:
   outbox-sync:
     <<: *agent-service
     container_name: somaAgent01_outbox-sync
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -337,7 +326,6 @@ services:
   fasta2a-gateway:
     <<: *agent-service
     container_name: somaAgent01_fasta2a-gateway
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -366,7 +354,6 @@ services:
   fasta2a-worker:
     <<: *agent-service
     container_name: somaAgent01_fasta2a-worker
-    profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -390,7 +377,6 @@ services:
   fasta2a-flower:
     image: mher/flower:2.0.1
     container_name: somaAgent01_fasta2a-flower
-    profiles: ["dev"]
     depends_on:
       - redis
     environment:

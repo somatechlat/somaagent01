@@ -19,6 +19,15 @@ import asyncpg
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
 
+# ---------------------------------------------------------------------------
+# Logging – we emit a simple info line whenever settings are saved so that
+# developers can verify the POST request was received (useful when the UI
+# toast appears silent). The gateway already configures a root logger, so we
+# just get a module‑level logger here.
+# ---------------------------------------------------------------------------
+import logging
+logger = logging.getLogger(__name__)
+
 
 class SettingsDoc(BaseModel):
     sections: List[Dict[str, Any]] = Field(default_factory=list)
@@ -145,6 +154,14 @@ async def set_sections(doc: SettingsDoc, request: Request):
     sm = SecretManager()
     for key, val in secrets.items():
         await sm.set_provider_key(key, val)
+    # Log the save event – useful for debugging and to confirm the UI action
+    # reached the backend. We truncate the logged payload to avoid leaking full
+    # secrets; only the field ids are shown.
+    try:
+        logged = {"section_ids": [s.get("id") for s in sections]}
+        logger.info("UI settings saved: %s", logged)
+    except Exception as exc:  # pragma: no cover – defensive
+        logger.error("Failed to log UI settings save: %s", exc)
 
     return {"sections": sections, "status": "saved"}
 
