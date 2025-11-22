@@ -260,5 +260,41 @@ async def health_summary():
         "last_check": health["timestamp"],
     }
 
+# ---------------------------------------------------------------------------
+# Degradation status endpoint
+# ---------------------------------------------------------------------------
+# Exposes the current state of each circuit breaker (CLOSED, OPEN, HALF-OPEN).
+# When any breaker is OPEN the system is considered degraded.  This endpoint
+# allows the UI or monitoring tools to visualise the degradation level (e.g.
+# colour‑code green/amber/red).
+
+from services.gateway.circuit_breakers import circuit_breakers
+
+
+@router.get("/degraded")
+async def degraded_status() -> dict:
+    """Return degradation information for all external services.
+
+    The response includes:
+    * ``degraded`` – ``True`` if any circuit breaker is ``OPEN``.
+    * ``services`` – mapping of service name → breaker state name.
+    * ``timestamp`` – ISO‑formatted time of the check.
+    """
+    any_open = False
+    status: dict[str, str] = {}
+    for name, service in circuit_breakers.items():
+        # ``pybreaker`` exposes ``current_state`` with a ``name`` attribute.
+        state_obj = getattr(service.breaker, "current_state", None)
+        state_name = getattr(state_obj, "name", str(state_obj))
+        status[name] = state_name
+        if state_name == "OPEN":
+            any_open = True
+
+    return {
+        "degraded": any_open,
+        "services": status,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
 
 

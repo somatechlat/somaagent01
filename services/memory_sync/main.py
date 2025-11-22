@@ -22,6 +22,10 @@ from services.common.memory_write_outbox import (
     MemoryWriteOutbox,
     ensure_schema as ensure_mw_schema,
 )
+# New imports for degradation handling
+from services.common.redis_client import get_all_events, delete_event
+from services.gateway.circuit_breakers import circuit_breakers
+from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.tracing import setup_tracing
 from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
@@ -137,10 +141,20 @@ class MemorySyncWorker:
         if "idempotency_key" not in payload and payload.get("id"):
             payload["idempotency_key"] = payload.get("id")
 
+        # -------------------------------------------------------------
+        # Call Somabrain via the circuit‑breaker. If the breaker is OPEN we
+        # treat the request as degraded and schedule a retry with a minimal
+        # back‑off so the item stays in the outbox until Somabrain recovers.
+        # -------------------------------------------------------------
         try:
-            result = await self.soma.remember(payload)
+            result = await circuit_breakers["somabrain"].call_async(self.soma.remember, payload)
+        except pybreaker.CircuitBreakerError:
+            # Circuit is open – defer processing and mark as degraded.
+            await self.store.mark_retry(item.id, backoff_seconds=self.backoff_base, error="circuit open")
+            JOBS.labels("degraded").inc()
+            return
         except SomaClientError as exc:
-            # Retry with exponential backoff
+            # Retry with exponential backoff on Somabrain‑specific errors.
             retry = item.retry_count + 1
             if retry > self.max_retries:
                 await self.store.mark_failed(item.id, error=str(exc))
@@ -151,6 +165,7 @@ class MemorySyncWorker:
             JOBS.labels("retry").inc()
             return
         except Exception as exc:
+            # Generic failure – same retry logic.
             retry = item.retry_count + 1
             if retry > self.max_retries:
                 await self.store.mark_failed(item.id, error=str(exc))
@@ -194,11 +209,16 @@ class MemorySyncWorker:
 async def main() -> None:
     logging.basicConfig(level=cfg.env("LOG_LEVEL", "INFO"))
     setup_tracing("memory-sync", endpoint=cfg.env("OTLP_ENDPOINT"))
-    worker = MemorySyncWorker()
+    # Run the original WAL sync worker and the degraded‑buffer sync worker
+    # concurrently.  Both stop gracefully on shutdown.
+    from services.memory_sync.degraded_worker import DegradedSyncWorker
+
+    memory_worker = MemorySyncWorker()
+    degraded_worker = DegradedSyncWorker()
     try:
-        await worker.start()
+        await asyncio.gather(memory_worker.start(), degraded_worker.start())
     finally:
-        await worker.stop()
+        await asyncio.gather(memory_worker.stop(), degraded_worker.stop())
 
 
 if __name__ == "__main__":

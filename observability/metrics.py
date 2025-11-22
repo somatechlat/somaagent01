@@ -80,6 +80,30 @@ singleton_health = Gauge(
     registry=registry,
 )
 
+# ---------------------------------------------------------------------------
+# Degraded‑sync metrics (buffer processing)
+# ---------------------------------------------------------------------------
+degraded_sync_success_total = Counter(
+    "degraded_sync_success_total",
+    "Number of buffered events successfully enriched and published",
+    ["service"],
+    registry=registry,
+)
+
+degraded_sync_failure_total = Counter(
+    "degraded_sync_failure_total",
+    "Number of buffered events that failed enrichment",
+    ["service", "error_type"],
+    registry=registry,
+)
+
+degraded_sync_backlog = Gauge(
+    "degraded_sync_backlog",
+    "Current number of events waiting in the degraded buffer",
+    ["service"],
+    registry=registry,
+)
+
 # Database metrics
 db_connections = Gauge(
     "database_connections_active", "Number of active database connections", registry=registry

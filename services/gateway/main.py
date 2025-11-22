@@ -186,45 +186,30 @@ async def enqueue_message(
     }
     # Publish to the memory WAL topic – the exact topic name is configurable.
     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
-    await publisher.publish(
-        wal_topic,
-        event,
-        dedupe_key=event_id,
-        session_id=session_id,
+    # ---------------------------------------------------------------------
+    # Persist the event using the shared degradation‑aware helper. This
+    # guarantees that the raw event is stored in Kafka *and* in the Redis
+    # buffer before any external Somabrain call is attempted. The helper
+    # also respects the circuit‑breaker state so that we never block on a
+    # down Somabrain service.
+    # ---------------------------------------------------------------------
+    from services.common.degraded_persist import persist_event
+
+    await persist_event(
+        event=event,
+        service_name="gateway",
+        publisher=publisher,
+        wal_topic=wal_topic,
         tenant=meta.get("tenant") or meta.get("universe_id"),
     )
 
     # ---------------------------------------------------------------------
-    # Emit a deterministic synthetic assistant response for UI tests.
-    # In the full system a separate worker would consume the WAL entry,
-    # invoke the LLM and publish the assistant message to the outbound
-    # conversation topic. The Playwright UI test expects an SSE event, but
-    # the worker process is not started in the test environment. To keep the
-    # contract without a background worker, we publish a minimal "echo"
-    # assistant event directly to the outbound topic here.
+    # No synthetic assistant response is emitted here. The real assistant
+    # message will be produced by the background ``memory_sync`` worker once
+    # Somabrain is reachable and the event has been enriched. This ensures we
+    # do **not** bypass the Somabrain service and the UI receives the genuine
+    # assistant output via the SSE stream.
     # ---------------------------------------------------------------------
-    outbound_topic = cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound")
-    assistant_event = {
-        "event_id": str(uuid.uuid4()),
-        "session_id": session_id,
-        "persona_id": payload.get("persona_id"),
-        "role": "assistant",
-        # Simple echo of the user's message – sufficient for UI validation.
-        "message": f"Echo: {payload.get('message', '')}",
-        "attachments": [],
-        "metadata": merged_meta,
-        "version": "sa01-v1",
-        "trace_context": payload.get("trace_context", {}),
-    }
-    # Publish the synthetic event; fallback to outbox if Kafka unavailable.
-    await publisher.publish(
-        outbound_topic,
-        assistant_event,
-        dedupe_key=assistant_event["event_id"],
-        session_id=session_id,
-        tenant=meta.get("tenant") or meta.get("universe_id"),
-    )
-
     return {"session_id": session_id, "event_id": event_id}
 
 

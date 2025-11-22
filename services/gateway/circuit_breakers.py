@@ -10,8 +10,10 @@ from functools import wraps
 from typing import Any, Callable, Dict
 
 import pybreaker
+import asyncpg
 
 from observability.metrics import metrics_collector
+from src.core.config import cfg
 
 
 class CircuitBreakerConfig:
@@ -149,14 +151,42 @@ class ProtectedPostgresClient:
 
     def __init__(self):
         self.breaker = circuit_breakers["postgres"]
+        self._pool: asyncpg.Pool | None = None
+
+    async def _ensure_pool(self) -> asyncpg.Pool:
+        """Create an asyncpg pool on first use using canonical config.
+
+        The DSN is read from ``SA01_DB_DSN`` (or ``POSTGRES_DSN`` as a fallback)
+        via the central configuration helper.  The pool is cached for the
+        lifetime of the client instance.
+        """
+        if self._pool is None:
+            dsn = cfg.env("SA01_DB_DSN") or cfg.env("POSTGRES_DSN")
+            if not dsn:
+                raise RuntimeError("Postgres DSN not configured via SA01_DB_DSN")
+            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
+        return self._pool
 
     async def execute_query(self, query: str, *args):
-        """Protected query execution."""
+        """Execute a SQL query with circuit‑breaker protection.
+
+        The underlying execution is performed by ``_execute_query`` which runs
+        within the protected circuit breaker.
+        """
         return await self.breaker.call_async(self._execute_query, query, *args)
 
     async def _execute_query(self, query: str, *args):
-        """Actual query execution - postgres_client not available."""
-        raise NotImplementedError("PostgreSQL client not available")
+        """Run the query against the Postgres pool.
+
+        SELECT statements return the fetched rows; other statements return the
+        asyncpg ``execute`` result string.
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            if query.lstrip().upper().startswith("SELECT"):
+                return await conn.fetch(query, *args)
+            else:
+                return await conn.execute(query, *args)
 
 
 class ProtectedKafkaClient:
