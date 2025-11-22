@@ -101,7 +101,7 @@ if RUN_INTEGRATION:
 
         conn = await asyncpg.connect(os.environ["SA01_DB_DSN"])
         try:
-            for table in ("session_events", "model_profiles", "delegation_tasks"):
+            for table in ("session_events", "delegation_tasks"):
                 try:
                     await conn.execute(f'TRUNCATE "{table}" CASCADE')
                 except Exception:

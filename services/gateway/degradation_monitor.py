@@ -159,7 +159,8 @@ class DegradationMonitor:
         # Get circuit breaker state if available
         circuit_breaker = self.circuit_breakers.get(component_name)
         if circuit_breaker:
-            component.circuit_state = circuit_breaker.state
+            state_obj = getattr(circuit_breaker, "state", None) or getattr(circuit_breaker, "current_state", None)
+            component.circuit_state = getattr(state_obj, "value", state_obj) if state_obj else None
         
         # Perform health check based on component type
         start_time = time.time()

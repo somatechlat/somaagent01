@@ -107,7 +107,10 @@ async def _load_llm_settings() -> Dict[str, Any]:
                     except Exception:
                         temperature = None
     if not model or not base_url:
-        raise HTTPException(status_code=400, detail="LLM settings missing in UI settings (llm_model/llm_base_url)")
+        raise HTTPException(
+            status_code=412,
+            detail="LLM settings missing in UI settings (llm_model/llm_base_url)",
+        )
     return {"model": model, "base_url": base_url, "temperature": temperature}
 
 

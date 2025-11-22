@@ -51,8 +51,6 @@ class CentralizedConfig:
             "otlp_endpoint": os.getenv("OTLP_ENDPOINT", ""),
             # JWT
             "jwt_cookie_name": os.getenv("SOMA_JWT_COOKIE_NAME", "jwt"),
-            # Model Profiles
-            "model_profiles_path": os.getenv("SOMA_MODEL_PROFILES", "conf/model_profiles.yaml"),
             # Speech-to-Text
             "stt_max_audio_bytes": int(os.getenv("STT_MAX_AUDIO_BYTES", "12582912")),
             "stt_model_size": os.getenv("STT_MODEL_SIZE", "tiny"),

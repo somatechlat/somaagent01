@@ -23,6 +23,9 @@ from services.gateway.routers import (
 
 
 def build_router() -> APIRouter:
+    # Local import avoids circular import; metrics endpoints live at package root
+    from services.gateway import metrics_endpoints
+
     router = APIRouter()
     router.include_router(health.router)
     router.include_router(ops_status.router)
@@ -36,6 +39,7 @@ def build_router() -> APIRouter:
     router.include_router(attachments.router)
     router.include_router(sse.router)
     router.include_router(websocket.router)
+    router.include_router(metrics_endpoints.router)
     router.include_router(ui_settings_sections.router)
     # Static/UI catch-alls last so they do not shadow API prefixes
     router.include_router(root_ui.router)
