@@ -16,7 +16,6 @@ from python.helpers.settings import (
     get_default_settings as ui_get_defaults,
 )
 from src.core.config import cfg
-from services.common.model_profiles import ModelProfileStore
 from services.common.ui_settings_store import UiSettingsStore
 from services.common.llm_credentials_store import LlmCredentialsStore
 
@@ -43,13 +42,6 @@ class SettingsRegistry:
             agent_cfg = await UiSettingsStore().get()
         except Exception:
             agent_cfg = {}
-
-        # Load model profile (dialogue) for current deployment mode
-        deployment = cfg.deployment_mode()
-        try:
-            profile = await ModelProfileStore.from_settings(cfg.settings()).get("dialogue", deployment)
-        except Exception:
-            profile = None
 
         # Overlay agent settings and additional groups
         if isinstance(agent_cfg, dict) and agent_cfg:

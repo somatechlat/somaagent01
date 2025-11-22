@@ -20,9 +20,9 @@ class ChatMessage:
 
 class SLMClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
-        self.base_url = base_url or os.getenv("SLM_BASE_URL", "https://slm.somaagent01.dev/v1")
-        self.default_model = model or os.getenv("SLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
-        self.api_key = os.getenv("SLM_API_KEY")
+        self.base_url = base_url or os.getenv("SA01_LLM_BASE_URL", "")
+        self.default_model = model or os.getenv("SA01_LLM_MODEL", "")
+        self.api_key = os.getenv("SA01_LLM_API_KEY") or os.getenv("SLM_API_KEY")
         self._client = httpx.AsyncClient(timeout=30.0)
 
     async def chat(
@@ -38,7 +38,7 @@ class SLMClient:
         if not (self.base_url and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
-            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
+            raise RuntimeError("SA01_LLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
@@ -89,7 +89,7 @@ class SLMClient:
         if not (self.base_url and (model or self.default_model)):
             raise RuntimeError("SLM misconfigured: base_url or model missing")
         if not self.api_key:
-            raise RuntimeError("SLM_API_KEY missing: no LLM calls will succeed")
+            raise RuntimeError("SA01_LLM_API_KEY missing: no LLM calls will succeed")
         chosen_model = model or self.default_model
         path = api_path or kwargs.get("api_path") or "/v1/chat/completions"
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
