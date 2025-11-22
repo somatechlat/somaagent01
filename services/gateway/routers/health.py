@@ -14,13 +14,32 @@ router = APIRouter(prefix="/v1", tags=["health"])
 
 @router.get("/health")
 async def health() -> dict[str, object]:
-    """Minimal health endpoint expected by the UI smoke test.
+    """Lightweight health with settings readiness signal for UI banner."""
+    # Settings readiness is inferred from presence of required LLM fields in DB.
+    settings_ready = True
+    try:
+        import asyncpg
+        from services.common.admin_settings import ADMIN_SETTINGS
 
-    The UI smoke script validates that the JSON response contains a ``status``
-    field whose value is either ``"ok"`` or ``"degraded"``, and that a
-    ``components`` key is present (it may be empty).  The original implementation
-    returned ``{"healthy": True}``, which caused the test to fail.
+        async def _check():
+            async with asyncpg.create_pool(ADMIN_SETTINGS.postgres_dsn, min_size=1, max_size=2) as pool:
+                async with pool.acquire() as conn:
+                    row = await conn.fetchrow("SELECT value FROM ui_settings WHERE key='sections'")
+                    sections = row["value"] if row else []
+            have_model = have_base = False
+            if isinstance(sections, list):
+                for sec in sections:
+                    for fld in sec.get("fields", []):
+                        fid = fld.get("id")
+                        if fid == "llm_model" and (fld.get("value") or "").strip():
+                            have_model = True
+                        if fid == "llm_base_url" and (fld.get("value") or "").strip():
+                            have_base = True
+            return have_model and have_base
 
-    We now return the required structure while keeping the response lightweight.
-    """
-    return {"status": "ok", "components": {}}
+        settings_ready = await _check()
+    except Exception:
+        settings_ready = False
+
+    status = "ok" if settings_ready else "degraded"
+    return {"status": status, "components": {"settings": {"status": status, "ready": settings_ready}}}

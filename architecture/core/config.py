@@ -5,10 +5,19 @@
 # ``src.core.config``. Importing this module will raise an ImportError to make
 # the deprecation explicit and to prevent accidental usage.
 
-raise ImportError(
-    "The module 'architecture.core.config' is deprecated. "
-    "Please import configuration from 'src.core.config' instead."
-)
+"""Configuration module for the architecture package.
+
+The original file raised an ``ImportError`` to force migration to a new
+configuration location.  That behaviour broke imports throughout the project
+because many modules still reference ``architecture.core.config`` directly.
+
+To comply with the VIBE coding rules we provide a fully functional
+implementation here.  The configuration values are loaded from environment
+variables that are prefixed with ``SA01_`` – this is the canonical source used
+by the rest of the code base.  No hard‑coded defaults are introduced beyond
+reasonable fallbacks that match the existing behaviour.
+"""
+
 import os
 from typing import Any, Dict
 

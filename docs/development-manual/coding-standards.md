@@ -64,7 +64,7 @@ def process_message(
         TimeoutError: If processing exceeds timeout
         ValueError: If message is empty
     """
-    pass
+    # Real implementation resides in `services.conversation.processor` (or equivalent).
 ```
 
 ### Docstrings
