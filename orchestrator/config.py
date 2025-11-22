@@ -18,6 +18,9 @@ exists only to avoid breaking existing imports.
 from __future__ import annotations
 
 # Import the canonical configuration objects.
+# Import the canonical configuration objects from the single source of truth.
+# ``cfg`` is the shared singleton instance, ``load_config`` lazily loads it,
+# and ``Config`` is the Pydantic model class.
 from src.core.config import cfg as _cfg, load_config as _load_config, Config as _Config
 
 
@@ -38,13 +41,16 @@ class CentralizedConfig(_Config):
 
 
 def load_config() -> _Config:
-    """Return the canonical configuration singleton.
+  """Return the canonical configuration singleton.
 
-    ``src.core.config.load_config`` already implements lazy loading and
-    caching, so we forward directly to it.
-    """
-    return _load_config()
+  ``src.core.config.load_config`` already implements lazy loading and
+  caching, so we forward directly to it.
+  """
+  return _load_config()
 
 
 # Export the legacy names expected by existing imports.
-__all__ = ["CentralizedConfig", "load_config", "_cfg as cfg"]
+# ``cfg`` is provided as an alias to the shared singleton ``_cfg`` for backward
+# compatibility with code that expects ``orchestrator.config.cfg``.
+cfg = _cfg
+__all__ = ["CentralizedConfig", "load_config", "cfg"]

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from typing import Any, List
+import json
 
-from fastapi import APIRouter, HTTPException, Query
+import asyncio
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 
 from services.common.session_repository import (
     PostgresSessionStore,
@@ -23,12 +26,44 @@ async def _store() -> PostgresSessionStore:
 
 
 @router.get("/{session_id}/events")
-async def session_events(session_id: str, limit: int = Query(200, ge=1, le=500)) -> dict[str, Any]:
+async def session_events(
+    session_id: str,
+    request: Request,
+    limit: int = Query(200, ge=1, le=500),
+    stream: bool = Query(False),
+    poll_interval: float = Query(0.75, ge=0.2, le=5.0),
+) -> Any:
     store = await _store()
-    events = await store.list_events(session_id=session_id, limit=limit)
-    if events is None:
-        raise HTTPException(status_code=404, detail="session_not_found")
-    return {"session_id": session_id, "events": events}
+
+    if not stream:
+        events = await store.list_events(session_id=session_id, limit=limit)
+        if events is None:
+            raise HTTPException(status_code=404, detail="session_not_found")
+        return {"session_id": session_id, "events": events}
+
+    # SSE stream mode: poll Postgres for new events and emit them incrementally.
+    async def event_generator():
+        last_event_id = None
+        while True:
+            if await request.is_disconnected():
+                break
+            events = await store.list_events(session_id=session_id, limit=limit)
+            if events is None:
+                yield "data: {}\n\n"
+                break
+            # Filter new events using event_id ordering.
+            new_events = []
+            for ev in events:
+                ev_id = ev.get("event_id") or ev.get("id")
+                if last_event_id is None or ev_id != last_event_id:
+                    new_events.append(ev)
+            if new_events:
+                last_event_id = new_events[-1].get("event_id") or last_event_id
+                payload = {"session_id": session_id, "events": new_events}
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(poll_interval)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/{session_id}/context-window")
