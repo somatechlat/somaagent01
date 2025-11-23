@@ -26,97 +26,40 @@ All code follows the VIBE coding rules – no shims, no hidden fall‑backs, no
 duplicate logic, and full type safety.
 """
 
-from __future__ import annotations
-
-import json
-import os
-from pathlib import Path
-from typing import Any, Mapping
-
-import yaml  # type: ignore
-
-from .models import Config
-
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
-
-def _load_yaml_file(path: Path) -> Mapping[str, Any]:
-    """Load a YAML configuration file.
-
-    The function returns an empty mapping if the file does not exist or cannot
-    be parsed – the caller is responsible for handling validation errors.
-    """
-    if not path.is_file():
-        return {}
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh) or {}
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        # In production we would log the error; for the purpose of this
-        # lightweight loader we simply treat the file as absent.
-        return {}
-
-
-def _load_json_file(path: Path) -> Mapping[str, Any]:
-    """Load a JSON configuration file – mirrors ``_load_yaml_file`` semantics."""
-    if not path.is_file():
-        return {}
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
-
-
-def _merge_dicts(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[str, Any]:
-    """Recursively merge ``overlay`` into ``base``.
-
-    Nested dictionaries are merged depth‑first; scalar values from ``overlay``
-    replace those in ``base``.  The function returns a **new** dictionary – the
-    inputs are never mutated, keeping the loader pure.
-    """
-    result: dict[str, Any] = dict(base)
-    for key, value in overlay.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
-            result[key] = _merge_dicts(result[key], value)
-        else:
-            result[key] = value
-    return result
-
-# ---------------------------------------------------------------------------
-# Public loader API
-# ---------------------------------------------------------------------------
-
-_cached_config: Config | None = None
-
-
-def _env(key: str, default: Any = None) -> Any:
-    """Helper to read SA01_ or plain env, returning ``default`` if absent."""
-    pref = os.getenv(f"SA01_{key}")
-    if pref is not None and pref != "":
-        return pref
-    val = os.getenv(key)
-    if val is not None and val != "":
-        return val
-    return default
-
-
 def load_config() -> Config:
     """Load and validate the full configuration.
 
-    Precedence:
-    1) Environment (SA01_* first, then plain) injected into defaults.
-    2) Plain env overrides merged.
-    3) config.yaml / config.json in repo root.
+    Precedence (high → low):
+    1) Environment variables (SA01_* first, then plain) – **no defaults**.
+    2) ``config.yaml`` / ``config.json`` in repository root.
 
-    Raises ValidationError on invalid config (no silent fallbacks).
+    This loader no longer provides any fallback values; missing required
+    settings will raise a ``ValidationError`` from the Pydantic model.
+    """
+    # Start with an empty base configuration – defaults are defined only in the
+    # ``Config`` model itself. Environment values will be injected by the model
+    # via its ``env_prefix`` handling, and any file‑based overrides are merged
+    # afterwards.
+    base_cfg: dict[str, Any] = {}
+
+    # Load configuration from files (YAML first, then JSON).
+    repo_root = Path(__file__).resolve().parents[3]
+    file_cfg: Mapping[str, Any] = {}
+    yaml_path = repo_root / "config.yaml"
+    json_path = repo_root / "config.json"
+    if yaml_path.is_file():
+        file_cfg = _load_yaml_file(yaml_path)
+    elif json_path.is_file():
+        file_cfg = _load_json_file(json_path)
+
+    # Merge file configuration into the empty base (no env or fallback values).
+    merged_cfg = _merge_dicts(base_cfg, file_cfg)
+
+    # Validate the final configuration. The ``Config`` model will pull any
+    # required environment variables (SA01_* or plain) automatically. If any
+    # required field is missing, a ``ValidationError`` is raised.
+    final_cfg = Config.model_validate(merged_cfg)
+    return final_cfg
     """
     # 1️⃣ Start from sensible defaults and immediately overlay environment values.
     default_cfg_dict = {

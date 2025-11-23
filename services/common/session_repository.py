@@ -86,7 +86,7 @@ class RedisSessionCache(SessionCache):
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
         if ttl is None:
-            ttl = cfg.env("SESSION_CACHE_TTL_SECONDS", 900)
+            ttl = cfg.env("SESSION_CACHE_TTL_SECONDS")
         self.default_ttl = ttl if ttl and ttl > 0 else 0
 
     async def get(self, key: str) -> Optional[dict[str, Any]]:
@@ -178,8 +178,8 @@ class PostgresSessionStore(SessionStore):
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE"))
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE"))
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 

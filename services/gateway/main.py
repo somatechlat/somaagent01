@@ -67,7 +67,7 @@ def get_bus() -> KafkaEventBus:
     """
     kafka_settings = KafkaSettings(
         bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
         sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
         sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
@@ -131,7 +131,7 @@ async def _extract_metadata(request: Request, payload: dict) -> dict:
         meta["universe_id"] = headers["X-Universe-Id"]
     else:
         # Fallback to configured namespace.
-        meta["universe_id"] = cfg.env("SA01_SOMA_NAMESPACE", "default")
+        meta["universe_id"] = cfg.env("SA01_SOMA_NAMESPACE")
     if "X-Persona-Id" in headers:
         meta["persona_id"] = headers["X-Persona-Id"]
     # Authorization token (if present) – stripped "Bearer " prefix.
@@ -188,7 +188,7 @@ async def enqueue_message(
         "trace_context": payload.get("trace_context", {}),
     }
     # Publish to the memory WAL topic – the exact topic name is configurable.
-    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+    wal_topic = cfg.env("MEMORY_WAL_TOPIC")
     # ---------------------------------------------------------------------
     # Persist the event using the shared degradation‑aware helper. This
     # guarantees that the raw event is stored in Kafka *and* in the Redis
@@ -253,7 +253,7 @@ async def enqueue_quick_action(
         "version": "sa01-v1",
         "trace_context": payload.get("trace_context", {}),
     }
-    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+    wal_topic = cfg.env("MEMORY_WAL_TOPIC")
     await publisher.publish(
         wal_topic,
         event,
@@ -295,7 +295,7 @@ async def upload_files(
         "version": "sa01-v1",
         "trace_context": payload.get("trace_context", {}),
     }
-    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+    wal_topic = cfg.env("MEMORY_WAL_TOPIC")
     await publisher.publish(
         wal_topic,
         event,
@@ -311,7 +311,7 @@ def main() -> None:
     """
     # Initialise logging and tracing before the server starts.
     setup_logging()
-    setup_tracing("gateway", endpoint=cfg.env("OTEL_EXPORTER_OTLP_ENDPOINT", ""))
+    setup_tracing("gateway", endpoint=cfg.env("OTEL_EXPORTER_OTLP_ENDPOINT"))
     uvicorn.run("services.gateway.main:app", host="0.0.0.0", port=8010, reload=False)
 
 

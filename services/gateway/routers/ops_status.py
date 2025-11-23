@@ -98,7 +98,7 @@ async def metrics_system():
 
 @router.get("/somabrain/health")
 async def somabrain_health():
-    base = cfg.env("SA01_SOMA_BASE_URL", cfg.settings().external.somabrain_base_url)
+    base = cfg.env("SA01_SOMA_BASE_URL")
     url = base.rstrip("/") + "/health"
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -128,7 +128,7 @@ async def _probe_somabrain() -> bool:
     Returns ``True`` on HTTP 200, ``False`` on error/timeouts to keep the
     Web UI responsive even when the service is unreachable.
     """
-    base = cfg.env("SA01_SOMA_BASE_URL", cfg.settings().external.somabrain_base_url)
+    base = cfg.env("SA01_SOMA_BASE_URL")
     url = base.rstrip("/") + "/health"
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
