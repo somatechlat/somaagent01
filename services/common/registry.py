@@ -20,9 +20,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from src.core.config import cfg
 from services.common.features import build_default_registry
-
+from src.core.config import cfg
 
 # --------------------------------------------------------------------------- #
 # Core accessors – all values come from the single validated Config instance. #

@@ -10,7 +10,7 @@ facade.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from src.core.config import cfg

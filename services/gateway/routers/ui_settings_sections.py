@@ -7,14 +7,14 @@ and LLM settings.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, validator
+import asyncpg
+from fastapi import APIRouter, Request
+from pydantic import BaseModel, Field
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.secret_manager import SecretManager
-import asyncpg
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
 
@@ -25,6 +25,7 @@ router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
 # just get a module‑level logger here.
 # ---------------------------------------------------------------------------
 import logging
+
 logger = logging.getLogger(__name__)
 
 

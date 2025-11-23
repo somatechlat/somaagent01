@@ -14,18 +14,19 @@ implementation has been removed.
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import FastAPI
+from prometheus_client import make_asgi_app
 
 from .base_service import BaseSomaService
+from .health_monitor import UnifiedHealthMonitor
+
 # Import the health router (FastAPI router) and the background health monitor.
 # The router provides the ``/v1/health`` endpoint, while the monitor runs a
 # periodic async task that checks external services.
-from .health_router import UnifiedHealthRouter, attach_to_app
-from .health_monitor import UnifiedHealthMonitor
-from prometheus_client import make_asgi_app
-from contextlib import asynccontextmanager
+from .health_router import attach_to_app, UnifiedHealthRouter
 
 LOGGER = logging.getLogger("orchestrator")
 
@@ -42,10 +43,10 @@ class ServiceRegistry:
 
     def register(self, service: BaseSomaService, critical: bool = False) -> None:
         # Attach orchestrator metadata.
-        setattr(service, "_critical", critical)
+        service._critical = critical
         # Preserve explicit startup ordering if provided on the service; default to 0.
         order = getattr(service, "_startup_order", 0)
-        setattr(service, "_startup_order", order)
+        service._startup_order = order
         self._services.append(service)
 
     @property

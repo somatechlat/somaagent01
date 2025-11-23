@@ -21,7 +21,7 @@ from __future__ import annotations
 # Import the canonical configuration objects from the single source of truth.
 # ``cfg`` is the shared singleton instance, ``load_config`` lazily loads it,
 # and ``Config`` is the Pydantic model class.
-from src.core.config import cfg as _cfg, load_config as _load_config, Config as _Config
+from src.core.config import cfg as _cfg, Config as _Config, load_config as _load_config
 
 
 class CentralizedConfig(_Config):

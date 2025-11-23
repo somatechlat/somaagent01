@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from services.gateway.main import app
 from integrations.repositories import get_audit_store
+from services.gateway.main import app
 
 
 @pytest.mark.asyncio

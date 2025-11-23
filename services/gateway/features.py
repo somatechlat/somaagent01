@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram
 

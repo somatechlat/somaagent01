@@ -34,7 +34,6 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import yaml  # type: ignore
-from pydantic import ValidationError
 
 from .models import Config
 
@@ -98,26 +97,28 @@ def _merge_dicts(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[st
 _cached_config: Config | None = None
 
 
+def _env(key: str, default: Any = None) -> Any:
+    """Helper to read SA01_ or plain env, returning ``default`` if absent."""
+    pref = os.getenv(f"SA01_{key}")
+    if pref is not None and pref != "":
+        return pref
+    val = os.getenv(key)
+    if val is not None and val != "":
+        return val
+    return default
+
+
 def load_config() -> Config:
     """Load and validate the full configuration.
 
-    The precedence order is:
+    Precedence:
+    1) Environment (SA01_* first, then plain) injected into defaults.
+    2) Plain env overrides merged.
+    3) config.yaml / config.json in repo root.
 
-    1. Environment variables (handled by ``Config`` via ``env_prefix='SA01_'``).
-    2. Plain env vars – we inject them into a temporary dict that is merged
-       *after* the model has been instantiated, allowing users to override any
-       field without the ``SA01_`` prefix.
-    3. ``config.yaml`` *or* ``config.json`` located at the repository root.
-
-    If validation fails a :class:`pydantic.ValidationError` is raised – this is
-    intentional because silent fallback would violate the VIBE rule *NO FALLBACKS*.
+    Raises ValidationError on invalid config (no silent fallbacks).
     """
-    # 1️⃣ Load from environment via the Pydantic model – this respects the
-    #    ``SA01_`` prefix automatically.
-    # Provide sensible defaults for all required configuration sections.
-    # These defaults allow the system to start without external environment
-    # variables or config files while still satisfying the strict Pydantic
-    # model validation.
+    # 1️⃣ Start from sensible defaults and immediately overlay environment values.
     default_cfg_dict = {
         "service": {
             "name": "somaagent01",
@@ -129,27 +130,27 @@ def load_config() -> Config:
             "log_level": "INFO",
         },
         "database": {
-            "dsn": "postgresql://soma:soma@localhost:5432/somaagent01",
+            "dsn": _env("DB_DSN", "postgresql://soma:soma@postgres:5432/somaagent01"),
             "pool_size": 20,
             "max_overflow": 10,
             "pool_timeout": 30,
         },
         "kafka": {
-            "bootstrap_servers": "kafka:9092",
+            "bootstrap_servers": _env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
             "security_protocol": "PLAINTEXT",
             "sasl_mechanism": None,
             "sasl_username": None,
             "sasl_password": None,
         },
         "redis": {
-            "url": "redis://localhost:6379/0",
+            "url": _env("REDIS_URL", "redis://redis:6379/0"),
             "max_connections": 20,
             "retry_on_timeout": True,
             "socket_timeout": 5,
         },
         "external": {
-            "somabrain_base_url": "http://localhost:9696",
-            "opa_url": "http://localhost:8181",
+            "somabrain_base_url": _env("SOMA_BASE_URL", "http://host.docker.internal:9696"),
+            "opa_url": _env("POLICY_URL", "http://opa:8181"),
             "otlp_endpoint": None,
         },
         "auth": {
@@ -218,7 +219,7 @@ def get_config() -> Config:
 # ---------------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Dict, Union, Optional
+from typing import Optional, Union
 
 
 @dataclass

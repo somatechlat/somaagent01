@@ -14,9 +14,8 @@ from typing import Any, Optional
 
 import asyncpg
 
-from src.core.config import cfg
-
 from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 
 
 @dataclass

@@ -23,6 +23,7 @@ import sys
 # Importing pytest here forces its module to load before any test files are
 # evaluated, allowing us to safely add the missing attribute.
 import pytest
+
 # Provide a minimal ``Request`` type for the test suite. If the internal
 # ``FixtureRequest`` class is importable we use it; otherwise we fall back to a
 # simple placeholder.

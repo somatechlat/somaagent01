@@ -8,14 +8,14 @@ from typing import Any
 
 from jsonschema import ValidationError
 
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
-# Legacy settings removed – use central config façade instead.
-from src.core.config import cfg
-from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
+
+# Legacy settings removed – use central config façade instead.
 from src.core.config import cfg
 
 setup_logging()

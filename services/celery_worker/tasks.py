@@ -12,9 +12,9 @@ Implements the required task set with real logic (no stubs/fallbacks):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
-import hashlib
 from typing import Any, Sequence
 
 import redis.asyncio as redis

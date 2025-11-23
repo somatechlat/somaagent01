@@ -7,14 +7,16 @@ bundle in `services/gateway/routers/__init__.py`.
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
-from services.common.admin_settings import ADMIN_SETTINGS
-import logging
+
 # Import the degradation monitor from its correct module location.
 # Previously this attempted to import from services.common, which does not
 # contain the monitor implementation, causing ImportError at runtime.

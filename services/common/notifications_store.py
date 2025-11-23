@@ -29,6 +29,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import asyncpg
+
 from src.core.config import cfg
 
 SEVERITIES = {"info", "success", "warning", "error"}

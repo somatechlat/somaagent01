@@ -20,19 +20,19 @@ import logging
 import uuid
 from typing import Dict
 
-from src.core.config import cfg
+from observability.metrics import (
+    degraded_sync_backlog,
+    degraded_sync_failure_total,
+    degraded_sync_success_total,
+)
+from python.integrations.soma_client import SomaClient
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.publisher import DurablePublisher
 from services.common.outbox_repository import OutboxStore
+from services.common.publisher import DurablePublisher
+from services.common.redis_client import delete_event, get_all_events
 from services.gateway.circuit_breakers import circuit_breakers
-from services.common.redis_client import get_all_events, delete_event
-from python.integrations.soma_client import SomaClient, SomaClientError
-from observability.metrics import (
-    degraded_sync_success_total,
-    degraded_sync_failure_total,
-    degraded_sync_backlog,
-)
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 

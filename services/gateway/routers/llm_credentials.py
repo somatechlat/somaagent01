@@ -3,13 +3,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from src.core.config import cfg
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from services.common.authorization import authorize as authorize_request
 from services.common.secret_manager import SecretManager
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/llm", tags=["llm"])
 

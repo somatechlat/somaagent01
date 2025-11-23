@@ -13,13 +13,14 @@ except Exception:  # pragma: no cover - optional dependency may be missing in im
     sf = None
     _SOUNDFILE_AVAILABLE = False
 
+import numpy as np
+
 from python.helpers.notification import (
     NotificationManager,
     NotificationPriority,
     NotificationType,
 )
 from python.helpers.print_style import PrintStyle
-import numpy as np
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)

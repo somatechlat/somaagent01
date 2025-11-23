@@ -13,20 +13,25 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
-from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.publisher import DurablePublisher
-from services.common.idempotency import generate_for_memory_payload
-from services.common.requeue_store import RequeueStore
-from services.common.schema_validator import validate_event
-from services.common.session_repository import PostgresSessionStore
+
 # Legacy settings removed – use central config façade.
 # (duplicate import removed)
 # ADMIN_SETTINGS provides centralized configuration (e.g., Kafka, Redis, Postgres)
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.idempotency import generate_for_memory_payload
+from services.common.logging_config import setup_logging
+from services.common.memory_write_outbox import (
+    ensure_schema as ensure_mw_outbox_schema,
+    MemoryWriteOutbox,
+)
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common.publisher import DurablePublisher
+from services.common.requeue_store import RequeueStore
+from services.common.schema_validator import validate_event
+from services.common.session_repository import PostgresSessionStore
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
@@ -36,7 +41,7 @@ from services.tool_executor.resource_manager import default_limits, ResourceMana
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
-from services.common.audit_store import from_env as audit_store_from_env, AuditStore as _AuditStore
+
 # Central configuration facade
 from src.core.config import cfg
 

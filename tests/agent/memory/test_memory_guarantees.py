@@ -17,9 +17,9 @@ from typing import Any, Dict
 import pytest
 from fastapi.testclient import TestClient
 
-from src.core.domain.memory.replica_store import MemoryReplicaStore
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.gateway.main import app
+from src.core.domain.memory.replica_store import MemoryReplicaStore
 
 
 class Phase3Validator:

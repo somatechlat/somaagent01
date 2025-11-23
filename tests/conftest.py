@@ -3,16 +3,16 @@ import os
 import pytest
 import pytest_asyncio
 
-from services.common import env
+from src.core.config import cfg
 
-RUN_INTEGRATION = (env.get("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
+RUN_INTEGRATION = (cfg.env("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
 if RUN_INTEGRATION:
     from testcontainers.kafka import KafkaContainer
     from testcontainers.postgres import PostgresContainer
     from testcontainers.redis import RedisContainer
 
 # Enable Playwright pytest plugin only when explicitly requested
-if env.get("RUN_PLAYWRIGHT"):
+if cfg.env("RUN_PLAYWRIGHT"):
     pytest_plugins = ["playwright.sync_api"]
 else:
     pytest_plugins = []
@@ -35,7 +35,6 @@ if RUN_INTEGRATION:
 
         with KafkaContainer() as container:
             os.environ["SA01_KAFKA_BOOTSTRAP_SERVERS"] = container.get_bootstrap_server()
-            env.refresh()
             yield container
 
 

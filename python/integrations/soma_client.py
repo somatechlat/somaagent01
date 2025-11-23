@@ -47,6 +47,7 @@ import httpx
 from opentelemetry import trace
 from opentelemetry.propagate import inject
 from prometheus_client import Counter, Histogram, REGISTRY
+
 from src.core.config import cfg
 
 logger = logging.getLogger(__name__)
@@ -186,7 +187,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = env.get("SOMA_CONTAINER_HOST_ALIAS")
+        override_host = cfg.env("SOMA_CONTAINER_HOST_ALIAS")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -241,7 +242,7 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": env.get("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
@@ -250,16 +251,16 @@ class SomaClient:
         self.namespace = namespace
         # Universe/context identifier (e.g. "somabrain_ns:public")
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or env.get("SOMA_TENANT_ID")
-        self._api_key = api_key or env.get("SOMA_API_KEY")
-        verify_override = _boolean(env.get("SOMA_VERIFY_SSL"))
+        self._tenant_id = tenant_id or cfg.env("SOMA_TENANT_ID")
+        self._api_key = api_key or cfg.env("SOMA_API_KEY")
+        verify_override = _boolean(cfg.env("SOMA_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
         # TLS settings (optional mTLS)
-        ca_bundle = env.get("SOMA_TLS_CA")
-        client_cert = env.get("SOMA_TLS_CERT")
-        client_key = env.get("SOMA_TLS_KEY")
+        ca_bundle = cfg.env("SOMA_TLS_CA")
+        client_cert = cfg.env("SOMA_TLS_CERT")
+        client_key = cfg.env("SOMA_TLS_KEY")
         verify_value: bool | str = True
         if verify_ssl is not None:
             verify_value = verify_ssl
@@ -293,8 +294,8 @@ class SomaClient:
         self._CB_COOLDOWN_SEC: float = 15.0
 
         # Retry configuration
-        self._max_retries: int = int(env.get("SOMA_MAX_RETRIES", "2") or "2")
-        self._retry_base_ms: int = int(env.get("SOMA_RETRY_BASE_MS", "150") or "150")
+        self._max_retries: int = int(cfg.env("SOMA_MAX_RETRIES", "2") or "2")
+        self._retry_base_ms: int = int(cfg.env("SOMA_RETRY_BASE_MS", "150") or "150")
 
     @classmethod
     def get(cls) -> "SomaClient":
@@ -378,7 +379,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": env.get("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -450,7 +451,8 @@ class SomaClient:
                     except ValueError:
                         # Fallback: parse HTTP-date to seconds delta (simple/lenient)
                         try:
-                            import email.utils as _eutils, time as _time
+                            import email.utils as _eutils
+                            import time as _time
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:
@@ -527,7 +529,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or (env.get("SOMA_TENANT_ID", "") or "").strip()
+            or (cfg.env("SOMA_TENANT_ID", "") or "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -642,7 +644,7 @@ class SomaClient:
         """
 
         body: Dict[str, Any] = {
-            "tenant": tenant or (env.get("SOMA_TENANT_ID", "") or "").strip() or "default",
+            "tenant": tenant or (cfg.env("SOMA_TENANT_ID", "") or "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,

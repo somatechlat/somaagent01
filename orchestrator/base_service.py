@@ -9,15 +9,13 @@ implementation that reports ``healthy`` when the service has been started.
 from __future__ import annotations
 
 # Restored core BaseSomaService implementation (used throughout the project).
-
 import asyncio
-import logging
 import contextvars
+import logging
 from abc import ABC, abstractmethod
+from typing import Any, Dict
 
 from observability.tracing import get_tracer
-
-from typing import Any, Dict
 
 LOGGER = logging.getLogger("orchestrator.base_service")
 

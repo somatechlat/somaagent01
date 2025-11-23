@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """S3 – Rotate encryption key and re-encrypt all settings."""
 
-import os
-
 import asyncio
+import os
 
 from python.helpers.vault_adapter import VaultAdapter
 from services.common import env
 from services.common.secret_manager import (
-    SecretManager,
-    list_providers,
-    get_provider_key,
-    set_provider_key,
     get_internal_token,
+    get_provider_key,
+    list_providers,
+    SecretManager,
     set_internal_token,
+    set_provider_key,
 )
 
 

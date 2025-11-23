@@ -17,11 +17,10 @@ from typing import Any, AsyncIterator, Callable, Optional
 
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from opentelemetry import trace
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanContext, SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
 from src.core.config import cfg
-from opentelemetry.trace import SpanContext
 
 LOGGER = logging.getLogger(__name__)
 TRACER = trace.get_tracer(__name__)

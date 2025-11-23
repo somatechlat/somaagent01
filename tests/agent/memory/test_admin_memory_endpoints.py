@@ -4,8 +4,11 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from src.core.domain.memory.replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 from services.gateway.main import app
+from src.core.domain.memory.replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
 
 
 @pytest.mark.asyncio

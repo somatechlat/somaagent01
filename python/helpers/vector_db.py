@@ -11,10 +11,14 @@ except Exception:  # pragma: no cover
 
 # LangChain imports with compatibility across versions
 try:  # Newer LC moved CacheBackedEmbeddings
-    from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+    from langchain.embeddings.cache import (
+        CacheBackedEmbeddings as LC_CacheBackedEmbeddings,  # type: ignore
+    )
 except Exception:  # pragma: no cover - fallback for older LC
     try:
-        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+        from langchain.embeddings import (
+            CacheBackedEmbeddings as LC_CacheBackedEmbeddings,  # type: ignore
+        )
     except Exception:
         LC_CacheBackedEmbeddings = None  # type: ignore
 

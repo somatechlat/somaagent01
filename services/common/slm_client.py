@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple
 
 import httpx
+
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)

@@ -1,8 +1,9 @@
 import asyncio
+
 import pytest
 
-from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 from observability.metrics import ContextBuilderMetrics
+from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 
 
 class FakeSomabrain:

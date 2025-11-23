@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from celery import Celery
 
-from python.tasks.config import get_celery_settings, celery_conf_overrides
+from python.tasks.config import celery_conf_overrides, get_celery_settings
 
 # REAL IMPLEMENTATION - Celery app configuration
 _settings = get_celery_settings()

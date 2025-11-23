@@ -1,14 +1,14 @@
 import pytest
 
-from services.common import env
+from src.core.config import cfg
 
 
 def test_settings_modal_opens_and_loads_sections(page):
     # UI is now served at the root path, so omit the trailing '/ui'.
     base_url = (
-        env.get("WEB_UI_BASE_URL")
-        or env.get("SA01_BASE_URL")
-        or f"http://localhost:{env.get('GATEWAY_PORT', '21016') or '21016'}"
+        cfg.env("WEB_UI_BASE_URL")
+        or cfg.env("SA01_BASE_URL")
+        or f"http://localhost:{cfg.env('GATEWAY_PORT', '21016') or '21016'}"
     )
     # Load UI
     page.goto(base_url, wait_until="domcontentloaded")

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from src.core.config import cfg
+
 _LOGGING_INITIALISED = False
 
 

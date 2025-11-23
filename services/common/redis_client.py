@@ -113,7 +113,7 @@ async def get_all_events() -> Dict[str, dict]:
         cursor, keys = await redis_conn.scan(cursor=cursor, match="degraded:*", count=100)
         if keys:
             values = await redis_conn.mget(*keys)
-            for k, v in zip(keys, values):
+            for k, v in zip(keys, values, strict=False):
                 if v is None:
                     continue
                 try:

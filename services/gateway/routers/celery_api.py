@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from celery.result import AsyncResult
 
 from services.celery_worker import celery_app
 

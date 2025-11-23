@@ -8,7 +8,14 @@ import time
 from functools import wraps
 from typing import Any, Callable, Dict
 
-from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server, REGISTRY, CollectorRegistry
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    start_http_server,
+)
 
 # Use a fresh CollectorRegistry for this module to avoid duplicate metric registration
 # when the module is imported multiple times during testing. Each import will get its own

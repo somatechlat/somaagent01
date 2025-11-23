@@ -1,11 +1,10 @@
 """API key management endpoints extracted from gateway monolith."""
 from __future__ import annotations
 
-import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.api_key_store import InMemoryApiKeyStore, ApiKeyMetadata
+from services.common.api_key_store import InMemoryApiKeyStore
 
 router = APIRouter(prefix="/v1/keys", tags=["auth"])
 STORE = InMemoryApiKeyStore()

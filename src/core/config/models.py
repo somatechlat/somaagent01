@@ -11,9 +11,8 @@ VIBE CODING RULES COMPLIANT:
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field, field_validator, model_validator
-from pathlib import Path
-import os
 
 
 class DatabaseConfig(BaseModel):

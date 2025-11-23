@@ -4,10 +4,10 @@ Simple chat API test for SomaAgent01
 Tests the chat functionality without the UI
 """
 
-import requests
-import json
 import time
 import uuid
+
+import requests
 
 # Configuration
 GATEWAY_URL = "http://localhost:21016"
@@ -90,7 +90,7 @@ def test_chat_functionality():
         )
         
         if response.status_code == 200:
-            print(f"   ✅ Message sent successfully")
+            print("   ✅ Message sent successfully")
             print(f"   📝 Message: {test_message}")
         else:
             print(f"   ❌ Failed to send message: {response.status_code}")
@@ -102,7 +102,7 @@ def test_chat_functionality():
         return False
     
     # Step 5: Wait for response and check events
-    print(f"\n5. Waiting for AI response...")
+    print("\n5. Waiting for AI response...")
     time.sleep(5)  # Wait for processing
     
     try:
@@ -127,7 +127,7 @@ def test_chat_functionality():
                 print(f"   ✅ Found {len(ai_responses)} AI responses")
                 return True
             else:
-                print(f"   ⚠️  No AI responses found yet")
+                print("   ⚠️  No AI responses found yet")
                 return False
         else:
             print(f"   ❌ Failed to get updated events: {response.status_code}")

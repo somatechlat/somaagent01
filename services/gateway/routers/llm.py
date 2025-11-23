@@ -8,12 +8,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from services.common.slm_client import SLMClient, ChatMessage
+from services.common.slm_client import ChatMessage, SLMClient
 from services.gateway.routers.chat import (
-    _normalize_llm_base_url,
-    _detect_provider_from_base,
-    _resolve_credentials,
     _load_llm_settings,
+    _normalize_llm_base_url,
+    _resolve_credentials,
 )
 
 router = APIRouter(prefix="/v1/llm", tags=["llm"])

@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any, List
-import json
-
 import asyncio
+import json
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from services.common.session_repository import (
-    PostgresSessionStore,
-    RedisSessionCache,
-    ensure_schema as ensure_session_schema,
-)
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.session_repository import (
+    ensure_schema as ensure_session_schema,
+    PostgresSessionStore,
+)
 
 router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
 

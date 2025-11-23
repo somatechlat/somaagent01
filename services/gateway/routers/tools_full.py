@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.tool_executor.tool_registry import ToolRegistry  # type: ignore
 from services.common.tool_catalog import ToolCatalogStore
-import logging
+from services.tool_executor.tool_registry import ToolRegistry  # type: ignore
 
 router = APIRouter(prefix="/v1", tags=["tools"])
 

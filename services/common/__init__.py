@@ -20,7 +20,6 @@ _SUBMODULES = {
     "slm_client",
     "telemetry",
     "telemetry_store",
-    "env",
 }
 
 # Export the configuration singleton alongside the other sub‑modules.

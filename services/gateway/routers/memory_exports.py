@@ -9,8 +9,8 @@ from pydantic import BaseModel
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.export_job_store import (
-    ExportJobStore,
     ensure_schema as ensure_export_jobs_schema,
+    ExportJobStore,
 )
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 

@@ -3,16 +3,14 @@ Circuit Breaker Endpoints for SomaAgent01 - Real circuit management.
 Production-ready HTTP endpoints for circuit breaker monitoring and control.
 """
 
-import asyncio
 import time
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException
 
+from observability.metrics import metrics_collector
 from services.gateway.circuit_breakers import CircuitBreakerRegistry, CircuitState
 from services.gateway.degradation_monitor import degradation_monitor
-from observability.metrics import metrics_collector
 
 router = APIRouter(prefix="/circuit", tags=["circuit"])
 

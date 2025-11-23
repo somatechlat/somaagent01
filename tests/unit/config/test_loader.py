@@ -6,9 +6,8 @@ correctly reads ``SA01_``‑prefixed environment variables and that the public
 """
 
 import os
-import pytest
 
-from src.core.config import get_config
+import pytest
 
 
 @pytest.fixture(autouse=True)

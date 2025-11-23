@@ -12,9 +12,10 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 import asyncpg
+
 from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
 

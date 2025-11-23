@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache
-from services.common.memory_write_outbox import MemoryWriteOutbox
 # The readiness module no longer provides `get_replica_store`. This import was
 # unused in this router and caused an ImportError at start‑up. It has been
 # removed.
@@ -24,6 +21,7 @@ from services.common.memory_write_outbox import MemoryWriteOutbox
 # provide a lightweight no‑op implementation of `_require_admin_scope` that
 # validates the admin scope based on a simple flag in the auth result.
 from services.common.authorization import authorize as authorize_request
+
 
 def _require_admin_scope(auth: dict) -> None:
     """Validate that the authorized request has admin privileges.
@@ -37,6 +35,7 @@ def _require_admin_scope(auth: dict) -> None:
         # If the auth dict does not indicate admin rights, deny access.
         raise HTTPException(status_code=403, detail="admin_required")
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+
 # Removed incorrect import of degradation_monitor which does not exist in services.common.
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 
