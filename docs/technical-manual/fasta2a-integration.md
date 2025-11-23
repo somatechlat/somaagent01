@@ -31,7 +31,7 @@ FastA2A (Fast Agent-to-Agent) is a comprehensive agent-to-agent communication pr
   - Graceful shutdown handling
   - Multi-tenant support
 
-#### 3. FastA2A Celery Tasks (`python/tasks/a2a_chat_task.py`)
+#### 3. FastA2A Celery Tasks (`services/celery_worker/tasks.py`)
 - **Purpose**: Asynchronous agent communication processing
 - **Features**:
   - Redis-backed task queue
@@ -56,16 +56,15 @@ FastA2A (Fast Agent-to-Agent) is a comprehensive agent-to-agent communication pr
 - **Event Publishing**: All FastA2A events are published to SomaBrain for memory persistence
 - **Recall Integration**: Agents can recall previous FastA2A conversations during new interactions
 
-#### Kafka Integration
-- **Task Distribution**: FastA2A tasks are distributed via Kafka for scalability
-- **Event Streaming**: Agent-to-agent events are streamed through Kafka topics
-- **Reliability**: At-least-once delivery guarantees for all communications
+#### Celery & Redis Integration
+- **Task Distribution**: FastA2A tasks are Celery jobs that run against the Redis broker/backend managed via `services.celery_worker`.
+- **Event Streaming**: Conversation state and task progress live in Redis (see `services/celery_worker/tasks.py`) and FastA2A events are published to SomaBrain via `python/observability/event_publisher.py`.
+- **Reliability**: Celery keeps retry/backoff state, and Redis provides durable task metadata and rate-limit counters.
 
 #### Redis Integration
-- **Session Management**: FastA2A conversation sessions are stored in Redis
-- **Task State**: Celery task states are persisted in Redis
-- **Rate Limiting**: FastA2A requests are rate-limited using Redis
-- **Caching**: Agent cards and connection metadata are cached in Redis
+- **Session Management**: FastA2A conversation sessions are stored in Redis; see the session helpers in `services/celery_worker/tasks.py` (`fast_a2a_session:{agent_url}`).
+- **Task State & Metrics**: Celery task metadata (`task:{task_id}`) and conversation history (`conversation:{session_id}`) are persisted with TTLs for cleanup.
+- **Rate Limiting**: Redis counters gate FastA2A request volume and help monitor queue length (see `check_celery_health` in `services/celery_worker/tasks.py`).
 
 ## Configuration
 
@@ -106,7 +105,7 @@ services:
 
   fasta2a-worker:
     image: somaagent01:latest
-    command: celery -A python.tasks.a2a_chat_task worker --loglevel=info
+    command: celery -A services.celery_worker worker --loglevel=info
     environment:
       - SA01_REDIS_URL=redis://redis:6379/0
       - SA01_SOMABRAIN_URL=http://somabrain:9696
@@ -149,22 +148,28 @@ async with await connect_to_agent("https://remote-agent.example.com") as conn:
     print(f"Agent response: {response}")
 ```
 
-### Handling FastA2A Tasks
+### Handling FastA2A Tasks via Celery
 
 ```python
-from python.tasks.a2a_chat_task import a2a_chat_task
+import httpx
 
-# Submit a FastA2A chat task
-task = a2a_chat_task.delay(
-    agent_url="https://remote-agent.example.com",
-    message="Help me analyze this data",
-    attachments=["/path/to/data.csv"],
-    session_id="conversation-123"
-)
+task_payload = {
+    "task": "a2a_chat",
+    "payload": {
+        "agent_url": "https://remote-agent.example.com",
+        "message": "Help me analyze this data",
+        "attachments": ["/path/to/data.csv"],
+        "session_id": "conversation-123"
+    }
+}
 
-# Get task result
-result = task.get(timeout=300)
-print(f"Task result: {result}")
+response = httpx.post("http://localhost:21016/v1/celery/run", json=task_payload)
+print("task_id", response.json()["task_id"])
+```
+
+```python
+status = httpx.get("http://localhost:21016/v1/celery/runs/task-123").json()
+print(status)
 ```
 
 ### Publishing FastA2A Events

@@ -1,11 +1,11 @@
 """Operational status endpoints consumed by the Web UI (degradation + circuit)."""
 from __future__ import annotations
 
-import os
 import time
 
 import httpx
 from fastapi import APIRouter, HTTPException
+from src.core.config import cfg
 
 import asyncio
 from services.gateway.degradation_monitor import degradation_monitor
@@ -99,7 +99,7 @@ async def metrics_system():
 
 @router.get("/somabrain/health")
 async def somabrain_health():
-    base = os.getenv("SA01_SOMA_BASE_URL") or "http://localhost:9696"
+    base = cfg.env("SA01_SOMA_BASE_URL", cfg.settings().external.somabrain_base_url)
     url = base.rstrip("/") + "/health"
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -129,7 +129,7 @@ async def _probe_somabrain() -> bool:
     Returns ``True`` on HTTP 200, ``False`` on error/timeouts to keep the
     Web UI responsive even when the service is unreachable.
     """
-    base = os.getenv("SA01_SOMA_BASE_URL") or "http://localhost:9696"
+    base = cfg.env("SA01_SOMA_BASE_URL", cfg.settings().external.somabrain_base_url)
     url = base.rstrip("/") + "/health"
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:

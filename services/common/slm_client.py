@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple
 
 import httpx
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class SLMClient:
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else float(os.getenv("SLM_TEMPERATURE", "0.2")),
+            "temperature": temperature if temperature is not None else float(cfg.env("SLM_TEMPERATURE", 0.2)),
             "stream": False,
         }
         if kwargs:
@@ -96,7 +96,7 @@ class SLMClient:
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else float(os.getenv("SLM_TEMPERATURE", "0.2")),
+            "temperature": temperature if temperature is not None else float(cfg.env("SLM_TEMPERATURE", 0.2)),
             "stream": True,
         }
         if kwargs:

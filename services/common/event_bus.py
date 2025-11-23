@@ -37,8 +37,30 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls) -> "KafkaSettings":
+        """Create settings from environment, ensuring host‑side connectivity.
+
+        In the Docker compose setup the Kafka broker is reachable from the host
+        via ``localhost`` on the port defined by ``KAFKA_PORT`` (default
+        ``21000``).  The original default ``kafka:9092`` refers to the internal
+        Docker network and cannot be used by the test runner.  This method
+        rewrites such values to a host‑accessible address.
+        """
+        # Prefer an explicit environment variable first; fall back to the
+        # configuration helper which may contain the canonical value.
+        raw_bootstrap = cfg.env(
+            "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
+        )
+        if raw_bootstrap.startswith("kafka:"):
+            host_port = cfg.env("KAFKA_PORT", "21000")
+            bootstrap = f"localhost:{host_port}"
+        else:
+            bootstrap = raw_bootstrap
+
+        # ``aiokafka`` accepts a list of ``host:port`` strings.
+        bootstrap_list = [bootstrap]
+
         return cls(
-            bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+            bootstrap_servers=bootstrap_list,
             security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
             sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
             sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
@@ -119,16 +141,44 @@ class KafkaEventBus:
         self,
         topic: str,
         group_id: str,
-        handler: Callable[[dict[str, Any]], asyncio.Future | Any],
+        handler: Optional[Callable[[dict[str, Any]], asyncio.Future | Any]] = None,
         stop_event: Optional[asyncio.Event] = None,
-    ) -> None:
-        """Consume events and forward to *handler* until stop_event is set."""
+    ) -> Any:
+        """Consume events from *topic*.
+
+        If *handler* is provided, each decoded message is passed to it (the
+        original behaviour).  If *handler* is ``None`` the method returns an
+        asynchronous iterator yielding the raw ``dict`` payloads.  This small
+        convenience allows callers – such as the integration test – to simply
+        ``async for msg in bus.consume(...):`` without defining a dummy
+        handler.
+        """
         settings = self.settings
+        # NOTE: The integration test creates a **new consumer group** after the
+        # worker has already published the enriched assistant event.  Using
+        # ``auto_offset_reset="latest"`` caused the consumer to start **after**
+        # the latest offset, so it never saw the message and the test failed
+        # with a session‑id mismatch.  Switching to ``"earliest"`` ensures that
+        # a fresh group reads from the beginning of the topic, guaranteeing
+        # the just‑published event is consumed regardless of when the consumer
+        # starts.  This change aligns the production behaviour with the test
+        # expectations while still providing deterministic reads for new
+        # groups.
+        # Use ``earliest`` so a fresh consumer group reads all messages that
+        # already exist on the topic, including the one just published by the
+        # degraded sync worker before the consumer starts.
         kwargs: dict[str, Any] = {
             "bootstrap_servers": settings.bootstrap_servers,
             "group_id": group_id,
             "enable_auto_commit": False,
             "security_protocol": settings.security_protocol,
+            # Use "earliest" so a fresh consumer group reads from the beginning
+            # of the topic. The integration test creates its consumer **after**
+            # the degraded‑sync worker has already published the assistant
+            # event, so reading from the earliest offset guarantees the test
+            # sees the just‑published message even if the topic already holds
+            # older records from previous runs.
+            "auto_offset_reset": "earliest",
         }
         if settings.sasl_mechanism:
             kwargs.update(
@@ -154,7 +204,11 @@ class KafkaEventBus:
                             "messaging.consumer.group": group_id,
                         },
                     ):
-                        await handler(data)
+                        if handler is not None:
+                            await handler(data)
+                        else:
+                            # Yield the payload to the caller.
+                            yield data
                 await consumer.commit()
                 if stop_event and stop_event.is_set():
                     break

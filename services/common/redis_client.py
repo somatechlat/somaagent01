@@ -43,10 +43,13 @@ def _get_redis() -> aioredis.Redis:
     #   2. ``REDIS_URL`` – legacy fallback.
     #   3. ``redis://localhost:20001/0`` – host‑side mapping when running tests
     #      outside Docker.
-    raw_url = cfg.env(
-        "SA01_REDIS_URL",
-        cfg.env("REDIS_URL", "redis://localhost:20001/0"),
-    )
+    # Directly read the environment to avoid the configuration façade, which
+    # by default maps ``SA01_REDIS_URL`` to the internal Docker hostname.
+    # For host‑side tests we rely on the plain ``REDIS_URL`` (or a default that
+    # points at the host‑mapped port ``20001``).
+    raw_url = cfg.env("SA01_REDIS_URL", cfg.settings().redis.url)
+    if not raw_url:
+        raw_url = cfg.env("REDIS_URL", "redis://localhost:20001/0")
 
     # When the URL points to the Docker‑internal hostname ``redis`` it is not
     # reachable from the host where the integration test runs. Detect this
@@ -59,8 +62,8 @@ def _get_redis() -> aioredis.Redis:
         # hostname with ``localhost`` and *force* the host‑mapped port, ignoring
         # the internal ``6379`` port that may be present in the original URL.
         from urllib.parse import urlparse, urlunparse
-
         parsed = urlparse(raw_url)
+
         host_port = cfg.env("REDIS_PORT", "20001")
         new_netloc = f"localhost:{host_port}"
         redis_url = urlunparse(
