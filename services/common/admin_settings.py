@@ -1,50 +1,60 @@
 """Administrative (infrastructure) settings for SomaAgent.
 
-This module provides a **single source of truth** for all system‑wide configuration
-that is not UI‑specific (Kafka, Postgres, Redis, OPA, metrics, auth flags, vault
-settings, etc.).  It mirrors the existing :class:`SA01Settings` but is exported
-as ``ADMIN_SETTINGS`` so that future code can clearly distinguish between
-*admin* configuration and UI runtime overrides stored in ``UiSettingsStore``.
+This module provides a **single source of truth** for all system‑wide
+configuration that is not UI‑specific (Kafka, Postgres, Redis, OPA, metrics,
+auth flags, vault settings, etc.). It mirrors the existing :class:`SA01Settings`
+but is exported as ``ADMIN_SETTINGS`` so that future code can clearly
+distinguish between *admin* configuration and UI runtime overrides stored in
+``UiSettingsStore``.
 
-The class simply inherits from :class:`SA01Settings` – which already contains the
-required defaults – and exposes a ready‑made instance via ``ADMIN_SETTINGS``.
-Existing code that imports ``APP_SETTINGS`` continues to work because ``APP_SETTINGS``
-is still defined in ``services/gateway/main.py``; new code should import
-``ADMIN_SETTINGS`` from this module.
+The original implementation duplicated defaults and bypassed the centralised
+config. The current version replaces that with a thin proxy that reads from the
+canonical ``src.core.config`` configuration model while preserving the legacy
+attribute names expected by existing code.
 """
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass
-from typing import Any, Mapping
-
-from services.common.settings_base import BaseServiceSettings
-from services.common.settings_sa01 import SA01Settings
+from src.core.config import cfg
 
 
-@dataclass(slots=True)
-class AdminSettings(SA01Settings):
-    """Concrete admin‑level settings.
+class _AdminSettingsProxy:
+    """Proxy exposing legacy attribute names backed by ``cfg.settings()``.
 
-    Inherits all fields from :class:`SA01Settings`.  The subclass exists solely
-    to give a distinct name for the admin configuration namespace.  No extra
-    fields are added at this time – any future admin‑only knobs can be added
-    here without affecting the UI settings model.
+    The original ``AdminSettings`` inherited from ``SA01Settings`` and thus
+    provided a flat namespace.  The proxy maps each accessed attribute to the
+    appropriate field in the Pydantic ``Config`` model.
     """
 
-    # No additional attributes – inheritance provides everything needed.
-    pass
+    # Service‑level attributes
+    @property
+    def metrics_port(self) -> int:
+        return cfg.settings().service.metrics_port
 
+    @property
+    def metrics_host(self) -> str:
+        return cfg.settings().service.host
 
-def _load() -> "AdminSettings":
-    """Factory that reads the environment once and returns an immutable instance.
+    # Infrastructure attributes
+    @property
+    def kafka_bootstrap_servers(self) -> str:
+        return cfg.settings().kafka.bootstrap_servers
 
-    ``SA01Settings.from_env()`` already performs the environment parsing and
-    default handling, so we delegate to it.
-    """
-    return AdminSettings.from_env()
+    @property
+    def otlp_endpoint(self) -> str | None:
+        # Directly expose the configured OTLP endpoint without fallback.
+        # Returns ``None`` if not set, aligning with the single source of truth.
+        return cfg.settings().external.otlp_endpoint
+
+    @property
+    def postgres_dsn(self) -> str:
+        return cfg.settings().database.dsn
+
+    # Preserve any future dynamic attribute access via ``__getattr__`` – fallback
+    # to the underlying Config model for forward‑compatibility.
+    def __getattr__(self, name: str):  # pragma: no cover – defensive
+        return getattr(cfg.settings(), name)
 
 
 # Export a singleton used throughout the codebase.
-ADMIN_SETTINGS = _load()
+ADMIN_SETTINGS = _AdminSettingsProxy()

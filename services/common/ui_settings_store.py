@@ -1,4 +1,4 @@
-"""Minimal UI settings store used by runtime_config and registry.
+"""Minimal UI settings store used by gateway UI routes.
 
 Backed by the same Postgres table `ui_settings` used by the sections endpoint.
 Non-secret fields live there; secrets remain in SecretManager.

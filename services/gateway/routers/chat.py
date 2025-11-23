@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, validator
 import asyncpg
 
 from services.common.slm_client import SLMClient, ChatMessage
-from services.common.llm_credentials_store import LlmCredentialsStore
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.ui_settings_store import UiSettingsStore
 from services.common.secret_manager import SecretManager
@@ -70,7 +69,7 @@ def _detect_provider_from_base(base_url: str) -> str:
 
 async def _resolve_credentials(base_url: str) -> str:
     provider = _detect_provider_from_base(base_url)
-    store = LlmCredentialsStore()
+    store = SecretManager()
     secret = None
     if hasattr(store, "get"):
         secret = await store.get(provider)
@@ -87,15 +86,7 @@ async def _resolve_credentials(base_url: str) -> str:
 
 
 async def _load_llm_settings() -> Dict[str, Any]:
-    """Load LLM configuration from persisted UI settings.
-
-    Historically the settings were stored as a flat ``dict`` in ``UiSettingsStore``.
-    The UI now persists a full ``sections`` document, so we need to support both
-    formats. The function first attempts the legacy flat structure; if the
-    required fields are absent it falls back to scanning the UI sections (via
-    :class:`SettingsRegistry`). This ensures the chat endpoint works after the
-    UI settings have been saved through the normal UI flow.
-    """
+    """Load LLM configuration from persisted UI settings (single source of truth)."""
     # Try legacy flat storage first
     store = UiSettingsStore()
     raw = await store.get()
@@ -115,15 +106,12 @@ async def _load_llm_settings() -> Dict[str, Any]:
         # The UI stores a full sections document. ``raw`` can be:
         #   * a dict with a ``sections`` key (the usual case after POST)
         #   * a plain list of sections (legacy fallback)
-        #   * something else – then we fall back to SettingsRegistry.
         if isinstance(raw, dict) and "sections" in raw:
             sections = raw["sections"]
         elif isinstance(raw, list):
             sections = raw
         else:
-            from services.common.settings_registry import SettingsRegistry
-
-            sections = await SettingsRegistry().snapshot_sections()
+            sections = []
         for sec in sections:
             for fld in sec.get("fields", []):
                 fid = fld.get("id")

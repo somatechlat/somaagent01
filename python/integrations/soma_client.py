@@ -47,7 +47,7 @@ import httpx
 from opentelemetry import trace
 from opentelemetry.propagate import inject
 from prometheus_client import Counter, Histogram, REGISTRY
-from services.common import env
+from src.core.config import cfg
 
 logger = logging.getLogger(__name__)
 
@@ -128,33 +128,29 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
 def _default_base_url() -> str:
     """Return the base URL for SomaBrain.
 
-    The environment variable ``SA01_SOMA_BASE_URL`` or ``SOMA_BASE_URL`` must be set to point to the
-    SomaBrain service endpoint.
+    Prefer the centralized config value; allow env override for ops flips.
     """
-    url = env.get("SA01_SOMA_BASE_URL") or env.get("SOMA_BASE_URL")
-    if not url:
-        raise ValueError(
-            "SA01_SOMA_BASE_URL or SOMA_BASE_URL environment variable is required. "
-            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
-        )
-    return url
+    url = cfg.env("SA01_SOMA_BASE_URL") or cfg.env("SOMA_BASE_URL")
+    if url:
+        return url
+    return cfg.settings().external.somabrain_base_url
 
 
 DEFAULT_BASE_URL = _default_base_url()
-DEFAULT_TIMEOUT = float(env.get("SOMA_TIMEOUT_SECONDS", "30") or "30")
+DEFAULT_TIMEOUT = float(cfg.env("SOMA_TIMEOUT_SECONDS", "30") or "30")
 # IMPORTANT: Distinguish logical universe vs. memory namespace
 # - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
 # - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
 #   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = env.get("SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = env.get("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
+DEFAULT_UNIVERSE = cfg.env("SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = cfg.env("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
 
-TENANT_HEADER = env.get("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
-AUTH_HEADER = env.get("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
+TENANT_HEADER = cfg.env("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
+AUTH_HEADER = cfg.env("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
 
 
 def _truthy_env(var_name: str) -> bool:
-    value = env.get(var_name)
+    value = cfg.env(var_name)
     if value is None:
         return False
     return value.lower() in {"1", "true", "yes", "on"}

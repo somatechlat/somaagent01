@@ -23,8 +23,9 @@ from typing import Any, Dict, List
 
 import httpx
 
-from services.common.registry import registry
-GATEWAY_BASE = registry().soma_base_url().rstrip('/')
+from services.common.registry import soma_base_url
+
+GATEWAY_BASE = soma_base_url().rstrip('/')
 
 
 def _hash(text: str) -> str:

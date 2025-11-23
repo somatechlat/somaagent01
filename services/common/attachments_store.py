@@ -5,7 +5,6 @@ insert, fetch, and TTL purge helpers.
 """
 from __future__ import annotations
 
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -13,8 +12,8 @@ from typing import Optional, Any, AsyncIterator
 
 import asyncpg
 
-from services.common import env
 from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 
 
 @dataclass(slots=True)
@@ -35,15 +34,15 @@ class Attachment:
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use centralized admin settings for Postgres DSN when not explicitly provided.
-        default_dsn = getattr(ADMIN_SETTINGS, "postgres_dsn", env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01") or "postgresql://soma:soma@localhost:5432/somaagent01")
+        default_dsn = getattr(ADMIN_SETTINGS, "postgres_dsn", cfg.settings().database.dsn)
         raw_dsn = dsn or default_dsn
-        self.dsn = env.expand(raw_dsn)
+        self.dsn = raw_dsn
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
+            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
             self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
         return self._pool
 

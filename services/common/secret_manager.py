@@ -168,11 +168,7 @@ class SecretManager:
         return (await self.get_internal_token()) is not None
 
 # -------------------------------------------------------------------------
-# Compatibility layer – expose the same async functions that the old
-# ``LlmCredentialsStore`` shim provided.  This allows existing imports such as
-# ``from services.common.llm_credentials_store import LlmCredentialsStore`` to be
-# replaced with ``from services.common.secret_manager import SecretManager as
-# LlmCredentialsStore`` without changing any call sites.
+# Compatibility layer – expose async helper functions for convenience.
 # -------------------------------------------------------------------------
 
 __all__ = [

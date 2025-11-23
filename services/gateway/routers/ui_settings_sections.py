@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field, validator
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.secret_manager import SecretManager
-from services.common.settings_registry import SettingsRegistry
 import asyncpg
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
@@ -119,11 +118,7 @@ def _ensure_minimal_llm_section(sections: List[Dict[str, Any]]) -> List[Dict[str
 
 @router.get("")
 async def get_sections():
-    try:
-        sections = await SettingsRegistry().snapshot_sections()
-    except Exception:
-        # Fallback to raw persisted sections if registry fails
-        sections = await _load_sections()
+    sections = await _load_sections()
     sections = _ensure_minimal_llm_section(sections)
     # Mask secrets
     for section in sections:
