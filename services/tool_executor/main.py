@@ -83,7 +83,7 @@ def ensure_metrics_server(settings) -> None:
     if _METRICS_SERVER_STARTED:
         return
 
-    # Use admin-wide metrics defaults; fallback to provided settings if missing.
+    # Use central configuration metrics defaults; fallback to provided settings if missing.
     default_port = int(getattr(cfg.settings().service, "metrics_port", 9401))
     default_host = str(getattr(cfg.settings().service, "host", "0.0.0.0"))
 
@@ -100,7 +100,7 @@ def ensure_metrics_server(settings) -> None:
 
 
 def _kafka_settings() -> KafkaSettings:
-    # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
+    # Centralise Kafka bootstrap configuration via central configuration.
     return KafkaSettings(
         bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
@@ -113,7 +113,7 @@ def _kafka_settings() -> KafkaSettings:
 
 
 def _redis_url() -> str:
-    # Use admin-wide Redis URL configuration.
+    # Use central configuration Redis URL.
     return cfg.env("REDIS_URL", cfg.settings().redis.url)
 
 

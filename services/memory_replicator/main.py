@@ -56,7 +56,7 @@ def ensure_metrics_server(settings) -> None:
     global _METRICS_STARTED
     if _METRICS_STARTED:
         return
-    # Prefer admin-wide metrics configuration; fall back to provided defaults.
+    # Prefer central configuration metrics settings; fall back to provided defaults.
     # Use central config defaults for metrics server.
     default_port = int(getattr(cfg.settings().service, "metrics_port", 9403))
     default_host = str(getattr(cfg.settings().service, "metrics_host", "0.0.0.0"))

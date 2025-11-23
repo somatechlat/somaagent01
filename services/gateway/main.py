@@ -24,6 +24,9 @@ from services.common.session_repository import RedisSessionCache
 from services.gateway.routers import build_router
 from src.core.config import cfg
 
+# Compatibility alias for legacy code and tests expecting ``APP_SETTINGS``.
+APP_SETTINGS = cfg.settings()
+
 app = FastAPI(title="SomaAgent Gateway")
 app.include_router(build_router())
 
@@ -59,10 +62,9 @@ class SessionSummary(BaseModel):
 # ---------------------------------------------------------------------------
 
 def get_bus() -> KafkaEventBus:
-    """Construct a :class:`KafkaEventBus` using configuration from ``ADMIN_SETTINGS``.
+    """Construct a :class:`KafkaEventBus` using the central configuration.
 
-    The function mirrors the implementation used in other services (e.g.
-    ``delegation_gateway``) to keep a consistent way of creating the event bus.
+    Mirrors the implementation used in other services to keep a consistent way of creating the event bus.
     """
     # Use the canonical configuration directly – no ADMIN_SETTINGS shim.
     kafka_settings = KafkaSettings(

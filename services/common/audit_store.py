@@ -82,8 +82,8 @@ class AuditStore:
 
 class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Prefer admin-wide Postgres DSN when not explicitly provided.
-        # Use the admin-wide Postgres DSN singleton; it already handles env fallback.
+        # Prefer central configuration Postgres DSN when not explicitly provided.
+        # Use the central configuration's Postgres DSN; it already handles env fallback.
         raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
@@ -259,5 +259,5 @@ def from_env() -> AuditStore:
     mode = cfg.env("AUDIT_STORE_MODE", "postgres").lower()
     if mode == "memory":
         return InMemoryAuditStore()
-    # Use admin-wide Postgres DSN when not explicitly provided.
+    # Use central configuration Postgres DSN when not explicitly provided.
     return PostgresAuditStore(dsn=cfg.settings().database.dsn)

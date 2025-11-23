@@ -27,8 +27,8 @@ class ToolCatalogEntry:
 
 class ToolCatalogStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Prefer admin-wide Postgres DSN when not explicitly provided.
-        # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any environment overrides.
+        # Prefer the central configuration's Postgres DSN via cfg.settings().database.dsn.
+        # Use the central configuration's Postgres DSN via cfg.settings().database.dsn.
         raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None

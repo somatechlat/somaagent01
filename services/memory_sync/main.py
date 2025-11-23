@@ -79,7 +79,7 @@ class MemorySyncWorker:
             await ensure_outbox_schema(self.outbox)
         except Exception:
             LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
-        # Prefer admin-wide metrics configuration; fallback to default if not set
+        # Prefer central configuration's metrics settings; fallback to defaults if not set.
         metrics_port = int(getattr(cfg.settings().service, "metrics_port", 9471))
         start_http_server(metrics_port)
         LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
