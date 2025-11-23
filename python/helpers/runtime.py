@@ -61,10 +61,10 @@ def is_development() -> bool:
 
 def get_local_url():
     if is_dockerized():
-        host_alias = dotenv.get_dotenv_value("SOMA_CONTAINER_HOST_ALIAS")
+        host_alias = dotenv.get_dotenv_value("SA01_CONTAINER_HOST_ALIAS")
         if not host_alias:
             raise ValueError(
-                "SOMA_CONTAINER_HOST_ALIAS environment variable is required when running in Docker. "
+                "SA01_CONTAINER_HOST_ALIAS environment variable is required when running in Docker. "
                 "Set it to the host alias (e.g., host.docker.internal)"
             )
         return host_alias

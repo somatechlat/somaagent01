@@ -10,7 +10,7 @@
 - `services/common/settings_base.py` - Base configuration
 - `services/common/runtime_config.py` - Runtime facade
 - `services/common/registry.py` - Feature registry
-- `python/integrations/soma_client.py` - Uses SOMA_BASE_URL (not SA01_SOMA_BASE_URL)
+// cleaned: `python/integrations/soma_client.py` now uses SA01_SOMA_BASE_URL only
 
 **VIBE VIOLATION**: Duplicate configuration sources create ambiguity and violate single source of truth principle.
 

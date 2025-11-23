@@ -8,7 +8,7 @@ x-agent-env: &agent-env
   PYTHONPATH: "/git/agent-zero:/git/agent-zero/src:/app"
   LOG_LEVEL: INFO
   # prior envs removed in favor of SA01_* canonical variables
-  SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
+  SA01_CONTAINER_HOST_ALIAS: host.docker.internal
   USE_LLM: "true"
   # Canonical SA01_* envs (added for consistency while keeping prior vars above)
   SA01_DEPLOYMENT_MODE: DEV
@@ -44,7 +44,7 @@ x-agent-service: &agent-service
       <<: *agent-env
   # Load the canonical env file (production‑style settings) and the memory‑override file.
   env_file:
-    - ${SOMA_ENV_FILE:-.env}
+    - ${SA01_ENV_FILE:-.env}
     - .env.memory
   # Production‑style memory limits, but tuned for a 10 GB development host.
   # The generic limits act as a fallback if a specific service does not provide its own.

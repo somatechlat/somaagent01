@@ -293,7 +293,7 @@ class IngestDocumentTool(BaseTool):
 
         base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         # Harden internal token handling: only default in DEV, require explicit in non-DEV
-        mode = (cfg.env("SOMA_AGENT_MODE") or "DEV").upper()
+        mode = (cfg.env("SA01_DEPLOYMENT_MODE") or "DEV").upper()
         default_token = "dev-internal-token" if mode == "DEV" else ""
         token = cfg.env("GATEWAY_INTERNAL_TOKEN", default_token)
         if not token:

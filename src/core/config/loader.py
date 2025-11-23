@@ -1,4 +1,4 @@
-"""Configuration loader for the VIBE‑compliant central config system.
+"""Configuration loader for the VIBE-compliant central config system.
 
 The :mod:`src.core.config` package provides a *single source of truth* for all
 runtime settings.  The ``Config`` model (defined in ``models.py``) contains the
@@ -14,15 +14,15 @@ order required by the roadmap:
    repository root it is parsed and merged.
 4. **Defaults** – any field that still lacks a value after the previous steps
    will raise a ``ValidationError``; the model’s own defaults (e.g. ``log_level``)
-   are the only allowed fall‑backs.
+   are the only allowed fall-backs.
 
-The loader is deliberately *side‑effect free*: calling :func:`load_config`
+The loader is deliberately *side-effect free*: calling :func:`load_config`
 returns a fresh ``Config`` instance without mutating global state.  For
 convenience, :func:`get_config` caches the most recent successful load so that
 the rest of the codebase can import ``cfg`` from ``src.core.config`` and rely on
 the same instance throughout the process lifecycle.
 
-All code follows the VIBE coding rules – no shims, no hidden fall‑backs, no
+All code follows the VIBE coding rules – no shims, no hidden fall-backs, no
 duplicate logic, and full type safety.
 """
 
@@ -38,7 +38,7 @@ def load_config() -> Config:
     """
     # Start with an empty base configuration – defaults are defined only in the
     # ``Config`` model itself. Environment values will be injected by the model
-    # via its ``env_prefix`` handling, and any file‑based overrides are merged
+    # via its ``env_prefix`` handling, and any file-based overrides are merged
     # afterwards.
     base_cfg: dict[str, Any] = {}
 
@@ -60,7 +60,6 @@ def load_config() -> Config:
     # required field is missing, a ``ValidationError`` is raised.
     final_cfg = Config.model_validate(merged_cfg)
     return final_cfg
-    """
     # 1️⃣ Start from sensible defaults and immediately overlay environment values.
     default_cfg_dict = {
         "service": {
@@ -69,7 +68,7 @@ def load_config() -> Config:
             "deployment_mode": "DEV",
             "host": "0.0.0.0",
             "port": 8010,
-            # Use port 0 (ephemeral) by default to avoid address‑in‑use errors
+            # Use port 0 (ephemeral) by default to avoid address-in-use errors
             # when multiple services start a Prometheus metrics server in the
             # same process during tests.
             "metrics_port": 0,
@@ -125,7 +124,7 @@ def load_config() -> Config:
     #     canonical namespace (SA01_*). This removes legacy backups.
     plain_env: dict[str, Any] = {}
 
-    # 3️⃣ File‑based configuration – try YAML first, then JSON.
+    # 3️⃣ File-based configuration – try YAML first, then JSON.
     repo_root = Path(__file__).resolve().parents[3]
     file_cfg: Mapping[str, Any] = {}
     yaml_path = repo_root / "config.yaml"
@@ -137,8 +136,8 @@ def load_config() -> Config:
 
     # Merge in the correct precedence (env > plain > file).
     merged = _merge_dicts(file_cfg, plain_env)
-    # ``Config`` accepts a dict via ``parse_obj`` – this re‑validates everything.
-    # Re‑validate the merged configuration; any validation errors will be
+    # ``Config`` accepts a dict via ``parse_obj`` – this re-validates everything.
+    # Re-validate the merged configuration; any validation errors will be
     # propagated directly.
     # ``model_dump`` is the v2 replacement for ``dict``.
     final_cfg = Config.model_validate(_merge_dicts(cfg.model_dump(), merged))
@@ -152,7 +151,7 @@ def get_config() -> Config:
     The first call loads the configuration using :func:`load_config` and caches
     the result in ``_cached_config``. Subsequent calls return the cached object.
     This mirrors the historic ``runtime_config`` behaviour while keeping the
-    implementation simple and side‑effect free.
+    implementation simple and side-effect free.
     """
     global _cached_config
     if _cached_config is None:
@@ -179,7 +178,7 @@ class EnvironmentMapping:
     sa01_prefix: str = "SA01_"
 
     def get_env_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        # Highest‑priority ``SA01_``
+        # Highest-priority ``SA01_``
         prefixed = f"{self.sa01_prefix}{key}"
         value = os.getenv(prefixed)
         if value is not None:
@@ -188,10 +187,10 @@ class EnvironmentMapping:
 
 
 class ConfigLoader:
-    """Thin wrapper that delegates to the module‑level loader functions.
+    """Thin wrapper that delegates to the module-level loader functions.
 
     Existing code creates a ``ConfigLoader`` instance and calls ``load_config``
-    on it. To stay VIBE‑compliant we simply forward to the functional
+    on it. To stay VIBE-compliant we simply forward to the functional
     implementation defined above.
     """
 

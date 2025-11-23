@@ -645,7 +645,7 @@ class ToolExecutor:
             "metadata": {
                 **str_metadata,
                 "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
-                "universe_id": (result_event.get("metadata") or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                "universe_id": (result_event.get("metadata") or {}).get("universe_id") or cfg.env("SA01_SOMA_NAMESPACE"),
             },
             "status": result_event.get("status"),
         }

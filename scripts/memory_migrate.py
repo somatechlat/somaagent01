@@ -18,7 +18,7 @@ Example usage::
     python scripts/memory_migrate.py --memory-subdir default --batch-size 250
 
 The script assumes the existing ``initialize.py`` bootstrap can resolve the
-model configuration required to hydrate the FAISS store.  Set ``SOMA_ENABLED``
+model configuration required to hydrate the FAISS store.  Set ``SA01_SOMA_ENABLED``
 to ``false`` when running the tool so the ``Memory`` helper loads the local
 indices rather than the remote SomaBrain adaptor (the CLI does this
 automatically unless the environment already overrides the flag).
@@ -55,8 +55,8 @@ class MigrationBatch:
 def _ensure_local_memory_mode() -> None:
     """Force the memory helpers to load the prior FAISS backend."""
 
-    if os.environ.get("SOMA_ENABLED") is None:
-        os.environ["SOMA_ENABLED"] = "false"
+    if os.environ.get("SA01_SOMA_ENABLED") is None:
+        os.environ["SA01_SOMA_ENABLED"] = "false"
 
 
 async def _load_documents(memory_subdir: str, limit: int | None) -> List[Tuple[str, Document]]:
