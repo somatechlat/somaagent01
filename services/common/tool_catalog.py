@@ -16,7 +16,6 @@ import asyncpg
 
 from src.core.config import cfg
 
-from services.common.settings_base import BaseServiceSettings
 from services.common.admin_settings import ADMIN_SETTINGS
 
 
@@ -37,8 +36,8 @@ class ToolCatalogStore:
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
-    def from_settings(cls, settings: BaseServiceSettings) -> "ToolCatalogStore":
-        # Use admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any environment overrides.
+    def from_settings(cls, _) -> "ToolCatalogStore":
+        # Backward-compat entry point retained; ignores legacy settings objects.
         return cls(dsn=ADMIN_SETTINGS.postgres_dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:

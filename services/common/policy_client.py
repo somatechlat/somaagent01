@@ -9,8 +9,8 @@ from typing import Any, Optional
 
 import httpx
 
-from services.common import env
 from services.common.tenant_config import TenantConfig
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,15 +30,11 @@ class PolicyClient:
         base_url: Optional[str] = None,
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
-        self.base_url = base_url or env.get("POLICY_BASE_URL", "http://opa:8181") or "http://opa:8181"
-        # Prefer SA01_POLICY_DECISION_PATH when set; fallback to legacy env, then sane default.
-        self.data_path = (
-            env.get("POLICY_DATA_PATH")
-            or env.get("SA01_POLICY_DECISION_PATH")
-            or "/v1/data/soma/policy/allow"
-        )
+        # Single source: central external OPA URL, overrideable via cfg.env for ops.
+        self.base_url = base_url or cfg.settings().external.opa_url
+        self.data_path = cfg.env("SA01_POLICY_DECISION_PATH", cfg.env("POLICY_DATA_PATH", "/v1/data/soma/policy/allow"))
         self._client = httpx.AsyncClient(timeout=10.0)
-        self.cache_ttl = float(env.get("POLICY_CACHE_TTL", "2") or "2")
+        self.cache_ttl = float(cfg.env("POLICY_CACHE_TTL", "2") or "2")
         # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored
         self.fail_open_default = False
         self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}

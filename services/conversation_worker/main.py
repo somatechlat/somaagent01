@@ -45,7 +45,8 @@ from services.common.session_repository import (
     PostgresSessionStore,
     RedisSessionCache,
 )
-from services.common.settings_sa01 import SA01Settings
+# Legacy settings removed – use central config façade.
+from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.slm_client import ChatMessage
 from services.common.telemetry import TelemetryPublisher
@@ -101,7 +102,7 @@ async def _load_llm_settings() -> dict[str, Any]:
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
-APP_SETTINGS = SA01Settings.from_env()
+APP_SETTINGS = cfg.settings()
 tracer = setup_tracing("conversation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
 
 

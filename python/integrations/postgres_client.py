@@ -7,7 +7,7 @@ from typing import Any
 
 import asyncpg
 
-from services.common import env
+from src.core.config import cfg
 
 
 class PostgresPool:
@@ -33,8 +33,8 @@ class PostgresPool:
 
 
 # PRODUCTION ONLY - Always use real postgres
-dsn = env.get("SA01_DB_DSN")
+dsn = cfg.env("SA01_DB_DSN") or cfg.settings().database.dsn
 if not dsn:
-    raise RuntimeError("SA01_DB_DSN environment variable required")
+    raise RuntimeError("Postgres DSN missing in central config")
 
 postgres_pool = PostgresPool(dsn)

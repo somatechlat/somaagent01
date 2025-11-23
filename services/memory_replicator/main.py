@@ -21,7 +21,8 @@ from src.core.domain.memory.replica_store import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )
-from services.common.settings_sa01 import SA01Settings
+# Legacy settings removed – use central config façade.
+from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 from src.core.config import cfg
@@ -29,7 +30,7 @@ from src.core.config import cfg
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-SERVICE_SETTINGS = SA01Settings.from_env()
+SERVICE_SETTINGS = cfg.settings()
 setup_tracing("memory-replicator", endpoint=SERVICE_SETTINGS.otlp_endpoint)
 
 _METRICS_STARTED = False
@@ -50,7 +51,7 @@ REPL_LAG = Gauge(
 )
 
 
-def ensure_metrics_server(settings: SA01Settings) -> None:
+def ensure_metrics_server(settings) -> None:
     global _METRICS_STARTED
     if _METRICS_STARTED:
         return

@@ -18,11 +18,12 @@ from typing import Optional
 
 import httpx
 
-from services.common.registry import registry
+from services.common.registry import soma_base_url
+
 BASE = (
     sys.argv[1]
     if len(sys.argv) > 1
-    else registry().soma_base_url().rstrip('/')
+    else soma_base_url().rstrip('/')
 )
 
 

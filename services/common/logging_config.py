@@ -8,7 +8,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from services.common import env
+from src.core.config import cfg
 _LOGGING_INITIALISED = False
 
 
@@ -68,7 +68,7 @@ def setup_logging(default_level: str | None = None) -> None:
     if _LOGGING_INITIALISED:
         return
 
-    level_name = default_level or env.get("LOG_LEVEL", "INFO") or "INFO"
+    level_name = default_level or cfg.env("LOG_LEVEL", "INFO") or "INFO"
     level = getattr(logging, level_name.upper(), logging.INFO)
 
     root = logging.getLogger()

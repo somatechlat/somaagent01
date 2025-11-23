@@ -12,7 +12,8 @@ from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
-from services.common.settings_sa01 import SA01Settings
+# Legacy settings removed – use central config façade instead.
+from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 from src.core.config import cfg
@@ -20,8 +21,9 @@ from src.core.config import cfg
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-APP_SETTINGS = SA01Settings.from_env()
-setup_tracing("delegation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
+# Use the central configuration object.
+APP_SETTINGS = cfg.settings()
+setup_tracing("delegation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
 
 
 class DelegationWorker:

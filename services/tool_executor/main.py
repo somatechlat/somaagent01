@@ -13,7 +13,6 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
@@ -24,7 +23,8 @@ from services.common.idempotency import generate_for_memory_payload
 from services.common.requeue_store import RequeueStore
 from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore
-from services.common.settings_sa01 import SA01Settings
+# Legacy settings removed – use central config façade.
+# (duplicate import removed)
 # ADMIN_SETTINGS provides centralized configuration (e.g., Kafka, Redis, Postgres)
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.telemetry import TelemetryPublisher
@@ -37,11 +37,13 @@ from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
 from services.common.audit_store import from_env as audit_store_from_env, AuditStore as _AuditStore
+# Central configuration facade
+from src.core.config import cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-SERVICE_SETTINGS = SA01Settings.from_env()
+SERVICE_SETTINGS = cfg.settings()
 setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.otlp_endpoint)
 
 
@@ -74,7 +76,7 @@ REQUEUE_EVENTS = Counter(
 _METRICS_SERVER_STARTED = False
 
 
-def ensure_metrics_server(settings: SA01Settings) -> None:
+def ensure_metrics_server(settings) -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return

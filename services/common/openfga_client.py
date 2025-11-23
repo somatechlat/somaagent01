@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
-from services.common import env
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class OpenFGAClient:
         cache_ttl: float = 2.0,
         fail_open: bool = True,
     ) -> None:
-        self.base_url = base_url or env.get("OPENFGA_API_URL", "http://openfga:8080") or "http://openfga:8080"
-        self.store_id = store_id or env.get("OPENFGA_STORE_ID")
+        self.base_url = base_url or cfg.env("OPENFGA_API_URL", cfg.settings().external.opa_url.replace(":8181", ":8080"))
+        self.store_id = store_id or cfg.env("OPENFGA_STORE_ID")
         if not self.store_id:
             raise ValueError("OPENFGA_STORE_ID must be configured for OpenFGAClient")
         self.user_namespace = user_namespace

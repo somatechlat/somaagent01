@@ -3,12 +3,9 @@ import pathlib
 ALLOWED_IMPORTS = {
     # New secret manager is allowed
     "services/common/secret_manager.py",
-    # Legacy imports that are still in transition – these files will be refactored in later sprints.
-    "services/common/settings_registry.py",
+    # Legacy gateway entrypoint still in transition
     "services/gateway/main.py",
     "integrations/repositories.py",
-    # Duplicate entry retained for clarity
-    "services/common/settings_registry.py",
     # Test files that deliberately import the legacy store for audit purposes
     "tests/agent/llm/test_llm_audit.py",
     "tests/unit/test_no_direct_getenv.py",
@@ -19,7 +16,6 @@ ALLOWED_IMPORTS = {
     "tmp/somaAgent01/tests/test_gateway_llm_audit.py",
     # Defensive entries covering possible repo‑directory prefixes that can appear
     # when the repository is scanned from its parent directory.
-    "somaAgent01/services/common/settings_registry.py",
     "somaAgent01/services/gateway/main.py",
     "somaAgent01/integrations/repositories.py",
     "somaAgent01/tests/agent/llm/test_llm_audit.py",
@@ -59,6 +55,15 @@ def test_no_legacy_imports():
             text = path.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             continue
-        if "llm_credentials_store" in text:
+        legacy_markers = [
+            "llm_credentials_store",
+            "services.common.settings_sa01",
+            "services.common.settings_base",
+            "services.common.settings_registry",
+        ]
+        if any(marker in text for marker in legacy_markers):
             offenders.append(rel)
-    assert not offenders, f"Legacy llm_credentials_store import found in: {', '.join(sorted(set(offenders)))}"
+    assert not offenders, (
+        "Legacy imports detected (llm_credentials_store/settings_sa01/settings_base/settings_registry) in: "
+        f"{', '.join(sorted(set(offenders)))}"
+    )

@@ -1,186 +1,97 @@
-"""Canonical Feature Registry - Zero Legacy Implementation.
+"""Compatibility facade that forwards all configuration access to the canonical
+``src.core.config`` package.
 
-This module provides the single, authoritative source for all configuration
-without any fallback logic, environment variable access, or legacy patterns.
-All configuration flows through deterministic resolution via Somabrain APIs.
+The previous implementation duplicated a bespoke ``FeatureRegistry`` and
+shadowed fields that already exist on the central ``Config`` model.  That split
+created drift (e.g., mismatched gateway/port names and stale defaults).  To
+enforce *one* configuration surface, this module now acts as a very thin proxy
+over ``src.core.config``:
+
+- Accessors delegate directly to the validated Pydantic ``Config`` instance
+  returned by ``cfg.settings()``.
+- Feature flags reuse the central model's ``feature_flags`` mapping and fall
+  back to the shared feature registry defined in ``services.common.features``.
+
+No additional state is cached here; callers importing this module will always
+observe the same data as any other consumer of ``src.core.config``.
 """
 
 from __future__ import annotations
 
-import json
-import os
-from typing import Any, Optional
-from dataclasses import dataclass
-from pathlib import Path
+from typing import Optional
 
-from observability.metrics import metrics_collector
+from src.core.config import cfg
+from services.common.features import build_default_registry
 
 
-def _load_sa01_settings():
-    # Lazy import to avoid circular dependency during module import time.
-    from services.common.settings_sa01 import SA01Settings
+# --------------------------------------------------------------------------- #
+# Core accessors – all values come from the single validated Config instance. #
+# --------------------------------------------------------------------------- #
 
-    return SA01Settings
+def _settings():
+    """Return the canonical Config instance."""
+    return cfg.settings()
 
-
-@dataclass(slots=True, frozen=True)
-class RegistryConfig:
-    """Immutable configuration snapshot."""
-    deployment_mode: str
-    gateway_port: int
-    soma_base_url: str
-    postgres_dsn: str
-    redis_url: str
-    kafka_bootstrap_servers: str
-    opa_url: str
-
-
-class FeatureRegistry:
-    """Canonical configuration registry with zero legacy patterns.
-    
-    Provides deterministic configuration resolution without:
-    - Environment variable access
-    - Fallback logic
-    - Incomplete implementations
-    - Development code
-    """
-    
-    def __init__(self) -> None:
-        self._settings_cls = _load_sa01_settings()
-        self._settings = self._settings_cls.from_env()
-        self._env_cache = self._snapshot_environment()
-        self._config = self._build_canonical_config()
-        
-    def _build_canonical_config(self) -> RegistryConfig:
-        """Build immutable canonical configuration."""
-        return RegistryConfig(
-            deployment_mode=self._determine_deployment_mode(),
-            gateway_port=self._settings.gateway_port,
-            soma_base_url=self._settings.soma_base_url,
-            postgres_dsn=self._settings.postgres_dsn,
-            redis_url=self._settings.redis_url,
-            kafka_bootstrap_servers=self._settings.kafka_bootstrap_servers,
-            opa_url=self._settings.opa_url
-        )
-    
-    def _snapshot_environment(self) -> dict[str, str]:
-        """Capture environment variables once so downstream code stays deterministic."""
-        return {key: value for key, value in os.environ.items()}
-
-    def _determine_deployment_mode(self) -> str:
-        """Deterministic deployment mode without legacy mapping."""
-        raw = self._settings.deployment_mode.upper()
-        if raw in {"DEV", "LOCAL"}:
-            return "LOCAL"
-        return "PROD"
-    
-    # Canonical accessors - no legacy patterns
-    
-    def deployment_mode(self) -> str:
-        """Return canonical deployment mode."""
-        return self._config.deployment_mode
-    
-    def gateway_port(self) -> int:
-        """Return canonical gateway port."""
-        return self._config.gateway_port
-    
-    def soma_base_url(self) -> str:
-        """Return canonical Somabrain base URL."""
-        return self._config.soma_base_url
-    
-    def postgres_dsn(self) -> str:
-        """Return canonical Postgres DSN."""
-        return self._config.postgres_dsn
-    
-    def redis_url(self) -> str:
-        """Return canonical Redis URL."""
-        return self._config.redis_url
-    
-    def kafka_bootstrap_servers(self) -> str:
-        """Return canonical Kafka bootstrap servers."""
-        return self._config.kafka_bootstrap_servers
-    
-    def opa_url(self) -> str:
-        """Return canonical OPA URL."""
-        return self._config.opa_url
-    
-    def flag(self, key: str, tenant: Optional[str] = None) -> bool:
-        """Resolve a feature flag.
-
-        The original implementation only consulted a ``feature_flags`` dict on the
-        settings object, which is empty in the current ``SA01Settings`` and
-        caused ``cfg.flag`` to always return ``False``. For the ROAMDPO plan we
-        want ``cfg.flag`` to reflect the canonical feature registry logic – i.e.
-        the profile‑aware defaults defined in ``services.common.features``.
-
-        The implementation now falls back to the in‑process ``FeatureRegistry``
-        when the settings dict does not provide an explicit override. Tenant
-        information is ignored for now (remote overrides are handled elsewhere).
-        """
-        # Prefer explicit overrides if present.
-        if hasattr(self._settings, "feature_flags"):
-            overrides = getattr(self._settings, "feature_flags", {})
-            if key in overrides:
-                return bool(overrides[key])
-        # Fallback to the default registry logic.
-        try:
-            from services.common.features import build_default_registry
-
-            registry = build_default_registry()
-            return registry.is_enabled(key)
-        except Exception:
-            # In case of unexpected errors, be safe and return False.
-            return False
-
-    def legacy_value(self, key: str, default: Optional[str] = None) -> str:
-        """Return immutable legacy configuration values captured during init."""
-        value = self._env_cache.get(key)
-        if value is not None:
-            return value
-        extras = getattr(self._settings, "extra", {})
-        if isinstance(extras, dict) and key in extras:
-            return str(extras[key])
-        if default is None:
-            return ""
-        return default
-
-
-# Singleton canonical instance
-_registry = FeatureRegistry()
-
-# Public API - no legacy patterns
-def registry() -> FeatureRegistry:
-    """Return canonical registry singleton."""
-    return _registry
 
 def deployment_mode() -> str:
-    """Return canonical deployment mode."""
-    return _registry.deployment_mode()
+    return _settings().service.deployment_mode
+
 
 def gateway_port() -> int:
-    """Return canonical gateway port."""
-    return _registry.gateway_port()
+    return _settings().service.port
+
 
 def soma_base_url() -> str:
-    """Return canonical Somabrain base URL."""
-    return _registry.soma_base_url()
+    return _settings().external.somabrain_base_url
+
 
 def postgres_dsn() -> str:
-    """Return canonical Postgres DSN."""
-    return _registry.postgres_dsn()
+    return _settings().database.dsn
+
 
 def redis_url() -> str:
-    """Return canonical Redis URL."""
-    return _registry.redis_url()
+    return _settings().redis.url
+
 
 def kafka_bootstrap_servers() -> str:
-    """Return canonical Kafka bootstrap servers."""
-    return _registry.kafka_bootstrap_servers()
+    return _settings().kafka.bootstrap_servers
+
 
 def opa_url() -> str:
-    """Return canonical OPA URL."""
-    return _registry.opa_url()
+    return _settings().external.opa_url
+
+
+# --------------------------------- Flags ---------------------------------- #
 
 def flag(key: str, tenant: Optional[str] = None) -> bool:
-    """Return canonical feature flag state."""
-    return _registry.flag(key, tenant)
+    """Return a feature flag value.
+
+    Order of precedence:
+    1) Explicit entry in ``Config.feature_flags`` (per‑process overrides).
+    2) Default registry profile resolution (``services.common.features``).
+    """
+    overrides = _settings().feature_flags or {}
+    if key in overrides:
+        return bool(overrides[key])
+    try:
+        return build_default_registry().is_enabled(key)
+    except Exception:
+        return False
+
+
+# Legacy helper retained for compatibility with a few scripts.
+def registry():
+    return cfg.settings()
+
+
+__all__ = [
+    "deployment_mode",
+    "gateway_port",
+    "soma_base_url",
+    "postgres_dsn",
+    "redis_url",
+    "kafka_bootstrap_servers",
+    "opa_url",
+    "flag",
+    "registry",
+]

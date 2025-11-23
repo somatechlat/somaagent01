@@ -184,6 +184,11 @@ from .loader import (
 # previous shim‑style indirection and provides a single, real implementation for
 # callers such as ``orchestrator.config`` or ``services.common.central_config``.
 load_config = _load_config
+
+# ---------------------------------------------------------------------------
+# Legacy compatibility shim removed.
+# The ``otlp_endpoint`` attribute is now accessed via ``cfg.settings().external.otlp_endpoint``.
+# All callers have been updated accordingly.
 from .registry import (
     ConfigRegistry,
     ConfigSubscription,

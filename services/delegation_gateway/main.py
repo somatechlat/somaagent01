@@ -21,11 +21,10 @@ from starlette.responses import Response
 
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.central.logging import setup_logging
+from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
-from services.common.settings_sa01 import SA01Settings
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy settings removed – use central config façade instead.
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 from src.core.config import cfg
@@ -33,8 +32,9 @@ from src.core.config import cfg
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-APP_SETTINGS = SA01Settings.from_env()
-setup_tracing("delegation-gateway", endpoint=APP_SETTINGS.otlp_endpoint)
+# ``cfg.settings()`` provides the same fields that ``SA01Settings`` exposed.
+APP_SETTINGS = cfg.settings()
+setup_tracing("delegation-gateway", endpoint=APP_SETTINGS.external.otlp_endpoint)
 
 app = FastAPI(title="SomaAgent 01 Delegation Gateway")
 

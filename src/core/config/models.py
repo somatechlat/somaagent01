@@ -200,6 +200,9 @@ class Config(BaseModel):
     def get_redis_url(self) -> str:
         """Get Redis URL with backward compatibility."""
         return self.redis.url
+
+    # NOTE: Legacy compatibility shim for ``otlp_endpoint`` removed.
+    # Direct access should use ``self.external.otlp_endpoint``.
     
     def is_auth_required(self) -> bool:
         """Check if authentication is required."""

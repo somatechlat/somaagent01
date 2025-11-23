@@ -58,6 +58,23 @@ Operate SomaAgent01 through **one executable orchestrator** with **one configura
 2) Sweep codebase to drop `runtime_config` imports; add lint/test blocker.
 3) Draft gateway split structure and begin extraction of health/chat/tool routers.
 
+### 📐 Configuration Consolidation (Current Sprint)
+**Goal:** Ensure *every* component of the system uses the **single, canonical configuration source** (`src/core/config`).
+
+1. **Delete legacy loader** – remove `architecture/core/config.py` (it is a deprecated duplicate).  Add a short comment at the top of the file stating “DEPRECATED – DO NOT IMPORT” before removal, then delete it.
+2. **Remove `services/common/settings_sa01.py`** – this file holds hard‑coded defaults and is still imported by many workers (conversation, tool executor, delegation, memory replicator, etc.).  Delete the file and replace all imports with `from src.core.config import cfg` (or use the helper functions `cfg.env`, `cfg.settings`).
+3. **Update worker code** – wherever the old `SA01Settings` attributes were accessed (e.g. `SA01Settings.POSTGRES_DSN`), change to the façade equivalents (`cfg.env("POSTGRES_DSN")` or `cfg.settings().database.dsn`).
+4. **Guardrail test** – keep the existing test `tests/unit/test_no_new_runtime_config_imports.py` which fails on any new import of the old runtime config.  Extend it to also fail if any module still imports `services.common.settings_sa01`.
+5. **Run full test suite** – `export KAFKA_PORT=21000 && .venv/bin/pytest -q`.  All tests must pass; any failures indicate missed imports.
+6. **Documentation update** – add a note in `docs/architecture.md` that the only configuration entry point is `src.core.config` and list the environment‑variable precedence.
+
+**Success criteria:**
+* No `architecture/core/config.py` or `services/common/settings_sa01.py` files exist in the repo.
+* A grep for `settings_sa01` returns zero results.
+* All code paths retrieve configuration via `cfg` façade.
+* The guardrail test passes.
+* CI pipeline runs cleanly.
+
 ---
 
 # 🚦 Degraded Mode & Single Chat Entry (Current Sprint)

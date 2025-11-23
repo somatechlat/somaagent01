@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
 from dotenv import load_dotenv
-from services.common import env as env_snapshot
+from src.core.config import cfg
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

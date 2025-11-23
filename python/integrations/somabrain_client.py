@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 
 import httpx
 
-from services.common import env
+from src.core.config import cfg
 
 from python.integrations.soma_client import (
     SomaClient,
@@ -34,15 +34,12 @@ class SomaBrainClient(SomaClient):
 def _base_url() -> str:
     """Return the base URL for the SomaBrain service.
 
-    The ``SA01_SOMA_BASE_URL`` environment variable must be set.
+    Prefer central config; allow SA01_SOMA_BASE_URL override.
     """
-    url = env.get("SA01_SOMA_BASE_URL")
-    if not url:
-        raise ValueError(
-            "SA01_SOMA_BASE_URL environment variable is required. "
-            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
-        )
-    return url
+    url = cfg.env("SA01_SOMA_BASE_URL")
+    if url:
+        return url
+    return cfg.settings().external.somabrain_base_url
 
 
 def _handle_response(resp: httpx.Response) -> Any:
