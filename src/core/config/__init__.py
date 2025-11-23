@@ -85,16 +85,9 @@ def env(name: str, default: Any = None) -> Any:
         return getattr(cfg_obj, name.lower())
 
     # When the configuration model does not expose a field we fall back to
-    # reading the environment directly (retaining the original precedence).
-    value = os.getenv(name)
-    if value is not None:
-        return value
+    # reading only the canonical SA01_ environment variables.
     prefixed = f"SA01_{name}"
     value = os.getenv(prefixed)
-    if value is not None:
-        return value
-    legacy = f"SOMA_{name}"
-    value = os.getenv(legacy)
     if value is not None:
         return value
     return default
@@ -125,7 +118,7 @@ def gateway_port() -> int:
 
 
 def soma_base_url() -> str:
-    return str(env("SOMA_BASE_URL", "http://localhost:9696"))
+    return str(env("SA01_SOMA_BASE_URL", "http://localhost:9696"))
 
 
 def postgres_dsn() -> str:

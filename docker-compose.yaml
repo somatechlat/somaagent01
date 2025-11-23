@@ -26,7 +26,6 @@ x-agent-env: &agent-env
   POSTGRES_DSN: ${SA01_DB_DSN}
   REDIS_URL: ${SA01_REDIS_URL}
   OPA_URL: ${SA01_POLICY_URL}
-  SOMA_BASE_URL: ${SA01_SOMA_BASE_URL}
   # Provide a default Fernet key for dev; replace for staging/prod
   SA01_CRYPTO_FERNET_KEY: "${SA01_CRYPTO_FERNET_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
   # Streaming feature toggle (centralized)

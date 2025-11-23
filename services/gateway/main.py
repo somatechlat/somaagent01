@@ -12,7 +12,6 @@ from fastapi import FastAPI
 # Export a helper to obtain the session store (used by the gateway endpoints).
 from integrations.repositories import get_session_store as _get_session_store
 
-# NOTE: Legacy ADMIN_SETTINGS import removed – configuration is accessed directly via `cfg.settings()`.
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
 
@@ -66,7 +65,6 @@ def get_bus() -> KafkaEventBus:
 
     Mirrors the implementation used in other services to keep a consistent way of creating the event bus.
     """
-    # Use the canonical configuration directly – no ADMIN_SETTINGS shim.
     kafka_settings = KafkaSettings(
         bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -82,7 +80,7 @@ def get_publisher() -> DurablePublisher:
 
     Mirrors the pattern used in other services (e.g. ``delegation_gateway``):
     construct a ``KafkaEventBus`` and an ``OutboxStore`` backed by the
-    ``ADMIN_SETTINGS.postgres_dsn`` database, then instantiate ``DurablePublisher``.
+    Uses the central configuration's Postgres DSN (via ``cfg.settings().database.dsn``) to instantiate ``DurablePublisher``.
     """
     bus = get_bus()
     outbox = OutboxStore(dsn=cfg.settings().database.dsn)
