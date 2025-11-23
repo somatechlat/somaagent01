@@ -13,7 +13,6 @@ from typing import Optional
 import asyncpg
 
 from src.core.config import cfg
-from src.core.config import cfg
 
 
 @dataclass(slots=True)

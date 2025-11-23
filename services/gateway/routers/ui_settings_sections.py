@@ -13,8 +13,8 @@ import asyncpg
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from src.core.config import cfg
 from services.common.secret_manager import SecretManager
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
 

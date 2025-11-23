@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from src.core.config import cfg
 from services.common.attachments_store import AttachmentsStore
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
 

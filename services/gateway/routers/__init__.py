@@ -10,7 +10,6 @@ from services.gateway.routers import (
     health,
     llm,
     llm_credentials,
-    weights,
     # New notifications API used by the UI toast/notification system
     notifications,
     ops_status,
@@ -22,6 +21,7 @@ from services.gateway.routers import (
     ui_static,
     uploads,
     websocket,
+    weights,
 )
 
 

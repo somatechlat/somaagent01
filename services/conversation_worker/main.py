@@ -38,7 +38,6 @@ from observability.metrics import (
 from python.helpers.tokens import count_tokens
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-from src.core.config import cfg
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
@@ -67,10 +66,9 @@ from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.tool_executor.tool_registry import ToolRegistry
-
-# Legacy settings removed – use central config façade.
 from src.core.config import cfg
 
+# Legacy settings removed – use central config façade.
 # Re‑export the new service implementation under the legacy name.
 from .service import ConversationWorkerService as ConversationWorker
 

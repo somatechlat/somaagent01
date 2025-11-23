@@ -9,11 +9,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from src.core.config import cfg
 from services.common.session_repository import (
     ensure_schema as ensure_session_schema,
     PostgresSessionStore,
 )
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
 

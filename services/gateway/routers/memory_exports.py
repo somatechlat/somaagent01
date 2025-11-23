@@ -7,11 +7,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from src.core.config import cfg
 from services.common.export_job_store import (
     ensure_schema as ensure_export_jobs_schema,
     ExportJobStore,
 )
+from src.core.config import cfg
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 
 router = APIRouter(prefix="/v1/memory", tags=["memory"])
