@@ -1,0 +1,48 @@
+{
+  "service": {
+    "name": "somaagent01",
+    "environment": "DEV",
+    "deployment_mode": "DEV",
+    "host": "0.0.0.0",
+    "port": 8010,
+    "metrics_port": 9400,
+    "log_level": "INFO"
+  },
+  "database": {
+    "dsn": "postgresql://soma:soma@postgres:5432/somaagent01",
+    "pool_size": 20,
+    "max_overflow": 10,
+    "pool_timeout": 30
+  },
+  "kafka": {
+    "bootstrap_servers": "kafka:9092",
+    "security_protocol": "PLAINTEXT",
+    "sasl_mechanism": null,
+    "sasl_username": null,
+    "sasl_password": null
+  },
+  "redis": {
+    "url": "redis://redis:6379/0",
+    "max_connections": 20,
+    "retry_on_timeout": true,
+    "socket_timeout": 5
+  },
+  "external": {
+    "somabrain_base_url": "http://host.docker.internal:9696",
+    "opa_url": "http://opa:8181",
+    "otlp_endpoint": null
+  },
+  "auth": {
+    "auth_required": false,
+    "jwt_secret": null,
+    "jwt_public_key": null,
+    "jwt_jwks_url": null,
+    "jwt_algorithms": ["RS256"],
+    "jwt_audience": null,
+    "jwt_issuer": null,
+    "jwt_leeway": 60,
+    "internal_token": "dev-internal-token"
+  },
+  "feature_flags": {},
+  "extra": {}
+}

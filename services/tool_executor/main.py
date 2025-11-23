@@ -14,10 +14,8 @@ from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
-# Legacy settings removed – use central config façade.
-# (duplicate import removed)
-# ADMIN_SETTINGS provides centralized configuration (e.g., Kafka, Redis, Postgres)
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy settings removed – use central config façade via `cfg`.
+from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.idempotency import generate_for_memory_payload
@@ -49,7 +47,7 @@ setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 SERVICE_SETTINGS = cfg.settings()
-setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.otlp_endpoint)
+setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
 
 
 TOOL_REQUEST_COUNTER = Counter(
@@ -87,8 +85,8 @@ def ensure_metrics_server(settings) -> None:
         return
 
     # Use admin-wide metrics defaults; fallback to provided settings if missing.
-    default_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9401))
-    default_host = str(getattr(ADMIN_SETTINGS, "metrics_host", "0.0.0.0"))
+    default_port = int(getattr(cfg.settings().service, "metrics_port", 9401))
+    default_host = str(getattr(cfg.settings().service, "host", "0.0.0.0"))
 
     port = int(cfg.env("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
     if port <= 0:
@@ -106,7 +104,7 @@ def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
         bootstrap_servers=cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", ADMIN_SETTINGS.kafka_bootstrap_servers
+            "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
         ),
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
@@ -117,7 +115,7 @@ def _kafka_settings() -> KafkaSettings:
 
 def _redis_url() -> str:
     # Use admin-wide Redis URL configuration.
-    return cfg.env("REDIS_URL", ADMIN_SETTINGS.redis_url)
+    return cfg.env("REDIS_URL", cfg.settings().redis.url)
 
 
 def _tenant_config_path() -> str:
@@ -139,14 +137,14 @@ class ToolExecutor:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.outbox = OutboxStore(dsn=cfg.settings().database.dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.tenant_config = TenantConfig(path=_tenant_config_path())
         self.policy = PolicyClient(
             base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.opa_url),
             tenant_config=self.tenant_config,
         )
-        self.store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.store = PostgresSessionStore(dsn=cfg.settings().database.dsn)
         self.requeue = RequeueStore(url=_redis_url(), prefix=_policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
@@ -157,7 +155,7 @@ class ToolExecutor:
         self.requeue_prefix = _policy_requeue_prefix()
         # Use SomaBrain HTTP client for memory persistence
         self.soma = SomaBrainClient.get()
-        self.mem_outbox = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         stream_defaults = SERVICE_SETTINGS.extra.get(
             "tool_executor_topics",
             {

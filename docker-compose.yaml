@@ -20,6 +20,8 @@ x-agent-env: &agent-env
   SA01_AUTH_REQUIRED: "false"
   SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
   SA01_SOMA_BASE_URL: http://host.docker.internal:9696
+  SA01_METRICS_PORT: "9400"
+  METRICS_PORT: "9400"
   # Plain env variants for central config loader (merges non-SA01 keys)
   POSTGRES_DSN: ${SA01_DB_DSN}
   REDIS_URL: ${SA01_REDIS_URL}
