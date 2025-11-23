@@ -32,7 +32,7 @@ class Attachment:
 
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Use centralized admin settings for Postgres DSN when not explicitly provided.
+        # Use the central configuration's Postgres DSN when not explicitly provided.
         default_dsn = cfg.settings().database.dsn
         raw_dsn = dsn or default_dsn
         self.dsn = raw_dsn

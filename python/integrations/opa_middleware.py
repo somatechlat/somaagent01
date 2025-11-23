@@ -22,7 +22,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     def __init__(self, app, evaluate_url: str | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        base_cfg = cfg.env("SA01_SOMA_BASE_URL") or cfg.env("SOMA_BASE_URL") or cfg.settings().external.somabrain_base_url
+        base_cfg = cfg.env("SA01_SOMA_BASE_URL") or cfg.settings().external.somabrain_base_url
         base = (base_cfg or "http://host.docker.internal:9696").rstrip("/")
         self.evaluate_url = evaluate_url or cfg.env("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         # previous behaviour where the service being unavailable would not block
@@ -86,9 +86,6 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
 def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
     # FastAPI will pass the app when adding middleware; returning the class is fine
-    return EnforcePolicy  # type: ignore[return-value]
-
-
     return EnforcePolicy  # type: ignore[return-value]
 
 

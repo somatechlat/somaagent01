@@ -11,21 +11,18 @@ in development environments can differ slightly in the exact headers it
 expects, so the client reads configuration from environment variables with
 sensible defaults and exposes helpers for common headers and payload shapes.
 
-Environment variables:
+Environment variables (canonical SA01_* only):
 
-* ``SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
-    ``http://localhost:9696`` which matches the local development cluster.
-* ``SOMA_API_KEY``: Optional API key.  When provided the client sends it in an
-  ``Authorization: Bearer`` header (or a custom header if
-  ``SOMA_AUTH_HEADER`` is supplied).
-* ``SOMA_TENANT_ID``: Optional tenant identifier forwarded via
-  ``X-Tenant-ID`` (or a custom header defined by ``SOMA_TENANT_HEADER``).
-* ``SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
-  to outgoing request bodies under the ``universe`` key so that requests are
-  automatically segmented per Agent Zero memory sub-directory.
-* ``SOMA_TIMEOUT_SECONDS``: Optional request timeout (float seconds).  Defaults
-  to 30 seconds which is generous enough for bulk exports.
-* ``SOMA_VERIFY_SSL``: Toggle TLS certificate verification (``true``/``false``).
+* ``SA01_SOMA_BASE_URL``: Base URL of the SomaBrain API. Defaults to
+  ``http://host.docker.internal:9696`` via central config.
+* ``SA01_SOMA_API_KEY`` / ``SA01_SOMA_AUTH_HEADER`` / ``SA01_SOMA_TENANT_HEADER``:
+  Optional auth/tenant headers (mirrors historic names without legacy fallbacks).
+* ``SA01_SOMA_TENANT_ID``: Optional tenant identifier forwarded via
+  ``X-Tenant-ID`` (or a custom header defined by ``SA01_SOMA_TENANT_HEADER``).
+* ``SA01_SOMA_NAMESPACE``: Logical universe identifier added to outgoing payloads.
+* ``SA01_SOMA_MEMORY_NAMESPACE``: Memory sub-namespace (defaults to ``wm``).
+* ``SA01_SOMA_TIMEOUT_SECONDS``: Request timeout (float seconds). Defaults to 30s.
+* ``SA01_SOMA_VERIFY_SSL``: Toggle TLS certificate verification (``true``/``false``).
 
 The client keeps a single ``httpx.AsyncClient`` instance per process to reuse
 connections.  Callers should obtain the singleton through ``SomaClient.get()``
@@ -98,7 +95,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     candidate = (raw_base_url or "").strip()
     if not candidate:
         raise ValueError(
-            "SOMA_BASE_URL is required. Set it to your SomaBrain service URL "
+            "SA01_SOMA_BASE_URL is required. Set it to your SomaBrain service URL "
             "(e.g., http://somabrain:9696)"
         )
 
@@ -107,7 +104,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     try:
         url = httpx.URL(normalized)
     except Exception as exc:
-        raise ValueError(f"Invalid SOMA_BASE_URL '{candidate}': {exc}") from exc
+        raise ValueError(f"Invalid SA01_SOMA_BASE_URL '{candidate}': {exc}") from exc
 
     # Rewrite only the legacy port 9595 to the current default (9696),
     # preserving original host and scheme.
@@ -131,23 +128,23 @@ def _default_base_url() -> str:
 
     Prefer the centralized config value; allow env override for ops flips.
     """
-    url = cfg.env("SA01_SOMA_BASE_URL") or cfg.env("SOMA_BASE_URL")
+    url = cfg.env("SA01_SOMA_BASE_URL")
     if url:
         return url
     return cfg.settings().external.somabrain_base_url
 
 
 DEFAULT_BASE_URL = _default_base_url()
-DEFAULT_TIMEOUT = float(cfg.env("SOMA_TIMEOUT_SECONDS", "30") or "30")
+DEFAULT_TIMEOUT = float(cfg.env("SA01_SOMA_TIMEOUT_SECONDS", "30") or "30")
 # IMPORTANT: Distinguish logical universe vs. memory namespace
 # - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
 # - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
 #   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = cfg.env("SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = cfg.env("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
+DEFAULT_UNIVERSE = cfg.env("SA01_SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = cfg.env("SA01_SOMA_MEMORY_NAMESPACE", "wm") or "wm"
 
-TENANT_HEADER = cfg.env("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
-AUTH_HEADER = cfg.env("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
+TENANT_HEADER = cfg.env("SA01_SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
+AUTH_HEADER = cfg.env("SA01_SOMA_AUTH_HEADER", "Authorization") or "Authorization"
 
 
 def _truthy_env(var_name: str) -> bool:
@@ -242,7 +239,7 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": cfg.env("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
@@ -379,7 +376,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": cfg.env("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )

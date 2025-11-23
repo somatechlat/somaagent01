@@ -152,7 +152,8 @@ def load_config() -> Config:
             "socket_timeout": 5,
         },
         "external": {
-            "somabrain_base_url": _env("SOMA_BASE_URL", "http://host.docker.internal:9696"),
+            # Single source of truth: only SA01_* envs are honoured.
+            "somabrain_base_url": _env("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696"),
             "opa_url": _env("POLICY_URL", "http://opa:8181"),
             "otlp_endpoint": None,
         },
@@ -177,11 +178,9 @@ def load_config() -> Config:
     # Use the Pydantic v2 API – ``model_validate`` replaces the deprecated ``parse_obj``.
     cfg = Config.model_validate(default_cfg_dict)
 
-    # 2️⃣ Plain environment variables (no prefix) – we collect them into a dict.
+    # 2️⃣ Plain environment variables (no prefix) are ignored to enforce a single
+    #     canonical namespace (SA01_*). This removes legacy backups.
     plain_env: dict[str, Any] = {}
-    for key, value in os.environ.items():
-        if not key.startswith("SA01_"):
-            plain_env[key] = value
 
     # 3️⃣ File‑based configuration – try YAML first, then JSON.
     repo_root = Path(__file__).resolve().parents[3]
@@ -230,22 +229,16 @@ class EnvironmentMapping:
     """Utility for retrieving environment variables with VIBE precedence.
 
     The loader itself already respects the ``SA01_`` prefix via the Pydantic
-    model. This helper is retained for backward compatibility with code that
-    expects ``env_mapping.get_env_value``.
+    model. This helper is retained for code that expects ``env_mapping.get_env_value``
+    but no longer supports legacy ``SOMA_*`` fallbacks.
     """
 
     sa01_prefix: str = "SA01_"
-    legacy_prefix: str = "SOMA_"
 
     def get_env_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
         # Highest‑priority ``SA01_``
         prefixed = f"{self.sa01_prefix}{key}"
         value = os.getenv(prefixed)
-        if value is not None:
-            return value
-        # Legacy ``SOMA_`` fallback
-        legacy = f"{self.legacy_prefix}{key}"
-        value = os.getenv(legacy)
         if value is not None:
             return value
         return default

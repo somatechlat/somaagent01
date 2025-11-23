@@ -70,7 +70,7 @@ def ensure_metrics_server(settings) -> None:
 
 
 def _kafka_settings() -> KafkaSettings:
-    # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
+    # Centralise Kafka bootstrap configuration via central configuration.
     return KafkaSettings(
         bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
