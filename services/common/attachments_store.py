@@ -12,7 +12,7 @@ from typing import Optional
 
 import asyncpg
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from src.core.config import cfg
 
 
@@ -34,7 +34,7 @@ class Attachment:
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use centralized admin settings for Postgres DSN when not explicitly provided.
-        default_dsn = getattr(ADMIN_SETTINGS, "postgres_dsn", cfg.settings().database.dsn)
+        default_dsn = cfg.settings().database.dsn
         raw_dsn = dsn or default_dsn
         self.dsn = raw_dsn
         self._pool: Optional[asyncpg.Pool] = None

@@ -15,7 +15,6 @@ import asyncpg
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
 
-from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -81,8 +80,8 @@ class SessionCache(ABC):
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
-        # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
-        raw_url = url or ADMIN_SETTINGS.redis_url
+        # Resolve Redis URL using the central configuration unless an explicit URL is provided.
+        raw_url = url or cfg.settings().redis.url
         self.url = raw_url
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
