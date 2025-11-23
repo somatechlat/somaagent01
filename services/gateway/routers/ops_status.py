@@ -6,7 +6,7 @@ import time
 import httpx
 from fastapi import APIRouter, HTTPException
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.gateway.circuit_breakers import CircuitBreakerHealth
 from services.gateway.degradation_monitor import degradation_monitor
@@ -115,7 +115,7 @@ __all__ = ["router"]
 async def _pending_outbox() -> int:
     """Return pending memory write outbox count."""
     try:
-        store = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
+        store = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         count = await store.count_pending()
         await store.close()
         return count

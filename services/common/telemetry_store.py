@@ -7,21 +7,20 @@ from typing import Any, Optional
 
 import asyncpg
 
-from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
 
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any env overrides.
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
+        raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = raw_dsn
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
     def from_settings(cls, _) -> "TelemetryStore":
         # Backward-compat entry point retained; ignores legacy settings objects.
-        return cls(dsn=ADMIN_SETTINGS.postgres_dsn)
+        return cls(dsn=cfg.settings().database.dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

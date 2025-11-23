@@ -37,15 +37,11 @@ SEVERITIES = {"info", "success", "warning", "error"}
 
 class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common.admin_settings import ADMIN_SETTINGS
+        from src.core.config import cfg
 
-        # Use admin settings for Postgres DSN when not explicitly provided.
-        # Default DSN for Postgres; use admin settings if provided.
-        default_dsn = getattr(
-            ADMIN_SETTINGS,
-            "postgres_dsn",
-            "postgresql://soma:soma@localhost:5432/somaagent01",
-        )
+        # Use central config for Postgres DSN when not explicitly provided.
+        # Fallback to a sensible default if the config does not define one.
+        default_dsn = cfg.settings().database.dsn or "postgresql://soma:soma@localhost:5432/somaagent01"
         raw_dsn = dsn or default_dsn
         self.dsn = raw_dsn
         self._pool: Optional[asyncpg.Pool] = None

@@ -9,7 +9,6 @@ from typing import Any, Optional
 import redis.asyncio as redis
 
 from src.core.config import cfg
-from src.core.config import cfg
 
 
 class RequeueStore:
@@ -21,7 +20,7 @@ class RequeueStore:
     ) -> None:
         # Resolve Redis URL with environment variable expansion to support values like
         # REDIS_URL=redis://localhost:${REDIS_PORT}/0 in local .env files.
-        # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
+        # Resolve Redis URL using the central configuration unless an explicit URL is provided.
         raw_url = url or cfg.settings().redis.url
         self.url = os.path.expandvars(raw_url)
         self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")

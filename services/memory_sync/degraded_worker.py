@@ -26,7 +26,8 @@ from observability.metrics import (
     degraded_sync_success_total,
 )
 from python.integrations.soma_client import SomaClient
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy ADMIN_SETTINGS shim removed – use central config directly.
+from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
 from services.common.publisher import DurablePublisher
@@ -47,9 +48,10 @@ class DegradedSyncWorker:
 
     def __init__(self) -> None:
         self.soma = SomaClient.get()
+        # Use the central configuration for the Postgres DSN.
         self.publisher = DurablePublisher(
             bus=KafkaEventBus(KafkaSettings.from_env()),
-            outbox=OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn),
+            outbox=OutboxStore(dsn=cfg.settings().database.dsn),
         )
         self.interval = float(cfg.env("DEGRADED_SYNC_INTERVAL_SECONDS", "2"))
         self._stop = asyncio.Event()
