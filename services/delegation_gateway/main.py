@@ -62,12 +62,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    port = int(cfg.env("DELEGATION_METRICS_PORT", str(cfg.settings().service.metrics_port)))
+    port = int(cfg.env("DELEGATION_METRICS_PORT"))
     if port <= 0:
         LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
-    host = cfg.env("DELEGATION_METRICS_HOST", cfg.settings().service.host)
+    host = cfg.env("DELEGATION_METRICS_HOST")
     start_http_server(port, addr=host)
     LOGGER.info(
         "Delegation gateway metrics server started",
@@ -79,7 +79,7 @@ def ensure_metrics_server() -> None:
 def get_bus() -> KafkaEventBus:
     kafka_settings = KafkaSettings(
         bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
         sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
         sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
@@ -179,7 +179,7 @@ async def create_delegation_task(
         "callback_url": request.callback_url,
         "metadata": request.metadata or {},
     }
-    topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
+    topic = cfg.env("DELEGATION_TOPIC")
     await publisher.publish(
         topic,
         event,
@@ -219,4 +219,4 @@ async def delegation_callback(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=int(cfg.env("PORT", "8015")))
+    uvicorn.run(app, host="0.0.0.0", port=int(cfg.env("PORT")))

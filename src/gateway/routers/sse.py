@@ -33,7 +33,7 @@ def _sse_disabled() -> bool:
     The original gateway consulted the `SA01_SSE_ENABLED` env var. We retain the
     same logic so existing deployments behave identically.
     """
-    return cfg.env("SA01_SSE_ENABLED", "true").lower() not in {"true", "1", "yes"}
+    return cfg.env("SA01_SSE_ENABLED").lower() not in {"true", "1", "yes"}
 
 
 @router.get("/v1/session/{session_id}/events")
@@ -47,7 +47,7 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
     if _sse_disabled():
         raise HTTPException(status_code=503, detail="SSE disabled")
 
-    topic = cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound")
+    topic = cfg.env("CONVERSATION_OUTBOUND")
     group_base = f"sse-{session_id}"
 
     async def event_iter() -> AsyncIterator[bytes]:

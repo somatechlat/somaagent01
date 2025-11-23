@@ -29,6 +29,6 @@ def simple_health() -> JSONResponse:
     payload = {
         "status": "ok",
         "service": "gateway",
-        "deployment_mode": cfg.env("DEPLOYMENT_MODE", "development"),
+        "deployment_mode": cfg.env("DEPLOYMENT_MODE"),
     }
     return JSONResponse(payload)

@@ -55,7 +55,7 @@ async def get_features() -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 _FLAG_CACHE: Dict[str, Dict[str, Any]] = {}
-_FLAG_CACHE_TTL_SECONDS = int(cfg.env("FEATURE_FLAGS_TTL_SECONDS", "30") or "30")
+_FLAG_CACHE_TTL_SECONDS = int(cfg.env("FEATURE_FLAGS_TTL_SECONDS"))
 
 _flag_remote_requests_total = Counter(
     "gateway_flag_remote_requests_total",

@@ -26,12 +26,12 @@ setup_tracing("delegation-worker", endpoint=cfg.settings().external.otlp_endpoin
 
 class DelegationWorker:
     def __init__(self) -> None:
-        self.topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
-        self.group = cfg.env("DELEGATION_GROUP", "delegation-worker")
+        self.topic = cfg.env("DELEGATION_TOPIC")
+        self.group = cfg.env("DELEGATION_GROUP")
         self.bus = KafkaEventBus(
             KafkaSettings(
                 bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-                security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+                security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL"),
                 sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
                 sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
                 sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),

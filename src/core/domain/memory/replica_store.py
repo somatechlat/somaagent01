@@ -43,17 +43,14 @@ class MemoryReplicaRow:
 
 class MemoryReplicaStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or _new_cfg.env(
-            "POSTGRES_DSN",
-            "postgresql://soma:soma@localhost:5432/somaagent01",
-        )
+        raw_dsn = dsn or _new_cfg.env("POSTGRES_DSN")
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(_new_cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(_new_cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = int(_new_cfg.env("PG_POOL_MIN_SIZE"))
+            max_size = int(_new_cfg.env("PG_POOL_MAX_SIZE"))
 
             async def _init_conn(conn: asyncpg.Connection) -> None:  # type: ignore[name-defined]
                 """Configure JSON/JSONB codecs for asyncpg connections."""
