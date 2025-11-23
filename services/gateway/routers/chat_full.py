@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Direct access to the central configuration (no ADMIN_SETTINGS shim).
+from src.core.config import cfg
 from services.common.session_repository import (
     ensure_schema as ensure_session_schema,
     PostgresSessionStore,
@@ -15,12 +16,14 @@ router = APIRouter(prefix="/v1/chat", tags=["chat"])
 
 
 def _session_store() -> PostgresSessionStore:
-    store = PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    # Use the canonical DSN from the Config model.
+    store = PostgresSessionStore(cfg.settings().database.dsn)
     return store
 
 
 def _session_cache() -> RedisSessionCache:
-    cache = RedisSessionCache(ADMIN_SETTINGS.redis_url)
+    # Get the Redis URL from the Config model.
+    cache = RedisSessionCache(cfg.settings().redis.url)
     return cache
 
 

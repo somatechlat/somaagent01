@@ -61,6 +61,24 @@ Local Gateway + UI: http://127.0.0.1:21016/ui
 
 Note: External baseline capture servers and Playwright parity projects are not part of this repository.
 
+### Degraded mode (SomaBrain offline)
+
+The compose defaults set `SA01_SOMA_BASE_URL=http://host.docker.internal:9696`. If no SomaBrain is running there, the Gateway health endpoint will show `status: "degraded"` with the `somabrain` component marked severe. This is expected in dev when you only need Gateway + LLM.
+
+What still works:
+- UI chat and `/v1/llm/invoke(/stream)` as long as you saved model/base URL and provider key in the Settings UI (stored in Redis, encrypted with your Fernet key).
+- Kafka/Postgres/Redis backed pipelines (outbox sync, tool executor, conversation worker).
+
+What requires SomaBrain:
+- Cognitive memory/learning flows (memory replay/replicator/sync) and the SomaBrain health check itself.
+
+To clear the degraded flag, point `SA01_SOMA_BASE_URL` to a reachable SomaBrain deployment (or adjust your compose override). You can safely ignore the degraded status when exercising chat and core gateway flows.
+
+Degraded-mode contract:
+- The degradation monitor marks only the `somabrain` component unhealthy; other components stay healthy if reachable.
+- All agent functions unrelated to SomaBrain (chat, tools, Kafka outbox, UI settings, secrets) continue to run.
+- SomaBrain-dependent work should be queued/retained and will resume once SomaBrain is reachable; the health status auto-flips back to healthy after the next successful `/health` check.
+
 ### Streaming Modes
 
 Gateway streaming endpoint `/v1/llm/invoke/stream` supports two modes:

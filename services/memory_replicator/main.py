@@ -31,7 +31,7 @@ setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 SERVICE_SETTINGS = cfg.settings()
-setup_tracing("memory-replicator", endpoint=SERVICE_SETTINGS.otlp_endpoint)
+setup_tracing("memory-replicator", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
 
 _METRICS_STARTED = False
 

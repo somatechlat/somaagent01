@@ -13,7 +13,7 @@ import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 
@@ -34,8 +34,8 @@ def _kafka_settings() -> KafkaSettings:
 
 @router.get("/health")
 async def health_check(
-    store: PostgresSessionStore = Depends(lambda: PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)),
-    cache: RedisSessionCache = Depends(lambda: RedisSessionCache(ADMIN_SETTINGS.redis_url)),
+    store: PostgresSessionStore = Depends(lambda: PostgresSessionStore(cfg.settings().database.dsn)),
+    cache: RedisSessionCache = Depends(lambda: RedisSessionCache(cfg.settings().redis.url)),
 ) -> JSONResponse:
     components: dict[str, dict[str, str]] = {}
     overall_status = "ok"

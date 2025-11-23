@@ -152,8 +152,52 @@ class _CfgFacade:
     def settings(self):
         return settings()
 
+    # Refresh the configuration cache. This mirrors the historic ``env_snapshot.refresh``
+    # behavior used throughout the test suite and some utility scripts. It simply
+    # delegates to the ``reload_config`` function which rebuilds the validated
+    # ``Config`` object from environment variables and any file‑based sources.
+    def refresh(self) -> None:  # pragma: no cover – thin delegating method
+        reload_config()
+
+    # Provide a ``get`` method for backward compatibility with the historic
+    # ``env_snapshot.get`` API used throughout the test suite and some helper
+    # scripts. It simply forwards to the ``env`` helper.
+    def get(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin delegating method
+        return env(name, default)
+
+    # ---------------------------------------------------------------------
+    # Legacy helper methods required by the test suite and historic code.
+    # ``flag`` retrieves a feature‑flag boolean using the same logic as the
+    # top‑level ``flag`` function. ``init_runtime_config`` mirrors the old
+    # ``env_snapshot.init_runtime_config`` API – it reloads the configuration
+    # cache and stores a lightweight state object with a ``settings`` attribute
+    # pointing at the validated ``Config`` instance. This attribute is used by
+    # tests that temporarily swap configuration values.
+    # ---------------------------------------------------------------------
+    def flag(self, key: str, tenant: Any = None) -> bool:  # pragma: no cover
+        return flag(key, tenant)
+
+    def init_runtime_config(self) -> None:  # pragma: no cover
+        """Reload configuration and expose a ``_STATE`` holder.
+
+        The original runtime_config exposed a ``_STATE`` namespace with a
+        ``settings`` attribute. Some tests still reference ``cfg._STATE`` to
+        temporarily replace or inspect the configuration. We create a simple
+        ``SimpleNamespace`` object with the current settings after a reload.
+        """
+        reload_config()
+        from types import SimpleNamespace
+
+        # ``self.settings()`` returns the up‑to‑date Config instance.
+        self._STATE = SimpleNamespace(settings=self.settings())
+
 
 cfg = _CfgFacade()
+# Initialise the legacy ``_STATE`` holder so that code can safely check its
+# existence without first calling ``init_runtime_config``. This mirrors the
+# historic behaviour where ``env_snapshot._STATE`` was always present.
+from types import SimpleNamespace
+cfg._STATE = SimpleNamespace(settings=cfg.settings())
 """Centralized Configuration System for SomaAgent01.
 
 VIBE CODING RULES COMPLIANT:

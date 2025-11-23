@@ -7,7 +7,7 @@ from typing import Optional
 
 import redis.asyncio as redis
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.tenant_config import TenantConfig
 from src.core.config import cfg
 
@@ -24,7 +24,7 @@ class BudgetManager:
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
         # Use centralized admin settings for Redis URL, falling back to provided URL if given.
-        raw_url = url or ADMIN_SETTINGS.redis_url
+        raw_url = url or cfg.settings().redis.url
         self.url = raw_url
         self.prefix = cfg.env("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
         self.limit = int(cfg.env("BUDGET_LIMIT_TOKENS", 0))  # 0 = unlimited

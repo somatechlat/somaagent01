@@ -13,7 +13,7 @@ import asyncpg
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.secret_manager import SecretManager
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
@@ -55,7 +55,7 @@ def _split_sections(sections: List[Dict[str, Any]]) -> tuple[dict, dict]:
 
 
 async def _pool():
-    dsn = ADMIN_SETTINGS.postgres_dsn
+    dsn = cfg.settings().database.dsn
     pool = getattr(_pool, "_cache", None)
     if pool is None:
         pool = await asyncpg.create_pool(dsn, min_size=1, max_size=2)

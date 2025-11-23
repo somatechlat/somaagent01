@@ -12,8 +12,7 @@ from fastapi import FastAPI
 # Export a helper to obtain the session store (used by the gateway endpoints).
 from integrations.repositories import get_session_store as _get_session_store
 
-# Backward‑compatible import for the SomaBrain client used by tests and legacy code.
-from services.common.admin_settings import ADMIN_SETTINGS
+# NOTE: Legacy ADMIN_SETTINGS import removed – configuration is accessed directly via `cfg.settings()`.
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
 
@@ -65,8 +64,9 @@ def get_bus() -> KafkaEventBus:
     The function mirrors the implementation used in other services (e.g.
     ``delegation_gateway``) to keep a consistent way of creating the event bus.
     """
+    # Use the canonical configuration directly – no ADMIN_SETTINGS shim.
     kafka_settings = KafkaSettings(
-        bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
+        bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
         sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
@@ -83,7 +83,7 @@ def get_publisher() -> DurablePublisher:
     ``ADMIN_SETTINGS.postgres_dsn`` database, then instantiate ``DurablePublisher``.
     """
     bus = get_bus()
-    outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    outbox = OutboxStore(dsn=cfg.settings().database.dsn)
     return DurablePublisher(bus=bus, outbox=outbox)
 
 def get_session_store():

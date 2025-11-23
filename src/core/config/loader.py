@@ -126,7 +126,10 @@ def load_config() -> Config:
             "deployment_mode": "DEV",
             "host": "0.0.0.0",
             "port": 8010,
-            "metrics_port": 9400,
+            # Use port 0 (ephemeral) by default to avoid address‑in‑use errors
+            # when multiple services start a Prometheus metrics server in the
+            # same process during tests.
+            "metrics_port": 0,
             "log_level": "INFO",
         },
         "database": {
@@ -285,13 +288,18 @@ def get_config_loader(config_file_path: Optional[Union[str, Path]] = None) -> Co
     return _config_loader
 
 
-def reload_config() -> None:
-    """Force a reload of the cached configuration.
+def reload_config() -> Config:
+    """Force a reload of the cached configuration and return the new ``Config``.
 
-    This clears the module‑level cache and, if a ``ConfigLoader`` instance has
-    been created, also clears its internal cache.
+    The previous implementation cleared the cache but returned ``None`` which
+    caused ``reload_config()`` calls in the test suite to yield ``None`` and
+    subsequently raise ``AttributeError`` when accessed.  This version clears
+    the caches and then loads a fresh configuration, returning the resulting
+    ``Config`` instance so callers can safely use the result.
     """
     global _cached_config, _config_loader
     _cached_config = None
     if _config_loader is not None:
         _config_loader._config_cache = None
+    # Load a fresh configuration using the public loader.
+    return load_config()

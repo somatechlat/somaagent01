@@ -7,7 +7,7 @@ from typing import Any, List
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.session_repository import (
     ensure_schema as ensure_session_schema,
     PostgresSessionStore,
@@ -23,7 +23,7 @@ class SessionSummary(BaseModel):
 
 
 async def _session_store() -> PostgresSessionStore:
-    store = PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    store = PostgresSessionStore(cfg.settings().database.dsn)
     await ensure_session_schema(store)
     return store
 

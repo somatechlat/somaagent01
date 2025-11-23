@@ -10,7 +10,9 @@ works in the pytest environment.
 import os
 import sys
 
-from services.common import env as env_snapshot
+# The legacy ``env`` shim has been removed. Use the centralized configuration singleton ``cfg``
+# which provides ``env``-style access via ``cfg.env(key, default)``.
+from src.core.config import cfg as env_snapshot
 
 # Ensure ``pytest.Request`` exists for type‑hinting in the test suite. The
 # attribute is not provided by the public pytest API, so we add it here using the

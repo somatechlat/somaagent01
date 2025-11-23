@@ -16,7 +16,7 @@ from typing import Any, Optional
 
 import asyncpg
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Prefer admin-wide Postgres DSN when not explicitly provided.
         # Use the admin-wide Postgres DSN singleton; it already handles env fallback.
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
+        raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -261,4 +261,4 @@ def from_env() -> AuditStore:
     if mode == "memory":
         return InMemoryAuditStore()
     # Use admin-wide Postgres DSN when not explicitly provided.
-    return PostgresAuditStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    return PostgresAuditStore(dsn=cfg.settings().database.dsn)

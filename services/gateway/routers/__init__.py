@@ -10,6 +10,7 @@ from services.gateway.routers import (
     health,
     llm,
     llm_credentials,
+    weights,
     # New notifications API used by the UI toast/notification system
     notifications,
     ops_status,
@@ -44,6 +45,10 @@ def build_router() -> APIRouter:
     router.include_router(metrics_endpoints.router)
     router.include_router(ui_settings_sections.router)
     router.include_router(notifications.router)
+    router.include_router(weights.router)
+    # Feature flags endpoint required by tests
+    from services.gateway.routers import features as _features_router
+    router.include_router(_features_router.router)
     # Static/UI catch-alls last so they do not shadow API prefixes
     router.include_router(root_ui.router)
     router.include_router(ui_static.router)

@@ -20,10 +20,8 @@ async def health() -> dict[str, object]:
     try:
         import asyncpg
 
-        from services.common.admin_settings import ADMIN_SETTINGS
-
         async def _check():
-            async with asyncpg.create_pool(ADMIN_SETTINGS.postgres_dsn, min_size=1, max_size=2) as pool:
+            async with asyncpg.create_pool(cfg.settings().database.dsn, min_size=1, max_size=2) as pool:
                 async with pool.acquire() as conn:
                     row = await conn.fetchrow("SELECT value FROM ui_settings WHERE key='sections'")
                     sections = row["value"] if row else []
