@@ -99,9 +99,9 @@ def get_session_store():
 def get_session_cache() -> RedisSessionCache:
     """Return a ``RedisSessionCache`` instance used by routers.
 
-    The cache URL is derived from ``ADMIN_SETTINGS`` and expanded via the
-    ``env`` helper.  This function provides the dependency that the test suite
-    overrides with a stub implementation.
+    The cache URL is derived from the central configuration (``cfg.settings().redis.url``)
+    and expanded via the ``env`` helper. This function provides the dependency
+    that the test suite overrides with a stub implementation.
     """
     return RedisSessionCache()
 

@@ -10,13 +10,13 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
-from src.core.config import cfg
 from services.common.attachments_store import AttachmentsStore
 from services.common.authorization import authorize_request
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.publisher import DurablePublisher
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/uploads", tags=["uploads"])
 

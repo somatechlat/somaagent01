@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-# Direct access to the central configuration (no ADMIN_SETTINGS shim).
-from src.core.config import cfg
 from services.common.session_repository import (
     ensure_schema as ensure_session_schema,
     PostgresSessionStore,
     RedisSessionCache,
 )
+
+# Direct access to the central configuration (no ADMIN_SETTINGS shim).
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 

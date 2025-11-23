@@ -26,13 +26,13 @@ from observability.metrics import (
     degraded_sync_success_total,
 )
 from python.integrations.soma_client import SomaClient
-# Legacy ADMIN_SETTINGS shim removed – use central config directly.
-from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.redis_client import delete_event, get_all_events
 from services.gateway.circuit_breakers import circuit_breakers
+
+# Legacy ADMIN_SETTINGS shim removed – use central config directly.
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)

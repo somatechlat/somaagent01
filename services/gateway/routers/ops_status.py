@@ -6,7 +6,6 @@ import time
 import httpx
 from fastapi import APIRouter, HTTPException
 
-from src.core.config import cfg
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.gateway.circuit_breakers import CircuitBreakerHealth
 from services.gateway.degradation_monitor import degradation_monitor

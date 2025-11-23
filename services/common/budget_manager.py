@@ -7,7 +7,6 @@ from typing import Optional
 
 import redis.asyncio as redis
 
-from src.core.config import cfg
 from services.common.tenant_config import TenantConfig
 from src.core.config import cfg
 

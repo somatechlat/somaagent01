@@ -13,9 +13,6 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-
-# Legacy settings removed – use central config façade via `cfg`.
-from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.idempotency import generate_for_memory_payload
@@ -40,8 +37,10 @@ from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
 
-# Central configuration facade
+# Legacy settings removed – use central config façade via `cfg`.
 from src.core.config import cfg
+
+# Central configuration facade
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)

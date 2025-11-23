@@ -197,6 +197,7 @@ cfg = _CfgFacade()
 # existence without first calling ``init_runtime_config``. This mirrors the
 # historic behaviour where ``env_snapshot._STATE`` was always present.
 from types import SimpleNamespace
+
 cfg._STATE = SimpleNamespace(settings=cfg.settings())
 """Centralized Configuration System for SomaAgent01.
 
