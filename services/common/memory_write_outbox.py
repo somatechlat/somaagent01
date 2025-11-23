@@ -36,8 +36,8 @@ class MemoryWriteItem:
 
 class MemoryWriteOutbox:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Prefer admin-wide Postgres DSN when not explicitly provided.
-        # Use the admin-wide Postgres DSN; it already resolves environment variables.
+        # Prefer central configuration Postgres DSN when not explicitly provided.
+        # Use the central configuration's Postgres DSN; it already resolves environment variables.
         raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None

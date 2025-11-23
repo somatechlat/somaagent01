@@ -20,9 +20,8 @@ from src.core.config import cfg
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-# Use the central configuration object.
-APP_SETTINGS = cfg.settings()
-setup_tracing("delegation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
+# Use the central configuration directly for tracing.
+setup_tracing("delegation-worker", endpoint=cfg.settings().external.otlp_endpoint)
 
 
 class DelegationWorker:

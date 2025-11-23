@@ -12,7 +12,7 @@ from src.core.config import cfg
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any env overrides.
+        # Use the central configuration's Postgres DSN via cfg.settings().database.dsn.
         raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = raw_dsn
         self._pool: Optional[asyncpg.Pool] = None

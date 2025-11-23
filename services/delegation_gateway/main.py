@@ -33,8 +33,7 @@ setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 # ``cfg.settings()`` provides the same fields that ``SA01Settings`` exposed.
-APP_SETTINGS = cfg.settings()
-setup_tracing("delegation-gateway", endpoint=APP_SETTINGS.external.otlp_endpoint)
+setup_tracing("delegation-gateway", endpoint=cfg.settings().external.otlp_endpoint)
 
 app = FastAPI(title="SomaAgent 01 Delegation Gateway")
 

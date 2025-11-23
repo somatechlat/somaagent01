@@ -102,8 +102,7 @@ async def _load_llm_settings() -> dict[str, Any]:
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
-APP_SETTINGS = cfg.settings()
-tracer = setup_tracing("conversation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
+tracer = setup_tracing("conversation-worker", endpoint=cfg.settings().external.otlp_endpoint)
 
 
 MESSAGE_PROCESSING_COUNTER = Counter(
@@ -197,12 +196,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    metrics_port = int(cfg.env("CONVERSATION_METRICS_PORT", str(APP_SETTINGS.metrics_port)))
+    metrics_port = int(cfg.env("CONVERSATION_METRICS_PORT", str(cfg.settings().service.metrics_port)))
     if metrics_port <= 0:
         LOGGER.warning("Metrics server disabled", extra={"port": metrics_port})
         _METRICS_SERVER_STARTED = True
         return
-    metrics_host = cfg.env("CONVERSATION_METRICS_HOST", APP_SETTINGS.metrics_host)
+    metrics_host = cfg.env("CONVERSATION_METRICS_HOST", cfg.settings().service.metrics_host)
     start_http_server(metrics_port, addr=metrics_host)
     LOGGER.info(
         "Conversation worker metrics server started",
@@ -298,14 +297,14 @@ class ConversationWorker:
         self.profile_store = _NullProfileStore()
         tenant_config_path = cfg.env(
             "TENANT_CONFIG_PATH",
-            APP_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
+            cfg.settings().extra.get("tenant_config_path", "conf/tenants.yaml"),
         )
         self.tenant_config = TenantConfig(path=tenant_config_path)
         self.budgets = BudgetManager(url=redis_url, tenant_config=self.tenant_config)
         policy_base = cfg.settings().external.opa_url
         self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
-        telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
+        telemetry_store = TelemetryStore.from_settings(cfg.settings())
         self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
         # SomaBrain HTTP client (centralized memory backend)
         self.soma = SomaBrainClient.get()
@@ -319,9 +318,9 @@ class ConversationWorker:
             on_degraded=self._mark_somabrain_degraded,
         )
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
-        router_url = cfg.env("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
+        router_url = cfg.env("ROUTER_URL") or cfg.settings().extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
-        self.deployment_mode = cfg.env("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()
+        self.deployment_mode = cfg.env("SOMA_AGENT_MODE", cfg.settings().deployment_mode).upper()
         self.preprocessor = ConversationPreprocessor()
         self.escalation_enabled = cfg.env("ESCALATION_ENABLED", "true").lower() in {
             "1",

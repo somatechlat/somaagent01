@@ -32,7 +32,7 @@ class ExportJob:
 
 class ExportJobStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Prefer admin-wide Postgres DSN when not explicitly provided.
+        # Prefer central configuration Postgres DSN when not explicitly provided.
         # Use the central configuration for the Postgres DSN.
         raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
