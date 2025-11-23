@@ -474,30 +474,6 @@ settings_write_latency_seconds = Histogram(
     registry=registry,
 )
 
-# Runtime config metrics (C2)
-runtime_config_updates_total = Counter(
-    "runtime_config_updates_total",
-    "Number of runtime config updates applied",
-    ["source"],  # source: default|dynamic|tenant
-    registry=registry,
-)
-
-runtime_config_info = Info(
-    "runtime_config_info", "Current runtime config snapshot info", registry=registry
-)
-
-runtime_config_last_applied_ts = Gauge(
-    "runtime_config_last_applied_timestamp_seconds",
-    "Unix timestamp when runtime config was last applied",
-    registry=registry,
-)
-runtime_config_layer_total = Counter(
-    "runtime_config_layer_total",
-    "Count of config resolutions by layer",
-    ["layer"],
-    registry=registry,
-)
-
 # Deployment mode metric (LOCAL | PROD)
 deployment_mode_info = Info(
     "deployment_mode_info", "Canonical deployment mode information", registry=registry
@@ -600,21 +576,6 @@ class MetricsCollector:
             feature_profile_info.labels(reg.profile).set(1)
             for d in reg.describe():
                 feature_state_info.labels(d.key, reg.state(d.key)).set(1)
-        except Exception:
-            pass
-
-    # C2: Runtime config instrumentation helpers
-    def record_runtime_config_update(self, *, version: str, checksum: str, source: str) -> None:
-        try:
-            runtime_config_updates_total.labels(source=source).inc()
-            runtime_config_info.info({"version": version, "checksum": checksum, "source": source})
-            runtime_config_last_applied_ts.set(time.time())
-        except Exception:
-            pass
-
-    def record_runtime_config_layer(self, layer: str) -> None:
-        try:
-            runtime_config_layer_total.labels(layer=layer).inc()
         except Exception:
             pass
 
@@ -758,6 +719,5 @@ def get_metrics_snapshot() -> Dict[str, Any]:
         "active_connections": _safe_gauge(sse_connections),
         "total_messages_sent": _safe_total(sse_messages_sent),
         "settings_reads": _safe_total(settings_read_total),
-        "runtime_config_last_applied": _safe_gauge(runtime_config_last_applied_ts),
         "raw_metrics": generate_latest(registry).decode("utf-8"),
     }

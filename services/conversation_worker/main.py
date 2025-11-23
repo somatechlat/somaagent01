@@ -278,11 +278,10 @@ class ConversationWorker:
             sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
             sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
-        import os
         self.settings = {
-            "inbound": os.getenv("CONVERSATION_INBOUND", "conversation.inbound"),
-            "outbound": os.getenv("CONVERSATION_OUTBOUND", "conversation.outbound"),
-            "group": os.getenv("CONVERSATION_GROUP", "conversation-worker"),
+            "inbound": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
+            "outbound": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
@@ -345,7 +344,7 @@ class ConversationWorker:
         # the infinite monitor to avoid dangling asyncio tasks that prevent the
         # test process from exiting.
         import sys
-        if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+        if "pytest" in sys.modules or cfg.env("PYTEST_CURRENT_TEST"):
             self._health_monitor_task = None
         else:
             self._health_monitor_task = asyncio.create_task(self._monitor_soma_brain())

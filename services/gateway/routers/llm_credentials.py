@@ -1,14 +1,15 @@
 """LLM credential management endpoints (restored, minimal, admin‑gated)."""
 from __future__ import annotations
 
-import os
 from typing import Annotated
+
+from src.core.config import cfg
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from services.common.authorization import authorize as authorize_request
-from services.common.llm_credentials_store import LlmCredentialsStore
+from services.common.secret_manager import SecretManager
 
 router = APIRouter(prefix="/v1/llm", tags=["llm"])
 
@@ -20,7 +21,7 @@ def _require_admin_scope(auth: dict) -> None:
 
 
 def _internal_token_ok(request: Request) -> bool:
-    expected = os.getenv("GATEWAY_INTERNAL_TOKEN")
+    expected = cfg.env("GATEWAY_INTERNAL_TOKEN")
     if not expected:
         return False
     got = request.headers.get("x-internal-token") or request.headers.get("X-Internal-Token")
@@ -36,7 +37,7 @@ class LlmCredPayload(BaseModel):
 async def upsert_llm_credentials(
     payload: LlmCredPayload,
     request: Request,
-    store: Annotated[LlmCredentialsStore, Depends(LlmCredentialsStore)] = None,  # type: ignore[assignment]
+    store: Annotated[SecretManager, Depends(SecretManager)] = None,  # type: ignore[assignment]
 ) -> dict:
     try:
         auth = await authorize_request(request, payload.model_dump(), "llm_credentials")
@@ -55,7 +56,7 @@ async def upsert_llm_credentials(
 async def get_llm_credentials(
     provider: str,
     request: Request,
-    store: Annotated[LlmCredentialsStore, Depends(LlmCredentialsStore)] = None,  # type: ignore[assignment]
+    store: Annotated[SecretManager, Depends(SecretManager)] = None,  # type: ignore[assignment]
 ) -> dict:
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")
@@ -76,7 +77,7 @@ class LlmTestRequest(BaseModel):
 async def llm_test(
     payload: LlmTestRequest,
     request: Request,
-    store: Annotated[LlmCredentialsStore, Depends(LlmCredentialsStore)] = None,  # type: ignore[assignment]
+    store: Annotated[SecretManager, Depends(SecretManager)] = None,  # type: ignore[assignment]
 ) -> dict:
     if not _internal_token_ok(request):
         raise HTTPException(status_code=403, detail="forbidden")

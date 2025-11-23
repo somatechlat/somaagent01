@@ -34,8 +34,9 @@ PUBLISH_EVENTS = Counter(
 
 
 class DurablePublisher:
-    def __init__(self, *, bus: KafkaEventBus, outbox: OutboxStore) -> None:
+    def __init__(self, *, bus: KafkaEventBus, outbox: OutboxStore | None = None) -> None:
         self.bus = bus
+        # ``outbox`` is optional – in tests we may not need a persistent store.
         self.outbox = outbox
 
     async def publish(
@@ -88,6 +89,8 @@ class DurablePublisher:
             outbox_hdrs["event_type"] = payload.get("type")
             outbox_hdrs["event_id"] = payload.get("event_id")
             outbox_hdrs["schema"] = payload.get("version") or payload.get("schema")
+            if self.outbox is None:
+                raise RuntimeError("Outbox store is not configured for fallback publishing")
             msg_id = await self.outbox.enqueue(
                 topic=topic,
                 payload=payload,

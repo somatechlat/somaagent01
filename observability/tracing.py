@@ -13,7 +13,6 @@ https://opentelemetry.io/docs/instrumentation/python/).
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from opentelemetry import trace
@@ -33,7 +32,10 @@ def _initialize_tracer() -> Tracer:
     a ``BatchSpanProcessor`` that discards spans is used – this results in a
     no‑op tracer that has negligible overhead.
     """
-    endpoint = os.getenv("SA01_OTLP_ENDPOINT", "").strip()
+    from src.core.config import cfg
+
+    default_endpoint = cfg.settings().external.otlp_endpoint or ""
+    endpoint = cfg.env("SA01_OTLP_ENDPOINT", default_endpoint).strip()
     resource = Resource.create({SERVICE_NAME: "somaagent01"})
 
     provider = TracerProvider(resource=resource)

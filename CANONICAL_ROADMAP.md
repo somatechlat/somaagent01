@@ -159,56 +159,24 @@ Redis as broker/backend; Gateway enqueues; Celery workers process queues (`deleg
 
 ---
 
-# Celery Integration Gaps & Actions (2025-11-21 update)
-The following consolidates the historical Celery design notes and the latest gap analysis. It is additive to the Celery-only guide above and drives the remaining work.
 
-## Current Gaps
-1. Worker package stub only; full worker code and task modules missing.  
-2. Core tasks absent (`build_context`, `evaluate_policy`, `store_interaction`, `feedback_loop`, `rebuild_index`, `publish_metrics`, `a2a_chat_task`).  
-3. Broker/result config incomplete in compose; Redis service not wired for Celery.  
-4. FastAPI routes to dispatch Celery tasks missing/incomplete.  
-5. Prometheus task metrics exporter not implemented.  
-6. Error-handling patterns (retries/backoff/circuit breaker) not coded.  
-7. Deployment artifacts missing (Celery worker Dockerfile, Helm values, CI scripts).  
-8. Tests missing (unit/integration/e2e with compose).  
-9. Note: if Celery is deprecated later, archive stubs and remove from codebase.
-
-## Required Actions (keep Celery)
-- Create Celery app factory in `services/celery_worker/` with broker/backend from `src.core.config`; remove any legacy shims.  
-- Implement the core tasks listed above with idempotency, retries, backoff, pybreaker around external calls, and Prometheus counters/histograms.  
-- Add `celeryconfig`/settings plus compose services for Redis, Celery worker, beat, Flower; align Helm values and CI.  
-- Add FastAPI router (`/api/celery/*`) to enqueue tasks via `apply_async` and expose `GET /v1/runs/{task_id}` using `AsyncResult`.  
-- Add dead-letter handling (Redis key/queue) and metrics exporter (port 9510).  
-- Write tests: eager mode unit tests for tasks, integration via compose (gateway↔redis↔worker↔prometheus), and CI “celery inspect ping”.  
-- Document deprecation path: if Celery is to be removed, delete stubs and update CLEANUP notes instead of leaving dead code.
-
-## If Celery is to be removed
-- Remove stubs and compose/Helm entries; reflect in cleanup docs; keep this section as historical context only.
-
----
-
-# Celery Integration Knowledge Sync (2025-11-21)
-Mirror of the standalone Celery doc you shared; kept here to avoid divergent plans.
+# Celery Integration Reference (2025-11-21 update)
+This section now mirrors the Celery-only topology in the codebase so the roadmap reflects the current implementation.
 
 ## Snapshot
-- Celery 5.4.0 + Redis (broker/backend); Canvas (chain/group/chord) as the orchestration pattern.
-- Core tasks: `build_context`, `evaluate_policy`, `store_interaction`, `feedback_loop`, `rebuild_index`, `publish_metrics`, `a2a_chat_task`.
-- FastAPI dispatch: endpoints in `python/api/message.py` enqueue via `apply_async`; `/api/celery/*` router returns task IDs and status.
-- Observability: Prometheus exporter on port 9510 for duration/success/failure/latency/policy/index metrics.
-- Deployment: Celery worker image + Helm values (`celeryWorker`, `redis`, `fastapi`, TLS, API-key auth, KEDA autoscaling).
+- Celery 5.4.0 + Redis (broker/result backend) configured through `services/celery_worker/__init__.py` and `src.core.config`.
+- Core tasks (`build_context`, `evaluate_policy`, `store_interaction`, `feedback_loop`, `rebuild_index`, `publish_metrics`, `a2a_chat_task`) live in `services/celery_worker/tasks.py` and carry Prometheus `Counter`/`Histogram` metrics.
+- FastAPI dispatch uses `services/gateway/routers/celery_api.py` to call `celery_app.send_task` and expose `/v1/celery/run` plus `/v1/celery/runs/{task_id}`.
+- Observability is provided by the `prometheus_client` registry embedded in the task module and by `python/observability/event_publisher.py` for SomaBrain events.
+- Deployment: Docker Compose runs `fasta2a-gateway`, `fasta2a-worker`, and `fasta2a-flower` with Redis; the metrics ports shown in the compose file (9420/9421) match the live topology.
 
 ## What’s already in the codebase
-- Celery app factory present in `services/celery_worker/__init__.py` pulling broker/backend from `src.core.config`.
-- Task module scaffold in `services/celery_worker/tasks.py`.
-- Celery API router mounted in Gateway.
-- Redis + FastA2A Celery worker/Flower services build and run via compose; full stack rebuilt successfully.
+- Celery app factory in `services/celery_worker/__init__.py` uses centralized config to resolve broker/backend URLs and queue routing.
+- Task implementations with Redis persistence, retry/backoff, and metrics live in `services/celery_worker/tasks.py`.
+- Redis-backed conversation helpers and status storage live in the Celery task module (`services/celery_worker/tasks.py`), while Somabrain event publishing is handled by `python/observability/event_publisher.py`.
+- The Gateway router `services/gateway/routers/celery_api.py` is mounted in the router tree (`services/gateway/routers/__init__.py`) and exposes the documented endpoints.
 
-## Remaining work to reach “shipping”
-1) Finish task implementations listed above (real logic, retries/backoff, pybreaker, idempotency, Prometheus metrics).  
-2) Add Celery Beat + schedule loader; migrate any cron to `beat_schedule`.  
-3) Add a general Celery worker service (not just FastA2A) wired to `src.core.config`, with metrics port exposed.  
-4) Implement DLQ/dead-letter handling (Redis) and surface via Gateway ops endpoints.  
-5) Ensure FastAPI dispatch covers all core tasks (`/api/celery/*`, `/v1/runs/{task_id}` via AsyncResult).  
-6) Tests: eager-mode unit tests; integration via compose (gateway↔redis↔worker↔prometheus); CI `celery inspect ping`.  
-7) Helm/K8s: add worker/redis values, secrets, TLS/API-key wiring, KEDA scaling.  
-8) Docs/cleanup: if Celery stays canonical, mark Temporal/Airflow/APScheduler removed; if Celery is later deprecated, delete stubs and update cleanup docs.
+## Reference items going forward
+1) Celery Beat schedules (if needed) can plug into the existing app factory and reuse `services/celery_worker/tasks.py`.
+2) Dead-letter handling may reuse the Redis task/conversation keys (`task:{task_id}`, `conversation:{session_id}`) without further brokers.
+3) Helm/CI artifacts should stay aligned with the compose topology above; this document now describes the canonical Celery-only deployment.

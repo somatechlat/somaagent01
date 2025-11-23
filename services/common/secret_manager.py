@@ -22,7 +22,6 @@ Why we need it
 from __future__ import annotations
 
 import base64
-import os
 from typing import Optional, List
 
 import redis.asyncio as redis
@@ -42,7 +41,7 @@ def _load_fernet_key() -> Fernet:
     the resulting key is invalid.
     """
     # Prefer direct environment variable (keeps working even if not modeled in cfg)
-    raw_key = os.getenv("SA01_CRYPTO_FERNET_KEY") or cfg.env("SA01_CRYPTO_FERNET_KEY")
+    raw_key = cfg.env("SA01_CRYPTO_FERNET_KEY")
     if not raw_key:
         raise RuntimeError(
             "SA01_CRYPTO_FERNET_KEY is required – provide a urlsafe base64 32‑byte key"
@@ -80,13 +79,9 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
-        import os
-
-        redis_url = (
-            os.getenv("SA01_REDIS_URL")
-            or os.getenv("REDIS_URL")
-            or cfg.env("SA01_REDIS_URL", cfg.env("REDIS_URL", "redis://localhost:6379/0"))
-        )
+        redis_url = cfg.env("SA01_REDIS_URL", cfg.settings().redis.url)
+        if not redis_url:
+            redis_url = cfg.env("REDIS_URL", cfg.settings().redis.url)
         self._redis = redis.from_url(redis_url, decode_responses=True)
         # Defer Fernet creation until first use. This allows the manager to be
         # instantiated in test environments where the encryption key may be

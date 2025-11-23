@@ -83,7 +83,19 @@ def env(name: str, default: Any = None) -> Any:
     if hasattr(cfg_obj, name.lower()):
         return getattr(cfg_obj, name.lower())
 
-    # Fallback to the caller supplied default.
+    # When the configuration model does not expose a field we fall back to
+    # reading the environment directly (retaining the original precedence).
+    value = os.getenv(name)
+    if value is not None:
+        return value
+    prefixed = f"SA01_{name}"
+    value = os.getenv(prefixed)
+    if value is not None:
+        return value
+    legacy = f"SOMA_{name}"
+    value = os.getenv(legacy)
+    if value is not None:
+        return value
     return default
 
 

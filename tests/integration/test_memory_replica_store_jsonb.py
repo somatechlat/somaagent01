@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from services.common.memory_replica_store import ensure_schema, MemoryReplicaStore
+from src.core.domain.memory.replica_store import ensure_schema, MemoryReplicaStore
 
 pytestmark = pytest.mark.integration
 

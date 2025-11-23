@@ -17,7 +17,7 @@ from typing import Any, Dict
 import pytest
 from fastapi.testclient import TestClient
 
-from services.common.memory_replica_store import MemoryReplicaStore
+from src.core.domain.memory.replica_store import MemoryReplicaStore
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.gateway.main import app
 

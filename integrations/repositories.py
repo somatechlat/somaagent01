@@ -15,8 +15,7 @@ from services.common.audit_store import AuditStore as _AuditStore, from_env as _
 from services.common.api_key_store import ApiKeyStore
 from services.common.dlq_store import DLQStore
 from services.common.export_job_store import ExportJobStore
-from services.common.llm_credentials_store import LlmCredentialsStore
-from services.common.memory_replica_store import MemoryReplicaStore
+from services.common.secret_manager import SecretManager
 from services.common.notifications_store import NotificationsStore
 from services.common.session_repository import PostgresSessionStore
 from services.common.ui_settings_store import UiSettingsStore
@@ -31,9 +30,8 @@ class RepositoryManager:
         self._api_key_store: Optional[ApiKeyStore] = None
         self._notifications_store: Optional[NotificationsStore] = None
         self._dlq_store: Optional[DLQStore] = None
-        self._replica_store: Optional[MemoryReplicaStore] = None
         self._export_job_store: Optional[ExportJobStore] = None
-        self._llm_credentials_store: Optional[LlmCredentialsStore] = None
+        self._llm_credentials_store: Optional[SecretManager] = None
         self._ui_settings_store: Optional[UiSettingsStore] = None
         self._session_store: Optional[PostgresSessionStore] = None
 
@@ -70,22 +68,16 @@ class RepositoryManager:
             self._dlq_store = DLQStore()
         return self._dlq_store
 
-    def get_replica_store(self) -> MemoryReplicaStore:
-        """Get singleton instance of MemoryReplicaStore."""
-        if self._replica_store is None:
-            self._replica_store = MemoryReplicaStore()
-        return self._replica_store
-
     def get_export_job_store(self) -> ExportJobStore:
         """Get singleton instance of ExportJobStore."""
         if self._export_job_store is None:
             self._export_job_store = ExportJobStore()
         return self._export_job_store
 
-    def get_llm_credentials_store(self) -> LlmCredentialsStore:
-        """Get singleton instance of LlmCredentialsStore."""
+    def get_llm_credentials_store(self) -> SecretManager:
+        """Get singleton instance of SecretManager for LLM credentials."""
         if self._llm_credentials_store is None:
-            self._llm_credentials_store = LlmCredentialsStore()
+            self._llm_credentials_store = SecretManager()
         return self._llm_credentials_store
 
     def get_ui_settings_store(self) -> UiSettingsStore:
@@ -149,7 +141,7 @@ def get_export_job_store() -> ExportJobStore:
     return get_repository_manager().get_export_job_store()
 
 
-def get_llm_credentials_store() -> LlmCredentialsStore:
+def get_llm_credentials_store() -> SecretManager:
     """Get singleton instance of LlmCredentialsStore."""
     return get_repository_manager().get_llm_credentials_store()
 
