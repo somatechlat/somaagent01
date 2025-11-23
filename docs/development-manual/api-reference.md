@@ -64,7 +64,6 @@ Send the first message with `session_id` omitted or null to create a session.
   "enqueued": true
 }
 ```
-
 ---
 
 ### Send Message
@@ -151,7 +150,6 @@ Delete a session and all associated data.
 ---
 
 ### Upload File(s)
-
 **POST** `/v1/uploads`
 
 Upload a file for use in conversations.
@@ -221,7 +219,6 @@ List all sessions for the authenticated user.
 Read-only endpoints used by the UI memory dashboard:
 
 - **GET** `/v1/memories` — list/search
-- **GET** `/v1/memories/subdirs` — available subdirectories
 - **GET** `/v1/memories/current-subdir` — current browsing context
 - **DELETE** `/v1/memories/{id}` — delete memory (policy-gated)
 - **PATCH** `/v1/memories/{id}` — update memory metadata/content (policy-gated)
@@ -245,7 +242,6 @@ Related endpoints:
 
 - **GET** `/v1/ui/settings/sections` — load the full Settings modal schema
 - **POST** `/v1/ui/settings/sections` — single writer: persist agent/model settings and any `api_key_*` secrets (encrypted)
-- **GET** `/v1/ui/settings/credentials` — status map of stored provider secrets (`present` + `updated_at`)
 - **POST** `/v1/llm/test` — validate active model profile and provider reachability
 
 ## Streaming (SSE)

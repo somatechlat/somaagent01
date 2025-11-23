@@ -320,7 +320,7 @@ class ConversationWorker:
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         router_url = cfg.env("ROUTER_URL") or cfg.settings().extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
-        self.deployment_mode = cfg.env("SOMA_AGENT_MODE", cfg.settings().deployment_mode).upper()
+        self.deployment_mode = cfg.env("SA01_DEPLOYMENT_MODE", cfg.settings().deployment_mode).upper()
         self.preprocessor = ConversationPreprocessor()
         self.escalation_enabled = cfg.env("ESCALATION_ENABLED", "true").lower() in {
             "1",
@@ -698,7 +698,7 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SA01_SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -899,7 +899,7 @@ class ConversationWorker:
                     **dict(metadata or {}),
                     "source": "ingest",
                     "agent_profile_id": (metadata or {}).get("agent_profile_id"),
-                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                    "universe_id": (metadata or {}).get("universe_id") or cfg.env("SA01_SOMA_NAMESPACE"),
                 },
             }
             payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -1844,7 +1844,7 @@ class ConversationWorker:
                     "metadata": {
                         **dict(enriched_metadata),
                         "agent_profile_id": enriched_metadata.get("agent_profile_id"),
-                        "universe_id": enriched_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                        "universe_id": enriched_metadata.get("universe_id") or cfg.env("SA01_SOMA_NAMESPACE"),
                     },
                 }
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -2468,7 +2468,7 @@ class ConversationWorker:
                     "metadata": {
                         **dict(response_metadata),
                         "agent_profile_id": response_metadata.get("agent_profile_id"),
-                        "universe_id": response_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                        "universe_id": response_metadata.get("universe_id") or cfg.env("SA01_SOMA_NAMESPACE"),
                     },
                 }
                 payload["idempotency_key"] = generate_for_memory_payload(payload)

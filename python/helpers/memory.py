@@ -21,7 +21,7 @@ from weakref import WeakKeyDictionary
 
 # faiss needs to be patched for python 3.12 on arm - production compatibility patch
 # Import faiss optionally to avoid crashing the UI when faiss is not installed in the
-# container. Many dev setups use remote memory (SOMA_ENABLED) and don't require
+# container. Many dev setups use remote memory (SA01_SOMA_ENABLED) and don't require
 # local FAISS. We set FAISS_AVAILABLE=False when the module is missing and provide
 # a helpful error at the point local index initialization is attempted.
 try:
@@ -67,7 +67,7 @@ except Exception:  # pragma: no cover - optional dependency in minimal images
         """Very small fallback evaluator for expressions like: area == 'main'.
 
         This avoids a hard dependency on `simpleeval` for environments that only
-        use remote SomaBrain memory (SOMA_ENABLED=true). It is not a general
+        use remote SomaBrain memory (SA01_SOMA_ENABLED=true). It is not a general
         expression evaluator.
         """
         try:
@@ -108,9 +108,9 @@ def _env_flag(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-SOMA_ENABLED = _env_flag("SOMA_ENABLED", True)
-SOMA_CACHE_INCLUDE_WM = _env_flag("SOMA_CACHE_INCLUDE_WM", False)
-SOMA_CACHE_WM_LIMIT = int(os.environ.get("SOMA_CACHE_WM_LIMIT", "128"))
+SA01_SOMA_ENABLED = _env_flag("SA01_SOMA_ENABLED", True)
+SA01_SOMA_CACHE_INCLUDE_WM = _env_flag("SA01_SOMA_CACHE_INCLUDE_WM", False)
+SA01_SOMA_CACHE_WM_LIMIT = int(os.environ.get("SA01_SOMA_CACHE_WM_LIMIT", "128"))
 
 
 class MemoryArea(Enum):
@@ -160,7 +160,7 @@ class Memory:
 
     @staticmethod
     async def get(agent: Agent):
-        if SOMA_ENABLED:
+        if SA01_SOMA_ENABLED:
             memory_subdir = agent.config.memory_subdir or "default"
             if memory_subdir not in Memory._remote_instances:
                 Memory._remote_instances[memory_subdir] = SomaMemory(
@@ -200,7 +200,7 @@ class Memory:
         log_item: LogItem | None = None,
         preload_knowledge: bool = True,
     ):
-        if SOMA_ENABLED:
+        if SA01_SOMA_ENABLED:
             if memory_subdir not in Memory._remote_instances:
                 Memory._remote_instances[memory_subdir] = SomaMemory(
                     agent=None,
@@ -229,7 +229,7 @@ class Memory:
 
     @staticmethod
     async def reload(agent: Agent):
-        if SOMA_ENABLED:
+        if SA01_SOMA_ENABLED:
             memory_subdir = agent.config.memory_subdir or "default"
             if memory_subdir in Memory._remote_instances:
                 await Memory._remote_instances[memory_subdir].refresh()
@@ -281,7 +281,7 @@ class Memory:
         if LC_CacheBackedEmbeddings is None:
             raise RuntimeError(
                 "LangChain CacheBackedEmbeddings not available. Install compatible langchain packages "
-                "or set SOMA_ENABLED=true to use remote SomaBrain memory."
+                "or set SA01_SOMA_ENABLED=true to use remote SomaBrain memory."
             )
         embedder = LC_CacheBackedEmbeddings.from_bytes_store(  # type: ignore
             embeddings_model, store, namespace=embeddings_model_id
@@ -326,7 +326,7 @@ class Memory:
             if not FAISS_AVAILABLE:
                 raise RuntimeError(
                     "Local FAISS library is not installed in the container. "
-                    "Install faiss for local vector DB support, or set SOMA_ENABLED=true "
+                    "Install faiss for local vector DB support, or set SA01_SOMA_ENABLED=true "
                     "to use remote SomaBrain memory instead."
                 )
 
@@ -700,8 +700,8 @@ class _SomaDocStore:
         async with self._get_lock():
             try:
                 data = await self._client.migrate_export(
-                    include_wm=SOMA_CACHE_INCLUDE_WM,
-                    wm_limit=SOMA_CACHE_WM_LIMIT,
+                    include_wm=SA01_SOMA_CACHE_INCLUDE_WM,
+                    wm_limit=SA01_SOMA_CACHE_WM_LIMIT,
                 )
                 memories = data.get("memories", []) if isinstance(data, Mapping) else []
                 self._cache = self._parse_memories(memories)
