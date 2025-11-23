@@ -15,8 +15,9 @@ import asyncpg
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
 
-from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
+
 LOGGER = logging.getLogger(__name__)
 
 

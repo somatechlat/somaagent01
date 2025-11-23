@@ -9,20 +9,21 @@ from __future__ import annotations
 import uvicorn
 from fastapi import FastAPI
 
-# Central utilities
-from services.common.publisher import DurablePublisher
-from services.common.session_repository import RedisSessionCache
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.admin_settings import ADMIN_SETTINGS
-from src.core.config import cfg
-from services.common.outbox_repository import OutboxStore
-# Backward‑compatible import for the SomaBrain client used by tests and legacy code.
-from python.integrations.somabrain_client import SomaBrainClient
 # Export a helper to obtain the session store (used by the gateway endpoints).
 from integrations.repositories import get_session_store as _get_session_store
 
+# Backward‑compatible import for the SomaBrain client used by tests and legacy code.
+from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.outbox_repository import OutboxStore
+
+# Central utilities
+from services.common.publisher import DurablePublisher
+from services.common.session_repository import RedisSessionCache
+
 # Routers
 from services.gateway.routers import build_router
+from src.core.config import cfg
 
 app = FastAPI(title="SomaAgent Gateway")
 app.include_router(build_router())
@@ -30,8 +31,9 @@ app.include_router(build_router())
 # ---------------------------------------------------------------------------
 # Public API models
 # ---------------------------------------------------------------------------
-from pydantic import BaseModel, Field
 from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class SessionSummary(BaseModel):
@@ -106,9 +108,10 @@ def get_session_cache() -> RedisSessionCache:
 # ---------------------------------------------------------------------------
 # Endpoint implementations (message, quick action, uploads)
 # ---------------------------------------------------------------------------
-from fastapi import Request, HTTPException, UploadFile, File, Depends, Body
-from typing import List, Any
 import uuid
+from typing import Any, List
+
+from fastapi import Body, Depends, File, HTTPException, Request, UploadFile
 
 
 async def _extract_metadata(request: Request, payload: dict) -> dict:

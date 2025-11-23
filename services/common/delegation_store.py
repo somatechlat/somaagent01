@@ -6,7 +6,9 @@ import json
 from typing import Any, Optional
 
 import asyncpg
+
 from src.core.config import cfg
+
 
 class DelegationStore:
     def __init__(self, dsn: Optional[str] = None) -> None:

@@ -19,13 +19,13 @@ from prometheus_client import (
 from pydantic import BaseModel
 from starlette.responses import Response
 
+# Legacy settings removed – use central config façade instead.
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
-# Legacy settings removed – use central config façade instead.
-from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 from src.core.config import cfg
 

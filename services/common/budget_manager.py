@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from services.common.admin_settings import ADMIN_SETTINGS
 from dataclasses import dataclass
 from typing import Optional
 
 import redis.asyncio as redis
 
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tenant_config import TenantConfig
 from src.core.config import cfg
 

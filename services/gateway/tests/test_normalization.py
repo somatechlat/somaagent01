@@ -1,4 +1,3 @@
-import pytest
 from services.gateway.main import _normalize_llm_base_url
 
 

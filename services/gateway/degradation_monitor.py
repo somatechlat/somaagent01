@@ -4,14 +4,14 @@ Production-ready degradation detection and management system.
 """
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Any
-import logging
+from typing import Dict, List, Optional
 
-from services.gateway.circuit_breakers import CircuitBreaker, CircuitState
 from observability.metrics import metrics_collector
+from services.gateway.circuit_breakers import CircuitBreaker, CircuitState
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +213,6 @@ class DegradationMonitor:
         """Check database health specifically."""
         try:
             # Simple database connectivity check
-            import asyncpg
             
             # Check actual DB connection
             # For now, we'll simulate a healthy database
@@ -231,7 +230,6 @@ class DegradationMonitor:
         """Check Kafka health specifically."""
         try:
             # Simple Kafka connectivity check
-            from aiokafka import AIOKafkaProducer
             
             # Check actual Kafka connection
             component.healthy = True
@@ -247,7 +245,6 @@ class DegradationMonitor:
     async def _check_redis_health(self, component: ComponentHealth) -> None:
         """Check Redis health specifically."""
         try:
-            import redis.asyncio as redis
             
             # Check actual Redis connection
             component.healthy = True

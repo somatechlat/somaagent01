@@ -22,12 +22,13 @@ Why we need it
 from __future__ import annotations
 
 import base64
-from typing import Optional, List
+from typing import List, Optional
 
 import redis.asyncio as redis
 from cryptography.fernet import Fernet, InvalidToken
 
 from src.core.config import cfg
+
 
 # ---------------------------------------------------------------------------
 # Helper – validate / normalise the Fernet key supplied via env

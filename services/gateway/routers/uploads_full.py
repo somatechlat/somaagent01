@@ -3,31 +3,20 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import time
-import uuid
-import secrets
-import os
-import tempfile
-from typing import List, Any, Annotated
+from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Form
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
-from services.common.attachments_store import AttachmentsStore
-from services.common.publisher import DurablePublisher
-from services.common.telemetry_store import TelemetryStore
 from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from services.common.attachments_store import AttachmentsStore
 from services.common.authorization import authorize_request
-from services.common.publisher import DurablePublisher
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.memory_write_outbox import MemoryWriteOutbox
-from services.common.idempotency import generate_for_memory_payload
-from services.common import masking
-from services.common.tracing import setup_tracing
-from services.common.router_client import get_router_client
-import logging
-from src.core.config import cfg, flag
+from services.common.publisher import DurablePublisher
+from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 
 router = APIRouter(prefix="/v1/uploads", tags=["uploads"])
 

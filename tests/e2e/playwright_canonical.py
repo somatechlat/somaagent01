@@ -10,7 +10,7 @@ import json
 import pytest
 from playwright.async_api import async_playwright
 
-from services.common import env
+from src.core.config import cfg
 
 
 class TestCanonicalBackendE2E:
@@ -19,12 +19,12 @@ class TestCanonicalBackendE2E:
     @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for testing."""
-        return env.get("SA01_GATEWAY_BASE_URL", "http://localhost:21016") or "http://localhost:21016"
+        return cfg.env("SA01_GATEWAY_BASE_URL", "http://localhost:21016") or "http://localhost:21016"
 
     @pytest.fixture(scope="session")
     def mode(self):
         """Test mode: headless for CI, headed for debugging."""
-        return env.get("PLAYWRIGHT_MODE", "headless") or "headless"
+        return cfg.env("PLAYWRIGHT_MODE", "headless") or "headless"
 
     @pytest.fixture
     async def page(self, mode):

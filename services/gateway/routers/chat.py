@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, validator
-import asyncpg
 
-from services.common.slm_client import SLMClient, ChatMessage
-from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.ui_settings_store import UiSettingsStore
 from services.common.secret_manager import SecretManager
+from services.common.slm_client import ChatMessage, SLMClient
+from services.common.ui_settings_store import UiSettingsStore
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 

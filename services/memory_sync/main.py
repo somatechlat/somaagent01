@@ -7,30 +7,27 @@ publishes memory.wal on success to keep the replica in sync.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
-from typing import Optional, Any, Mapping, Sequence
-import json
+from typing import Any, Mapping, Sequence
 
-import httpx
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.publisher import DurablePublisher
-from services.common.outbox_repository import OutboxStore, ensure_schema as ensure_outbox_schema
-from services.common.memory_write_outbox import (
-    MemoryWriteOutbox,
-    ensure_schema as ensure_mw_schema,
-)
-# New imports for degradation handling
-from services.common.redis_client import get_all_events, delete_event
-from services.gateway.circuit_breakers import circuit_breakers
 from python.integrations.soma_client import SomaClient, SomaClientError
-from services.common.tracing import setup_tracing
-from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
-from python.integrations.soma_client import SomaClient, SomaClientError
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.memory_write_outbox import (
+    ensure_schema as ensure_mw_schema,
+    MemoryWriteOutbox,
+)
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.publisher import DurablePublisher
 
+# New imports for degradation handling
+from services.common.tracing import setup_tracing
+from services.gateway.circuit_breakers import circuit_breakers
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 

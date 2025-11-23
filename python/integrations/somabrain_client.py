@@ -14,13 +14,12 @@ from typing import Any, Dict, List
 
 import httpx
 
-from src.core.config import cfg
-
 from python.integrations.soma_client import (
     SomaClient,
     SomaClientError,
     SomaMemoryRecord,
 )
+from src.core.config import cfg
 
 
 class SomaBrainClient(SomaClient):

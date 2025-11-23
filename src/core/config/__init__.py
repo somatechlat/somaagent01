@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
+
 def _load_file_config() -> Dict[str, Any]:
     """Placeholder for future file‑based configuration loading.
 
@@ -163,21 +164,21 @@ VIBE CODING RULES COMPLIANT:
 - NO BACKUPS: No duplicate configuration systems
 """
 
-from .models import (
-    Config,
-    ServiceConfig,
-    DatabaseConfig,
-    KafkaConfig,
-    RedisConfig,
-    ExternalServiceConfig,
-    AuthConfig,
-)
 from .loader import (
     ConfigLoader,
     EnvironmentMapping,
     get_config_loader,
-    reload_config,
     load_config as _load_config,
+    reload_config,
+)
+from .models import (
+    AuthConfig,
+    Config,
+    DatabaseConfig,
+    ExternalServiceConfig,
+    KafkaConfig,
+    RedisConfig,
+    ServiceConfig,
 )
 
 # Expose the ``load_config`` function at the package level.  This replaces the
@@ -190,25 +191,25 @@ load_config = _load_config
 # The ``otlp_endpoint`` attribute is now accessed via ``cfg.settings().external.otlp_endpoint``.
 # All callers have been updated accordingly.
 from .registry import (
+    config_context,
     ConfigRegistry,
     ConfigSubscription,
-    get_config_registry,
-    initialize_config,
+    get_auth_config,
     get_config,
+    get_config_registry,
+    get_config_summary,
+    get_database_config,
+    get_external_config,
+    get_extra_config,
+    get_feature_flag,
+    get_kafka_config,
+    get_redis_config,
+    get_service_config,
+    initialize_config,
     refresh_config,
     subscribe_to_config,
     unsubscribe_from_config,
-    get_service_config,
-    get_database_config,
-    get_kafka_config,
-    get_redis_config,
-    get_external_config,
-    get_auth_config,
-    get_feature_flag,
-    get_extra_config,
-    config_context,
     validate_config,
-    get_config_summary,
 )
 
 __all__ = [

@@ -9,6 +9,7 @@ import httpx
 
 from src.core.config import cfg
 
+
 @dataclass
 class RouteDecision:
     model: str

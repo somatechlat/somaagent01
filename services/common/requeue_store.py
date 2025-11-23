@@ -6,10 +6,10 @@ import json
 import os
 from typing import Any, Optional
 
+import redis.asyncio as redis
+
 from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
-
-import redis.asyncio as redis
 
 
 class RequeueStore:

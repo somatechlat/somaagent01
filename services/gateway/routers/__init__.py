@@ -5,22 +5,22 @@ from fastapi import APIRouter
 
 # Core/public routers
 from services.gateway.routers import (
-    health,
-    ops_status,
+    attachments,
     chat,
+    health,
     llm,
     llm_credentials,
-    sessions,
-    sessions_events,
-    uploads,
-    attachments,
-    sse,
-    websocket,
-    root_ui,
-    ui_static,
-    ui_settings_sections,
     # New notifications API used by the UI toast/notification system
     notifications,
+    ops_status,
+    root_ui,
+    sessions,
+    sessions_events,
+    sse,
+    ui_settings_sections,
+    ui_static,
+    uploads,
+    websocket,
 )
 
 

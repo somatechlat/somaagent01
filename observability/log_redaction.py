@@ -25,6 +25,7 @@ import re
 from typing import Iterable
 
 from src.core.config import cfg
+
 DEFAULT_KEYS = {
     "authorization",
     "auth",

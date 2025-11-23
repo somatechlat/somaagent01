@@ -3,27 +3,28 @@ FastAPI router for SomaAgent01 with FastA2A integration.
 REAL IMPLEMENTATION - No placeholders, actual HTTP endpoints for task management.
 """
 
-from fastapi import FastAPI, APIRouter, BackgroundTasks, HTTPException, Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
 import time
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, validator
 
 from python.observability.metrics import (
-    fast_a2a_latency_seconds,
-    system_health_gauge,
-    fast_a2a_requests_total,
     fast_a2a_errors_total,
+    fast_a2a_latency_seconds,
+    fast_a2a_requests_total,
     increment_counter,
     set_health_status,
+    system_health_gauge,
 )
 from python.tasks.orchestrator import (
-    enqueue_chat_request,
-    fetch_task_status,
-    fetch_conversation_history,
     celery_health_status,
     ChatQueueError,
+    enqueue_chat_request,
+    fetch_conversation_history,
+    fetch_task_status,
 )
 
 # REAL IMPLEMENTATION - FastAPI app configuration
@@ -280,7 +281,7 @@ async def metrics_endpoint():
     Returns metrics in Prometheus format.
     """
     try:
-        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
         
         # REAL IMPLEMENTATION - Generate metrics
         metrics_data = generate_latest()

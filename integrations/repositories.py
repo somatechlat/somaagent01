@@ -9,14 +9,15 @@ from __future__ import annotations
 
 from typing import Optional
 
+from services.common.api_key_store import ApiKeyStore
+
 # Import all store classes from canonical locations
 from services.common.attachments_store import AttachmentsStore
 from services.common.audit_store import AuditStore as _AuditStore, from_env as _audit_store_from_env
-from services.common.api_key_store import ApiKeyStore
 from services.common.dlq_store import DLQStore
 from services.common.export_job_store import ExportJobStore
-from services.common.secret_manager import SecretManager
 from services.common.notifications_store import NotificationsStore
+from services.common.secret_manager import SecretManager
 from services.common.session_repository import PostgresSessionStore
 from services.common.ui_settings_store import UiSettingsStore
 

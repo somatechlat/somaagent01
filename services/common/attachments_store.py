@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Any, AsyncIterator
+from typing import Optional
 
 import asyncpg
 

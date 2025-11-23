@@ -11,7 +11,8 @@ from typing import Any, Dict, List
 
 import httpx
 
-from services.common import env
+from src.core.config import cfg
+
 
 # Base URL – can be overridden via env var for testing / staging.
 def _get_capsule_registry_url() -> str:
@@ -23,7 +24,7 @@ def _get_capsule_registry_url() -> str:
     when the variable is absent.  Tests that need to hit a real registry mock
     the HTTP client, so this fallback is never used in practice.
     """
-    url = env.get("CAPSULE_REGISTRY_URL")
+    url = cfg.env("CAPSULE_REGISTRY_URL")
     if not url:
         # Default placeholder for test environments.
         return "http://localhost:8000"

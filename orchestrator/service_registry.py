@@ -7,10 +7,9 @@ critical flags. This enables deterministic service startup and shutdown.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from .config import CentralizedConfig
 

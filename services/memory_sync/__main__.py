@@ -5,9 +5,11 @@ This allows the orchestrator to start the memory sync service as a subprocess.
 
 import asyncio
 import logging
+
 import uvicorn
 
 from orchestrator.config import CentralizedConfig
+
 from .service import MemorySyncService
 
 # Configure logging

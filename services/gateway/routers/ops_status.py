@@ -5,13 +5,12 @@ import time
 
 import httpx
 from fastapi import APIRouter, HTTPException
-from src.core.config import cfg
 
-import asyncio
-from services.gateway.degradation_monitor import degradation_monitor
-from services.gateway.circuit_breakers import CircuitBreakerHealth
-from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.memory_write_outbox import MemoryWriteOutbox
+from services.gateway.circuit_breakers import CircuitBreakerHealth
+from services.gateway.degradation_monitor import degradation_monitor
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1", tags=["ops"])
 
@@ -55,6 +54,7 @@ async def circuit_status():
 async def metrics_system():
     """Return basic system metrics expected by the Web UI."""
     import shutil
+
     import psutil
 
     cpu_percent = 0.0

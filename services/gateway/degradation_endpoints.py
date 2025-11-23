@@ -3,16 +3,14 @@ Degradation Mode Endpoints for SomaAgent01 - Real resilience endpoints.
 Production-ready HTTP endpoints for degradation monitoring and management.
 """
 
-import asyncio
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException
 
-from services.gateway.degradation_monitor import degradation_monitor, DegradationStatus
-from services.gateway.circuit_breakers import CircuitBreakerRegistry
 from observability.metrics import metrics_collector
+from services.gateway.circuit_breakers import CircuitBreakerRegistry
+from services.gateway.degradation_monitor import degradation_monitor, DegradationStatus
 
 router = APIRouter(prefix="/degradation", tags=["degradation"])
 

@@ -13,17 +13,16 @@ The test assumes the Docker‑compose stack (Redis, Kafka, Somabrain) is running
 """
 
 import asyncio
-import json
 import uuid
 
 import pytest
-from src.core.config import cfg
 
 from services.common.degraded_persist import persist_event
-from services.memory_sync.degraded_worker import DegradedSyncWorker
-from services.common.redis_client import get_all_events, delete_event
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
+from services.common.redis_client import get_all_events
+from services.memory_sync.degraded_worker import DegradedSyncWorker
+from src.core.config import cfg
 
 
 @pytest.mark.asyncio

@@ -22,6 +22,7 @@ _enable_ai = feature_ai_env not in ("none", "false", "0")
 import litellm
 import openai
 from litellm import acompletion, completion, embedding
+
 litellm_exceptions = getattr(litellm, "exceptions", None)
 
 # Browser‑use is optional for the test environment.  The original code raised

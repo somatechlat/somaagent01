@@ -9,8 +9,8 @@ from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Dict
 
-import pybreaker
 import asyncpg
+import pybreaker
 
 from observability.metrics import metrics_collector
 from src.core.config import cfg

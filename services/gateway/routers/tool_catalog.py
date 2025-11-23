@@ -1,10 +1,10 @@
 """Tool catalog endpoints extracted from gateway monolith."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from services.common.tool_catalog import ToolCatalogStore, ToolCatalogEntry
+from services.common.tool_catalog import ToolCatalogEntry, ToolCatalogStore
 
 router = APIRouter(prefix="/v1/tool-catalog", tags=["tools"])
 CATALOG = ToolCatalogStore()

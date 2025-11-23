@@ -19,6 +19,7 @@ async def health() -> dict[str, object]:
     settings_ready = True
     try:
         import asyncpg
+
         from services.common.admin_settings import ADMIN_SETTINGS
 
         async def _check():

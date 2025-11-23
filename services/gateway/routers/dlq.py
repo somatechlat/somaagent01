@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.dlq_store import DLQStore, DLQMessage, ensure_schema
+from services.common.dlq_store import DLQStore, ensure_schema
 
 router = APIRouter(prefix="/v1/admin/dlq", tags=["admin"])
 STORE = DLQStore()

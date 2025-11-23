@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Protocol
 
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from observability.metrics import ContextBuilderMetrics
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 LOGGER = logging.getLogger(__name__)
 

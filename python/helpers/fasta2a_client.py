@@ -1,17 +1,17 @@
-import uuid
 import time
+import uuid
 from typing import Any, Dict, List, Optional
 
 from python.helpers.print_style import PrintStyle
 from python.observability.metrics import (
-    fast_a2a_requests_total,
-    fast_a2a_latency_seconds,
     fast_a2a_errors_total,
-    MetricsTimer,
+    fast_a2a_latency_seconds,
+    fast_a2a_requests_total,
     increment_counter,
-    set_health_status
+    MetricsTimer,
+    set_health_status,
 )
-from services.common import env
+from src.core.config import cfg
 
 try:
     import httpx  # type: ignore
@@ -49,7 +49,7 @@ class AgentConnection:
         self.timeout = timeout
         # Auth headers
         if token is None:
-            token = env.get("A2A_TOKEN")
+            token = cfg.env("A2A_TOKEN")
         headers = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"

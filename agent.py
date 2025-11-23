@@ -2228,7 +2228,7 @@ class Agent:
             
             result = await self.soma_client._request("POST", "/neuromodulators", json=neuromod_payload)
             self.data["neuromodulators"] = neuromod_payload
-            PrintStyle(font_color="green", padding=False).print(f"Set neuromodulator state in SomaBrain")
+            PrintStyle(font_color="green", padding=False).print("Set neuromodulator state in SomaBrain")
             return True
         except SomaClientError as e:
             PrintStyle(font_color="red", padding=False).print(f"Failed to set neuromodulators: {e}")

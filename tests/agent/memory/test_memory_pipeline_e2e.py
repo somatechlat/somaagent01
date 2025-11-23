@@ -9,8 +9,11 @@ from testcontainers.kafka import KafkaContainer
 from testcontainers.postgres import PostgresContainer
 
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
-from src.core.domain.memory.replica_store import MemoryReplicaStore, ensure_schema as ensure_replica_schema
 from services.memory_replicator.main import MemoryReplicator
+from src.core.domain.memory.replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
 
 
 @pytest.mark.asyncio

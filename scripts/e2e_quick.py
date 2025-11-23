@@ -12,7 +12,6 @@ Defaults to http://127.0.0.1:21016
 
 import asyncio
 import json
-import os
 import sys
 from typing import Optional
 

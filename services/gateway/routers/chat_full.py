@@ -5,8 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 
 from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
-from src.core.config import cfg
+from services.common.session_repository import (
+    ensure_schema as ensure_session_schema,
+    PostgresSessionStore,
+    RedisSessionCache,
+)
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 

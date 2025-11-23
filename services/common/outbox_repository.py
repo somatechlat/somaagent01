@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 import asyncpg
 from prometheus_client import Counter, Histogram
+
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -271,4 +272,3 @@ async def ensure_schema(store: OutboxStore) -> None:
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
         LOGGER.info("Ensured message_outbox table exists")
-from services.common import env

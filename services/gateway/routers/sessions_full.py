@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import List, Any
+from typing import Any, List
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.session_repository import (
+    ensure_schema as ensure_session_schema,
+    PostgresSessionStore,
+)
 
 router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
 

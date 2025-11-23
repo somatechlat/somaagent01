@@ -3,23 +3,22 @@ Metrics Endpoints for SomaAgent01 - Real observability endpoints.
 Production-ready HTTP endpoints for comprehensive metrics and monitoring.
 """
 
-import asyncio
 import time
-from typing import Dict, Any, Optional, List
-from prometheus_client import generate_latest, REGISTRY, CONTENT_TYPE_LATEST
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest, REGISTRY
 
 from observability.metrics import (
-    metrics_collector, 
     get_metrics_snapshot,
+    metrics_collector,
     record_memory_persistence,
+    record_policy_decision,
     record_wal_lag,
-    record_policy_decision
 )
-from services.gateway.degradation_monitor import degradation_monitor
 from services.gateway.circuit_breakers import CircuitBreakerRegistry
+from services.gateway.degradation_monitor import degradation_monitor
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -143,7 +142,7 @@ async def get_system_metrics() -> Dict[str, Any]:
         }
         
         # Update Prometheus gauges
-        from observability.metrics import system_memory_usage, system_cpu_usage
+        from observability.metrics import system_cpu_usage, system_memory_usage
         system_memory_usage.set(memory.used)
         system_cpu_usage.set(cpu_percent)
         
