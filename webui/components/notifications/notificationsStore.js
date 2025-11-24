@@ -22,18 +22,30 @@ function emitUpdate() {
   emit("notifications.updated", { count: state.list.length, unread: state.unreadCount });
 }
 
+// All notification endpoints require a ``tenant_id`` query parameter. The UI
+// operates in a single‑tenant mode for now, so we default to the public tenant.
+const DEFAULT_TENANT_ID = "public";
+
 async function fetchList({ limit = 50, unreadOnly = false } = {}) {
+  // Load notifications from the backend. The FastAPI endpoint returns a plain
+  // array of notification objects (no wrapper field). We include the required
+  // ``tenant_id`` query parameter and forward pagination/filters.
   state.loading = true;
   state.error = null;
   try {
     const params = new URLSearchParams();
     params.set("limit", String(limit));
+    params.set("tenant_id", DEFAULT_TENANT_ID);
     if (unreadOnly) params.set("unread_only", "true");
     const resp = await fetch(`/v1/ui/notifications?${params.toString()}`, { credentials: "include" });
     if (!resp.ok) throw new Error(`list failed ${resp.status}`);
     const data = await resp.json();
-    state.list = data.notifications || [];
-    if (state.list.length) state.lastCursor = { created_at: state.list[state.list.length-1].created_at, id: state.list[state.list.length-1].id };
+    // The API returns the array directly.
+    state.list = Array.isArray(data) ? data : [];
+    if (state.list.length) {
+      const last = state.list[state.list.length - 1];
+      state.lastCursor = { created_at: last.created_at, id: last.id };
+    }
     recalcUnread();
     emitUpdate();
   } catch (e) {
@@ -43,16 +55,30 @@ async function fetchList({ limit = 50, unreadOnly = false } = {}) {
   }
 }
 
+// Creation also requires ``tenant_id``. Use the default public tenant.
 async function create({ type, title, body, severity = "info", ttl_seconds, meta }) {
-  const resp = await fetch("/v1/ui/notifications", {
+  // The FastAPI endpoint expects ``tenant_id`` in the request body (the UI
+  // previously supplied it as a query parameter, which caused a 422 error).
+  // We therefore include it explicitly in the JSON payload.
+  const payload = {
+    tenant_id: DEFAULT_TENANT_ID,
+    type,
+    title,
+    body,
+    severity,
+    ttl_seconds,
+    meta,
+  };
+  const resp = await fetch(`/v1/ui/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, title, body, severity, ttl_seconds, meta }),
+    body: JSON.stringify(payload),
     credentials: "include",
   });
   if (!resp.ok) throw new Error(`create failed ${resp.status}`);
   const data = await resp.json();
-  const item = data.notification;
+  // The API returns the created notification object directly (no wrapper).
+  const item = data;
   if (item) {
     state.list.unshift(item);
     recalcUnread();
@@ -62,7 +88,7 @@ async function create({ type, title, body, severity = "info", ttl_seconds, meta 
 }
 
 async function markRead(id) {
-  const resp = await fetch(`/v1/ui/notifications/${encodeURIComponent(id)}/read`, { method: "POST", credentials: "include" });
+  const resp = await fetch(`/v1/ui/notifications/${encodeURIComponent(id)}/read?tenant_id=${DEFAULT_TENANT_ID}`, { method: "POST", credentials: "include" });
   if (!resp.ok) throw new Error(`markRead failed ${resp.status}`);
   const idx = state.list.findIndex(n => n.id === id);
   if (idx >= 0) {
@@ -72,8 +98,11 @@ async function markRead(id) {
   }
 }
 
+// The DELETE endpoint for clearing notifications is defined at
+// ``/v1/ui/notifications`` (no trailing ``/clear``). Adjust the request
+// accordingly to avoid 405 Method Not Allowed errors.
 async function clearAll() {
-  const resp = await fetch(`/v1/ui/notifications/clear`, { method: "DELETE", credentials: "include" });
+  const resp = await fetch(`/v1/ui/notifications?tenant_id=${DEFAULT_TENANT_ID}`, { method: "DELETE", credentials: "include" });
   if (!resp.ok) throw new Error(`clear failed ${resp.status}`);
   state.list = [];
   recalcUnread();

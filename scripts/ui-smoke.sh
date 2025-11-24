@@ -6,7 +6,7 @@ set -euo pipefail
 # Example: ./scripts/ui-smoke.sh http://127.0.0.1:21016/
 
 # UI is now served at the root URL without a trailing '/ui'.
-BASE_URL="${1:-${WEB_UI_BASE_URL:-http://localhost:${GATEWAY_PORT:-21016}}"
+BASE_URL="${1:-${WEB_UI_BASE_URL:-http://localhost:${GATEWAY_PORT:-21016}/}}"
 
 echo "Running UI smoke against ${BASE_URL} ..."
 WEB_UI_BASE_URL="${BASE_URL}" python3 tests/ui_smoke_http.py

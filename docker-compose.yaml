@@ -302,7 +302,6 @@ services:
       start_period: 15s
     networks:
       - default
-      - somaagent01_dev
 
   outbox-sync:
     <<: *agent-service

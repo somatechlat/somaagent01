@@ -57,7 +57,7 @@ Notes:
 
 ## UI access
 
-Local Gateway + UI: http://127.0.0.1:21016/ui
+Local Gateway + UI: http://127.0.0.1:21016/
 
 Note: External baseline capture servers and Playwright parity projects are not part of this repository.
 

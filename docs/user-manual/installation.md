@@ -24,7 +24,7 @@ make dev-up
 make health-wait
 
 # Access the UI
-open http://localhost:21016/ui
+open http://localhost:21016/
 ```
 
 ## Environment Setup
@@ -37,7 +37,7 @@ The Makefile auto-creates a minimal `.env`. For custom configuration:
 # Gateway
 GATEWAY_PORT=21016
 SA01_GATEWAY_BASE_URL=http://localhost:21016
-WEB_UI_BASE_URL=http://localhost:21016/ui
+WEB_UI_BASE_URL=http://localhost:21016/
 
 # Encryption key for LLM credentials (Fernet urlsafe base64)
 SA01_CRYPTO_FERNET_KEY=O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=
@@ -66,7 +66,7 @@ OPA_PORT=20009
 ### 2. Configure LLM Provider (via UI)
 
 1. Start the stack: `make dev-up`
-2. Open UI: http://localhost:21016/ui
+2. Open UI: http://localhost:21016/
 3. Navigate to **Settings → Model**
 4. Set **Provider**: `groq` (or `openai`, `openrouter`, etc.)
 5. Set **Model**: `llama-3.1-8b-instant`
@@ -152,7 +152,7 @@ make test-e2e
 
 | Service | Port | URL |
 |---------|------|-----|
-| Gateway + UI | 21016 | http://localhost:21016/ui |
+| Gateway + UI | 21016 | http://localhost:21016/ |
 | Kafka (external) | 21000 | localhost:21000 |
 | Redis | 20001 | localhost:20001 |
 | PostgreSQL | 20002 | localhost:20002 |

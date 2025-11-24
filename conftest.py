@@ -56,6 +56,14 @@ try:
     from python.helpers.dotenv import load_dotenv as _a0_load_dotenv
 
     _a0_load_dotenv()
+    # Remove legacy SA01_GATEWAY_PORT environment variable if present to avoid
+    # it overriding the correct GATEWAY_PORT (21016). This ensures the config
+    # loader and tests see the intended port.
+    if os.getenv("SA01_GATEWAY_PORT"):
+        os.unsetenv("SA01_GATEWAY_PORT")
+        # Also delete from os.environ mapping for the current process.
+        os.environ.pop("SA01_GATEWAY_PORT", None)
+        print("DEBUG: removed SA01_GATEWAY_PORT env var")
     # Optional: reflect that OPENAI_API_KEY is visible to pytest skip markers
     if env_snapshot.get("OPENAI_API_KEY"):
         print("DEBUG .env loaded: OPENAI_API_KEY detected")

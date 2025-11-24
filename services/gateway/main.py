@@ -14,6 +14,7 @@ from integrations.repositories import get_session_store as _get_session_store
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
+from services.common.session_repository import ensure_schema as ensure_session_schema
 
 # Central utilities
 from services.common.publisher import DurablePublisher
@@ -188,7 +189,7 @@ async def enqueue_message(
         "trace_context": payload.get("trace_context", {}),
     }
     # Publish to the memory WAL topic – the exact topic name is configurable.
-    wal_topic = cfg.env("MEMORY_WAL_TOPIC")
+    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
     # ---------------------------------------------------------------------
     # Persist the event using the shared degradation‑aware helper. This
     # guarantees that the raw event is stored in Kafka *and* in the Redis
@@ -205,6 +206,14 @@ async def enqueue_message(
         wal_topic=wal_topic,
         tenant=meta.get("tenant") or meta.get("universe_id"),
     )
+
+    # Write-through to session store so UI history/chat list are populated
+    try:
+        await ensure_session_schema(_store)
+        await _store.append_event(session_id, event)
+    except Exception:
+        # Do not fail the request if write-through falls back; WAL already has the event
+        pass
 
     # ---------------------------------------------------------------------
     # No synthetic assistant response is emitted here. The real assistant
@@ -253,7 +262,7 @@ async def enqueue_quick_action(
         "version": "sa01-v1",
         "trace_context": payload.get("trace_context", {}),
     }
-    wal_topic = cfg.env("MEMORY_WAL_TOPIC")
+    wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
     await publisher.publish(
         wal_topic,
         event,
@@ -261,6 +270,11 @@ async def enqueue_quick_action(
         session_id=session_id,
         tenant=meta.get("tenant") or meta.get("universe_id"),
     )
+    try:
+        await ensure_session_schema(_store)
+        await _store.append_event(session_id, event)
+    except Exception:
+        pass
     return {"session_id": session_id, "event_id": event_id}
 
 

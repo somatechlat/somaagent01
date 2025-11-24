@@ -51,19 +51,26 @@ def _get_redis() -> aioredis.Redis:
     if not raw_url:
         raw_url = cfg.env("REDIS_URL", "redis://localhost:20001/0")
 
+    # When running inside a Docker container, connecting to the host-mapped
+    # port (localhost:20001) will always fail. Prefer the service hostname in
+    # that environment, regardless of any host-level overrides.
+    try:
+        import os
+        if os.path.exists("/.dockerenv"):
+            raw_url = cfg.env("SA01_REDIS_URL", "redis://redis:6379/0")
+    except Exception:
+        pass
+
     # When the URL points to the Docker‑internal hostname ``redis`` it is not
     # reachable from the host where the integration test runs. Detect this
     # pattern and rewrite it to use ``localhost`` with the host‑mapped port
     # (default 20001, overridable via ``REDIS_PORT``).
-    if raw_url.startswith("redis://redis"):
-        # When running tests on the host we cannot reach the Docker‑internal
-        # hostname ``redis``.  The host‑side port is exposed via the
-        # ``REDIS_PORT`` env var (default 20001).  We therefore replace the
-        # hostname with ``localhost`` and *force* the host‑mapped port, ignoring
-        # the internal ``6379`` port that may be present in the original URL.
+    # Only rewrite the redis hostname when explicitly requested (e.g. host-side tests).
+    # In containers, rewriting breaks connectivity (localhost:20001 is host, not the redis service).
+    if raw_url.startswith("redis://redis") and cfg.env("REDIS_REWRITE_TO_LOCALHOST", "").lower() == "true":
         from urllib.parse import urlparse, urlunparse
-        parsed = urlparse(raw_url)
 
+        parsed = urlparse(raw_url)
         host_port = cfg.env("REDIS_PORT", "20001")
         new_netloc = f"localhost:{host_port}"
         redis_url = urlunparse(

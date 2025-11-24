@@ -85,11 +85,23 @@ def env(name: str, default: Any = None) -> Any:
         return getattr(cfg_obj, name.lower())
 
     # When the configuration model does not expose a field we fall back to
-    # reading only the canonical SA01_ environment variables.
+    # environment variables. For the gateway port we must prefer the plain
+    # ``GATEWAY_PORT`` over the legacy ``SA01_GATEWAY_PORT`` to avoid stale
+    # defaults. For other keys we keep the historic precedence (SA01_ first,
+    # then plain).
+    if name == "GATEWAY_PORT":
+        plain = os.getenv(name)
+        if plain is not None:
+            return plain
+    # Legacy fallback: read the canonical SA01_ prefixed variable.
     prefixed = f"SA01_{name}"
     value = os.getenv(prefixed)
     if value is not None:
         return value
+    # Finally, plain env var for non‑gateway keys.
+    plain = os.getenv(name)
+    if plain is not None:
+        return plain
     return default
 
 

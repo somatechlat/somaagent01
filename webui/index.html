@@ -96,6 +96,10 @@
         };
     </script>
 
+    <!-- Load Alpine.js collapse plugin before the core so the directive registers early -->
+    <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
     <!-- Load module scripts first -->
     <script type="module" src="js/scheduler.js"></script>
     <script type="module" src="js/history.js"></script>
@@ -104,11 +108,9 @@
 
     <script type="module" src="/index.js"></script>
 
-    <!-- Load Alpine.js core first -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <!-- Then load Alpine.js collapse plugin -->
-    <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
-    <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
+    <!-- The Alpine core and collapse plugin are already loaded above; the following duplicate includes are commented out to avoid re‑initialisation warnings -->
+    <!-- <script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js\"></script> -->
+    <!-- <script defer src=\"vendor/alpine/alpine.collapse.min.js\"></script> -->
     <script type="module" src="js/initFw.js"></script>
 
     <script src="vendor/ace-min/ace.js"></script>

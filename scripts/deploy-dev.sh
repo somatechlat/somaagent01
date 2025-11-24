@@ -61,7 +61,7 @@ timeout 30 bash -c "until docker logs somaAgent01_fasta2a-worker | grep -q 'read
 echo ""
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "========================"
-echo "🌐 Gateway & UI:     http://localhost:21016/ui"
+echo "🌐 Gateway & UI:     http://localhost:21016/"
 echo "🔗 FastA2A API:     http://localhost:21017"
 echo "📊 Flower Monitor:  http://localhost:21018"
 echo "📈 Prometheus:      http://localhost:21016/metrics"

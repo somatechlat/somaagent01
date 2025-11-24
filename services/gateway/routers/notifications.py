@@ -30,7 +30,19 @@ router = APIRouter(prefix="/v1/ui/notifications", tags=["notifications"])
 
 
 class NotificationCreate(BaseModel):
-    tenant_id: str = Field(..., description="Tenant identifier")
+    """Payload for creating a notification.
+
+    The UI historically sent the ``tenant_id`` as a query parameter rather than
+    in the JSON body.  To remain compatible with the existing front‑end while
+    keeping the model strict, ``tenant_id`` is now optional and defaults to the
+    public tenant.  The router will also accept an explicit ``tenant_id`` query
+    argument and prefer it over the payload value when provided.
+    """
+
+    tenant_id: Optional[str] = Field(
+        None,
+        description="Tenant identifier – defaults to public if omitted",
+    )
     user_id: Optional[str] = Field(None, description="Optional user identifier")
     type: str = Field(..., description="Notification type/category")
     title: str = Field(..., description="Short title shown in the toast")
@@ -85,13 +97,23 @@ async def list_notifications(
 
 
 @router.post("", status_code=201)
-async def create_notification(payload: NotificationCreate):
-    """Create a new notification and return the stored representation."""
+async def create_notification(
+    payload: NotificationCreate,
+    tenant_id: Optional[str] = Query(None, description="Tenant identifier (overrides payload)")
+):
+    """Create a new notification and return the stored representation.
+
+    ``tenant_id`` can be supplied either in the JSON payload or as a query
+    parameter (the UI uses the latter).  When both are present the query value
+    wins, matching the UI's expectations.
+    """
     store = NotificationsStore()
     await store.ensure_schema()
+    # Resolve the effective tenant – fall back to the default "public" if none
+    effective_tenant = tenant_id or payload.tenant_id or "public"
     try:
         created = await store.create(
-            tenant_id=payload.tenant_id,
+            tenant_id=effective_tenant,
             user_id=payload.user_id,
             ntype=payload.type,
             title=payload.title,
