@@ -28,12 +28,39 @@ class ProviderManager:
 
     def _load_providers(self):
         """Loads provider configurations from the YAML file and normalises them."""
-        try:
-            config_path = files.get_abs_path("conf/model_providers.yaml")
-            with open(config_path, "r", encoding="utf-8") as f:
-                raw_yaml = yaml.safe_load(f) or {}
-        except (FileNotFoundError, yaml.YAMLError):
-            raw_yaml = {}
+        # The original implementation loaded provider definitions from
+        # ``conf/model_providers.yaml``. That file has been removed per the
+        # request, so we no longer attempt to read it. Instead we initialise an
+        # empty configuration, which means the UI will show no provider options.
+        # Any downstream code that expects a list of providers will simply receive
+        # an empty list.
+        # Default provider definitions when no external configuration is present.
+        # This ensures the UI has a useful list of providers for model selection.
+        # The structure mirrors the original YAML format: a mapping of provider type
+        # (e.g., "chat", "embedding") to a list of provider dictionaries.
+        # Each provider dictionary must contain at least an "id" (used as the value)
+        # and a human‑readable "name" (used as the label).
+        raw_yaml = {}
+        if not raw_yaml:
+            raw_yaml = {
+                "chat": [
+                    {"id": "openai", "name": "OpenAI"},
+                    {"id": "groq", "name": "Groq"},
+                    {"id": "anthropic", "name": "Anthropic"},
+                    {"id": "huggingface", "name": "HuggingFace"},
+                    {"id": "mistralai", "name": "Mistral AI"},
+                    {"id": "cohere", "name": "Cohere"},
+                    {"id": "deepinfra", "name": "DeepInfra"},
+                    {"id": "together", "name": "Together AI"},
+                    {"id": "local", "name": "Local (self‑hosted)"},
+                ],
+                "embedding": [
+                    {"id": "huggingface", "name": "HuggingFace"},
+                    {"id": "openai", "name": "OpenAI"},
+                    {"id": "cohere", "name": "Cohere"},
+                    {"id": "mistralai", "name": "Mistral AI"},
+                ],
+            }
 
         # ------------------------------------------------------------
         # Normalise the YAML so that internally we always work with a

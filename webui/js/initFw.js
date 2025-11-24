@@ -5,8 +5,9 @@ import * as _components from "./components.js";
 // initialize required elements
 await initializer.initialize();
 
-// import alpine library
-await import("../vendor/alpine/alpine.min.js");
+// NOTE: Alpine core is already loaded via CDN in index.html.
+// Importing it again can overwrite the existing Alpine instance and lose plugins such as `collapse`.
+// Therefore we intentionally **do not** re-import the Alpine library here.
 
 // add x-destroy directive to alpine
 Alpine.directive(

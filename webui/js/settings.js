@@ -1,13 +1,14 @@
+// Simple toast helper that logs errors to the console.
+// The original implementation called `window.toastFetchError`, which was later
+// assigned to this same function, causing infinite recursion and a stack overflow.
+// We replace it with a straightforward console error logger.
 const safeToast = (text, error) => {
-  if (typeof window !== 'undefined' && typeof window.toastFetchError === 'function') {
-    window.toastFetchError(text, error);
-  } else {
     console.error(text, error);
-  }
 };
 
+// Preserve backward compatibility: expose `toastFetchError` if not already defined.
 if (typeof window !== 'undefined' && typeof window.toastFetchError !== 'function') {
-  window.toastFetchError = safeToast;
+    window.toastFetchError = safeToast;
 }
 
 const settingsModalProxy = {
@@ -93,6 +94,33 @@ const settingsModalProxy = {
 
         //get settings from backend
         try {
+            // Use cached settings if available to avoid duplicate GETs
+            if (window._settingsCache) {
+                const cached = window._settingsCache;
+                const payload = cached?.sections || cached?.settings?.sections || [];
+                const configTitle = cached?.title || "Settings";
+                const settings = {
+                    "title": configTitle,
+                    "buttons": [
+                        { "id": "save", "title": "Save", "classes": "btn btn-ok" },
+                        { "id": "cancel", "title": "Cancel", "type": "secondary", "classes": "btn btn-cancel" }
+                    ],
+                    "sections": payload
+                };
+                if (modalAD) {
+                    modalAD.isOpen = true;
+                    modalAD.settings = settings;
+                }
+                // Continue to set active tab after opening modal
+                setTimeout(() => {
+                    const savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
+                    if (modalAD) modalAD.activeTab = savedTab;
+                    if (store) store.activeTab = savedTab;
+                    localStorage.setItem('settingsActiveTab', savedTab);
+                }, 5);
+                // Return a resolved promise for consistency
+                return new Promise(resolve => { this.resolvePromise = resolve; });
+            }
             const resp = await fetchApi('/v1/ui/settings/sections');
             if (!resp.ok) {
                 throw new Error(await resp.text());
@@ -320,6 +348,12 @@ globalThis.settingsModalProxy = settingsModalProxy;
 //     Alpine.store('settingsModal', initSettingsModal());
 // });
 
+// The original implementation duplicated the Settings modal logic using Alpine.data('settingsModal')
+// while the UI actually relies on the global `settingsModalProxy` object (x-data="settingsModalProxy").
+// This caused conflicting state, duplicate fetching, and race conditions that broke the modal UI.
+// The redundant Alpine component has been removed. The modal now uses only `settingsModalProxy`
+// which handles opening, tab switching, fetching, and saving settings.
+// The root store initialization remains unchanged and is sufficient for tab persistence.
 document.addEventListener('alpine:init', function () {
     // Initialize the root store first to ensure it exists before components try to access it
     Alpine.store('root', {
@@ -329,247 +363,6 @@ document.addEventListener('alpine:init', function () {
         toggleSettings() {
             this.isOpen = !this.isOpen;
         }
-    });
-
-    // Then initialize other Alpine components
-    Alpine.data('settingsModal', function () {
-        return {
-            settingsData: {},
-            filteredSections: [],
-            activeTab: 'agent',
-            isLoading: true,
-
-            async init() {
-                // Initialize with the store value
-                this.activeTab = Alpine.store('root').activeTab || 'agent';
-
-                // Watch store tab changes
-                this.$watch('$store.root.activeTab', (newTab) => {
-                    if (typeof newTab !== 'undefined') {
-                        this.activeTab = newTab;
-                        localStorage.setItem('settingsActiveTab', newTab);
-                        this.updateFilteredSections();
-                    }
-                });
-
-                // Load settings
-                await this.fetchSettings();
-                this.updateFilteredSections();
-            },
-
-            switchTab(tab) {
-                // Update our component state
-                this.activeTab = tab;
-
-                // Update the store safely
-                const store = Alpine.store('root');
-                if (store) {
-                    store.activeTab = tab;
-                }
-            },
-
-            async fetchSettings() {
-                try {
-                    this.isLoading = true;
-                    const response = await fetchApi('/v1/ui/settings/sections');
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data && data.sections) {
-                            this.settingsData = { sections: data.sections };
-                        } else {
-                            console.error('Invalid settings data format');
-                        }
-                    } else {
-                        console.error('Failed to fetch settings:', response.statusText);
-                    }
-                } catch (error) {
-                    console.error('Error fetching settings:', error);
-                } finally {
-                    this.isLoading = false;
-                }
-            },
-
-            updateFilteredSections() {
-                // Filter sections based on active tab
-                if (this.activeTab === 'agent') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'agent'
-                    ) || [];
-                } else if (this.activeTab === 'external') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'external'
-                    ) || [];
-                } else if (this.activeTab === 'developer') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'developer'
-                    ) || [];
-                } else if (this.activeTab === 'mcp') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'mcp'
-                    ) || [];
-                } else if (this.activeTab === 'backup') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'backup'
-                    ) || [];
-                } else {
-                    // For any other tab, show nothing since those tabs have custom UI
-                    this.filteredSections = [];
-                }
-            },
-
-            async saveSettings() {
-                try {
-                    // First validate
-                    for (const section of this.settingsData.sections) {
-                        for (const field of section.fields) {
-                            if (field.required && (!field.value || field.value.trim() === '')) {
-                                showToast(`${field.title} in ${section.title} is required`, 'error');
-                                return;
-                            }
-                        }
-                    }
-
-                    // Prepare payload matching the backend schema (sections array)
-                    const payload = { sections: this.settingsData.sections };
-
-                    // Send request to the correct endpoint. The backend will split
-                    // secret vs non‑secret fields and persist them.
-                    const response = await fetchApi('/v1/ui/settings/sections', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) {
-                        showToast('Settings saved successfully', 'success');
-                        // Refresh settings
-                        await this.fetchSettings();
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to save settings');
-                    }
-                } catch (error) {
-                    console.error('Error saving settings:', error);
-                    showToast('Failed to save settings: ' + error.message, 'error');
-                }
-            },
-
-            // Handle special button field actions
-            handleFieldButton(field) {
-                if (field.action === 'test_connection') {
-                    this.testConnection(field);
-                } else if (field.action === 'reveal_token') {
-                    this.revealToken(field);
-                } else if (field.action === 'generate_token') {
-                    this.generateToken(field);
-                } else {
-                    console.warn('Unknown button action:', field.action);
-                }
-            },
-
-            // Test API connection
-            async testConnection(field) {
-                try {
-                    field.testResult = 'Testing...';
-                    field.testStatus = 'loading';
-
-                    // Find the API key field
-                    let apiKey = '';
-                    for (const section of this.settingsData.sections) {
-                        for (const f of section.fields) {
-                            if (f.id === field.target) {
-                                apiKey = f.value;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!apiKey) {
-                        throw new Error('API key is required');
-                    }
-
-                    // Send test request
-                    const response = await fetchApi('/api/test_connection', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            service: field.service,
-                            api_key: apiKey
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok && data.success) {
-                        field.testResult = 'Connection successful!';
-                        field.testStatus = 'success';
-                    } else {
-                        throw new Error(data.error || 'Connection failed');
-                    }
-                } catch (error) {
-                    console.error('Connection test failed:', error);
-                    field.testResult = `Failed: ${error.message}`;
-                    field.testStatus = 'error';
-                }
-            },
-
-            // Reveal token temporarily
-            revealToken(field) {
-                // Find target field
-                for (const section of this.settingsData.sections) {
-                    for (const f of section.fields) {
-                        if (f.id === field.target) {
-                            // Toggle field type
-                            f.type = f.type === 'password' ? 'text' : 'password';
-
-                            // Update button text
-                            field.value = f.type === 'password' ? 'Show' : 'Hide';
-
-                            break;
-                        }
-                    }
-                }
-            },
-
-            // Generate random token
-            generateToken(field) {
-                // Find target field
-                for (const section of this.settingsData.sections) {
-                    for (const f of section.fields) {
-                        if (f.id === field.target) {
-                            // Generate random token
-                            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                            let token = '';
-                            for (let i = 0; i < 32; i++) {
-                                token += chars.charAt(Math.floor(Math.random() * chars.length));
-                            }
-
-                            // Set field value
-                            f.value = token;
-                            break;
-                        }
-                    }
-                }
-            },
-
-            closeModal() {
-                // Stop scheduler polling before closing the modal
-                const schedulerElement = document.querySelector('[x-data="schedulerSettings"]');
-                if (schedulerElement) {
-                    const schedulerData = Alpine.$data(schedulerElement);
-                    if (schedulerData && typeof schedulerData.stopPolling === 'function') {
-                        console.log('Stopping scheduler polling on modal close');
-                        schedulerData.stopPolling();
-                    }
-                }
-
-                this.$store.root.isOpen = false;
-            }
-        };
     });
 });
 

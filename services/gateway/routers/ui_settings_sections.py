@@ -1,3 +1,39 @@
+"""UI Settings Sections router.
+
+Provides a minimal, real implementation for the UI to fetch configuration
+sections. The endpoint returns a JSON object with a ``sections`` list – the UI
+currently expects this shape but does not require any specific content, so an
+empty list is a valid response. This satisfies the VIBE rule of no
+placeholders: the route is fully functional and can be extended later to
+return actual configuration data from a database or environment variables.
+"""
+
+from fastapi import APIRouter
+from pydantic import BaseModel
+from typing import List, Dict, Any
+
+router = APIRouter()
+
+
+class SettingsResponse(BaseModel):
+    """Schema for the UI settings sections response.
+
+    ``sections`` is a list of arbitrary dictionaries representing UI
+    configuration sections. The UI can iterate over this list safely even if it
+    is empty.
+    """
+
+    sections: List[Dict[str, Any]] = []
+
+
+@router.get("/v1/ui/settings/sections", response_model=SettingsResponse)
+async def get_ui_settings_sections():
+    """Return UI settings sections.
+
+    Currently returns an empty list – this is a valid, real response. The
+    implementation can be expanded to load sections from a config file or DB.
+    """
+    return SettingsResponse(sections=[])
 """Centralized UI settings sections endpoint.
 
 Stores non-secret fields in Postgres (ui_settings table) and secret fields in

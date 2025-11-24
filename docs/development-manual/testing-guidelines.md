@@ -231,7 +231,7 @@ async def test_full_conversation_flow():
         page = await browser.new_page()
         
         # Open Web UI (served by Gateway)
-        await page.goto("http://localhost:21016/ui/")
+        await page.goto("http://localhost:21016/")
         
         # Send message
         await page.fill("#chat-input", "Hello, agent!")

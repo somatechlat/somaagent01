@@ -22,6 +22,7 @@ from services.gateway.routers import (
     uploads,
     websocket,
     weights,
+    tunnel,
 )
 
 
@@ -46,9 +47,23 @@ def build_router() -> APIRouter:
     router.include_router(ui_settings_sections.router)
     router.include_router(notifications.router)
     router.include_router(weights.router)
-    # Feature flags endpoint required by tests
-    from services.gateway.routers import features as _features_router
-    router.include_router(_features_router.router)
+    # Tunnel management endpoint used by the UI settings.
+    router.include_router(tunnel.router)
+    # Include scheduler router to serve task management endpoints
+    try:
+        from services.gateway.routers import scheduler as _scheduler_router
+        router.include_router(_scheduler_router.router)
+    except Exception as e:
+        # If the scheduler module fails to import, log the error but do not break the app.
+        import logging
+        logging.getLogger(__name__).warning("Scheduler router not loaded: %s", e)
+    # Feature flags endpoint (optional; skip if module absent)
+    try:
+        from services.gateway.routers import features as _features_router
+    except ImportError:
+        _features_router = None
+    if _features_router:
+        router.include_router(_features_router.router)
     # Static/UI catch-alls last so they do not shadow API prefixes
     router.include_router(root_ui.router)
     router.include_router(ui_static.router)

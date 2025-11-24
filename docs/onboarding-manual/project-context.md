@@ -45,7 +45,7 @@ SomaAgent01 is a production-grade agentic AI platform built on the Agent Zero fr
 │   Gateway (21016)   │
 │  - FastAPI          │
 │  - /v1/* endpoints  │
-│  - /ui static       │
+│  - / static         │
 └──────┬──────────────┘
        │ Kafka
 ┌──────▼──────────────┐

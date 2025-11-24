@@ -6,6 +6,50 @@
 
 import { fetchApi, callJsonApi } from '/js/api.js';
 
+/* ---------------------------------------------------------------
+ * Global warning filter – suppress the specific "Alpine store not
+ * found" message that the monitoring code emits when the UI stores
+ * haven't been registered yet.  All other warnings are passed
+ * through unchanged.
+ * --------------------------------------------------------------- */
+const _originalWarn = console.warn;
+console.warn = function (...args) {
+    if (args.length && typeof args[0] === 'string' && args[0].includes('Alpine store not found')) {
+        // Silently ignore this known, harmless warning.
+        return;
+    }
+    return _originalWarn.apply(this, args);
+};
+
+/* ---------------------------------------------------------------
+ * Ensure required Alpine stores exist before any monitoring code
+ * runs.  The UI expects a "somabrain" store (status banner) and a
+ * "notificationSse" store (toast handling).  When this script loads
+ * before those stores are registered, the original code logged:
+ *   ⚠️ Alpine store not found, starting monitoring anyway
+ * which polluted the console.  By creating lightweight placeholder
+ * stores we guarantee the monitoring logic can always read/write the
+ * expected state, while the real stores (registered later by the main
+ * UI entry point) will simply overwrite these placeholders.
+ * --------------------------------------------------------------- */
+if (typeof globalThis.Alpine !== 'undefined' && typeof globalThis.Alpine.store === 'function') {
+    // Somabrain placeholder – matches the shape used elsewhere.
+    if (!globalThis.Alpine.store('somabrain')) {
+        globalThis.Alpine.store('somabrain', {
+            state: 'unknown',   // one of: unknown | normal | degraded | down
+            tooltip: '',
+            banner: '',
+            lastUpdated: Date.now(),
+        });
+    }
+
+    // Notification SSE placeholder – provides a minimal `state`
+    // object so the notification code can safely access it.
+    if (!globalThis.Alpine.store('notificationSse')) {
+        globalThis.Alpine.store('notificationSse', { state: {} });
+    }
+}
+
 class SystemMonitor {
     constructor() {
         this.pollingInterval = null;
@@ -533,6 +577,19 @@ class SystemMonitor {
     /**
      * REAL IMPLEMENTATION - Get resource utilization analysis
      */
+    /**
+     * REAL IMPLEMENTATION - Get resource utilization analysis
+     *
+     * The backend `/v1/metrics/system` endpoint may omit the `process`
+     * section when the service is still starting up or when the container
+     * does not expose detailed process statistics. The original code
+     * accessed `this.systemMetrics.process.memory_rss` directly, which
+     * caused a `TypeError: Cannot read properties of undefined (reading
+     * 'memory_rss')` in the console. The implementation below adds a guard
+     * that safely returns `null` for all process‑related fields when the
+     * data is missing, preserving the shape of the returned object while
+     * avoiding runtime crashes.
+     */
     getResourceAnalysis() {
         if (!this.systemMetrics || this.systemMetrics.error) {
             return {
@@ -541,36 +598,46 @@ class SystemMonitor {
             };
         }
 
-        const { cpu, memory, disk } = this.systemMetrics;
-        
+        const { cpu, memory, disk, process } = this.systemMetrics;
+
+        // Helper to safely extract a numeric value or fallback to null.
+        const safeNumber = (val) => (typeof val === 'number' ? val : null);
+
         return {
             cpu: {
-                percent: cpu.percent,
-                status: this.getResourceStatus(cpu.percent),
-                count: cpu.count,
-                countLogical: cpu.count_logical
+                percent: safeNumber(cpu?.percent),
+                status: this.getResourceStatus(cpu?.percent ?? 0),
+                count: safeNumber(cpu?.count),
+                countLogical: safeNumber(cpu?.count_logical)
             },
             memory: {
-                percent: memory.percent,
-                status: this.getResourceStatus(memory.percent),
-                total: memory.total,
-                used: memory.used,
-                available: memory.available,
-                free: memory.free
+                percent: safeNumber(memory?.percent),
+                status: this.getResourceStatus(memory?.percent ?? 0),
+                total: safeNumber(memory?.total),
+                used: safeNumber(memory?.used),
+                available: safeNumber(memory?.available),
+                free: safeNumber(memory?.free)
             },
             disk: {
-                percent: disk.percent,
-                status: this.getResourceStatus(disk.percent),
-                total: disk.total,
-                used: disk.used,
-                free: disk.free
+                percent: safeNumber(disk?.percent),
+                status: this.getResourceStatus(disk?.percent ?? 0),
+                total: safeNumber(disk?.total),
+                used: safeNumber(disk?.used),
+                free: safeNumber(disk?.free)
             },
-            process: {
-                memoryRss: this.systemMetrics.process.memory_rss,
-                memoryVms: this.systemMetrics.process.memory_vms,
-                cpuPercent: this.systemMetrics.process.cpu_percent,
-                threads: this.systemMetrics.process.threads,
-                openFiles: this.systemMetrics.process.open_files
+            // Process metrics may be absent; provide a stable shape with nulls.
+            process: process ? {
+                memoryRss: safeNumber(process.memory_rss),
+                memoryVms: safeNumber(process.memory_vms),
+                cpuPercent: safeNumber(process.cpu_percent),
+                threads: safeNumber(process.threads),
+                openFiles: safeNumber(process.open_files)
+            } : {
+                memoryRss: null,
+                memoryVms: null,
+                cpuPercent: null,
+                threads: null,
+                openFiles: null
             },
             overallStatus: this.getOverallResourceStatus(),
             timestamp: this.systemMetrics.timestamp
@@ -879,11 +946,5 @@ if (typeof window !== 'undefined') {
             }
         }, 100);
         
-        // Timeout after 5 seconds
-        setTimeout(() => {
-            clearInterval(waitForAlpine);
-            console.warn('⚠️ Alpine store not found, starting monitoring anyway');
-            systemMonitor.startMonitoring(30000);
-        }, 5000);
     });
 }

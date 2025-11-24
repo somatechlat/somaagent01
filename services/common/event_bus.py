@@ -49,7 +49,18 @@ class KafkaSettings:
         raw_bootstrap = cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
         )
-        if raw_bootstrap.startswith("kafka:"):
+        # When running *inside* Docker, the internal hostname ``kafka:9092`` is
+        # correct. Rewriting it to localhost breaks connectivity from services.
+        # Detect containers via /.dockerenv and skip the rewrite there. On host
+        # (tests, Playwright), keep the localhost rewrite for reachability.
+        in_container = False
+        try:
+            import os
+            in_container = os.path.exists("/.dockerenv")
+        except Exception:
+            in_container = False
+
+        if raw_bootstrap.startswith("kafka:") and not in_container:
             host_port = cfg.env("KAFKA_PORT", "21000")
             bootstrap = f"localhost:{host_port}"
         else:
@@ -140,18 +151,19 @@ class KafkaEventBus:
         self,
         topic: str,
         group_id: str,
-        handler: Optional[Callable[[dict[str, Any]], asyncio.Future | Any]] = None,
-        stop_event: Optional[asyncio.Event] = None,
-    ) -> Any:
-        """Consume events from *topic*.
+        handler: Callable[[dict[str, Any]], asyncio.Future | Any] | None = None,
+        stop_event: asyncio.Event | None = None,
+    ) -> None:
+        """Consume events from *topic* and invoke *handler* for each payload.
 
-        If *handler* is provided, each decoded message is passed to it (the
-        original behaviour).  If *handler* is ``None`` the method returns an
-        asynchronous iterator yielding the raw ``dict`` payloads.  This small
-        convenience allows callers – such as the integration test – to simply
-        ``async for msg in bus.consume(...):`` without defining a dummy
-        handler.
+        Note: the earlier dual behaviour (returning an async iterator when
+        handler was None) produced an async generator, which cannot be awaited
+        and caused runtime errors in worker services. To keep semantics simple
+        and avoid hidden generators, a handler is now required. Callers that
+        need an iterator should use ``iterate_topic`` below.
         """
+        if handler is None:
+            raise ValueError("handler is required; use iterate_topic for iteration")
         settings = self.settings
         # NOTE: The integration test creates a **new consumer group** after the
         # worker has already published the enriched assistant event.  Using
@@ -203,11 +215,7 @@ class KafkaEventBus:
                             "messaging.consumer.group": group_id,
                         },
                     ):
-                        if handler is not None:
-                            await handler(data)
-                        else:
-                            # Yield the payload to the caller.
-                            yield data
+                        await handler(data)
                 await consumer.commit()
                 if stop_event and stop_event.is_set():
                     break

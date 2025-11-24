@@ -460,7 +460,7 @@ health-wait:
 
 ui-smoke:
 	@echo "Running UI smoke ..."
-	@WEB_UI_BASE_URL=$${WEB_UI_BASE_URL:-http://localhost:$${GATEWAY_PORT:-21016}/ui} ./scripts/ui-smoke.sh
+	@WEB_UI_BASE_URL=$${WEB_UI_BASE_URL:-http://localhost:$${GATEWAY_PORT:-21016}/} ./scripts/ui-smoke.sh
 
 test-e2e:
 	@echo "Running E2E tests ..."

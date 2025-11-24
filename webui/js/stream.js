@@ -1,6 +1,8 @@
 // Stream client: wraps EventSource and emits onto event-bus
 import { emit, on } from "/js/event-bus.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
+// Import fetchApi to reuse its header handling logic for building auth query parameters.
+import { fetchApi } from "/js/api.js";
 
 let sse = null;
 let currentSessionId = null;
@@ -45,7 +47,32 @@ export function start(sessionId) {
   currentSessionId = sessionId;
   close();
 
-  const url = `/v1/sessions/${encodeURIComponent(sessionId)}/events?stream=true`;
+  // Build SSE URL with authentication/tenant parameters. EventSource cannot set
+  // custom headers, so we append them as query parameters, mirroring the logic
+  // used by `fetchApi` for regular HTTP calls.
+  const url = (() => {
+    const base = `/v1/sessions/${encodeURIComponent(sessionId)}/events?stream=true`;
+    const headers = {};
+    try {
+      // Tenant header – fallback to "public".
+      const tenant = globalThis.localStorage && localStorage.getItem("tenant");
+      headers["X-Tenant-Id"] = (tenant && tenant.trim()) || "public";
+      // Persona header – fallback to "ui".
+      const persona = globalThis.localStorage && localStorage.getItem("persona");
+      headers["X-Persona-Id"] = (persona && persona.trim()) || "ui";
+      // JWT if available.
+      const jwt = globalThis.localStorage && localStorage.getItem("gateway_jwt");
+      if (jwt && jwt.startsWith("ey")) {
+        headers["Authorization"] = `Bearer ${jwt}`;
+      }
+    } catch (_) {
+      // Silently ignore storage errors – stream should still attempt.
+    }
+    const qp = Object.entries(headers)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join("&");
+    return qp ? `${base}&${qp}` : base;
+  })();
   try {
     sse = new EventSource(url);
   } catch (e) {

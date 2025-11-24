@@ -13,7 +13,7 @@ make health-wait
 
 ### 2. Open the UI
 
-Navigate to: http://localhost:21016/ui
+Navigate to: http://localhost:21016/
 
 ### 3. Configure LLM Provider
 

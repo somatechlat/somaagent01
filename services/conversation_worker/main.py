@@ -201,7 +201,8 @@ def ensure_metrics_server() -> None:
         LOGGER.warning("Metrics server disabled", extra={"port": metrics_port})
         _METRICS_SERVER_STARTED = True
         return
-    metrics_host = cfg.env("CONVERSATION_METRICS_HOST", cfg.settings().service.metrics_host)
+    # `service` model does not define metrics_host; fall back to service.host
+    metrics_host = cfg.env("CONVERSATION_METRICS_HOST", cfg.settings().service.host)
     start_http_server(metrics_port, addr=metrics_host)
     LOGGER.info(
         "Conversation worker metrics server started",
@@ -278,9 +279,14 @@ class ConversationWorker:
             sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
             sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
         )
+        inbound_topic = cfg.env(
+            "CONVERSATION_INBOUND",
+            cfg.env("SA01_MEMORY_WAL_TOPIC", cfg.env("MEMORY_WAL_TOPIC", "memory.wal")),
+        )
+        outbound_topic = cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound")
         self.settings = {
-            "inbound": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
-            "outbound": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            "inbound": inbound_topic,
+            "outbound": outbound_topic,
             "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
@@ -320,7 +326,11 @@ class ConversationWorker:
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         router_url = cfg.env("ROUTER_URL") or cfg.settings().extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
-        self.deployment_mode = cfg.env("SA01_DEPLOYMENT_MODE", cfg.settings().deployment_mode).upper()
+        self.deployment_mode = cfg.env("SA01_DEPLOYMENT_MODE", cfg.settings().get_deployment_mode()).upper()
+        # Deterministic degraded reply (non-stub, clearly labeled)
+        self._degraded_safe_reply = (
+            "Degraded mode: Somabrain is offline. I can still help using recent chat only."
+        )
         self.preprocessor = ConversationPreprocessor()
         self.escalation_enabled = cfg.env("ESCALATION_ENABLED", "true").lower() in {
             "1",
@@ -974,7 +984,7 @@ class ConversationWorker:
         session_id: str,
         persona_id: str | None,
         messages: List[ChatMessage],
-        slm_kwargs: Dict[str, Any],
+        llm_params: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
         role: str = "dialogue",
@@ -983,7 +993,7 @@ class ConversationWorker:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
-        model_label = (model_hint or slm_kwargs.get("model") or "unknown").strip()
+        model_label = (model_hint or llm_params.get("model") or "unknown").strip()
         start_time = time.perf_counter()
 
         def _finalize(text_value: str, usage_value: dict[str, int]) -> tuple[str, dict[str, int]]:
@@ -995,10 +1005,10 @@ class ConversationWorker:
         # Build overrides but omit empty strings (e.g. base_url="") while allowing 0/0.0
         ov: dict[str, Any] = {}
         for k, v in {
-            "model": slm_kwargs.get("model"),
-            "base_url": slm_kwargs.get("base_url"),
-            "temperature": slm_kwargs.get("temperature"),
-            "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+            "model": llm_params.get("model"),
+            "base_url": llm_params.get("base_url"),
+            "temperature": llm_params.get("temperature"),
+            "kwargs": llm_params.get("metadata") or llm_params.get("kwargs"),
         }.items():
             if v is None:
                 continue
@@ -1078,10 +1088,10 @@ class ConversationWorker:
                     url2 = f"{self._gateway_base}/v1/llm/invoke"
                     ov2: dict[str, Any] = {}
                     for k, v in {
-                        "model": slm_kwargs.get("model"),
-                        "base_url": slm_kwargs.get("base_url"),
-                        "temperature": slm_kwargs.get("temperature"),
-                        "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                        "model": llm_params.get("model"),
+                        "base_url": llm_params.get("base_url"),
+                        "temperature": llm_params.get("temperature"),
+                        "kwargs": llm_params.get("metadata") or llm_params.get("kwargs"),
                     }.items():
                         if v is None:
                             continue
@@ -1121,23 +1131,25 @@ class ConversationWorker:
         session_id: str,
         persona_id: str | None,
         messages: List[ChatMessage],
-        slm_kwargs: Dict[str, Any],
+        llm_params: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
         # Ensure model/base_url defaults are populated even if profiles/routing are absent.
-        slm_kwargs = dict(slm_kwargs or {})
-        if not slm_kwargs.get("model") or not slm_kwargs.get("base_url"):
+        llm_params = dict(llm_params or {})
+        if not llm_params.get("model") or not llm_params.get("base_url"):
             try:
                 central = await _load_llm_settings()
-                slm_kwargs.setdefault("model", central.get("model"))
-                slm_kwargs.setdefault("base_url", central.get("base_url"))
+                llm_params.setdefault("model", central.get("model"))
+                llm_params.setdefault("base_url", central.get("base_url"))
                 if central.get("temperature") is not None:
-                    slm_kwargs.setdefault("temperature", central.get("temperature"))
+                    llm_params.setdefault("temperature", central.get("temperature"))
             except Exception as exc:
-                raise RuntimeError(f"LLM settings unavailable: {exc}")
+                LOGGER.warning("LLM settings unavailable: %s", exc)
+                # Degraded but responsive fallback
+                return self._degraded_safe_reply, {"input_tokens": 0, "output_tokens": 0}
 
-        model_label_raw = slm_kwargs.get("model")
+        model_label_raw = llm_params.get("model")
         if not model_label_raw:
             raise RuntimeError("LLM model not configured")
         model_label = str(model_label_raw).strip() or "unknown"
@@ -1145,8 +1157,8 @@ class ConversationWorker:
             "Invoking LLM via gateway",
             extra={
                 "session_id": session_id,
-                "model": slm_kwargs.get("model"),
-                "base_url": slm_kwargs.get("base_url"),
+                "model": llm_params.get("model"),
+                "base_url": llm_params.get("base_url"),
             },
         )
         try:
@@ -1154,7 +1166,7 @@ class ConversationWorker:
                 session_id=session_id,
                 persona_id=persona_id,
                 messages=messages,
-                slm_kwargs=slm_kwargs,
+                llm_params=llm_params,
                 analysis_metadata=analysis_metadata,
                 base_metadata=base_metadata,
                 role="dialogue",
@@ -1170,10 +1182,10 @@ class ConversationWorker:
             # Build non-stream overrides similarly to streaming path (omit empty strings)
             ov: dict[str, Any] = {}
             for k, v in {
-                "model": slm_kwargs.get("model"),
-                "base_url": slm_kwargs.get("base_url"),
-                "temperature": slm_kwargs.get("temperature"),
-                "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+                "model": llm_params.get("model"),
+                "base_url": llm_params.get("base_url"),
+                "temperature": llm_params.get("temperature"),
+                "kwargs": llm_params.get("metadata") or llm_params.get("kwargs"),
             }.items():
                 if v is None:
                     continue
@@ -1381,7 +1393,7 @@ class ConversationWorker:
         session_id: str,
         persona_id: str | None,
         messages: List[ChatMessage],
-        slm_kwargs: Dict[str, Any],
+        llm_params: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
@@ -1389,21 +1401,21 @@ class ConversationWorker:
         # Ensure tool schemas are provided to the model
         tool_defs = self._tools_openai_schema()
         if tool_defs:
-            slm_kwargs = dict(slm_kwargs)
-            extra_kwargs = dict(slm_kwargs.get("kwargs") or slm_kwargs.get("metadata") or {})
+            llm_params = dict(llm_params)
+            extra_kwargs = dict(llm_params.get("kwargs") or llm_params.get("metadata") or {})
             extra_kwargs["tools"] = tool_defs
             extra_kwargs["tool_choice"] = "auto"
-            slm_kwargs["metadata"] = extra_kwargs
+            llm_params["metadata"] = extra_kwargs
 
         # Stream and detect tool calls
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
         # Build overrides and omit empty-string values (esp. base_url="")
         ov: dict[str, Any] = {}
         for k, v in {
-            "model": slm_kwargs.get("model"),
-            "base_url": slm_kwargs.get("base_url"),
-            "temperature": slm_kwargs.get("temperature"),
-            "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
+            "model": llm_params.get("model"),
+            "base_url": llm_params.get("base_url"),
+            "temperature": llm_params.get("temperature"),
+            "kwargs": llm_params.get("metadata") or llm_params.get("kwargs"),
         }.items():
             if v is None:
                 continue
@@ -1427,7 +1439,7 @@ class ConversationWorker:
         tc_args_acc: dict[int, dict[str, Any]] = {}
         tc_name_acc: dict[int, str] = {}
 
-        model_label = (slm_kwargs.get("model") or "unknown").strip()
+        model_label = (llm_params.get("model") or "unknown").strip()
         start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -1581,19 +1593,23 @@ class ConversationWorker:
                     )
 
             # After injecting tool results, ask the model for the final answer (non-stream)
-            return await self._generate_response(
-                session_id=session_id,
-                persona_id=persona_id,
-                messages=messages,
-                slm_kwargs=slm_kwargs,
-                analysis_metadata=analysis_metadata,
-                base_metadata=base_metadata,
-            )
+            try:
+                return await self._generate_response(
+                    session_id=session_id,
+                    persona_id=persona_id,
+                    messages=messages,
+                    llm_params=llm_params,
+                    analysis_metadata=analysis_metadata,
+                    base_metadata=base_metadata,
+                )
+            except Exception as exc:
+                LOGGER.error("LLM generation failed (degraded fallback): %s", exc)
+                return self._degraded_safe_reply, {"input_tokens": 0, "output_tokens": 0}
         else:
             text = "".join(buffer)
             if not text:
                 _record_llm_failure(model_label)
-                raise RuntimeError("Empty response from streaming Gateway/SLM")
+                return self._degraded_safe_reply, usage
             usage_norm = _normalize_usage(usage)
             _record_llm_success(
                 model_label,
@@ -1609,7 +1625,7 @@ class ConversationWorker:
         session_id: str,
         persona_id: str | None,
         messages: List[ChatMessage],
-        slm_kwargs: Dict[str, Any],
+        llm_params: Dict[str, Any],
     ) -> tuple[str, dict[str, int], float, str, str | None]:
         # Prepare overrides from centralized settings + provided kwargs
         overrides: Dict[str, Any] = {}
@@ -1624,13 +1640,13 @@ class ConversationWorker:
             )
         except Exception:
             pass
-        # Allow explicit slm_kwargs to override central
+        # Allow explicit llm_params to override central
         for k in ("model", "base_url", "temperature", "kwargs", "metadata"):
-            if k in slm_kwargs and slm_kwargs[k] is not None:
+            if k in llm_params and llm_params[k] is not None:
                 if k == "metadata" and overrides.get("kwargs") is None:
-                    overrides["kwargs"] = slm_kwargs[k]
+                    overrides["kwargs"] = llm_params[k]
                 elif k != "metadata":
-                    overrides[k] = slm_kwargs[k]
+                    overrides[k] = llm_params[k]
 
         url = f"{self._gateway_base}/v1/llm/invoke"
         body = {
@@ -1708,6 +1724,7 @@ class ConversationWorker:
             MESSAGE_LATENCY.labels(label).observe(duration)
 
         session_id = event.get("session_id")
+        persona_id = event.get("persona_id")
         
         # Extract tenant at the top level to ensure it's available throughout _handle_event
         try:
@@ -1770,6 +1787,7 @@ class ConversationWorker:
             session_metadata = dict(enriched_metadata)
 
             tenant = enriched_metadata.get("tenant", "default")
+            # persona_id already captured at outer scope; keep for clarity
             persona_id = event.get("persona_id")
 
             # Always enforce conversation policy (fail-closed)
@@ -2052,6 +2070,21 @@ class ConversationWorker:
             "tags": []
         })
         
+        # Load centralized LLM settings up front
+        llm_params: dict[str, Any] = {}
+        try:
+            central = await _load_llm_settings()
+            llm_params.update(
+                {
+                    "model": central.get("model"),
+                    "base_url": central.get("base_url"),
+                    "temperature": central.get("temperature"),
+                }
+            )
+        except Exception as exc:
+            LOGGER.warning("LLM settings unavailable (preload): %s", exc)
+            llm_params = {}
+        
         summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict.get("tags") else "none"
         analysis_prompt = ChatMessage(
             role="system",
@@ -2064,6 +2097,41 @@ class ConversationWorker:
                 tags=summary_tags,
             ),
         )
+
+        # Hard guard: if LLM config is absent, emit a humanized degraded reply and return.
+        if not llm_params.get("model") or not llm_params.get("base_url"):
+            warn_meta = _compose_outbound_metadata(
+                {},
+                source="worker",
+                status="completed",
+                analysis=analysis_dict,
+                extra={"somabrain_state": "degraded", "somabrain_reason": "llm_config_missing"},
+            )
+            warn_event = {
+                "event_id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "persona_id": persona_id,
+                "role": "assistant",
+                "message": "LLM configuration is missing. Please set model, base URL, and API key in Settings → Model.",
+                "metadata": warn_meta,
+                "version": "sa01-v1",
+                "type": "assistant.final",
+            }
+            try:
+                validate_event(warn_event, "conversation_event")
+            except Exception:
+                LOGGER.warning("LLM config warning event failed validation; publishing anyway")
+            await self.store.append_event(session_id, {"type": "assistant", **warn_event})
+            await self.publisher.publish(
+                self.settings["outbound"],
+                warn_event,
+                dedupe_key=warn_event.get("event_id"),
+                session_id=session_id,
+                tenant=warn_meta.get("tenant"),
+            )
+            LOGGER.info("Published LLM config warning assistant event", extra={"session_id": session_id})
+            record_metrics("llm_config_missing", "slm")
+            return
 
         try:
             # Initialize session_metadata for context builder path
@@ -2100,18 +2168,34 @@ class ConversationWorker:
                 self._last_degraded_reason or session_metadata["somabrain_state"],
             )
 
-            slm_kwargs: dict[str, Any] = {}
-            try:
-                central = await _load_llm_settings()
-                slm_kwargs.update(
-                    {
-                        "model": central.get("model"),
-                        "base_url": central.get("base_url"),
-                        "temperature": central.get("temperature"),
-                    }
+            if not llm_params:
+                # No LLM settings; emit deterministic degraded reply and continue gracefully.
+                response_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "persona_id": persona_id,
+                    "role": "assistant",
+                    "message": self._degraded_safe_reply,
+                    "metadata": _compose_outbound_metadata(
+                        session_metadata,
+                        source="worker",
+                        status="completed",
+                        analysis=analysis_dict,
+                        extra={"somabrain_state": session_metadata.get("somabrain_state", "degraded")},
+                    ),
+                    "version": "sa01-v1",
+                    "type": "assistant.final",
+                }
+                validate_event(response_event, "conversation_event")
+                await self.store.append_event(session_id, {"type": "assistant", **response_event})
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    response_event,
+                    dedupe_key=response_event.get("event_id"),
+                    session_id=session_id,
+                    tenant=(response_event.get("metadata") or {}).get("tenant"),
                 )
-            except Exception as exc:
-                raise RuntimeError(f"LLM settings unavailable: {exc}")
+                return
 
             metadata_for_decision = dict(enriched_metadata)
             metadata_for_decision.pop("analysis", None)
@@ -2193,7 +2277,7 @@ class ConversationWorker:
             response_text = ""
             usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
             latency = 0.0
-            model_used = slm_kwargs.get("model") or "unknown"
+            model_used = llm_params.get("model") or "unknown"
             path = "slm"
             escalation_metadata: dict[str, Any] | None = None
 
@@ -2210,7 +2294,7 @@ class ConversationWorker:
                         session_id=session_id,
                         persona_id=persona_id,
                         messages=messages,
-                        slm_kwargs=slm_kwargs,
+                        llm_params=llm_params,
                     )
                     path = "escalation"
                     escalation_metadata = {
@@ -2270,7 +2354,7 @@ class ConversationWorker:
                         session_id=session_id,
                         persona_id=persona_id,
                         messages=messages,
-                        slm_kwargs=slm_kwargs,
+                        llm_params=llm_params,
                         analysis_metadata=analysis_dict,
                         base_metadata=session_metadata,
                     )
@@ -2283,7 +2367,6 @@ class ConversationWorker:
                 except Exception as exc:
                     _record_llm_failure(model_used)
                     LOGGER.exception("SLM request failed")
-                    # Attempt a non-streaming fallback via Gateway once more before giving up
                     result_label = "generation_error"
                     await self.store.append_event(
                         session_id,
@@ -2293,51 +2376,11 @@ class ConversationWorker:
                             "details": str(exc),
                         },
                     )
-                    try:
-                        url_ns = f"{self._gateway_base}/v1/llm/invoke"
-                        ov2: dict[str, Any] = {}
-                        for k, v in {
-                            "model": slm_kwargs.get("model"),
-                            "base_url": slm_kwargs.get("base_url"),
-                            "temperature": slm_kwargs.get("temperature"),
-                            "kwargs": slm_kwargs.get("metadata") or slm_kwargs.get("kwargs"),
-                        }.items():
-                            if v is None:
-                                continue
-                            if isinstance(v, str) and v.strip() == "":
-                                continue
-                            ov2[k] = v
-                        body_ns = {
-                            "role": "dialogue",
-                            "session_id": session_id,
-                            "persona_id": persona_id,
-                            "tenant": (session_metadata or {}).get("tenant"),
-                            "messages": [m.__dict__ for m in messages],
-                            "overrides": ov2,
-                        }
-                        headers_ns = {"X-Internal-Token": self._internal_token or ""}
-                        async with httpx.AsyncClient(timeout=20.0) as client:
-                            resp_ns = await client.post(url_ns, json=body_ns, headers=headers_ns)
-                            if not resp_ns.is_error:
-                                data_ns = resp_ns.json()
-                                fallback_text = data_ns.get("content", "")
-                                usage = data_ns.get("usage", {"input_tokens": 0, "output_tokens": 0})
-                                if fallback_text:
-                                    response_text = fallback_text
-                                else:
-                                    response_text = "I encountered an error while generating a reply."
-                                _record_llm_success(
-                                    data_ns.get("model") or model_used,
-                                    usage.get("input_tokens", 0),
-                                    usage.get("output_tokens", 0),
-                                    time.perf_counter() - response_start,
-                                )
-                            else:
-                                response_text = "I encountered an error while generating a reply."
-                    except Exception:
-                        response_text = "I encountered an error while generating a reply."
+                    # Emit deterministic degraded reply so the UI always gets a response
+                    response_text = self._degraded_safe_reply
+                    usage = {"input_tokens": 0, "output_tokens": 0}
                 latency = time.time() - response_start
-                model_used = slm_kwargs.get("model") or "unknown"
+                model_used = llm_params.get("model") or "unknown"
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
@@ -2408,7 +2451,11 @@ class ConversationWorker:
                 }
 
             if not response_text.strip():
-                response_text = self._degraded_response_text()
+                # No content from LLM; produce a safe degraded reply so UI stays responsive.
+                try:
+                    response_text = self._degraded_response_text()
+                except Exception:
+                    response_text = self._degraded_safe_reply
 
             # Refresh somabrain markers right before publishing
             if self._somabrain_health_state() != SomabrainHealthState.NORMAL:
@@ -2433,7 +2480,23 @@ class ConversationWorker:
                 "type": "assistant.final",
             }
 
-            validate_event(response_event, "conversation_event")
+            try:
+                validate_event(response_event, "conversation_event")
+            except Exception as exc:
+                LOGGER.warning("Assistant event validation failed; proceeding to publish", extra={"error": str(exc)})
+
+            LOGGER.info(
+                "Publishing assistant event",
+                extra={
+                    "session_id": session_id,
+                    "event_id": response_event.get("event_id"),
+                    "somabrain_state": response_metadata.get("somabrain_state"),
+                    "degraded": response_metadata.get("somabrain_state")
+                    != SomabrainHealthState.NORMAL.value
+                    if response_metadata.get("somabrain_state") is not None
+                    else True,
+                },
+            )
 
             await self.store.append_event(session_id, {"type": "assistant", **response_event})
             _pub_res = await self.publisher.publish(
@@ -2561,7 +2624,7 @@ class ConversationWorker:
         # Execute the processing pipeline and ensure metrics are recorded on unexpected errors
         try:
             await _process()
-        except Exception:
+        except Exception as exc:
             try:
                 # Best-effort metrics in case of an unhandled exception
                 MESSAGE_PROCESSING_COUNTER.labels("error").inc()
@@ -2569,6 +2632,35 @@ class ConversationWorker:
             except Exception:
                 pass
             LOGGER.exception("Unhandled error while processing conversation event")
+            # Emit a deterministic degraded assistant reply so the UI is not left silent.
+            try:
+                degraded_meta = _compose_outbound_metadata(
+                    event.get("metadata") or {},
+                    source="worker",
+                    status="completed",
+                    extra={"somabrain_state": "degraded", "error": str(exc)},
+                )
+                response_event = {
+                    "event_id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "persona_id": event.get("persona_id"),
+                    "role": "assistant",
+                    "message": self._degraded_safe_reply,
+                    "metadata": degraded_meta,
+                    "version": "sa01-v1",
+                    "type": "assistant.final",
+                }
+                validate_event(response_event, "conversation_event")
+                await self.store.append_event(session_id, {"type": "assistant", **response_event})
+                await self.publisher.publish(
+                    self.settings["outbound"],
+                    response_event,
+                    dedupe_key=response_event.get("event_id"),
+                    session_id=session_id,
+                    tenant=degraded_meta.get("tenant"),
+                )
+            except Exception:
+                LOGGER.debug("Failed to emit degraded reply after unhandled error", exc_info=True)
 
     # REAL IMPLEMENTATION - Enhanced Learning & Adaptation Features
     async def submit_enhanced_feedback(

@@ -3,6 +3,13 @@ import { updateChatInput, sendMessage } from "/index.js";
 import { sleep } from "/js/sleep.js";
 import { store as microphoneSettingStore } from "/components/settings/speech/microphone-setting-store.js";
 
+// Ensure `fetchApi` is available. In the normal runtime `fetchApi` is attached to the
+// `window` object by `index.js`. During module loading this helper may be undefined,
+// causing a ReferenceError. Provide a safe fallback that uses the native `fetch`.
+const fetchApi = typeof window !== 'undefined' && typeof window.fetchApi === 'function'
+  ? window.fetchApi
+  : (url, init) => fetch(url, init);
+
 const Status = {
   INACTIVE: "inactive",
   ACTIVATING: "activating",
@@ -94,23 +101,44 @@ const model = {
     this.setupUserInteractionHandling();
   },
 
-  // Load settings from server
+  // Cache for settings to avoid duplicate backend calls
+  _settingsCache: null,
+
+  // Load settings from server – uses a simple in‑memory cache to prevent
+  // multiple concurrent GET requests for the same data. This reduces the
+  // duplicated `/v1/ui/settings/sections` calls made by both the Settings UI
+  // and the Speech store, which previously each fetched the endpoint
+  // independently.
   async loadSettings() {
     try {
+      // Return cached data if already fetched during this page session.
+      if (this._settingsCache) {
+        const cached = this._settingsCache;
+        this._applySpeechSettings(cached);
+        return;
+      }
+
       const response = await fetchApi("/v1/ui/settings/sections", { method: "GET" });
       const data = await response.json();
-      const sections = data?.sections || [];
-      const speechSection = sections.find((s) => s.title === "Speech");
-      if (speechSection && Array.isArray(speechSection.fields)) {
-        for (const field of speechSection.fields) {
-          if (Object.prototype.hasOwnProperty.call(this, field.id)) {
-            this[field.id] = field.value;
-          }
-        }
-      }
+      // Cache the raw response for future calls.
+      this._settingsCache = data;
+      this._applySpeechSettings(data);
     } catch (error) {
       window.toastFetchError("Failed to load speech settings", error);
       console.error("Failed to load speech settings:", error);
+    }
+  },
+
+  // Internal helper to map the speech section fields onto the store state.
+  _applySpeechSettings(data) {
+    const sections = data?.sections || [];
+    const speechSection = sections.find((s) => s.title === "Speech");
+    if (speechSection && Array.isArray(speechSection.fields)) {
+      for (const field of speechSection.fields) {
+        if (Object.prototype.hasOwnProperty.call(this, field.id)) {
+          this[field.id] = field.value;
+        }
+      }
     }
   },
 
