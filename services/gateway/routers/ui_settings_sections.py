@@ -1,39 +1,3 @@
-"""UI Settings Sections router.
-
-Provides a minimal, real implementation for the UI to fetch configuration
-sections. The endpoint returns a JSON object with a ``sections`` list – the UI
-currently expects this shape but does not require any specific content, so an
-empty list is a valid response. This satisfies the VIBE rule of no
-placeholders: the route is fully functional and can be extended later to
-return actual configuration data from a database or environment variables.
-"""
-
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import List, Dict, Any
-
-router = APIRouter()
-
-
-class SettingsResponse(BaseModel):
-    """Schema for the UI settings sections response.
-
-    ``sections`` is a list of arbitrary dictionaries representing UI
-    configuration sections. The UI can iterate over this list safely even if it
-    is empty.
-    """
-
-    sections: List[Dict[str, Any]] = []
-
-
-@router.get("/v1/ui/settings/sections", response_model=SettingsResponse)
-async def get_ui_settings_sections():
-    """Return UI settings sections.
-
-    Currently returns an empty list – this is a valid, real response. The
-    implementation can be expanded to load sections from a config file or DB.
-    """
-    return SettingsResponse(sections=[])
 """Centralized UI settings sections endpoint.
 
 Stores non-secret fields in Postgres (ui_settings table) and secret fields in
@@ -53,6 +17,145 @@ from services.common.secret_manager import SecretManager
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
+
+# ---------------------------------------------------------------------------
+# Default settings payload – this is the complete set of sections that the UI
+# expects on first launch.  It mirrors the exhaustive table described in the
+# documentation (LLM, Auth, MCP/A2A, Memory, Secrets, Speech, Tunnel, Backup,
+# etc.).  Secret fields are included with empty values; they will be stored in
+# Redis by the startup routine.
+# ---------------------------------------------------------------------------
+DEFAULT_SECTIONS: list[dict] = [
+    # ---------- LLM (Agent Settings) ----------
+    {
+        "id": "llm",
+        "title": "LLM",
+        "tab": "agent",
+        "fields": [
+            {"id": "llm_model", "title": "Model", "type": "text", "required": True, "value": ""},
+            {"id": "model_provider", "title": "Chat model provider", "type": "select", "required": True, "value": ""},
+            {"id": "llm_base_url", "title": "Chat model API base URL", "type": "text", "required": True, "value": ""},
+            {"id": "context_length", "title": "Chat model context length", "type": "number", "required": False, "value": 4096},
+            {"id": "chat_history_window", "title": "Context window space for chat history", "type": "number", "required": False, "value": 0.7},
+            {"id": "supports_vision", "title": "Supports Vision", "type": "checkbox", "required": False, "value": false},
+            {"id": "rpm_limit", "title": "Requests per minute limit", "type": "number", "required": False, "value": 0},
+            {"id": "llm_temperature", "title": "Temperature", "type": "number", "required": False, "value": 0.2},
+            {"id": "api_key_llm", "title": "LLM API Key", "type": "password", "secret": True, "value": ""},
+        ],
+    },
+    # ---------- Authentication ----------
+    {
+        "id": "auth",
+        "title": "Authentication",
+        "tab": "agent",
+        "fields": [
+            {"id": "auth_login", "title": "Login", "type": "text", "required": True, "value": ""},
+            {"id": "auth_password", "title": "Password", "type": "password", "secret": True, "value": ""},
+            {"id": "auth_enabled", "title": "Enable authentication", "type": "checkbox", "required": False, "value": False},
+        ],
+    },
+    # ---------- MCP Server ----------
+    {
+        "id": "mcp_server",
+        "title": "MCP Server",
+        "tab": "mcp",
+        "fields": [
+            {"id": "mcp_server", "title": "MCP Server URL", "type": "text", "required": True, "value": ""},
+            {"id": "mcp_server_token", "title": "MCP Server Token", "type": "password", "secret": True, "value": ""},
+        ],
+    },
+    # ---------- A2A ----------
+    {
+        "id": "a2a",
+        "title": "A2A",
+        "tab": "mcp",
+        "fields": [
+            {"id": "a2a_peer_url", "title": "Peer URL", "type": "text", "required": False, "value": ""},
+            {"id": "a2a_peer_token", "title": "Peer Token", "type": "password", "secret": True, "value": ""},
+            {"id": "a2a_enabled", "title": "Enable A2A", "type": "checkbox", "required": False, "value": False},
+        ],
+    },
+    # ---------- Memory ----------
+    {
+        "id": "memory",
+        "title": "Memory",
+        "tab": "memory",
+        "fields": [
+            {"id": "memory_backend", "title": "Backend", "type": "select", "required": True, "value": "redis"},
+            {"id": "memory_retention_days", "title": "Retention (days)", "type": "number", "required": False, "value": 30},
+            {"id": "memory_max_items", "title": "Max items", "type": "number", "required": False, "value": 1000},
+        ],
+    },
+    # ---------- Secrets ----------
+    {
+        "id": "secrets",
+        "title": "Secrets",
+        "tab": "secrets",
+        "fields": [
+            {"id": "secret_key", "title": "Encryption key", "type": "password", "secret": True, "value": ""},
+            {"id": "jwt_secret", "title": "JWT secret", "type": "password", "secret": True, "value": ""},
+            {"id": "api_key_external", "title": "External API token", "type": "password", "secret": True, "value": ""},
+        ],
+    },
+    # ---------- Speech ----------
+    {
+        "id": "speech",
+        "title": "Speech",
+        "tab": "speech",
+        "fields": [
+            {"id": "speech_enabled", "title": "Enable speech", "type": "checkbox", "required": False, "value": False},
+            {"id": "speech_provider", "title": "Provider", "type": "select", "required": False, "value": "google"},
+            {"id": "speech_api_key", "title": "API key", "type": "password", "secret": True, "value": ""},
+        ],
+    },
+    # ---------- Tunnel ----------
+    {
+        "id": "tunnel",
+        "title": "Tunnel",
+        "tab": "tunnel",
+        "fields": [
+            {"id": "provider", "title": "Tunnel provider", "type": "select", "required": True, "value": "cloudflared"},
+        ],
+    },
+    # ---------- Backup ----------
+    {
+        "id": "backup",
+        "title": "Backup",
+        "tab": "backup",
+        "fields": [
+            {"id": "auto_backup_enabled", "title": "Automatic backup", "type": "checkbox", "required": False, "value": False},
+            {"id": "backup_schedule", "title": "Schedule (cron)", "type": "text", "required": False, "value": "0 2 * * *"},
+            {"id": "backup_storage_path", "title": "Destination folder", "type": "text", "required": False, "value": "/backup"},
+        ],
+    },
+]
+
+# ---------------------------------------------------------------------------
+# Startup initialization – ensure the default sections exist on first launch.
+# ---------------------------------------------------------------------------
+@router.on_event("startup")
+async def _ensure_default_sections() -> None:
+    """Create the default UI settings if the table is empty.
+
+    The function is idempotent: if a row already exists it does nothing.
+    Secret fields are stored via ``SecretManager`` so that they never appear in
+    the plain JSON payload.
+    """
+    try:
+        existing = await _load_sections()
+        if existing:
+            # Settings already present – nothing to do.
+            return
+        # Persist the full default payload.
+        await _save_sections(DEFAULT_SECTIONS)
+        # Separate and store secrets.
+        plain, secrets = _split_sections(DEFAULT_SECTIONS)
+        sm = SecretManager()
+        for k, v in secrets.items():
+            await sm.set_provider_key(k, v)
+        logger.info("Default UI settings created on startup")
+    except Exception as exc:  # pragma: no cover – defensive
+        logger.error("Failed to initialise default UI settings: %s", exc)
 
 # ---------------------------------------------------------------------------
 # Logging – we emit a simple info line whenever settings are saved so that
@@ -153,7 +256,10 @@ def _ensure_minimal_llm_section(sections: List[Dict[str, Any]]) -> List[Dict[str
     return sections + [llm_section]
 
 
+# Support both without and with trailing slash for compatibility with UI fetches
+# Support both the path without a trailing slash and with a trailing slash.
 @router.get("")
+@router.get("/")
 async def get_sections():
     sections = await _load_sections()
     sections = _ensure_minimal_llm_section(sections)
@@ -174,7 +280,9 @@ async def ping():
     return {"status": "ok", "timestamp": __import__("time").time()}
 
 
+# Accept both with and without trailing slash for POST.
 @router.post("")
+@router.post("/")
 async def set_sections(doc: SettingsDoc, request: Request):
     sections = _ensure_minimal_llm_section(doc.sections)
     plain, secrets = _split_sections(sections)
