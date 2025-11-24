@@ -22,13 +22,26 @@ from services.common.session_repository import RedisSessionCache
 
 # Routers
 from services.gateway.routers import build_router
+# Import UI settings sections router to expose settings endpoints
+from services.gateway.routers.ui_settings_sections import router as ui_settings_router
+# Import UI notifications router to expose notifications endpoints
+from services.gateway.routers.ui_notifications import router as ui_notifications_router
+# Import the newly added tunnel proxy router
+from services.gateway.routers.tunnel_proxy import router as tunnel_proxy_router
 from src.core.config import cfg
 
 # Compatibility alias for legacy code and tests expecting ``APP_SETTINGS``.
 APP_SETTINGS = cfg.settings()
 
 app = FastAPI(title="SomaAgent Gateway")
+# Include the tunnel proxy router **before** the generic router assembly to ensure
+# its specific POST endpoint is matched prior to the catch‑all UI routes.
+app.include_router(tunnel_proxy_router)
 app.include_router(build_router())
+# Explicitly include the UI settings router (POST/GET for settings sections)
+app.include_router(ui_settings_router)
+# Include the UI notifications router (GET/POST/DELETE for notifications)
+app.include_router(ui_notifications_router)
 
 # ---------------------------------------------------------------------------
 # Public API models

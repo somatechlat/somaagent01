@@ -36,8 +36,11 @@ async def ui_root():
 
 @router.get("/{filename}", include_in_schema=False)
 async def ui_top_level(filename: str):
-    # Avoid hijacking API routes
-    if filename.startswith("v1"):
+    # Avoid hijacking API routes and the dedicated tunnel proxy endpoint.
+    # The UI router serves any top‑level file under ``webui``.  To prevent
+    # conflicts with API paths, we explicitly block ``v1`` (the API prefix) and
+    # ``tunnel_proxy`` which is handled by its own router.
+    if filename.startswith("v1") or filename.startswith("tunnel_proxy"):
         raise HTTPException(status_code=404, detail="not_found")
     candidate = WEBUI_ROOT / filename
     return FileResponse(_safe_path(candidate))

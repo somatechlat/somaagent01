@@ -22,7 +22,7 @@ from services.gateway.routers import (
     uploads,
     websocket,
     weights,
-    tunnel,
+    # tunnel router removed to avoid duplicate endpoint definitions
 )
 
 
@@ -47,8 +47,10 @@ def build_router() -> APIRouter:
     router.include_router(ui_settings_sections.router)
     router.include_router(notifications.router)
     router.include_router(weights.router)
-    # Tunnel management endpoint used by the UI settings.
-    router.include_router(tunnel.router)
+    # Tunnel management endpoint is provided via the dedicated tunnel_proxy router
+    # (included explicitly in services.gateway.main). The legacy tunnel router
+    # caused duplicate route definitions and resulted in 405 errors for POST.
+    # It has been removed.
     # Include scheduler router to serve task management endpoints
     try:
         from services.gateway.routers import scheduler as _scheduler_router

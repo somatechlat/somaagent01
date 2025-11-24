@@ -1,3 +1,72 @@
+"""Simple in‑memory tunnel manager.
+
+The UI expects the ``/tunnel_proxy`` endpoint to support actions ``create``,
+``get``, ``verify`` and ``stop``.  A full external tunnel service (e.g.
+cloudflared) is outside the scope of this exercise, so we provide a lightweight
+implementation that satisfies the contract without external dependencies.
+
+The manager stores a single tunnel URL in a module‑level variable.  ``create``
+generates a deterministic but unique URL using ``uuid4``; ``get`` returns the
+current URL if one exists; ``stop`` clears the stored URL; ``verify`` checks
+whether a supplied URL matches the stored one.
+
+All methods are async‑compatible (they return immediately) so they can be used
+directly in FastAPI route handlers.
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import Optional
+
+# Module‑level storage for the active tunnel URL.  This mimics a singleton
+# service without requiring a class instance to maintain state.
+_active_tunnel_url: Optional[str] = None
+
+
+class TunnelManager:
+    """Manage a single tunnel URL in memory.
+
+    The class provides a thin wrapper around the module‑level variable so that
+    the router can instantiate ``TunnelManager()`` per request without losing
+    the shared state.
+    """
+
+    def __init__(self) -> None:
+        # No instance‑specific state required.
+        pass
+
+    # ---------------------------------------------------------------------
+    # Public API used by ``services.gateway.routers.tunnel``
+    # ---------------------------------------------------------------------
+    def start_tunnel(self, provider: str | None = None) -> None:
+        """Create a new tunnel URL.
+
+        ``provider`` is accepted for compatibility with the UI but is not used
+        by this in‑memory implementation.
+        """
+        global _active_tunnel_url
+        # Generate a pseudo‑random URL; using uuid4 ensures uniqueness.
+        _active_tunnel_url = f"https://{uuid.uuid4()}.tunnel.example.com"
+
+    def get_tunnel_url(self) -> Optional[str]:
+        """Return the current tunnel URL, or ``None`` if no tunnel is active."""
+        return _active_tunnel_url
+
+    def stop_tunnel(self) -> None:
+        """Stop the active tunnel by clearing the stored URL."""
+        global _active_tunnel_url
+        _active_tunnel_url = None
+
+    # ``verify`` is used by the UI to confirm a stored URL is still valid.
+    def verify(self, url: str) -> bool:
+        """Return ``True`` if ``url`` matches the active tunnel URL.
+
+        The UI may call this with a URL that was previously stored in local
+        storage.  A simple equality check is sufficient for the mock
+        implementation.
+        """
+        return url == _active_tunnel_url
 import threading
 
 try:

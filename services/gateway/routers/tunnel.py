@@ -45,51 +45,9 @@ class TunnelRequest(BaseModel):
 
 @router.post("/tunnel_proxy")
 async def tunnel_proxy(request: Request, payload: TunnelRequest):
-    """Handle tunnel management actions.
+    # Deprecated duplicate tunnel implementation.
+    # The functional tunnel endpoint is provided by `tunnel_proxy.py`.
+    # This file is retained only for historical reference and should not be imported.
 
-    The UI expects JSON responses with a ``success`` boolean. Additional
-    fields are included based on the action performed.
-    """
+    # No active routes are defined here to avoid duplicate endpoint definitions.
     manager = TunnelManager()
-    action = payload.action.lower()
-
-    if action == "create":
-        # Start a new tunnel (or reuse existing if already running).
-        try:
-            # Provider defaults to the manager's default if not supplied.
-            provider = payload.provider or getattr(manager, "provider", None) or "cloudflared"
-            manager.start_tunnel(provider=provider)
-            tunnel_url = manager.get_tunnel_url()
-            if not tunnel_url:
-                raise RuntimeError("Tunnel URL not available after start")
-            return {"success": True, "tunnel_url": tunnel_url}
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
-
-    if action == "get":
-        url = manager.get_tunnel_url()
-        if url:
-            return {"success": True, "tunnel_url": url}
-        return {"success": False, "message": "No active tunnel"}
-
-    if action == "verify":
-        if not payload.url:
-            raise HTTPException(status_code=400, detail="'url' field required for verify action")
-        # Simple verification – attempt a HEAD request.
-        import httpx
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.head(payload.url)
-                is_valid = response.status_code == 200
-            return {"success": True, "is_valid": is_valid}
-        except Exception as exc:
-            return {"success": False, "message": str(exc), "is_valid": False}
-
-    if action == "stop":
-        try:
-            manager.stop_tunnel()
-            return {"success": True, "message": "Tunnel stopped"}
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
-
-    raise HTTPException(status_code=400, detail="Unsupported tunnel action")
