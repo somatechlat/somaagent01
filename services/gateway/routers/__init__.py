@@ -21,7 +21,6 @@ from services.gateway.routers import (
     ui_static,
     uploads,
     websocket,
-    weights,
     # tunnel router removed to avoid duplicate endpoint definitions
 )
 
@@ -46,7 +45,6 @@ def build_router() -> APIRouter:
     router.include_router(metrics_endpoints.router)
     router.include_router(ui_settings_sections.router)
     router.include_router(notifications.router)
-    router.include_router(weights.router)
     # Tunnel management endpoint is provided via the dedicated tunnel_proxy router
     # (included explicitly in services.gateway.main). The legacy tunnel router
     # caused duplicate route definitions and resulted in 405 errors for POST.

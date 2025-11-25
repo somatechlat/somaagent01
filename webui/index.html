@@ -609,7 +609,7 @@
             </div>
         </div>
     </div>
-    <div id="settingsModal" x-data="() => window.settingsModalProxy">
+    <div id="settingsModal" x-data="settingsModalProxy">
         <template x-teleport="body">
             <div x-show="isOpen" class="modal-overlay" @click.self="handleCancel()"
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
