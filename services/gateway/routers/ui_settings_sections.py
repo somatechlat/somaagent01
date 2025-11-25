@@ -37,7 +37,7 @@ DEFAULT_SECTIONS: list[dict] = [
             {"id": "llm_base_url", "title": "Chat model API base URL", "type": "text", "required": True, "value": ""},
             {"id": "context_length", "title": "Chat model context length", "type": "number", "required": False, "value": 4096},
             {"id": "chat_history_window", "title": "Context window space for chat history", "type": "number", "required": False, "value": 0.7},
-            {"id": "supports_vision", "title": "Supports Vision", "type": "checkbox", "required": False, "value": false},
+            {"id": "supports_vision", "title": "Supports Vision", "type": "checkbox", "required": False, "value": False},
             {"id": "rpm_limit", "title": "Requests per minute limit", "type": "number", "required": False, "value": 0},
             {"id": "llm_temperature", "title": "Temperature", "type": "number", "required": False, "value": 0.2},
             {"id": "api_key_llm", "title": "LLM API Key", "type": "password", "secret": True, "value": ""},

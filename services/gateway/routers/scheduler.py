@@ -1,16 +1,8 @@
 """Minimal scheduler API stubs used by the web UI.
 
 The original project expects a full scheduler backend that can list, create,
-update, run and delete tasks. For the purpose of the UI debugging session we
-provide lightweight placeholder endpoints that return empty data structures
-compatible with the frontend expectations. This eliminates the 422/405 errors
-observed when the UI issues POST requests to ``/scheduler_tasks_list`` and
-related routes.
-
-All endpoints accept JSON payloads and return a ``200`` response with a JSON
-body. The implementation does not persist any data – it simply echoes back the
-received information where appropriate and returns an empty ``tasks`` list for
-the list endpoint.
+update, run and delete tasks. This module provides endpoints compatible with
+the frontend expectations, backed by Redis for persistence.
 """
 
 from __future__ import annotations
@@ -52,19 +44,17 @@ class TaskRun(BaseModel):
     timezone: str = "UTC"
 
 
-# In‑memory placeholder store – not persisted across restarts
-_tasks: List[Dict[str, Any]] = []
+
 
 
 @router.post("/scheduler_tasks_list", response_model=TaskListResponse)
 async def scheduler_tasks_list(request: Request):
     """Return the list of stored scheduler tasks.
 
-    The UI posts a JSON body with a ``timezone`` field – it is not used for the
-    storage layer, but we keep the signature to stay compatible.
+    The UI posts a JSON body with a ``timezone`` field.
     """
     await request.json()  # consume body, ignore content
-    tasks = list_tasks()
+    tasks = await list_tasks()
     # Convert raw dicts to Pydantic models for proper validation
     return TaskListResponse(tasks=[TaskResponse(**t) for t in tasks])
 
@@ -83,7 +73,7 @@ async def scheduler_task_create(task: TaskCreate):
     task_dict["updated_at"] = now_iso
 
     # Persist the task
-    saved = save_task(task_dict)
+    saved = await save_task(task_dict)
 
     # If a schedule dict is supplied, register a beat entry dynamically.
     if saved.get("schedule"):
@@ -94,7 +84,7 @@ async def scheduler_task_create(task: TaskCreate):
                 crontab(**cron_kwargs),
                 "scheduler.run_task",
                 args=[saved["uuid"]],
-                name=f"scheduler-{saved["uuid"]}",
+                name=f"scheduler-{saved['uuid']}",
             )
         except Exception as exc:
             # Log but do not fail the request – the task can still be created without a periodic schedule.
@@ -113,7 +103,7 @@ async def scheduler_task_update(task: TaskUpdate):
     changed.
     """
     # Load current task to verify existence
-    existing_tasks = list_tasks()
+    existing_tasks = await list_tasks()
     match = next((t for t in existing_tasks if t.get("uuid") == task.uuid), None)
     if not match:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -124,7 +114,7 @@ async def scheduler_task_update(task: TaskUpdate):
     if "created_at" not in updated_dict:
         updated_dict["created_at"] = match.get("created_at", datetime.utcnow().isoformat() + "Z")
 
-    saved = save_task(updated_dict)
+    saved = await save_task(updated_dict)
 
     # Re‑register Beat schedule if needed
     if saved.get("schedule"):
@@ -134,7 +124,7 @@ async def scheduler_task_update(task: TaskUpdate):
                 crontab(**cron_kwargs),
                 "scheduler.run_task",
                 args=[saved["uuid"]],
-                name=f"scheduler-{saved["uuid"]}",
+                name=f"scheduler-{saved['uuid']}",
             )
         except Exception as exc:
             import logging
@@ -155,7 +145,7 @@ async def scheduler_task_delete(payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="task_id required")
 
     # Remove from persistence
-    delete_task(task_id)
+    await delete_task(task_id)
 
     # Revoke any periodic task – Celery beat stores entries in memory; the
     # ``remove_periodic_task`` API does not exist, so we send a revoke for the

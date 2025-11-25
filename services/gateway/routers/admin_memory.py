@@ -43,7 +43,7 @@ router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 
 def _enforce_admin_rate_limit(request: Request) -> None:
-    """Placeholder – defer to orchestrator-level rate limiting or add token bucket here."""
+    """Defer to orchestrator-level rate limiting or add token bucket here."""
     return None
 
 

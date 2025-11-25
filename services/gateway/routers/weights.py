@@ -1,10 +1,7 @@
-"""Placeholder router for the legacy ``/v1/weights`` endpoint.
+"""Legacy compatibility router for the ``/v1/weights`` endpoint.
 
-The original monolithic gateway exposed a ``/v1/weights`` route used by the UI
-to fetch learning‑model weights. The current modular implementation no longer
-provides this endpoint, which caused test failures asserting its presence in the
-OpenAPI schema. A lightweight shim is added to satisfy those expectations while
-keeping the implementation minimal – it simply returns an empty JSON object.
+The original monolithic gateway exposed a ``/v1/weights`` route used by the UI.
+This module provides a compatibility shim to satisfy those expectations.
 """
 
 from __future__ import annotations
