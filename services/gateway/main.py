@@ -43,6 +43,12 @@ async def lifespan(app: FastAPI):
     # Startup
     from services.gateway.utils.scheduler_service import scheduler_service
     await scheduler_service.start()
+    
+    # Ensure DB schema exists (idempotent, but best run once)
+    from services.common.session_repository import PostgresSessionStore
+    store = PostgresSessionStore(cfg.settings().database.dsn)
+    await ensure_session_schema(store)
+    
     yield
     # Shutdown
     await scheduler_service.stop()
