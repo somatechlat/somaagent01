@@ -85,6 +85,9 @@ const settingsModalProxy = {
         const modalEl = document.getElementById('settingsModal');
         const modalAD = modalEl ? Alpine.$data(modalEl) : null;
 
+        // CRITICAL: Set isOpen on the proxy object itself first
+        this.isOpen = true;
+
         // First, ensure the store is updated properly
         const store = Alpine.store('root');
         if (store) {
@@ -107,6 +110,7 @@ const settingsModalProxy = {
                     ],
                     "sections": payload
                 };
+                this.settings = settings;
                 if (modalAD) {
                     modalAD.isOpen = true;
                     modalAD.settings = settings;
@@ -114,6 +118,7 @@ const settingsModalProxy = {
                 // Continue to set active tab after opening modal
                 setTimeout(() => {
                     const savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
+                    this.activeTab = savedTab;
                     if (modalAD) modalAD.activeTab = savedTab;
                     if (store) store.activeTab = savedTab;
                     localStorage.setItem('settingsActiveTab', savedTab);
@@ -148,6 +153,10 @@ const settingsModalProxy = {
                 "sections": sectionsPayload
             }
 
+            // Set on proxy object first
+            this.settings = settings;
+            this.isOpen = true;
+
             // Update modal data
             if (modalAD) {
                 modalAD.isOpen = true;
@@ -160,6 +169,9 @@ const settingsModalProxy = {
                 // Get stored tab or default to 'agent'
                 const savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
                 // Debug: Setting initial tab to:, savedTab
+
+                // Directly set the active tab on proxy
+                this.activeTab = savedTab;
 
                 // Directly set the active tab
                 if (modalAD) {
