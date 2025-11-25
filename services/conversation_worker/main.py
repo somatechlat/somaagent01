@@ -1,12 +1,6 @@
-"""Compatibility shim and full implementation for the ConversationWorker.
+"""Main implementation for the ConversationWorker.
 
-The original project exposed a ``ConversationWorker`` class directly from this
-module.  After the refactor the functional code lives in
-``services.conversation_worker.service`` as ``ConversationWorkerService``.  To
-maintain backward compatibility (the test suite still imports this path) we
-re‑export the service class under the historic name **and** keep the original
-implementation here.  The shim is lightweight – it simply aliases the new
-class – and does not duplicate any business logic.
+This module contains the full implementation of the conversation worker service.
 """
 
 from __future__ import annotations
@@ -70,7 +64,7 @@ from src.core.config import cfg
 
 # Legacy settings removed – use central config façade.
 # Re‑export the new service implementation under the legacy name.
-from .service import ConversationWorkerService as ConversationWorker
+# Legacy settings removed – use central config façade.
 
 
 async def _load_llm_settings() -> dict[str, Any]:
@@ -260,12 +254,7 @@ class ConversationPreprocessor:
         return AnalysisResult(intent=intent, sentiment=sentiment, tags=tags)
 
 
-class _NullProfileStore:
-    async def get(self, *args, **kwargs):
-        return None
 
-    async def ensure_schema(self, *args, **kwargs):
-        return None
 
 
 class ConversationWorker:
@@ -300,7 +289,7 @@ class ConversationWorker:
         self._gateway_base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
         # Model profiles removed; LLM config is centralized via UI settings.
-        self.profile_store = _NullProfileStore()
+        self.profile_store = None
         tenant_config_path = cfg.env(
             "TENANT_CONFIG_PATH",
             cfg.settings().extra.get("tenant_config_path", "conf/tenants.yaml"),
@@ -412,6 +401,10 @@ class ConversationWorker:
         self._last_degraded_reason = reason
 
     def _degraded_response_text(self, hint: str | None = None) -> str:
+        """Generate user‑facing text for degraded mode UI banner.
+
+        This method is kept for UI messaging; it does not affect the LLM response.
+        """
         reason = hint or self._last_degraded_reason or "connectivity issues"
         return (
             "SomaBrain is currently unavailable, so I'm answering with the recent "
@@ -1125,6 +1118,24 @@ class ConversationWorker:
             _record_llm_failure(model_label)
             raise
 
+    async def _call_llm_degraded_mode(self, *, messages: List[ChatMessage], llm_params: Dict[str, Any], session_id: str) -> tuple[str, dict[str, int]]:
+        """Call the LLM in degraded mode (no SomaBrain memory enrichment).
+
+        This uses the same streaming gateway call as the normal path but skips any
+        long‑term memory look‑ups. It returns the generated text and usage stats.
+        """
+        # Minimal metadata for degraded calls – no analysis or session enrichment.
+        empty_meta: dict[str, Any] = {}
+        return await self._stream_response_via_gateway(
+            session_id=session_id,
+            persona_id=None,
+            messages=messages,
+            llm_params=llm_params,
+            analysis_metadata=empty_meta,
+            base_metadata=empty_meta,
+            role="dialogue",
+        )
+
     async def _generate_response(
         self,
         *,
@@ -1135,6 +1146,28 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
+        """Generate LLM response, using degraded mode when SomaBrain is down.
+
+        If the SomaBrain service is unavailable, we still call the LLM using only the recent
+        conversation context (no long‑term memory enrichment)."""
+        # Ensure model/base_url defaults are populated even if profiles/routing are absent.
+        llm_params = dict(llm_params or {})
+        if not llm_params.get("model") or not llm_params.get("base_url"):
+            try:
+                central = await _load_llm_settings()
+                llm_params.setdefault("model", central.get("model"))
+                llm_params.setdefault("base_url", central.get("base_url"))
+                if central.get("temperature") is not None:
+                    llm_params.setdefault("temperature", central.get("temperature"))
+            except Exception as exc:
+                LOGGER.warning("LLM settings unavailable: %s", exc)
+                # Continue; may still have sufficient params.
+                pass
+        # If SomaBrain is down, use degraded mode (no memory enrichment).
+        if not self._soma_brain_up:
+            return await self._call_llm_degraded_mode(messages=messages, llm_params=llm_params, session_id=session_id)
+        # Normal path continues below (original logic follows).
+
         # Ensure model/base_url defaults are populated even if profiles/routing are absent.
         llm_params = dict(llm_params or {})
         if not llm_params.get("model") or not llm_params.get("base_url"):
@@ -1147,7 +1180,8 @@ class ConversationWorker:
             except Exception as exc:
                 LOGGER.warning("LLM settings unavailable: %s", exc)
                 # Degraded but responsive fallback
-                return self._degraded_safe_reply, {"input_tokens": 0, "output_tokens": 0}
+                # The original return is removed, so processing continues.
+                # If llm_params still lacks 'model', the next check will raise RuntimeError.
 
         model_label_raw = llm_params.get("model")
         if not model_label_raw:
@@ -1604,20 +1638,9 @@ class ConversationWorker:
                 )
             except Exception as exc:
                 LOGGER.error("LLM generation failed (degraded fallback): %s", exc)
-                return self._degraded_safe_reply, {"input_tokens": 0, "output_tokens": 0}
-        else:
-            text = "".join(buffer)
-            if not text:
-                _record_llm_failure(model_label)
-                return self._degraded_safe_reply, usage
-            usage_norm = _normalize_usage(usage)
-            _record_llm_success(
-                model_label,
-                usage_norm["input_tokens"],
-                usage_norm["output_tokens"],
-                time.perf_counter() - start_time,
-            )
-            return text, usage_norm
+                # Removed hardcoded degraded reply; fallback now handled by degraded mode method.
+                raise
+
 
     async def _invoke_escalation_response(
         self,
@@ -1683,12 +1706,11 @@ class ConversationWorker:
             await ensure_mw_outbox_schema(self.mem_outbox)
         except Exception:
             LOGGER.debug("Memory write outbox schema ensure failed", exc_info=True)
-        if not self.profile_store:
-            self.profile_store = _NullProfileStore()
-        try:
-            await self.profile_store.ensure_schema()
-        except Exception:
-            LOGGER.debug("Profile store ensure_schema skipped", exc_info=True)
+        if self.profile_store:
+            try:
+                await self.profile_store.ensure_schema()
+            except Exception:
+                LOGGER.debug("Profile store ensure_schema skipped", exc_info=True)
         await self.store.append_event(
             "system",
             {
