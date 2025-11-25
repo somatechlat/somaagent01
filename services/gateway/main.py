@@ -12,6 +12,11 @@ from fastapi import FastAPI
 # Export a helper to obtain the session store (used by the gateway endpoints).
 from integrations.repositories import get_session_store as _get_session_store
 
+from contextlib import asynccontextmanager
+import os
+import shutil
+from pathlib import Path
+
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
 from services.common.session_repository import ensure_schema as ensure_session_schema
@@ -33,7 +38,16 @@ from src.core.config import cfg
 # Compatibility alias for legacy code and tests expecting ``APP_SETTINGS``.
 APP_SETTINGS = cfg.settings()
 
-app = FastAPI(title="SomaAgent Gateway")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    from services.gateway.utils.scheduler_service import scheduler_service
+    await scheduler_service.start()
+    yield
+    # Shutdown
+    await scheduler_service.stop()
+
+app = FastAPI(lifespan=lifespan, title="SomaAgent Gateway")
 # Include the tunnel proxy router **before** the generic router assembly to ensure
 # its specific POST endpoint is matched prior to the catch‑all UI routes.
 app.include_router(tunnel_proxy_router)
@@ -309,6 +323,18 @@ async def upload_files(
     meta = await _extract_metadata(request, payload)
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
+    
+    # Ensure upload directory exists
+    upload_dir = Path("uploads")
+    upload_dir.mkdir(exist_ok=True)
+    
+    saved_files = []
+    for file in files:
+        file_path = upload_dir / file.filename
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        saved_files.append(str(file_path))
+
     filenames = [f.filename for f in files]
     # Represent upload as a conversation event with attachments only.
     event = {
@@ -317,7 +343,7 @@ async def upload_files(
         "persona_id": payload.get("persona_id"),
         "role": payload.get("role", "user"),
         "message": payload.get("message", ""),
-        "attachments": filenames,
+        "attachments": saved_files,
         "metadata": meta,
         "version": "sa01-v1",
         "trace_context": payload.get("trace_context", {}),
@@ -330,7 +356,7 @@ async def upload_files(
         session_id=session_id,
         tenant=meta.get("tenant") or meta.get("universe_id"),
     )
-    return {"session_id": session_id, "event_id": event_id, "attachments": filenames}
+    return {"session_id": session_id, "event_id": event_id, "attachments": saved_files}
 
 
 def main() -> None:

@@ -26,7 +26,7 @@ def _task_key(task_id: str) -> str:
     return f"{_TASK_KEY_PREFIX}{task_id}"
 
 
-def list_tasks() -> List[Dict[str, Any]]:
+async def list_tasks() -> List[Dict[str, Any]]:
     """Return all stored tasks as Python dictionaries.
 
     The UI expects a list of objects with the fields defined in
@@ -34,11 +34,11 @@ def list_tasks() -> List[Dict[str, Any]]:
     Redis, decode JSON fields (``schedule``, ``plan``, ``attachments``) and return
     a clean dict.
     """
-    task_ids = _cache.redis.smembers(_TASK_SET)
+    task_ids = await _cache._client.smembers(_TASK_SET)
     tasks: List[Dict[str, Any]] = []
     for raw_id in task_ids:
-        task_id = raw_id.decode()
-        data = _cache.redis.hgetall(_task_key(task_id))
+        task_id = raw_id.decode() if isinstance(raw_id, bytes) else raw_id
+        data = await _cache._client.hgetall(_task_key(task_id))
         if not data:
             continue
         # Decode bytes -> appropriate Python types
@@ -56,7 +56,7 @@ def list_tasks() -> List[Dict[str, Any]]:
     return tasks
 
 
-def save_task(task: Dict[str, Any]) -> Dict[str, Any]:
+async def save_task(task: Dict[str, Any]) -> Dict[str, Any]:
     """Persist a new or updated task.
 
     If ``uuid`` is missing a new UUID is generated.  All values are stored as
@@ -76,15 +76,18 @@ def save_task(task: Dict[str, Any]) -> Dict[str, Any]:
         else:
             flat[k] = str(v)
 
-    _cache.redis.hmset(_task_key(task_id), flat)
-    _cache.redis.sadd(_TASK_SET, task_id)
+    print(f"DEBUG: Saving task {task_id} to Redis at {_task_key(task_id)}")
+    print(f"DEBUG: Redis client: {_cache._client}")
+    await _cache._client.hmset(_task_key(task_id), flat)
+    await _cache._client.sadd(_TASK_SET, task_id)
+    print(f"DEBUG: Task saved.")
     return task
 
 
-def delete_task(task_id: str) -> None:
+async def delete_task(task_id: str) -> None:
     """Remove a task from Redis.
 
     The function deletes the hash and removes the ID from the set.
     """
-    _cache.redis.delete(_task_key(task_id))
-    _cache.redis.srem(_TASK_SET, task_id)
+    await _cache._client.delete(_task_key(task_id))
+    await _cache._client.srem(_TASK_SET, task_id)
