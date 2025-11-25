@@ -10,26 +10,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-# The readiness module no longer provides `get_replica_store`. This import was
-# unused in this router and caused an ImportError at start‑up. It has been
-# removed.
-# The original import referenced deprecated helpers `authorize_request` and
-# `_require_admin_scope`. The current `services.common.authorization` module
-# provides `authorize` (async) and `require_policy`. For the admin memory
-# endpoints we only need to perform authorization and then enforce the admin
-# scope. We import `authorize` under the old name for compatibility and
-# provide a lightweight no‑op implementation of `_require_admin_scope` that
-# validates the admin scope based on a simple flag in the auth result.
+# The `services.common.authorization` module provides `authorize` (async) and
+# `require_policy`. For the admin memory endpoints we only need to perform
+# authorization and then enforce the admin scope. We import `authorize` under
+# the old name for compatibility.
 from services.common.authorization import authorize as authorize_request
 
 
 def _require_admin_scope(auth: dict) -> None:
     """Validate that the authorized request has admin privileges.
 
-    The real implementation would inspect the auth result for an admin scope.
-    For now we simply check for a truthy ``admin`` key; if missing we raise a
-    403 error. This keeps the endpoint functional without pulling in the old
-    helper.
+    Enforces that the authenticated user has the 'admin' scope/flag.
     """
     if not auth.get("admin", True):
         # If the auth dict does not indicate admin rights, deny access.
