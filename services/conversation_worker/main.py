@@ -1713,24 +1713,29 @@ class ConversationWorker:
         )
 
     async def _handle_event(self, event: dict[str, Any]) -> None:
-        start_time = time.perf_counter()
-        path = "unknown"
-        result_label = "success"
-
-        def record_metrics(result: str, path_label: str | None = None) -> None:
-            label = path_label or path
-            duration = time.perf_counter() - start_time
-            MESSAGE_PROCESSING_COUNTER.labels(result).inc()
-            MESSAGE_LATENCY.labels(label).observe(duration)
-
-        session_id = event.get("session_id")
-        persona_id = event.get("persona_id")
-        
-        # Extract tenant at the top level to ensure it's available throughout _handle_event
         try:
-            tenant = (event.get("metadata") or {}).get("tenant", "default")
-        except Exception:
-            tenant = "default"
+            LOGGER.info("_handle_event CALLED", extra={"event_keys": list(event.keys()) if isinstance(event, dict) else "NOT_DICT"})
+            start_time = time.perf_counter()
+            path = "unknown"
+            result_label = "success"
+
+            def record_metrics(result: str, path_label: str | None = None) -> None:
+                label = path_label or path
+                duration = time.perf_counter() - start_time
+                MESSAGE_PROCESSING_COUNTER.labels(result).inc()
+                MESSAGE_LATENCY.labels(label).observe(duration)
+
+            session_id = event.get("session_id")
+            persona_id = event.get("persona_id")
+            
+            # Extract tenant at the top level to ensure it's available throughout _handle_event
+            try:
+                tenant = (event.get("metadata") or {}).get("tenant", "default")
+            except Exception:
+                tenant = "default"
+        except Exception as e:
+            LOGGER.error("CRITICAL: _handle_event crashed at top level", extra={"error": str(e), "event": event}, exc_info=True)
+            raise
 
         async def _process() -> None:
             nonlocal path, result_label, tenant
@@ -1744,8 +1749,8 @@ class ConversationWorker:
                 validate_event(event, "conversation_event")
             except ValidationError as exc:
                 LOGGER.error(
-                    "Invalid conversation event",
-                    extra={"error": exc.message, "event": event},
+                    "Invalid conversation event - VALIDATION FAILED",
+                    extra={"error": str(exc.message), "event": event, "schema": "conversation_event"},
                 )
                 record_metrics("validation_error")
                 return
