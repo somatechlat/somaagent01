@@ -127,8 +127,11 @@
     <!-- Google Fonts: Roboto Mono, Rubik, Material Symbols Outlined -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+        rel="stylesheet">
 
     <!-- Link the PWA manifest file -->
     <link rel="manifest" href="js/manifest.json">
@@ -361,8 +364,7 @@
                 <!-- Notification Toggle positioned next to time-date -->
                 <x-component path="notifications/notification-icons.html"></x-component>
             </div>
-            <div class="somabrain-banner"
-                 x-data="{ 
+            <div class="somabrain-banner" x-data="{ 
                      somabrainState: ($store.somabrain && $store.somabrain.state) || 'unknown',
                      monitoringIssues: ($store.monitoring && $store.monitoring.healthSummary && $store.monitoring.healthSummary.issues) || [],
                      hasSystemIssues: false,
@@ -427,16 +429,12 @@
                          }
                          return ($store.somabrain && $store.somabrain.banner) || 'System status monitoring active.';
                      }
-                 }"
-                 x-cloak
-                 :class="bannerClass"
-                 x-show="shouldShow">
-                <span class="material-symbols-outlined somabrain-banner-icon"
-                      x-text="bannerIcon"></span>
+                 }" x-cloak :class="bannerClass" x-show="shouldShow">
+                <span class="material-symbols-outlined somabrain-banner-icon" x-text="bannerIcon"></span>
                 <div class="somabrain-banner-body">
                     <span class="somabrain-banner-title" x-text="bannerTitle"></span>
                     <p class="somabrain-banner-text" x-text="bannerText"></p>
-                    
+
                     <!-- System Issues Details -->
                     <div class="system-issues-details" x-show="hasSystemIssues" x-cloak>
                         <template x-for="issue in monitoringIssues" :key="issue.type + issue.level">
@@ -457,7 +455,8 @@
                     <span id="progress-bar-i">|></span><span id="progress-bar"></span>
                 </h4>
                 <h4 id="progress-bar-stop-speech" x-data x-cloak x-show="$store.speech && $store.speech.isSpeaking">
-                    <span id="stop-speech" @click="$store.speech && $store.speech.stop()" style="cursor: pointer">Stop Speech</span>
+                    <span id="stop-speech" @click="$store.speech && $store.speech.stop()" style="cursor: pointer">Stop
+                        Speech</span>
                 </h4>
             </div>
             <div id="input-section" x-data="{
@@ -515,7 +514,8 @@
 
                         <!-- Microphone button -->
                         <button class="chat-button mic-inactive" id="microphone-button"
-                            aria-label="Start/Stop recording" @click="$store.speech && $store.speech.handleMicrophoneClick()"
+                            aria-label="Start/Stop recording"
+                            @click="$store.speech && $store.speech.handleMicrophoneClick()"
                             x-effect="$store.speech && $store.speech.updateMicrophoneButtonUI()">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18" fill="currentColor">
                                 <path
@@ -609,7 +609,7 @@
             </div>
         </div>
     </div>
-    <div id="settingsModal" x-data="settingsModalProxy">
+    <div id="settingsModal" x-data="() => window.settingsModalProxy">
         <template x-teleport="body">
             <div x-show="isOpen" class="modal-overlay" @click.self="handleCancel()"
                 @keydown.escape.window="isOpen && handleCancel()" x-transition>
