@@ -173,14 +173,13 @@ async def scheduler_task_run(payload: TaskRun):
 __all__ = ["router"]
 
 # ---------------------------------------------------------------------------
-# Fallback route – any undefined scheduler endpoint should return a generic
-# 200 response. This prevents 405/422 errors from bubbling up to the UI during
-# development and testing. The UI only expects JSON responses; an empty dict is
-# sufficient.
+# Fallback route REMOVED - it was too greedy and caught /v1/session/message
+# and other endpoints, preventing them from working. The catch-all pattern
+# /{full_path:path} should NEVER be used in a router that's included with
+# other routers, as it will intercept ALL requests.
 # ---------------------------------------------------------------------------
-@router.post("/{full_path:path}")
-async def fallback(full_path: str, request: Request):
-    # Log the unknown path for debugging purposes (optional).
-    import logging
-    logging.getLogger(__name__).debug("Scheduler fallback hit for path: %s", full_path)
-    return {"detail": "fallback", "path": full_path}
+# @router.post("/{full_path:path}")
+# async def fallback(full_path: str, request: Request):
+#     import logging
+#     logging.getLogger(__name__).debug("Scheduler fallback hit for path: %s", full_path)
+#     return {"detail": "fallback", "path": full_path}
