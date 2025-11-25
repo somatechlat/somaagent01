@@ -1,0 +1,127 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic:
+    - button "Toggle Sidebar" [ref=e3] [cursor=pointer]:
+      - img [ref=e5]
+    - link "a0" [ref=e8] [cursor=pointer]:
+      - /url: https://github.com/agent0ai/agent-zero
+      - img "a0" [ref=e9]
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - button "Reset Chat" [ref=e13] [cursor=pointer]
+        - button "New Chat" [ref=e14] [cursor=pointer]
+        - button "Load Chat" [ref=e15] [cursor=pointer]
+        - button "Save Chat" [ref=e16] [cursor=pointer]
+        - button "Restart" [ref=e17] [cursor=pointer]
+        - button "Settings" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+          - text: Settings
+        - button "Memory" [ref=e20] [cursor=pointer]
+      - generic [ref=e22]:
+        - generic [ref=e23] [cursor=pointer]: Chats
+        - generic [ref=e24] [cursor=pointer]: Tasks
+      - list [ref=e27]:
+        - listitem [ref=e28]:
+          - generic "91a05f29-3dda-4647-bdc5-851f89d0f337" [ref=e30] [cursor=pointer]
+          - button "X" [ref=e31] [cursor=pointer]
+        - listitem [ref=e32]:
+          - generic "303c2975-2846-4a7d-878a-0e164e757d18" [ref=e34] [cursor=pointer]
+          - button "X" [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - generic [ref=e38]:
+        - heading "Preferences" [level=3] [ref=e39] [cursor=pointer]:
+          - text: Preferences
+          - img [ref=e40]
+        - list [ref=e42]:
+          - listitem [ref=e43]:
+            - generic [ref=e44]: Autoscroll
+            - generic [ref=e45]:
+              - checkbox [checked]
+          - listitem [ref=e47]:
+            - generic [ref=e48]: Dark mode
+            - generic [ref=e49]:
+              - checkbox [checked]
+          - listitem [ref=e51]:
+            - generic [ref=e52]: Speech
+            - generic [ref=e53]:
+              - checkbox
+          - listitem [ref=e55]:
+            - generic [ref=e56]: Show thoughts
+            - generic [ref=e57]:
+              - checkbox [checked]
+          - listitem [ref=e59]:
+            - generic [ref=e60]: Show JSON
+            - generic [ref=e61]:
+              - checkbox
+          - listitem [ref=e63]:
+            - generic [ref=e64]: Show utility messages
+            - generic [ref=e65]:
+              - checkbox
+      - generic [ref=e67]: "Version {{version_no}} {{version_time}}"
+  - generic [ref=e68]:
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - text: 7:38:54 pm
+        - text: Nov 24, 2025
+      - generic [ref=e72]:
+        - generic "View Notifications" [ref=e73] [cursor=pointer]:
+          - generic [ref=e75]: notifications
+          - generic [ref=e76]: "27"
+        - generic "Online"
+        - generic "SomaBrain degraded – limited memory retrieval":
+          - generic: neurology
+    - generic [ref=e77]:
+      - generic [ref=e78]: warning
+      - generic [ref=e79]:
+        - generic [ref=e80]: System Issues Detected
+        - paragraph [ref=e81]: "Critical: Severe system degradation detected. Warnings: System is degraded; settings is degraded. SomaBrain responses may be limited until connectivity stabilizes."
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - generic [ref=e84]: ⚠️
+            - generic [ref=e85]: Severe system degradation detected
+          - generic [ref=e86]:
+            - generic [ref=e87]: ⚡
+            - generic [ref=e88]: System is degraded
+          - generic [ref=e89]:
+            - generic [ref=e90]: ⚡
+            - generic [ref=e91]: settings is degraded
+    - heading "|>" [level=4] [ref=e94]:
+      - generic [ref=e95]: "|>"
+    - generic [ref=e96]:
+      - generic [ref=e99]:
+        - generic [ref=e100]: Attachment Preview
+        - paragraph [ref=e102]: No preview available. Download to view.
+      - generic [ref=e103]:
+        - img [ref=e106] [cursor=pointer]
+        - generic [ref=e108]:
+          - textbox "Type your message here..." [ref=e109]
+          - button "Expand input" [ref=e110] [cursor=pointer]:
+            - img [ref=e111]
+        - generic [ref=e113]:
+          - button "Send message" [active] [ref=e114] [cursor=pointer]:
+            - img [ref=e115]
+          - button "Start/Stop recording" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+      - generic [ref=e119]:
+        - button "Pause Agent" [ref=e120] [cursor=pointer]:
+          - img [ref=e121]
+          - generic [ref=e123]: Pause Agent
+        - button "Import knowledge" [ref=e124] [cursor=pointer]:
+          - img [ref=e125]
+          - paragraph [ref=e126]: Import knowledge
+        - button "Files" [ref=e127] [cursor=pointer]:
+          - img [ref=e128]
+          - paragraph [ref=e131]: Files
+        - button "History" [ref=e132] [cursor=pointer]:
+          - img [ref=e133]
+          - paragraph [ref=e134]: History
+        - button "Context" [ref=e135] [cursor=pointer]:
+          - img [ref=e136]
+          - paragraph [ref=e137]: Context
+        - button "Nudge" [ref=e138] [cursor=pointer]:
+          - img [ref=e139]
+          - paragraph [ref=e142]: Nudge
+```

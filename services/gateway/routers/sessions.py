@@ -43,7 +43,8 @@ def _publisher() -> DurablePublisher:
 @router.get("/v1/sessions")
 async def list_sessions(limit: int = Query(50, ge=1, le=200)):
     store = _session_store()
-    await ensure_session_schema(store)
+    # await ensure_session_schema(store)
+
     rows = await store.list_sessions(limit=limit)
     return [
         {
@@ -63,7 +64,8 @@ async def session_history(
     session_id: str, limit: int = Query(200, ge=1, le=1000)
 ) -> Any:
     store = _session_store()
-    await ensure_session_schema(store)
+    # await ensure_session_schema(store)
+
     events = await store.list_events(session_id=session_id, limit=limit)
     if events is None:
         raise HTTPException(status_code=404, detail="session_not_found")
@@ -78,7 +80,8 @@ async def chat_reset(payload: dict | None = None):
     """Create a new empty session envelope and return its id."""
     store = _session_store()
     cache = _session_cache()
-    await ensure_session_schema(store)
+    # await ensure_session_schema(store)
+
     session_id = str(uuid.uuid4())
 
     meta = (payload or {}).get("metadata") or {}
@@ -124,7 +127,8 @@ async def chat_remove(payload: dict):
 
     store = _session_store()
     cache = _session_cache()
-    await ensure_session_schema(store)
+    # await ensure_session_schema(store)
+
     pool = await store._ensure_pool()  # noqa: SLF001
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -148,7 +152,8 @@ async def chat_export(payload: dict):
         raise HTTPException(status_code=400, detail="missing session_id")
 
     store = _session_store()
-    await ensure_session_schema(store)
+    # await ensure_session_schema(store)
+
     events = await store.list_events(session_id=session_id, limit=2000)
     if events is None:
         raise HTTPException(status_code=404, detail="session_not_found")
@@ -163,7 +168,8 @@ async def chat_load(payload: dict):
         raise HTTPException(status_code=400, detail="no chat data provided")
 
     store = _session_store()
-    await ensure_session_schema(store)
+    # await ensure_session_schema(store)
+
     created_ids: List[str] = []
 
     pool = await store._ensure_pool()  # noqa: SLF001
