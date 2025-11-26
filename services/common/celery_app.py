@@ -11,6 +11,7 @@ mirrors the existing pattern of shared utilities such as ``event_bus`` and
 from __future__ import annotations
 
 from celery import Celery
+
 from src.core.config import cfg
 
 # Redis is the broker and result backend for the whole project (see

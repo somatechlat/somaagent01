@@ -46,7 +46,9 @@ class MemoryWriteOutbox:
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:
@@ -185,7 +187,9 @@ class MemoryWriteOutbox:
     async def count_pending(self) -> int:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT COUNT(*) AS c FROM memory_write_outbox WHERE status='pending'")
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS c FROM memory_write_outbox WHERE status='pending'"
+            )
             return int(row["c"])  # type: ignore[index]
 
 

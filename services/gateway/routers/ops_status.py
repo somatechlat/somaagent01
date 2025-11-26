@@ -1,4 +1,5 @@
 """Operational status endpoints consumed by the Web UI (degradation + circuit)."""
+
 from __future__ import annotations
 
 import time
@@ -111,6 +112,8 @@ async def somabrain_health():
 
 
 __all__ = ["router"]
+
+
 async def _pending_outbox() -> int:
     """Return pending memory write outbox count."""
     try:

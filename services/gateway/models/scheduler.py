@@ -8,7 +8,7 @@ expects (see ``webui/js/scheduler.js``).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +28,9 @@ class TaskBase(BaseModel):
     plan: Optional[Dict[str, Any]] = Field(
         None, description="Optional execution plan (todo/in_progress/done)"
     )
-    attachments: List[str] = Field(default_factory=list, description="File IDs attached to the task")
+    attachments: List[str] = Field(
+        default_factory=list, description="File IDs attached to the task"
+    )
 
 
 class TaskCreate(TaskBase):
@@ -45,8 +47,12 @@ class TaskResponse(TaskBase):
     """Full representation of a task as returned by the API."""
 
     uuid: str = Field(..., description="Unique identifier of the task")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="When the task was created")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="When the task was last modified")
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="When the task was created"
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="When the task was last modified"
+    )
 
 
 class TaskListResponse(BaseModel):

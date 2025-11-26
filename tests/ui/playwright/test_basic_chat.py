@@ -43,8 +43,7 @@ async def test_chat_message_roundtrip():
         # that matches the POST request to the chat session endpoint.
         await page.wait_for_event(
             "response",
-            lambda resp: resp.request.method == "POST"
-            and "/v1/session/message" in resp.url,
+            lambda resp: resp.request.method == "POST" and "/v1/session/message" in resp.url,
             timeout=20000,
         )
 
@@ -61,7 +60,9 @@ async def test_chat_message_roundtrip():
             await page.wait_for_timeout(500)
 
         assert response_text, "Assistant response never arrived via SSE"
-        assert "error" not in response_text.lower(), f"Unexpected error in response: {response_text}"
+        assert (
+            "error" not in response_text.lower()
+        ), f"Unexpected error in response: {response_text}"
 
     finally:
         if context:

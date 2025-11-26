@@ -168,6 +168,7 @@ class SecretManager:
     async def has_internal_token(self) -> bool:
         return (await self.get_internal_token()) is not None
 
+
 # -------------------------------------------------------------------------
 # Compatibility layer – expose async helper functions for convenience.
 # -------------------------------------------------------------------------
@@ -185,20 +186,26 @@ __all__ = [
 # Create a singleton instance that will be used by the thin wrapper functions.
 _secret_manager = SecretManager()
 
+
 async def list_providers(*args, **kwargs):  # pragma: no cover – thin wrapper
     return await _secret_manager.list_providers(*args, **kwargs)
+
 
 async def get_provider_key(*args, **kwargs):  # pragma: no cover – thin wrapper
     return await _secret_manager.get_provider_key(*args, **kwargs)
 
+
 async def set_provider_key(*args, **kwargs):  # pragma: no cover – thin wrapper
     return await _secret_manager.set_provider_key(*args, **kwargs)
+
 
 async def delete_provider_key(*args, **kwargs):  # pragma: no cover – thin wrapper
     return await _secret_manager.delete_provider_key(*args, **kwargs)
 
+
 async def has_provider_key(*args, **kwargs):  # pragma: no cover – thin wrapper
     return await _secret_manager.has_provider_key(*args, **kwargs)
+
 
 async def has_internal_token(*args, **kwargs):  # pragma: no cover – thin wrapper
     return await _secret_manager.has_internal_token(*args, **kwargs)

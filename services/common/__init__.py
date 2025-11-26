@@ -37,5 +37,6 @@ def __getattr__(name: str) -> Any:
 def __dir__() -> list[str]:
     return sorted(list(globals().keys()) + list(_SUBMODULES) + ["cfg"])
 
+
 # Import the real configuration singleton from the core package.
 from src.core.config import cfg  # noqa: E402  (import after definitions is intentional)

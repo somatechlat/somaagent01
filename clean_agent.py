@@ -446,8 +446,7 @@ class Agent:
             False,
             content=self.read_prompt(
                 "agent.context.extras.md",
-                extras=dirty_json.stringify(
-                ),
+                extras=dirty_json.stringify(),
             ),
         ).output()
 

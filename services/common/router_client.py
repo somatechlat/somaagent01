@@ -46,6 +46,7 @@ class RouterClient:
         if self._client:
             await self._client.aclose()
 
+
 # ---------------------------------------------------------------------------
 # Public factory expected by legacy router imports
 # ---------------------------------------------------------------------------
@@ -59,5 +60,6 @@ def get_router_client() -> RouterClient:
     previous behaviour without any hard‑coded values.
     """
     return RouterClient()
+
 
 __all__ = ["RouterClient", "RouteDecision", "get_router_client"]

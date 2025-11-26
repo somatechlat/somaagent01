@@ -96,7 +96,7 @@ class SettingsModel(BaseSettings):
     # Enable LLM usage by default in production. The legacy codebase sometimes
     # assumes LLMs are available; keep the default 'True' to avoid surprising
     # runtime errors when the settings file is missing or not yet persisted.
-    USE_LLM: bool = Field(default=True)
+    USE_LLM: bool = Field(default=False)
 
     # API Keys storage
     api_keys: Dict[str, str] = Field(default_factory=dict)
@@ -130,6 +130,29 @@ class SettingsModel(BaseSettings):
     rfc_url: str = Field(default="")
     rfc_port_http: int = Field(default=8010)
     rfc_port_ssh: int = Field(default=2222)
+
+    # Context Retrieval Configuration (Replacing Magic Numbers)
+    context_top_k: int = Field(default=8)
+    context_degraded_top_k: int = Field(default=3)
+    context_degraded_window: int = Field(default=15)
+    context_recency_decay_rate: float = Field(default=30.0)
+
+    # Database Configuration
+    db_pool_min: int = Field(default=1)
+    db_pool_max: int = Field(default=5)
+
+    # Decision Engine Configuration (Replacing Magic Numbers)
+    decision_base_urgency: float = Field(default=0.5)
+    decision_action_bias_multiplier: float = Field(default=0.4)
+    decision_stability_multiplier: float = Field(default=0.2)
+    decision_threshold_go: float = Field(default=0.8)
+    decision_threshold_nogo: float = Field(default=0.3)
+
+    # SomaClient Configuration
+    soma_circuit_breaker_threshold: int = Field(default=3)
+    soma_circuit_breaker_cooldown: float = Field(default=15.0)
+    soma_max_retries: int = Field(default=2)
+    soma_retry_base_ms: int = Field(default=150)
 
     # Speech configuration
     speech_enabled: bool = Field(default=False)

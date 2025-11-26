@@ -69,7 +69,9 @@ def _env_int(name: str, default: int) -> int:
 
 
 class OutboxSyncWorker:
-    def __init__(self, *, store: Optional[OutboxStore] = None, bus: Optional[KafkaEventBus] = None) -> None:
+    def __init__(
+        self, *, store: Optional[OutboxStore] = None, bus: Optional[KafkaEventBus] = None
+    ) -> None:
         self.store = store or OutboxStore()
         self.bus = bus or KafkaEventBus(KafkaSettings.from_env())
         self.batch_size = _env_int("OUTBOX_SYNC_BATCH_SIZE", 100)
@@ -89,8 +91,10 @@ class OutboxSyncWorker:
 
     async def start(self) -> None:
         await ensure_schema(self.store)
-        LOGGER.info("Outbox sync worker started",
-                    extra={"batch_size": self.batch_size, "interval": self.interval})
+        LOGGER.info(
+            "Outbox sync worker started",
+            extra={"batch_size": self.batch_size, "interval": self.interval},
+        )
         while not self._stopping.is_set():
             await self._maybe_probe_health()
             effective_batch, effective_interval = self._compute_effective_limits()
@@ -137,7 +141,10 @@ class OutboxSyncWorker:
         self._health_checked_at = now
         new_state = await self._probe_somabrain_health()
         if new_state != self._health_state:
-            LOGGER.info("Outbox sync health state changed", extra={"from": self._health_state, "to": new_state})
+            LOGGER.info(
+                "Outbox sync health state changed",
+                extra={"from": self._health_state, "to": new_state},
+            )
             self._health_state = new_state
             for state in ("normal", "degraded", "down"):
                 HEALTH_STATE.labels(state).set(1.0 if state == self._health_state else 0.0)
@@ -161,7 +168,9 @@ class OutboxSyncWorker:
                     body = resp.json()
                 except Exception:
                     body = None
-                if isinstance(body, dict) and (body.get("ok") is True or body.get("status") == "ok"):
+                if isinstance(body, dict) and (
+                    body.get("ok") is True or body.get("status") == "ok"
+                ):
                     return "normal"
                 return "degraded"
         except Exception:
@@ -176,6 +185,7 @@ class OutboxSyncWorker:
                     if isinstance(payload, str):
                         try:
                             import json as _json
+
                             payload = _json.loads(payload)
                         except Exception:
                             # Fall back to wrapping string payload
@@ -194,7 +204,9 @@ class OutboxSyncWorker:
         if retry > self.max_retries:
             await self.store.mark_failed(msg.id, error=str(exc))
             PUBLISH_OK.labels("failed").inc()
-            LOGGER.warning("Outbox message failed permanently", extra={"id": msg.id, "topic": msg.topic})
+            LOGGER.warning(
+                "Outbox message failed permanently", extra={"id": msg.id, "topic": msg.topic}
+            )
             return
         backoff = self._compute_backoff(retry)
         await self.store.mark_retry(msg.id, backoff_seconds=backoff, error=str(exc))

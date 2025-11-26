@@ -41,8 +41,12 @@ def _dedupe(key: str, ttl: int = 3600) -> bool:
     return r.set(name=f"dedupe:{key}", value=1, ex=ttl, nx=True)
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)
-def build_context(self, messages: Sequence[dict[str, Any]], max_tokens: int = 4000) -> dict[str, Any]:
+@shared_task(
+    bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3
+)
+def build_context(
+    self, messages: Sequence[dict[str, Any]], max_tokens: int = 4000
+) -> dict[str, Any]:
     start = time.perf_counter()
     task = "build_context"
     TASK_TOTAL.labels(task=task).inc()
@@ -53,7 +57,9 @@ def build_context(self, messages: Sequence[dict[str, Any]], max_tokens: int = 40
     return {"tokens": len(trimmed), "content": trimmed}
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)
+@shared_task(
+    bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3
+)
 def evaluate_policy(self, payload: dict[str, Any]) -> dict[str, Any]:
     task = "evaluate_policy"
     start = time.perf_counter()
@@ -67,13 +73,18 @@ def evaluate_policy(self, payload: dict[str, Any]) -> dict[str, Any]:
     return decision
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)
+@shared_task(
+    bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3
+)
 def store_interaction(self, interaction: dict[str, Any]) -> dict[str, Any]:
     task = "store_interaction"
     start = time.perf_counter()
     TASK_TOTAL.labels(task=task).inc()
     r = _redis_client()
-    key = interaction.get("request_id") or hashlib.sha256(json.dumps(interaction, sort_keys=True).encode()).hexdigest()
+    key = (
+        interaction.get("request_id")
+        or hashlib.sha256(json.dumps(interaction, sort_keys=True).encode()).hexdigest()
+    )
     r.hset("interactions", key, json.dumps(interaction))
     TASK_SUCCESS.labels(task=task).inc()
     TASK_DURATION.labels(task=task).observe(time.perf_counter() - start)
@@ -115,7 +126,14 @@ def publish_metrics(self) -> dict[str, Any]:
     return {"status": "ok"}
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=2, time_limit=60)
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=2,
+    time_limit=60,
+)
 def a2a_chat_task(self, payload: dict[str, Any]) -> dict[str, Any]:
     task = "a2a_chat_task"
     start = time.perf_counter()

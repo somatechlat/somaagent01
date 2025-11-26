@@ -6,8 +6,8 @@ them part of the CI run without moving any files.
 """
 
 import importlib
-import pkgutil
 import pathlib
+import pkgutil
 
 # Resolve the absolute path to the ``tests/unit`` package.
 BASE_DIR = pathlib.Path(__file__).resolve().parents[2]

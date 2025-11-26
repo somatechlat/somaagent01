@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
+from python.integrations.soma_client import SomaClientError
 from services.tool_executor.tools import AVAILABLE_TOOLS, BaseTool, ToolExecutionError
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,12 +18,12 @@ class MemorySaveTool(BaseTool):
         content = args.get("content")
         if not isinstance(content, str) or not content.strip():
             raise ToolExecutionError("'content' is required")
-        
+
         fact_type = args.get("fact_type", "episodic")
         tags = args.get("tags") or []
         if not isinstance(tags, list):
             tags = [str(tags)]
-            
+
         # Ensure fact_type is valid
         valid_types = {"episodic", "semantic", "goal", "reflection", "procedural"}
         if fact_type not in valid_types:
@@ -48,7 +48,7 @@ class MemorySaveTool(BaseTool):
             return {
                 "status": "success",
                 "memory_id": result.get("key") or result.get("id"),
-                "fact_type": fact_type
+                "fact_type": fact_type,
             }
         except SomaClientError as exc:
             LOGGER.error("SomaBrain memory save failed", extra={"error": str(exc)})
@@ -61,31 +61,25 @@ class MemorySaveTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "content": {
-                    "type": "string",
-                    "description": "The memory content to save"
-                },
+                "content": {"type": "string", "description": "The memory content to save"},
                 "fact_type": {
                     "type": "string",
                     "enum": ["episodic", "semantic", "goal", "reflection", "procedural"],
                     "description": "Type of memory (default: episodic)",
-                    "default": "episodic"
+                    "default": "episodic",
                 },
                 "tags": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional tags for categorization"
+                    "description": "Optional tags for categorization",
                 },
                 "importance": {
                     "type": "number",
                     "minimum": 0.0,
                     "maximum": 1.0,
-                    "description": "Optional importance score (0.0-1.0)"
+                    "description": "Optional importance score (0.0-1.0)",
                 },
-                "metadata": {
-                    "type": "object",
-                    "description": "Additional structured metadata"
-                }
+                "metadata": {"type": "object", "description": "Additional structured metadata"},
             },
             "required": ["content"],
             "additionalProperties": False,
@@ -99,7 +93,7 @@ class UpdateBehaviorTool(BaseTool):
         behavior = args.get("behavior_description")
         if not isinstance(behavior, str) or not behavior.strip():
             raise ToolExecutionError("'behavior_description' is required")
-            
+
         action = args.get("action", "add")
         if action not in {"add", "modify", "delete"}:
             raise ToolExecutionError("Action must be 'add', 'modify', or 'delete'")
@@ -110,7 +104,7 @@ class UpdateBehaviorTool(BaseTool):
             # The action (add/modify/delete) is semantic for now, as we append new rules.
             # Real deletion would require searching first, which is complex for a single tool call.
             # For "delete", we add a rule that explicitly negates the previous one.
-            
+
             content = behavior
             if action == "delete":
                 content = f"IGNORE PREVIOUS RULE: {behavior}"
@@ -131,7 +125,7 @@ class UpdateBehaviorTool(BaseTool):
                 "status": "success",
                 "memory_id": result.get("key") or result.get("id"),
                 "action": action,
-                "note": "Behavior rule updated. It will be active in the next turn."
+                "note": "Behavior rule updated. It will be active in the next turn.",
             }
         except SomaClientError as exc:
             LOGGER.error("SomaBrain behavior update failed", extra={"error": str(exc)})
@@ -143,14 +137,14 @@ class UpdateBehaviorTool(BaseTool):
             "properties": {
                 "behavior_description": {
                     "type": "string",
-                    "description": "Description of the behavior rule to add/modify/delete"
+                    "description": "Description of the behavior rule to add/modify/delete",
                 },
                 "action": {
                     "type": "string",
                     "enum": ["add", "modify", "delete"],
                     "description": "Action to perform (default: add)",
-                    "default": "add"
-                }
+                    "default": "add",
+                },
             },
             "required": ["behavior_description"],
             "additionalProperties": False,
@@ -164,7 +158,7 @@ class RequestPlanTool(BaseTool):
         goal = args.get("goal")
         if not isinstance(goal, str) or not goal.strip():
             raise ToolExecutionError("'goal' is required")
-        
+
         max_steps = args.get("max_steps", 5)
         if not isinstance(max_steps, int) or max_steps < 1 or max_steps > 20:
             max_steps = 5
@@ -173,80 +167,70 @@ class RequestPlanTool(BaseTool):
         try:
             # 1. Search for goal in Memory (fact="goal")
             recall_result = await client.recall(
-                payload={
-                    "query": goal,
-                    "tags": ["goal"],
-                    "top_k": 1
-                },
-                tenant=args.get("tenant_id")
+                payload={"query": goal, "tags": ["goal"], "top_k": 1}, tenant=args.get("tenant_id")
             )
-            
+
             results = recall_result.get("results", [])
             if not results:
                 return {
                     "status": "error",
-                    "error": "Goal not found in memory. Please save it first using memory_save with fact_type='goal'."
+                    "error": "Goal not found in memory. Please save it first using memory_save with fact_type='goal'.",
                 }
-            
+
             # Extract memory key from the first result
             goal_payload = results[0].get("payload", {})
             goal_key = goal_payload.get("key") or goal_payload.get("id")
-            
+
             if not goal_key:
                 LOGGER.warning("Goal memory found but no key present")
-                return {
-                    "status": "error",
-                    "error": "Goal memory found but could not extract key"
-                }
-            
+                return {"status": "error", "error": "Goal memory found but could not extract key"}
+
             # 2. Request plan from SomaBrain via /plan/suggest
             plan_response = await client.plan_suggest(
                 payload={
                     "task_key": goal_key,
                     "max_steps": max_steps,
                     "rel_types": ["causes", "requires", "follows"],
-                    "universe": args.get("universe")
+                    "universe": args.get("universe"),
                 }
             )
-            
+
             plan_keys = plan_response.get("plan", [])
-            
+
             if not plan_keys:
                 return {
                     "status": "success",
                     "plan": [],
-                    "message": f"No plan steps found for goal: {goal}"
+                    "message": f"No plan steps found for goal: {goal}",
                 }
-            
+
             # 3. Retrieve details for each plan step
             steps = []
             for idx, key in enumerate(plan_keys):
                 step_recall = await client.recall(
-                    payload={
-                        "query": key,
-                        "top_k": 1
-                    },
-                    tenant=args.get("tenant_id")
+                    payload={"query": key, "top_k": 1}, tenant=args.get("tenant_id")
                 )
-                
+
                 step_results = step_recall.get("results", [])
                 if step_results:
                     step_payload = step_results[0].get("payload", {})
-                    steps.append({
-                        "step_number": idx + 1,
-                        "key": key,
-                        "content": step_payload.get("value") or step_payload.get("content"),
-                        "metadata": step_payload.get("metadata", {})
-                    })
-            
+                    steps.append(
+                        {
+                            "step_number": idx + 1,
+                            "key": key,
+                            "content": step_payload.get("value") or step_payload.get("content"),
+                            "metadata": step_payload.get("metadata", {}),
+                        }
+                    )
+
             return {
                 "status": "success",
                 "plan": steps,
                 "total_steps": len(steps),
                 "goal": goal,
-                "message": f"Generated {len(steps)}-step plan for: {goal}"
+                "message": f"Generated {len(steps)}-step plan for: {goal}",
             }
-            
+
         except SomaClientError as exc:
             LOGGER.error("SomaBrain plan_suggest failed", extra={"error": str(exc)})
             raise ToolExecutionError(f"Failed to request plan: {exc}")
@@ -258,17 +242,14 @@ class RequestPlanTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "goal": {
-                    "type": "string",
-                    "description": "The goal description to plan for"
-                },
+                "goal": {"type": "string", "description": "The goal description to plan for"},
                 "max_steps": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 20,
                     "description": "Maximum number of plan steps (default: 5)",
-                    "default": 5
-                }
+                    "default": 5,
+                },
             },
             "required": ["goal"],
             "additionalProperties": False,

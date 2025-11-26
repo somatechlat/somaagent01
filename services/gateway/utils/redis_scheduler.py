@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from services.common.session_repository import RedisSessionCache
 
@@ -80,7 +80,7 @@ async def save_task(task: Dict[str, Any]) -> Dict[str, Any]:
     print(f"DEBUG: Redis client: {_cache._client}")
     await _cache._client.hmset(_task_key(task_id), flat)
     await _cache._client.sadd(_TASK_SET, task_id)
-    print(f"DEBUG: Task saved.")
+    print("DEBUG: Task saved.")
     return task
 
 

@@ -1,4 +1,5 @@
 """Memory export/admin endpoints extracted from gateway monolith."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,8 +31,10 @@ async def export_memory(tenant: str | None = None, namespace: str | None = None)
 
     async def _stream():
         import json
+
         for r in rows:
             yield json.dumps(r.model_dump()) + "\n"
+
     return StreamingResponse(_stream(), media_type="application/x-ndjson")
 
 

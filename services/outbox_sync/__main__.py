@@ -21,7 +21,7 @@ async def main():
     """Main entry point for the outbox sync service."""
     config = CentralizedConfig()
     service = OutboxSyncService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

@@ -42,10 +42,14 @@ class GatewayStream(ApiHandler):
         primary = f"{base}/v1/session/{session_id}/events"
         host_alias = cfg.env("SA01_CONTAINER_HOST_ALIAS")
         gw_port = cfg.env("GATEWAY_PORT", str(cfg.settings().service.port))
-        fallback = f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events" if host_alias and gw_port else None
+        fallback = (
+            f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events"
+            if host_alias and gw_port
+            else None
+        )
 
         headers = {}
-        if (bearer := cfg.env("UI_GATEWAY_BEARER")):
+        if bearer := cfg.env("UI_GATEWAY_BEARER"):
             headers["Authorization"] = f"Bearer {bearer}"
 
         def stream_from(url: str) -> Iterator[bytes]:

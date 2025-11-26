@@ -13,7 +13,9 @@ except Exception:
 
 pytestmark = pytest.mark.e2e
 
-BASE_URL = (cfg.env("SA01_GATEWAY_BASE_URL", "http://localhost:8010") or "http://localhost:8010").rstrip("/")
+BASE_URL = (
+    cfg.env("SA01_GATEWAY_BASE_URL", "http://localhost:8010") or "http://localhost:8010"
+).rstrip("/")
 
 
 async def _health_ok() -> bool:

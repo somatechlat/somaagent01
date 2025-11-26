@@ -1,4 +1,5 @@
 """LLM invoke endpoints – real OpenAI-compatible proxy used by the worker."""
+
 from __future__ import annotations
 
 import json

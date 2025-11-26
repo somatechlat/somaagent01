@@ -1,4 +1,5 @@
 """Sessions and chat control endpoints (real, Postgres/Redis-backed)."""
+
 from __future__ import annotations
 
 import json
@@ -7,12 +8,11 @@ from typing import Any, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from services.common.publisher import DurablePublisher
 from services.common.session_repository import (
     PostgresSessionStore,
     RedisSessionCache,
-    ensure_schema as ensure_session_schema,
 )
-from services.common.publisher import DurablePublisher
 from src.core.config import cfg
 
 # Single router with absolute paths so we can expose both /v1/sessions/* and
@@ -60,9 +60,7 @@ async def list_sessions(limit: int = Query(50, ge=1, le=200)):
 
 
 @router.get("/v1/sessions/{session_id}/history")
-async def session_history(
-    session_id: str, limit: int = Query(200, ge=1, le=1000)
-) -> Any:
+async def session_history(session_id: str, limit: int = Query(200, ge=1, le=1000)) -> Any:
     store = _session_store()
     # await ensure_session_schema(store)
 
@@ -132,12 +130,8 @@ async def chat_remove(payload: dict):
     pool = await store._ensure_pool()  # noqa: SLF001
     async with pool.acquire() as conn:
         async with conn.transaction():
-            await conn.execute(
-                "DELETE FROM session_events WHERE session_id = $1", session_id
-            )
-            await conn.execute(
-                "DELETE FROM session_envelopes WHERE session_id = $1", session_id
-            )
+            await conn.execute("DELETE FROM session_events WHERE session_id = $1", session_id)
+            await conn.execute("DELETE FROM session_envelopes WHERE session_id = $1", session_id)
     try:
         await cache.delete(cache.format_key(session_id))
     except Exception:

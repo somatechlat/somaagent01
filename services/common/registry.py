@@ -27,6 +27,7 @@ from src.core.config import cfg
 # Core accessors – all values come from the single validated Config instance. #
 # --------------------------------------------------------------------------- #
 
+
 def _settings():
     """Return the canonical Config instance."""
     return cfg.settings()
@@ -61,6 +62,7 @@ def opa_url() -> str:
 
 
 # --------------------------------- Flags ---------------------------------- #
+
 
 def flag(key: str, tenant: Optional[str] = None) -> bool:
     """Return a feature flag value.

@@ -78,7 +78,9 @@ def _now_seconds() -> float:
 
 
 @router.get("/v1/feature-flags")
-async def list_feature_flags(request: Request, tenant: str | None = Query(default=None)) -> JSONResponse:
+async def list_feature_flags(
+    request: Request, tenant: str | None = Query(default=None)
+) -> JSONResponse:
     """Return tenant-scoped feature flags with remote overrides.
 
     - Default tenant when none supplied (tests call endpoint without header).
@@ -92,7 +94,12 @@ async def list_feature_flags(request: Request, tenant: str | None = Query(defaul
     from services.common.tenant_flags import get_tenant_flag as cached_tenant_flag
 
     # Determine tenant (provide default to satisfy tests that omit header)
-    tenant_id = (tenant or "").strip() or request.headers.get("X-Tenant-Id") or request.headers.get("x-tenant-id") or "public"
+    tenant_id = (
+        (tenant or "").strip()
+        or request.headers.get("X-Tenant-Id")
+        or request.headers.get("x-tenant-id")
+        or "public"
+    )
 
     reg = build_default_registry()
     profile = reg.profile
@@ -138,5 +145,8 @@ async def list_feature_flags(request: Request, tenant: str | None = Query(defaul
         "flags": flags,
         "timestamp": time.time(),
     }
-    _FLAG_CACHE[cache_key] = {"expires_at": _now_seconds() + _FLAG_CACHE_TTL_SECONDS, "payload": payload}
+    _FLAG_CACHE[cache_key] = {
+        "expires_at": _now_seconds() + _FLAG_CACHE_TTL_SECONDS,
+        "payload": payload,
+    }
     return JSONResponse(payload)

@@ -1,5 +1,4 @@
 import ast
-import sys
 
 filename = "services/common/redis_client.py"
 try:

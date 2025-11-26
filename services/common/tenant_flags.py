@@ -7,6 +7,7 @@ from typing import Callable, Optional
 _FLAG_CACHE: dict[tuple[str, str], tuple[bool, float]] = {}
 _LOCK = threading.Lock()
 
+
 class TenantFlagCache:
     def __init__(self, fetcher: Callable[[str, str], bool], ttl: float = 2.0) -> None:
         self.fetcher = fetcher
@@ -26,6 +27,7 @@ class TenantFlagCache:
         with _LOCK:
             _FLAG_CACHE[key] = (value, now + self.ttl)
         return value
+
 
 _CACHE_INSTANCE: TenantFlagCache | None = None
 

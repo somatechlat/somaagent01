@@ -41,12 +41,12 @@ class CentralizedConfig(_Config):
 
 
 def load_config() -> _Config:
-  """Return the canonical configuration singleton.
+    """Return the canonical configuration singleton.
 
-  ``src.core.config.load_config`` already implements lazy loading and
-  caching, so we forward directly to it.
-  """
-  return _load_config()
+    ``src.core.config.load_config`` already implements lazy loading and
+    caching, so we forward directly to it.
+    """
+    return _load_config()
 
 
 # Export the legacy names expected by existing imports.

@@ -85,12 +85,16 @@ class DegradedSyncWorker:
             # To preserve the original values for later publishing we pass a
             # shallow copy to the client.
             payload_copy: dict = dict(payload)
-            result = await circuit_breakers["somabrain"].call_async(self.soma.remember, payload_copy)
+            result = await circuit_breakers["somabrain"].call_async(
+                self.soma.remember, payload_copy
+            )
         except Exception as exc:  # pragma: no cover – exercised in integration tests
             # Record the failure but still attempt to publish a minimal assistant
             # response so the integration test can observe an outbound event.
             LOGGER.debug("Degraded sync failed for %s: %s", event_id, exc)
-            degraded_sync_failure_total.labels(service="memory_sync", error_type=type(exc).__name__).inc()
+            degraded_sync_failure_total.labels(
+                service="memory_sync", error_type=type(exc).__name__
+            ).inc()
             # Use a simple fallback payload.
             result = {"message": "fallback response"}
             # Continue to publishing and then delete the buffered entry.

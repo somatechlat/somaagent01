@@ -260,6 +260,7 @@ async def health_summary():
         "last_check": health["timestamp"],
     }
 
+
 # ---------------------------------------------------------------------------
 # Degradation status endpoint
 # ---------------------------------------------------------------------------
@@ -295,6 +296,3 @@ async def degraded_status() -> dict:
         "services": status,
         "timestamp": datetime.utcnow().isoformat(),
     }
-
-
-

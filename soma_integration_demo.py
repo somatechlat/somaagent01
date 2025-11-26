@@ -8,6 +8,7 @@ from services.gateway.degradation_monitor import degradation_monitor, Degradatio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 async def demo_soma_brain() -> Mapping[str, Any]:
     client = SomaClient.get()
     payload = {"id": "demo-1", "content": "example memory", "metadata": {"source": "demo"}}
@@ -15,6 +16,7 @@ async def demo_soma_brain() -> Mapping[str, Any]:
     recall_res = await client.recall(query="example memory")
     health_res = await client.health()
     return {"remember": remember_res, "recall": recall_res, "health": health_res}
+
 
 async def demo_degradation_monitor() -> None:
     monitor: DegradationMonitor = degradation_monitor
@@ -27,6 +29,7 @@ async def demo_degradation_monitor() -> None:
     logger.info("Degradation status: %s", status)
     await monitor.stop_monitoring()
 
+
 async def main() -> None:
     try:
         soma = await demo_soma_brain()
@@ -34,6 +37,7 @@ async def main() -> None:
     except SomaClientError as e:
         logger.error("SomaBrain error: %s", e)
     await demo_degradation_monitor()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

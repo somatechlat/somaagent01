@@ -20,7 +20,7 @@ and background syncer) already runs in an async event loop.
 from __future__ import annotations
 
 import json
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 
 import redis.asyncio as aioredis
 
@@ -36,6 +36,7 @@ from src.core.config import cfg
 # runs.  Creating a fresh client on each call guarantees the latest env vars
 # are respected and prevents stale connections (e.g., a previous attempt to
 # ``localhost:6379`` persisting after the URL was updated).
+
 
 def _get_redis() -> aioredis.Redis:
     # Resolve the Redis URL with priority:
@@ -56,6 +57,7 @@ def _get_redis() -> aioredis.Redis:
     # that environment, regardless of any host-level overrides.
     try:
         import os
+
         if os.path.exists("/.dockerenv"):
             raw_url = cfg.env("SA01_REDIS_URL", "redis://redis:6379/0")
     except Exception:
@@ -67,7 +69,10 @@ def _get_redis() -> aioredis.Redis:
     # (default 20001, overridable via ``REDIS_PORT``).
     # Only rewrite the redis hostname when explicitly requested (e.g. host-side tests).
     # In containers, rewriting breaks connectivity (localhost:20001 is host, not the redis service).
-    if raw_url.startswith("redis://redis") and cfg.env("REDIS_REWRITE_TO_LOCALHOST", "").lower() == "true":
+    if (
+        raw_url.startswith("redis://redis")
+        and cfg.env("REDIS_REWRITE_TO_LOCALHOST", "").lower() == "true"
+    ):
         from urllib.parse import urlparse, urlunparse
 
         parsed = urlparse(raw_url)
@@ -137,8 +142,7 @@ async def get_all_events() -> Dict[str, dict]:
 
 
 async def delete_event(event_id: str) -> None:
-    """Remove a buffered event after it has been synced to Postgres.
-    """
+    """Remove a buffered event after it has been synced to Postgres."""
     redis_conn = _get_redis()
     key = f"degraded:{event_id}"
     await redis_conn.delete(key)
@@ -165,4 +169,3 @@ class RedisCacheClient:
             await redis_conn.set(key, json.dumps(value), ex=ttl)
         except Exception:
             pass
-

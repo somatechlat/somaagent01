@@ -23,9 +23,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/v1/ui/notifications", tags=["ui-notifications"])

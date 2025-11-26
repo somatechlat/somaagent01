@@ -21,7 +21,7 @@ async def main():
     """Main entry point for the tool executor service."""
     config = CentralizedConfig()
     service = ToolExecutorService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

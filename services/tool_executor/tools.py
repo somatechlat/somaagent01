@@ -58,9 +58,7 @@ class EchoTool(BaseTool):
     def input_schema(self) -> Dict[str, Any] | None:
         return {
             "type": "object",
-            "properties": {
-                "text": {"type": "string", "description": "Text to echo back"}
-            },
+            "properties": {"text": {"type": "string", "description": "Text to echo back"}},
             "required": ["text"],
             "additionalProperties": False,
         }
@@ -303,7 +301,9 @@ class IngestDocumentTool(BaseTool):
         if tenant_header:
             headers["X-Tenant-Id"] = str(tenant_header)
         try:
-            async with httpx.AsyncClient(timeout=float(cfg.env("TOOL_FETCH_TIMEOUT", "15"))) as client:
+            async with httpx.AsyncClient(
+                timeout=float(cfg.env("TOOL_FETCH_TIMEOUT", "15"))
+            ) as client:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:
                     raise ToolExecutionError("Attachment not found")
@@ -334,9 +334,12 @@ class IngestDocumentTool(BaseTool):
                 except Exception:
                     text = data.decode("latin-1", errors="ignore")
             # PDF
-            elif (mime == "application/pdf" or (filename or "").lower().endswith(".pdf")) and fitz is not None:
+            elif (
+                mime == "application/pdf" or (filename or "").lower().endswith(".pdf")
+            ) and fitz is not None:
                 try:
                     import io as _io
+
                     parts = []
                     with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
                         for page in doc:
@@ -348,6 +351,7 @@ class IngestDocumentTool(BaseTool):
             elif mime.startswith("image/") and Image is not None and pytesseract is not None:
                 try:
                     import io as _io
+
                     img = Image.open(_io.BytesIO(data))
                     text = pytesseract.image_to_string(img)
                 except Exception as exc:
@@ -357,8 +361,22 @@ class IngestDocumentTool(BaseTool):
                 try:
                     fname = (filename or "").lower()
                     text_exts = (
-                        ".md", ".txt", ".csv", ".tsv", ".yaml", ".yml", ".toml", ".ini", ".log",
-                        ".py", ".json", ".xml", ".html", ".htm", ".css", ".js"
+                        ".md",
+                        ".txt",
+                        ".csv",
+                        ".tsv",
+                        ".yaml",
+                        ".yml",
+                        ".toml",
+                        ".ini",
+                        ".log",
+                        ".py",
+                        ".json",
+                        ".xml",
+                        ".html",
+                        ".htm",
+                        ".css",
+                        ".js",
                     )
                     if (not mime or mime == "application/octet-stream") and any(
                         fname.endswith(ext) for ext in text_exts

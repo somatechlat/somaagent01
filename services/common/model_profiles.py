@@ -11,8 +11,10 @@ Legacy model profile store removed – centralized settings will drive LLM confi
 # This module intentionally left minimal to satisfy imports; all functionality removed.
 LOGGER = logging.getLogger(__name__)
 
+
 class ModelProfile:
     pass
+
 
 class ModelProfileStore:
     def __init__(self, *args, **kwargs) -> None:

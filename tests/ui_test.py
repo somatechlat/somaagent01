@@ -12,11 +12,9 @@ Prerequisites:
 """
 
 import asyncio
-from pathlib import Path
 
 import pytest
 from playwright.async_api import async_playwright
-
 
 BASE_URL = "http://localhost:21016"  # Adjust if GATEWAY_PORT is overridden
 

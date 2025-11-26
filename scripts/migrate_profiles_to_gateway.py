@@ -40,7 +40,11 @@ def _push_via_ui_settings(profile: Dict[str, Any]) -> bool:
 def _push_via_api(profile: Dict[str, Any]) -> bool:
     # direct upsert requires two path params (role/deployment). We'll call the PUT endpoint
     role = profile.get("role") or "dialogue"
-    dep = profile.get("deployment_mode") or cfg.env("DEPLOYMENT_MODE", cfg.settings().service.deployment_mode) or "DEV"
+    dep = (
+        profile.get("deployment_mode")
+        or cfg.env("DEPLOYMENT_MODE", cfg.settings().service.deployment_mode)
+        or "DEV"
+    )
     url = f"{MODEL_PROFILES}/{role}/{dep}"
     try:
         resp = requests.put(url, json=profile, timeout=5.0)

@@ -99,7 +99,7 @@ async def list_notifications(
 @router.post("", status_code=201)
 async def create_notification(
     payload: NotificationCreate,
-    tenant_id: Optional[str] = Query(None, description="Tenant identifier (overrides payload)")
+    tenant_id: Optional[str] = Query(None, description="Tenant identifier (overrides payload)"),
 ):
     """Create a new notification and return the stored representation.
 

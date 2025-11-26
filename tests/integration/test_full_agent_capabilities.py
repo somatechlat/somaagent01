@@ -1,15 +1,16 @@
-import os
-import pytest
-import httpx
 import json
-import asyncio
+import os
+
+import httpx
+import pytest
+
 
 @pytest.mark.asyncio
 async def test_full_agent_capabilities():
     """
     Comprehensive verification of the FULL Agent Zero capabilities against the
     deployed infrastructure (Real Infra).
-    
+
     Scope:
     1. Infrastructure Health (Gateway, DB, Redis, Kafka)
     2. Basic Chat (Persona & Memory pipeline)
@@ -37,10 +38,7 @@ async def test_full_agent_capabilities():
         # 2. Basic Chat (Persona & Memory Pipeline)
         # ------------------------------------------------------------------
         print("\n[2] Verifying Basic Chat Pipeline...")
-        chat_payload = {
-            "message": "Hello, who are you?",
-            "role": "user"
-        }
+        chat_payload = {"message": "Hello, who are you?", "role": "user"}
         resp = await client.post(f"{BASE_URL}/v1/session/message", json=chat_payload)
         assert resp.status_code == 200
         result = resp.json()
@@ -57,11 +55,11 @@ async def test_full_agent_capabilities():
         emergency_payload = {
             "message": "This is an emergency! System failure imminent.",
             "role": "user",
-            "session_id": session_id
+            "session_id": session_id,
         }
         resp = await client.post(f"{BASE_URL}/v1/session/message", json=emergency_payload)
         assert resp.status_code == 200
-        print(f"    Emergency Message Accepted.")
+        print("    Emergency Message Accepted.")
         # Verification: We will check logs for "Active profile selected: emergency_mode"
 
         # ------------------------------------------------------------------
@@ -72,11 +70,11 @@ async def test_full_agent_capabilities():
         plan_payload = {
             "message": "Create a plan to deploy this agent to production.",
             "role": "user",
-            "session_id": session_id
+            "session_id": session_id,
         }
         resp = await client.post(f"{BASE_URL}/v1/session/message", json=plan_payload)
         assert resp.status_code == 200
-        print(f"    Plan Request Accepted.")
+        print("    Plan Request Accepted.")
         # Verification: We will check logs for "Tool request: request_plan"
 
     print("\n[SUCCESS] All API endpoints reachable and functioning.")

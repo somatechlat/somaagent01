@@ -41,7 +41,9 @@ class NotificationsStore:
 
         # Use central config for Postgres DSN when not explicitly provided.
         # Fallback to a sensible default if the config does not define one.
-        default_dsn = cfg.settings().database.dsn or "postgresql://soma:soma@localhost:5432/somaagent01"
+        default_dsn = (
+            cfg.settings().database.dsn or "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         raw_dsn = dsn or default_dsn
         self.dsn = raw_dsn
         self._pool: Optional[asyncpg.Pool] = None

@@ -89,7 +89,9 @@ async def test_build_context_async(monkeypatch):
     monkeypatch.setenv("SA01_SOMA_BASE_URL", "http://example.com")
     payload = {"session_id": "s", "messages": []}
     with respx.mock(base_url="http://example.com") as mock:
-        route = mock.post("/v1/context/build", json=payload).respond(json=[{"role": "system", "content": "ok"}])
+        route = mock.post("/v1/context/build", json=payload).respond(
+            json=[{"role": "system", "content": "ok"}]
+        )
         from python.integrations.somabrain_client import build_context_async
 
         result = await build_context_async(payload)

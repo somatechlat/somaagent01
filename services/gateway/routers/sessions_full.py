@@ -32,7 +32,14 @@ async def _session_store() -> PostgresSessionStore:
 async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> List[SessionSummary]:
     store = await _session_store()
     rows = await store.list(limit=limit)
-    return [SessionSummary(session_id=r.session_id, persona_id=getattr(r, "persona_id", None), tenant=getattr(r, "tenant", None)) for r in rows]
+    return [
+        SessionSummary(
+            session_id=r.session_id,
+            persona_id=getattr(r, "persona_id", None),
+            tenant=getattr(r, "tenant", None),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/{session_id}/history")

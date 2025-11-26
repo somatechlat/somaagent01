@@ -33,7 +33,9 @@ def _kafka_settings() -> KafkaSettings:
 
 @router.get("/health")
 async def health_check(
-    store: PostgresSessionStore = Depends(lambda: PostgresSessionStore(cfg.settings().database.dsn)),
+    store: PostgresSessionStore = Depends(
+        lambda: PostgresSessionStore(cfg.settings().database.dsn)
+    ),
     cache: RedisSessionCache = Depends(lambda: RedisSessionCache(cfg.settings().redis.url)),
 ) -> JSONResponse:
     components: dict[str, dict[str, str]] = {}

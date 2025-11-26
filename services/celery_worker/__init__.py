@@ -35,8 +35,12 @@ def create_celery_app() -> Celery:
 
     # Task routing per queue (configurable via env overrides).
     app.conf.task_routes = {
-        "services.celery_worker.tasks.delegate*": {"queue": cfg.env("CELERY_QUEUE_DELEGATION", "delegation")},
-        "services.celery_worker.tasks.browser*": {"queue": cfg.env("CELERY_QUEUE_BROWSER", "browser")},
+        "services.celery_worker.tasks.delegate*": {
+            "queue": cfg.env("CELERY_QUEUE_DELEGATION", "delegation")
+        },
+        "services.celery_worker.tasks.browser*": {
+            "queue": cfg.env("CELERY_QUEUE_BROWSER", "browser")
+        },
         "services.celery_worker.tasks.code*": {"queue": cfg.env("CELERY_QUEUE_CODE", "code")},
         "services.celery_worker.tasks.heavy*": {"queue": cfg.env("CELERY_QUEUE_HEAVY", "heavy")},
     }

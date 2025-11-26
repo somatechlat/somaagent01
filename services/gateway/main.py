@@ -4,54 +4,62 @@ All HTTP/WS routes are provided by the modular routers in services.gateway.route
 Legacy monolith endpoints and large inline logic have been removed to comply with
 VIBE rules (single source, no legacy duplicates).
 """
+
 from __future__ import annotations
+
+import shutil
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
 
 # Export a helper to obtain the session store (used by the gateway endpoints).
 from integrations.repositories import get_session_store as _get_session_store
-
-from contextlib import asynccontextmanager
-import os
-import shutil
-from pathlib import Path
-
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import OutboxStore
-from services.common.session_repository import ensure_schema as ensure_session_schema
 
 # Central utilities
 from services.common.publisher import DurablePublisher
-from services.common.session_repository import RedisSessionCache
+from services.common.session_repository import (
+    ensure_schema as ensure_session_schema,
+    RedisSessionCache,
+)
 
 # Routers
 from services.gateway.routers import build_router
-# Import UI settings sections router to expose settings endpoints
-from services.gateway.routers.ui_settings_sections import router as ui_settings_router
-# Import UI notifications router to expose notifications endpoints
-from services.gateway.routers.ui_notifications import router as ui_notifications_router
+
 # Import the newly added tunnel proxy router
 from services.gateway.routers.tunnel_proxy import router as tunnel_proxy_router
+
+# Import UI notifications router to expose notifications endpoints
+from services.gateway.routers.ui_notifications import router as ui_notifications_router
+
+# Import UI settings sections router to expose settings endpoints
+from services.gateway.routers.ui_settings_sections import router as ui_settings_router
 from src.core.config import cfg
 
 # Compatibility alias for legacy code and tests expecting ``APP_SETTINGS``.
 APP_SETTINGS = cfg.settings()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     from services.gateway.utils.scheduler_service import scheduler_service
+
     await scheduler_service.start()
-    
+
     # Ensure DB schema exists (idempotent, but best run once)
     from services.common.session_repository import PostgresSessionStore
+
     store = PostgresSessionStore(cfg.settings().database.dsn)
     await ensure_session_schema(store)
-    
+
     yield
     # Shutdown
     await scheduler_service.stop()
+
 
 app = FastAPI(lifespan=lifespan, title="SomaAgent Gateway")
 # Include the tunnel proxy router **before** the generic router assembly to ensure
@@ -90,9 +98,11 @@ class SessionSummary(BaseModel):
     created_at: datetime = Field(..., description="Timestamp when the session was created")
     updated_at: datetime = Field(..., description="Timestamp of the last update")
 
+
 # ---------------------------------------------------------------------------
 # Dependency helpers (used by tests and routers)
 # ---------------------------------------------------------------------------
+
 
 def get_bus() -> KafkaEventBus:
     """Construct a :class:`KafkaEventBus` using the central configuration.
@@ -120,6 +130,7 @@ def get_publisher() -> DurablePublisher:
     outbox = OutboxStore(dsn=cfg.settings().database.dsn)
     return DurablePublisher(bus=bus, outbox=outbox)
 
+
 def get_session_store():
     """Return the session store implementation.
 
@@ -138,6 +149,7 @@ def get_session_cache() -> RedisSessionCache:
     that the test suite overrides with a stub implementation.
     """
     return RedisSessionCache()
+
 
 # ---------------------------------------------------------------------------
 # Endpoint implementations (message, quick action, uploads)
@@ -181,7 +193,7 @@ async def enqueue_message(
     payload: dict = Body(...),
     publisher: DurablePublisher = Depends(get_publisher),
     _cache: RedisSessionCache = Depends(get_session_cache),
-    _store = Depends(get_session_store),
+    _store=Depends(get_session_store),
 ):
     """Process an inbound chat message and publish it to the write‑ahead log.
 
@@ -264,7 +276,7 @@ async def enqueue_quick_action(
     payload: dict,
     publisher: DurablePublisher = Depends(get_publisher),
     _cache: RedisSessionCache = Depends(get_session_cache),
-    _store = Depends(get_session_store),
+    _store=Depends(get_session_store),
 ):
     """Handle a quick action request (e.g., ``summarize``).
 
@@ -318,7 +330,7 @@ async def upload_files(
     payload: dict = Body(...),
     publisher: DurablePublisher = Depends(get_publisher),
     _cache: RedisSessionCache = Depends(get_session_cache),
-    _store = Depends(get_session_store),
+    _store=Depends(get_session_store),
 ):
     """Handle file uploads.
 
@@ -328,11 +340,11 @@ async def upload_files(
     meta = await _extract_metadata(request, payload)
     session_id = str(uuid.uuid4())
     event_id = str(uuid.uuid4())
-    
+
     # Ensure upload directory exists
     upload_dir = Path("uploads")
     upload_dir.mkdir(exist_ok=True)
-    
+
     saved_files = []
     for file in files:
         file_path = upload_dir / file.filename
@@ -365,8 +377,7 @@ async def upload_files(
 
 
 def main() -> None:
-    """Entry point for running the gateway via ``python -m services.gateway.main``.
-    """
+    """Entry point for running the gateway via ``python -m services.gateway.main``."""
     # Initialise logging and tracing before the server starts.
     setup_logging()
     setup_tracing("gateway", endpoint=cfg.env("OTEL_EXPORTER_OTLP_ENDPOINT"))

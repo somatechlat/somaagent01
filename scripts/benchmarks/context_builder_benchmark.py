@@ -41,13 +41,15 @@ def build_snippet_pool(count: int) -> List[Dict[str, Any]]:
                 "id": f"snippet-{idx}",
                 "score": random.uniform(0.2, 1.0),
                 "text": f"Synthetic memory #{idx}",
-                "metadata": {"source": random.choice(["doc", "memory", "note"])}
+                "metadata": {"source": random.choice(["doc", "memory", "note"])},
             }
         )
     return pool
 
 
-async def run_iteration(builder: ContextBuilder, envelope: Dict[str, Any], max_tokens: int) -> float:
+async def run_iteration(
+    builder: ContextBuilder, envelope: Dict[str, Any], max_tokens: int
+) -> float:
     start = time.perf_counter()
     await builder.build_for_turn(dict(envelope), max_prompt_tokens=max_tokens)
     return time.perf_counter() - start
@@ -97,8 +99,12 @@ async def benchmark(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark the ContextBuilder pipeline")
     parser.add_argument("--iterations", type=int, default=25, help="Number of prompts to build")
-    parser.add_argument("--max-tokens", type=int, default=4096, help="Prompt budget to pass to the builder")
-    parser.add_argument("--snippets", type=int, default=12, help="Size of the synthetic snippet pool")
+    parser.add_argument(
+        "--max-tokens", type=int, default=4096, help="Prompt budget to pass to the builder"
+    )
+    parser.add_argument(
+        "--snippets", type=int, default=12, help="Size of the synthetic snippet pool"
+    )
     parser.add_argument("--degraded", action="store_true", help="Force Somabrain degraded mode")
     parser.add_argument("--seed", type=int, default=42, help="Deterministic RNG seed")
     return parser.parse_args()

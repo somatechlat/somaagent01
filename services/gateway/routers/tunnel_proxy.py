@@ -14,10 +14,11 @@ specific tunnel logic.  It satisfies the immediate need to unblock the UI
 without introducing hard‑coded values beyond the required response shape.
 """
 
-from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel, Field
 import logging
 import uuid
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["tunnel-proxy"])
 

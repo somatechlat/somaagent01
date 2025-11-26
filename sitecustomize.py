@@ -29,8 +29,10 @@ import pytest
 # simple placeholder.
 try:
     from _pytest.fixtures import FixtureRequest  # type: ignore
+
     _req_type = FixtureRequest
 except Exception:
+
     class _PlaceholderRequest:  # pragma: no cover
         pass
 

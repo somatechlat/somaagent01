@@ -1,15 +1,14 @@
-
 import asyncio
 import logging
-import json
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
 
 from celery.schedules import crontab
+
 from services.common.celery_app import celery_app
 from services.gateway.utils import redis_scheduler
 
 LOGGER = logging.getLogger(__name__)
+
 
 class SchedulerService:
     def __init__(self):
@@ -40,18 +39,18 @@ class SchedulerService:
                 await self._process_tasks()
             except Exception as e:
                 LOGGER.error(f"Error in scheduler loop: {e}", exc_info=True)
-            
+
             # Sleep for 60 seconds
             await asyncio.sleep(60)
 
     async def _process_tasks(self):
         tasks = await redis_scheduler.list_tasks()
         now = datetime.utcnow()
-        
+
         for task in tasks:
             if task.get("state") != "enabled":
                 continue
-            
+
             schedule = task.get("schedule")
             if not schedule:
                 continue
@@ -88,16 +87,17 @@ class SchedulerService:
             try:
                 cron = crontab(**cron_kwargs)
                 is_due, next_time = cron.is_due(last_run_at)
-                
+
                 if is_due:
                     LOGGER.info(f"Task {task['uuid']} is due. Triggering.")
                     # Trigger task
                     celery_app.send_task("scheduler.run_task", args=[task["uuid"]])
-                    
+
                     # Update last_run_at
                     task["last_run_at"] = now.isoformat() + "Z"
                     await redis_scheduler.save_task(task)
             except Exception as e:
                 LOGGER.error(f"Failed to process task {task.get('uuid')}: {e}")
+
 
 scheduler_service = SchedulerService()

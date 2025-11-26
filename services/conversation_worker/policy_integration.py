@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional
 
 from services.common.policy_client import PolicyClient, PolicyRequest
-from src.core.config import cfg
 
 
 class ConversationPolicyEnforcer:
@@ -22,7 +21,7 @@ class ConversationPolicyEnforcer:
     ) -> bool:
         """Check whether an inbound user message is permitted."""
         # VIBE CODING RULE: No bypasses. Policy checks are mandatory.
-        
+
         # 1. Check if policy is enabled for this tenant
         if not self.client:
             return True

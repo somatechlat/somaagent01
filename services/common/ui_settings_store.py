@@ -3,6 +3,7 @@
 Backed by the same Postgres table `ui_settings` used by the sections endpoint.
 Non-secret fields live there; secrets remain in SecretManager.
 """
+
 from __future__ import annotations
 
 import json
@@ -45,7 +46,9 @@ class UiSettingsStore:
             if not row:
                 return {}
             val = row["value"]
-            return val if isinstance(val, dict) else {"sections": val} if isinstance(val, list) else {}
+            return (
+                val if isinstance(val, dict) else {"sections": val} if isinstance(val, list) else {}
+            )
 
     async def set(self, value: dict[str, Any]) -> None:
         await self.ensure_schema()
@@ -59,5 +62,6 @@ class UiSettingsStore:
                 """,
                 json.dumps(value, ensure_ascii=False),
             )
+
 
 __all__ = ["UiSettingsStore"]

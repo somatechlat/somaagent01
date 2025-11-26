@@ -92,13 +92,17 @@ def load_config() -> Config:
             "log_level": _env("LOG_LEVEL", "INFO"),
         },
         "database": {
-            "dsn": _env("DB_DSN", _env("SA01_DB_DSN", "postgresql://soma:soma@postgres:5432/somaagent01")),
+            "dsn": _env(
+                "DB_DSN", _env("SA01_DB_DSN", "postgresql://soma:soma@postgres:5432/somaagent01")
+            ),
             "pool_size": 20,
             "max_overflow": 10,
             "pool_timeout": 30,
         },
         "kafka": {
-            "bootstrap_servers": _env("KAFKA_BOOTSTRAP_SERVERS", _env("SA01_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")),
+            "bootstrap_servers": _env(
+                "KAFKA_BOOTSTRAP_SERVERS", _env("SA01_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+            ),
             "security_protocol": "PLAINTEXT",
             "sasl_mechanism": None,
             "sasl_username": None,

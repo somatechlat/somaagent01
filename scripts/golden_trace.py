@@ -24,7 +24,7 @@ import httpx
 
 from services.common.registry import soma_base_url
 
-GATEWAY_BASE = soma_base_url().rstrip('/')
+GATEWAY_BASE = soma_base_url().rstrip("/")
 
 
 def _hash(text: str) -> str:

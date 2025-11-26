@@ -67,10 +67,13 @@ class TunnelManager:
         implementation.
         """
         return url == _active_tunnel_url
+
+
 import threading
 
 try:
     from flaredantic import FlareConfig, FlareTunnel, ServeoConfig, ServeoTunnel
+
     _FLAREDANTIC_AVAILABLE = True
 except Exception:  # pragma: no cover - optional dependency
     _FLAREDANTIC_AVAILABLE = False
@@ -101,14 +104,19 @@ class TunnelManager:
 
     def start_tunnel(self, port=80, provider="serveo"):
         if not _FLAREDANTIC_AVAILABLE:
-            PrintError = __import__("python.helpers.print_style", fromlist=["PrintStyle"]).PrintStyle
-            PrintError.error("Tunnel provider not installed (flaredantic). Set up a tunnel or install 'flaredantic' to enable tunneling.")
+            PrintError = __import__(
+                "python.helpers.print_style", fromlist=["PrintStyle"]
+            ).PrintStyle
+            PrintError.error(
+                "Tunnel provider not installed (flaredantic). Set up a tunnel or install 'flaredantic' to enable tunneling."
+            )
             return None
 
         # Start tunnel in a separate thread to avoid blocking
         self.provider = provider
 
         try:
+
             def run_tunnel():
                 try:
                     if self.provider == "cloudflared":

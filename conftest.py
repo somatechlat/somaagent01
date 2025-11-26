@@ -121,7 +121,11 @@ def pytest_ignore_collect(collection_path: Path, config):
     if "playwright" in path_str and not env_snapshot.get("RUN_PLAYWRIGHT"):
         return True
     # Skip heavy/live and integration-style suites unless explicitly enabled
-    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
+    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     if ("tests/integration" in path_str or "tests/context" in path_str) and not run_integration:
         return True
     if path_str.endswith("tests/test_outbox_repository.py") and not run_integration:
@@ -152,7 +156,11 @@ def pytest_collection_modifyitems(config, items):
     """
     import pytest
 
-    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
+    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     if run_integration:
         return
     skip_integration = pytest.mark.skip(reason="RUN_INTEGRATION not set")

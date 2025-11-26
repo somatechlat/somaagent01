@@ -12,9 +12,9 @@ import logging
 import time
 from typing import Any, Mapping, Sequence
 
-import pybreaker
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
+import pybreaker
 from python.integrations.soma_client import SomaClient, SomaClientError
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.memory_write_outbox import (
@@ -83,7 +83,9 @@ class MemorySyncWorker:
         # Prefer central configuration's metrics settings; fallback to defaults if not set.
         metrics_port = int(getattr(cfg.settings().service, "metrics_port", 9471))
         start_http_server(metrics_port)
-        LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
+        LOGGER.info(
+            "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}
+        )
         while not self._stopping.is_set():
             pending = await self.store.count_pending()
             BACKLOG.set(pending)
@@ -147,7 +149,9 @@ class MemorySyncWorker:
             result = await circuit_breakers["somabrain"].call_async(self.soma.remember, payload)
         except pybreaker.CircuitBreakerError:
             # Circuit is open – defer processing and mark as degraded.
-            await self.store.mark_retry(item.id, backoff_seconds=self.backoff_base, error="circuit open")
+            await self.store.mark_retry(
+                item.id, backoff_seconds=self.backoff_base, error="circuit open"
+            )
             JOBS.labels("degraded").inc()
             return
         except SomaClientError as exc:

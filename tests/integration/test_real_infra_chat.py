@@ -1,8 +1,8 @@
 import os
-import pytest
+
 import httpx
-import json
-import asyncio
+import pytest
+
 
 @pytest.mark.asyncio
 async def test_real_infra_chat_flow():
@@ -12,7 +12,7 @@ async def test_real_infra_chat_flow():
     """
     # Use the internal gateway URL when running inside the container
     BASE_URL = os.environ.get("BASE_URL", "http://gateway:8010")
-    
+
     print(f"Testing against BASE_URL: {BASE_URL}")
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -24,14 +24,8 @@ async def test_real_infra_chat_flow():
         assert data.get("status") in ["ok", "degraded"]
 
         # 2. Send Message
-        payload = {
-            "message": "Automated test: verify decision engine",
-            "role": "user"
-        }
-        resp = await client.post(
-            f"{BASE_URL}/v1/session/message",
-            json=payload
-        )
+        payload = {"message": "Automated test: verify decision engine", "role": "user"}
+        resp = await client.post(f"{BASE_URL}/v1/session/message", json=payload)
         assert resp.status_code == 200
         result = resp.json()
         session_id = result.get("session_id")

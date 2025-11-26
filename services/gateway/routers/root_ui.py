@@ -1,4 +1,5 @@
 """Serve the Web UI from the root path (/) without a /ui prefix."""
+
 from __future__ import annotations
 
 from pathlib import Path

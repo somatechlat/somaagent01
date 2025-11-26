@@ -12,7 +12,7 @@ def test_settings_modal_opens_and_loads_sections(page):
     )
     # Load UI
     page.goto(base_url, wait_until="domcontentloaded")
-    
+
     # Skip if unauthorized (401 errors unrelated to realtime removal)
     if page.url.endswith("/login") or "401" in str(page.content()):
         pytest.skip("UI auth issues unrelated to realtime removal")

@@ -11,6 +11,7 @@ _FEATURE_BROWSER = (cfg.env("FEATURE_BROWSER", "false") or "false").strip().lowe
 def _feature_enabled() -> bool:
     return _FEATURE_BROWSER in {"1", "true", "yes", "on"}
 
+
 # ------------------------------------------------------------------------------
 # Gemini Helper for Output Conformance
 # ------------------------------------------------------------------------------
@@ -191,6 +192,7 @@ else:  # lightweight developer alternative
     class ChatGoogle:  # type: ignore
         def _fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
             return schema
+
     # Provide a minimal stub for the OpenRouter chat class used elsewhere in the
     # codebase. The real implementation offers LLM‑specific methods; the tests
     # only require the class to exist, so an empty implementation is sufficient.

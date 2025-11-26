@@ -7,26 +7,26 @@ the frontend expectations, backed by Redis for persistence.
 
 from __future__ import annotations
 
-from typing import List, Dict, Any
-
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any, Dict
 from uuid import uuid4
 
+from celery.schedules import crontab
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+
+from services.common.celery_app import celery_app
 from services.gateway.models.scheduler import (
     TaskCreate,
-    TaskUpdate,
-    TaskResponse,
     TaskListResponse,
+    TaskResponse,
+    TaskUpdate,
 )
 from services.gateway.utils.redis_scheduler import (
+    delete_task,
     list_tasks,
     save_task,
-    delete_task,
 )
-from services.common.celery_app import celery_app
-from celery.schedules import crontab
 
 # The UI calls scheduler endpoints directly (e.g. ``/scheduler_tasks_list``) without a
 # common prefix, so we expose the routes at the root level. The ``tags`` entry is
@@ -42,9 +42,6 @@ router = APIRouter(tags=["scheduler"])
 class TaskRun(BaseModel):
     task_id: str
     timezone: str = "UTC"
-
-
-
 
 
 @router.post("/scheduler_tasks_list", response_model=TaskListResponse)
@@ -89,7 +86,10 @@ async def scheduler_task_create(task: TaskCreate):
         except Exception as exc:
             # Log but do not fail the request – the task can still be created without a periodic schedule.
             import logging
-            logging.getLogger(__name__).warning("Failed to register Celery beat for task %s: %s", saved["uuid"], exc)
+
+            logging.getLogger(__name__).warning(
+                "Failed to register Celery beat for task %s: %s", saved["uuid"], exc
+            )
 
     return TaskResponse(**saved)
 
@@ -128,7 +128,10 @@ async def scheduler_task_update(task: TaskUpdate):
             )
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).warning("Failed to update Celery beat for task %s: %s", saved["uuid"], exc)
+
+            logging.getLogger(__name__).warning(
+                "Failed to update Celery beat for task %s: %s", saved["uuid"], exc
+            )
 
     return TaskResponse(**saved)
 

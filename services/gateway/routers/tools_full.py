@@ -55,5 +55,9 @@ async def list_tools() -> ToolsListResponse:
         except Exception:
             allowed = True
         if allowed:
-            tools.append(ToolInfo(name=t.name, description=getattr(t, "description", None), parameters=schema))
+            tools.append(
+                ToolInfo(
+                    name=t.name, description=getattr(t, "description", None), parameters=schema
+                )
+            )
     return ToolsListResponse(tools=tools, count=len(tools))
