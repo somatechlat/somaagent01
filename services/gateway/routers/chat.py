@@ -21,8 +21,12 @@ class ChatCompletionMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     messages: List[ChatCompletionMessage]
-    model: Optional[str] = None  # kept for backward compat; ignored when centralized settings present
-    base_url: Optional[str] = None  # kept for backward compat; ignored when centralized settings present
+    model: Optional[str] = (
+        None  # kept for backward compat; ignored when centralized settings present
+    )
+    base_url: Optional[str] = (
+        None  # kept for backward compat; ignored when centralized settings present
+    )
     api_path: Optional[str] = None
     temperature: Optional[float] = Field(default=None, ge=0, le=2)
     kwargs: Optional[Dict[str, Any]] = None
@@ -50,6 +54,7 @@ def _detect_provider_from_base(base_url: str) -> str:
     host = base_url.lower()
     try:
         from urllib.parse import urlparse
+
         netloc = (urlparse(base_url).netloc or "").lower()
         if netloc:
             host = netloc
@@ -78,7 +83,9 @@ async def _resolve_credentials(base_url: str) -> str:
         except Exception:
             secret = None
     if not secret:
-        raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+        raise HTTPException(
+            status_code=404, detail=f"credentials not found for provider: {provider}"
+        )
     return secret
 
 
@@ -137,7 +144,9 @@ async def chat_completions(payload: ChatCompletionRequest):
     settings = await _load_llm_settings()
     model = settings["model"]
     base_url = settings["base_url"]
-    temperature = payload.temperature if payload.temperature is not None else settings.get("temperature")
+    temperature = (
+        payload.temperature if payload.temperature is not None else settings.get("temperature")
+    )
 
     # Resolve credentials; if not found, fall back to empty secret which triggers
     # the development echo response (no external LLM call).

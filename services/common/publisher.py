@@ -72,7 +72,9 @@ class DurablePublisher:
             hdrs["event_type"] = payload.get("type") or ""
             hdrs["event_id"] = payload.get("event_id") or ""
             hdrs["schema"] = payload.get("version") or payload.get("schema") or ""
-            await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
+            await asyncio.wait_for(
+                self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s
+            )
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:

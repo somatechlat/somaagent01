@@ -21,7 +21,7 @@ async def main():
     """Main entry point for the gateway service."""
     config = CentralizedConfig()
     service = GatewayService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

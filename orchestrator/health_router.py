@@ -28,7 +28,12 @@ class UnifiedHealthRouter:
     registry's ``services`` list so the router always sees the current set.
     """
 
-    def __init__(self, services: List[object] | None = None, registry=None, services_provider: Optional[Callable[[], List[object]]] = None) -> None:
+    def __init__(
+        self,
+        services: List[object] | None = None,
+        registry=None,
+        services_provider: Optional[Callable[[], List[object]]] = None,
+    ) -> None:
         self._services = services or []
         self._registry = registry
         self._services_provider = services_provider

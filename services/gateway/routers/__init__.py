@@ -1,4 +1,5 @@
 """Router assembly for the gateway – single point of inclusion."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -52,10 +53,12 @@ def build_router() -> APIRouter:
     # Include scheduler router to serve task management endpoints
     try:
         from services.gateway.routers import scheduler as _scheduler_router
+
         router.include_router(_scheduler_router.router)
     except Exception as e:
         # If the scheduler module fails to import, log the error but do not break the app.
         import logging
+
         logging.getLogger(__name__).warning("Scheduler router not loaded: %s", e)
     # Feature flags endpoint (optional; skip if module absent)
     try:

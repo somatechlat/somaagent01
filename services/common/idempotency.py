@@ -45,7 +45,9 @@ def generate_for_memory_payload(
     now_seconds: Optional[float] = None,
 ) -> str:
     meta = payload.get("metadata") or {}
-    tenant = (payload.get("tenant") or meta.get("tenant") or cfg.env("SA01_SOMA_TENANT_ID") or "default")
+    tenant = (
+        payload.get("tenant") or meta.get("tenant") or cfg.env("SA01_SOMA_TENANT_ID") or "default"
+    )
     # Memory sub-namespace fallback should use SA01_SOMA_MEMORY_NAMESPACE (e.g. "wm")
     ns = (
         payload.get("namespace")
@@ -55,9 +57,10 @@ def generate_for_memory_payload(
     )
     session_id = str(payload.get("session_id") or meta.get("session_id") or "")
     role = str(payload.get("role") or meta.get("role") or "event")
-    ts = float(now_seconds if now_seconds is not None else float(meta.get("timestamp") or 0) or 0) or __import__(
-        "time"
-    ).time()
+    ts = (
+        float(now_seconds if now_seconds is not None else float(meta.get("timestamp") or 0) or 0)
+        or __import__("time").time()
+    )
     base = str(payload.get("id") or payload.get("message_id") or _hash16(str(payload)))
     return generate_key(
         tenant=str(tenant),

@@ -170,9 +170,7 @@ class ToolExecutor:
             "results": cfg.env(
                 "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
             ),
-            "group": cfg.env(
-                "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
-            ),
+            "group": cfg.env("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
         }
         self._audit_store: _AuditStore | None = None
 
@@ -220,6 +218,7 @@ class ToolExecutor:
         # Audit start (best-effort)
         try:
             from opentelemetry import trace as _trace
+
             ctx = _trace.get_current_span().get_span_context()
             trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
         except Exception:
@@ -288,7 +287,10 @@ class ToolExecutor:
                         user_agent=None,
                     )
                 except Exception:
-                    LOGGER.debug("Failed to write audit log for tool.execute.finish (policy_error)", exc_info=True)
+                    LOGGER.debug(
+                        "Failed to write audit log for tool.execute.finish (policy_error)",
+                        exc_info=True,
+                    )
                 return
             decision_label = "allowed" if allow else "denied"
             POLICY_DECISIONS.labels(tool_label, decision_label).inc()
@@ -318,7 +320,9 @@ class ToolExecutor:
                         user_agent=None,
                     )
                 except Exception:
-                    LOGGER.debug("Failed to write audit log for tool.execute.finish (blocked)", exc_info=True)
+                    LOGGER.debug(
+                        "Failed to write audit log for tool.execute.finish (blocked)", exc_info=True
+                    )
                 return
 
         tool = self.tool_registry.get(tool_name)
@@ -347,17 +351,22 @@ class ToolExecutor:
                     user_agent=None,
                 )
             except Exception:
-                LOGGER.debug("Failed to write audit log for tool.execute.finish (unknown_tool)", exc_info=True)
+                LOGGER.debug(
+                    "Failed to write audit log for tool.execute.finish (unknown_tool)",
+                    exc_info=True,
+                )
             return
 
         # Publish a UI-friendly tool.start event so the Web UI can show lifecycle
         try:
             ui_meta = dict(metadata or {})
-            ui_meta.update({
-                "status": "start",
-                "source": "tool_executor",
-                "tool_name": tool_name,
-            })
+            ui_meta.update(
+                {
+                    "status": "start",
+                    "source": "tool_executor",
+                    "tool_name": tool_name,
+                }
+            )
             # Preserve stable request_id for UI message dedupe if available
             req_id = (metadata or {}).get("request_id") or event.get("event_id")
             if req_id:
@@ -412,7 +421,10 @@ class ToolExecutor:
                     user_agent=None,
                 )
             except Exception:
-                LOGGER.debug("Failed to write audit log for tool.execute.finish (execution_error)", exc_info=True)
+                LOGGER.debug(
+                    "Failed to write audit log for tool.execute.finish (execution_error)",
+                    exc_info=True,
+                )
             return
         except Exception as exc:
             LOGGER.error(
@@ -448,7 +460,10 @@ class ToolExecutor:
                     user_agent=None,
                 )
             except Exception:
-                LOGGER.debug("Failed to write audit log for tool.execute.finish (unexpected_error)", exc_info=True)
+                LOGGER.debug(
+                    "Failed to write audit log for tool.execute.finish (unexpected_error)",
+                    exc_info=True,
+                )
             return
         else:
             TOOL_INFLIGHT.labels(tool_label).dec()
@@ -483,7 +498,9 @@ class ToolExecutor:
                 user_agent=None,
             )
         except Exception:
-            LOGGER.debug("Failed to write audit log for tool.execute.finish (success)", exc_info=True)
+            LOGGER.debug(
+                "Failed to write audit log for tool.execute.finish (success)", exc_info=True
+            )
 
     async def _publish_result(
         self,
@@ -538,12 +555,14 @@ class ToolExecutor:
 
             # Build metadata with helpful fields for the UI
             ui_meta = dict(result_event.get("metadata") or {})
-            ui_meta.update({
-                "status": status,
-                "source": "tool_executor",
-                "tool_name": result_event.get("tool_name"),
-                "execution_time": execution_time,
-            })
+            ui_meta.update(
+                {
+                    "status": status,
+                    "source": "tool_executor",
+                    "tool_name": result_event.get("tool_name"),
+                    "execution_time": execution_time,
+                }
+            )
             outbound_event = {
                 "event_id": str(uuid.uuid4()),
                 "session_id": result_event.get("session_id"),
@@ -645,7 +664,8 @@ class ToolExecutor:
             "metadata": {
                 **str_metadata,
                 "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
-                "universe_id": (result_event.get("metadata") or {}).get("universe_id") or cfg.env("SA01_SOMA_NAMESPACE"),
+                "universe_id": (result_event.get("metadata") or {}).get("universe_id")
+                or cfg.env("SA01_SOMA_NAMESPACE"),
             },
             "status": result_event.get("status"),
         }
@@ -669,7 +689,9 @@ class ToolExecutor:
                     )
                 )
             except Exception:
-                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                LOGGER.warning(
+                    "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
+                )
             if allow_memory:
                 wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self.soma.remember(memory_payload)
@@ -682,7 +704,8 @@ class ToolExecutor:
                         "tenant": tenant,
                         "payload": memory_payload,
                         "result": {
-                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "coord": (result or {}).get("coordinate")
+                            or (result or {}).get("coord"),
                             "trace_id": (result or {}).get("trace_id"),
                             "request_id": (result or {}).get("request_id"),
                         },

@@ -22,9 +22,10 @@ configuration from the environment (provider, ports, etc.) via the existing
 and avoids duplication of tunnel logic elsewhere in the codebase.
 """
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from fastapi import APIRouter, Request
+from pydantic import BaseModel, Field
 
 from python.helpers.tunnel_manager import TunnelManager
 

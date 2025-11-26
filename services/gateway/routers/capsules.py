@@ -1,4 +1,5 @@
 """Capsule endpoints extracted from gateway monolith (minimal functional)."""
+
 from __future__ import annotations
 
 from typing import List

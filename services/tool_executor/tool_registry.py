@@ -5,8 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, Optional
 
-from services.tool_executor.tools import AVAILABLE_TOOLS, BaseTool
+from services.tool_executor.goal_tools import CreateGoalTool, ListGoalsTool, UpdateGoalTool
 from services.tool_executor.memory_tools import MemorySaveTool, UpdateBehaviorTool
+from services.tool_executor.procedure_tools import (
+    GetProcedureTool,
+    SaveProcedureTool,
+    SearchProceduresTool,
+)
+from services.tool_executor.tools import AVAILABLE_TOOLS, BaseTool
 
 
 @dataclass(frozen=True)
@@ -36,6 +42,16 @@ class ToolRegistry:
         # Register specific memory tools
         self.register(MemorySaveTool())
         self.register(UpdateBehaviorTool())
+
+        # Register goal tools
+        self.register(CreateGoalTool())
+        self.register(UpdateGoalTool())
+        self.register(ListGoalsTool())
+
+        # Procedure Tools
+        self.register(SaveProcedureTool())
+        self.register(SearchProceduresTool())
+        self.register(GetProcedureTool())
 
     def register(self, tool: BaseTool, *, description: Optional[str] = None) -> None:
         definition = ToolDefinition(name=tool.name, handler=tool, description=description)

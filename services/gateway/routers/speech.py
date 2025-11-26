@@ -1,4 +1,5 @@
 """Speech endpoints extracted from gateway monolith (minimal functional)."""
+
 from __future__ import annotations
 
 import base64
@@ -16,10 +17,14 @@ class TranscribeRequest(BaseModel):
 
 
 @router.post("/transcribe")
-async def transcribe(file: UploadFile = File(...), req: TranscribeRequest | None = None) -> JSONResponse:
+async def transcribe(
+    file: UploadFile = File(...), req: TranscribeRequest | None = None
+) -> JSONResponse:
     data = await file.read()
     # Minimal: just return fake transcription length
-    return JSONResponse({"text": f"transcribed {len(data)} bytes", "language": req.language if req else None})
+    return JSONResponse(
+        {"text": f"transcribed {len(data)} bytes", "language": req.language if req else None}
+    )
 
 
 class KokoroSynthesizeRequest(BaseModel):
@@ -50,7 +55,9 @@ class RealtimeSessionResponse(BaseModel):
 
 @router.post("/realtime/session", response_model=RealtimeSessionResponse)
 async def realtime_session(_: RealtimeSessionRequest) -> RealtimeSessionResponse:
-    return RealtimeSessionResponse(session_id="session-1", ws_url="ws://localhost/rt", expires_at=0.0, caps=None)
+    return RealtimeSessionResponse(
+        session_id="session-1", ws_url="ws://localhost/rt", expires_at=0.0, caps=None
+    )
 
 
 class OpenAIRealtimeAnswer(BaseModel):

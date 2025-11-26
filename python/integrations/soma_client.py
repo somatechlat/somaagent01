@@ -49,6 +49,7 @@ from src.core.config import cfg
 
 logger = logging.getLogger(__name__)
 
+
 # Prometheus metrics for SomaBrain client
 # Avoid duplicate registration when imported multiple times (Celery workers, reloaders).
 def _get_metric(factory, name: str, *args, **kwargs):
@@ -85,12 +86,10 @@ SA01_SOMABRAIN_MEMORY_WRITE_SECONDS = _get_metric(
 )
 
 
-def _sanitize_legacy_base_url(raw_base_url: str) -> str:
+def _sanitize_base_url(raw_base_url: str) -> str:
     """Sanitize the provided base URL.
 
-    - Ensures a non‑empty, well‑formed URL string
-    - If the legacy port 9595 is detected, preserve the original host and
-      scheme but rewrite the port to 9696
+    Ensures a non‑empty, well‑formed URL string.
     """
     candidate = (raw_base_url or "").strip()
     if not candidate:
@@ -102,23 +101,9 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     normalized = candidate.rstrip("/")
 
     try:
-        url = httpx.URL(normalized)
+        httpx.URL(normalized)
     except Exception as exc:
         raise ValueError(f"Invalid SA01_SOMA_BASE_URL '{candidate}': {exc}") from exc
-
-    # Rewrite only the legacy port 9595 to the current default (9696),
-    # preserving original host and scheme.
-    if url.port == 9595:
-        try:
-            override = url.copy_with(port=9696)
-        except Exception:
-            override = httpx.URL("http://localhost:9696")
-        logger.warning(
-            "Detected legacy SomaBrain port on %s; redirecting to %s",
-            normalized,
-            override,
-        )
-        return str(override).rstrip("/")
 
     return normalized
 
@@ -242,7 +227,7 @@ class SomaClient:
                 "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
             },
         )
-        sanitized_base_url = _sanitize_legacy_base_url(base_url)
+        sanitized_base_url = _sanitize_base_url(base_url)
         self.base_url = _normalize_base_url(sanitized_base_url)
         # Memory namespace (e.g. "wm"). Not the same as the logical universe.
         self.namespace = namespace
@@ -287,12 +272,16 @@ class SomaClient:
         # Simple circuit breaker state
         self._cb_failures: int = 0
         self._cb_open_until: float = 0.0
-        self._CB_THRESHOLD: int = 3
-        self._CB_COOLDOWN_SEC: float = 15.0
+        self._CB_THRESHOLD: int = cfg.settings().external.soma_circuit_breaker_threshold
+        self._CB_COOLDOWN_SEC: float = cfg.settings().external.soma_circuit_breaker_cooldown
 
         # Retry configuration
-        self._max_retries: int = int(cfg.env("SA01_SOMA_MAX_RETRIES", "2") or "2")
-        self._retry_base_ms: int = int(cfg.env("SA01_SOMA_RETRY_BASE_MS", "150") or "150")
+        self._max_retries: int = int(
+            cfg.env("SA01_SOMA_MAX_RETRIES", str(cfg.settings().external.soma_max_retries))
+        )
+        self._retry_base_ms: int = int(
+            cfg.env("SA01_SOMA_RETRY_BASE_MS", str(cfg.settings().external.soma_retry_base_ms))
+        )
 
     @classmethod
     def get(cls) -> "SomaClient":
@@ -434,7 +423,9 @@ class SomaClient:
                 return None
 
             # Retry on 5xx and 429 (Too Many Requests); honor Retry-After if present
-            if (response.status_code >= 500 or response.status_code == 429) and attempt < self._max_retries:
+            if (
+                response.status_code >= 500 or response.status_code == 429
+            ) and attempt < self._max_retries:
                 attempt += 1
                 # Baseline exponential backoff with jitter
                 backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
@@ -453,7 +444,7 @@ class SomaClient:
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:
-                                delta = (ts.timestamp() - _time.time())
+                                delta = ts.timestamp() - _time.time()
                                 ra_s = max(0.0, float(delta))
                             else:
                                 ra_s = 0.0
@@ -539,11 +530,7 @@ class SomaClient:
         )
 
         # Determine the logical universe. Prefer explicit arg, then metadata.universe_id, then client default.
-        derived_universe = (
-            universe
-            or metadata_dict.get("universe_id")
-            or self.universe
-        )
+        derived_universe = universe or metadata_dict.get("universe_id") or self.universe
 
         body: Dict[str, Any] = {
             "value": payload_dict,
@@ -723,9 +710,36 @@ class SomaClient:
     async def context_feedback(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         return await self._request("POST", "/context/feedback", json=dict(payload))
 
-    async def adaptation_state(self, tenant_id: Optional[str] = None) -> Mapping[str, Any]:
-        params = {"tenant_id": tenant_id} if tenant_id else None
-        return await self._request("GET", "/context/adaptation/state", params=params)
+    async def act(
+        self,
+        task: str,
+        *,
+        top_k: int = 3,
+        universe: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Execute an action/task via the cognitive loop."""
+        payload = {"task": task, "top_k": top_k}
+        if universe:
+            payload["universe"] = universe
+        return await self._request("POST", "/act", json=payload)
+
+    async def plan_suggest(
+        self,
+        task_key: str,
+        *,
+        max_steps: Optional[int] = None,
+        rel_types: Optional[List[str]] = None,
+        universe: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Suggest a plan derived from the semantic graph."""
+        payload: Dict[str, Any] = {"task_key": task_key}
+        if max_steps:
+            payload["max_steps"] = max_steps
+        if rel_types:
+            payload["rel_types"] = rel_types
+        if universe:
+            payload["universe"] = universe
+        return await self._request("POST", "/plan/suggest", json=payload)
 
     async def put_persona(
         self,
@@ -734,42 +748,29 @@ class SomaClient:
         *,
         etag: Optional[str] = None,
     ) -> Any:
+        """Create or update a Persona record."""
         headers = {"If-Match": etag} if etag else None
-        return await self._request("PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers)
+        return await self._request(
+            "PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers
+        )
 
     async def get_persona(self, persona_id: str) -> Mapping[str, Any]:
+        """Retrieve a Persona record."""
         return await self._request("GET", f"/persona/{persona_id}")
 
     async def delete_persona(self, persona_id: str) -> Any:
+        """Delete a Persona record."""
         return await self._request("DELETE", f"/persona/{persona_id}")
 
-    async def link(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return await self._request("POST", "/link", json=dict(payload))
-
-    async def plan_suggest(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return await self._request("POST", "/plan/suggest", json=dict(payload))
-
-    async def recall_delete(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return await self._request("POST", "/recall/delete", json=dict(payload))
-
-    async def constitution_version(self) -> Mapping[str, Any]:
-        return await self._request("GET", "/constitution/version")
-
-    async def constitution_validate(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return await self._request("POST", "/constitution/validate", json=dict(payload))
-
-    async def constitution_load(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return await self._request("POST", "/constitution/load", json=dict(payload))
-
-    async def opa_policy(self) -> Mapping[str, Any]:
-        return await self._request("GET", "/opa/policy")
-
-    async def update_opa_policy(self) -> Mapping[str, Any]:
-        return await self._request("POST", "/opa/policy")
-
     async def delete(self, coordinate: Iterable[float]) -> Mapping[str, Any]:
+        """Delete a memory by coordinate."""
         body = {"coordinate": list(coordinate)}
         return await self._request("POST", "/delete", json=body)
+
+    async def recall_delete(self, coordinate: Iterable[float]) -> Mapping[str, Any]:
+        """Delete a memory by coordinate via recall API."""
+        body = {"coordinate": list(coordinate)}
+        return await self._request("POST", "/recall/delete", json=body)
 
     async def migrate_export(
         self,
@@ -799,6 +800,14 @@ class SomaClient:
 
     async def health(self) -> Mapping[str, Any]:
         return await self._request("GET", "/health")
+
+    async def get_weights(self) -> Mapping[str, Any]:
+        """Retrieve current neuromodulatory weights."""
+        return await self._request("GET", "/v1/weights")
+
+    async def publish_reward(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Publish a reward signal to the learning loop."""
+        return await self._request("POST", "/v1/learning/reward", json=dict(payload))
 
 
 __all__ = [

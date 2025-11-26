@@ -29,7 +29,13 @@ class CircuitBreaker:
     is stored for reference only.
     """
 
-    def __init__(self, fail_max: int = 5, reset_timeout: int = 60, exclude: List[type] | None = None, **_: Any):
+    def __init__(
+        self,
+        fail_max: int = 5,
+        reset_timeout: int = 60,
+        exclude: List[type] | None = None,
+        **_: Any,
+    ):
         self.fail_max = fail_max
         self.reset_timeout = reset_timeout
         self.exclude = exclude or []
@@ -65,9 +71,11 @@ class CircuitBreaker:
     def current_state(self):  # pragma: no cover – trivial stub
         class _State:
             name = "closed"
+
         return _State()
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<StubCircuitBreaker name={self.name!r}>"
+
 
 __all__ = ["CircuitBreaker", "CircuitBreakerError"]

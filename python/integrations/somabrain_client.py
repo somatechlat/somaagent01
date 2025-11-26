@@ -30,6 +30,7 @@ class SomaBrainClient(SomaClient):
 # Helper utilities – these are the functions exercised by the integration tests.
 # ---------------------------------------------------------------------------
 
+
 def _base_url() -> str:
     """Return the base URL for the SomaBrain service.
 
@@ -42,8 +43,7 @@ def _base_url() -> str:
 
 
 def _handle_response(resp: httpx.Response) -> Any:
-    """Raise :class:`SomaClientError` for non‑2xx responses, otherwise return JSON.
-    """
+    """Raise :class:`SomaClientError` for non‑2xx responses, otherwise return JSON."""
 
     try:
         resp.raise_for_status()
@@ -59,17 +59,16 @@ def _handle_response(resp: httpx.Response) -> Any:
 # Synchronous helpers
 # ---------------------------------------------------------------------------
 
+
 def get_weights() -> Dict[str, Any]:
-    """GET ``/v1/weights`` and return the parsed JSON payload.
-    """
+    """GET ``/v1/weights`` and return the parsed JSON payload."""
 
     resp = httpx.get(f"{_base_url()}/v1/weights")
     return _handle_response(resp)
 
 
 def update_weights(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """POST ``/v1/weights/update`` with *payload* and return the JSON response.
-    """
+    """POST ``/v1/weights/update`` with *payload* and return the JSON response."""
 
     resp = httpx.post(f"{_base_url()}/v1/weights/update", json=payload)
     return _handle_response(resp)
@@ -87,8 +86,7 @@ def build_context(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def get_tenant_flag(tenant: str, flag: str) -> bool:
-    """GET ``/v1/flags/{tenant}/{flag}`` and return the ``enabled`` field.
-    """
+    """GET ``/v1/flags/{tenant}/{flag}`` and return the ``enabled`` field."""
 
     resp = httpx.get(f"{_base_url()}/v1/flags/{tenant}/{flag}")
     data = _handle_response(resp)
@@ -96,16 +94,14 @@ def get_tenant_flag(tenant: str, flag: str) -> bool:
 
 
 def get_persona(persona_id: str) -> Dict[str, Any]:
-    """GET ``/persona/{persona_id}``.
-    """
+    """GET ``/persona/{persona_id}``."""
 
     resp = httpx.get(f"{_base_url()}/persona/{persona_id}")
     return _handle_response(resp)
 
 
 def put_persona(persona_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """PUT ``/persona/{persona_id}`` with *payload*.
-    """
+    """PUT ``/persona/{persona_id}`` with *payload*."""
 
     resp = httpx.put(f"{_base_url()}/persona/{persona_id}", json=payload)
     return _handle_response(resp)
@@ -114,6 +110,7 @@ def put_persona(persona_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Asynchronous helpers – used with ``pytest.mark.asyncio``.
 # ---------------------------------------------------------------------------
+
 
 async def get_weights_async() -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:

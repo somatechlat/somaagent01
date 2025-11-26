@@ -46,9 +46,7 @@ class KafkaSettings:
         """
         # Prefer an explicit environment variable first; fall back to the
         # configuration helper which may contain the canonical value.
-        raw_bootstrap = cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
-        )
+        raw_bootstrap = cfg.env("KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers)
         # When running *inside* Docker, the internal hostname ``kafka:9092`` is
         # correct. Rewriting it to localhost breaks connectivity from services.
         # Detect containers via /.dockerenv and skip the rewrite there. On host
@@ -56,6 +54,7 @@ class KafkaSettings:
         in_container = False
         try:
             import os
+
             in_container = os.path.exists("/.dockerenv")
         except Exception:
             in_container = False
@@ -107,7 +106,9 @@ class KafkaEventBus:
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
 
-    async def publish(self, topic: str, payload: Any, headers: dict[str, Any] | None = None) -> None:
+    async def publish(
+        self, topic: str, payload: Any, headers: dict[str, Any] | None = None
+    ) -> None:
         """Publish a payload to a Kafka topic.
 
         ``headers`` is a mapping of header name → value that will be converted

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 from dataclasses import dataclass
@@ -13,9 +14,6 @@ from typing import Any, Callable, Dict, List, Optional, Protocol
 from observability.metrics import ContextBuilderMetrics
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
-import hashlib
-import json
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -26,22 +24,16 @@ class SomabrainHealthState(str, Enum):
 
 
 class CacheClientProtocol(Protocol):  # pragma: no cover - interface definition
-    async def get(self, key: str) -> Optional[Dict[str, Any]]:
-        ...
+    async def get(self, key: str) -> Optional[Dict[str, Any]]: ...
 
-    async def set(self, key: str, value: Dict[str, Any], ttl: int) -> None:
-        ...
+    async def set(self, key: str, value: Dict[str, Any], ttl: int) -> None: ...
 
+
+from src.core.config import cfg
 
 
 class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
-    def redact(self, text: str) -> str:
-        ...
-
-
-class _NoopRedactor:
-    def redact(self, text: str) -> str:
-        return text
+    def redact(self, text: str) -> str: ...
 
 
 @dataclass
@@ -54,10 +46,6 @@ class BuiltContext:
 
 class ContextBuilder:
     """High-level context builder that tracks Somabrain health + metrics."""
-
-    DEFAULT_TOP_K = 8
-    DEGRADED_TOP_K = 3
-    DEGRADED_WINDOW_SECONDS = 15
 
     def __init__(
         self,
@@ -73,7 +61,7 @@ class ContextBuilder:
         self.somabrain = somabrain
         self.metrics = metrics
         self.count_tokens = token_counter
-        self.redactor = redactor or _NoopRedactor()
+        self.redactor = redactor
         self.health_provider = health_provider or (lambda: SomabrainHealthState.NORMAL)
         self.on_degraded = on_degraded or (lambda _duration: None)
         self.cache_client = cache_client
@@ -86,7 +74,7 @@ class ContextBuilder:
         active_profile: Optional[Dict[str, Any]] = None,
     ) -> BuiltContext:
         """Build the complete context for a conversation turn.
-        
+
         Args:
             turn: The conversation turn data.
             max_prompt_tokens: Maximum tokens allowed for the prompt.
@@ -94,70 +82,74 @@ class ContextBuilder:
         """
         start_time = perf_counter()
         session_id = turn.get("session_id", "unknown")
-        
+
         # Get current SomaBrain health state from the injected health provider
         state = self._current_health()
-        
+
         # 1. Retrieve behavior rules (Pass 1)
         behavior_rules = await self._retrieve_behavior_rules(turn, state)
-        
+
         # 2. Retrieve contextual memories (Pass 2)
         snippets = await self._retrieve_context(turn)
-        
+
         # 3. Construct system messages
         system_messages = []
-        
+
         # 3a. Behavior Rules (Highest Priority)
         if behavior_rules:
             rule_text = "\n".join([f"- {r['text']}" for r in behavior_rules])
-            system_messages.append({
-                "role": "system",
-                "content": f"## Session Behavioral Rules\n{rule_text}",
-                "name": "behavior"
-            })
-            
+            system_messages.append(
+                {
+                    "role": "system",
+                    "content": f"## Session Behavioral Rules\n{rule_text}",
+                    "name": "behavior",
+                }
+            )
+
         # 3b. Active Profile Modifier (High Priority)
         if active_profile and active_profile.get("system_prompt_modifier"):
-            system_messages.append({
-                "role": "system",
-                "content": f"## Active Mode: {active_profile.get('name')}\n{active_profile['system_prompt_modifier']}",
-                "name": "profile_mode"
-            })
-            
+            system_messages.append(
+                {
+                    "role": "system",
+                    "content": f"## Active Mode: {active_profile.get('name')}\n{active_profile['system_prompt_modifier']}",
+                    "name": "profile_mode",
+                }
+            )
+
         # 3c. Base System Prompt / Persona
         if turn.get("system_prompt"):
-            system_messages.append({
-                "role": "system",
-                "content": turn["system_prompt"],
-                "name": "persona"
-            })
-            
+            system_messages.append(
+                {"role": "system", "content": turn["system_prompt"], "name": "persona"}
+            )
+
         # 3d. Memory Block
         if snippets:
             memory_text = "\n".join([f"- {s['text']}" for s in snippets])
-            system_messages.append({
-                "role": "system",
-                "content": f"## Relevant Memories\n{memory_text}",
-                "name": "memory"
-            })
+            system_messages.append(
+                {
+                    "role": "system",
+                    "content": f"## Relevant Memories\n{memory_text}",
+                    "name": "memory",
+                }
+            )
 
         # 4. Construct history (trimmed)
         # Calculate remaining budget for history
         current_tokens = sum(self.count_tokens(m["content"]) for m in system_messages)
-        history_budget = max(0, max_prompt_tokens - current_tokens - 500) # Reserve 500 for safety
-        
+        history_budget = max(0, max_prompt_tokens - current_tokens - 500)  # Reserve 500 for safety
+
         history_messages = self._trim_history(turn.get("history", []), history_budget)
-        
+
         # 5. Assemble final messages
         final_messages = system_messages + history_messages
-        
+
         # Add user message if not already in history (it usually isn't for the current turn)
         if turn.get("user_message"):
-             final_messages.append({"role": "user", "content": turn["user_message"]})
+            final_messages.append({"role": "user", "content": turn["user_message"]})
 
         duration = perf_counter() - start_time
         self.metrics.time_total.observe(duration)
-        
+
         return BuiltContext(
             system_prompt="",  # System messages are included in 'messages' list
             messages=final_messages,
@@ -169,8 +161,10 @@ class ContextBuilder:
                 "retrieval_count": len(snippets),
                 "behavior_rule_count": len(behavior_rules),
                 "profile_active": bool(active_profile),
-                "constitution_checksum": turn.get("_cognitive_data", {}).get("constitution_checksum"),
-            }
+                "constitution_checksum": turn.get("_cognitive_data", {}).get(
+                    "constitution_checksum"
+                ),
+            },
         )
 
     def _current_health(self) -> SomabrainHealthState:
@@ -202,7 +196,12 @@ class ContextBuilder:
         turn: Dict[str, Any],
         state: SomabrainHealthState,
     ) -> List[Dict[str, Any]]:
-        top_k = self.DEFAULT_TOP_K if state == SomabrainHealthState.NORMAL else self.DEGRADED_TOP_K
+        settings = cfg.settings()
+        top_k = (
+            settings.context_top_k
+            if state == SomabrainHealthState.NORMAL
+            else settings.context_degraded_top_k
+        )
         payload = {
             "tenant_id": turn.get("tenant_id"),
             "session_id": turn.get("session_id"),
@@ -213,19 +212,21 @@ class ContextBuilder:
             with self.metrics.time_retrieval(state=state.value):
                 resp = await self.somabrain.context_evaluate(payload)
         except SomaClientError as exc:
-            LOGGER.info("Somabrain context_evaluate failed", exc_info=True, extra={"state": state.value})
+            LOGGER.info(
+                "Somabrain context_evaluate failed", exc_info=True, extra={"state": state.value}
+            )
             if state == SomabrainHealthState.NORMAL:
-                self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
+                self.on_degraded(float(settings.context_degraded_window))
             LOGGER.debug("SomaBrain error detail", extra={"error": str(exc)})
             return await self._retrieve_from_cache(turn, "context")
         except Exception:
             LOGGER.exception("Unexpected Somabrain failure during context evaluation")
-            self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
+            self.on_degraded(float(settings.context_degraded_window))
             return await self._retrieve_from_cache(turn, "context")
-        
+
         # Extract all cognitive data from response
         results = resp.get("candidates") or resp.get("results") or resp.get("memories") or []
-        
+
         # Store cognitive metadata for observability (NEW)
         cognitive_data = {
             "retrieval_weights": resp.get("weights", []),
@@ -234,12 +235,16 @@ class ContextBuilder:
             "constitution_checksum": resp.get("constitution_checksum"),
         }
         turn["_cognitive_data"] = cognitive_data
-        
+
         LOGGER.debug(
             "context_evaluate response",
-            extra={"result_count": len(results), "has_weights": bool(resp.get("weights")), "has_constitution": bool(resp.get("constitution_checksum"))}
+            extra={
+                "result_count": len(results),
+                "has_weights": bool(resp.get("weights")),
+                "has_constitution": bool(resp.get("constitution_checksum")),
+            },
         )
-        
+
         snippets: List[Dict[str, Any]] = []
         for item in results:
             if not isinstance(item, dict):
@@ -255,11 +260,11 @@ class ContextBuilder:
                     "metadata": item.get("metadata") or {},
                 }
             )
-            
+
         # Cache successful result
         if self.cache_client and snippets:
             await self._write_to_cache(turn, "context", snippets, cognitive_data)
-            
+
         return snippets
 
     async def _retrieve_behavior_rules(
@@ -270,7 +275,7 @@ class ContextBuilder:
         """Retrieve active behavior rules for the session (Pass 1)."""
         if state != SomabrainHealthState.NORMAL:
             return []
-            
+
         try:
             # Use recall with tags filtering as context_evaluate doesn't support it yet
             resp = await self.somabrain.recall(
@@ -280,20 +285,20 @@ class ContextBuilder:
                 tenant=turn.get("tenant_id"),
                 session_id=turn.get("session_id"),
             )
-            
+
             rules = []
             candidates = resp.get("candidates") or resp.get("results") or []
             for item in candidates:
                 text = self._extract_text(item)
                 if text:
                     rules.append({"text": text, "score": item.get("score", 1.0)})
-            
+
             # Cache successful rules
             if self.cache_client and rules:
                 await self._write_to_cache(turn, "behavior", rules)
-                
+
             return rules
-            
+
         except Exception:
             LOGGER.warning("Failed to retrieve behavior rules", exc_info=True)
             return await self._retrieve_from_cache(turn, "behavior")
@@ -302,7 +307,7 @@ class ContextBuilder:
         """Try to fetch snippets/rules from cache."""
         if not self.cache_client:
             return []
-        
+
         key = self._cache_key(turn, kind)
         try:
             cached = await self.cache_client.get(key)
@@ -316,21 +321,21 @@ class ContextBuilder:
         return []
 
     async def _write_to_cache(
-        self, 
-        turn: Dict[str, Any], 
-        kind: str, 
+        self,
+        turn: Dict[str, Any],
+        kind: str,
         items: List[Dict[str, Any]],
-        cognitive_data: Optional[Dict[str, Any]] = None
+        cognitive_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Write items to cache."""
         if not self.cache_client:
             return
-            
+
         key = self._cache_key(turn, kind)
         payload = {"items": items}
         if cognitive_data:
             payload["cognitive_data"] = cognitive_data
-            
+
         try:
             # TTL: 1 hour for context, 24 hours for behavior (rules change less often)
             ttl = 3600 if kind == "context" else 86400
@@ -344,7 +349,7 @@ class ContextBuilder:
         # For behavior, we cache per session (rules shouldn't change mid-turn based on query)
         if kind == "behavior":
             return f"ctx:behavior:{session_id}"
-            
+
         # For context, we cache based on the specific query
         msg = turn.get("user_message", "")
         msg_hash = hashlib.sha256(msg.encode("utf-8")).hexdigest()[:16]
@@ -362,12 +367,19 @@ class ContextBuilder:
             return value
         return ""
 
-    def _rank_and_clip_snippets(self, snippets: List[Dict[str, Any]], state: SomabrainHealthState) -> List[Dict[str, Any]]:
+    def _rank_and_clip_snippets(
+        self, snippets: List[Dict[str, Any]], state: SomabrainHealthState
+    ) -> List[Dict[str, Any]]:
         if not snippets:
             return []
+        settings = cfg.settings()
         with self.metrics.time_ranking():
             ranked = sorted(snippets, key=lambda s: self._safe_float(s.get("score")), reverse=True)
-            limit = self.DEFAULT_TOP_K if state == SomabrainHealthState.NORMAL else self.DEGRADED_TOP_K
+            limit = (
+                settings.context_top_k
+                if state == SomabrainHealthState.NORMAL
+                else settings.context_degraded_top_k
+            )
             return ranked[:limit]
 
     def _apply_salience(self, snippets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -375,11 +387,12 @@ class ContextBuilder:
             return []
         enriched: List[Dict[str, Any]] = []
         now = datetime.now(timezone.utc)
+        decay_rate = cfg.settings().context_recency_decay_rate
         with self.metrics.time_salience():
             for snippet in snippets:
                 meta = snippet.get("metadata") or {}
                 base_score = self._safe_float(snippet.get("score"))
-                recency = self._recency_boost(meta, now)
+                recency = self._recency_boost(meta, now, decay_rate)
                 final_score = 0.7 * base_score + 0.3 * recency
                 updated = dict(snippet)
                 updated["score"] = final_score
@@ -392,7 +405,7 @@ class ContextBuilder:
         except Exception:
             return 0.0
 
-    def _recency_boost(self, metadata: Dict[str, Any], now: datetime) -> float:
+    def _recency_boost(self, metadata: Dict[str, Any], now: datetime, decay_rate: float) -> float:
         timestamp = metadata.get("timestamp") or metadata.get("created_at")
         if not timestamp:
             return 0.5
@@ -403,9 +416,11 @@ class ContextBuilder:
         except Exception:
             return 0.5
         age_days = max(0.0, (now - dt).total_seconds() / 86400)
-        return math.exp(-age_days / 30.0)
+        return math.exp(-age_days / decay_rate)
 
     def _redact_snippets(self, snippets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if not self.redactor:
+            return snippets
         redacted: List[Dict[str, Any]] = []
         with self.metrics.time_redaction():
             for snippet in snippets:
@@ -447,7 +462,7 @@ class ContextBuilder:
         """Intelligently trim history: Keep first 2 (anchor) + last N (recency)."""
         if allowed_tokens <= 0 or not history:
             return []
-            
+
         # If history is short, just return what fits
         total_tokens = sum(self.count_tokens(m.get("content", "")) for m in history)
         if total_tokens <= allowed_tokens:
@@ -456,10 +471,10 @@ class ContextBuilder:
         # Strategy: Keep first 2 (anchor), then fill from end (recency)
         anchor = history[:2]
         recent = history[2:]
-        
+
         anchor_tokens = sum(self.count_tokens(m.get("content", "")) for m in anchor)
         remaining_budget = allowed_tokens - anchor_tokens
-        
+
         if remaining_budget <= 0:
             # Budget too tight, fallback to just recency from end
             return self._trim_history_simple(history, allowed_tokens)
@@ -473,7 +488,7 @@ class ContextBuilder:
             remaining_budget -= tokens
             if remaining_budget <= 0:
                 break
-        
+
         trimmed_recent.reverse()
         return anchor + trimmed_recent
 

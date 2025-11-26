@@ -49,6 +49,7 @@ def create_app() -> FastAPI:
     # OpenTelemetry instrumentation – non‑critical, failures are logged only.
     try:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
         FastAPIInstrumentor().instrument_app(app)
     except Exception as exc:  # pragma: no cover – defensive
         LOGGER.warning("OpenTelemetry instrumentation failed: %s", exc)
@@ -131,10 +132,12 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.dry_run:
+
         async def _smoke():
             orch = app.state.orchestrator
             await orch._start_all()
             await orch._stop_all()
+
         asyncio.run(_smoke())
         LOGGER.info("Dry-run completed successfully")
         return

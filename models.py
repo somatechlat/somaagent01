@@ -41,6 +41,7 @@ except Exception:  # pragma: no cover – only executed when the package is miss
             # Return a callable no‑op for any accessed attribute.
             def _dummy(*_, **__):
                 return None
+
             return _dummy
 
     # Stub implementations used by the rest of the code.
@@ -74,6 +75,7 @@ from langchain_core.outputs.chat_generation import ChatGenerationChunk
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 except Exception:  # pragma: no cover – executed only when the package is missing
+
     class SentenceTransformer:  # type: ignore
         def __init__(self, *_, **__):
             pass
@@ -81,6 +83,7 @@ except Exception:  # pragma: no cover – executed only when the package is miss
         def encode(self, *_, **__):  # pragma: no cover
             # Return an empty list to satisfy callers that expect a vector.
             return []
+
 
 import time
 import uuid
@@ -111,12 +114,11 @@ llm_logger = logging.getLogger("agent_zero.llm")
 if not llm_logger.handlers:
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
-        "{\"timestamp\": \"%(asctime)s\", \"level\": \"%(levelname)s\", \"logger\": \"%(name)s\", \"message\": %(message)s}"
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": %(message)s}'
     )
     handler.setFormatter(formatter)
     llm_logger.addHandler(handler)
     llm_logger.setLevel(logging.INFO)
-
 
 
 # init
@@ -755,7 +757,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 start_ts = time.time()
                 try:
                     # log a truncated preview (no secrets)
-                    preview = msgs_conv[-1]["content"] if msgs_conv and isinstance(msgs_conv[-1], dict) else ""
+                    preview = (
+                        msgs_conv[-1]["content"]
+                        if msgs_conv and isinstance(msgs_conv[-1], dict)
+                        else ""
+                    )
                     preview = (preview[:200] + "...") if len(preview) > 200 else preview
                     llm_logger.info(
                         "LLM unified_call start: id=%s provider=%s model=%s preview=%s",
@@ -836,7 +842,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     try:
                         llm_logger.exception(
                             "LLM unified_call error: id=%s provider=%s model=%s error=%s",
-                            req_id if 'req_id' in locals() else '<na>',
+                            req_id if "req_id" in locals() else "<na>",
                             getattr(self, "provider", "unknown"),
                             getattr(self, "model_name", "unknown"),
                             str(e),

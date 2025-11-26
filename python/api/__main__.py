@@ -21,7 +21,7 @@ async def main():
     """Main entry point for the FastA2A gateway service."""
     config = CentralizedConfig()
     service = FastA2AGatewayService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

@@ -92,7 +92,9 @@ class SomaOrchestrator:
             try:
                 await svc.start()
             except Exception as exc:
-                LOGGER.error("Failed to start %s: %s", getattr(svc, "name", svc.__class__.__name__), exc)
+                LOGGER.error(
+                    "Failed to start %s: %s", getattr(svc, "name", svc.__class__.__name__), exc
+                )
                 if getattr(svc, "_critical", False):
                     raise
         LOGGER.info("All services started")
@@ -103,7 +105,9 @@ class SomaOrchestrator:
             try:
                 await svc.stop()
             except Exception as exc:  # pragma: no cover – defensive
-                LOGGER.warning("Error stopping %s: %s", getattr(svc, "name", svc.__class__.__name__), exc)
+                LOGGER.warning(
+                    "Error stopping %s: %s", getattr(svc, "name", svc.__class__.__name__), exc
+                )
         LOGGER.info("All services stopped")
 
     def attach(self) -> None:
@@ -133,6 +137,8 @@ class SomaOrchestrator:
                 await self._stop_all()
 
         self.app.router.lifespan_context = lifespan
+
+
 # NOTE: The original complex process‑manager implementation has been removed.
 # The lightweight ``BaseSomaService``‑based orchestrator defined above is the
 # single source of truth for the project, satisfying the VIBE rule

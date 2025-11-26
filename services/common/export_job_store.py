@@ -42,7 +42,9 @@ class ExportJobStore:
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:
@@ -119,7 +121,9 @@ class ExportJobStore:
                 job_id,
             )
 
-    async def mark_complete(self, job_id: int, *, file_path: str, rows: int, byte_size: int) -> None:
+    async def mark_complete(
+        self, job_id: int, *, file_path: str, rows: int, byte_size: int
+    ) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(

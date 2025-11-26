@@ -19,11 +19,7 @@ import httpx
 
 from services.common.registry import soma_base_url
 
-BASE = (
-    sys.argv[1]
-    if len(sys.argv) > 1
-    else soma_base_url().rstrip('/')
-)
+BASE = sys.argv[1] if len(sys.argv) > 1 else soma_base_url().rstrip("/")
 
 
 async def main() -> int:

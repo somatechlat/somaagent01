@@ -4,6 +4,7 @@ Stores non-secret fields in Postgres (ui_settings table) and secret fields in
 SecretManager (Redis + Fernet). This is the single source of truth for agent
 and LLM settings.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
 from python.helpers.settings import convert_out
 from python.helpers.settings_model import SettingsModel
 
+
 def _get_default_sections() -> list[dict]:
     """Generate the default UI settings sections from the Pydantic model."""
     # Create default settings instance
@@ -34,7 +36,9 @@ def _get_default_sections() -> list[dict]:
     output = convert_out(defaults)
     return output["sections"]
 
+
 DEFAULT_SECTIONS = _get_default_sections()
+
 
 # ---------------------------------------------------------------------------
 # Startup initialization – ensure the default sections exist on first launch.
@@ -62,6 +66,7 @@ async def _ensure_default_sections() -> None:
         logger.info("Default UI settings created on startup")
     except Exception as exc:  # pragma: no cover – defensive
         logger.error("Failed to initialise default UI settings: %s", exc)
+
 
 # ---------------------------------------------------------------------------
 # Logging – we emit a simple info line whenever settings are saved so that
@@ -91,7 +96,11 @@ def _split_sections(sections: List[Dict[str, Any]]) -> tuple[dict, dict]:
             if not fid:
                 continue
             val = field.get("value")
-            if field.get("type") == "password" or field.get("secret") is True or str(fid).startswith("api_key_"):
+            if (
+                field.get("type") == "password"
+                or field.get("secret") is True
+                or str(fid).startswith("api_key_")
+            ):
                 if val:
                     secrets[fid] = str(val)
             else:
@@ -143,23 +152,15 @@ async def _save_sections(sections: List[Dict[str, Any]]):
         )
 
 
+from python.helpers.settings import get_minimal_llm_section
+
+
 def _ensure_minimal_llm_section(sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Ensure the UI receives an LLM section with required fields if missing."""
     ids = {f.get("id") for sec in sections for f in sec.get("fields", [])}
     if {"llm_model", "llm_base_url"} <= ids:
         return sections
-    llm_section = {
-        "id": "llm",
-        "title": "LLM",
-        "tab": "agent",
-        "fields": [
-            {"id": "llm_model", "title": "Model", "type": "text", "required": True, "value": ""},
-            {"id": "llm_base_url", "title": "Base URL", "type": "text", "required": True, "value": ""},
-            {"id": "llm_temperature", "title": "Temperature", "type": "number", "required": False, "value": 0.2},
-            {"id": "api_key_llm", "title": "LLM API Key", "type": "password", "secret": True, "value": ""},
-        ],
-    }
-    return sections + [llm_section]
+    return sections + [get_minimal_llm_section()]
 
 
 # Support both without and with trailing slash for compatibility with UI fetches
@@ -175,7 +176,11 @@ async def get_sections():
             fid = field.get("id")
             if not fid:
                 continue
-            if field.get("type") == "password" or field.get("secret") is True or str(fid).startswith("api_key_"):
+            if (
+                field.get("type") == "password"
+                or field.get("secret") is True
+                or str(fid).startswith("api_key_")
+            ):
                 if "value" in field:
                     field["value"] = "********" if field.get("value") else ""
     return {"sections": sections}

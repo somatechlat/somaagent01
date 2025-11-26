@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from time import perf_counter
-from typing import Any, Optional, List
+from typing import Any, List, Optional
 from uuid import UUID
 
 import asyncpg
@@ -41,6 +41,7 @@ PROFILE_READ_SECONDS = Histogram(
     labelnames=("result",),
 )
 
+
 @dataclass(slots=True)
 class PersonaProfile:
     id: UUID
@@ -53,6 +54,7 @@ class PersonaProfile:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
 
 MIGRATION_SQL = """
 CREATE TABLE IF NOT EXISTS persona_profiles (
@@ -83,6 +85,7 @@ FOR EACH ROW
 EXECUTE FUNCTION persona_profiles_touch_updated_at();
 """
 
+
 class ProfileStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         raw_dsn = dsn or cfg.settings().database.dsn
@@ -93,7 +96,9 @@ class ProfileStore:
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", 1))
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", 10))
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def ensure_schema(self) -> None:
@@ -101,7 +106,7 @@ class ProfileStore:
         async with pool.acquire() as conn:
             await conn.execute(MIGRATION_SQL)
             LOGGER.info("Ensured persona_profiles table exists")
-            
+
             # Seed default profiles if empty
             count = await conn.fetchval("SELECT COUNT(*) FROM persona_profiles")
             if count == 0:
@@ -133,18 +138,21 @@ class ProfileStore:
                 "cognitive_params": {"urgency": 1.0, "creativity": 0.1},
                 "tool_weights": {"pagerduty": 2.0, "logs": 1.5},
                 "system_prompt_modifier": "You are in EMERGENCY MODE. Act immediately. Prioritize stability and recovery.",
-            }
+            },
         ]
-        
+
         for p in defaults:
             await conn.execute(
                 """
                 INSERT INTO persona_profiles (name, description, activation_triggers, cognitive_params, tool_weights, system_prompt_modifier)
                 VALUES ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6)
                 """,
-                p["name"], p["description"], json.dumps(p["activation_triggers"]), 
-                json.dumps(p["cognitive_params"]), json.dumps(p["tool_weights"]), 
-                p["system_prompt_modifier"]
+                p["name"],
+                p["description"],
+                json.dumps(p["activation_triggers"]),
+                json.dumps(p["cognitive_params"]),
+                json.dumps(p["tool_weights"]),
+                p["system_prompt_modifier"],
             )
 
     async def get_profile_by_name(self, name: str) -> Optional[PersonaProfile]:
@@ -166,7 +174,7 @@ class ProfileStore:
                 PROFILE_READ_SECONDS.labels("error").observe(perf_counter() - start)
                 raise
             duration = perf_counter() - start
-            
+
         if not row:
             PROFILE_READ_TOTAL.labels("missing").inc()
             PROFILE_READ_SECONDS.labels("missing").observe(duration)
@@ -195,9 +203,21 @@ class ProfileStore:
             id=row["id"],
             name=row["name"],
             description=row["description"],
-            activation_triggers=json.loads(row["activation_triggers"]) if isinstance(row["activation_triggers"], str) else row["activation_triggers"],
-            cognitive_params=json.loads(row["cognitive_params"]) if isinstance(row["cognitive_params"], str) else row["cognitive_params"],
-            tool_weights=json.loads(row["tool_weights"]) if isinstance(row["tool_weights"], str) else row["tool_weights"],
+            activation_triggers=(
+                json.loads(row["activation_triggers"])
+                if isinstance(row["activation_triggers"], str)
+                else row["activation_triggers"]
+            ),
+            cognitive_params=(
+                json.loads(row["cognitive_params"])
+                if isinstance(row["cognitive_params"], str)
+                else row["cognitive_params"]
+            ),
+            tool_weights=(
+                json.loads(row["tool_weights"])
+                if isinstance(row["tool_weights"], str)
+                else row["tool_weights"]
+            ),
             system_prompt_modifier=row["system_prompt_modifier"],
             is_active=row["is_active"],
             created_at=row["created_at"],

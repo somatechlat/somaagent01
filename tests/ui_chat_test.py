@@ -12,6 +12,7 @@ from playwright.async_api import async_playwright
 
 BASE_URL = "http://localhost:21016"
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Reuse a single event loop for the Playwright session (same as other UI
@@ -19,6 +20,7 @@ def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
+
 
 @pytest.mark.asyncio
 async def test_simple_chat_addition():
@@ -45,9 +47,7 @@ async def test_simple_chat_addition():
         # renders the user message with a class "message-user". We locate the
         # first such element after sending and ensure its text contains the
         # sent expression.
-        user_msg = await page.wait_for_selector(
-            "#chat-history .message-user", timeout=15000
-        )
+        user_msg = await page.wait_for_selector("#chat-history .message-user", timeout=15000)
         user_text = await user_msg.text_content()
         assert user_text and "8+2" in user_text, "Sent user message not found or incorrect"
 

@@ -19,10 +19,7 @@ class FakeSomabrain:
 
 @pytest.mark.asyncio
 async def test_context_builder_limits_snippets_when_degraded():
-    snippets = [
-        {"id": f"m{i}", "text": f"Memory {i}", "score": float(10 - i)}
-        for i in range(6)
-    ]
+    snippets = [{"id": f"m{i}", "text": f"Memory {i}", "score": float(10 - i)} for i in range(6)]
     fake = FakeSomabrain({"candidates": snippets})
     builder = ContextBuilder(
         somabrain=fake,
@@ -76,10 +73,7 @@ async def test_context_builder_skips_retrieval_when_down():
 
 @pytest.mark.asyncio
 async def test_context_builder_marks_normal_state_when_available():
-    snippets = [
-        {"id": f"m{i}", "text": f"Memory {i}", "score": 1.0}
-        for i in range(2)
-    ]
+    snippets = [{"id": f"m{i}", "text": f"Memory {i}", "score": 1.0} for i in range(2)]
     fake = FakeSomabrain({"candidates": snippets})
     builder = ContextBuilder(
         somabrain=fake,

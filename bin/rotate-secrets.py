@@ -25,6 +25,7 @@ def main():
     # current ``SA01_CRYPTO_FERNET_KEY`` environment variable, so we simply read
     # each secret and write it back – the write will use the new key.
     if old_key:
+
         async def _re_encrypt():
             sm = SecretManager()
             # Re‑encrypt provider keys

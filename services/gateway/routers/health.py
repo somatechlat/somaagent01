@@ -21,7 +21,9 @@ async def health() -> dict[str, object]:
         import asyncpg
 
         async def _check():
-            async with asyncpg.create_pool(cfg.settings().database.dsn, min_size=1, max_size=2) as pool:
+            async with asyncpg.create_pool(
+                cfg.settings().database.dsn, min_size=1, max_size=2
+            ) as pool:
                 async with pool.acquire() as conn:
                     row = await conn.fetchrow("SELECT value FROM ui_settings WHERE key='sections'")
                     sections = row["value"] if row else []
@@ -41,4 +43,7 @@ async def health() -> dict[str, object]:
         settings_ready = False
 
     status = "ok" if settings_ready else "degraded"
-    return {"status": status, "components": {"settings": {"status": status, "ready": settings_ready}}}
+    return {
+        "status": status,
+        "components": {"settings": {"status": status, "ready": settings_ready}},
+    }

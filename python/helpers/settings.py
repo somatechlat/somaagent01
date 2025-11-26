@@ -1336,7 +1336,9 @@ def normalize_settings(settings: Settings) -> Settings:
             copy = {}
 
     default_model = get_default_settings()
-    default = default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
+    default = (
+        default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
+    )
 
     # adjust settings values to match current version if needed
     if "version" not in copy or copy["version"] != default["version"]:
@@ -1412,7 +1414,7 @@ def _write_sensitive_settings(settings: Settings):
             continue
         provider = key.strip()
         if provider.startswith("api_key_"):
-            provider = provider[len("api_key_"):]
+            provider = provider[len("api_key_") :]
         if not provider:
             continue
         if not isinstance(val, str) or val.strip() in {"", "None"}:
@@ -1758,3 +1760,36 @@ def _get_version():
         return str(git_info.get("short_tag", "")).strip() or "unknown"
     except Exception:
         return "unknown"
+
+
+def get_minimal_llm_section() -> SettingsSection:
+    """Return the minimal required LLM section for the UI."""
+    return {
+        "id": "llm",
+        "title": "LLM",
+        "tab": "agent",
+        "fields": [
+            {"id": "llm_model", "title": "Model", "type": "text", "required": True, "value": ""},
+            {
+                "id": "llm_base_url",
+                "title": "Base URL",
+                "type": "text",
+                "required": True,
+                "value": "",
+            },
+            {
+                "id": "llm_temperature",
+                "title": "Temperature",
+                "type": "number",
+                "required": False,
+                "value": 0.2,
+            },
+            {
+                "id": "api_key_llm",
+                "title": "LLM API Key",
+                "type": "password",
+                "secret": True,
+                "value": "",
+            },
+        ],
+    }

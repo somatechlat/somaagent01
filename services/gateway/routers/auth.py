@@ -30,8 +30,7 @@ async def login() -> JSONResponse:
 
     if not token:
         return JSONResponse(
-            {"status": "error", "message": "no_internal_token_configured"},
-            status_code=500
+            {"status": "error", "message": "no_internal_token_configured"}, status_code=500
         )
 
     return JSONResponse({"status": "ok", "token": token}, status_code=200)

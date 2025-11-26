@@ -25,6 +25,7 @@ ALLOWED_IMPORTS = {
     "somaAgent01/tmp/somaAgent01/tests/test_gateway_llm_audit.py",
 }
 
+
 def test_no_legacy_imports():
     # ``__file__`` is located in ``.../tests/unit``. ``parents[2]`` points to the
     # ``tests`` directory, so we need its parent to get the actual repository
@@ -39,7 +40,7 @@ def test_no_legacy_imports():
         # directory. Strip that prefix so the path matches the entries in
         # ``ALLOWED_IMPORTS`` and the usual test‑exclusion logic.
         if rel.startswith("tmp/"):
-            rel = rel[len("tmp/"):]
+            rel = rel[len("tmp/") :]
         # When the ``repo`` variable points to the workspace root rather than
         # the repository folder, paths can start with the repo directory name
         # (e.g. ``somaAgent01/services/gateway/main.py``). Remove that leading

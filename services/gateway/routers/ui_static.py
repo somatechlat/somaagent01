@@ -1,4 +1,5 @@
 """Serve the bundled Web UI assets from the `webui/` directory."""
+
 from __future__ import annotations
 
 from pathlib import Path

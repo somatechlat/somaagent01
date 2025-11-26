@@ -167,7 +167,9 @@ class _CfgFacade:
     # Provide a ``get`` method for backward compatibility with the historic
     # ``env_snapshot.get`` API used throughout the test suite and some helper
     # scripts. It simply forwards to the ``env`` helper.
-    def get(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin delegating method
+    def get(
+        self, name: str, default: Any = None
+    ) -> Any:  # pragma: no cover – thin delegating method
         return env(name, default)
 
     # ---------------------------------------------------------------------
@@ -302,7 +304,7 @@ __all__ = [
 # Single source of truth for all configuration
 # This eliminates 5 duplicate configuration systems:
 # - services/common/settings_sa01.py
-# - services/common/admin_settings.py  
+# - services/common/admin_settings.py
 # - services/common/runtime_config.py
 # - services/common/registry.py
 # - services/common/settings_registry.py

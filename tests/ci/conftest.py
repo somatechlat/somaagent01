@@ -1,5 +1,6 @@
 import pytest
 
+
 def pytest_collection_modifyitems(config, items):
     """Add the ``ci`` marker to every collected test.
 

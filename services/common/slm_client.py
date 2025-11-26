@@ -1,4 +1,5 @@
 """Async client for OpenAI-compatible chat endpoints (restored from stable gateway logic)."""
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,9 @@ class ChatMessage:
 
 
 class SLMClient:
-    def __init__(self, base_url: str | None = None, model: str | None = None, api_key: str | None = None) -> None:
+    def __init__(
+        self, base_url: str | None = None, model: str | None = None, api_key: str | None = None
+    ) -> None:
         self.base_url = base_url or ""
         self.default_model = model or ""
         self.api_key = api_key
@@ -46,7 +49,9 @@ class SLMClient:
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else float(cfg.env("SLM_TEMPERATURE", 0.2)),
+            "temperature": (
+                temperature if temperature is not None else float(cfg.env("SLM_TEMPERATURE", 0.2))
+            ),
             "stream": False,
         }
         if kwargs:
@@ -59,7 +64,9 @@ class SLMClient:
         if response.is_error:
             try:
                 body = response.text
-                LOGGER.error("SLM error response", extra={"status": response.status_code, "body": body[:800]})
+                LOGGER.error(
+                    "SLM error response", extra={"status": response.status_code, "body": body[:800]}
+                )
             except Exception:
                 pass
             response.raise_for_status()
@@ -97,7 +104,9 @@ class SLMClient:
         payload = {
             "model": chosen_model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else float(cfg.env("SLM_TEMPERATURE", 0.2)),
+            "temperature": (
+                temperature if temperature is not None else float(cfg.env("SLM_TEMPERATURE", 0.2))
+            ),
             "stream": True,
         }
         if kwargs:
@@ -112,7 +121,10 @@ class SLMClient:
                     body = await response.aread()
                     LOGGER.error(
                         "SLM stream error response",
-                        extra={"status": response.status_code, "body": body.decode("utf-8", errors="ignore")[:800]},
+                        extra={
+                            "status": response.status_code,
+                            "body": body.decode("utf-8", errors="ignore")[:800],
+                        },
                     )
                 except Exception:
                     pass

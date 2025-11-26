@@ -5,6 +5,4 @@ Provides asynchronous task processing for agent communication.
 
 from .a2a_chat_task import a2a_chat_task
 
-__all__ = [
-    "a2a_chat_task"
-]
+__all__ = ["a2a_chat_task"]

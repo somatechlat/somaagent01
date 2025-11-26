@@ -50,7 +50,6 @@ class _AdminSettingsProxy:
     def postgres_dsn(self) -> str:
         return cfg.settings().database.dsn
 
-
     # Preserve any future dynamic attribute access via ``__getattr__`` – fallback
     # to the underlying Config model for forward‑compatibility.
     def __getattr__(self, name: str):  # pragma: no cover – defensive

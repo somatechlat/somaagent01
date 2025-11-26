@@ -19,7 +19,9 @@ class TestCanonicalBackendE2E:
     @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for testing."""
-        return cfg.env("SA01_GATEWAY_BASE_URL", "http://localhost:21016") or "http://localhost:21016"
+        return (
+            cfg.env("SA01_GATEWAY_BASE_URL", "http://localhost:21016") or "http://localhost:21016"
+        )
 
     @pytest.fixture(scope="session")
     def mode(self):

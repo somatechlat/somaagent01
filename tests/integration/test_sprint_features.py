@@ -1,8 +1,8 @@
 import os
-import pytest
+
 import httpx
-import json
-import asyncio
+import pytest
+
 
 @pytest.mark.asyncio
 async def test_sprint_features_on_real_infra():
@@ -30,10 +30,7 @@ async def test_sprint_features_on_real_infra():
         # ------------------------------------------------------------------
         print("\n[2] Verifying Decision Engine (Chat)...")
         # Sending a simple message triggers the Decision Engine's GO/NOGO logic
-        chat_payload = {
-            "message": "Hello, checking your neuro-state.",
-            "role": "user"
-        }
+        chat_payload = {"message": "Hello, checking your neuro-state.", "role": "user"}
         resp = await client.post(f"{BASE_URL}/v1/session/message", json=chat_payload)
         assert resp.status_code == 200
         chat_result = resp.json()
@@ -50,11 +47,11 @@ async def test_sprint_features_on_real_infra():
         plan_payload = {
             "message": "Please create a detailed plan to organize a conference.",
             "role": "user",
-            "session_id": session_id # Reuse session
+            "session_id": session_id,  # Reuse session
         }
         resp = await client.post(f"{BASE_URL}/v1/session/message", json=plan_payload)
         assert resp.status_code == 200
-        print(f"    Plan request accepted.")
+        print("    Plan request accepted.")
 
         # Note: We cannot easily verify the *output* of the tool here without SSE,
         # but the acceptance of the request confirms the Gateway -> Worker path is open.

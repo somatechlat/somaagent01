@@ -25,6 +25,8 @@ def _require_admin_scope(auth: dict) -> None:
     if not auth.get("admin", True):
         # If the auth dict does not indicate admin rights, deny access.
         raise HTTPException(status_code=403, detail="admin_required")
+
+
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 
 # Removed incorrect import of degradation_monitor which does not exist in services.common.
@@ -70,17 +72,22 @@ async def list_admin_memory(
     q: str | None = Query(None, description="Case-insensitive search in payload JSON text"),
     min_ts: float | None = Query(None, description="Minimum wal_timestamp (epoch seconds)"),
     max_ts: float | None = Query(None, description="Maximum wal_timestamp (epoch seconds)"),
-    after: int | None = Query(None, ge=0, description="Return items with database id less than this cursor (paging)"),
+    after: int | None = Query(
+        None, ge=0, description="Return items with database id less than this cursor (paging)"
+    ),
     limit: int = Query(50, ge=1, le=200),
     store: Annotated[MemoryReplicaStore, Depends(lambda: MemoryReplicaStore())] = None,  # type: ignore[assignment]
 ) -> AdminMemoryListResponse:
     await _enforce_admin_rate_limit(request)
-    auth = await authorize_request(request, {
-        "tenant": tenant,
-        "persona_id": persona_id,
-        "role": role,
-        "session_id": session_id,
-    })
+    auth = await authorize_request(
+        request,
+        {
+            "tenant": tenant,
+            "persona_id": persona_id,
+            "role": role,
+            "session_id": session_id,
+        },
+    )
     _require_admin_scope(auth)
 
     rows = await store.list_memories(

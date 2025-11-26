@@ -32,7 +32,9 @@ class PolicyClient:
     ) -> None:
         # Single source: central external OPA URL, overrideable via cfg.env for ops.
         self.base_url = base_url or cfg.settings().external.opa_url
-        self.data_path = cfg.env("SA01_POLICY_DECISION_PATH", cfg.env("POLICY_DATA_PATH", "/v1/data/soma/policy/allow"))
+        self.data_path = cfg.env(
+            "SA01_POLICY_DECISION_PATH", cfg.env("POLICY_DATA_PATH", "/v1/data/soma/policy/allow")
+        )
         self._client = httpx.AsyncClient(timeout=10.0)
         self.cache_ttl = float(cfg.env("POLICY_CACHE_TTL", "2") or "2")
         # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored

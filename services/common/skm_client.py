@@ -7,7 +7,7 @@ accidental regressions.
 """
 
 raise ImportError(
-	"services.common.skm_client has been removed. Use python.integrations.somabrain_client.SomaBrainClient."
+    "services.common.skm_client has been removed. Use python.integrations.somabrain_client.SomaBrainClient."
 )
 
 """Deprecated: SomaKamachiq client has been removed.
@@ -17,5 +17,3 @@ ImportError to surface accidental usage.
 """
 
 raise ImportError("services.common.skm_client is removed. Do not import.")
-
-

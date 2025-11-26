@@ -30,6 +30,7 @@ def _get_capsule_registry_url() -> str:
         return "http://localhost:8000"
     return url
 
+
 BASE_URL = _get_capsule_registry_url()
 
 
