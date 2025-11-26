@@ -19,116 +19,22 @@ from src.core.config import cfg
 router = APIRouter(prefix="/v1/ui/settings/sections", tags=["ui-settings"])
 
 # ---------------------------------------------------------------------------
-# Default settings payload – this is the complete set of sections that the UI
-# expects on first launch.  It mirrors the exhaustive table described in the
-# documentation (LLM, Auth, MCP/A2A, Memory, Secrets, Speech, Tunnel, Backup,
-# etc.).  Secret fields are included with empty values; they will be stored in
-# Redis by the startup routine.
+# Default settings payload – dynamically generated from the single source of truth
+# in python.helpers.settings. This ensures the UI always matches the backend
+# configuration model without duplication.
 # ---------------------------------------------------------------------------
-DEFAULT_SECTIONS: list[dict] = [
-    # ---------- LLM (Agent Settings) ----------
-    {
-        "id": "llm",
-        "title": "LLM",
-        "tab": "agent",
-        "fields": [
-            {"id": "llm_model", "title": "Model", "type": "text", "required": True, "value": ""},
-            {"id": "model_provider", "title": "Chat model provider", "type": "select", "required": True, "value": ""},
-            {"id": "llm_base_url", "title": "Chat model API base URL", "type": "text", "required": True, "value": ""},
-            {"id": "context_length", "title": "Chat model context length", "type": "number", "required": False, "value": 4096},
-            {"id": "chat_history_window", "title": "Context window space for chat history", "type": "number", "required": False, "value": 0.7},
-            {"id": "supports_vision", "title": "Supports Vision", "type": "checkbox", "required": False, "value": False},
-            {"id": "rpm_limit", "title": "Requests per minute limit", "type": "number", "required": False, "value": 0},
-            {"id": "llm_temperature", "title": "Temperature", "type": "number", "required": False, "value": 0.2},
-            {"id": "api_key_llm", "title": "LLM API Key", "type": "password", "secret": True, "value": ""},
-        ],
-    },
-    # ---------- Authentication ----------
-    {
-        "id": "auth",
-        "title": "Authentication",
-        "tab": "agent",
-        "fields": [
-            {"id": "auth_login", "title": "Login", "type": "text", "required": True, "value": ""},
-            {"id": "auth_password", "title": "Password", "type": "password", "secret": True, "value": ""},
-            {"id": "auth_enabled", "title": "Enable authentication", "type": "checkbox", "required": False, "value": False},
-        ],
-    },
-    # ---------- MCP Server ----------
-    {
-        "id": "mcp_server",
-        "title": "MCP Server",
-        "tab": "mcp",
-        "fields": [
-            {"id": "mcp_server", "title": "MCP Server URL", "type": "text", "required": True, "value": ""},
-            {"id": "mcp_server_token", "title": "MCP Server Token", "type": "password", "secret": True, "value": ""},
-        ],
-    },
-    # ---------- A2A ----------
-    {
-        "id": "a2a",
-        "title": "A2A",
-        "tab": "mcp",
-        "fields": [
-            {"id": "a2a_peer_url", "title": "Peer URL", "type": "text", "required": False, "value": ""},
-            {"id": "a2a_peer_token", "title": "Peer Token", "type": "password", "secret": True, "value": ""},
-            {"id": "a2a_enabled", "title": "Enable A2A", "type": "checkbox", "required": False, "value": False},
-        ],
-    },
-    # ---------- Memory ----------
-    {
-        "id": "memory",
-        "title": "Memory",
-        "tab": "memory",
-        "fields": [
-            {"id": "memory_backend", "title": "Backend", "type": "select", "required": True, "value": "redis"},
-            {"id": "memory_retention_days", "title": "Retention (days)", "type": "number", "required": False, "value": 30},
-            {"id": "memory_max_items", "title": "Max items", "type": "number", "required": False, "value": 1000},
-        ],
-    },
-    # ---------- Secrets ----------
-    {
-        "id": "secrets",
-        "title": "Secrets",
-        "tab": "secrets",
-        "fields": [
-            {"id": "secret_key", "title": "Encryption key", "type": "password", "secret": True, "value": ""},
-            {"id": "jwt_secret", "title": "JWT secret", "type": "password", "secret": True, "value": ""},
-            {"id": "api_key_external", "title": "External API token", "type": "password", "secret": True, "value": ""},
-        ],
-    },
-    # ---------- Speech ----------
-    {
-        "id": "speech",
-        "title": "Speech",
-        "tab": "speech",
-        "fields": [
-            {"id": "speech_enabled", "title": "Enable speech", "type": "checkbox", "required": False, "value": False},
-            {"id": "speech_provider", "title": "Provider", "type": "select", "required": False, "value": "google"},
-            {"id": "speech_api_key", "title": "API key", "type": "password", "secret": True, "value": ""},
-        ],
-    },
-    # ---------- Tunnel ----------
-    {
-        "id": "tunnel",
-        "title": "Tunnel",
-        "tab": "tunnel",
-        "fields": [
-            {"id": "provider", "title": "Tunnel provider", "type": "select", "required": True, "value": "cloudflared"},
-        ],
-    },
-    # ---------- Backup ----------
-    {
-        "id": "backup",
-        "title": "Backup",
-        "tab": "backup",
-        "fields": [
-            {"id": "auto_backup_enabled", "title": "Automatic backup", "type": "checkbox", "required": False, "value": False},
-            {"id": "backup_schedule", "title": "Schedule (cron)", "type": "text", "required": False, "value": "0 2 * * *"},
-            {"id": "backup_storage_path", "title": "Destination folder", "type": "text", "required": False, "value": "/backup"},
-        ],
-    },
-]
+from python.helpers.settings import convert_out
+from python.helpers.settings_model import SettingsModel
+
+def _get_default_sections() -> list[dict]:
+    """Generate the default UI settings sections from the Pydantic model."""
+    # Create default settings instance
+    defaults = SettingsModel()
+    # Convert to UI structure using the shared helper
+    output = convert_out(defaults)
+    return output["sections"]
+
+DEFAULT_SECTIONS = _get_default_sections()
 
 # ---------------------------------------------------------------------------
 # Startup initialization – ensure the default sections exist on first launch.

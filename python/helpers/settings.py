@@ -1100,7 +1100,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "title": "Variables Store",
             "description": 'Store non-sensitive variables in .env format e.g. EMAIL_IMAP_SERVER="imap.gmail.com", one item per line. You can use comments starting with # to add descriptions for the agent. See <a href="javascript:openModal(\'settings/secrets/example-vars.html\')">example</a>.<br>These variables are visible to LLMs and in chat history, they are not being masked.',
             "type": "textarea",
-            "value": settings["variables"].strip(),
+            "value": _dict_to_env(settings["variables"]),
             "style": "height: 20em",
         }
     )

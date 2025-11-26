@@ -98,6 +98,86 @@ class SettingsModel(BaseSettings):
     # runtime errors when the settings file is missing or not yet persisted.
     USE_LLM: bool = Field(default=True)
 
+    # API Keys storage
+    api_keys: Dict[str, str] = Field(default_factory=dict)
+
+    # LiteLLM global config
+    litellm_global_kwargs: Dict[str, Any] = Field(default_factory=dict)
+
+    # Agent configuration
+    agent_profile: str = Field(default="default")
+    agent_knowledge_subdir: str = Field(default="default")
+    agent_memory_subdir: str = Field(default="default")
+
+    # Memory configuration
+    memory_recall_enabled: bool = Field(default=True)
+    memory_recall_delayed: bool = Field(default=False)
+    memory_recall_query_prep: bool = Field(default=False)
+    memory_recall_post_filter: bool = Field(default=False)
+    memory_recall_interval: int = Field(default=1)
+    memory_recall_history_len: int = Field(default=1000)
+    memory_recall_similarity_threshold: float = Field(default=0.5)
+    memory_recall_memories_max_search: int = Field(default=20)
+    memory_recall_memories_max_result: int = Field(default=5)
+    memory_recall_solutions_max_search: int = Field(default=20)
+    memory_recall_solutions_max_result: int = Field(default=5)
+    memory_memorize_enabled: bool = Field(default=True)
+    memory_memorize_consolidation: bool = Field(default=True)
+    memory_memorize_replace_threshold: float = Field(default=0.8)
+
+    # Dev fields
+    shell_interface: str = Field(default="local")
+    rfc_url: str = Field(default="")
+    rfc_port_http: int = Field(default=8010)
+    rfc_port_ssh: int = Field(default=2222)
+
+    # Speech configuration
+    speech_enabled: bool = Field(default=False)
+    speech_provider: str = Field(default="google")
+    speech_api_key: str = Field(default="")
+    stt_model_size: str = Field(default="base")
+    stt_language: str = Field(default="en")
+    stt_silence_threshold: float = Field(default=500.0)
+    stt_silence_duration: float = Field(default=0.3)
+    stt_waiting_timeout: int = Field(default=10)
+    stt_autorestart: bool = Field(default=False)
+    speech_realtime_enabled: bool = Field(default=False)
+    speech_realtime_model: str = Field(default="gpt-4o-realtime-preview-2024-10-01")
+    speech_realtime_voice: str = Field(default="alloy")
+    speech_realtime_endpoint: str = Field(default="")
+    tts_model: str = Field(default="tts-1")
+    tts_voice: str = Field(default="alloy")
+    tts_kokoro: bool = Field(default=False)
+
+    # Tunnel configuration
+    tunnel_provider: str = Field(default="cloudflared")
+
+    # MCP configuration
+    mcp_server_enabled: bool = Field(default=False)
+    mcp_servers: Any = Field(default_factory=dict)
+    mcp_server_token: str = Field(default="")
+    mcp_client_init_timeout: int = Field(default=30)
+    mcp_client_request_timeout: int = Field(default=60)
+    mcp_client_tool_timeout: int = Field(default=300)
+
+    # A2A configuration
+    a2a_enabled: bool = Field(default=False)
+    a2a_server_enabled: bool = Field(default=False)
+    a2a_peer_url: str = Field(default="")
+    a2a_peer_token: str = Field(default="")
+
+    # External API configuration
+    external_api_examples: str = Field(default="")
+    show_a2a_connection: bool = Field(default=False)
+
+    # Variables
+    variables: Any = Field(default_factory=dict)
+
+    # Backup configuration
+    auto_backup_enabled: bool = Field(default=False)
+    backup_schedule: str = Field(default="0 2 * * *")
+    backup_storage_path: str = Field(default="/backup")
+
     class Config:
         # Allow any extra keys from the historic JSON file.
         extra = "allow"

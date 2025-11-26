@@ -1,0 +1,39 @@
+/* Refactoring utility classes to replace inline styles */
+
+.hidden-display {
+    display: none !important;
+}
+
+.task-action-btn {
+    margin-left: auto;
+    margin-right: 5px;
+}
+
+.task-reset-btn {
+    margin-right: 5px;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.pre-wrap-break {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.chat-input-container-rel {
+    position: relative;
+}
+
+.file-input-hidden {
+    display: none;
+}
+
+.stop-speech-btn {
+    cursor: pointer;
+}
+
+.attachment-preview-img {
+    cursor: pointer;
+}

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, Optional
 
 from services.tool_executor.tools import AVAILABLE_TOOLS, BaseTool
+from services.tool_executor.memory_tools import MemorySaveTool, UpdateBehaviorTool
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,10 @@ class ToolRegistry:
 
         for name, tool in AVAILABLE_TOOLS.items():
             self.register(tool)
+
+        # Register specific memory tools
+        self.register(MemorySaveTool())
+        self.register(UpdateBehaviorTool())
 
     def register(self, tool: BaseTool, *, description: Optional[str] = None) -> None:
         definition = ToolDefinition(name=tool.name, handler=tool, description=description)

@@ -45,7 +45,9 @@ from services.common.memory_write_outbox import (
 from services.common.model_costs import estimate_escalation_cost
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common.profile_repository import ProfileStore
 from services.common.publisher import DurablePublisher
+from services.common.redis_client import RedisCacheClient
 from services.common.router_client import RouterClient
 from services.common.schema_validator import validate_event
 from services.common.session_repository import (
@@ -60,6 +62,7 @@ from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.tool_executor.tool_registry import ToolRegistry
+from .decision_engine import DecisionEngine
 from src.core.config import cfg
 
 # Legacy settings removed – use central config façade.
@@ -68,28 +71,55 @@ from src.core.config import cfg
 
 
 async def _load_llm_settings() -> dict[str, Any]:
-    """Fetch LLM config from centralized UI settings sections."""
+    """Fetch LLM config from centralized UI settings sections.
+    
+    Matches the proven pattern from services/gateway/routers/chat.py
+    to handle both dict-wrapped and list-only section storage.
+    """
     dsn = cfg.settings().database.dsn
     conn: asyncpg.Connection
     async with asyncpg.create_pool(dsn, min_size=1, max_size=2) as pool:
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT value FROM ui_settings WHERE key='sections'")
-            sections = row["value"] if row else []
+            raw = row["value"] if row else []
+    
+    # Parse JSON string if needed (database may return JSONB as string)
+    if isinstance(raw, str):
+        import json
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = []
+    
     model = base_url = None
     temperature: float | None = None
-    if isinstance(sections, list):
-        for sec in sections:
-            for fld in sec.get("fields", []):
-                fid = fld.get("id")
-                if fid == "llm_model":
-                    model = fld.get("value")
-                elif fid == "llm_base_url":
-                    base_url = fld.get("value")
-                elif fid == "llm_temperature":
-                    try:
-                        temperature = float(fld.get("value"))
-                    except Exception:
-                        temperature = None
+    
+    # Handle both storage formats (matching gateway/routers/chat.py pattern):
+    # 1. Dict with "sections" key: {"sections": [{...}]}
+    # 2. Plain list: [{...}]
+    if isinstance(raw, dict) and "sections" in raw:
+        sections = raw["sections"]
+    elif isinstance(raw, list):
+        sections = raw
+    else:
+        sections = []
+    
+    # Extract LLM settings from sections
+    for sec in sections:
+        for fld in sec.get("fields", []):
+            fid = fld.get("id")
+            if not fid:
+                continue
+            if fid == "llm_model":
+                model = fld.get("value")
+            elif fid == "llm_base_url":
+                base_url = fld.get("value")
+            elif fid == "llm_temperature":
+                try:
+                    temperature = float(fld.get("value"))
+                except Exception:
+                    temperature = None
+    
     if not model or not base_url:
         raise RuntimeError("LLM settings missing in ui_settings sections (llm_model/llm_base_url)")
     return {"model": model, "base_url": base_url, "temperature": temperature}
@@ -288,8 +318,8 @@ class ConversationWorker:
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
         self._gateway_base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
-        # Model profiles removed; LLM config is centralized via UI settings.
-        self.profile_store = None
+        # Initialize ProfileStore for dynamic persona profiles
+        self.profile_store = ProfileStore(dsn=cfg.settings().database.dsn)
         tenant_config_path = cfg.env(
             "TENANT_CONFIG_PATH",
             cfg.settings().extra.get("tenant_config_path", "conf/tenants.yaml"),
@@ -311,7 +341,11 @@ class ConversationWorker:
             token_counter=count_tokens,
             health_provider=self._somabrain_health_state,
             on_degraded=self._mark_somabrain_degraded,
+            cache_client=RedisCacheClient(),
         )
+        self.decision_engine = DecisionEngine()
+        self.last_activity_time = time.time()
+        self.last_consolidation_time = 0.0
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         router_url = cfg.env("ROUTER_URL") or cfg.settings().extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
@@ -491,6 +525,51 @@ class ConversationWorker:
                 if content:
                     messages.append({"role": "assistant", "content": str(content)})
         return messages
+
+    async def _select_profile(self, message: str, analysis: dict[str, Any]) -> Optional[Any]:
+        """Select the most appropriate profile based on message content and analysis."""
+        if not self.profile_store:
+            return None
+            
+        try:
+            profiles = await self.profile_store.list_active_profiles()
+            if not profiles:
+                return None
+                
+            # Simple keyword matching for now (can be enhanced with vector search later)
+            message_lower = message.lower()
+            best_profile = None
+            max_score = 0
+            
+            for profile in profiles:
+                score = 0
+                triggers = profile.activation_triggers
+                
+                # Keyword matching
+                keywords = triggers.get("keywords", [])
+                for kw in keywords:
+                    if kw.lower() in message_lower:
+                        score += 1
+                        
+                # Tag matching
+                required_tags = triggers.get("tags", [])
+                current_tags = analysis.get("tags", [])
+                for tag in required_tags:
+                    if tag in current_tags:
+                        score += 2
+                        
+                if score > max_score:
+                    max_score = score
+                    best_profile = profile
+            
+            # Only switch if there's a meaningful match
+            if max_score > 0:
+                return best_profile
+                
+        except Exception:
+            LOGGER.warning("Profile selection failed", exc_info=True)
+            
+        return None
 
     def _legacy_prompt_messages(
         self,
@@ -1357,8 +1436,12 @@ class ConversationWorker:
                 _record_llm_failure(model_label)
                 raise
 
-    def _tools_openai_schema(self) -> list[dict[str, Any]]:
-        """Build OpenAI-style tools array from local registry."""
+    def _tools_openai_schema(self, allowed_tools: list[str] | None = None) -> list[dict[str, Any]]:
+        """Build OpenAI-style tools array from local registry.
+        
+        Args:
+            allowed_tools: Optional list of tool names to include. If None or contains '*', all tools are allowed.
+        """
         tools: list[dict[str, Any]] = []
         try:
             # Lazy load at first use in case dependencies are heavy
@@ -1376,6 +1459,11 @@ class ConversationWorker:
             LOGGER.debug("Failed to load tools for schema", exc_info=True)
         for t in self.tool_registry.list():
             try:
+                # Filter based on allowed_tools if provided
+                if allowed_tools is not None and "*" not in allowed_tools:
+                    if t.name not in allowed_tools:
+                        continue
+                
                 schema = None
                 handler = getattr(t, "handler", None)
                 if handler and hasattr(handler, "input_schema"):
@@ -1418,8 +1506,35 @@ class ConversationWorker:
                         return ev
                 except Exception:
                     continue
-            await asyncio.sleep(poll_interval)
+            await asyncio.sleep(poll_interval)            
         return None
+
+
+
+    def _apply_tool_gating(self, tools: list[dict[str, Any]], profile: Optional[Any]) -> list[dict[str, Any]]:
+        """Filter or re-rank tools based on profile weights."""
+        if not profile or not tools:
+            return tools
+            
+        weights = profile.tool_weights
+        if not weights:
+            return tools
+            
+        # If specific tools are heavily weighted (> 1.5), we might want to prioritize them
+        # For now, we'll just filter out tools with weight 0 (disabled for this profile)
+        
+        allowed_tools_by_profile = []
+        for tool in tools:
+            tool_name = tool.get("function", {}).get("name")
+            # Default weight is 1.0 if not specified
+            weight = weights.get(tool_name, 1.0)
+            
+            if weight > 0:
+                allowed_tools_by_profile.append(tool)
+            else:
+                LOGGER.debug(f"Tool {tool_name} disabled by profile {profile.name}")
+                
+        return allowed_tools_by_profile
 
     async def _generate_with_tools(
         self,
@@ -1430,10 +1545,16 @@ class ConversationWorker:
         llm_params: Dict[str, Any],
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
+        allowed_tools: list[dict[str, Any]] | None = None, # Changed type hint to list[dict[str, Any]]
     ) -> tuple[str, dict[str, int]]:
-        """Invoke the LLM with tool schemas; if the model emits tool calls, execute them and continue."""
+        """Invoke the LLM with tool schemas; if the model emits tool calls, execute them and continue.
+        
+        Args:
+            allowed_tools: Optional list of tool definitions (OpenAI schema) to expose to the LLM. Defaults to all tools.
+        """
         # Ensure tool schemas are provided to the model
-        tool_defs = self._tools_openai_schema()
+        # The `allowed_tools` parameter now directly receives the filtered tool definitions
+        tool_defs = allowed_tools if allowed_tools is not None else []
         if tool_defs:
             llm_params = dict(llm_params)
             extra_kwargs = dict(llm_params.get("kwargs") or llm_params.get("metadata") or {})
@@ -1728,6 +1849,7 @@ class ConversationWorker:
                 "bootstrap": self.kafka_settings.bootstrap_servers,
             },
         )
+        asyncio.create_task(self._sleep_consolidation_loop())
         await self.bus.consume(
             self.settings["inbound"],
             self.settings["group"],
@@ -1735,6 +1857,7 @@ class ConversationWorker:
         )
 
     async def _handle_event(self, event: dict[str, Any]) -> None:
+        self.last_activity_time = time.time()
         try:
             LOGGER.info("_handle_event CALLED", extra={"event_keys": list(event.keys()) if isinstance(event, dict) else "NOT_DICT"})
             start_time = time.perf_counter()
@@ -2098,6 +2221,29 @@ class ConversationWorker:
         })
         
         # Load centralized LLM settings up front
+        # Fetch persona configuration from SomaBrain
+        persona_config: dict[str, Any] = {}
+        persona_system_prompt: str | None = None
+        allowed_tool_names: list[str] | None = None # Renamed to avoid conflict with tool_defs
+        try:
+            persona_config = await self.get_adaptive_persona_config(persona_id or "default", tenant=tenant)
+            # Extract system prompt and allowed tools from persona properties
+            persona_props = persona_config.get("properties", {})
+            persona_system_prompt = persona_props.get("system_prompt")
+            allowed_tool_names = persona_props.get("allowed_tools")
+            if allowed_tool_names and not isinstance(allowed_tool_names, list):
+                allowed_tool_names = None  # Fallback if invalid format
+            LOGGER.info(
+                "Fetched persona configuration",
+                extra={
+                    "persona_id": persona_id,
+                    "has_system_prompt": bool(persona_system_prompt),
+                    "allowed_tools": allowed_tool_names,
+                },
+            )
+        except Exception as exc:
+            LOGGER.warning("Failed to fetch persona configuration; using defaults: %s", exc)
+        
         llm_params: dict[str, Any] = {}
         try:
             central = await _load_llm_settings()
@@ -2113,17 +2259,48 @@ class ConversationWorker:
             llm_params = {}
         
         summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict.get("tags") else "none"
-        analysis_prompt = ChatMessage(
-            role="system",
-            content=(
-                "The following classification is for internal guidance only. Do not repeat or mention it in your reply. "
-                "Use it silently to tailor your response. Classification: intent={intent}; sentiment={sentiment}; tags={tags}."
-            ).format(
-                intent=analysis_dict.get("intent", "general"),
-                sentiment=analysis_dict.get("sentiment", "neutral"),
-                tags=summary_tags,
-            ),
+        
+        # Build analysis context (always included, even with persona)
+        analysis_context = (
+            "\n\n# Current Context\n"
+            "The following classification is for internal guidance only. Do not repeat or mention it in your reply. "
+            "Use it silently to tailor your response.\n"
+            "Classification: intent={intent}; sentiment={sentiment}; tags={tags}."
+        ).format(
+            intent=analysis_dict.get("intent", "general"),
+            sentiment=analysis_dict.get("sentiment", "neutral"),
+            tags=summary_tags,
         )
+
+        # Select active profile based on context
+        active_profile = await self._select_profile(event.get("message", ""), analysis_dict)
+        if active_profile:
+            LOGGER.info("Active profile selected", extra={"profile": active_profile.name})
+            
+            # Basal Ganglia: GO/NOGO Action Selection via Decision Engine
+            decision = self.decision_engine.decide(active_profile, analysis_dict)
+            action_decision = decision.action_type
+            
+            if action_decision == "NOGO":
+                LOGGER.info("Basal Ganglia NOGO: %s", decision.reason)
+                # Modify system prompt to force deliberation/clarification
+                persona_system_prompt = (persona_system_prompt or "") + f"\n\n[DECISION ENGINE: NOGO]\n{decision.reason}. Do NOT take irreversible actions. Ask for clarification or propose a plan first."
+            elif action_decision == "GO":
+                 LOGGER.info("Basal Ganglia GO: %s", decision.reason)
+                 persona_system_prompt = (persona_system_prompt or "") + f"\n\n[DECISION ENGINE: GO]\n{decision.reason}. Execute immediately. Be concise."
+
+        # Use persona system prompt if available, append analysis context
+        if persona_system_prompt:
+            analysis_prompt = ChatMessage(
+                role="system",
+                content=persona_system_prompt + analysis_context,
+            )
+        else:
+            # Fallback to basic prompt with analysis
+            analysis_prompt = ChatMessage(
+                role="system",
+                content="You are SomaAgent01." + analysis_context,
+            )
 
         # Hard guard: if LLM config is absent, emit a humanized degraded reply and return.
         if not llm_params.get("model") or not llm_params.get("base_url"):
@@ -2154,7 +2331,7 @@ class ConversationWorker:
                 warn_event,
                 dedupe_key=warn_event.get("event_id"),
                 session_id=session_id,
-                tenant=warn_meta.get("tenant"),
+                tenant=(warn_meta.get("tenant") or {}).get("tenant"),
             )
             LOGGER.info("Published LLM config warning assistant event", extra={"session_id": session_id})
             record_metrics("llm_config_missing", "slm")
@@ -2171,7 +2348,11 @@ class ConversationWorker:
                 "history": history_messages,
             }
             max_tokens = self._context_builder_max_tokens()
-            built_context = await self.context_builder.build_for_turn(turn_envelope, max_prompt_tokens=max_tokens)
+            built_context = await self.context_builder.build_for_turn(
+                turn_envelope, 
+                max_prompt_tokens=max_tokens,
+                active_profile=vars(active_profile) if active_profile else None,
+            )
             messages = [ChatMessage(role=msg.get("role", "user"), content=str(msg.get("content", ""))) for msg in built_context.messages]
             session_metadata["somabrain_state"] = (
                 built_context.debug.get("somabrain_state")
@@ -2224,7 +2405,7 @@ class ConversationWorker:
                 )
                 return
 
-            metadata_for_decision = dict(enriched_metadata)
+            metadata_for_decision = dict(event.get("metadata", {}))
             metadata_for_decision.pop("analysis", None)
 
             decision = EscalationDecision(False, "disabled", {"enabled": False})
@@ -2377,6 +2558,26 @@ class ConversationWorker:
             if path == "slm":
                 response_start = time.perf_counter()
                 try:
+                    # BEFORE LLM CALL: validate token budget for the selected model
+                    model_name = llm_params.get('model') or 'unknown'
+                    model_window = self._detect_model_window(model_name)
+                    token_budget = self._allocate_token_budget(model_window)
+                    # Validate that total tokens (system + user + history + snippets) fit
+                    total_estimated = (
+                        self.count_tokens(messages[0].content)  # system prompt
+                        + self.count_tokens(messages[-1].content)  # user message
+                    )
+                    if total_estimated > token_budget["prompt"]:
+                        LOGGER.warning(
+                            f"Prompt exceeds token budget for model {model_name}: {total_estimated} > {token_budget['prompt']}")
+                        # Trim history aggressively (fallback)
+                        messages = self._trim_history(messages, token_budget["prompt"])
+                    
+                    # Build tool definitions based on allowed_tool_names from persona
+                    tool_defs = self._tools_openai_schema(allowed_tools=allowed_tool_names)
+                    # Apply tool gating based on active profile
+                    gated_tools = self._apply_tool_gating(tool_defs, active_profile)
+
                     response_text, usage = await self._generate_with_tools(
                         session_id=session_id,
                         persona_id=persona_id,
@@ -2384,6 +2585,7 @@ class ConversationWorker:
                         llm_params=llm_params,
                         analysis_metadata=analysis_dict,
                         base_metadata=session_metadata,
+                        allowed_tools=gated_tools, # Pass the gated tools
                     )
                     _record_llm_success(
                         model_used,
@@ -2622,6 +2824,23 @@ class ConversationWorker:
                             session_id=session_id,
                             tenant=tenant,
                         )
+                    except Exception as exc:
+                        LOGGER.warning(
+                            "SomaBrain remember failed for assistant message",
+                            extra={"session_id": session_id, "error": str(exc)},
+                        )
+                        # Enqueue for retry via outbox
+                        try:
+                            await self.mem_outbox.enqueue(
+                                payload=payload,
+                                tenant=tenant,
+                                session_id=session_id,
+                                persona_id=event.get("persona_id"),
+                                idempotency_key=payload.get("idempotency_key"),
+                                dedupe_key=str(payload.get("id")) if payload.get("id") else None,
+                            )
+                        except Exception:
+                            LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
                     except Exception:
                         LOGGER.debug("Failed to publish memory WAL (assistant)", exc_info=True)
                 else:
@@ -2629,25 +2848,29 @@ class ConversationWorker:
                         "memory.write denied by policy",
                         extra={"session_id": session_id, "event_id": payload.get("id")},
                     )
-            except SomaClientError as exc:
-                LOGGER.warning(
-                    "SomaBrain remember failed for assistant message",
-                    extra={"session_id": session_id, "error": str(exc)},
-                )
+                # After memory handling, send feedback to SomaBrain for learning
                 try:
-                    await self.mem_outbox.enqueue(
-                        payload=payload,
-                        tenant=tenant,
-                        session_id=session_id,
-                        persona_id=event.get("persona_id"),
-                        idempotency_key=payload.get("idempotency_key"),
-                        dedupe_key=str(payload.get("id")) if payload.get("id") else None,
+                    utility = self._compute_utility(
+                        response_text=response_text,
+                        tool_results=[],  # No tool calls for pure assistant turn
+                        user_sentiment=analysis_dict.get("sentiment", "neutral"),
                     )
-                except Exception:
-                    LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
+                    await self.somabrain.context_feedback({
+                        "session_id": session_id,
+                        "query": messages[-1].content,
+                        "prompt": " ".join(m.content for m in messages),
+                        "response_text": response_text,
+                        "utility": utility,
+                        "reward": 1.0,
+                        "metadata": {
+                            "model": llm_params.get("model"),
+                            "latency_ms": usage.get("latency_ms", 0),
+                        },
+                    })
+                except Exception as fb_exc:
+                    LOGGER.debug("Failed to send feedback to SomaBrain", exc_info=True)
             except Exception:
-                LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
-            record_metrics(result_label, path)
+                LOGGER.warning("Failed to save assistant response to memory", exc_info=True)
         # Execute the processing pipeline and ensure metrics are recorded on unexpected errors
         try:
             await _process()
@@ -2688,6 +2911,8 @@ class ConversationWorker:
                 )
             except Exception:
                 LOGGER.debug("Failed to emit degraded reply after unhandled error", exc_info=True)
+        finally:
+            record_metrics(result_label, path)
 
     # REAL IMPLEMENTATION - Enhanced Learning & Adaptation Features
     async def submit_enhanced_feedback(
@@ -2963,6 +3188,42 @@ class ConversationWorker:
         except SomaClientError as e:
             LOGGER.error(f"Failed to get learning insights: {e}")
             return {}
+
+    async def _sleep_consolidation_loop(self) -> None:
+        """Background loop to check for inactivity and trigger memory consolidation."""
+        LOGGER.info("Sleep consolidation loop started")
+        while True:
+            try:
+                await asyncio.sleep(10)  # Check every 10 seconds
+                await self.check_sleep_consolidation()
+            except asyncio.CancelledError:
+                LOGGER.info("Sleep consolidation loop cancelled")
+                break
+            except Exception:
+                LOGGER.error("Error in sleep consolidation loop", exc_info=True)
+                await asyncio.sleep(30)  # Backoff on error
+
+    async def check_sleep_consolidation(self) -> None:
+        """Trigger consolidation if inactive for a threshold."""
+        now = time.time()
+        # Inactivity threshold: 60 seconds (for dev/testing)
+        # Consolidation interval: 300 seconds (5 minutes) to avoid frequent calls
+        inactivity_threshold = 60.0
+        consolidation_interval = 300.0
+        
+        if (now - self.last_activity_time > inactivity_threshold) and \
+           (now - self.last_consolidation_time > consolidation_interval):
+            
+            LOGGER.info("Inactivity detected, triggering sleep consolidation")
+            try:
+                # Use default tenant for now, or iterate active tenants if possible
+                # Since we don't track active tenants easily, we'll use "default"
+                await self.soma.consolidate_memory(tenant="default")
+                self.last_consolidation_time = now
+                LOGGER.info("Sleep consolidation triggered successfully")
+            except Exception as e:
+                LOGGER.warning(f"Sleep consolidation failed: {e}")
+                # Don't retry immediately, wait for next interval or activity
 
 
 

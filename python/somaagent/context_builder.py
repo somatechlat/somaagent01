@@ -7,10 +7,14 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+from time import perf_counter
 from typing import Any, Callable, Dict, List, Optional, Protocol
 
 from observability.metrics import ContextBuilderMetrics
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+
+import hashlib
+import json
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +23,15 @@ class SomabrainHealthState(str, Enum):
     NORMAL = "normal"
     DEGRADED = "degraded"
     DOWN = "down"
+
+
+class CacheClientProtocol(Protocol):  # pragma: no cover - interface definition
+    async def get(self, key: str) -> Optional[Dict[str, Any]]:
+        ...
+
+    async def set(self, key: str, value: Dict[str, Any], ttl: int) -> None:
+        ...
+
 
 
 class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
@@ -55,6 +68,7 @@ class ContextBuilder:
         redactor: Optional[RedactorProtocol] = None,
         health_provider: Optional[Callable[[], SomabrainHealthState]] = None,
         on_degraded: Optional[Callable[[float], None]] = None,
+        cache_client: Optional[CacheClientProtocol] = None,
     ) -> None:
         self.somabrain = somabrain
         self.metrics = metrics
@@ -62,86 +76,102 @@ class ContextBuilder:
         self.redactor = redactor or _NoopRedactor()
         self.health_provider = health_provider or (lambda: SomabrainHealthState.NORMAL)
         self.on_degraded = on_degraded or (lambda _duration: None)
+        self.cache_client = cache_client
 
     async def build_for_turn(
         self,
         turn: Dict[str, Any],
         *,
-        max_prompt_tokens: int,
+        max_prompt_tokens: int = 4000,
+        active_profile: Optional[Dict[str, Any]] = None,
     ) -> BuiltContext:
-        with self.metrics.time_total():
-            state = self._current_health()
-            reason = state.value
-            system_prompt = (turn.get("system_prompt") or "You are SomaAgent01.").strip()
-            user_message = (turn.get("user_message") or "").strip()
-            history = self._coerce_history(turn.get("history"))
+        """Build the complete context for a conversation turn.
+        
+        Args:
+            turn: The conversation turn data.
+            max_prompt_tokens: Maximum tokens allowed for the prompt.
+            active_profile: Optional active profile configuration (from ProfileStore).
+        """
+        start_time = perf_counter()
+        session_id = turn.get("session_id", "unknown")
+        
+        # Get current SomaBrain health state from the injected health provider
+        state = self._current_health()
+        
+        # 1. Retrieve behavior rules (Pass 1)
+        behavior_rules = await self._retrieve_behavior_rules(turn, state)
+        
+        # 2. Retrieve contextual memories (Pass 2)
+        snippets = await self._retrieve_context(turn)
+        
+        # 3. Construct system messages
+        system_messages = []
+        
+        # 3a. Behavior Rules (Highest Priority)
+        if behavior_rules:
+            rule_text = "\n".join([f"- {r['text']}" for r in behavior_rules])
+            system_messages.append({
+                "role": "system",
+                "content": f"## Session Behavioral Rules\n{rule_text}",
+                "name": "behavior"
+            })
+            
+        # 3b. Active Profile Modifier (High Priority)
+        if active_profile and active_profile.get("system_prompt_modifier"):
+            system_messages.append({
+                "role": "system",
+                "content": f"## Active Mode: {active_profile.get('name')}\n{active_profile['system_prompt_modifier']}",
+                "name": "profile_mode"
+            })
+            
+        # 3c. Base System Prompt / Persona
+        if turn.get("system_prompt"):
+            system_messages.append({
+                "role": "system",
+                "content": turn["system_prompt"],
+                "name": "persona"
+            })
+            
+        # 3d. Memory Block
+        if snippets:
+            memory_text = "\n".join([f"- {s['text']}" for s in snippets])
+            system_messages.append({
+                "role": "system",
+                "content": f"## Relevant Memories\n{memory_text}",
+                "name": "memory"
+            })
 
-            snippets: List[Dict[str, Any]] = []
-            snippet_tokens = 0
+        # 4. Construct history (trimmed)
+        # Calculate remaining budget for history
+        current_tokens = sum(self.count_tokens(m["content"]) for m in system_messages)
+        history_budget = max(0, max_prompt_tokens - current_tokens - 500) # Reserve 500 for safety
+        
+        history_messages = self._trim_history(turn.get("history", []), history_budget)
+        
+        # 5. Assemble final messages
+        final_messages = system_messages + history_messages
+        
+        # Add user message if not already in history (it usually isn't for the current turn)
+        if turn.get("user_message"):
+             final_messages.append({"role": "user", "content": turn["user_message"]})
 
-            if state != SomabrainHealthState.DOWN:
-                raw_snippets = await self._retrieve_snippets(turn, state)
-                scored_snippets = self._apply_salience(raw_snippets)
-                ranked_snippets = self._rank_and_clip_snippets(scored_snippets, state)
-                snippets = self._redact_snippets(ranked_snippets)
-                snippet_tokens = self._count_snippet_tokens(snippets)
-                self.metrics.inc_snippets(stage="final", count=len(snippets))
-            else:
-                LOGGER.debug("Somabrain DOWN – skipping retrieval", extra={"session": turn.get("session_id")})
-
-            with self.metrics.time_tokenisation():
-                system_tokens = self.count_tokens(system_prompt)
-                user_tokens = self.count_tokens(user_message)
-
-            budget_for_history = max_prompt_tokens - (system_tokens + user_tokens + snippet_tokens)
-            if budget_for_history < 0:
-                snippets, snippet_tokens = self._trim_snippets_to_budget(
-                    snippets,
-                    snippet_tokens,
-                    max_prompt_tokens - (system_tokens + user_tokens),
-                )
-                budget_for_history = max(0, max_prompt_tokens - (system_tokens + user_tokens + snippet_tokens))
-
-            trimmed_history = self._trim_history(history, budget_for_history)
-            history_tokens = sum(self.count_tokens(msg.get("content", "")) for msg in trimmed_history)
-
-            self.metrics.record_tokens(
-                before_budget=sum(self.count_tokens(m.get("content", "")) for m in history),
-                after_budget=history_tokens,
-                after_redaction=self.count_tokens("\n".join(s["text"] for s in snippets)) if snippets else history_tokens,
-                prompt_tokens=system_tokens + user_tokens + snippet_tokens + history_tokens,
-            )
-            self.metrics.inc_prompt()
-
-            with self.metrics.time_prompt():
-                messages: List[Dict[str, Any]] = []
-                messages.append({"role": "system", "content": system_prompt})
-                messages.extend(trimmed_history)
-                if snippets:
-                    snippet_block = self._format_snippet_block(snippets)
-                    messages.append({"role": "system", "content": snippet_block, "name": "memory"})
-                messages.append({"role": "user", "content": user_message})
-
-            debug = {
-                "somabrain_state": state.value,
-                "somabrain_reason": reason,
-                "snippet_ids": [snippet.get("id") for snippet in snippets],
-                "snippet_count": len(snippets),
-                "session_id": turn.get("session_id"),
-                "tenant_id": turn.get("tenant_id"),
+        duration = perf_counter() - start_time
+        self.metrics.time_total.observe(duration)
+        
+        return BuiltContext(
+            system_prompt="",  # System messages are included in 'messages' list
+            messages=final_messages,
+            token_counts={
+                "total": sum(self.count_tokens(m["content"]) for m in final_messages),
+                "system": sum(self.count_tokens(m["content"]) for m in system_messages),
+            },
+            debug={
+                "retrieval_count": len(snippets),
+                "behavior_rule_count": len(behavior_rules),
+                "profile_active": bool(active_profile),
+                "constitution_checksum": turn.get("_cognitive_data", {}).get("constitution_checksum"),
             }
-
-            return BuiltContext(
-                system_prompt=system_prompt,
-                messages=messages,
-                token_counts={
-                    "system": system_tokens,
-                    "history": history_tokens,
-                    "snippets": snippet_tokens,
-                    "user": user_tokens,
-                },
-                debug=debug,
-            )
+        )
 
     def _current_health(self) -> SomabrainHealthState:
         try:
@@ -187,12 +217,29 @@ class ContextBuilder:
             if state == SomabrainHealthState.NORMAL:
                 self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
             LOGGER.debug("SomaBrain error detail", extra={"error": str(exc)})
-            return []
+            return await self._retrieve_from_cache(turn, "context")
         except Exception:
             LOGGER.exception("Unexpected Somabrain failure during context evaluation")
             self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
-            return []
-        results = resp.get("candidates") or resp.get("results") or []
+            return await self._retrieve_from_cache(turn, "context")
+        
+        # Extract all cognitive data from response
+        results = resp.get("candidates") or resp.get("results") or resp.get("memories") or []
+        
+        # Store cognitive metadata for observability (NEW)
+        cognitive_data = {
+            "retrieval_weights": resp.get("weights", []),
+            "residual_vector": resp.get("residual_vector", []),
+            "working_memory": resp.get("working_memory", []),
+            "constitution_checksum": resp.get("constitution_checksum"),
+        }
+        turn["_cognitive_data"] = cognitive_data
+        
+        LOGGER.debug(
+            "context_evaluate response",
+            extra={"result_count": len(results), "has_weights": bool(resp.get("weights")), "has_constitution": bool(resp.get("constitution_checksum"))}
+        )
+        
         snippets: List[Dict[str, Any]] = []
         for item in results:
             if not isinstance(item, dict):
@@ -208,7 +255,100 @@ class ContextBuilder:
                     "metadata": item.get("metadata") or {},
                 }
             )
+            
+        # Cache successful result
+        if self.cache_client and snippets:
+            await self._write_to_cache(turn, "context", snippets, cognitive_data)
+            
         return snippets
+
+    async def _retrieve_behavior_rules(
+        self,
+        turn: Dict[str, Any],
+        state: SomabrainHealthState,
+    ) -> List[Dict[str, Any]]:
+        """Retrieve active behavior rules for the session (Pass 1)."""
+        if state != SomabrainHealthState.NORMAL:
+            return []
+            
+        try:
+            # Use recall with tags filtering as context_evaluate doesn't support it yet
+            resp = await self.somabrain.recall(
+                query="behavioral rules",
+                top_k=3,
+                tags=["behavior_rule"],
+                tenant=turn.get("tenant_id"),
+                session_id=turn.get("session_id"),
+            )
+            
+            rules = []
+            candidates = resp.get("candidates") or resp.get("results") or []
+            for item in candidates:
+                text = self._extract_text(item)
+                if text:
+                    rules.append({"text": text, "score": item.get("score", 1.0)})
+            
+            # Cache successful rules
+            if self.cache_client and rules:
+                await self._write_to_cache(turn, "behavior", rules)
+                
+            return rules
+            
+        except Exception:
+            LOGGER.warning("Failed to retrieve behavior rules", exc_info=True)
+            return await self._retrieve_from_cache(turn, "behavior")
+
+    async def _retrieve_from_cache(self, turn: Dict[str, Any], kind: str) -> List[Dict[str, Any]]:
+        """Try to fetch snippets/rules from cache."""
+        if not self.cache_client:
+            return []
+        
+        key = self._cache_key(turn, kind)
+        try:
+            cached = await self.cache_client.get(key)
+            if cached and isinstance(cached, dict):
+                # If it's context, restore cognitive data too
+                if kind == "context" and "cognitive_data" in cached:
+                    turn["_cognitive_data"] = cached["cognitive_data"]
+                return cached.get("items", [])
+        except Exception:
+            LOGGER.debug(f"Cache read failed for {kind}", exc_info=True)
+        return []
+
+    async def _write_to_cache(
+        self, 
+        turn: Dict[str, Any], 
+        kind: str, 
+        items: List[Dict[str, Any]],
+        cognitive_data: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Write items to cache."""
+        if not self.cache_client:
+            return
+            
+        key = self._cache_key(turn, kind)
+        payload = {"items": items}
+        if cognitive_data:
+            payload["cognitive_data"] = cognitive_data
+            
+        try:
+            # TTL: 1 hour for context, 24 hours for behavior (rules change less often)
+            ttl = 3600 if kind == "context" else 86400
+            await self.cache_client.set(key, payload, ttl)
+        except Exception:
+            LOGGER.debug(f"Cache write failed for {kind}", exc_info=True)
+
+    def _cache_key(self, turn: Dict[str, Any], kind: str) -> str:
+        """Stable cache key based on session and message hash."""
+        session_id = turn.get("session_id", "unknown")
+        # For behavior, we cache per session (rules shouldn't change mid-turn based on query)
+        if kind == "behavior":
+            return f"ctx:behavior:{session_id}"
+            
+        # For context, we cache based on the specific query
+        msg = turn.get("user_message", "")
+        msg_hash = hashlib.sha256(msg.encode("utf-8")).hexdigest()[:16]
+        return f"ctx:{kind}:{session_id}:{msg_hash}"
 
     def _extract_text(self, item: Dict[str, Any]) -> str:
         if item.get("text"):
@@ -297,13 +437,52 @@ class ContextBuilder:
             total += tokens
         return trimmed, total
 
+        return trimmed
+
     def _trim_history(
         self,
         history: List[Dict[str, str]],
         allowed_tokens: int,
     ) -> List[Dict[str, str]]:
+        """Intelligently trim history: Keep first 2 (anchor) + last N (recency)."""
         if allowed_tokens <= 0 or not history:
             return []
+            
+        # If history is short, just return what fits
+        total_tokens = sum(self.count_tokens(m.get("content", "")) for m in history)
+        if total_tokens <= allowed_tokens:
+            return history
+
+        # Strategy: Keep first 2 (anchor), then fill from end (recency)
+        anchor = history[:2]
+        recent = history[2:]
+        
+        anchor_tokens = sum(self.count_tokens(m.get("content", "")) for m in anchor)
+        remaining_budget = allowed_tokens - anchor_tokens
+        
+        if remaining_budget <= 0:
+            # Budget too tight, fallback to just recency from end
+            return self._trim_history_simple(history, allowed_tokens)
+
+        trimmed_recent: List[Dict[str, str]] = []
+        for entry in reversed(recent):
+            tokens = self.count_tokens(entry.get("content", ""))
+            if tokens > remaining_budget:
+                continue
+            trimmed_recent.append(entry)
+            remaining_budget -= tokens
+            if remaining_budget <= 0:
+                break
+        
+        trimmed_recent.reverse()
+        return anchor + trimmed_recent
+
+    def _trim_history_simple(
+        self,
+        history: List[Dict[str, str]],
+        allowed_tokens: int,
+    ) -> List[Dict[str, str]]:
+        """Simple trimming from the end (fallback)."""
         trimmed: List[Dict[str, str]] = []
         remaining = allowed_tokens
         for entry in reversed(history):
