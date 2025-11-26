@@ -1,4 +1,4 @@
-from services.gateway.main import _normalize_llm_base_url
+from services.gateway.routers.chat import _normalize_llm_base_url
 
 
 def test_normalize_strips_whitespace_and_trailing_slash():

@@ -12,6 +12,7 @@ import logging
 import time
 from typing import Any, Mapping, Sequence
 
+import pybreaker
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.soma_client import SomaClient, SomaClientError

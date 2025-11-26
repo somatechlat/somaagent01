@@ -689,8 +689,23 @@ class SomaClient:
         return await self._request("POST", "/memory/recall/stream", json=dict(payload))
 
     async def remember_batch(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        """Persist multiple memories in a single request."""
-        return await self._request("POST", "/memory/remember/batch", json=dict(payload))
+        """Batch create memories.
+
+        The payload should match the batch schema (e.g. ``{"items": [...]}``).
+        """
+        return await self._request(
+            "POST",
+            "memory/remember/batch",
+            json=payload,
+        )
+
+    async def consolidate_memory(self, tenant: str) -> Mapping[str, Any]:
+        """Trigger memory consolidation for the given tenant."""
+        return await self._request(
+            "POST",
+            "memory/consolidate",
+            json={"tenant": tenant},
+        )
 
     async def get_recall_session(self, session_id: str) -> Mapping[str, Any]:
         return await self._request("GET", f"/memory/context/{session_id}")

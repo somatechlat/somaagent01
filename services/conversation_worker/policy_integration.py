@@ -21,10 +21,35 @@ class ConversationPolicyEnforcer:
         metadata: dict,
     ) -> bool:
         """Check whether an inbound user message is permitted."""
-        # Optional development bypass to unblock local testing when OPA denies or is unreachable.
-        flag = cfg.env("DISABLE_CONVERSATION_POLICY", "false")
-        if str(flag).lower() in {"true", "1", "yes", "on"}:
+        # VIBE CODING RULE: No bypasses. Policy checks are mandatory.
+        
+        # 1. Check if policy is enabled for this tenant
+        if not self.client:
             return True
+
+        # 2. Construct context for OPA
+        ctx = {
+            "message": message,
+            "metadata": metadata,
+            "role": "user",
+        }
+
+        # 3. Evaluate policy
+        try:
+            allowed = await self.client.evaluate(
+                PolicyRequest(
+                    tenant=tenant,
+                    persona_id=persona_id,
+                    action="conversation.message",
+                    resource="conversation",
+                    context=ctx,
+                )
+            )
+            return allowed
+        except Exception as e:
+            # Fail closed on policy error
+            LOGGER.error(f"Policy evaluation failed: {e}")
+            return False
         request = PolicyRequest(
             tenant=tenant,
             persona_id=persona_id,

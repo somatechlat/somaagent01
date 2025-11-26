@@ -2,10 +2,11 @@
 # This file defines all services for the development environment.
 # NOTE: The `version` key is omitted as it is obsolete in Docker Compose V2.
 
-x-agent-env: &agent-env
+x-agent-env:
   # Prioritize mounted repo code over baked image to enable live development
   # Include the project root and the src package for proper imports inside containers.
-  PYTHONPATH: "/git/agent-zero:/git/agent-zero/src:/app"
+  &agent-env
+  PYTHONPATH: "/app:/git/agent-zero:/git/agent-zero/src"
   LOG_LEVEL: INFO
   # prior envs removed in favor of SA01_* canonical variables
   SA01_CONTAINER_HOST_ALIAS: host.docker.internal
@@ -41,7 +42,7 @@ x-agent-service: &agent-service
       INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-false}
   working_dir: /git/agent-zero
   environment:
-      <<: *agent-env
+    <<: *agent-env
   # Load the canonical env file (production‑style settings) and the memory‑override file.
   env_file:
     - ${SA01_ENV_FILE:-.env}
@@ -68,6 +69,7 @@ x-agent-service: &agent-service
     - ./webui:/git/agent-zero/webui:ro
     - ./schemas:/git/agent-zero/schemas:ro
     - ./observability:/git/agent-zero/observability:ro
+    - ./uploads:/git/agent-zero/uploads
     # Note: prior /a0 mounts removed for modern deployments. If you need
     # historic A0 data, restore from agent-zero/prior_a0 or the prior backup.
   extra_hosts:
@@ -90,7 +92,7 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    entrypoint: ["bash", "-lc"]
+    entrypoint: [ "bash", "-lc" ]
     command: bash /init/init-topics.sh
     environment:
       - SA01_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -138,7 +140,7 @@ services:
       - ./kafka-logs:/var/log/kafka
     healthcheck:
       # Lightweight healthcheck: wait until the broker port is listening
-      test: ["CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1"]
+      test: [ "CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -150,7 +152,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: somaAgent01_redis
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec"]
+    command: [ "redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec" ]
     ports:
       - "${REDIS_PORT:-20001}:6379"
     restart: unless-stopped
@@ -158,7 +160,7 @@ services:
       - redis_data:/data
       - ./redis-conf:/usr/local/etc/redis
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -169,7 +171,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaAgent01_postgres
-    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+    command: [ "postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB" ]
     environment:
       POSTGRES_USER: soma
       POSTGRES_PASSWORD: soma
@@ -185,7 +187,7 @@ services:
       - ./postgres-backups:/backups
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      test: [ "CMD-SHELL", "pg_isready -U soma -d somaagent01" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -197,7 +199,7 @@ services:
   opa:
     image: openpolicyagent/opa:0.64.0
     container_name: somaAgent01_opa
-    command: ["run", "--server", "--watch", "/policy", "--set=decision_logs.console=true"]
+    command: [ "run", "--server", "--watch", "/policy", "--set=decision_logs.console=true" ]
     ports:
       - "${OPA_PORT:-20009}:8181"
     restart: unless-stopped
@@ -219,9 +221,9 @@ services:
       - python3
       - -m
       - services.conversation_worker.main
-    
+
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
   tool-executor:
     <<: *agent-service
     container_name: somaAgent01_tool-executor
@@ -236,7 +238,7 @@ services:
       <<: *agent-env
       TOOL_EXECUTOR_METRICS_PORT: "9411"
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
   memory-replicator:
     <<: *agent-service
     container_name: somaAgent01_memory-replicator
@@ -251,7 +253,7 @@ services:
       <<: *agent-env
       REPLICATOR_METRICS_PORT: "9412"
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
   memory-sync:
     <<: *agent-service
     container_name: somaAgent01_memory-sync
@@ -266,7 +268,7 @@ services:
       <<: *agent-env
       MEMORY_SYNC_METRICS_PORT: "9413"
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
   # memory-service removed; SomaBrain HTTP is used directly by services
 
   gateway:
@@ -295,7 +297,7 @@ services:
     ports:
       - "${GATEWAY_PORT:-21016}:8010"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8010/v1/health >/dev/null"]
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8010/v1/health >/dev/null" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -322,7 +324,7 @@ services:
       OUTBOX_SYNC_BACKOFF_MAX_SECONDS: "60.0"
       OUTBOX_SYNC_METRICS_PORT: "9469"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:${OUTBOX_SYNC_METRICS_PORT:-9469}/metrics >/dev/null"]
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:${OUTBOX_SYNC_METRICS_PORT:-9469}/metrics >/dev/null" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -356,7 +358,7 @@ services:
     ports:
       - "${FASTA2A_GATEWAY_PORT:-21017}:8011"
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
   fasta2a-worker:
     <<: *agent-service
     container_name: somaAgent01_fasta2a-worker
@@ -379,7 +381,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       FASTA2A_WORKER_METRICS_PORT: "9421"
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
   fasta2a-flower:
     image: mher/flower:2.0.1
     container_name: somaAgent01_fasta2a-flower
@@ -395,7 +397,6 @@ services:
       - flower_data:/data
     mem_limit: 256m
     mem_reservation: 128m
-    
 
 networks:
   default:
@@ -409,8 +410,8 @@ volumes:
   kafka_data:
   redis_data:
   postgres_data:
-  flower_data:
-  # -----------------------------------------------------------------
+  flower_data: # -----------------------------------------------------------------
+
   # Production & Monitoring Volumes (added for prod profile)
   # -----------------------------------------------------------------
   prometheus-data:

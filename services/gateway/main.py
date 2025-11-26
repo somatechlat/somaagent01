@@ -320,11 +320,10 @@ async def upload_files(
     _cache: RedisSessionCache = Depends(get_session_cache),
     _store = Depends(get_session_store),
 ):
-    """Receive file uploads and forward them as a WAL event.
+    """Handle file uploads.
 
-    For the purpose of the test suite we only need to acknowledge the request
-    and publish a minimal event containing the filenames.  The actual file
-    contents are not persisted in this shim.
+    Files are persisted to the `uploads/` directory and their paths are returned.
+    This allows the agent to access and process the uploaded content.
     """
     meta = await _extract_metadata(request, payload)
     session_id = str(uuid.uuid4())

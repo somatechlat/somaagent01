@@ -227,8 +227,7 @@ export function _drawMessage(
       if (!preElement) {
         preElement = document.createElement("pre");
         preElement.classList.add("msg-content", ...contentClasses);
-        preElement.style.whiteSpace = "pre-wrap";
-        preElement.style.wordBreak = "break-word";
+        preElement.classList.add("pre-wrap-break");
         bodyDiv.appendChild(preElement);
       } else {
         // Update classes
@@ -450,7 +449,7 @@ export function drawMessageUser(
       messageDiv.appendChild(attachmentsContainer);
     }
     // Important: Clear existing attachments to re-render, preventing duplicates on update
-    attachmentsContainer.innerHTML = ""; 
+    attachmentsContainer.innerHTML = "";
 
     kvps.attachments.forEach((attachment) => {
       const attachmentDiv = document.createElement("div");
@@ -735,7 +734,7 @@ function drawKvps(container, kvps, latex) {
           tdiv.appendChild(imgElement);
 
           // Add click handler and cursor change
-          imgElement.style.cursor = "pointer";
+          imgElement.classList.add("cursor-pointer");
           imgElement.addEventListener("click", () => {
             openImageModal(imgElement.src, 1000);
           });
@@ -864,7 +863,7 @@ function drawKvpsIncremental(container, kvps, latex) {
         // Add action buttons to the row
         // const row = tdiv.closest(".kvps-row");
         // if (row) {
-          // addActionButtonsToElement(pre);
+        // addActionButtonsToElement(pre);
         // }
 
         // KaTeX rendering for markdown

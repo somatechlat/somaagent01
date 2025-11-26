@@ -664,6 +664,19 @@ EXECUTE FUNCTION session_envelopes_touch_updated_at();
 
 async def ensure_schema(store: PostgresSessionStore) -> None:
     pool = await store._ensure_pool()
+    import asyncpg
+    try:
+        LOGGER.info(f"DEBUG: asyncpg file: {asyncpg.__file__}")
+    except Exception as e:
+        LOGGER.info(f"DEBUG: asyncpg file lookup failed: {e}")
+    LOGGER.info(f"DEBUG: pool type: {type(pool)}")
+    LOGGER.info(f"DEBUG: pool.acquire type: {type(pool.acquire)}")
+    try:
+        res = pool.acquire()
+        LOGGER.info(f"DEBUG: pool.acquire() result type: {type(res)}")
+    except Exception as e:
+        LOGGER.info(f"DEBUG: pool.acquire() raised: {e}")
+
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
         LOGGER.info("Ensured session_events and session_envelopes tables exist")

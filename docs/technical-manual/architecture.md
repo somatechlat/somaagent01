@@ -27,7 +27,10 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
   - Call Gateway `/v1/llm/invoke/stream` with stored credentials
   - Emit tool requests to `tool.requests` topic
   - Stream assistant responses to `conversation.outbound`
+  - Stream assistant responses to `conversation.outbound`
   - Write memories to SomaBrain
+  - **Decision Engine**: Neuromodulation-based GO/NOGO logic (see `neuromodulation.md`)
+  - **Sleep Consolidation**: Background memory processing during inactivity
 
 ### Tool Executor (`services/tool_executor/main.py`)
 - **Kafka Topics**: Consumes `tool.requests`, publishes to `tool.results`

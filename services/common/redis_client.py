@@ -20,7 +20,7 @@ and background syncer) already runs in an async event loop.
 from __future__ import annotations
 
 import json
-from typing import Dict
+from typing import Dict, Optional, Any
 
 import redis.asyncio as aioredis
 
@@ -142,3 +142,27 @@ async def delete_event(event_id: str) -> None:
     redis_conn = _get_redis()
     key = f"degraded:{event_id}"
     await redis_conn.delete(key)
+
+
+class RedisCacheClient:
+    """Generic Redis cache client implementing CacheClientProtocol."""
+
+    async def get(self, key: str) -> Optional[dict]:
+        """Retrieve a JSON dictionary from Redis."""
+        redis_conn = _get_redis()
+        try:
+            data = await redis_conn.get(key)
+            if data:
+                return json.loads(data)
+        except Exception:
+            pass
+        return None
+
+    async def set(self, key: str, value: dict, ttl: int) -> None:
+        """Store a JSON dictionary in Redis with TTL."""
+        redis_conn = _get_redis()
+        try:
+            await redis_conn.set(key, json.dumps(value), ex=ttl)
+        except Exception:
+            pass
+
