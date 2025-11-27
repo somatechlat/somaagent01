@@ -83,3 +83,27 @@ def setup_logging(default_level: str | None = None) -> None:
     root.addHandler(handler)
 
     _LOGGING_INITIALISED = True
+
+# ---------------------------------------------------------------------------
+# Compatibility helper
+# ---------------------------------------------------------------------------
+def get_logger(name: str = "") -> logging.Logger:
+    """Return a configured :class:`logging.Logger`.
+
+    Legacy code in the project expects a ``get_logger`` function that returns a
+    logger instance with JSON formatting already applied.  The original
+    implementation was removed during refactoring, causing import errors.
+
+    This helper ensures that :func:`setup_logging` is executed exactly once and
+    then retrieves (or creates) a logger with the supplied ``name``.  An empty
+    name yields the root logger, matching typical usage patterns.
+    """
+    # Ensure the global logging configuration is initialised exactly once.
+    setup_logging()
+    return logging.getLogger(name)
+
+__all__ = [
+    "setup_logging",
+    "get_logger",
+    "JSONFormatter",
+]

@@ -271,3 +271,13 @@ async def ensure_schema(store: OutboxStore) -> None:
         await conn.execute(MIGRATION_SQL)
         LOGGER.info("Ensured message_outbox table exists")
 from services.common import env
+
+# Backwards‑compatible alias used throughout the codebase (e.g. gateway/main).
+ensure_outbox_schema = ensure_schema
+
+__all__ = [
+    "OutboxMessage",
+    "OutboxStore",
+    "ensure_schema",
+    "ensure_outbox_schema",
+]
