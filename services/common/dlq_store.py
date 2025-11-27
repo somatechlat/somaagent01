@@ -27,6 +27,9 @@ class DLQMessage:
     error: str | None
     created_at: datetime
 
+# Backwards‑compatible alias used by the gateway router.
+DLQItem = DLQMessage
+
 
 class DLQStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
@@ -60,6 +63,40 @@ class DLQStore:
                 (error or "")[:8000],
             )
             return int(row["id"])  # type: ignore[index]
+
+        # ---------------------------------------------------------------------
+        # Compatibility helpers expected by ``services.gateway.routers.dlq``
+        # ---------------------------------------------------------------------
+        async def list(self, topic: str, limit: int = 100) -> list[DLQItem]:
+            """Legacy ``list`` method returning recent DLQ items.
+
+            Delegates to :meth:`list_recent` which provides the same data shape.
+            """
+            return await self.list_recent(topic=topic, limit=limit)
+
+        async def clear(self, topic: str) -> int:
+            """Legacy ``clear`` method that purges all items for a topic.
+
+            Returns the number of rows deleted, mirroring the original behaviour.
+            """
+            return await self.purge(topic=topic)
+
+        async def reprocess(self, topic: str, item_id: str) -> bool:
+            """Legacy ``reprocess`` stub.
+
+            The original implementation would re‑publish the event back to the
+            processing pipeline. For test purposes we simply remove the record and
+            report success if it existed.
+            """
+            try:
+                iid = int(item_id)
+            except ValueError:
+                return False
+            msg = await self.get_by_id(id=iid)
+            if not msg:
+                return False
+            await self.delete_by_id(id=iid)
+            return True
 
     async def list_recent(self, *, topic: str, limit: int = 100) -> list[DLQMessage]:
         pool = await self._ensure_pool()

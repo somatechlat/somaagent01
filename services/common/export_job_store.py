@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import json
 import os
+from services.common.admin_settings import ADMIN_SETTINGS
 from dataclasses import dataclass
+from enum import Enum
 from datetime import datetime
 from typing import Any, Optional
 
@@ -27,6 +29,25 @@ class ExportJob:
     error: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+    # Compatibility alias used by older code expecting ``result_path``.
+    @property
+    def result_path(self) -> Optional[str]:
+        return self.file_path
+
+
+class ExportJobStatus(str, Enum):
+    """Enum representing the lifecycle states of an export job.
+
+    The original codebase referenced this enum for type‑checking and status
+    comparisons.  It mirrors the string values stored in the ``status`` column
+    of the ``export_jobs`` table.
+    """
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class ExportJobStore:
@@ -62,6 +83,43 @@ class ExportJobStore:
                 tenant,
             )
             return int(row["id"])  # type: ignore[index]
+
+    # ---------------------------------------------------------------------
+    # Legacy helper methods expected by ``services.gateway.routers.memory_exports``
+    # ---------------------------------------------------------------------
+    async def create_job(self, tenant: Optional[str], namespace: Optional[str], limit: Optional[int]) -> ExportJob:
+        """Create a new export job and return the full ``ExportJob`` record.
+
+        The original monolith exposed a ``create_job`` method that accepted the
+        three parameters used by the router.  Internally we store them in the
+        ``params`` JSON column.  After insertion we retrieve the complete record
+        to provide ``id``, ``status`` and the ``result_path`` (alias for
+        ``file_path``).
+        """
+        params = {"namespace": namespace, "limit": limit}
+        job_id = await self.create(params=params, tenant=tenant)
+        job = await self.get(job_id)
+        return job if job is not None else ExportJob(
+            id=job_id,
+            status="queued",
+            params=params,
+            tenant=tenant,
+            file_path=None,
+            row_count=None,
+            byte_size=None,
+            error=None,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+    async def get_job(self, job_id: int) -> Optional[ExportJob]:
+        """Legacy wrapper returning the same shape as the original ``ExportJob``.
+
+        The router accesses ``job.id``, ``job.status`` and ``job.result_path``.
+        ``ExportJob`` already provides these attributes (``result_path`` is a
+        property defined above).
+        """
+        return await self.get(job_id)
 
     async def get(self, job_id: int) -> Optional[ExportJob]:
         pool = await self._ensure_pool()
