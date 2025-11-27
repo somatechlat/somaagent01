@@ -11,56 +11,18 @@ underlying loader, so no duplicate validation logic is introduced.
 
 from __future__ import annotations
 
-from src.core.config.loader import get_config, reload_config
+"""Thin wrapper that re‑exports the canonical configuration.
 
+The project now stores all configuration in ``src.core.config`` (a Pydantic
+``Config`` model).  Historically the orchestrator defined its own
+``CentralizedConfig`` class; that duplicate implementation is no longer needed.
 
-class CentralizedConfig:
-    """Facade around the singleton ``Config`` object.
+To keep backward compatibility **without duplicating logic**, we simply import
+the ``CentralizedConfig`` alias from ``orchestrator.config`` and expose the
+singleton ``cfg`` exactly as before.  This satisfies the VIBE rule *NO UNNECESSARY
+FILES* and guarantees a **single source of truth**.
+"""
 
-    The orchestrator creates one instance of this class (exported as ``cfg``)
-    and passes it to services that need configuration values.  Because the
-    underlying ``Config`` model is immutable after loading, the facade is safe
-    to share across async tasks.
-    """
+from orchestrator.config import CentralizedConfig, cfg  # re‑export for legacy imports
 
-    def __init__(self) -> None:
-        self._cfg = get_config()
-
-    # ------------------------------------------------------------------
-    # Typed getters – expose only the fields used by services.
-    # ------------------------------------------------------------------
-    def get_postgres_dsn(self) -> str:
-        return self._cfg.get_postgres_dsn()
-
-    def get_kafka_bootstrap_servers(self) -> str:
-        return self._cfg.get_kafka_bootstrap_servers()
-
-    def get_redis_url(self) -> str:
-        return self._cfg.get_redis_url()
-
-    def get_somabrain_url(self) -> str:
-        return self._cfg.get_somabrain_url()
-
-    def get_opa_url(self) -> str:
-        return self._cfg.get_opa_url()
-
-    def is_auth_required(self) -> bool:
-        return self._cfg.is_auth_required()
-
-    # ------------------------------------------------------------------
-    # Reload helper – used by the config‑update listener.
-    # ------------------------------------------------------------------
-    def reload(self) -> None:
-        """Force a reload of the configuration from environment/files.
-
-        ``reload_config`` clears the module‑level cache; after calling it we
-        re‑fetch the ``Config`` instance so that subsequent calls see the new
-        values.
-        """
-        reload_config()
-        self._cfg = get_config()
-
-
-# Export a singleton that mirrors the historic ``cfg`` façade used throughout the
-# code base.
-cfg = CentralizedConfig()
+__all__ = ["CentralizedConfig", "cfg"]
