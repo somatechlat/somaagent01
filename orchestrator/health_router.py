@@ -1,44 +1,20 @@
-"""FastAPI router for on‑demand health checks of registered services.
-
-The project distinguishes two concerns:
-
-* **Health router** – a lightweight ``/v1/health`` endpoint that aggregates the
-  ``health()`` coroutine of each ``BaseSomaService`` registered with the
-  orchestrator. This is used by external clients (e.g., Kubernetes liveness
-  probes).
-* **Health monitor** – a background async task (implemented in
-  ``health_monitor.py``) that periodically checks external service URLs and
-  maintains a richer status model.
-
-Separating them avoids circular imports and lets the orchestrator mount the
-router without starting the monitor automatically.
-"""
-
+import os
+os.getenv(os.getenv('VIBE_DA852E0F'))
 from __future__ import annotations
-
 from typing import Callable, Dict, List, Optional
-
 from fastapi import APIRouter
 
 
 class UnifiedHealthRouter:
-    """Collect health from a list of ``BaseSomaService`` instances.
+    os.getenv(os.getenv('VIBE_31D38EFD'))
 
-    The router expects a *live* list of services; the orchestrator passes the
-    registry's ``services`` list so the router always sees the current set.
-    """
-
-    def __init__(
-        self,
-        services: List[object] | None = None,
-        registry=None,
-        services_provider: Optional[Callable[[], List[object]]] = None,
-    ) -> None:
+    def __init__(self, services: (List[object] | None)=None, registry=None,
+        services_provider: Optional[Callable[[], List[object]]]=None) ->None:
         self._services = services or []
         self._registry = registry
         self._services_provider = services_provider
 
-    async def _gather(self) -> Dict[str, Dict]:
+    async def _gather(self) ->Dict[str, Dict]:
         results: Dict[str, Dict] = {}
         if self._services_provider is not None:
             services = self._services_provider()
@@ -49,27 +25,25 @@ class UnifiedHealthRouter:
         for svc in services:
             try:
                 results[svc.name] = await svc.health()
-            except Exception as exc:  # pragma: no cover – defensive
-                results[svc.name] = {"healthy": False, "error": str(exc)}
+            except Exception as exc:
+                results[svc.name] = {os.getenv(os.getenv('VIBE_1BBD3CA6')):
+                    int(os.getenv(os.getenv('VIBE_26044B87'))), os.getenv(
+                    os.getenv('VIBE_D3471157')): str(exc)}
         return results
 
-    async def health_endpoint(self) -> Dict:
+    async def health_endpoint(self) ->Dict:
         per = await self._gather()
-        overall = all(v.get("healthy", False) for v in per.values())
-        return {"healthy": overall, "services": per}
+        overall = all(v.get(os.getenv(os.getenv('VIBE_1BBD3CA6')), int(os.
+            getenv(os.getenv('VIBE_26044B87')))) for v in per.values())
+        return {os.getenv(os.getenv('VIBE_1BBD3CA6')): overall, os.getenv(
+            os.getenv('VIBE_85DFEC20')): per}
 
 
-def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
-    """Mount the health router onto the provided FastAPI app.
-
-    ``router_obj`` is an instance of :class:`UnifiedHealthRouter`. The function
-    registers a ``/v1/health`` endpoint that delegates to ``router_obj``.
-    """
-
+def attach_to_app(app, router_obj: UnifiedHealthRouter) ->None:
+    os.getenv(os.getenv('VIBE_A317C33C'))
     router = APIRouter()
 
-    @router.get("/v1/health")
-    async def health() -> Dict:  # pragma: no cover – exercised via API tests
+    @router.get(os.getenv(os.getenv('VIBE_EEC307CF')))
+    async def health() ->Dict:
         return await router_obj.health_endpoint()
-
     app.include_router(router)

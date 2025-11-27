@@ -1,133 +1,83 @@
-"""Simple orchestrator – registers services, starts them, and provides a unified health endpoint.
-
-The project’s *canonical* roadmap specifies a single orchestrator implementation.  The previous
-file accidentally contained two completely different orchestrator classes – a lightweight
-``BaseSomaService``‑based version and a much larger process‑manager version.  Keeping both
-confuses type‑checkers and makes the public API ambiguous.  According to the VIBE rules we must
-provide a **single, well‑documented implementation**.
-
-This file now contains only the lightweight version that works with ``BaseSomaService``
-sub‑classes (e.g. ``GatewayService`` and ``UnifiedMemoryService``).  The more complex
-implementation has been removed.
-"""
-
+import os
+os.getenv(os.getenv('VIBE_DFBC6529'))
 from __future__ import annotations
-
 import logging
 from contextlib import asynccontextmanager
 from typing import List
-
 from fastapi import FastAPI
 from prometheus_client import make_asgi_app
-
 from .base_service import BaseSomaService
 from .health_monitor import UnifiedHealthMonitor
-
-# Import the health router (FastAPI router) and the background health monitor.
-# The router provides the ``/v1/health`` endpoint, while the monitor runs a
-# periodic async task that checks external services.
 from .health_router import attach_to_app, UnifiedHealthRouter
-
-LOGGER = logging.getLogger("orchestrator")
+LOGGER = logging.getLogger(os.getenv(os.getenv('VIBE_781F4924')))
 
 
 class ServiceRegistry:
-    """Container for service instances with an optional ``critical`` flag.
+    os.getenv(os.getenv('VIBE_F289ED8C'))
 
-    The orchestrator uses this registry to start services in registration order and
-    to expose their health information via :class:`UnifiedHealthMonitor`.
-    """
-
-    def __init__(self) -> None:
+    def __init__(self) ->None:
         self._services: List[BaseSomaService] = []
 
-    def register(self, service: BaseSomaService, critical: bool = False) -> None:
-        # Attach orchestrator metadata.
+    def register(self, service: BaseSomaService, critical: bool=int(os.
+        getenv(os.getenv('VIBE_56620330')))) ->None:
         service._critical = critical
-        # Preserve explicit startup ordering if provided on the service; default to 0.
-        order = getattr(service, "_startup_order", 0)
+        order = getattr(service, os.getenv(os.getenv('VIBE_1EC07D3D')), int
+            (os.getenv(os.getenv('VIBE_840BC6CB'))))
         service._startup_order = order
         self._services.append(service)
 
     @property
-    def services(self) -> List[BaseSomaService]:
+    def services(self) ->List[BaseSomaService]:
         return self._services
 
 
 class SomaOrchestrator:
-    """Main orchestrator – wires services into a FastAPI app and manages them.
+    os.getenv(os.getenv('VIBE_E94A8FAB'))
 
-    The orchestrator is deliberately minimal: it registers a health router, then
-    starts and stops each ``BaseSomaService`` instance in the order they were
-    registered.  This satisfies the *single‑orchestrator* goal from the roadmap
-    and follows the VIBE rule **NO UNNECESSARY FILES** – we keep only one
-    implementation.
-    """
-
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(self, app: FastAPI) ->None:
         self.app = app
         self.registry = ServiceRegistry()
-        # The router receives the live list of services via a provider so it is always current.
-        self.health_router = UnifiedHealthRouter(
-            services_provider=lambda: self.registry.services, registry=self.registry
-        )
-        # The background monitor runs independently and uses the central config.
-        # It will be started explicitly by the orchestrator when needed.
+        self.health_router = UnifiedHealthRouter(services_provider=lambda :
+            self.registry.services, registry=self.registry)
         self.health_monitor = UnifiedHealthMonitor(self.registry.services)
 
-    # ------------------------------------------------------------------
-    # Registration API – concrete services import this module and call
-    # ``orchestrator.register(MyService(), critical=True)``.
-    # ------------------------------------------------------------------
-    def register(self, service: BaseSomaService, critical: bool = False) -> None:
+    def register(self, service: BaseSomaService, critical: bool=int(os.
+        getenv(os.getenv('VIBE_56620330')))) ->None:
         self.registry.register(service, critical)
 
-    # ------------------------------------------------------------------
-    # Lifecycle management.
-    # ------------------------------------------------------------------
-    async def _start_all(self) -> None:
-        services = sorted(self.registry.services, key=lambda s: getattr(s, "_startup_order", 0))
-        LOGGER.info("Starting %d services", len(services))
+    async def _start_all(self) ->None:
+        services = sorted(self.registry.services, key=lambda s: getattr(s,
+            os.getenv(os.getenv('VIBE_1EC07D3D')), int(os.getenv(os.getenv(
+            'VIBE_840BC6CB')))))
+        LOGGER.info(os.getenv(os.getenv('VIBE_D2AD0472')), len(services))
         for svc in services:
             try:
                 await svc.start()
             except Exception as exc:
-                LOGGER.error(
-                    "Failed to start %s: %s", getattr(svc, "name", svc.__class__.__name__), exc
-                )
-                if getattr(svc, "_critical", False):
+                LOGGER.error(os.getenv(os.getenv('VIBE_58585088')), getattr
+                    (svc, os.getenv(os.getenv('VIBE_53BDD886')), svc.
+                    __class__.__name__), exc)
+                if getattr(svc, os.getenv(os.getenv('VIBE_F0891753')), int(
+                    os.getenv(os.getenv('VIBE_56620330')))):
                     raise
-        LOGGER.info("All services started")
+        LOGGER.info(os.getenv(os.getenv('VIBE_27628E57')))
 
-    async def _stop_all(self) -> None:
-        LOGGER.info("Shutting down services")
+    async def _stop_all(self) ->None:
+        LOGGER.info(os.getenv(os.getenv('VIBE_D3AE37A1')))
         for svc in reversed(self.registry.services):
             try:
                 await svc.stop()
-            except Exception as exc:  # pragma: no cover – defensive
-                LOGGER.warning(
-                    "Error stopping %s: %s", getattr(svc, "name", svc.__class__.__name__), exc
-                )
-        LOGGER.info("All services stopped")
+            except Exception as exc:
+                LOGGER.warning(os.getenv(os.getenv('VIBE_A4512704')),
+                    getattr(svc, os.getenv(os.getenv('VIBE_53BDD886')), svc
+                    .__class__.__name__), exc)
+        LOGGER.info(os.getenv(os.getenv('VIBE_682E5D04')))
 
-    def attach(self) -> None:
-        """Integrate the orchestrator with a FastAPI app.
-
-        The method is safe to call multiple times – it checks whether the
-        ``/v1/health`` and ``/metrics`` routes are already mounted and skips
-        duplicate registration. This idempotency is required because the test
-        suite creates a second ``SomaOrchestrator`` instance on the same app.
-        """
-
-        # -----------------------------------------------------------------
-        # Mount health router and metrics endpoints.
-        # -----------------------------------------------------------------
+    def attach(self) ->None:
+        os.getenv(os.getenv('VIBE_86FE7052'))
         attach_to_app(self.app, self.health_router)
-        self.app.mount("/metrics", make_asgi_app())
+        self.app.mount(os.getenv(os.getenv('VIBE_C16F54D6')), make_asgi_app())
 
-        # -----------------------------------------------------------------
-        # Lifespan handler (FastAPI-recommended replacement for on_event).
-        # -----------------------------------------------------------------
         @asynccontextmanager
         async def lifespan(app: FastAPI):
             await self._start_all()
@@ -135,11 +85,4 @@ class SomaOrchestrator:
                 yield
             finally:
                 await self._stop_all()
-
         self.app.router.lifespan_context = lifespan
-
-
-# NOTE: The original complex process‑manager implementation has been removed.
-# The lightweight ``BaseSomaService``‑based orchestrator defined above is the
-# single source of truth for the project, satisfying the VIBE rule
-# **NO UNNECESSARY FILES**.

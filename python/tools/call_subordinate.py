@@ -1,54 +1,39 @@
+import os
 from agent import Agent, UserMessage
 from initialize import initialize_agent
-from python.extensions.hist_add_tool_result import (
-    _90_save_tool_call_file as save_tool_call_file,
-)
+from python.extensions.hist_add_tool_result import _90_save_tool_call_file as save_tool_call_file
 from python.helpers.tool import Response, Tool
 
 
 class Delegation(Tool):
 
-    async def execute(self, message="", reset="", **kwargs):
-        # create subordinate agent using the data object on this agent and set superior agent to his data object
-        if (
-            self.agent.get_data(Agent.DATA_NAME_SUBORDINATE) is None
-            or str(reset).lower().strip() == "true"
-        ):
-            # initialize default config
+    async def execute(self, message=os.getenv(os.getenv('VIBE_193BD685')),
+        reset=os.getenv(os.getenv('VIBE_193BD685')), **kwargs):
+        if self.agent.get_data(Agent.DATA_NAME_SUBORDINATE) is None or str(
+            reset).lower().strip() == os.getenv(os.getenv('VIBE_D162508D')):
             config = initialize_agent()
-
-            # set subordinate prompt profile if provided, if not, keep original
-            agent_profile = kwargs.get("profile")
+            agent_profile = kwargs.get(os.getenv(os.getenv('VIBE_DBACD65A')))
             if agent_profile:
                 config.profile = agent_profile
-
-            # crate agent
-            sub = Agent(self.agent.number + 1, config, self.agent.context)
-            # register superior/subordinate
+            sub = Agent(self.agent.number + int(os.getenv(os.getenv(
+                'VIBE_A85937CB'))), config, self.agent.context)
             sub.set_data(Agent.DATA_NAME_SUPERIOR, self.agent)
             self.agent.set_data(Agent.DATA_NAME_SUBORDINATE, sub)
-
-        # add user message to subordinate agent
-        subordinate: Agent = self.agent.get_data(Agent.DATA_NAME_SUBORDINATE)  # type: ignore
-        subordinate.hist_add_user_message(UserMessage(message=message, attachments=[]))
-
-        # run subordinate monologue
+        subordinate: Agent = self.agent.get_data(Agent.DATA_NAME_SUBORDINATE)
+        subordinate.hist_add_user_message(UserMessage(message=message,
+            attachments=[]))
         result = await subordinate.monologue()
-
-        # hint to use includes for long responses
         additional = None
         if len(result) >= save_tool_call_file.LEN_MIN:
-            hint = self.agent.read_prompt("fw.hint.call_sub.md")
+            hint = self.agent.read_prompt(os.getenv(os.getenv('VIBE_826B680A'))
+                )
             if hint:
-                additional = {"hint": hint}
-
-        # result
-        return Response(message=result, break_loop=False, additional=additional)
+                additional = {os.getenv(os.getenv('VIBE_1DBB6E2C')): hint}
+        return Response(message=result, break_loop=int(os.getenv(os.getenv(
+            'VIBE_ACEA06EC'))), additional=additional)
 
     def get_log_object(self):
-        return self.agent.context.log.log(
-            type="tool",
-            heading=f"icon://communication {self.agent.agent_name}: Calling Subordinate Agent",
-            content="",
-            kvps=self.args,
-        )
+        return self.agent.context.log.log(type=os.getenv(os.getenv(
+            'VIBE_A322D47F')), heading=
+            f'icon://communication {self.agent.agent_name}: Calling Subordinate Agent'
+            , content=os.getenv(os.getenv('VIBE_193BD685')), kvps=self.args)

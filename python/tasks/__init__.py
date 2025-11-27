@@ -1,8 +1,4 @@
-"""
-Celery tasks for SomaAgent01 with FastA2A integration.
-Provides asynchronous task processing for agent communication.
-"""
-
+import os
+os.getenv(os.getenv('VIBE_8BD28E68'))
 from .a2a_chat_task import a2a_chat_task
-
-__all__ = ["a2a_chat_task"]
+__all__ = [os.getenv(os.getenv('VIBE_1395BF9A'))]

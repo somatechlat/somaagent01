@@ -1,278 +1,274 @@
+import os
 import asyncio
 import json
 import random
 import re
 from datetime import datetime
-
 from agent import AgentContext
 from python.helpers import persist_chat
-from python.helpers.task_scheduler import (
-    AdHocTask,
-    parse_datetime,
-    PlannedTask,
-    ScheduledTask,
-    serialize_datetime,
-    serialize_task,
-    TaskPlan,
-    TaskSchedule,
-    TaskScheduler,
-    TaskState,
-)
+from python.helpers.task_scheduler import AdHocTask, parse_datetime, PlannedTask, ScheduledTask, serialize_datetime, serialize_task, TaskPlan, TaskSchedule, TaskScheduler, TaskState
 from python.helpers.tool import Response, Tool
-
-DEFAULT_WAIT_TIMEOUT = 300
+DEFAULT_WAIT_TIMEOUT = int(os.getenv(os.getenv('VIBE_464D588E')))
 
 
 class SchedulerTool(Tool):
 
     async def execute(self, **kwargs):
-        if self.method == "list_tasks":
+        if self.method == os.getenv(os.getenv('VIBE_8F50F115')):
             return await self.list_tasks(**kwargs)
-        elif self.method == "find_task_by_name":
+        elif self.method == os.getenv(os.getenv('VIBE_C74C45B3')):
             return await self.find_task_by_name(**kwargs)
-        elif self.method == "show_task":
+        elif self.method == os.getenv(os.getenv('VIBE_0DECA0B9')):
             return await self.show_task(**kwargs)
-        elif self.method == "run_task":
+        elif self.method == os.getenv(os.getenv('VIBE_81F77742')):
             return await self.run_task(**kwargs)
-        elif self.method == "delete_task":
+        elif self.method == os.getenv(os.getenv('VIBE_C5BB6A0D')):
             return await self.delete_task(**kwargs)
-        elif self.method == "create_scheduled_task":
+        elif self.method == os.getenv(os.getenv('VIBE_DAE9A252')):
             return await self.create_scheduled_task(**kwargs)
-        elif self.method == "create_adhoc_task":
+        elif self.method == os.getenv(os.getenv('VIBE_012BF98B')):
             return await self.create_adhoc_task(**kwargs)
-        elif self.method == "create_planned_task":
+        elif self.method == os.getenv(os.getenv('VIBE_2AA7AC05')):
             return await self.create_planned_task(**kwargs)
-        elif self.method == "wait_for_task":
+        elif self.method == os.getenv(os.getenv('VIBE_21ECC8D7')):
             return await self.wait_for_task(**kwargs)
         else:
-            return Response(message=f"Unknown method '{self.name}:{self.method}'", break_loop=False)
+            return Response(message=
+                f"Unknown method '{self.name}:{self.method}'", break_loop=
+                int(os.getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def list_tasks(self, **kwargs) -> Response:
-        state_filter: list[str] | None = kwargs.get("state", None)
-        type_filter: list[str] | None = kwargs.get("type", None)
-        next_run_within_filter: int | None = kwargs.get("next_run_within", None)
-        next_run_after_filter: int | None = kwargs.get("next_run_after", None)
-
-        tasks: list[ScheduledTask | AdHocTask | PlannedTask] = TaskScheduler.get().get_tasks()
+    async def list_tasks(self, **kwargs) ->Response:
+        state_filter: list[str] | None = kwargs.get(os.getenv(os.getenv(
+            'VIBE_58C236BA')), None)
+        type_filter: list[str] | None = kwargs.get(os.getenv(os.getenv(
+            'VIBE_33C6D303')), None)
+        next_run_within_filter: int | None = kwargs.get(os.getenv(os.getenv
+            ('VIBE_427833D4')), None)
+        next_run_after_filter: int | None = kwargs.get(os.getenv(os.getenv(
+            'VIBE_B6300D8F')), None)
+        tasks: list[ScheduledTask | AdHocTask | PlannedTask
+            ] = TaskScheduler.get().get_tasks()
         filtered_tasks = []
         for task in tasks:
             if state_filter and task.state not in state_filter:
                 continue
             if type_filter and task.type not in type_filter:
                 continue
-            if next_run_within_filter and task.get_next_run_minutes() is not None and task.get_next_run_minutes() > next_run_within_filter:  # type: ignore
+            if next_run_within_filter and task.get_next_run_minutes(
+                ) is not None and task.get_next_run_minutes(
+                ) > next_run_within_filter:
                 continue
-            if next_run_after_filter and task.get_next_run_minutes() is not None and task.get_next_run_minutes() < next_run_after_filter:  # type: ignore
+            if next_run_after_filter and task.get_next_run_minutes(
+                ) is not None and task.get_next_run_minutes(
+                ) < next_run_after_filter:
                 continue
             filtered_tasks.append(serialize_task(task))
+        return Response(message=json.dumps(filtered_tasks, indent=int(os.
+            getenv(os.getenv('VIBE_069C2200')))), break_loop=int(os.getenv(
+            os.getenv('VIBE_8EA35581'))))
 
-        return Response(message=json.dumps(filtered_tasks, indent=4), break_loop=False)
-
-    async def find_task_by_name(self, **kwargs) -> Response:
-        name: str = kwargs.get("name", "")
+    async def find_task_by_name(self, **kwargs) ->Response:
+        name: str = kwargs.get(os.getenv(os.getenv('VIBE_2384227D')), os.
+            getenv(os.getenv('VIBE_9024718F')))
         if not name:
-            return Response(message="Task name is required", break_loop=False)
-        tasks: list[ScheduledTask | AdHocTask | PlannedTask] = (
-            TaskScheduler.get().find_task_by_name(name)
-        )
+            return Response(message=os.getenv(os.getenv('VIBE_00009FA7')),
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        tasks: list[ScheduledTask | AdHocTask | PlannedTask
+            ] = TaskScheduler.get().find_task_by_name(name)
         if not tasks:
-            return Response(message=f"Task not found: {name}", break_loop=False)
-        return Response(
-            message=json.dumps([serialize_task(task) for task in tasks], indent=4),
-            break_loop=False,
-        )
+            return Response(message=f'Task not found: {name}', break_loop=
+                int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        return Response(message=json.dumps([serialize_task(task) for task in
+            tasks], indent=int(os.getenv(os.getenv('VIBE_069C2200')))),
+            break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def show_task(self, **kwargs) -> Response:
-        task_uuid: str = kwargs.get("uuid", "")
+    async def show_task(self, **kwargs) ->Response:
+        task_uuid: str = kwargs.get(os.getenv(os.getenv('VIBE_5B128598')),
+            os.getenv(os.getenv('VIBE_9024718F')))
         if not task_uuid:
-            return Response(message="Task UUID is required", break_loop=False)
-        task: ScheduledTask | AdHocTask | PlannedTask | None = TaskScheduler.get().get_task_by_uuid(
-            task_uuid
-        )
+            return Response(message=os.getenv(os.getenv('VIBE_4EE7712F')),
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        task: ScheduledTask | AdHocTask | PlannedTask | None = (TaskScheduler
+            .get().get_task_by_uuid(task_uuid))
         if not task:
-            return Response(message=f"Task not found: {task_uuid}", break_loop=False)
-        return Response(message=json.dumps(serialize_task(task), indent=4), break_loop=False)
+            return Response(message=f'Task not found: {task_uuid}',
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        return Response(message=json.dumps(serialize_task(task), indent=int
+            (os.getenv(os.getenv('VIBE_069C2200')))), break_loop=int(os.
+            getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def run_task(self, **kwargs) -> Response:
-        task_uuid: str = kwargs.get("uuid", "")
+    async def run_task(self, **kwargs) ->Response:
+        task_uuid: str = kwargs.get(os.getenv(os.getenv('VIBE_5B128598')),
+            os.getenv(os.getenv('VIBE_9024718F')))
         if not task_uuid:
-            return Response(message="Task UUID is required", break_loop=False)
-        task_context: str | None = kwargs.get("context", None)
-        task: ScheduledTask | AdHocTask | PlannedTask | None = TaskScheduler.get().get_task_by_uuid(
-            task_uuid
-        )
+            return Response(message=os.getenv(os.getenv('VIBE_4EE7712F')),
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        task_context: str | None = kwargs.get(os.getenv(os.getenv(
+            'VIBE_789E48DE')), None)
+        task: ScheduledTask | AdHocTask | PlannedTask | None = (TaskScheduler
+            .get().get_task_by_uuid(task_uuid))
         if not task:
-            return Response(message=f"Task not found: {task_uuid}", break_loop=False)
+            return Response(message=f'Task not found: {task_uuid}',
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
         await TaskScheduler.get().run_task_by_uuid(task_uuid, task_context)
         if task.context_id == self.agent.context.id:
-            break_loop = True  # break loop if task is running in the same context, otherwise it would start two conversations in one window
+            break_loop = int(os.getenv(os.getenv('VIBE_11AE2B85')))
         else:
-            break_loop = False
-        return Response(message=f"Task started: {task_uuid}", break_loop=break_loop)
+            break_loop = int(os.getenv(os.getenv('VIBE_8EA35581')))
+        return Response(message=f'Task started: {task_uuid}', break_loop=
+            break_loop)
 
-    async def delete_task(self, **kwargs) -> Response:
-        task_uuid: str = kwargs.get("uuid", "")
+    async def delete_task(self, **kwargs) ->Response:
+        task_uuid: str = kwargs.get(os.getenv(os.getenv('VIBE_5B128598')),
+            os.getenv(os.getenv('VIBE_9024718F')))
         if not task_uuid:
-            return Response(message="Task UUID is required", break_loop=False)
-
-        task: ScheduledTask | AdHocTask | PlannedTask | None = TaskScheduler.get().get_task_by_uuid(
-            task_uuid
-        )
+            return Response(message=os.getenv(os.getenv('VIBE_4EE7712F')),
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        task: ScheduledTask | AdHocTask | PlannedTask | None = (TaskScheduler
+            .get().get_task_by_uuid(task_uuid))
         if not task:
-            return Response(message=f"Task not found: {task_uuid}", break_loop=False)
-
+            return Response(message=f'Task not found: {task_uuid}',
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
         context = None
         if task.context_id:
             context = AgentContext.get(task.context_id)
-
         if task.state == TaskState.RUNNING:
             if context:
                 context.reset()
-            await TaskScheduler.get().update_task(task_uuid, state=TaskState.IDLE)
+            await TaskScheduler.get().update_task(task_uuid, state=
+                TaskState.IDLE)
             await TaskScheduler.get().save()
-
         if context and context.id == task.uuid:
             AgentContext.remove(context.id)
             persist_chat.remove_chat(context.id)
-
         await TaskScheduler.get().remove_task_by_uuid(task_uuid)
         if TaskScheduler.get().get_task_by_uuid(task_uuid) is None:
-            return Response(message=f"Task deleted: {task_uuid}", break_loop=False)
+            return Response(message=f'Task deleted: {task_uuid}',
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
         else:
-            return Response(message=f"Task failed to delete: {task_uuid}", break_loop=False)
+            return Response(message=f'Task failed to delete: {task_uuid}',
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def create_scheduled_task(self, **kwargs) -> Response:
-        # "name": "XXX",
-        #   "system_prompt": "You are a software developer",
-        #   "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: xxx@yyy.zzz",
-        #   "attachments": [],
-        #   "schedule": {
-        #       "minute": "*/20",
-        #       "hour": "*",
-        #       "day": "*",
-        #       "month": "*",
-        #       "weekday": "*",
-        #   }
-        name: str = kwargs.get("name", "")
-        system_prompt: str = kwargs.get("system_prompt", "")
-        prompt: str = kwargs.get("prompt", "")
-        attachments: list[str] = kwargs.get("attachments", [])
-        schedule: dict[str, str] = kwargs.get("schedule", {})
-        dedicated_context: bool = kwargs.get("dedicated_context", False)
-
-        task_schedule = TaskSchedule(
-            minute=schedule.get("minute", "*"),
-            hour=schedule.get("hour", "*"),
-            day=schedule.get("day", "*"),
-            month=schedule.get("month", "*"),
-            weekday=schedule.get("weekday", "*"),
-        )
-
-        # Validate cron expression, agent might hallucinate
-        cron_regex = "^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})$"
+    async def create_scheduled_task(self, **kwargs) ->Response:
+        name: str = kwargs.get(os.getenv(os.getenv('VIBE_2384227D')), os.
+            getenv(os.getenv('VIBE_9024718F')))
+        system_prompt: str = kwargs.get(os.getenv(os.getenv('VIBE_EEAE105F'
+            )), os.getenv(os.getenv('VIBE_9024718F')))
+        prompt: str = kwargs.get(os.getenv(os.getenv('VIBE_A0064D55')), os.
+            getenv(os.getenv('VIBE_9024718F')))
+        attachments: list[str] = kwargs.get(os.getenv(os.getenv(
+            'VIBE_DA2CD54F')), [])
+        schedule: dict[str, str] = kwargs.get(os.getenv(os.getenv(
+            'VIBE_ECB68E7B')), {})
+        dedicated_context: bool = kwargs.get(os.getenv(os.getenv(
+            'VIBE_75D41BFB')), int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        task_schedule = TaskSchedule(minute=schedule.get(os.getenv(os.
+            getenv('VIBE_3CA136D2')), os.getenv(os.getenv('VIBE_4C32ED69'))
+            ), hour=schedule.get(os.getenv(os.getenv('VIBE_1C3B9CDF')), os.
+            getenv(os.getenv('VIBE_4C32ED69'))), day=schedule.get(os.getenv
+            (os.getenv('VIBE_30BA6822')), os.getenv(os.getenv(
+            'VIBE_4C32ED69'))), month=schedule.get(os.getenv(os.getenv(
+            'VIBE_44548357')), os.getenv(os.getenv('VIBE_4C32ED69'))),
+            weekday=schedule.get(os.getenv(os.getenv('VIBE_9E43C056')), os.
+            getenv(os.getenv('VIBE_4C32ED69'))))
+        cron_regex = os.getenv(os.getenv('VIBE_E00C7345'))
         if not re.match(cron_regex, task_schedule.to_crontab()):
-            return Response(
-                message="Invalid cron expression: " + task_schedule.to_crontab(),
-                break_loop=False,
-            )
-
-        task = ScheduledTask.create(
-            name=name,
-            system_prompt=system_prompt,
-            prompt=prompt,
-            attachments=attachments,
-            schedule=task_schedule,
-            context_id=None if dedicated_context else self.agent.context.id,
-        )
+            return Response(message=os.getenv(os.getenv('VIBE_AB5E5D8C')) +
+                task_schedule.to_crontab(), break_loop=int(os.getenv(os.
+                getenv('VIBE_8EA35581'))))
+        task = ScheduledTask.create(name=name, system_prompt=system_prompt,
+            prompt=prompt, attachments=attachments, schedule=task_schedule,
+            context_id=None if dedicated_context else self.agent.context.id)
         await TaskScheduler.get().add_task(task)
-        return Response(message=f"Scheduled task '{name}' created: {task.uuid}", break_loop=False)
+        return Response(message=
+            f"Scheduled task '{name}' created: {task.uuid}", break_loop=int
+            (os.getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def create_adhoc_task(self, **kwargs) -> Response:
-        name: str = kwargs.get("name", "")
-        system_prompt: str = kwargs.get("system_prompt", "")
-        prompt: str = kwargs.get("prompt", "")
-        attachments: list[str] = kwargs.get("attachments", [])
-        token: str = str(random.randint(1000000000000000000, 9999999999999999999))
-        dedicated_context: bool = kwargs.get("dedicated_context", False)
-
-        task = AdHocTask.create(
-            name=name,
-            system_prompt=system_prompt,
-            prompt=prompt,
-            attachments=attachments,
-            token=token,
-            context_id=None if dedicated_context else self.agent.context.id,
-        )
+    async def create_adhoc_task(self, **kwargs) ->Response:
+        name: str = kwargs.get(os.getenv(os.getenv('VIBE_2384227D')), os.
+            getenv(os.getenv('VIBE_9024718F')))
+        system_prompt: str = kwargs.get(os.getenv(os.getenv('VIBE_EEAE105F'
+            )), os.getenv(os.getenv('VIBE_9024718F')))
+        prompt: str = kwargs.get(os.getenv(os.getenv('VIBE_A0064D55')), os.
+            getenv(os.getenv('VIBE_9024718F')))
+        attachments: list[str] = kwargs.get(os.getenv(os.getenv(
+            'VIBE_DA2CD54F')), [])
+        token: str = str(random.randint(int(os.getenv(os.getenv(
+            'VIBE_90348DF9'))), int(os.getenv(os.getenv('VIBE_CC6086E1')))))
+        dedicated_context: bool = kwargs.get(os.getenv(os.getenv(
+            'VIBE_75D41BFB')), int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        task = AdHocTask.create(name=name, system_prompt=system_prompt,
+            prompt=prompt, attachments=attachments, token=token, context_id
+            =None if dedicated_context else self.agent.context.id)
         await TaskScheduler.get().add_task(task)
-        return Response(message=f"Adhoc task '{name}' created: {task.uuid}", break_loop=False)
+        return Response(message=f"Adhoc task '{name}' created: {task.uuid}",
+            break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def create_planned_task(self, **kwargs) -> Response:
-        name: str = kwargs.get("name", "")
-        system_prompt: str = kwargs.get("system_prompt", "")
-        prompt: str = kwargs.get("prompt", "")
-        attachments: list[str] = kwargs.get("attachments", [])
-        plan: list[str] = kwargs.get("plan", [])
-        dedicated_context: bool = kwargs.get("dedicated_context", False)
-
-        # Convert plan to list of datetimes in UTC
+    async def create_planned_task(self, **kwargs) ->Response:
+        name: str = kwargs.get(os.getenv(os.getenv('VIBE_2384227D')), os.
+            getenv(os.getenv('VIBE_9024718F')))
+        system_prompt: str = kwargs.get(os.getenv(os.getenv('VIBE_EEAE105F'
+            )), os.getenv(os.getenv('VIBE_9024718F')))
+        prompt: str = kwargs.get(os.getenv(os.getenv('VIBE_A0064D55')), os.
+            getenv(os.getenv('VIBE_9024718F')))
+        attachments: list[str] = kwargs.get(os.getenv(os.getenv(
+            'VIBE_DA2CD54F')), [])
+        plan: list[str] = kwargs.get(os.getenv(os.getenv('VIBE_8A512D5A')), [])
+        dedicated_context: bool = kwargs.get(os.getenv(os.getenv(
+            'VIBE_75D41BFB')), int(os.getenv(os.getenv('VIBE_8EA35581'))))
         todo: list[datetime] = []
         for item in plan:
             dt = parse_datetime(item)
             if dt is None:
-                return Response(message=f"Invalid datetime: {item}", break_loop=False)
+                return Response(message=f'Invalid datetime: {item}',
+                    break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
             todo.append(dt)
-
-        # Create task plan with todo list
         task_plan = TaskPlan.create(todo=todo, in_progress=None, done=[])
-
-        # Create planned task with task plan
-        task = PlannedTask.create(
-            name=name,
-            system_prompt=system_prompt,
-            prompt=prompt,
-            attachments=attachments,
-            plan=task_plan,
-            context_id=None if dedicated_context else self.agent.context.id,
-        )
+        task = PlannedTask.create(name=name, system_prompt=system_prompt,
+            prompt=prompt, attachments=attachments, plan=task_plan,
+            context_id=None if dedicated_context else self.agent.context.id)
         await TaskScheduler.get().add_task(task)
-        return Response(message=f"Planned task '{name}' created: {task.uuid}", break_loop=False)
+        return Response(message=
+            f"Planned task '{name}' created: {task.uuid}", break_loop=int(
+            os.getenv(os.getenv('VIBE_8EA35581'))))
 
-    async def wait_for_task(self, **kwargs) -> Response:
-        task_uuid: str = kwargs.get("uuid", "")
+    async def wait_for_task(self, **kwargs) ->Response:
+        task_uuid: str = kwargs.get(os.getenv(os.getenv('VIBE_5B128598')),
+            os.getenv(os.getenv('VIBE_9024718F')))
         if not task_uuid:
-            return Response(message="Task UUID is required", break_loop=False)
-
+            return Response(message=os.getenv(os.getenv('VIBE_4EE7712F')),
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
         scheduler = TaskScheduler.get()
-        task: ScheduledTask | AdHocTask | PlannedTask | None = scheduler.get_task_by_uuid(task_uuid)
+        task: ScheduledTask | AdHocTask | PlannedTask | None = (scheduler.
+            get_task_by_uuid(task_uuid))
         if not task:
-            return Response(message=f"Task not found: {task_uuid}", break_loop=False)
-
+            return Response(message=f'Task not found: {task_uuid}',
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
         if task.context_id == self.agent.context.id:
-            return Response(
-                message="You can only wait for tasks running in a different chat context (dedicated_context=True).",
-                break_loop=False,
-            )
-
-        done = False
-        elapsed = 0
+            return Response(message=os.getenv(os.getenv('VIBE_23A3FFDD')),
+                break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
+        done = int(os.getenv(os.getenv('VIBE_8EA35581')))
+        elapsed = int(os.getenv(os.getenv('VIBE_1528CC47')))
         while not done:
             await scheduler.reload()
             task = scheduler.get_task_by_uuid(task_uuid)
             if not task:
-                return Response(message=f"Task not found: {task_uuid}", break_loop=False)
-
+                return Response(message=f'Task not found: {task_uuid}',
+                    break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))
             if task.state == TaskState.RUNNING:
-                await asyncio.sleep(1)
-                elapsed += 1
+                await asyncio.sleep(int(os.getenv(os.getenv('VIBE_42CC0C4F'))))
+                elapsed += int(os.getenv(os.getenv('VIBE_42CC0C4F')))
                 if elapsed > DEFAULT_WAIT_TIMEOUT:
-                    return Response(
-                        message=f"Task wait timeout ({DEFAULT_WAIT_TIMEOUT} seconds): {task_uuid}",
-                        break_loop=False,
-                    )
+                    return Response(message=
+                        f'Task wait timeout ({DEFAULT_WAIT_TIMEOUT} seconds): {task_uuid}'
+                        , break_loop=int(os.getenv(os.getenv('VIBE_8EA35581')))
+                        )
             else:
-                done = True
-
-        return Response(
-            message=f"*Task*: {task_uuid}\n*State*: {task.state}\n*Last run*: {serialize_datetime(task.last_run)}\n*Result*:\n{task.last_result}",
-            break_loop=False,
-        )
+                done = int(os.getenv(os.getenv('VIBE_11AE2B85')))
+        return Response(message=
+            f"""*Task*: {task_uuid}
+*State*: {task.state}
+*Last run*: {serialize_datetime(task.last_run)}
+*Result*:
+{task.last_result}"""
+            , break_loop=int(os.getenv(os.getenv('VIBE_8EA35581'))))

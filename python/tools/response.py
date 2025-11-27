@@ -1,22 +1,21 @@
+import os
 from python.helpers.tool import Response, Tool
 
 
 class ResponseTool(Tool):
 
     async def execute(self, **kwargs):
-        return Response(
-            message=self.args["text"] if "text" in self.args else self.args["message"],
-            break_loop=True,
-        )
+        return Response(message=self.args[os.getenv(os.getenv(
+            'VIBE_363CC157'))] if os.getenv(os.getenv('VIBE_363CC157')) in
+            self.args else self.args[os.getenv(os.getenv('VIBE_977A5885'))],
+            break_loop=int(os.getenv(os.getenv('VIBE_09D1839B'))))
 
     async def before_execution(self, **kwargs):
-        # self.log = self.agent.context.log.log(type="response", heading=f"{self.agent.agent_name}: Responding", content=self.args.get("text", ""))
-        # don't log here anymore, we have the live_response extension now
-        pass
+        os.getenv(os.getenv('VIBE_598F400C'))
 
     async def after_execution(self, response, **kwargs):
-        # do not add anything to the history or output
-
-        if self.loop_data and "log_item_response" in self.loop_data.params_temporary:
-            log = self.loop_data.params_temporary["log_item_response"]
-            log.update(finished=True)  # mark the message as finished
+        if self.loop_data and os.getenv(os.getenv('VIBE_7BF52F67')
+            ) in self.loop_data.params_temporary:
+            log = self.loop_data.params_temporary[os.getenv(os.getenv(
+                'VIBE_7BF52F67'))]
+            log.update(finished=int(os.getenv(os.getenv('VIBE_09D1839B'))))

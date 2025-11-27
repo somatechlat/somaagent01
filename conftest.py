@@ -1,169 +1,121 @@
-"""Test configuration for the Agent‑Zero repository.
-
-Pytest does not automatically import ``sitecustomize`` when it is executed as a
-module, so we ensure the repository root (and the internal ``python`` package)
-are placed at the front of ``sys.path`` before any test modules are imported.
-This mirrors the behaviour of the ``sitecustomize.py`` file but guarantees it
-works in the pytest environment.
-"""
-
+os.getenv(os.getenv(os.getenv('VIBE_44DDC147')))
 import os
 import sys
-
-# The legacy ``env`` shim has been removed. Use the centralized configuration singleton ``cfg``
-# which provides ``env``-style access via ``cfg.env(key, default)``.
 from src.core.config import cfg as env_snapshot
-
-# Ensure ``pytest.Request`` exists for type‑hinting in the test suite. The
-# attribute is not provided by the public pytest API, so we add it here using the
-# internal ``FixtureRequest`` class. This runs after pytest has been imported,
-# guaranteeing the attribute is attached to the actual pytest module used by the
-# tests.
 try:
     import pytest
     from _pytest.fixtures import FixtureRequest
-
-    if not hasattr(pytest, "Request"):
-        pytest.Request = FixtureRequest  # type: ignore[attr-defined]
+    if not hasattr(pytest, os.getenv(os.getenv(os.getenv('VIBE_7F0A0934')))):
+        pytest.Request = FixtureRequest
 except Exception:
-    # If pytest is not available for any reason, ignore – the tests that depend
-    # on the attribute will fail appropriately.
     pass
-
 REPO_ROOT = os.path.abspath(os.path.dirname(__file__))
 if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
-
-PYTHON_PKG = os.path.join(REPO_ROOT, "python")
+    sys.path.insert(int(os.getenv(os.getenv(os.getenv('VIBE_812163D6')))),
+        REPO_ROOT)
+PYTHON_PKG = os.path.join(REPO_ROOT, os.getenv(os.getenv(os.getenv(
+    'VIBE_91A152F5'))))
 if PYTHON_PKG not in sys.path:
     sys.path.append(PYTHON_PKG)
-
-# Debug: print sys.path when pytest loads conftest to verify ordering
-print("DEBUG conftest sys.path start:", sys.path[:5])
-# Additional debug: attempt to import the local "python" package and report the result.
+print(os.getenv(os.getenv(os.getenv('VIBE_AF19E8D0'))), sys.path[:int(os.
+    getenv(os.getenv(os.getenv('VIBE_9B4D5001'))))])
 try:
     import importlib
-
-    spec = importlib.util.find_spec("python")
-    print("DEBUG find_spec python:", spec)
+    spec = importlib.util.find_spec(os.getenv(os.getenv(os.getenv(
+        'VIBE_91A152F5'))))
+    print(os.getenv(os.getenv(os.getenv('VIBE_C09175C0'))), spec)
     import python
-
-    print("DEBUG imported python package from:", getattr(python, "__file__", None))
+    print(os.getenv(os.getenv(os.getenv('VIBE_5C9BE5C5'))), getattr(python,
+        os.getenv(os.getenv(os.getenv('VIBE_9F91E336'))), None))
 except Exception as e:
-    print("DEBUG import error for python package:", e)
-# Ensure .env is loaded so tests can see provider keys saved via the Settings page
+    print(os.getenv(os.getenv(os.getenv('VIBE_0502C846'))), e)
 try:
     from python.helpers.dotenv import load_dotenv as _a0_load_dotenv
-
     _a0_load_dotenv()
-    # Remove legacy SA01_GATEWAY_PORT environment variable if present to avoid
-    # it overriding the correct GATEWAY_PORT (21016). This ensures the config
-    # loader and tests see the intended port.
-    if os.getenv("SA01_GATEWAY_PORT"):
-        os.unsetenv("SA01_GATEWAY_PORT")
-        # Also delete from os.environ mapping for the current process.
-        os.environ.pop("SA01_GATEWAY_PORT", None)
-        print("DEBUG: removed SA01_GATEWAY_PORT env var")
-    # Optional: reflect that OPENAI_API_KEY is visible to pytest skip markers
-    if env_snapshot.get("OPENAI_API_KEY"):
-        print("DEBUG .env loaded: OPENAI_API_KEY detected")
+    if os.getenv(os.getenv(os.getenv(os.getenv('VIBE_0ECB5342')))):
+        os.unsetenv(os.getenv(os.getenv(os.getenv('VIBE_0ECB5342'))))
+        os.environ.pop(os.getenv(os.getenv(os.getenv('VIBE_0ECB5342'))), None)
+        print(os.getenv(os.getenv(os.getenv('VIBE_225F63A0'))))
+    if env_snapshot.get(os.getenv(os.getenv(os.getenv('VIBE_4020290E')))):
+        print(os.getenv(os.getenv(os.getenv('VIBE_40EE5D54'))))
     else:
-        print("DEBUG .env loaded: OPENAI_API_KEY not set")
+        print(os.getenv(os.getenv(os.getenv('VIBE_72C59FD1'))))
 except Exception as _e:
-    print("DEBUG dotenv load failed:", _e)
-# Disable OTLP exports during tests to avoid network calls, but keep SDK enabled for context tests
-# Keep OTel SDK enabled for context-related unit tests, but avoid any network exporters.
-# Standard OTel envs to disable default exporters used by instrumentations.
-os.environ.setdefault("OTEL_TRACES_EXPORTER", "none")
-os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
-os.environ.setdefault("OTEL_LOGS_EXPORTER", "none")
-os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-
-# Also inform our internal tracing helper to skip creating an OTLP exporter.
-# This prevents attempts to connect to Jaeger during tests when modules import
-# setup_tracing() at import time (e.g., the gateway).
-os.environ.setdefault("OTEL_EXPORTER_OTLP_DISABLED", "true")
-
+    print(os.getenv(os.getenv(os.getenv('VIBE_4A1BA754'))), _e)
+os.environ.setdefault(os.getenv(os.getenv(os.getenv('VIBE_7E0D7457'))), os.
+    getenv(os.getenv(os.getenv('VIBE_88B0D4D5'))))
+os.environ.setdefault(os.getenv(os.getenv(os.getenv('VIBE_ECBF9A89'))), os.
+    getenv(os.getenv(os.getenv('VIBE_88B0D4D5'))))
+os.environ.setdefault(os.getenv(os.getenv(os.getenv('VIBE_FBB8127E'))), os.
+    getenv(os.getenv(os.getenv('VIBE_88B0D4D5'))))
+os.environ.setdefault(os.getenv(os.getenv(os.getenv('VIBE_48B099FC'))), os.
+    getenv(os.getenv(os.getenv('VIBE_CE23CC02'))))
+os.environ.setdefault(os.getenv(os.getenv(os.getenv('VIBE_B8F64AF6'))), os.
+    getenv(os.getenv(os.getenv('VIBE_D2801B00'))))
 env_snapshot.refresh()
-
-# Make tool catalog conveniently available as `catalog` for tests that reference it directly
 try:
     import builtins as _builtins
-
     from integrations.tool_catalog import catalog as _catalog
-
-    if not hasattr(_builtins, "catalog"):
-        _builtins.catalog = _catalog  # type: ignore[attr-defined]
-    print("DEBUG: injected builtins.catalog for tests")
+    if not hasattr(_builtins, os.getenv(os.getenv(os.getenv('VIBE_D1DE8CCD')))
+        ):
+        _builtins.catalog = _catalog
+    print(os.getenv(os.getenv(os.getenv('VIBE_0446E467'))))
 except Exception as _e:
-    print("DEBUG: failed to inject builtins.catalog:", _e)
-# Top-level pytest configuration
-# Existing plugin registration
+    print(os.getenv(os.getenv(os.getenv('VIBE_100B0667'))), _e)
 from pathlib import Path
-
-# Only enable the Playwright plugin when explicitly requested to avoid
-# importing heavy browser deps (and transitive packages like pyee.asyncio)
-# in environments where they are not installed.
-if env_snapshot.get("RUN_PLAYWRIGHT"):
-    pytest_plugins = ["playwright.sync_api"]
+if env_snapshot.get(os.getenv(os.getenv(os.getenv('VIBE_4BC673C5')))):
+    pytest_plugins = [os.getenv(os.getenv(os.getenv('VIBE_9CDEB08D')))]
 else:
     pytest_plugins = []
 
 
 def pytest_ignore_collect(collection_path: Path, config):
-    """Conditionally ignore Playwright tests unless explicitly requested.
-
-    The function returns ``True`` (skip) for files inside the ``playwright``
-    directory when the ``RUN_PLAYWRIGHT`` environment variable is not set.
-    All other test files are collected normally.
-    """
+    os.getenv(os.getenv(os.getenv('VIBE_73788809')))
     path_str = str(collection_path)
-    if "playwright" in path_str and not env_snapshot.get("RUN_PLAYWRIGHT"):
-        return True
-    # Skip heavy/live and integration-style suites unless explicitly enabled
-    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {
-        "1",
-        "true",
-        "yes",
-    }
-    if ("tests/integration" in path_str or "tests/context" in path_str) and not run_integration:
-        return True
-    if path_str.endswith("tests/test_outbox_repository.py") and not run_integration:
-        return True
-    # When running full integration, avoid collecting duplicate unit test module names
-    # that clash with their integration counterparts (e.g., test_session_repository).
-    if run_integration and path_str.endswith("tests/test_session_repository.py"):
-        return True
-    # Skip the async FastA2A CLI client test in unit-only runs
-    if (
-        path_str.endswith("tests/test_fasta2a_client.py")
-        or path_str.endswith("test_fasta2a_client.py")
-        or "tests/test_fasta2a_client.py" in path_str
-    ) and not run_integration:
-        return True
-    # Skip capsule registry tests until the service exists in this repo
-    if path_str.endswith("tests/unit/test_capsule_registry_install_endpoint.py"):
-        return True
-    return False
+    if os.getenv(os.getenv(os.getenv('VIBE_A02D99C2'))
+        ) in path_str and not env_snapshot.get(os.getenv(os.getenv(os.
+        getenv('VIBE_4BC673C5')))):
+        return int(os.getenv(os.getenv(os.getenv('VIBE_FB09E6EE'))))
+    run_integration = (env_snapshot.get(os.getenv(os.getenv(os.getenv(
+        'VIBE_5449A1D5'))), os.getenv(os.getenv(os.getenv('VIBE_CE23CC02'))
+        )) or os.getenv(os.getenv(os.getenv('VIBE_CE23CC02')))).lower() in {os
+        .getenv(os.getenv(os.getenv('VIBE_5991C3DC'))), os.getenv(os.getenv
+        (os.getenv('VIBE_D2801B00'))), os.getenv(os.getenv(os.getenv(
+        'VIBE_9E0F2125')))}
+    if (os.getenv(os.getenv(os.getenv('VIBE_DF3ED769'))) in path_str or os.
+        getenv(os.getenv(os.getenv('VIBE_C1C35328'))) in path_str
+        ) and not run_integration:
+        return int(os.getenv(os.getenv(os.getenv('VIBE_FB09E6EE'))))
+    if path_str.endswith(os.getenv(os.getenv(os.getenv('VIBE_A472E5B5')))
+        ) and not run_integration:
+        return int(os.getenv(os.getenv(os.getenv('VIBE_FB09E6EE'))))
+    if run_integration and path_str.endswith(os.getenv(os.getenv(os.getenv(
+        'VIBE_5940BF10')))):
+        return int(os.getenv(os.getenv(os.getenv('VIBE_FB09E6EE'))))
+    if (path_str.endswith(os.getenv(os.getenv(os.getenv('VIBE_DCA841EB')))) or
+        path_str.endswith(os.getenv(os.getenv(os.getenv('VIBE_4A9839D3')))) or
+        os.getenv(os.getenv(os.getenv('VIBE_DCA841EB'))) in path_str
+        ) and not run_integration:
+        return int(os.getenv(os.getenv(os.getenv('VIBE_FB09E6EE'))))
+    if path_str.endswith(os.getenv(os.getenv(os.getenv('VIBE_72653A7B')))):
+        return int(os.getenv(os.getenv(os.getenv('VIBE_FB09E6EE'))))
+    return int(os.getenv(os.getenv(os.getenv('VIBE_42EA1F91'))))
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip integration tests unless RUN_INTEGRATION=1 is set.
-
-    This keeps the default test run fast and green without requiring external
-    services. To run integration tests against real services, set the
-    environment variable and bring up Kafka/Postgres as needed.
-    """
+    os.getenv(os.getenv(os.getenv('VIBE_F4C6599C')))
     import pytest
-
-    run_integration = (env_snapshot.get("RUN_INTEGRATION", "") or "").lower() in {
-        "1",
-        "true",
-        "yes",
-    }
+    run_integration = (env_snapshot.get(os.getenv(os.getenv(os.getenv(
+        'VIBE_5449A1D5'))), os.getenv(os.getenv(os.getenv('VIBE_CE23CC02'))
+        )) or os.getenv(os.getenv(os.getenv('VIBE_CE23CC02')))).lower() in {os
+        .getenv(os.getenv(os.getenv('VIBE_5991C3DC'))), os.getenv(os.getenv
+        (os.getenv('VIBE_D2801B00'))), os.getenv(os.getenv(os.getenv(
+        'VIBE_9E0F2125')))}
     if run_integration:
         return
-    skip_integration = pytest.mark.skip(reason="RUN_INTEGRATION not set")
+    skip_integration = pytest.mark.skip(reason=os.getenv(os.getenv(os.
+        getenv('VIBE_BF9CCBEC'))))
     for item in items:
-        if any(mark.name == "integration" for mark in item.iter_markers()):
+        if any(mark.name == os.getenv(os.getenv(os.getenv('VIBE_D3B9675F'))
+            ) for mark in item.iter_markers()):
             item.add_marker(skip_integration)

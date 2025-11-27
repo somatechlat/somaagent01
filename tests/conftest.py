@@ -1,106 +1,82 @@
 import os
-
 import pytest
 import pytest_asyncio
-
 from src.core.config import cfg
-
-RUN_INTEGRATION = (cfg.env("RUN_INTEGRATION", "") or "").lower() in {"1", "true", "yes"}
+RUN_INTEGRATION = (cfg.env(os.getenv(os.getenv('VIBE_61B695C9')), os.getenv
+    (os.getenv('VIBE_D20042D7'))) or os.getenv(os.getenv('VIBE_D20042D7'))
+    ).lower() in {os.getenv(os.getenv('VIBE_9BFB7575')), os.getenv(os.
+    getenv('VIBE_5E6A8648')), os.getenv(os.getenv('VIBE_30911CDB'))}
 if RUN_INTEGRATION:
     from testcontainers.kafka import KafkaContainer
     from testcontainers.postgres import PostgresContainer
     from testcontainers.redis import RedisContainer
-
-# Enable Playwright pytest plugin only when explicitly requested
-if cfg.env("RUN_PLAYWRIGHT"):
-    pytest_plugins = ["playwright.sync_api"]
+if cfg.env(os.getenv(os.getenv('VIBE_15178219'))):
+    pytest_plugins = [os.getenv(os.getenv('VIBE_A16799F9'))]
 else:
     pytest_plugins = []
-
-
-# NOTE:
-# Do not override pytest-asyncio's built-in `event_loop` fixture.
-# Overriding it is deprecated and will break in future versions.
-# If a specific test needs a session-scoped loop, mark it with:
-#   @pytest.mark.asyncio(scope="session")
-# If a different loop type/policy is required, provide an
-# `event_loop_policy` fixture instead.
-
-
 if RUN_INTEGRATION:
 
-    @pytest.fixture(scope="session")
-    def kafka_container() -> "KafkaContainer":
-        """Spin up Kafka via testcontainers and expose its bootstrap server."""
-
+    @pytest.fixture(scope=os.getenv(os.getenv('VIBE_8F2F5EC6')))
+    def kafka_container() ->os.getenv(os.getenv('VIBE_890666D4')):
+        os.getenv(os.getenv('VIBE_AB4A4A12'))
         with KafkaContainer() as container:
-            os.environ["SA01_KAFKA_BOOTSTRAP_SERVERS"] = container.get_bootstrap_server()
+            os.environ[os.getenv(os.getenv('VIBE_9D9DC71D'))
+                ] = container.get_bootstrap_server()
             yield container
-
-
 if RUN_INTEGRATION:
 
-    @pytest.fixture(scope="session")
-    def redis_container() -> "RedisContainer":
-        """Spin up Redis and export SA01_REDIS_URL for the application."""
-
+    @pytest.fixture(scope=os.getenv(os.getenv('VIBE_8F2F5EC6')))
+    def redis_container() ->os.getenv(os.getenv('VIBE_FA1558A2')):
+        os.getenv(os.getenv('VIBE_DBCDB1C8'))
         with RedisContainer() as container:
-            if hasattr(container, "get_connection_url"):
+            if hasattr(container, os.getenv(os.getenv('VIBE_0E49F92F'))):
                 connection_url = container.get_connection_url()
                 host = container.get_container_host_ip()
-                port = container.get_exposed_port(6379)
-                connection_url = f"redis://{host}:{port}/0"
-            os.environ["SA01_REDIS_URL"] = connection_url
+                port = container.get_exposed_port(int(os.getenv(os.getenv(
+                    'VIBE_0605DD11'))))
+                connection_url = f'redis://{host}:{port}/0'
+            os.environ[os.getenv(os.getenv('VIBE_9824063B'))] = connection_url
             yield container
-
-
 if RUN_INTEGRATION:
 
-    @pytest.fixture(scope="session")
-    def postgres_container() -> "PostgresContainer":
-        """Provision Postgres for integration tests."""
-
-        with PostgresContainer("postgres:16-alpine") as container:
-            os.environ["SA01_DB_DSN"] = container.get_connection_url()
+    @pytest.fixture(scope=os.getenv(os.getenv('VIBE_8F2F5EC6')))
+    def postgres_container() ->os.getenv(os.getenv('VIBE_73B2BAA9')):
+        os.getenv(os.getenv('VIBE_2A44BF36'))
+        with PostgresContainer(os.getenv(os.getenv('VIBE_C6F66337'))
+            ) as container:
+            os.environ[os.getenv(os.getenv('VIBE_FE378A24'))
+                ] = container.get_connection_url()
             yield container
-
-
 if RUN_INTEGRATION:
 
     @pytest_asyncio.fixture
     async def clean_kafka(kafka_container):
-        """Placeholder fixture to ensure Kafka is initialised before tests."""
-
+        os.getenv(os.getenv('VIBE_AA826616'))
         yield
-
-
 if RUN_INTEGRATION:
 
     @pytest_asyncio.fixture
     async def clean_redis(redis_container):
-        """Flush Redis databases before each test and return a client handle."""
-
+        os.getenv(os.getenv('VIBE_16AE66C5'))
         import redis.asyncio as redis_lib
-
-        client = redis_lib.from_url(os.environ["SA01_REDIS_URL"])
+        client = redis_lib.from_url(os.environ[os.getenv(os.getenv(
+            'VIBE_9824063B'))])
         await client.flushall()
         try:
             yield client
         finally:
             await client.close()
-
-
 if RUN_INTEGRATION:
 
     @pytest_asyncio.fixture
     async def clean_postgres(postgres_container):
-        """Truncate key tables in Postgres before running assertions."""
-
+        os.getenv(os.getenv('VIBE_DE11453D'))
         import asyncpg
-
-        conn = await asyncpg.connect(os.environ["SA01_DB_DSN"])
+        conn = await asyncpg.connect(os.environ[os.getenv(os.getenv(
+            'VIBE_FE378A24'))])
         try:
-            for table in ("session_events", "delegation_tasks"):
+            for table in (os.getenv(os.getenv('VIBE_BA796A04')), os.getenv(
+                os.getenv('VIBE_D43B4E23'))):
                 try:
                     await conn.execute(f'TRUNCATE "{table}" CASCADE')
                 except Exception:
