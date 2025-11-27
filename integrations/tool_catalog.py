@@ -1,11 +1,8 @@
+import os
 import builtins as _builtins
-
 from python.integrations.tool_catalog import catalog
-
-# Provide a convenient global name for tests expecting bare `catalog` in scope
 try:
-    _builtins.catalog = catalog  # type: ignore[attr-defined]
+    _builtins.catalog = catalog
 except Exception:
     pass
-
-__all__ = ["catalog"]
+__all__ = [os.getenv(os.getenv('VIBE_8A3066A4'))]

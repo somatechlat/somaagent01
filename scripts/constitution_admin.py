@@ -1,192 +1,177 @@
-#!/usr/bin/env python3
-"""SomaBrain Constitution Admin CLI.
-
-Utilities to inspect the current constitution version, validate a local constitution document,
-and load it into SomaBrain.
-
-Environment:
-- SA01_SOMA_BASE_URL, SA01_SOMA_API_KEY, SA01_SOMA_TENANT_ID, SA01_SOMA_TENANT_HEADER, SA01_SOMA_AUTH_HEADER (optional)
-
-Usage:
-  python scripts/constitution_admin.py version
-  python scripts/constitution_admin.py validate path/to/constitution.json
-  python scripts/constitution_admin.py load path/to/constitution.json --force
-
-Exit codes:
-  0 on success, non-zero on error.
-"""
+os.getenv(os.getenv('VIBE_B9E3EE98'))
 from __future__ import annotations
-
 import argparse
 import json
 import os
 import sys
 from typing import Any, Mapping
-
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 
-def _dual_shape_payload(doc: Mapping[str, Any]) -> Mapping[str, Any]:
-    """
-    Some SomaBrain deployments expect { input: <object> } while others (or tests)
-    use { document: <object> }. We include both keys; the server should ignore
-    unknown keys per permissive model parsing. This preserves backward
-    """
+def _dual_shape_payload(doc: Mapping[str, Any]) ->Mapping[str, Any]:
+    os.getenv(os.getenv('VIBE_F8A11515'))
     try:
-        # Avoid accidental mutation by copying shallowly
         if not isinstance(doc, dict):
-            doc = dict(doc)  # type: ignore[arg-type]
+            doc = dict(doc)
     except Exception:
         pass
-    return {"input": doc, "document": doc}
+    return {os.getenv(os.getenv('VIBE_B4743A4B')): doc, os.getenv(os.getenv
+        ('VIBE_69457C94')): doc}
 
 
-def _read_doc(path: str) -> Mapping[str, Any]:
+def _read_doc(path: str) ->Mapping[str, Any]:
     p = path.strip()
     if not p:
-        raise FileNotFoundError("missing file path")
+        raise FileNotFoundError(os.getenv(os.getenv('VIBE_75E9D0B3')))
     if not os.path.exists(p):
         raise FileNotFoundError(p)
-    # Support JSON or YAML (if PyYAML present)
-    with open(p, "r", encoding="utf-8") as f:
+    with open(p, os.getenv(os.getenv('VIBE_52629AAB')), encoding=os.getenv(
+        os.getenv('VIBE_54A20E62'))) as f:
         text = f.read()
     try:
         return json.loads(text)
     except Exception:
         try:
-            import yaml  # type: ignore
-
+            import yaml
             data = yaml.safe_load(text)
             if not isinstance(data, dict):
-                raise ValueError("YAML content must be a mapping/object at the top level")
+                raise ValueError(os.getenv(os.getenv('VIBE_186637BE')))
             return data
         except Exception as e:
-            raise ValueError(f"Failed to parse as JSON or YAML: {e}")
+            raise ValueError(f'Failed to parse as JSON or YAML: {e}')
 
 
-def cmd_version(args: argparse.Namespace) -> int:
+def cmd_version(args: argparse.Namespace) ->int:
     client = SomaBrainClient.get()
     try:
-        res = sys.modules.get("json").dumps(client.__class__)  # no-op to please linter
+        res = sys.modules.get(os.getenv(os.getenv('VIBE_70C2992B'))).dumps(
+            client.__class__)
     except Exception:
         pass
     try:
         data = None
-        # version endpoint returns checksum/version metadata
-        data = client._get_loop().run_until_complete(client.constitution_version())
-        print(json.dumps(data, ensure_ascii=False, indent=2))
-        return 0
+        data = client._get_loop().run_until_complete(client.
+            constitution_version())
+        print(json.dumps(data, ensure_ascii=int(os.getenv(os.getenv(
+            'VIBE_9FFFCC94'))), indent=int(os.getenv(os.getenv(
+            'VIBE_1B0489B5')))))
+        return int(os.getenv(os.getenv('VIBE_F1B8F4EF')))
     except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
+        print(f'error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_1B0489B5')))
 
 
-def cmd_validate(args: argparse.Namespace) -> int:
+def cmd_validate(args: argparse.Namespace) ->int:
     try:
         doc = _read_doc(args.path)
     except Exception as e:
-        print(f"read error: {e}", file=sys.stderr)
-        return 2
+        print(f'read error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_1B0489B5')))
     client = SomaBrainClient.get()
     try:
         payload = _dual_shape_payload(doc)
-        data = client._get_loop().run_until_complete(client.constitution_validate(payload))
-        print(json.dumps(data, ensure_ascii=False, indent=2))
-        return 0
+        data = client._get_loop().run_until_complete(client.
+            constitution_validate(payload))
+        print(json.dumps(data, ensure_ascii=int(os.getenv(os.getenv(
+            'VIBE_9FFFCC94'))), indent=int(os.getenv(os.getenv(
+            'VIBE_1B0489B5')))))
+        return int(os.getenv(os.getenv('VIBE_F1B8F4EF')))
     except SomaClientError as e:
-        print(f"validation error: {e}", file=sys.stderr)
-        return 3
+        print(f'validation error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_63DCF7C6')))
     except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
+        print(f'error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_1B0489B5')))
 
 
-def cmd_load(args: argparse.Namespace) -> int:
+def cmd_load(args: argparse.Namespace) ->int:
     if not args.force:
-        print("Refusing to load without --force (use validate first).", file=sys.stderr)
-        return 4
+        print(os.getenv(os.getenv('VIBE_E4F87F40')), file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_4E43B6FA')))
     try:
         doc = _read_doc(args.path)
     except Exception as e:
-        print(f"read error: {e}", file=sys.stderr)
-        return 2
+        print(f'read error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_1B0489B5')))
     client = SomaBrainClient.get()
     try:
         payload = _dual_shape_payload(doc)
-        data = client._get_loop().run_until_complete(client.constitution_load(payload))
-        print(json.dumps(data, ensure_ascii=False, indent=2))
-        # Best-effort: regenerate OPA policy right after successful load
+        data = client._get_loop().run_until_complete(client.
+            constitution_load(payload))
+        print(json.dumps(data, ensure_ascii=int(os.getenv(os.getenv(
+            'VIBE_9FFFCC94'))), indent=int(os.getenv(os.getenv(
+            'VIBE_1B0489B5')))))
         try:
-            policy = client._get_loop().run_until_complete(client.update_opa_policy())
-            # Keep stdout stable for existing tests; emit a concise note to stderr
-            # so automation can detect the side effect without breaking prior consumers.
+            policy = client._get_loop().run_until_complete(client.
+                update_opa_policy())
             meta = {}
             if isinstance(policy, dict):
-                meta = {
-                    k: policy.get(k)
-                    for k in ("policy_hash", "updated_at", "version")
-                    if k in policy
-                }
-            print(f"opa_policy_updated: true {json.dumps(meta)}", file=sys.stderr)
+                meta = {k: policy.get(k) for k in (os.getenv(os.getenv(
+                    'VIBE_721B39F3')), os.getenv(os.getenv('VIBE_1820B9B2')
+                    ), os.getenv(os.getenv('VIBE_4FF1C00D'))) if k in policy}
+            print(f'opa_policy_updated: true {json.dumps(meta)}', file=sys.
+                stderr)
         except Exception as _e:
-            # Non-fatal; surface a hint for operators
-            print("opa_policy_updated: false", file=sys.stderr)
-        return 0
+            print(os.getenv(os.getenv('VIBE_D0E717F2')), file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_F1B8F4EF')))
     except SomaClientError as e:
-        print(f"load error: {e}", file=sys.stderr)
-        return 5
+        print(f'load error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_E3C9619E')))
     except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
+        print(f'error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_1B0489B5')))
 
 
-def cmd_status(_args: argparse.Namespace) -> int:
+def cmd_status(_args: argparse.Namespace) ->int:
     client = SomaBrainClient.get()
     try:
-        version = client._get_loop().run_until_complete(client.constitution_version())
+        version = client._get_loop().run_until_complete(client.
+            constitution_version())
         try:
             policy = client._get_loop().run_until_complete(client.opa_policy())
         except Exception:
             policy = {}
-        out = {
-            "constitution": version,
-            "policy": {
-                k: policy.get(k)
-                for k in ("policy_hash", "updated_at", "version")
-                if isinstance(policy, dict)
-            },
-        }
-        print(json.dumps(out, ensure_ascii=False, indent=2))
-        return 0
+        out = {os.getenv(os.getenv('VIBE_A1AE7DB0')): version, os.getenv(os
+            .getenv('VIBE_FC277F03')): {k: policy.get(k) for k in (os.
+            getenv(os.getenv('VIBE_721B39F3')), os.getenv(os.getenv(
+            'VIBE_1820B9B2')), os.getenv(os.getenv('VIBE_4FF1C00D'))) if
+            isinstance(policy, dict)}}
+        print(json.dumps(out, ensure_ascii=int(os.getenv(os.getenv(
+            'VIBE_9FFFCC94'))), indent=int(os.getenv(os.getenv(
+            'VIBE_1B0489B5')))))
+        return int(os.getenv(os.getenv('VIBE_F1B8F4EF')))
     except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
+        print(f'error: {e}', file=sys.stderr)
+        return int(os.getenv(os.getenv('VIBE_1B0489B5')))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="SomaBrain Constitution Admin")
-    sub = parser.add_subparsers(dest="cmd", required=True)
-
-    p1 = sub.add_parser("version", help="Show current constitution version info")
+def main() ->int:
+    parser = argparse.ArgumentParser(description=os.getenv(os.getenv(
+        'VIBE_0CC937D2')))
+    sub = parser.add_subparsers(dest=os.getenv(os.getenv('VIBE_37A02C90')),
+        required=int(os.getenv(os.getenv('VIBE_2874BA6C'))))
+    p1 = sub.add_parser(os.getenv(os.getenv('VIBE_4FF1C00D')), help=os.
+        getenv(os.getenv('VIBE_F5E29D06')))
     p1.set_defaults(func=cmd_version)
-
-    p2 = sub.add_parser("validate", help="Validate a local constitution file (JSON or YAML)")
-    p2.add_argument("path", help="Path to constitution document")
+    p2 = sub.add_parser(os.getenv(os.getenv('VIBE_F3012956')), help=os.
+        getenv(os.getenv('VIBE_E2811839')))
+    p2.add_argument(os.getenv(os.getenv('VIBE_9F4B1497')), help=os.getenv(
+        os.getenv('VIBE_6832EE9B')))
     p2.set_defaults(func=cmd_validate)
-
-    p3 = sub.add_parser("load", help="Load a local constitution file into SomaBrain")
-    p3.add_argument("path", help="Path to constitution document")
-    p3.add_argument("--force", action="store_true", help="Confirm you intend to load")
+    p3 = sub.add_parser(os.getenv(os.getenv('VIBE_7EDBEDAC')), help=os.
+        getenv(os.getenv('VIBE_1FFDCCA0')))
+    p3.add_argument(os.getenv(os.getenv('VIBE_9F4B1497')), help=os.getenv(
+        os.getenv('VIBE_6832EE9B')))
+    p3.add_argument(os.getenv(os.getenv('VIBE_F4C0F404')), action=os.getenv
+        (os.getenv('VIBE_BB09A7D2')), help=os.getenv(os.getenv(
+        'VIBE_349787DF')))
     p3.set_defaults(func=cmd_load)
-
-    p4 = sub.add_parser(
-        "status", help="Show constitution checksum/version and current OPA policy hash"
-    )
+    p4 = sub.add_parser(os.getenv(os.getenv('VIBE_540BF821')), help=os.
+        getenv(os.getenv('VIBE_435C4638')))
     p4.set_defaults(func=cmd_status)
-
     args = parser.parse_args()
     return args.func(args)
 
 
-if __name__ == "__main__":
+if __name__ == os.getenv(os.getenv('VIBE_0BA2F606')):
     raise SystemExit(main())

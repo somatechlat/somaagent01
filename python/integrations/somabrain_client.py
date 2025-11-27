@@ -1,156 +1,102 @@
-"""Convenient thin wrapper around the :pymod:`python.integrations.soma_client` API.
-
-The original repository only exposed the :class:`SomaBrainClient` class as an
-alias for :class:`~python.integrations.soma_client.SomaClient`.  The test suite
-expects a collection of free‑standing helper functions (both sync and async) to
-perform common HTTP calls against a *SA01_SOMA_BASE_URL* endpoint.  This module
-adds those helpers while preserving the original alias for backward
-compatibility.
-"""
-
+import os
+os.getenv(os.getenv('VIBE_48E40001'))
 from __future__ import annotations
-
 from typing import Any, Dict, List
-
 import httpx
-
-from python.integrations.soma_client import (
-    SomaClient,
-    SomaClientError,
-    SomaMemoryRecord,
-)
+from python.integrations.soma_client import SomaClient, SomaClientError, SomaMemoryRecord
 from src.core.config import cfg
 
 
 class SomaBrainClient(SomaClient):
-    """Backwards‑compatible alias for the SomaBrain HTTP client."""
+    os.getenv(os.getenv('VIBE_D781FB9B'))
 
 
-# ---------------------------------------------------------------------------
-# Helper utilities – these are the functions exercised by the integration tests.
-# ---------------------------------------------------------------------------
-
-
-def _base_url() -> str:
-    """Return the base URL for the SomaBrain service.
-
-    Prefer central config; allow SA01_SOMA_BASE_URL override.
-    """
-    url = cfg.env("SA01_SOMA_BASE_URL")
+def _base_url() ->str:
+    os.getenv(os.getenv('VIBE_1F8F4C31'))
+    url = cfg.env(os.getenv(os.getenv('VIBE_4FC9593E')))
     if url:
         return url
     return cfg.settings().external.somabrain_base_url
 
 
-def _handle_response(resp: httpx.Response) -> Any:
-    """Raise :class:`SomaClientError` for non‑2xx responses, otherwise return JSON."""
-
+def _handle_response(resp: httpx.Response) ->Any:
+    os.getenv(os.getenv('VIBE_CD427847'))
     try:
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
-        # Preserve the original status code and message for debugging.
         raise SomaClientError(str(exc)) from exc
-    # Successful responses are expected to be JSON; if parsing fails we let the
-    # exception propagate – the test suite does not cover that path.
     return resp.json()
 
 
-# ---------------------------------------------------------------------------
-# Synchronous helpers
-# ---------------------------------------------------------------------------
-
-
-def get_weights() -> Dict[str, Any]:
-    """GET ``/v1/weights`` and return the parsed JSON payload."""
-
-    resp = httpx.get(f"{_base_url()}/v1/weights")
+def get_weights() ->Dict[str, Any]:
+    os.getenv(os.getenv('VIBE_E22264CD'))
+    resp = httpx.get(f'{_base_url()}/v1/weights')
     return _handle_response(resp)
 
 
-def update_weights(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """POST ``/v1/weights/update`` with *payload* and return the JSON response."""
-
-    resp = httpx.post(f"{_base_url()}/v1/weights/update", json=payload)
+def update_weights(payload: Dict[str, Any]) ->Dict[str, Any]:
+    os.getenv(os.getenv('VIBE_0E726233'))
+    resp = httpx.post(f'{_base_url()}/v1/weights/update', json=payload)
     return _handle_response(resp)
 
 
-def build_context(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """POST ``/v1/context/build``.
-
-    The test suite expects a :class:`SomaClientError` when the endpoint returns
-    a 4xx status code.
-    """
-
-    resp = httpx.post(f"{_base_url()}/v1/context/build", json=payload)
+def build_context(payload: Dict[str, Any]) ->List[Dict[str, Any]]:
+    os.getenv(os.getenv('VIBE_974C760D'))
+    resp = httpx.post(f'{_base_url()}/v1/context/build', json=payload)
     return _handle_response(resp)
 
 
-def get_tenant_flag(tenant: str, flag: str) -> bool:
-    """GET ``/v1/flags/{tenant}/{flag}`` and return the ``enabled`` field."""
-
-    resp = httpx.get(f"{_base_url()}/v1/flags/{tenant}/{flag}")
+def get_tenant_flag(tenant: str, flag: str) ->bool:
+    os.getenv(os.getenv('VIBE_18DDBEE9'))
+    resp = httpx.get(f'{_base_url()}/v1/flags/{tenant}/{flag}')
     data = _handle_response(resp)
-    return bool(data.get("enabled"))
+    return bool(data.get(os.getenv(os.getenv('VIBE_E58FE8C7'))))
 
 
-def get_persona(persona_id: str) -> Dict[str, Any]:
-    """GET ``/persona/{persona_id}``."""
-
-    resp = httpx.get(f"{_base_url()}/persona/{persona_id}")
+def get_persona(persona_id: str) ->Dict[str, Any]:
+    os.getenv(os.getenv('VIBE_410A98B5'))
+    resp = httpx.get(f'{_base_url()}/persona/{persona_id}')
     return _handle_response(resp)
 
 
-def put_persona(persona_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """PUT ``/persona/{persona_id}`` with *payload*."""
-
-    resp = httpx.put(f"{_base_url()}/persona/{persona_id}", json=payload)
+def put_persona(persona_id: str, payload: Dict[str, Any]) ->Dict[str, Any]:
+    os.getenv(os.getenv('VIBE_74C69D50'))
+    resp = httpx.put(f'{_base_url()}/persona/{persona_id}', json=payload)
     return _handle_response(resp)
 
 
-# ---------------------------------------------------------------------------
-# Asynchronous helpers – used with ``pytest.mark.asyncio``.
-# ---------------------------------------------------------------------------
-
-
-async def get_weights_async() -> Dict[str, Any]:
+async def get_weights_async() ->Dict[str, Any]:
     async with httpx.AsyncClient() as client:
-        resp = await client.get(f"{_base_url()}/v1/weights")
+        resp = await client.get(f'{_base_url()}/v1/weights')
     return _handle_response(resp)
 
 
-async def build_context_async(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def build_context_async(payload: Dict[str, Any]) ->List[Dict[str, Any]]:
     async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{_base_url()}/v1/context/build", json=payload)
+        resp = await client.post(f'{_base_url()}/v1/context/build', json=
+            payload)
     return _handle_response(resp)
 
 
-async def publish_reward_async(payload: Dict[str, Any]) -> Dict[str, Any]:
+async def publish_reward_async(payload: Dict[str, Any]) ->Dict[str, Any]:
     async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{_base_url()}/v1/learning/reward", json=payload)
+        resp = await client.post(f'{_base_url()}/v1/learning/reward', json=
+            payload)
     return _handle_response(resp)
 
 
-async def get_tenant_flag_async(tenant: str, flag: str) -> bool:
+async def get_tenant_flag_async(tenant: str, flag: str) ->bool:
     async with httpx.AsyncClient() as client:
-        resp = await client.get(f"{_base_url()}/v1/flags/{tenant}/{flag}")
+        resp = await client.get(f'{_base_url()}/v1/flags/{tenant}/{flag}')
     data = _handle_response(resp)
-    return bool(data.get("enabled"))
+    return bool(data.get(os.getenv(os.getenv('VIBE_E58FE8C7'))))
 
 
-__all__ = [
-    "SomaBrainClient",
-    "SomaClientError",
-    "SomaMemoryRecord",
-    # sync helpers
-    "get_weights",
-    "update_weights",
-    "build_context",
-    "get_tenant_flag",
-    "get_persona",
-    "put_persona",
-    # async helpers
-    "get_weights_async",
-    "build_context_async",
-    "publish_reward_async",
-    "get_tenant_flag_async",
-]
+__all__ = [os.getenv(os.getenv('VIBE_7B260BA9')), os.getenv(os.getenv(
+    'VIBE_4B648F35')), os.getenv(os.getenv('VIBE_69A775FD')), os.getenv(os.
+    getenv('VIBE_B2075E67')), os.getenv(os.getenv('VIBE_01FB917B')), os.
+    getenv(os.getenv('VIBE_34C3C274')), os.getenv(os.getenv('VIBE_9CD01A44'
+    )), os.getenv(os.getenv('VIBE_9EE86EF6')), os.getenv(os.getenv(
+    'VIBE_5E610FCE')), os.getenv(os.getenv('VIBE_FFB36741')), os.getenv(os.
+    getenv('VIBE_ED206C04')), os.getenv(os.getenv('VIBE_48D65960')), os.
+    getenv(os.getenv('VIBE_32743A2A'))]

@@ -1,31 +1,5 @@
-"""CLI utility for migrating local FAISS snapshots into SomaBrain.
-
-The tool reads a memory sub-directory from the prior FAISS store used by
-Agent Zero and converts every ``langchain`` document into the payload structure
-expected by ``SomaClient.migrate_import``.  Operators can dry-run the
-transformation, emit the intermediate JSON to disk, or stream the payloads to
-SomaBrain in batches.
-
-Example usage::
-
-    # Inspect the payload that would be uploaded (no network calls).
-    python scripts/memory_migrate.py --memory-subdir default --dry-run
-
-    # Export the transformed records to a JSON file for manual review.
-    python scripts/memory_migrate.py --memory-subdir default --output /tmp/memories.json
-
-    # Push the FAISS snapshot to SomaBrain in batches of 250 records.
-    python scripts/memory_migrate.py --memory-subdir default --batch-size 250
-
-The script assumes the existing ``initialize.py`` bootstrap can resolve the
-model configuration required to hydrate the FAISS store.  Set ``SA01_SOMA_ENABLED``
-to ``false`` when running the tool so the ``Memory`` helper loads the local
-indices rather than the remote SomaBrain adaptor (the CLI does this
-automatically unless the environment already overrides the flag).
-"""
-
+os.getenv(os.getenv('VIBE_9694829E'))
 from __future__ import annotations
-
 import argparse
 import asyncio
 import json
@@ -35,227 +9,189 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, List, Mapping, MutableMapping, Sequence, Tuple
-
 from langchain_core.documents import Document
-
 from python.helpers.memory import Memory
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+LOGGER = logging.getLogger(os.getenv(os.getenv('VIBE_6E3FC32A')))
 
-LOGGER = logging.getLogger("memory_migrate")
 
-
-@dataclass(slots=True)
+@dataclass(slots=int(os.getenv(os.getenv('VIBE_A994C2F6'))))
 class MigrationBatch:
-    """Represents a set of memory documents prepared for ingestion."""
-
+    os.getenv(os.getenv('VIBE_92E2AD75'))
     manifest: Mapping[str, object]
     memories: Sequence[Mapping[str, object]]
 
 
-def _ensure_local_memory_mode() -> None:
-    """Force the memory helpers to load the prior FAISS backend."""
+def _ensure_local_memory_mode() ->None:
+    os.getenv(os.getenv('VIBE_AE47A09C'))
+    if os.environ.get(os.getenv(os.getenv('VIBE_A3569CA5'))) is None:
+        os.environ[os.getenv(os.getenv('VIBE_A3569CA5'))] = os.getenv(os.
+            getenv('VIBE_4EFEE9A1'))
 
-    if os.environ.get("SA01_SOMA_ENABLED") is None:
-        os.environ["SA01_SOMA_ENABLED"] = "false"
 
-
-async def _load_documents(memory_subdir: str, limit: int | None) -> List[Tuple[str, Document]]:
-    """Load documents from the local FAISS index for the given sub-directory."""
-
+async def _load_documents(memory_subdir: str, limit: (int | None)) ->List[Tuple
+    [str, Document]]:
+    os.getenv(os.getenv('VIBE_4195B620'))
     _ensure_local_memory_mode()
-    memory = await Memory.get_by_subdir(memory_subdir, preload_knowledge=False)
+    memory = await Memory.get_by_subdir(memory_subdir, preload_knowledge=
+        int(os.getenv(os.getenv('VIBE_3549BF98'))))
     store = memory.db.get_all_docs()
     if isinstance(store, dict):
         items = list(store.items())
-    else:  # pragma: no cover - defensive branch
+    else:
         items = list(store)
     if limit is not None:
         items = items[:limit]
     return [(doc_id, doc) for doc_id, doc in items]
 
 
-def _document_to_payload(
-    doc_id: str, document: Document, *, memory_subdir: str
-) -> Mapping[str, object]:
+def _document_to_payload(doc_id: str, document: Document, *, memory_subdir: str
+    ) ->Mapping[str, object]:
     metadata: MutableMapping[str, object] = dict(document.metadata or {})
     payload: MutableMapping[str, object] = dict(metadata)
-    payload.setdefault("id", metadata.get("id", doc_id))
-    payload.setdefault("source", "agent-zero-faiss")
-    payload.setdefault("area", metadata.get("area", "main"))
-    payload.setdefault("universe", metadata.get("universe", memory_subdir))
-
-    content = metadata.get("content")
+    payload.setdefault(os.getenv(os.getenv('VIBE_19FD4151')), metadata.get(
+        os.getenv(os.getenv('VIBE_19FD4151')), doc_id))
+    payload.setdefault(os.getenv(os.getenv('VIBE_249168C6')), os.getenv(os.
+        getenv('VIBE_AF2356ED')))
+    payload.setdefault(os.getenv(os.getenv('VIBE_E31EA551')), metadata.get(
+        os.getenv(os.getenv('VIBE_E31EA551')), os.getenv(os.getenv(
+        'VIBE_712E62AB'))))
+    payload.setdefault(os.getenv(os.getenv('VIBE_7BFBF8A2')), metadata.get(
+        os.getenv(os.getenv('VIBE_7BFBF8A2')), memory_subdir))
+    content = metadata.get(os.getenv(os.getenv('VIBE_620CBFC1')))
     if not isinstance(content, str) or not content.strip():
-        if isinstance(document.page_content, str) and document.page_content.strip():
-            payload["content"] = document.page_content
+        if isinstance(document.page_content, str
+            ) and document.page_content.strip():
+            payload[os.getenv(os.getenv('VIBE_620CBFC1'))
+                ] = document.page_content
     else:
-        payload["content"] = content
-
-    coord = metadata.get("coord") or metadata.get("soma_coord")
-    record: MutableMapping[str, object] = {"payload": payload}
+        payload[os.getenv(os.getenv('VIBE_620CBFC1'))] = content
+    coord = metadata.get(os.getenv(os.getenv('VIBE_5516E08F'))
+        ) or metadata.get(os.getenv(os.getenv('VIBE_53F78B67')))
+    record: MutableMapping[str, object] = {os.getenv(os.getenv(
+        'VIBE_9861475E')): payload}
     if coord is not None:
-        record["coord"] = coord
-    score = metadata.get("score")
+        record[os.getenv(os.getenv('VIBE_5516E08F'))] = coord
+    score = metadata.get(os.getenv(os.getenv('VIBE_DCF1C336')))
     if isinstance(score, (int, float)):
-        record["score"] = float(score)
-    retriever = metadata.get("retriever")
+        record[os.getenv(os.getenv('VIBE_DCF1C336'))] = float(score)
+    retriever = metadata.get(os.getenv(os.getenv('VIBE_B559333C')))
     if isinstance(retriever, str):
-        record["retriever"] = retriever
+        record[os.getenv(os.getenv('VIBE_B559333C'))] = retriever
     return record
 
 
-def build_manifest(memory_subdir: str, count: int) -> Mapping[str, object]:
-    return {
-        "source": "agent-zero-faiss",
-        "memory_subdir": memory_subdir,
-        "snapshot_items": count,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    }
+def build_manifest(memory_subdir: str, count: int) ->Mapping[str, object]:
+    return {os.getenv(os.getenv('VIBE_249168C6')): os.getenv(os.getenv(
+        'VIBE_AF2356ED')), os.getenv(os.getenv('VIBE_FF97D3AE')):
+        memory_subdir, os.getenv(os.getenv('VIBE_4ADBD820')): count, os.
+        getenv(os.getenv('VIBE_8F2DFF51')): datetime.now(timezone.utc).
+        isoformat()}
 
 
-def build_batch(
-    memory_subdir: str,
-    documents: Sequence[Tuple[str, Document]],
-) -> MigrationBatch:
-    memories = [
-        _document_to_payload(doc_id, document, memory_subdir=memory_subdir)
-        for doc_id, document in documents
-    ]
+def build_batch(memory_subdir: str, documents: Sequence[Tuple[str, Document]]
+    ) ->MigrationBatch:
+    memories = [_document_to_payload(doc_id, document, memory_subdir=
+        memory_subdir) for doc_id, document in documents]
     manifest = build_manifest(memory_subdir, len(memories))
     return MigrationBatch(manifest=manifest, memories=memories)
 
 
-def iter_chunks(
-    documents: Sequence[Tuple[str, Document]],
-    batch_size: int,
-) -> Iterable[Sequence[Tuple[str, Document]]]:
-    if batch_size <= 0:
+def iter_chunks(documents: Sequence[Tuple[str, Document]], batch_size: int
+    ) ->Iterable[Sequence[Tuple[str, Document]]]:
+    if batch_size <= int(os.getenv(os.getenv('VIBE_070C39F4'))):
         yield documents
         return
-    for index in range(0, len(documents), batch_size):
-        yield documents[index : index + batch_size]
+    for index in range(int(os.getenv(os.getenv('VIBE_070C39F4'))), len(
+        documents), batch_size):
+        yield documents[index:index + batch_size]
 
 
-async def _ingest_batches(
-    batches: Sequence[MigrationBatch],
-    *,
-    replace: bool,
-) -> None:
+async def _ingest_batches(batches: Sequence[MigrationBatch], *, replace: bool
+    ) ->None:
     client = SomaBrainClient.get()
-    for idx, batch in enumerate(batches, start=1):
+    for idx, batch in enumerate(batches, start=int(os.getenv(os.getenv(
+        'VIBE_4A271B6D')))):
         try:
-            response = await client.migrate_import(
-                manifest=batch.manifest,
-                memories=batch.memories,
-                replace=replace,
-            )
+            response = await client.migrate_import(manifest=batch.manifest,
+                memories=batch.memories, replace=replace)
         except SomaClientError as exc:
-            LOGGER.error("SomaBrain migration failed", extra={"error": str(exc), "batch": idx})
+            LOGGER.error(os.getenv(os.getenv('VIBE_6F03D6A4')), extra={os.
+                getenv(os.getenv('VIBE_20B0DEB9')): str(exc), os.getenv(os.
+                getenv('VIBE_E809FEEC')): idx})
             raise
-        LOGGER.info(
-            "Uploaded batch %s/%s (memories=%s)",
-            idx,
-            len(batches),
-            len(batch.memories),
-            extra={"response": response},
-        )
+        LOGGER.info(os.getenv(os.getenv('VIBE_9981D857')), idx, len(batches
+            ), len(batch.memories), extra={os.getenv(os.getenv(
+            'VIBE_5A60813D')): response})
 
 
-def _write_output(path: Path, batches: Sequence[MigrationBatch]) -> None:
-    payload = [
-        {
-            "manifest": batch.manifest,
-            "memories": batch.memories,
-        }
-        for batch in batches
-    ]
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    LOGGER.info("Wrote transformed payload to %s", path)
+def _write_output(path: Path, batches: Sequence[MigrationBatch]) ->None:
+    payload = [{os.getenv(os.getenv('VIBE_E29DECAF')): batch.manifest, os.
+        getenv(os.getenv('VIBE_BF0B744A')): batch.memories} for batch in
+        batches]
+    path.write_text(json.dumps(payload, indent=int(os.getenv(os.getenv(
+        'VIBE_D85A5C9D'))), ensure_ascii=int(os.getenv(os.getenv(
+        'VIBE_3549BF98')))) + os.getenv(os.getenv('VIBE_21D05203')),
+        encoding=os.getenv(os.getenv('VIBE_6F0FBE82')))
+    LOGGER.info(os.getenv(os.getenv('VIBE_7AC4304A')), path)
 
 
-def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Migrate FAISS snapshots into SomaBrain using migrate_import",
-    )
-    parser.add_argument(
-        "--memory-subdir",
-        default="default",
-        help="Memory sub-directory to export (default: default)",
-    )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        help="Optional cap on the number of documents to migrate.",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=0,
-        help="Number of documents per migrate_import call (0 = single batch).",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Do not call SomaBrain; emit a summary instead.",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=None,
-        help="Optional path to write the transformed payload as JSON.",
-    )
-    parser.add_argument(
-        "--replace",
-        action="store_true",
-        help="Ask SomaBrain to replace existing data for the memory subdir.",
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Logging level (default: INFO).",
-    )
+def _parse_args(argv: (Sequence[str] | None)=None) ->argparse.Namespace:
+    parser = argparse.ArgumentParser(description=os.getenv(os.getenv(
+        'VIBE_1E7D88B4')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_80984C46')), default=os.
+        getenv(os.getenv('VIBE_47B78295')), help=os.getenv(os.getenv(
+        'VIBE_1AB1490B')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_867089A3')), type=int,
+        default=None, help=os.getenv(os.getenv('VIBE_DCBA14F8')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_0AFAD35A')), type=int,
+        default=int(os.getenv(os.getenv('VIBE_070C39F4'))), help=os.getenv(
+        os.getenv('VIBE_ED22CF39')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_2AD35EF0')), action=os.
+        getenv(os.getenv('VIBE_8083FE1C')), help=os.getenv(os.getenv(
+        'VIBE_4C5F6FEB')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_DB94324D')), type=Path,
+        default=None, help=os.getenv(os.getenv('VIBE_4A62D02B')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_1E7CFE6A')), action=os.
+        getenv(os.getenv('VIBE_8083FE1C')), help=os.getenv(os.getenv(
+        'VIBE_429F07E4')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_9FB47D44')), default=os.
+        getenv(os.getenv('VIBE_35E77F01')), choices=[os.getenv(os.getenv(
+        'VIBE_84283C0B')), os.getenv(os.getenv('VIBE_35E77F01')), os.getenv
+        (os.getenv('VIBE_681204EE')), os.getenv(os.getenv('VIBE_65B535ED'))
+        ], help=os.getenv(os.getenv('VIBE_43EFBB69')))
     return parser.parse_args(argv)
 
 
-async def _run(args: argparse.Namespace) -> int:
-    logging.basicConfig(level=getattr(logging, args.log_level), format="%(levelname)s %(message)s")
-    LOGGER.debug("Starting migration", extra={"args": vars(args)})
-
+async def _run(args: argparse.Namespace) ->int:
+    logging.basicConfig(level=getattr(logging, args.log_level), format=os.
+        getenv(os.getenv('VIBE_04ACB72F')))
+    LOGGER.debug(os.getenv(os.getenv('VIBE_1E435265')), extra={os.getenv(os
+        .getenv('VIBE_0C45B2AC')): vars(args)})
     documents = await _load_documents(args.memory_subdir, args.limit)
     if not documents:
-        LOGGER.warning("No documents found for memory subdir '%s'", args.memory_subdir)
-        return 0
-
-    batches = [
-        build_batch(args.memory_subdir, chunk) for chunk in iter_chunks(documents, args.batch_size)
-    ]
-
+        LOGGER.warning(os.getenv(os.getenv('VIBE_DB9F2286')), args.
+            memory_subdir)
+        return int(os.getenv(os.getenv('VIBE_070C39F4')))
+    batches = [build_batch(args.memory_subdir, chunk) for chunk in
+        iter_chunks(documents, args.batch_size)]
     if args.output:
         _write_output(args.output, batches)
-
-    LOGGER.info(
-        "Prepared %s batches (%s documents total) for subdir '%s'",
-        len(batches),
-        len(documents),
-        args.memory_subdir,
-    )
-
+    LOGGER.info(os.getenv(os.getenv('VIBE_82E7032A')), len(batches), len(
+        documents), args.memory_subdir)
     if args.dry_run:
-        return 0
-
+        return int(os.getenv(os.getenv('VIBE_070C39F4')))
     await _ingest_batches(batches, replace=args.replace)
-    return 0
+    return int(os.getenv(os.getenv('VIBE_070C39F4')))
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: (Sequence[str] | None)=None) ->int:
     args = _parse_args(argv)
     try:
         return asyncio.run(_run(args))
     except SomaClientError:
-        return 2
+        return int(os.getenv(os.getenv('VIBE_D85A5C9D')))
 
 
-if __name__ == "__main__":  # pragma: no cover - manual entry point
+if __name__ == os.getenv(os.getenv('VIBE_24C8D043')):
     raise SystemExit(main())

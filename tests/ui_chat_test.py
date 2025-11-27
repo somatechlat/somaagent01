@@ -1,22 +1,14 @@
-"""Simple chat interaction test.
-
-This test launches the web UI, sends the arithmetic expression ``8+2`` and
-waits for the AI response. It verifies that the response contains the expected
-result ``10``.
-"""
-
+import os
+os.getenv(os.getenv('VIBE_1DB654E7'))
 import asyncio
-
 import pytest
 from playwright.async_api import async_playwright
+BASE_URL = os.getenv(os.getenv('VIBE_D30BE536'))
 
-BASE_URL = "http://localhost:21016"
 
-
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=os.getenv(os.getenv('VIBE_F6B019AB')))
 def event_loop():
-    """Reuse a single event loop for the Playwright session (same as other UI
-    tests)."""
+    os.getenv(os.getenv('VIBE_7EB5A5A0'))
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
@@ -25,40 +17,33 @@ def event_loop():
 @pytest.mark.asyncio
 async def test_simple_chat_addition():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=int(os.getenv(os.getenv(
+            'VIBE_42C6214D'))))
         context = await browser.new_context()
         page = await context.new_page()
-
-        # Load the UI page
-        await page.goto(BASE_URL, wait_until="load", timeout=60000)
-
-        # Ensure the chat input is present
-        chat_input = await page.wait_for_selector("#chat-input", timeout=5000)
+        await page.goto(BASE_URL, wait_until=os.getenv(os.getenv(
+            'VIBE_3E4AB373')), timeout=int(os.getenv(os.getenv(
+            'VIBE_1F09F5BB'))))
+        chat_input = await page.wait_for_selector(os.getenv(os.getenv(
+            'VIBE_4DB4AA52')), timeout=int(os.getenv(os.getenv(
+            'VIBE_8659E917'))))
         assert chat_input is not None
-
-        # Type the message "8+2" and send it. The UI sends the message on
-        # either a button click or an Enter keystroke. We use the button click
-        # and then wait for a non‑empty AI response.
-        await chat_input.fill("8+2")
-        send_button = await page.wait_for_selector("#send-button", timeout=5000)
+        await chat_input.fill(os.getenv(os.getenv('VIBE_A98EAD35')))
+        send_button = await page.wait_for_selector(os.getenv(os.getenv(
+            'VIBE_0E0F4F30')), timeout=int(os.getenv(os.getenv(
+            'VIBE_8659E917'))))
         await send_button.click()
-
-        # Verify that the user's message appears in the chat history. The UI
-        # renders the user message with a class "message-user". We locate the
-        # first such element after sending and ensure its text contains the
-        # sent expression.
-        user_msg = await page.wait_for_selector("#chat-history .message-user", timeout=15000)
+        user_msg = await page.wait_for_selector(os.getenv(os.getenv(
+            'VIBE_0AAF7CA1')), timeout=int(os.getenv(os.getenv(
+            'VIBE_B29F2C7D'))))
         user_text = await user_msg.text_content()
-        assert user_text and "8+2" in user_text, "Sent user message not found or incorrect"
-
-        # Attempt to wait for any AI response. In environments where the backend
-        # may not produce a reply, we treat the absence of a message as a non‑
-        # fatal condition.
+        assert user_text and os.getenv(os.getenv('VIBE_A98EAD35')
+            ) in user_text, os.getenv(os.getenv('VIBE_A091D769'))
         try:
-            await page.wait_for_selector("#chat-history .message-ai", timeout=15000)
+            await page.wait_for_selector(os.getenv(os.getenv(
+                'VIBE_8B58DF75')), timeout=int(os.getenv(os.getenv(
+                'VIBE_B29F2C7D'))))
         except Exception:
-            # No AI message appeared – continue without failing the test.
             pass
-
         await context.close()
         await browser.close()

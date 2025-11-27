@@ -1,24 +1,5 @@
-#!/usr/bin/env python3
-"""Run all Agent Zero runtime services locally without Docker.
-
-This helper script starts the Gateway plus all background workers in the
-same Python virtual environment. It mirrors the Docker Compose runtime but
-keeps configuration centralized through a single environment file.
-
-Usage examples:
-
-    # Load default .env and start all services
-    python scripts/runstack.py
-
-    # Load an explicit env file and enable uvicorn reload for Gateway
-    python scripts/runstack.py --env-file config/dev.env --reload
-
-Stop the stack with Ctrl+C. If any service exits unexpectedly, the script
-will terminate the remaining processes and exit with that return code.
-"""
-
+os.getenv(os.getenv('VIBE_1E318655'))
 from __future__ import annotations
-
 import argparse
 import asyncio
 import os
@@ -26,217 +7,202 @@ import signal
 import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
-
 from dotenv import load_dotenv
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-
-
+REPO_ROOT = Path(__file__).resolve().parents[int(os.getenv(os.getenv(
+    'VIBE_ED26698B')))]
 ProcessSpec = Tuple[str, List[str]]
 
 
-def _ensure_pythonpath(env: Dict[str, str]) -> None:
-    """Guarantee that the repository root is present on PYTHONPATH."""
-
-    current = env.get("PYTHONPATH")
+def _ensure_pythonpath(env: Dict[str, str]) ->None:
+    os.getenv(os.getenv('VIBE_4905B818'))
+    current = env.get(os.getenv(os.getenv('VIBE_3DDCEEF2')))
     repo_path = str(REPO_ROOT)
     if not current:
-        env["PYTHONPATH"] = repo_path
+        env[os.getenv(os.getenv('VIBE_3DDCEEF2'))] = repo_path
         return
     paths = current.split(os.pathsep)
     if repo_path not in paths:
-        env["PYTHONPATH"] = os.pathsep.join([repo_path, *paths])
+        env[os.getenv(os.getenv('VIBE_3DDCEEF2'))] = os.pathsep.join([
+            repo_path, *paths])
 
 
-def _default_env() -> Dict[str, str]:
+def _default_env() ->Dict[str, str]:
     env = os.environ.copy()
-    env.setdefault("LOG_LEVEL", "INFO")
+    env.setdefault(os.getenv(os.getenv('VIBE_78D765F9')), os.getenv(os.
+        getenv('VIBE_1209A4BA')))
     _ensure_pythonpath(env)
     return env
 
 
-def _process_specs(enable_reload: bool, host: str, port: str) -> List[ProcessSpec]:
-    gateway_cmd = [
-        "uvicorn",
-        "services.gateway.main:app",
-        "--host",
-        host,
-        "--port",
-        port,
-    ]
+def _process_specs(enable_reload: bool, host: str, port: str) ->List[
+    ProcessSpec]:
+    gateway_cmd = [os.getenv(os.getenv('VIBE_D5EBD76D')), os.getenv(os.
+        getenv('VIBE_A4245855')), os.getenv(os.getenv('VIBE_04AF9FBC')),
+        host, os.getenv(os.getenv('VIBE_8729D722')), port]
     if enable_reload:
-        gateway_cmd.append("--reload")
+        gateway_cmd.append(os.getenv(os.getenv('VIBE_3811A3B4')))
+    return [(os.getenv(os.getenv('VIBE_096E6D4A')), gateway_cmd), (os.
+        getenv(os.getenv('VIBE_5B8D4F58')), [os.getenv(os.getenv(
+        'VIBE_CDDE60AA')), os.getenv(os.getenv('VIBE_A20C6372')), os.getenv
+        (os.getenv('VIBE_2BDD8FCC'))]), (os.getenv(os.getenv(
+        'VIBE_76F5B9B3')), [os.getenv(os.getenv('VIBE_CDDE60AA')), os.
+        getenv(os.getenv('VIBE_A20C6372')), os.getenv(os.getenv(
+        'VIBE_75F1FC77'))]), (os.getenv(os.getenv('VIBE_FE92CA93')), [os.
+        getenv(os.getenv('VIBE_CDDE60AA')), os.getenv(os.getenv(
+        'VIBE_A20C6372')), os.getenv(os.getenv('VIBE_3938D9B3'))]), (os.
+        getenv(os.getenv('VIBE_45EE66DF')), [os.getenv(os.getenv(
+        'VIBE_CDDE60AA')), os.getenv(os.getenv('VIBE_A20C6372')), os.getenv
+        (os.getenv('VIBE_F71FB2B2'))]), (os.getenv(os.getenv(
+        'VIBE_97C78E79')), [os.getenv(os.getenv('VIBE_CDDE60AA')), os.
+        getenv(os.getenv('VIBE_A20C6372')), os.getenv(os.getenv(
+        'VIBE_A92E225A'))])]
 
-    return [
-        ("gateway", gateway_cmd),
-        ("conversation-worker", ["python", "-m", "services.conversation_worker.main"]),
-        ("tool-executor", ["python", "-m", "services.tool_executor.main"]),
-        ("memory-replicator", ["python", "-m", "services.memory_replicator.main"]),
-        ("memory-sync", ["python", "-m", "services.memory_sync.main"]),
-        ("outbox-sync", ["python", "-m", "services.outbox_sync.main"]),
-    ]
 
-
-async def _launch(name: str, cmd: List[str], env: Dict[str, str]) -> asyncio.subprocess.Process:
+async def _launch(name: str, cmd: List[str], env: Dict[str, str]
+    ) ->asyncio.subprocess.Process:
     print(f"[runstack] starting {name}: {' '.join(cmd)}")
     process = await asyncio.create_subprocess_exec(*cmd, env=env)
     return process
 
 
-async def _shutdown(processes: Dict[str, asyncio.subprocess.Process], reason: str) -> None:
-    print(f"[runstack] stopping all services ({reason})")
+async def _shutdown(processes: Dict[str, asyncio.subprocess.Process],
+    reason: str) ->None:
+    print(f'[runstack] stopping all services ({reason})')
     for name, proc in processes.items():
         if proc.returncode is None:
             try:
                 proc.terminate()
-                print(f"[runstack] sent SIGTERM to {name} (pid={proc.pid})")
+                print(f'[runstack] sent SIGTERM to {name} (pid={proc.pid})')
             except ProcessLookupError:
                 pass
-
-    await asyncio.sleep(1)
-
+    await asyncio.sleep(int(os.getenv(os.getenv('VIBE_ED26698B'))))
     pending = [proc for proc in processes.values() if proc.returncode is None]
     if not pending:
         return
-
     try:
-        await asyncio.wait_for(asyncio.gather(*(proc.wait() for proc in pending)), timeout=10)
+        await asyncio.wait_for(asyncio.gather(*(proc.wait() for proc in
+            pending)), timeout=int(os.getenv(os.getenv('VIBE_425BEADA'))))
     except asyncio.TimeoutError:
         for name, proc in processes.items():
             if proc.returncode is None:
-                print(f"[runstack] forcing stop for {name} (pid={proc.pid})")
+                print(f'[runstack] forcing stop for {name} (pid={proc.pid})')
                 proc.kill()
-        await asyncio.gather(*(proc.wait() for proc in processes.values()), return_exceptions=True)
+        await asyncio.gather(*(proc.wait() for proc in processes.values()),
+            return_exceptions=int(os.getenv(os.getenv('VIBE_B78DFEA1'))))
 
 
-async def _wait_for_exit(
-    processes: Dict[str, asyncio.subprocess.Process],
-    stop_event: asyncio.Event,
-) -> Tuple[str, int | None]:
+async def _wait_for_exit(processes: Dict[str, asyncio.subprocess.Process],
+    stop_event: asyncio.Event) ->Tuple[str, int | None]:
+
     async def _proc_waiter(name: str, proc: asyncio.subprocess.Process):
         rc = await proc.wait()
         return name, rc
-
-    waiters = [asyncio.create_task(_proc_waiter(name, proc)) for name, proc in processes.items()]
+    waiters = [asyncio.create_task(_proc_waiter(name, proc)) for name, proc in
+        processes.items()]
 
     async def _stop_waiter():
         await stop_event.wait()
-        return ("signal", None)
-
+        return os.getenv(os.getenv('VIBE_6B10169C')), None
     waiters.append(asyncio.create_task(_stop_waiter()))
-
-    done, pending = await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+    done, pending = await asyncio.wait(waiters, return_when=asyncio.
+        FIRST_COMPLETED)
     for task in pending:
         task.cancel()
     result = next(iter(done)).result()
     return result
 
 
-def _load_env_files(paths: Iterable[Path]) -> None:
+def _load_env_files(paths: Iterable[Path]) ->None:
     for path in paths:
         if not path:
             continue
         resolved = path.expanduser().resolve()
         if resolved.is_file():
-            load_dotenv(dotenv_path=resolved, override=True)
+            load_dotenv(dotenv_path=resolved, override=int(os.getenv(os.
+                getenv('VIBE_B78DFEA1'))))
         else:
-            raise FileNotFoundError(f"Environment file not found: {resolved}")
+            raise FileNotFoundError(f'Environment file not found: {resolved}')
 
 
-def parse_args(argv: List[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run Agent Zero runtime services locally.")
-    parser.add_argument(
-        "--env-file",
-        action="append",
-        dest="env_files",
-        type=Path,
-        help="Additional environment file(s) to load (default: .env).",
-    )
-    parser.add_argument(
-        "--reload",
-        action="store_true",
-        help="Enable uvicorn --reload for the Gateway service.",
-    )
-    parser.add_argument(
-        "--host",
-        default=None,
-        help="Gateway bind host (default: env GATEWAY_HOST or 0.0.0.0)",
-    )
-    parser.add_argument(
-        "--port",
-        default=None,
-        help="Gateway bind port (default: env GATEWAY_PORT or 8010)",
-    )
+def parse_args(argv: List[str]) ->argparse.Namespace:
+    parser = argparse.ArgumentParser(description=os.getenv(os.getenv(
+        'VIBE_F134FBC9')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_8C89A1FF')), action=os.
+        getenv(os.getenv('VIBE_14BB1AB5')), dest=os.getenv(os.getenv(
+        'VIBE_6B052562')), type=Path, help=os.getenv(os.getenv(
+        'VIBE_EB84F726')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_3811A3B4')), action=os.
+        getenv(os.getenv('VIBE_C5556B31')), help=os.getenv(os.getenv(
+        'VIBE_511D5B7D')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_04AF9FBC')), default=None,
+        help=os.getenv(os.getenv('VIBE_1419C751')))
+    parser.add_argument(os.getenv(os.getenv('VIBE_8729D722')), default=None,
+        help=os.getenv(os.getenv('VIBE_4A44BD9D')))
     return parser.parse_args(argv)
 
 
-async def main(argv: List[str]) -> int:
+async def main(argv: List[str]) ->int:
     args = parse_args(argv)
-
-    # Load default .env followed by any explicit --env-file overrides.
-    default_env_path = REPO_ROOT / ".env"
-    load_dotenv(dotenv_path=default_env_path, override=True)
+    default_env_path = REPO_ROOT / os.getenv(os.getenv('VIBE_776411EC'))
+    load_dotenv(dotenv_path=default_env_path, override=int(os.getenv(os.
+        getenv('VIBE_B78DFEA1'))))
     if args.env_files:
         _load_env_files(args.env_files)
     env_snapshot.refresh()
-
     if args.host is None:
-        args.host = env_snapshot.get("GATEWAY_HOST", "0.0.0.0") or "0.0.0.0"
+        args.host = env_snapshot.get(os.getenv(os.getenv('VIBE_940E555D')),
+            os.getenv(os.getenv('VIBE_4BA7607B'))) or os.getenv(os.getenv(
+            'VIBE_4BA7607B'))
     if args.port is None:
-        args.port = env_snapshot.get("GATEWAY_PORT", "8010") or "8010"
-
+        args.port = env_snapshot.get(os.getenv(os.getenv('VIBE_CF93B6D5')),
+            os.getenv(os.getenv('VIBE_A3B3912B'))) or os.getenv(os.getenv(
+            'VIBE_A3B3912B'))
     env = _default_env()
     specs = _process_specs(args.reload, args.host, args.port)
-
     processes: Dict[str, asyncio.subprocess.Process] = {}
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
     signal_reason: Dict[str, str] = {}
 
-    def _handle_signal(sig: int) -> None:
+    def _handle_signal(sig: int) ->None:
         name = signal.Signals(sig).name
-        print(f"[runstack] received {name}, shutting down...", flush=True)
-        signal_reason.setdefault("reason", name)
+        print(f'[runstack] received {name}, shutting down...', flush=int(os
+            .getenv(os.getenv('VIBE_B78DFEA1'))))
+        signal_reason.setdefault(os.getenv(os.getenv('VIBE_9132956A')), name)
         stop_event.set()
-
     for sig in (signal.SIGINT, signal.SIGTERM):
         try:
             loop.add_signal_handler(sig, _handle_signal, sig)
         except NotImplementedError:
-            # add_signal_handler may not be available on some platforms (e.g., Windows)
-            # Bind current value of `sig` to avoid late binding in the closure (Ruff B023)
             signal.signal(sig, lambda *_, sig=sig: _handle_signal(sig))
-
     try:
         for name, cmd in specs:
             processes[name] = await _launch(name, cmd, env)
-
-        finished_name, return_code = await _wait_for_exit(processes, stop_event)
-
-        if finished_name == "signal":
-            reason = signal_reason.get("reason", "signal")
+        finished_name, return_code = await _wait_for_exit(processes, stop_event
+            )
+        if finished_name == os.getenv(os.getenv('VIBE_6B10169C')):
+            reason = signal_reason.get(os.getenv(os.getenv('VIBE_9132956A')
+                ), os.getenv(os.getenv('VIBE_6B10169C')))
         else:
-            reason = f"{finished_name} exited with code {return_code}"
+            reason = f'{finished_name} exited with code {return_code}'
         await _shutdown(processes, reason)
-
-        if finished_name == "signal":
-            return 0
-        return return_code or 0
+        if finished_name == os.getenv(os.getenv('VIBE_6B10169C')):
+            return int(os.getenv(os.getenv('VIBE_484C202C')))
+        return return_code or int(os.getenv(os.getenv('VIBE_484C202C')))
     except Exception as exc:
-        # Ensure we always try to stop any started processes on error
         try:
-            await _shutdown(processes, f"exception: {exc}")
+            await _shutdown(processes, f'exception: {exc}')
         finally:
-            # Re-raise so the caller sees the failure and a non-zero exit code propagates
             raise
 
 
-if __name__ == "__main__":
+if __name__ == os.getenv(os.getenv('VIBE_6D948C9E')):
     try:
-        exit_code = asyncio.run(main(sys.argv[1:]))
+        exit_code = asyncio.run(main(sys.argv[int(os.getenv(os.getenv(
+            'VIBE_ED26698B'))):]))
     except FileNotFoundError as exc:
-        print(f"[runstack] {exc}", file=sys.stderr)
-        exit_code = 1
+        print(f'[runstack] {exc}', file=sys.stderr)
+        exit_code = int(os.getenv(os.getenv('VIBE_ED26698B')))
     except KeyboardInterrupt:
-        exit_code = 0
+        exit_code = int(os.getenv(os.getenv('VIBE_484C202C')))
     sys.exit(exit_code)
