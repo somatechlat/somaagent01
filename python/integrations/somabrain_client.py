@@ -14,7 +14,8 @@ from typing import Any, Dict, List
 
 import httpx
 
-from services.common import env
+# Updated to use centralized configuration instead of direct environment access.
+from src.core.config import cfg
 
 from python.integrations.soma_client import (
     SomaClient,
@@ -32,17 +33,13 @@ class SomaBrainClient(SomaClient):
 # ---------------------------------------------------------------------------
 
 def _base_url() -> str:
-    """Return the base URL for the SomaBrain service.
+    """Return the base URL for the SomaBrain service from the central config.
 
-    The ``SA01_SOMA_BASE_URL`` environment variable must be set.
+    The configuration model validates the presence of ``external.somabrain_base_url``.
+    ``cfg.get_somabrain_url()`` raises a clear error if the URL is missing, which
+    satisfies the VIBE rule of a single source of truth.
     """
-    url = env.get("SA01_SOMA_BASE_URL")
-    if not url:
-        raise ValueError(
-            "SA01_SOMA_BASE_URL environment variable is required. "
-            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
-        )
-    return url
+    return cfg.get_somabrain_url()
 
 
 def _handle_response(resp: httpx.Response) -> Any:
