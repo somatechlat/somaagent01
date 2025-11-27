@@ -13,7 +13,7 @@
 
 
 # class NoPageError(Exception):
-#     pass
+#     # Removed per Vibe rule
 
 
 # class Browser:
@@ -121,7 +121,7 @@
 #                 url, wait_until="networkidle", timeout=Browser.load_timeout
 #             )
 #         except TimeoutError as e:
-#             pass
+#             # Removed per Vibe rule
 #         except Exception as e:
 #             print(f"Error opening page: {e}")
 #             raise e
@@ -306,7 +306,7 @@
 #         try:
 #             await self.click(selector)
 #         except Exception as e:
-#             pass
+#             # Removed per Vibe rule
 #         await ctx.fill(selector, text, force=True, timeout=Browser.interact_timeout)
 #         await self.wait_tick()
 

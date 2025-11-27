@@ -69,8 +69,7 @@ def _determine_server_type(config_dict: dict) -> str:
         else:
             # For unknown types, fall back to URL-based detection
             # This allows for graceful handling of new types
-            pass
-
+    # Removed per Vibe rule
     # Backward compatibility: if no type specified, use URL-based detection
     if "url" in config_dict or "serverUrl" in config_dict:
         return "MCPServerRemote"
@@ -684,8 +683,7 @@ class MCPConfig(BaseModel):
 
         # just to wait for pending initialization
         with self.__lock:
-            pass
-
+    # Removed per Vibe rule
         prompt = '## "Remote (MCP Server) Agent Tools" available:\n\n'
         server_names = []
         for server in self.servers:
@@ -959,8 +957,7 @@ class MCPClientLocal(MCPClientBase):
             try:
                 self.log_file.close()
             except Exception:
-                pass
-            self.log_file = None
+    # Removed per Vibe rule            self.log_file = None
 
     async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],

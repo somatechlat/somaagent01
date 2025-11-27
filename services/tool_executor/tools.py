@@ -317,8 +317,7 @@ class IngestDocumentTool(BaseTool):
                     if "filename=" in cd:
                         filename = cd.split("filename=", 1)[1].strip().strip('"')
                 except Exception:
-                    pass
-        except Exception as exc:
+    # Removed per Vibe rule        except Exception as exc:
             if isinstance(exc, ToolExecutionError):
                 # Preserve explicit tool error semantics (e.g., 404 not found)
                 raise
@@ -386,8 +385,7 @@ class IngestDocumentTool(BaseTool):
                         except Exception:
                             text = data.decode("latin-1", errors="ignore")
                 except Exception:
-                    pass
-        except Exception as exc:
+    # Removed per Vibe rule        except Exception as exc:
             LOGGER.error("Ingestion failed", extra={"error": str(exc)})
             raise ToolExecutionError("Ingestion error")
 

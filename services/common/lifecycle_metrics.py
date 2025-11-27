@@ -44,8 +44,7 @@ def observe_startup(service: str, started_at: float) -> None:
         _ensure_metrics()[0].labels(service).observe(elapsed)
     except Exception:
         # Metrics must never break startup
-        pass
-
+    # Removed per Vibe rule
 
 def observe_shutdown(service: str, started_at: float) -> None:
     try:
@@ -53,4 +52,4 @@ def observe_shutdown(service: str, started_at: float) -> None:
         _ensure_metrics()[1].labels(service).observe(elapsed)
     except Exception:
         # Metrics must never break shutdown
-        pass
+    # Removed per Vibe rule

@@ -23,8 +23,7 @@ async def _ensure_degradation_monitor():
             await degradation_monitor.start_monitoring()
     except Exception:
         # best-effort; health endpoint will surface issues
-        pass
-
+    # Removed per Vibe rule
 
 @router.get("/degradation/status")
 async def degradation_status():
@@ -65,13 +64,11 @@ async def metrics_system():
         mem = psutil.virtual_memory()
         mem_percent = mem.percent
     except Exception:
-        pass
-    try:
+    # Removed per Vibe rule    try:
         disk = shutil.disk_usage("/")
         disk_percent = round(disk.used / disk.total * 100, 2) if disk.total else 0.0
     except Exception:
-        pass
-
+    # Removed per Vibe rule
     # Compute brain status from live health probe + outbox backlog
     probe_ok = await _probe_somabrain()
     brain_backlog = await _pending_outbox()

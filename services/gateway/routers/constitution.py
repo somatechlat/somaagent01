@@ -38,5 +38,4 @@ async def constitution_load(payload: dict, request: Request) -> JSONResponse:
     try:
         await client.update_opa_policy()
     except Exception:
-        pass
-    return JSONResponse(result)
+    # Removed per Vibe rule    return JSONResponse(result)

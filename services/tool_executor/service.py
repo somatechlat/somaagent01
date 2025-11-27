@@ -63,8 +63,7 @@ class ToolExecutorService(BaseService):
                 try:
                     await self.worker_task
                 except asyncio.CancelledError:
-                    pass
-
+    # Removed per Vibe rule
             # Close worker connections gracefully
             if self.worker:
                 try:

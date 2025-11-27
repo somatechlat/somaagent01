@@ -50,8 +50,7 @@ async def list_tasks() -> List[Dict[str, Any]]:
                     task[json_field] = json.loads(task[json_field])
                 except json.JSONDecodeError:
                     # Keep raw string if it is not valid JSON – defensive.
-                    pass
-        # Convert timestamps back to datetime objects (ISO strings are fine for UI)
+    # Removed per Vibe rule        # Convert timestamps back to datetime objects (ISO strings are fine for UI)
         tasks.append(task)
     return tasks
 

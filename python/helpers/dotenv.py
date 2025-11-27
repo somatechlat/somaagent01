@@ -48,8 +48,7 @@ def get_dotenv_value(key: str, default: Any = None):
                     return content
         except Exception:
             # Fall through to other options / default
-            pass
-
+    # Removed per Vibe rule
     # Base64 inline
     b64_val = os.getenv(f"{key}_B64")
     if b64_val not in (None, ""):
@@ -59,8 +58,7 @@ def get_dotenv_value(key: str, default: Any = None):
                 os.environ[key] = decoded
                 return decoded
         except Exception:
-            pass
-
+    # Removed per Vibe rule
     # Base64 from file
     b64_file = os.getenv(f"{key}_B64_FILE")
     if b64_file:
@@ -72,8 +70,7 @@ def get_dotenv_value(key: str, default: Any = None):
                     os.environ[key] = decoded
                     return decoded
         except Exception:
-            pass
-
+    # Removed per Vibe rule
     return default
 
 

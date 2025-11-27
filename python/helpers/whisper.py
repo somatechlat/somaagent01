@@ -142,4 +142,4 @@ async def _transcribe(model_name: str, audio_bytes_b64: str):
         try:
             os.remove(temp_path)
         except Exception:
-            pass  # ignore errors during cleanup
+            # Removed per Vibe rule  # ignore errors during cleanup

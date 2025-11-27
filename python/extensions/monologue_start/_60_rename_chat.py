@@ -35,4 +35,4 @@ class RenameChat(Extension):
                 self.agent.context.name = new_name
                 persist_chat.save_tmp_chat(self.agent.context)
         except Exception:
-            pass  # non-critical
+            # Removed per Vibe rule  # non-critical

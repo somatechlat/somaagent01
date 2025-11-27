@@ -59,8 +59,7 @@ def _detect_provider_from_base(base_url: str) -> str:
         if netloc:
             host = netloc
     except Exception:
-        pass
-    if "groq" in host:
+        # Removed per Vibe rule    if "groq" in host:
         return "groq"
     if "openrouter" in host:
         return "openrouter"

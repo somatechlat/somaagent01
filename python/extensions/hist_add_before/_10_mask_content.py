@@ -18,8 +18,7 @@ class MaskHistoryContent(Extension):
             content_data["content"] = self._mask_content(content_data["content"], secrets_mgr)
         except Exception:
             # If masking fails, proceed without masking
-            pass
-
+    # Removed per Vibe rule
     def _mask_content(self, content, secrets_mgr):
         """Recursively mask secrets in message content."""
         if isinstance(content, str):

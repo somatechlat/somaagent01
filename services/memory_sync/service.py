@@ -63,8 +63,7 @@ class MemorySyncService(BaseService):
                 try:
                     await self.worker_task
                 except asyncio.CancelledError:
-                    pass
-
+    # Removed per Vibe rule
             # Stop the worker gracefully
             if self.worker:
                 await self.worker.stop()

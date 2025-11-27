@@ -30,8 +30,7 @@ def _metrics_init() -> None:
             labelnames=("error_code", "retriable"),
         )
     except ValueError:
-        pass
-
+    # Removed per Vibe rule
 
 @dataclass(frozen=True)
 class ErrorMeta:
@@ -52,8 +51,7 @@ def classify(exc: Optional[BaseException] = None, message: str | None = None) ->
             if _ERROR_CLASSIFIER_RESULTS is not None:
                 _ERROR_CLASSIFIER_RESULTS.labels(meta.error_code, str(meta.retriable).lower()).inc()
         except Exception:
-            pass
-        return meta
+    # Removed per Vibe rule        return meta
 
     # Upstream rate limiting
     if "rate limit" in low or "too many requests" in low:
@@ -62,8 +60,7 @@ def classify(exc: Optional[BaseException] = None, message: str | None = None) ->
             if _ERROR_CLASSIFIER_RESULTS is not None:
                 _ERROR_CLASSIFIER_RESULTS.labels(meta.error_code, str(meta.retriable).lower()).inc()
         except Exception:
-            pass
-        return meta
+    # Removed per Vibe rule        return meta
 
     # Auth errors
     if any(k in low for k in ("unauthorized", "forbidden", "invalid token", "not authorized")):
@@ -72,8 +69,7 @@ def classify(exc: Optional[BaseException] = None, message: str | None = None) ->
             if _ERROR_CLASSIFIER_RESULTS is not None:
                 _ERROR_CLASSIFIER_RESULTS.labels(meta.error_code, str(meta.retriable).lower()).inc()
         except Exception:
-            pass
-        return meta
+    # Removed per Vibe rule        return meta
 
     # Validation / user errors
     if any(k in low for k in ("invalid", "malformed", "missing", "bad request")):
@@ -82,8 +78,7 @@ def classify(exc: Optional[BaseException] = None, message: str | None = None) ->
             if _ERROR_CLASSIFIER_RESULTS is not None:
                 _ERROR_CLASSIFIER_RESULTS.labels(meta.error_code, str(meta.retriable).lower()).inc()
         except Exception:
-            pass
-        return meta
+    # Removed per Vibe rule        return meta
 
     # Connection / upstream
     if any(k in low for k in ("connection", "upstream", "gateway", "service unavailable")):
@@ -92,8 +87,7 @@ def classify(exc: Optional[BaseException] = None, message: str | None = None) ->
             if _ERROR_CLASSIFIER_RESULTS is not None:
                 _ERROR_CLASSIFIER_RESULTS.labels(meta.error_code, str(meta.retriable).lower()).inc()
         except Exception:
-            pass
-        return meta
+    # Removed per Vibe rule        return meta
 
     # Default
     meta = ErrorMeta("internal_error", retriable=False)
@@ -101,5 +95,4 @@ def classify(exc: Optional[BaseException] = None, message: str | None = None) ->
         if _ERROR_CLASSIFIER_RESULTS is not None:
             _ERROR_CLASSIFIER_RESULTS.labels(meta.error_code, str(meta.retriable).lower()).inc()
     except Exception:
-        pass
-    return meta
+    # Removed per Vibe rule    return meta

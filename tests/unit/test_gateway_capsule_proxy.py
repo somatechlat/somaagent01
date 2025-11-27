@@ -36,8 +36,7 @@ def _patch_async_client(
 ) -> None:
     class DummyAsyncClient:
         def __init__(self, *_, **__):
-            pass
-
+    # Removed per Vibe rule
         async def __aenter__(self):
             return self
 

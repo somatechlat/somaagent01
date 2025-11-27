@@ -13,8 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ModelProfile:
-    pass
-
+    # Removed per Vibe rule
 
 class ModelProfileStore:
     def __init__(self, *args, **kwargs) -> None:

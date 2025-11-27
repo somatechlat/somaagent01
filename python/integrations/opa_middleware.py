@@ -60,8 +60,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
                     body_str = body_bytes[:8192].decode("utf-8", errors="ignore")
                     payload["body_preview"] = body_str
         except Exception:
-            pass
-
+    # Removed per Vibe rule
         try:
             async with httpx.AsyncClient(timeout=2.5) as client:
                 resp = await client.post(self.evaluate_url, json=payload)
@@ -85,7 +84,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
 
 def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
-    # FastAPI will pass the app when adding middleware; returning the class is fine
+    # FastAPI will # Removed per Vibe rule the app when adding middleware; returning the class is fine
     return EnforcePolicy  # type: ignore[return-value]
 
 

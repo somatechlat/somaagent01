@@ -48,7 +48,7 @@ async def test_durable_publisher_header_injection_success(monkeypatch):
 
     bus = DummyKafkaBus()
     outbox = DummyOutbox()
-    pub = DurablePublisher(bus=bus._bus, outbox=outbox)  # pass underlying bus
+    pub = DurablePublisher(bus=bus._bus, outbox=outbox)  # # Removed per Vibe rule underlying bus
 
     payload = {
         "event_id": "e123",

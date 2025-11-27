@@ -31,11 +31,9 @@ def _install_test_stubs() -> None:
 
         class _AgentStub:  # pragma: no cover - behaviour not exercised
             def __init__(self, *args, **kwargs) -> None:
-                pass
-
+    # Removed per Vibe rule
         class _LoopDataStub:  # pragma: no cover - behaviour not exercised
-            pass
-
+    # Removed per Vibe rule
         agent_stub.Agent = _AgentStub  # type: ignore[attr-defined]
         agent_stub.LoopData = _LoopDataStub  # type: ignore[attr-defined]
         sys.modules["agent"] = agent_stub

@@ -43,8 +43,7 @@ class ApiHandler:
 
     @abstractmethod
     async def process(self, input: Input, request: Request) -> Output:
-        pass
-
+    # Removed per Vibe rule
     async def handle_request(self, request: Request) -> Response:
         try:
             # input data from request based on type

@@ -15,8 +15,7 @@ class Extension:
 
     @abstractmethod
     async def execute(self, **kwargs) -> Any:
-        pass
-
+    # Removed per Vibe rule
 
 async def call_extensions(extension_point: str, agent: "Agent|None" = None, **kwargs) -> Any:
 

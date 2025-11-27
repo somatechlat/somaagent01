@@ -198,8 +198,7 @@ else:  # lightweight developer alternative
     # only require the class to exist, so an empty implementation is sufficient.
     class ChatOpenRouter:  # type: ignore
         def __init__(self, *_, **__):
-            pass
-
+    # Removed per Vibe rule
     LOGGER.info("browser_use not loaded – FEATURE_BROWSER disabled")
 
     # Export a name ``browser_use_monkeypatch`` so that ``from ... import

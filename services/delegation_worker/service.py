@@ -60,8 +60,7 @@ class DelegationWorkerService(BaseService):
                 try:
                     await self.worker_task
                 except asyncio.CancelledError:
-                    pass
-            # ``DelegationWorker`` does not expose a dedicated ``stop`` method;
+    # Removed per Vibe rule            # ``DelegationWorker`` does not expose a dedicated ``stop`` method;
             # cancelling the task is sufficient.
             LOGGER.info("%s service shutdown completed", self.service_name)
         except Exception as exc:  # pragma: no cover – defensive

@@ -165,7 +165,7 @@ class AgentConnection:
                                     "method": "get_agent_card_fallback",
                                 },
                             )
-                            pass  # swallow, will re-raise below
+                            # Removed per Vibe rule  # swallow, will re-raise below
 
                     _PRINTER.print(
                         f"[!] Could not connect to {self.agent_url}\n    → Ensure the server is running and reachable.\n    → Full error: {e}"
@@ -255,7 +255,7 @@ class AgentConnection:
                     if isinstance(ctx, str):
                         self._context_id = ctx
                 except Exception:
-                    pass  # ignore if structure differs
+                    # Removed per Vibe rule  # ignore if structure differs
                 return response  # type: ignore
 
             except httpx.TimeoutException as e:

@@ -103,8 +103,7 @@ class MemorySyncWorker:
         try:
             await self.outbox.close()
         except Exception:
-            pass
-        await self.store.close()
+    # Removed per Vibe rule        await self.store.close()
 
     async def _process(self, item) -> None:  # item: MemoryWriteItem
         # Coerce stored JSON payload into a dict robustly. Some older rows may

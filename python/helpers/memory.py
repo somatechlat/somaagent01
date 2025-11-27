@@ -84,8 +84,7 @@ except Exception:  # pragma: no cover - optional dependency in minimal images
                 val = right.strip().strip("'\"")
                 return str(names.get(key)) == val
         except Exception:
-            pass
-        return False
+    # Removed per Vibe rule        return False
 
 
 import models
@@ -143,8 +142,7 @@ if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None:
 else:
     # Minimal placeholder so import-time does not fail when FAISS/LC are missing.
     class MyFaiss:  # type: ignore
-        pass
-
+    # Removed per Vibe rule
     # override get_by_ids to support faster retrieval from the in-memory docstore
     def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
         # When using the remote SomaMemory path, this method won't be called.

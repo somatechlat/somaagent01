@@ -76,8 +76,7 @@ async def run_flows(base_url: str) -> dict:
             j = await msg_resp.json()
             session_id = j.get("session_id") or j.get("ctxid")
         except Exception:
-            pass
-
+    # Removed per Vibe rule
         # Wait for AI message; verify count increased by 1
         end = time.time() + 40
         while time.time() < end:

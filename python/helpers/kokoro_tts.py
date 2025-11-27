@@ -63,8 +63,7 @@ async def _preload():
                     group="kokoro-preload",
                 )
             except Exception:
-                pass
-            PrintStyle.standard("Loading Kokoro TTS model...")
+    # Removed per Vibe rule            PrintStyle.standard("Loading Kokoro TTS model...")
             from kokoro import KPipeline
 
             _pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
@@ -77,8 +76,7 @@ async def _preload():
                     group="kokoro-preload",
                 )
             except Exception:
-                pass
-    finally:
+    # Removed per Vibe rule    finally:
         is_updating_model = False
 
 

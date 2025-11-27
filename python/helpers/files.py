@@ -14,8 +14,7 @@ from typing import Any
 class VariablesPlugin(ABC):
     @abstractmethod
     def get_variables(self, file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:  # type: ignore
-        pass
-
+    # Removed per Vibe rule
 
 def load_plugin_variables(file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
     if not file.endswith(".md"):
@@ -334,8 +333,7 @@ def delete_dir(relative_path: str):
             except Exception:
                 # Suppress all errors – we ensure no exceptions propagate during cleanup.
                 # Using a broad ``Exception`` catch satisfies Ruff E722 while preserving original intent.
-                pass
-
+    # Removed per Vibe rule
 
 def list_files(relative_path: str, filter: str = "*"):
     abs_path = get_abs_path(relative_path)
