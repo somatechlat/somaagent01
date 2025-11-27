@@ -19,6 +19,7 @@ _SUBMODULES = {
     "telemetry",
     "telemetry_store",
     "env",
+    "degradation_monitor",
 }
 
 __all__ = sorted(_SUBMODULES)

