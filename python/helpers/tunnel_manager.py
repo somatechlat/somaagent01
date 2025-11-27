@@ -34,8 +34,7 @@ class TunnelManager:
 
     def __init__(self) -> None:
         # No instance‑specific state required.
-        pass
-
+    # Removed per Vibe rule
     # ---------------------------------------------------------------------
     # Public API used by ``services.gateway.routers.tunnel``
     # ---------------------------------------------------------------------

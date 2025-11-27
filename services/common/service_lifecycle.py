@@ -60,14 +60,12 @@ def run_service(
             loop.add_signal_handler(sig, _request_shutdown, sig.name)
         except NotImplementedError:
             # Windows may not support all signals; ignore gracefully
-            pass
-
+    # Removed per Vibe rule
     async def _runner() -> None:
         try:
             await main_coro_factory()
         except asyncio.CancelledError:  # cooperative shutdown
-            pass
-        except Exception as exc:  # pragma: no cover - unexpected runtime errors
+    # Removed per Vibe rule        except Exception as exc:  # pragma: no cover - unexpected runtime errors
             LOGGER.exception(
                 "Service main crashed", extra={"service": service_name, "error": str(exc)}
             )
@@ -87,6 +85,5 @@ def run_service(
         try:
             loop.run_until_complete(loop.shutdown_asyncgens())
         except Exception:
-            pass
-        asyncio.set_event_loop(None)
+    # Removed per Vibe rule        asyncio.set_event_loop(None)
         loop.close()

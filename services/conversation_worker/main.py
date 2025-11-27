@@ -781,8 +781,7 @@ class ConversationWorker:
                         dedupe_key=str(payload.get("id")),
                     )
                 except Exception:
-                    pass
-                return
+    # Removed per Vibe rule                return
             try:
                 wal_event = {
                     "type": "memory.write",
@@ -888,8 +887,7 @@ class ConversationWorker:
                 if "filename=" in cd:
                     filename = cd.split("filename=", 1)[1].strip().strip('"')
             except Exception:
-                pass
-            return data, mime, filename
+    # Removed per Vibe rule            return data, mime, filename
 
     async def _extract_text_from_blob(self, *, data: bytes, mime: str, filename: str) -> str:
         try:
@@ -999,8 +997,7 @@ class ConversationWorker:
                         dedupe_key=str(payload.get("id")),
                     )
                 except Exception:
-                    pass
-                # Continue without blocking the user flow
+    # Removed per Vibe rule                # Continue without blocking the user flow
             try:
                 wal_event = {
                     "type": "memory.write",
@@ -1176,8 +1173,7 @@ class ConversationWorker:
                             return _finalize(content2, usage2)
                 except Exception:
                     # Bubble up to callers; higher-level handler will surface a meaningful error
-                    pass
-                raise RuntimeError("Empty response from streaming Gateway/SLM")
+    # Removed per Vibe rule                raise RuntimeError("Empty response from streaming Gateway/SLM")
             return _finalize(text, usage)
         except Exception:
             _record_llm_failure(model_label)
@@ -1229,8 +1225,7 @@ class ConversationWorker:
             except Exception as exc:
                 LOGGER.warning("LLM settings unavailable: %s", exc)
                 # Continue; may still have sufficient params.
-                pass
-        # If SomaBrain is down, use degraded mode (no memory enrichment).
+    # Removed per Vibe rule        # If SomaBrain is down, use degraded mode (no memory enrichment).
         if not self._soma_brain_up:
             return await self._call_llm_degraded_mode(
                 messages=messages, llm_params=llm_params, session_id=session_id
@@ -1808,8 +1803,7 @@ class ConversationWorker:
                 }
             )
         except Exception:
-            pass
-        # Allow explicit llm_params to override central
+    # Removed per Vibe rule        # Allow explicit llm_params to override central
         for k in ("model", "base_url", "temperature", "kwargs", "metadata"):
             if k in llm_params and llm_params[k] is not None:
                 if k == "metadata" and overrides.get("kwargs") is None:
@@ -2431,8 +2425,7 @@ class ConversationWorker:
             # Inject active goals into system prompt (SomaBrain Native)
             # Goals are now part of the context builder via 'goal' fact type
             # We can optionally explicitly recall them here if needed, but ContextBuilder handles it.
-            pass
-
+    # Removed per Vibe rule
             turn_envelope = {
                 "tenant_id": tenant,
                 "session_id": session_id,
@@ -3072,8 +3065,7 @@ class ConversationWorker:
                 MESSAGE_PROCESSING_COUNTER.labels("error").inc()
                 MESSAGE_LATENCY.labels(path).observe(time.perf_counter() - start_time)
             except Exception:
-                pass
-            LOGGER.exception("Unhandled error while processing conversation event")
+    # Removed per Vibe rule            LOGGER.exception("Unhandled error while processing conversation event")
             # Emit a deterministic degraded assistant reply so the UI is not left silent.
             try:
                 degraded_meta = _compose_outbound_metadata(

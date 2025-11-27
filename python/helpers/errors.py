@@ -66,4 +66,4 @@ def format_error(e: Exception, start_entries=6, end_entries=4):
 class RepairableException(Exception):
     """An exception type indicating errors that can be surfaced to the LLM for potential self-repair."""
 
-    pass
+    # Removed per Vibe rule

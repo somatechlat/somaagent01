@@ -31,8 +31,7 @@ async def pg_pool() -> AsyncIterator[asyncpg.Pool]:
                     await conn.execute("TRUNCATE session_envelopes")
                 except Exception:
                     # If tables missing let ensure_schema handle creation later
-                    pass
-            yield pool
+    # Removed per Vibe rule            yield pool
         finally:
             await pool.close()
 

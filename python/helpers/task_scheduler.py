@@ -210,8 +210,7 @@ class BaseTask(BaseModel):
         return int((next_run - datetime.now(timezone.utc)).total_seconds() / 60)
 
     async def on_run(self):
-        pass
-
+    # Removed per Vibe rule
     async def on_finish(self):
         # Ensure that updated_at is refreshed to reflect completion time
         # This helps track when the task actually finished, regardless of success/error

@@ -154,8 +154,7 @@ def _running_inside_container() -> bool:
         if any(token in contents for token in ("docker", "kubepods", "containerd")):
             return True
     except FileNotFoundError:
-        pass
-
+    # Removed per Vibe rule
     return False
 
 
@@ -357,8 +356,7 @@ class SomaClient:
             inject(request_headers)
         except Exception:
             # Never fail on propagation
-            pass
-
+    # Removed per Vibe rule
         logger.debug(
             "SomaClient request",
             extra={

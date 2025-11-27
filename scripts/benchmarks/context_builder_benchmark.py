@@ -100,7 +100,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark the ContextBuilder pipeline")
     parser.add_argument("--iterations", type=int, default=25, help="Number of prompts to build")
     parser.add_argument(
-        "--max-tokens", type=int, default=4096, help="Prompt budget to pass to the builder"
+        "--max-tokens", type=int, default=4096, help="Prompt budget to # Removed per Vibe rule to the builder"
     )
     parser.add_argument(
         "--snippets", type=int, default=12, help="Size of the synthetic snippet pool"

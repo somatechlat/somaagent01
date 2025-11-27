@@ -94,8 +94,7 @@ async def test_replicator_error_routes_to_dlq_unit(monkeypatch):
 
     # Monkeypatch replica.insert_from_wal to raise
     class Boom(Exception):
-        pass
-
+    # Removed per Vibe rule
     class FakeReplica:
         async def insert_from_wal(self, wal):  # type: ignore
             raise Boom("fail insert")

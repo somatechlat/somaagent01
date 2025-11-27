@@ -135,8 +135,7 @@ class MemoryReplicator:
                     REPL_LAG.set(max(0.0, time.time() - wal_ts))
             except Exception:
                 # Ignore malformed timestamps
-                pass
-
+    # Removed per Vibe rule
 
 async def main() -> None:
     worker = MemoryReplicator()

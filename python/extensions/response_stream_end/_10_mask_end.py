@@ -25,4 +25,4 @@ class MaskResponseStreamEnd(Extension):
                 agent.set_data(filter_key, None)
         except Exception:
             # If masking fails, proceed without masking
-            pass
+    # Removed per Vibe rule

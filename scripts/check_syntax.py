@@ -1,20 +1,19 @@
-import os
 import ast
-filename = os.getenv(os.getenv('VIBE_5FF9C561'))
+import os
+
+filename = os.getenv(os.getenv(""))
 try:
-    with open(filename, os.getenv(os.getenv('VIBE_812A5237'))) as f:
+    with open(filename, os.getenv(os.getenv(""))) as f:
         source = f.read()
     ast.parse(source)
-    print(os.getenv(os.getenv('VIBE_F33EB100')))
+    print(os.getenv(os.getenv("")))
 except SyntaxError as e:
-    print(f'Syntax Error: {e}')
-    print(f'Line {e.lineno}: {e.text}')
+    print(f"Syntax Error: {e}")
+    print(f"Line {e.lineno}: {e.text}")
     lines = source.splitlines()
-    start = max(int(os.getenv(os.getenv('VIBE_0FF90B79'))), e.lineno - int(
-        os.getenv(os.getenv('VIBE_4F6F03CE'))))
-    end = min(len(lines), e.lineno + int(os.getenv(os.getenv('VIBE_4F6F03CE')))
-        )
+    start = max(int(os.getenv(os.getenv(""))), e.lineno - int(os.getenv(os.getenv(""))))
+    end = min(len(lines), e.lineno + int(os.getenv(os.getenv(""))))
     for i in range(start, end):
-        print(f'{i + 1}: {lines[i]}')
+        print(f"{i + 1}: {lines[i]}")
 except Exception as e:
-    print(f'Error: {e}')
+    print(f"Error: {e}")

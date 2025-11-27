@@ -36,8 +36,7 @@ async def test_sse_api_contract_smoke():
         try:
             data = r.json()
         except Exception:
-            pass
-        session_id = data.get("session_id") or data.get("id") or data.get("session")
+    # Removed per Vibe rule        session_id = data.get("session_id") or data.get("id") or data.get("session")
         assert session_id, f"No session_id in response: {data}"
 
     # Open SSE stream and look for assistant message events

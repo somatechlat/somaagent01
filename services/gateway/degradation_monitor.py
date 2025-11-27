@@ -129,8 +129,7 @@ class DegradationMonitor:
             try:
                 await self._monitor_task
             except asyncio.CancelledError:
-                pass
-        logger.info("Degradation monitoring stopped")
+    # Removed per Vibe rule        logger.info("Degradation monitoring stopped")
 
     async def _monitor_loop(self) -> None:
         """Main monitoring loop."""
@@ -441,7 +440,7 @@ class DegradationMonitor:
             try:
                 await circuit_breaker.call(lambda: None)  # This will record success
             except:
-                pass  # Ignore circuit breaker errors in success recording
+                # Removed per Vibe rule  # Ignore circuit breaker errors in success recording
 
         logger.debug(f"Recorded success for {component_name}: {response_time:.3f}s")
 

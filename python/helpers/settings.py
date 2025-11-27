@@ -20,8 +20,7 @@ from .settings_model import SettingsModel as Settings
 # ``PartialSettings`` kept for compatibility – it behaves like ``Settings``
 # but allows any subset of fields to be provided when constructing the model.
 class PartialSettings(Settings):
-    pass
-
+    # Removed per Vibe rule
 
 class FieldOption(TypedDict):
     value: str
@@ -1429,8 +1428,7 @@ def _write_sensitive_settings(settings: Settings):
             if (not cur) and legacy:
                 dotenv.save_dotenv_value(env_key, legacy)
         except Exception:
-            pass
-        dotenv.save_dotenv_value(env_key, val)
+    # Removed per Vibe rule        dotenv.save_dotenv_value(env_key, val)
 
     dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])
     if settings["auth_password"]:
@@ -1658,8 +1656,7 @@ def _apply_settings(previous: Settings | None):
                 )
         except Exception:
             # best-effort notification; do not raise during settings application
-            pass
-
+    # Removed per Vibe rule
 
 def _env_to_dict(data: str):
     result = {}

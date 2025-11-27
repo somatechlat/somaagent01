@@ -112,8 +112,7 @@ async def chat_reset(payload: dict | None = None):
     try:
         await cache.delete(cache.format_key(session_id))
     except Exception:
-        pass
-
+    # Removed per Vibe rule
     return {"ctxid": session_id, "session_id": session_id}
 
 
@@ -135,8 +134,7 @@ async def chat_remove(payload: dict):
     try:
         await cache.delete(cache.format_key(session_id))
     except Exception:
-        pass
-    return {"status": "deleted", "session_id": session_id}
+    # Removed per Vibe rule    return {"status": "deleted", "session_id": session_id}
 
 
 @router.post("/chat_export")

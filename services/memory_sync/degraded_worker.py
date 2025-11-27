@@ -82,7 +82,7 @@ class DegradedSyncWorker:
             # Use the circuit‑breaker to avoid hammering a down Somabrain.
             # ``self.soma.remember`` may mutate the supplied dictionary, which
             # would corrupt the original payload (e.g., replace ``session_id``).
-            # To preserve the original values for later publishing we pass a
+            # To preserve the original values for later publishing we # Removed per Vibe rule a
             # shallow copy to the client.
             payload_copy: dict = dict(payload)
             result = await circuit_breakers["somabrain"].call_async(

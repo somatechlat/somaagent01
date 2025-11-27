@@ -41,28 +41,22 @@ class OutputMessage(TypedDict):
 
 class Record:
     def __init__(self):
-        pass
-
+    # Removed per Vibe rule
     @abstractmethod
     def get_tokens(self) -> int:
-        pass
-
+    # Removed per Vibe rule
     @abstractmethod
     async def compress(self) -> bool:
-        pass
-
+    # Removed per Vibe rule
     @abstractmethod
     def output(self) -> list[OutputMessage]:
-        pass
-
+    # Removed per Vibe rule
     @abstractmethod
     async def summarize(self) -> str:
-        pass
-
+    # Removed per Vibe rule
     @abstractmethod
     def to_dict(self) -> dict:
-        pass
-
+    # Removed per Vibe rule
     @staticmethod
     def from_dict(data: dict, history: "History"):
         cls = data["_cls"]

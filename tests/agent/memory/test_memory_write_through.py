@@ -64,13 +64,11 @@ def test_chat_message_persists_to_somabrain() -> None:
                         attachment_paths.append(p)
             elif up.status_code == 403 and "Uploads are disabled" in (up.text or ""):
                 # continue with text-only message
-                pass
-            else:
+    # Removed per Vibe rule            else:
                 assert up.status_code == 200, f"upload failed: HTTP {up.status_code} {up.text}"
         except Exception:
             # Non-fatal for the proof of message persistence
-            pass
-
+    # Removed per Vibe rule
         # 2) Send a user message including the attachment
         payload = {
             "session_id": session_id,

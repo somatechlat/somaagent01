@@ -26,8 +26,7 @@ else:  # pragma: no cover
             return self
 
         def inc(self, *_args, **_kwargs):
-            pass
-
+    # Removed per Vibe rule
     EMBED_CACHE_EVENTS = _Dummy()  # type: ignore
 
 

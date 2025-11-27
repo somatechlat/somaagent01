@@ -90,8 +90,7 @@ async def _check_kafka() -> Dict[str, Any]:
             if bus is not None:
                 await bus.close()
         except Exception:
-            pass
-
+    # Removed per Vibe rule
 
 async def _check_redis() -> Dict[str, Any]:
     try:

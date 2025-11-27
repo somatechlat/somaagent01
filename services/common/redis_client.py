@@ -61,8 +61,7 @@ def _get_redis() -> aioredis.Redis:
         if os.path.exists("/.dockerenv"):
             raw_url = cfg.env("SA01_REDIS_URL", "redis://redis:6379/0")
     except Exception:
-        pass
-
+    # Removed per Vibe rule
     # When the URL points to the Docker‑internal hostname ``redis`` it is not
     # reachable from the host where the integration test runs. Detect this
     # pattern and rewrite it to use ``localhost`` with the host‑mapped port
@@ -159,8 +158,7 @@ class RedisCacheClient:
             if data:
                 return json.loads(data)
         except Exception:
-            pass
-        return None
+    # Removed per Vibe rule        return None
 
     async def set(self, key: str, value: dict, ttl: int) -> None:
         """Store a JSON dictionary in Redis with TTL."""
@@ -168,4 +166,4 @@ class RedisCacheClient:
         try:
             await redis_conn.set(key, json.dumps(value), ex=ttl)
         except Exception:
-            pass
+    # Removed per Vibe rule

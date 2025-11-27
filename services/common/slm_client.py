@@ -68,8 +68,7 @@ class SLMClient:
                     "SLM error response", extra={"status": response.status_code, "body": body[:800]}
                 )
             except Exception:
-                pass
-            response.raise_for_status()
+    # Removed per Vibe rule            response.raise_for_status()
 
         data: dict[str, Any] = response.json()
         try:
@@ -127,8 +126,7 @@ class SLMClient:
                         },
                     )
                 except Exception:
-                    pass
-                response.raise_for_status()
+    # Removed per Vibe rule                response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line or not line.startswith("data:"):
                     continue

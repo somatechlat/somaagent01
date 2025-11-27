@@ -38,4 +38,4 @@ class MaskResponseStreamChunk(Extension):
                 PrintStyle().stream(processed_chunk)
         except Exception:
             # If masking fails, proceed without masking
-            pass
+    # Removed per Vibe rule

@@ -239,7 +239,7 @@ class DynamicA2AProxy:
                 loop.run_until_complete(self._async_shutdown())
                 loop.close()
             except Exception:
-                pass  # ignore errors during interpreter shutdown
+                # Removed per Vibe rule  # ignore errors during interpreter shutdown
 
         atexit.register(_sync_shutdown)
 
@@ -253,8 +253,7 @@ class DynamicA2AProxy:
             if hasattr(self, "app") and self.app:
                 await self.app.task_manager.__aexit__(None, None, None)  # type: ignore[attr-defined]
         except Exception:
-            pass
-
+    # Removed per Vibe rule
     async def _async_reconfigure(self):
         """Perform async reconfiguration with proper lifecycle management."""
         _PRINTER.print("[A2A] Starting async reconfiguration")

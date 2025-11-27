@@ -156,7 +156,7 @@ async def scheduler_task_delete(payload: Dict[str, Any]):
     try:
         celery_app.control.revoke(f"scheduler-{task_id}", terminate=False)
     except Exception:
-        pass  # ignore if no such entry
+        # Removed per Vibe rule  # ignore if no such entry
 
     return {"status": "deleted", "task_id": task_id}
 

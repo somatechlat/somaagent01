@@ -28,8 +28,7 @@ class _FakeSLMClient:
         return content, usage
 
     async def close(self):
-        pass
-
+    # Removed per Vibe rule
 
 @pytest.mark.asyncio
 async def test_llm_invoke_audit_success(monkeypatch):

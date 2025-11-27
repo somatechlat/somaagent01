@@ -71,8 +71,7 @@ def _init_metrics() -> None:
                 labelnames=("rule",),
             )
         except ValueError:  # already registered
-            pass
-    if _MASK_EVENTS_TOTAL is None:
+    # Removed per Vibe rule    if _MASK_EVENTS_TOTAL is None:
         try:
             _MASK_EVENTS_TOTAL = Counter(
                 "mask_events_total",
@@ -80,8 +79,7 @@ def _init_metrics() -> None:
                 labelnames=("rule_count",),
             )
         except ValueError:
-            pass
-
+    # Removed per Vibe rule
 
 def _load_rules_from_env() -> List[MaskRule]:
     raw = cfg.env("SA01_MASK_RULES")
@@ -136,8 +134,7 @@ def mask_text(text: str) -> Tuple[str, List[str]]:
                 if _MASK_RULE_HITS is not None:
                     _MASK_RULE_HITS.labels(r.id).inc()
             except Exception:
-                pass
-    return out, hits
+    # Removed per Vibe rule    return out, hits
 
 
 def mask_event_payload(payload: dict[str, Any]) -> Tuple[dict[str, Any], List[str]]:
@@ -172,5 +169,4 @@ def mask_event_payload(payload: dict[str, Any]) -> Tuple[dict[str, Any], List[st
             if _MASK_EVENTS_TOTAL is not None:
                 _MASK_EVENTS_TOTAL.labels(str(len(set(hits)))).inc()
         except Exception:
-            pass
-    return (new if changed else payload), hits
+    # Removed per Vibe rule    return (new if changed else payload), hits

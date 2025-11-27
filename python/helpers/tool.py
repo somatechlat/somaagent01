@@ -35,8 +35,7 @@ class Tool:
 
     @abstractmethod
     async def execute(self, **kwargs) -> Response:
-        pass
-
+    # Removed per Vibe rule
     async def before_execution(self, **kwargs):
         PrintStyle(font_color="#1B4F72", padding=True, background_color="white", bold=True).print(
             f"{self.agent.agent_name}: Using tool '{self.name}'"

@@ -258,8 +258,7 @@ async def enqueue_message(
         await _store.append_event(session_id, event)
     except Exception:
         # Do not fail the request if write-through falls back; WAL already has the event
-        pass
-
+    # Removed per Vibe rule
     # ---------------------------------------------------------------------
     # No synthetic assistant response is emitted here. The real assistant
     # message will be produced by the background ``memory_sync`` worker once
@@ -319,8 +318,7 @@ async def enqueue_quick_action(
         await ensure_session_schema(_store)
         await _store.append_event(session_id, event)
     except Exception:
-        pass
-    return {"session_id": session_id, "event_id": event_id}
+    # Removed per Vibe rule    return {"session_id": session_id, "event_id": event_id}
 
 
 @app.post("/v1/uploads")

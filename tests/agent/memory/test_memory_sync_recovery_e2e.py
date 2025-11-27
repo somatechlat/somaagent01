@@ -42,8 +42,7 @@ async def test_memory_sync_drains_after_outage_e2e():
 
         # Patch SomaClient.remember to fail at first, then succeed
         class Boom(Exception):
-            pass
-
+    # Removed per Vibe rule
         attempts = {"n": 0}
 
         async def fake_remember(_payload):

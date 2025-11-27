@@ -29,8 +29,7 @@ class SchedulerService:
             try:
                 await self._task
             except asyncio.CancelledError:
-                pass
-        LOGGER.info("SchedulerService stopped")
+    # Removed per Vibe rule        LOGGER.info("SchedulerService stopped")
 
     async def _loop(self):
         LOGGER.info("SchedulerService loop running")

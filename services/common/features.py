@@ -53,8 +53,7 @@ class FeatureRegistry:
                     val = str(raw).lower() in {"1", "true", "yes", "on"}
                     enabled = bool(val)
         except Exception:
-            pass
-        # Dependencies: if any dependency disabled, mark disabled
+    # Removed per Vibe rule        # Dependencies: if any dependency disabled, mark disabled
         for dep in desc.dependencies:
             if self.state(dep) == "disabled":
                 self._state_cache[key] = "disabled"

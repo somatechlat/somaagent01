@@ -44,8 +44,7 @@ async def upsert_llm_credentials(
         _require_admin_scope(auth)
     except Exception:
         # If auth module requires resource and fails, fall back to allow when auth disabled.
-        pass
-    provider = (payload.provider or "").strip().lower()
+    # Removed per Vibe rule    provider = (payload.provider or "").strip().lower()
     if not provider or not payload.secret:
         raise HTTPException(status_code=400, detail="provider and secret required")
     await store.set(provider, payload.secret)

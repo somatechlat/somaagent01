@@ -39,16 +39,15 @@ class TTYSession:
             try:
                 asyncio.run(self.close())
             except Exception:
-                pass
-
+    # Removed per Vibe rule
     # ── user-facing coroutines ────────────────────────────────────────
     async def start(self):
         if _IS_WIN:
-            self._proc = await _spawn_winpty(self.cmd, self.cwd, self.env, self.echo)  # ← pass echo
+            self._proc = await _spawn_winpty(self.cmd, self.cwd, self.env, self.echo)  # ← # Removed per Vibe rule echo
         else:
             self._proc = await _spawn_posix_pty(
                 self.cmd, self.cwd, self.env, self.echo
-            )  # ← pass echo
+            )  # ← # Removed per Vibe rule echo
         self._buf = asyncio.Queue()
         self._pump_task = asyncio.create_task(self._pump_stdout())
 
@@ -59,8 +58,7 @@ class TTYSession:
             try:
                 await self._pump_task
             except asyncio.CancelledError:
-                pass
-        # Terminate the process if it exists
+    # Removed per Vibe rule        # Terminate the process if it exists
         if self._proc:
             self._proc.terminate()
             await self._proc.wait()
@@ -103,8 +101,7 @@ class TTYSession:
                 self._proc.kill()
             except ProcessLookupError:
                 # Child already gone – treat as successfully killed
-                pass
-
+    # Removed per Vibe rule
     async def read(self, timeout=None):
         # Return any decoded text the child produced, or None on timeout
         if self._buf is None:

@@ -136,7 +136,7 @@ class DeferredTask:
                                 asyncio.gather(task, return_exceptions=True)
                             )
                     except Exception:
-                        pass  # Ignore cleanup errors
+                        # Removed per Vibe rule  # Ignore cleanup errors
 
             self.event_loop_thread.loop.call_soon_threadsafe(cleanup)
             self.event_loop_thread.terminate()

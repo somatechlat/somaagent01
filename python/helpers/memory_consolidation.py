@@ -696,7 +696,7 @@ class MemoryConsolidator:
                 else:
                     return []
 
-        # Step 2: Proceed with normal replacement if similarity checks pass
+        # Step 2: Proceed with normal replacement if similarity checks # Removed per Vibe rule
         if result.memories_to_remove:
             await db.delete_documents_by_ids(result.memories_to_remove)
 

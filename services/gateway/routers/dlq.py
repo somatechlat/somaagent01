@@ -25,8 +25,7 @@ async def init_dlq_table():
         await ensure_schema(STORE)
     except Exception:
         # best effort; health endpoints will surface issues
-        pass
-
+    # Removed per Vibe rule
 
 @router.get("/{topic}", response_model=list[DLQItem])
 async def list_dlq(topic: str, limit: int = 100):

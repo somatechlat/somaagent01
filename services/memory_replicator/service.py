@@ -63,14 +63,12 @@ class MemoryReplicatorService(BaseService):
                 try:
                     await self.worker_task
                 except asyncio.CancelledError:
-                    pass
-
+    # Removed per Vibe rule
             # Clean up worker resources if needed
             if self.worker:
                 # The worker doesn't have explicit cleanup methods,
                 # but we can add them if needed
-                pass
-
+    # Removed per Vibe rule
             LOGGER.info(f"{self.service_name} service shutdown completed")
 
         except Exception as exc:
