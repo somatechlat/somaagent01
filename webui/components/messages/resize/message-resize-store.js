@@ -1,5 +1,5 @@
-import { createStore } from "/js/AlpineStore.js";
-import { toggleCssProperty } from "/js/css.js";
+import { createStore } from "/static/js/AlpineStore.js";
+import { toggleCssProperty } from "/static/js/css.js";
 
 const model = {
   settings: {},

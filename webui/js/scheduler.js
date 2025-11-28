@@ -5,7 +5,7 @@
 
 import { formatDateTime, getUserTimezone } from './time-utils.js';
 import { switchFromContext } from '../index.js';
-import * as bus from '/js/event-bus.js';
+import * as bus from "./event-bus.js";
 
 // Ensure the showToast function is available
 // if (typeof window.showToast !== 'function') {

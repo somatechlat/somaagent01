@@ -1,7 +1,7 @@
-import { createStore } from "/js/AlpineStore.js";
-import { updateChatInput, sendMessage } from "/index.js";
-import { sleep } from "/js/sleep.js";
-import { store as microphoneSettingStore } from "/components/settings/speech/microphone-setting-store.js";
+import { createStore } from "/static/js/AlpineStore.js";
+import { updateChatInput, sendMessage } from "/static/index.js";
+import { sleep } from "/static/js/sleep.js";
+import { store as microphoneSettingStore } from "/static/components/settings/speech/microphone-setting-store.js";
 
 const Status = {
   INACTIVE: "inactive",

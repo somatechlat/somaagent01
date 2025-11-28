@@ -1,6 +1,6 @@
 // Notifications store: REST + SSE wiring via global stream bus
-import { on, off, emit } from "/js/event-bus.js";
-import { openModal } from "/js/modals.js";
+import { on, off, emit } from "/static/js/event-bus.js";
+import { openModal } from "/static/js/modals.js";
 
 const state = {
   list: [],

@@ -1,7 +1,7 @@
 // Comprehensive error handling system for web UI components
 // Provides consistent error handling, logging, recovery, and user feedback
 
-import { emit } from '/js/event-bus.js';
+import { emit } from "./event-bus.js";
 
 // Error handling configuration
 const errorConfig = {

@@ -1,7 +1,7 @@
-import { createStore } from "/js/AlpineStore.js";
-import { scrollModal } from "/js/modals.js";
-import sleep from "/js/sleep.js";
-import * as API from "/js/api.js";
+import { createStore } from "/static/js/AlpineStore.js";
+import { scrollModal } from "/static/js/modals.js";
+import sleep from "/static/js/sleep.js";
+import * as API from "/static/js/api.js";
 
 const model = {
   editor: null,

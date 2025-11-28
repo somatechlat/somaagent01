@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <!-- Base URL for relative assets -->
+    <!-- Base URL for relative asset paths; ensures they resolve under /static/ -->
     <base href="/static/">
     <title>Agent Zero</title>
     <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
@@ -104,6 +104,7 @@
     <script type="module" src="js/monitoring.js"></script>
     <!-- Removed prior stream status banner; using bell-adjacent indicator -->
 
+    <!-- Load main entry script from the static mount (base href is /static/) -->
     <script type="module" src="index.js"></script>
 
     <!-- Load Alpine.js core first -->

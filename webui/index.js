@@ -1,12 +1,12 @@
-import * as msgs from "/js/messages.js";
-import * as api from "/js/api.js";
-import * as css from "/js/css.js";
-import * as bus from "/js/event-bus.js";
-import * as stream from "/js/stream.js";
-import { sleep } from "/js/sleep.js";
-import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
-import { store as speechStore } from "/components/chat/speech/speech-store.js";
-import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "/js/error-handling.js";
+import * as msgs from "./js/messages.js";
+import * as api from "./js/api.js";
+import * as css from "./js/css.js";
+import * as bus from "./js/event-bus.js";
+import * as stream from "./js/stream.js";
+import { sleep } from "./js/sleep.js";
+import { store as attachmentsStore } from "./components/chat/attachments/attachmentsStore.js";
+import { store as speechStore } from "./components/chat/speech/speech-store.js";
+import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "./js/error-handling.js";
 
 // Create error boundary for main application
 const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
@@ -28,8 +28,8 @@ const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
 });
 // Prior notification store (toast + polling-era compatibility)
 // Consolidated SSE + REST notifications store (prior polling/ toast removed)
-import { store as notificationsSseStore } from "/components/notifications/notificationsStore.js";
-import { createStore as createAlpineStore } from "/js/AlpineStore.js";
+import { store as notificationsSseStore } from "./components/notifications/notificationsStore.js";
+import { createStore as createAlpineStore } from "./js/AlpineStore.js";
 
 globalThis.fetchApi = api.fetchApi;
 

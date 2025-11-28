@@ -1,5 +1,5 @@
 // Simplified Message Action Buttons - Keeping the Great Look & Feel
-import { store as speechStore } from "/components/chat/speech/speech-store.js";
+import { store as speechStore } from "../../chat/speech/speech-store.js";
 
 // Extract text content from different message types
 function getTextContent(element) {

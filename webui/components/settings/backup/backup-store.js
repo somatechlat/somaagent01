@@ -1,4 +1,4 @@
-import { createStore } from "/js/AlpineStore.js";
+import { createStore } from "/static/js/AlpineStore.js";
 
 // Global function references
 const sendJsonData = globalThis.sendJsonData;
