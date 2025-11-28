@@ -363,7 +363,10 @@ services:
   fasta2a-worker:
     <<: *agent-service
     container_name: somaAgent01_fasta2a-worker
-    profiles: ["dev"]
+    # Celery worker is part of the core runtime and should start with the cluster
+    # No profile restriction ensures it runs on any `docker compose up`.
+    # Keeping the original configuration but removing the dev‑only profile.
+    # profiles: ["dev"]
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -420,3 +423,29 @@ volumes:
   # -----------------------------------------------------------------
   prometheus-data:
   grafana-data:
+
+# -----------------------------------------------------------------
+# Celery Beat service (schedules periodic tasks)
+# -----------------------------------------------------------------
+  celery-beat:
+    <<: *agent-service
+    container_name: somaAgent01_celery-beat
+    # No profile restriction – runs with any `docker compose up`.
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      - celery
+      - -A
+      - python.tasks.celery_app
+      - beat
+      - --loglevel=info
+    environment:
+      <<: *agent-env
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    healthcheck:
+      # Beat does not expose a simple health endpoint; rely on container status.
+      test: ["CMD", "true"]

@@ -154,6 +154,9 @@ class ProtectedPostgresClient:
 
     async def _execute_query(self, query: str, *args):
         """Actual query execution - postgres_client not available."""
+        # This stub signals that PostgreSQL support is optional and not
+        # bundled in the current runtime. Sub‑classes should provide a concrete
+        # implementation when the feature is required.
         raise NotImplementedError("PostgreSQL client not available")
 
 

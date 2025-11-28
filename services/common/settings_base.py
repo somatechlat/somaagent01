@@ -43,6 +43,9 @@ class BaseServiceSettings:
 
     @classmethod
     def environment_defaults(cls) -> Mapping[str, Mapping[str, Any]]:
+        # NOTE: This abstract method must be implemented by concrete subclasses.
+        # Raising NotImplementedError is intentional – it signals that the
+        # subclass needs to provide environment‑specific defaults.
         raise NotImplementedError
 
     @classmethod
