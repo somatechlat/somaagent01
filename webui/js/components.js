@@ -1,6 +1,6 @@
 // Enhanced component import system with improved caching, error handling, and performance
-import { emit, on } from "/js/event-bus.js";
-import { handleError, createErrorBoundary } from "/js/error-handling.js";
+import { emit, on } from "./event-bus.js";
+import { handleError, createErrorBoundary } from "./error-handling.js";
 
 // Create error boundary for component system
 const componentErrorBoundary = createErrorBoundary('ComponentSystem', (errorData) => {

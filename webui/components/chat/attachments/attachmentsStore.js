@@ -1,6 +1,6 @@
-import { createStore } from "/js/AlpineStore.js";
-import { fetchApi } from "/js/api.js";
-import { uploadFileChunked } from "/js/uploadsChunked.js";
+import { createStore } from "/static/js/AlpineStore.js";
+import { fetchApi } from "/static/js/api.js";
+import { uploadFileChunked } from "/static/js/uploadsChunked.js";
 
 const model = {
   // State properties

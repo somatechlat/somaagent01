@@ -1,6 +1,6 @@
 // Stream client: wraps EventSource and emits onto event-bus
-import { emit, on } from "/js/event-bus.js";
-import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
+import { emit, on } from "./event-bus.js";
+import { store as attachmentsStore } from "../components/chat/attachments/attachmentsStore.js";
 
 let sse = null;
 let currentSessionId = null;

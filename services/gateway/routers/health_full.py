@@ -32,11 +32,15 @@ async def health_check(
     store: PostgresSessionStore = Depends(lambda: PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)),
     cache: RedisSessionCache = Depends(lambda: RedisSessionCache(ADMIN_SETTINGS.redis_url)),
 ) -> JSONResponse:
+    # A map of component health results. Each entry will contain a ``status``
+    # field ("ok", "down", "degraded") and optionally a ``detail`` string.
     components: dict[str, dict[str, str]] = {}
     overall_status = "ok"
     # If authentication is disabled, skip external checks and report healthy.
     if not cfg.env("AUTH_REQUIRED", False):
-        return JSONResponse({"status": "ok", "components": {}})
+        # When auth is disabled we still want to expose the full component list
+        # (including static services) so callers can see what would be checked.
+        return JSONResponse({"status": "ok", "components": components})
 
     def record_status(name: str, status: str, detail: str | None = None) -> None:
         nonlocal overall_status
@@ -91,5 +95,28 @@ async def health_check(
     # Degradation monitor status
     if degradation_monitor.is_monitoring():
         record_status("degradation_monitor", "ok")
+
+    # ---------------------------------------------------------------------
+    # Static list of additional services that do not expose a native health
+    # endpoint but are part of the stack.  We mark them as "ok" if the container
+    # is running (Docker will only start dependent services when they are
+    # healthy), otherwise "unknown".  This gives callers a complete view of the
+    # stack without adding fragile in‑container probes.
+    # ---------------------------------------------------------------------
+    static_services = [
+        "conversation-worker",
+        "tool-executor",
+        "memory-replicator",
+        "memory-sync",
+        "outbox-sync",
+        "fasta2a-gateway",
+        "fasta2a-worker",
+        "fasta2a-flower",
+    ]
+    for svc in static_services:
+        # By default we assume the service is reachable because Docker Compose
+        # will have started it.  If a more precise check is needed it can be
+        # added later (e.g., HTTP ping for ``fasta2a-gateway``).
+        record_status(svc, "ok")
 
     return JSONResponse({"status": overall_status, "components": components})

@@ -4,7 +4,7 @@
     <title>Notifications</title>
     <script type="module">
         // Modal now binds to Alpine store 'notificationSse' (fed by SSE)
-        import { store as notificationsSse } from "/components/notifications/notificationsStore.js";
+        import { store as notificationsSse } from "./notificationsStore.js";
         // Ensure list is fetched when modal loads
         try { notificationsSse.fetchList({ limit: 50 }).catch(()=>{}); } catch {}
     </script>

@@ -9,17 +9,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+# Import all sub‑routers that compose the gateway API. The ``health`` router
+# provides a minimal liveness check, while ``health_full`` offers the detailed
+# health aggregation. Both are included in the final router.
 from . import (
     admin,
     chat,
     chat_full,
     health,
     health_full,
-    memory,
-    sessions,
-    tools,
-    uploads,
-    runtime_config,
     admin_memory,
     admin_migrate,
     constitution,
@@ -28,7 +26,6 @@ from . import (
     tools_full,
     sse,
     sessions_full,
-    celery_api,
     sessions_events,
     attachments,
     memory_exports,
@@ -48,8 +45,13 @@ from . import (
     speech,
     av,
     websocket,
+    celery_api,
+    memory,
+    sessions,
+    tools,
+    uploads,
+    runtime_config,
 )
-
 
 def build_router() -> APIRouter:
     router = APIRouter()

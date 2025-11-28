@@ -1,10 +1,10 @@
-import { createStore } from "/js/AlpineStore.js";
-import { getContext } from "/index.js";
-import * as API from "/js/api.js";
-import { openModal, closeModal } from "/js/modals.js";
+import { createStore } from "/static/js/AlpineStore.js";
+import { getContext } from "/static/index.js";
+import * as API from "/static/js/api.js";
+import { openModal, closeModal } from "/static/js/modals.js";
 // Unified notifications (SSE + REST)
-import { store as notificationsSse } from "/components/notifications/notificationsStore.js";
-import * as bus from "/js/event-bus.js";
+import { store as notificationsSse } from "/static/components/notifications/notificationsStore.js";
+import * as bus from "/static/js/event-bus.js";
 
 // Helper function for toasts
 function justToast(text, type = "info", timeout = 5000) {

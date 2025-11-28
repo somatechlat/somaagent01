@@ -1,6 +1,6 @@
 // Import the component loader and page utilities
-import { importComponent } from "/js/components.js";
-import { handleError, createErrorBoundary } from "/js/error-handling.js";
+import { importComponent } from "./components.js";
+import { handleError, createErrorBoundary } from "./error-handling.js";
 
 // Create error boundary for modal system
 const modalErrorBoundary = createErrorBoundary('ModalSystem', (errorData) => {

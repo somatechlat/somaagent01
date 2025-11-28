@@ -1,9 +1,9 @@
 // message actions and components
 import { openImageModal } from "./image_modal.js";
 import { marked } from "../vendor/marked/marked.esm.js";
-import { store as _messageResizeStore } from "/components/messages/resize/message-resize-store.js"; // keep here, required in html
-import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
-import { addActionButtonsToElement } from "/components/messages/action-buttons/simple-action-buttons.js";
+import { store as _messageResizeStore } from "../components/messages/resize/message-resize-store.js"; // keep here, required in html
+import { store as attachmentsStore } from "../components/chat/attachments/attachmentsStore.js";
+import { addActionButtonsToElement } from "../components/messages/action-buttons/simple-action-buttons.js";
 
 const chatHistory = document.getElementById("chat-history");
 

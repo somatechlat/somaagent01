@@ -1,5 +1,5 @@
 // Enhanced event bus for UI modules with improved architecture, error handling, and performance
-import { handleError } from '/js/error-handling.js';
+import { handleError } from "./error-handling.js";
 // API: on(event, handler) => unsubscribe fn; emit(event, payload); once(event, handler)
 // Namespacing: use dot notation (e.g., 'ui.status.progress'); wildcard subscription not implemented for simplicity.
 

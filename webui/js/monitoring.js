@@ -4,7 +4,7 @@
  * VIBE CODING RULES COMPLIANT - No placeholders, real implementations only
  */
 
-import { fetchApi, callJsonApi } from '/js/api.js';
+import { fetchApi, callJsonApi } from "./api.js";
 
 class SystemMonitor {
     constructor() {
