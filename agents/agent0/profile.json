@@ -1,6 +1,0 @@
-{
-  "name": "agent0",
-  "display_name": "Default Agent 0",
-  "description": "Auto-created default agent for local dev",
-  "model": "groq"
-}

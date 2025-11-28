@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <!-- Base URL for relative assets -->
+    <base href="/static/">
     <title>Agent Zero</title>
     <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
     <link rel="stylesheet" href="index.css">
@@ -102,12 +104,12 @@
     <script type="module" src="js/monitoring.js"></script>
     <!-- Removed prior stream status banner; using bell-adjacent indicator -->
 
-    <script type="module" src="/index.js"></script>
+    <script type="module" src="index.js"></script>
 
     <!-- Load Alpine.js core first -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <!-- Then load Alpine.js collapse plugin -->
+    <!-- Load Alpine.js collapse plugin before core to avoid warning -->
     <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
     <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
     <script type="module" src="js/initFw.js"></script>
 
@@ -643,7 +645,7 @@
                                     <template x-for="(section, index) in filteredSections" :key="section.title">
                                         <li>
                                             <a :href="'#section' + (index + 1)">
-                                                <img :src="'/public/' + section.id +'.svg'" :alt="section.title">
+                                                <img :src="'public/' + section.id +'.svg'" :alt="section.title">
                                                 <span x-text="section.title"></span>
                                             </a>
                                         </li>
@@ -651,7 +653,7 @@
                                     <!-- Tunnel navigation entry - only visible in the External Services tab -->
                                     <li x-show="activeTab === 'external'">
                                         <a href="#section-tunnel">
-                                            <img src="/public/tunnel.svg" alt="Tunnel">
+                                            <img src="public/tunnel.svg" alt="Tunnel">
                                             <span>Flare Tunnel</span>
                                         </a>
                                     </li>
@@ -768,7 +770,7 @@
                                 <ul>
                                     <li>
                                         <a href="#section-task-scheduler">
-                                            <img src="/public/task_scheduler.svg" alt="Task Scheduler">
+                                            <img src="public/task_scheduler.svg" alt="Task Scheduler">
                                             <span>Task Scheduler</span>
                                         </a>
                                     </li>
@@ -1667,7 +1669,7 @@
                                         <div class="file-item" :data-is-dir="file.is_dir">
                                             <div class="file-name"
                                                 @click="file.is_dir ? navigateToFolder(file.path) : downloadFile(file)">
-                                                <img :src="'/public/' + (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type)) + '.svg'"
+                                                <img :src="'public/' + (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type)) + '.svg'"
                                                     class="file-icon" :alt="file.type">
                                                 <span x-text="file.name"></span>
                                             </div>

@@ -4,6 +4,10 @@ REAL IMPLEMENTATION - No placeholders, actual HTTP endpoints for task management
 """
 
 from fastapi import FastAPI, APIRouter, BackgroundTasks, HTTPException, Depends, status
+from fastapi.responses import FileResponse
+import os
+from fastapi.staticfiles import StaticFiles
+import httpx
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
@@ -16,6 +20,7 @@ from python.observability.metrics import (
     fast_a2a_requests_total,
     fast_a2a_errors_total,
     increment_counter,
+    set_health_status,
 )
 from python.tasks.orchestrator import (
     enqueue_chat_request,
@@ -261,6 +266,22 @@ async def health_endpoint():
             version="1.0.0-fasta2a",
         )
 
+    # Alias for compatibility with gateway aggregated health checks.
+    # The gateway expects the FastA2A service to expose its health check at
+    # ``/v1/health``. The original implementation only provided ``/health``.
+    # Adding this endpoint ensures that ``http://localhost:8011/v1/health``
+    # returns the same health information as ``/health`` without duplicating
+    # logic.
+    @router.get("/v1/health", response_model=HealthResponse, include_in_schema=False)
+    async def health_v1_endpoint():
+        """Compatibility wrapper for the FastA2A health endpoint.
+
+        Returns the same payload as :func:`health_endpoint`. The ``include_in_schema``
+        flag hides this route from the OpenAPI docs to avoid duplication.
+        """
+        # Reuse the existing health logic to avoid inconsistencies.
+        return await health_endpoint()
+
     except Exception as e:
         # REAL IMPLEMENTATION - Track health check failure
         system_health_gauge.labels(service="fastapi", component="api").set(0)
@@ -295,29 +316,59 @@ async def metrics_endpoint():
             detail=f"Failed to generate metrics: {str(e)}"
         )
 
-@router.get("/")
-async def root_endpoint():
-    """
-    REAL IMPLEMENTATION - Root endpoint.
-    Returns API information and available endpoints.
-    """
-    return {
-        "name": "SomaAgent01 FastA2A API",
-        "version": "1.0.0-fasta2a",
-        "description": "FastAPI endpoints for FastA2A task management",
-        "endpoints": {
-            "chat": "POST /api/v1/chat - Queue a chat task",
-            "status": "GET /api/v1/chat/status/{task_id} - Get task status",
-            "history": "GET /api/v1/chat/history/{session_id} - Get conversation history",
-            "health": "GET /api/v1/health - Health check",
-            "metrics": "GET /api/v1/metrics - Prometheus metrics",
-            "docs": "GET /docs - API documentation"
-        },
-        "timestamp": time.time()
-    }
 
 # REAL IMPLEMENTATION - Include router in app
 app.include_router(router)
+
+# Serve the web UI (static files) at the root URL.
+# The UI files are located in the repository's `webui` directory, which is
+# copied into the container at `/app/webui`. We provide an explicit root
+# endpoint that returns the ``index.html`` file. This works reliably with
+# FastAPI's routing order and avoids the 404 that can occur when mounting a
+# ``StaticFiles`` instance at ``/``.
+
+@app.get("/", include_in_schema=False)
+def serve_ui_root():
+    """Return the UI's main HTML page for the root path.
+
+    The path is resolved relative to the current working directory inside the
+    container (``/app``). ``FileResponse`` streams the file efficiently.
+    """
+    ui_path = os.path.join(os.getcwd(), "webui", "index.html")
+    return FileResponse(ui_path, media_type="text/html")
+
+# Serve remaining static assets under ``/static``. Clients can request e.g.
+# ``/static/css/style.css``.
+app.mount("/static", StaticFiles(directory="webui", html=False), name="webui_static")
+
+# -----------------------------------------------------------------
+# Aggregate health endpoint
+# -----------------------------------------------------------------
+@app.get("/healths", tags=["monitoring"])
+async def aggregated_health():
+    """Check health of core services and return a hierarchical status.
+
+    The function queries the internal health endpoints of the main HTTP
+    services (gateway, fastA2A gateway) and reports their status. It can be
+    extended to include other components (Kafka, Redis, Postgres, OPA) by
+    adding their health‑check URLs to the ``services`` dictionary.
+    """
+    services = {
+        "gateway": "http://localhost:8010/v1/health",
+        "fasta2a_gateway": "http://localhost:8011/v1/health",
+    }
+    results = {}
+    async with httpx.AsyncClient() as client:
+        for name, url in services.items():
+            try:
+                resp = await client.get(url, timeout=2.0)
+                results[name] = {
+                    "status": "healthy" if resp.status_code == 200 else "unhealthy",
+                    "code": resp.status_code,
+                }
+            except Exception as exc:
+                results[name] = {"status": "unhealthy", "error": str(exc)}
+    return {"overall": "healthy" if all(r.get("status") == "healthy" for r in results.values()) else "unhealthy", "components": results}
 
 # REAL IMPLEMENTATION - Startup and shutdown events
 @app.on_event("startup")

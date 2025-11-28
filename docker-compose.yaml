@@ -403,7 +403,32 @@ services:
       - flower_data:/data
     mem_limit: 256m
     mem_reservation: 128m
-    
+
+  celery-beat:
+    <<: *agent-service
+    container_name: somaAgent01_celery-beat
+    environment:
+      <<: *agent-env
+      # Use a writable location for the beat schedule to avoid permission errors
+      CELERY_BEAT_SCHEDULE_FILENAME: /tmp/celerybeat-schedule
+      # Ensure the temporary directory exists via the container's default /tmp
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command:
+      - celery
+      - -A
+      - python.tasks.celery_app
+      - beat
+      - --loglevel=info
+      - -s
+      - /tmp/celerybeat-schedule
+    healthcheck:
+      test: ["CMD", "true"]
 
 networks:
   default:
@@ -427,25 +452,6 @@ volumes:
 # -----------------------------------------------------------------
 # Celery Beat service (schedules periodic tasks)
 # -----------------------------------------------------------------
-  celery-beat:
-    <<: *agent-service
-    container_name: somaAgent01_celery-beat
-    # No profile restriction – runs with any `docker compose up`.
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-    command:
-      - celery
-      - -A
-      - python.tasks.celery_app
-      - beat
-      - --loglevel=info
-    environment:
-      <<: *agent-env
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    healthcheck:
-      # Beat does not expose a simple health endpoint; rely on container status.
-      test: ["CMD", "true"]
+  # NOTE: This block was previously misplaced under the top-level `volumes` key,
+  # which caused docker compose validation errors. It has been moved under the
+  # `services` section (see below) to ensure proper parsing.
