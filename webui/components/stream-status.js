@@ -1,5 +1,5 @@
 // Stream Status Banner: shows SSE connectivity state using event-bus
-import * as bus from "/static/js/event-bus.js";
+import * as bus from "../js/event-bus.js";
 
 (function () {
   const ID = 'stream-status-banner';
