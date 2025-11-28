@@ -8,11 +8,73 @@ from __future__ import annotations
 
 import uvicorn
 from fastapi import FastAPI
+import time
+import httpx
 
 from services.gateway.routers import build_router
 
 app = FastAPI(title="SomaAgent Gateway")
+
+# Simple health endpoint for the gateway service itself
+@app.get("/health", tags=["monitoring"])
+async def health() -> dict:
+    """Return basic health status for the gateway service.
+
+    This endpoint is used by the aggregated health check and can be queried
+    directly to verify that the FastAPI gateway is running.
+    """
+    return {"status": "healthy", "timestamp": time.time()}
+
+# Aggregated health endpoint that checks core services (gateway and FastA2A)
+@app.get("/healths", tags=["monitoring"])
+async def aggregated_health() -> dict:
+    """Check health of core services and return a hierarchical status.
+
+    The function queries the internal health endpoints of the main HTTP
+    services (gateway, fastA2A gateway) and reports their status. It can be
+    extended to include other components (Kafka, Redis, Postgres, OPA) by
+    adding their health‑check URLs to the ``services`` dictionary.
+    """
+    services = {
+        "gateway": "http://localhost:8010/health",
+        "fasta2a_gateway": "http://localhost:8011/health",
+    }
+    results = {}
+    async with httpx.AsyncClient() as client:
+        for name, url in services.items():
+            try:
+                resp = await client.get(url, timeout=2.0)
+                results[name] = {
+                    "status": "healthy" if resp.status_code == 200 else "unhealthy",
+                    "code": resp.status_code,
+                }
+            except Exception as exc:
+                results[name] = {"status": "unhealthy", "error": str(exc)}
+    overall = "healthy" if all(r.get("status") == "healthy" for r in results.values()) else "unhealthy"
+    return {"overall": overall, "components": results}
+
 app.include_router(build_router())
+
+# Serve the Web UI located in the repository's `webui` directory.
+# The directory is mounted into the container at `/app/webui` (see docker-compose volume).
+# An explicit root endpoint returns `index.html`, and static assets are exposed
+# under `/static`.
+import os
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+
+@app.get("/", include_in_schema=False)
+def serve_ui_root():
+    """Return the UI's main HTML page for the root path.
+
+    The path is resolved relative to the container's working directory (`/app`).
+    """
+    ui_path = os.path.join(os.getcwd(), "webui", "index.html")
+    return FileResponse(ui_path, media_type="text/html")
+
+# Mount static assets (CSS, JS, images) under `/static`.
+app.mount("/static", StaticFiles(directory="webui", html=False), name="webui_static")
 
 # ---------------------------------------------------------------------------
 # Dependency providers expected by the test suite and legacy routers
