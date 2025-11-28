@@ -1,5 +1,5 @@
-import { createStore } from "/static/js/AlpineStore.js";
-import * as Sleep from "/static/js/sleep.js";
+import { createStore } from "../../../js/AlpineStore.js";
+import * as Sleep from "../../../js/sleep.js";
 
 // define the model object holding data and functions
 const model = {
