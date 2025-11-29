@@ -1,7 +1,11 @@
 // Enhanced event bus for UI modules with improved architecture, error handling, and performance
-import { handleError } from "i18n.t('ui_i18n_t_ui_error_handling_js')";
-// API: on(event, handler) => i18n.t('ui_i18n_t_ui_unsubscribe_fn_emit_event_payload_once_event_handler_namespacing_use_dot_notation_e_g_ui_status_progress_wildcard_subscription_not_implemented_for_simplicity_core_event_handlers_storage_with_metadata_const_handlers_new_map_eventname_set')<{fn: Function, metadata: Object}>
-i18n.t('ui_i18n_t_ui_const_eventhistory_new_map_eventname_array')<{timestamp: number, payload: any}>
+import { handleError } from "./error-handling.js";
+// API: on(event, handler) => unsubscribe fn; emit(event, payload); once(event, handler)
+// Namespacing: use dot notation (e.g., 'ui.status.progress'); wildcard subscription not implemented for simplicity.
+
+// Core event handlers storage with metadata
+const handlers = new Map(); // eventName -> Set<{fn: Function, metadata: Object}>
+const eventHistory = new Map(); // eventName -> Array<{timestamp: number, payload: any}>
 const eventStats = new Map(); // eventName -> {emits: number, errors: number}
 
 // Event bus configuration

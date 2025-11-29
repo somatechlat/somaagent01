@@ -1,14 +1,57 @@
-<htmi18n.t('ui_connection_to_a0_a2a_server')ction to A0 A2A Server</title>
+<html>
+
+<head>
+    <title>Connection to A0 A2A Server</title>
 </head>
 
 <body>
-    <di18n.t('ui_agent_zero_a2a_seri18n_t_ui_connection_to_a0_a2a_server_l_communication_with_other_agents')ion with other ai18n.t('ui_othi18n_t_ui_agent_zero_a2a_server_enables_fasta2a_protocol_communication_with_other_agents')_with_other_agents')  <!-- API Tokeni18n.t('ui_other_agents_can_connect_using_the_url_below_replace_host_if_needed')_color_var_color_bg_secondary_border_1px_solid_var_color_border_border_radius_6px_padding_12px_margin_16px_0')"i18n.t('ui_h4_style')"i18n.t('ui_margin_0_0_8px_0_color_var_coli18n.t('ui_api_token_information')n.t('ui_api_token_information_h4_p_style')"i18n.t('ui_margin_0_color_var_color_text_seconi18n.t('ui_api_token_information')"i18i18n.t('ui_the_token_used_in_the_url_is_automatically_generated_from_your_username_and_password_i18n_t_ui_the_token_used_in_the_url_is_automatically_generated_from_your_username_and_password_this_same_token_is_also_used_for_external_api_endpoints_the_token_changes_when_you_update_your_credentials_nnection_example')</div>
+    <div x-data>
+        <p>Agent Zero A2A Server enables FastA2A protocol communication with other agents.</p>
+        <p>Other agents can connect using the URL below (replace host if needed):</p>
 
-     i18n.t('ui_i18n_t_ui_a2a_connection_url_settimeout_const_url_window_location_origin_i18n_t_ui_settimeout_const_url_window_location_origin_get_a2a_token_or_mcp_server_token_let_tokenfield_null_try_const_allfields_settingsmodalproxy_settings_sections_flatmap_s_s_fields_tokenfield_allfields_find_f_f_id_a2a_token_allfields_find_f_f_id_mcp_server_token_catch_e_const_token_tokenfield_tokenfield_value_const_connectionurl_url_a2a_t_token_const_editor_ace_edit_a2a_connection_example_const_dark_localstorage_getitem_darkmode_editor_settheme_dark_false_ace_theme_github_dark_ace_theme_tomorrow_editor_session_setmode_ace_mode_text_editor_setvalue_connectionurl_editor_clearselection_editor_setreadonly_true_0')</script>
+        <!-- API Token Information -->
+        <div
+            style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 16px 0;">
+            <h4 style="margin: 0 0 8px 0; color: var(--color-text-primary);">API Token Information</h4>
+            <p style="margin: 0; color: var(--color-text-secondary); font-size: 14px;">
+                The token used in the URL is automatically generated from your username and password.
+                This same token is also used for external API endpoints. The token changes when you update your
+                credentials.
+            </p>
+        </div>
+
+        <h3>A2A Connection URL</h3>
+        <div id="a2a-connection-example"></div>
+
+        <script>
+            setTimeout(() => {
+                const url = window.location.origin;
+                // Get a2a_token or mcp_server_token
+                let tokenField = null;
+                try {
+                    const allFields = settingsModalProxy.settings.sections.flatMap(s => s.fields);
+                    tokenField = allFields.find(f => f.id === 'a2a_token') || allFields.find(f => f.id === 'mcp_server_token');
+                } catch (e) { }
+                const token = tokenField ? tokenField.value : '';
+                const connectionUrl = `${url}/a2a/t-${token}`;
+
+                const editor = ace.edit("a2a-connection-example");
+                const dark = localStorage.getItem("darkMode");
+                editor.setTheme(dark !== "false" ? "ace/theme/github_dark" : "ace/theme/tomorrow");
+                editor.session.setMode("ace/mode/text");
+                editor.setValue(connectionUrl);
+                editor.clearSelection();
+                editor.setReadOnly(true);
+            }, 0);
+        </script>
     </div>
 
     <style>
-        i18n.t('ui_i18n_t_ui_a2a_connection_example_width_100_height_3em')</style>
+        #a2a-connection-example {
+            width: 100%;
+            height: 3em;
+        }
+    </style>
 
 </body>
 

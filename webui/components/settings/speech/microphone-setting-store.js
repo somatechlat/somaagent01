@@ -1,9 +1,71 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
+import { createStore } from "/static/js/AlpineStore.js";
 
 const model = {
 
 
     devices: [],
-    selectedDevice: ""i18n.t('ui_i18n_t_ui_async_init_load_selected_device_from_localstorage_if_present_const_saved_localstorage_getitem_microphoneselecteddevice_await_this_loaddevices_if_saved_this_devices_some_d_d_deviceid_saved_this_selecteddevice_saved_async_loaddevices_get_media_devices_const_devices_await_navigator_mediadevices_enumeratedevices_filter_for_audio_input_microphones_this_devices_devices_filter_d_d_kind')"audioinput"i18n.t('ui_i18n_t_ui_d_deviceid_set_selected_device_to_first_available_if_any_this_selecteddevice_this_devices_length_0_this_devices_0_deviceid')""i18n.t('ui_i18n_t_ui_track_permission_request_state_requestingpermission_false_request_microphone_permission_rely_on_devicechange_events_no_polling_async_requestpermission_this_requestingpermission_true_try_await_navigator_mediadevices_getusermedia_audio_true_await_this_loaddevices_subscribe_once_to_device_changes_if_this_devicechangebound_this_devicechangebound_true_navigator_mediadevices_addeventlistener_devicechange_async_await_this_loaddevices_catch_err_console_error')"Microphone permission denied"i18n.t('ui_i18n_t_ui_finally_this_requestingpermission_false_async_selectdevice_deviceid_this_selecteddevice_deviceid_this_onselectdevice_async_onselectdevice_localstorage_setitem_microphoneselecteddevice_this_selecteddevice_getselecteddevice_let_device_this_devices_find_d_d_deviceid_this_selecteddevice_if_device_this_devices_length_0_device_this_devices_find_d_d_deviceid')"default"i18n.t('ui_i18n_t_ui_this_devices_0_return_device_const_store_createstore')"microphoneSetting", model);
+    selectedDevice: "",
+
+    async init() {
+        // Load selected device from localStorage if present
+        const saved = localStorage.getItem('microphoneSelectedDevice');
+        await this.loadDevices();
+        if (saved && this.devices.some(d => d.deviceId === saved)) {
+            this.selectedDevice = saved;
+        }
+    },
+
+    async loadDevices() {
+        // Get media devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        // Filter for audio input (microphones)
+        this.devices = devices.filter(d => d.kind === "audioinput" && d.deviceId);
+        // Set selected device to first available, if any
+        this.selectedDevice = this.devices.length > 0 ? this.devices[0].deviceId : "";
+    },
+
+    // track permission request state
+    requestingPermission: false,
+
+    // request microphone permission; rely on devicechange events (no polling)
+    async requestPermission() {
+        this.requestingPermission = true;
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            await this.loadDevices();
+            // Subscribe once to device changes
+            if (!this._deviceChangeBound) {
+                this._deviceChangeBound = true;
+                navigator.mediaDevices.addEventListener('devicechange', async () => {
+                    await this.loadDevices();
+                });
+            }
+        } catch (err) {
+            console.error("Microphone permission denied");
+        } finally {
+            this.requestingPermission = false;
+        }
+    },
+
+    async selectDevice(deviceId) {
+        this.selectedDevice = deviceId;
+        this.onSelectDevice();
+    },
+
+    async onSelectDevice() {
+        localStorage.setItem('microphoneSelectedDevice', this.selectedDevice);
+    },
+
+    getSelectedDevice() {
+        let device = this.devices.find(d => d.deviceId === this.selectedDevice);
+        if (!device && this.devices.length > 0) {
+            device = this.devices.find(d => d.deviceId === "default") || this.devices[0];
+        }
+        return device;
+    }
+
+};
+
+const store = createStore("microphoneSetting", model);
 
 export { store };

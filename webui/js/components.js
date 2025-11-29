@@ -1,17 +1,173 @@
 // Enhanced component import system with improved caching, error handling, and performance
-import { emit, on } from "i18n.t('ui_i18n_t_ui_event_bus_js')";
-import { handleError, createErrorBoundary } from "i18n.t('ui_i18n_t_ui_error_handling_js')";
+import { emit, on } from "./event-bus.js";
+import { handleError, createErrorBoundary } from "./error-handling.js";
 
 // Create error boundary for component system
-consi18n.t('ui_return_type_error_html')ary('ComponentSystem', (errorData) => {
+const componentErrorBoundary = createErrorBoundary('ComponentSystem', (errorData) => {
   return {
-    type: 'i18n.t('ui_component_error')l: `<div class=i18n.t('ui_errordata_usermessage')mponent_error_boundary')">
+    type: 'error',
+    html: `<div class="component-error-boundary">
       <h3>Component Error</h3>
-      <i18n.t('ui_reload_page')ta.userMessage}</p>
-i18n.t('ui_advanced_cache_with_metadata_and_versioning_const_componentcache_new_map_const_cachestats_hits_0_misses_0_errors_0_lastcleanup_date_now_enhanced_lock_system_with_timeout_and_metadai18n_t_ui_return_type_error_html_ktimeouts_new_map_component_loading_confi18n_t_ui_component_error_config_ci18n_t_ui_errordata_usermessage_0_5_minutes_cachemaxsize_100_locktimeout_30i18n_t_ui_reload_page_seconds_retryattemi18n_t_ui_advanced_cache_with_metadata_and_versioning_const_componentcache_new_map_const_cachestats_hits_0_misses_0_errors_0_lastcleanup_date_now_enhanced_lock_system_with_timeout_and_metadata_const_importlocks_new_map_const_locktimeouts_new_map_component_loading_configuration_const_config_cachemaxage_5_60_1000_5_minutes_cachemaxsize_100_locktimeout_30000_30_seconds_retryattempts_2_retrydelay_1000_enabledebug_false_enablepreloading_true_enhanced_cache_management_utilities_function_cleanupcache_const_now_date_now_if_now_cachestats_lastcleanup_componentcache_delete_url_cachestats_lastcleanup_now_function_getfromcache_url_const_cached_i18n_t_ui_config_cachemaxage_componentcache_delete_url_if_componentcache_size_config_cachemaxsize_const_entries_array_from_componentcache_entries_sort_a_b_a_1_timestamp_b_1_timestamp_const_toremove_entries_slice_0_entries_length_config_cachemaxsize_toremove_foreach_url_componentcache_delete_url_cachestats_lastcleanup_now_function_getfromcache_url_const_cached_componentcache_get_url_if_cached_date_now_cached_timestamp_nced_lock_management_with_timeout_function_acquirelock_lockkey_if_importlocks_has_lockkey_if_config_enabledebug_console_log_component_already_loading_for_lockkey_return_false_importlocks_set_lockkey_date_now_set_up_timeout_for_lock_release_const_timeoutid_settimeout_if_importlocks_has_lockkey_console_warn_lock_timeout_for_lockkey_releaselock_lockkey_config_locktimeout_locktimeouts_set_lockkey_timeoutid_return_true_function_releaselock_lockkey_importlocks_delete_lockkey_const_timeoutid_locktimeouts_get_lockkey_if_timeoutid_cleartimeout_timeoutid_locktimeouts_delete_lockkey_export_const_importcomponent_componenterrorboundi18n_t_ui_if_importlocks_has_lockkey_console_warn_lock_timeout_for_lockkey_releaselock_lockkey_config_locktimeout_locktimeouts_set_lockkey_timeoutid_return_true_function_releaselock_lockkey_importlocks_delete_lockkey_const_timeoutid_locktimeouts_get_lockkey_if_timeoutid_cleartimeout_timeoutid_locktimeouts_delete_lockkey_export_const_importcomponent_componenterrorboundary_wrapasync_async_function_path_targetelement_create_a_unique_key_for_this_import_based_on_the_target_element_const_lockkey_targetelement_id_targetelement_getattribute_data_component_id_anonymous_path_if_this_component_is_already_being_loaded_return_early_if_acquirelock_lockkey_if_config_enabledebug_console_log_component_path_is_already_being_loaded_for_target_targetelement_return_const_starttime_date_now_let_attempt_0_try_if_targetelement_throw_new_error_target_element_is_required_show_enhanced_loading_indicator_with_path_info_targetelement_innerhtml_let_lasterror_for_attempt_0_attempt')icator_with_path_info_targetelement_innerhtml')let lastError;
+      <p>${errorData.userMessage}</p>
+      <button onclick="window.location.reload()">Reload Page</button>
+    </div>`
+  };
+});
+
+// Advanced cache with metadata and versioning
+const componentCache = new Map();
+const cacheStats = {
+  hits: 0,
+  misses: 0,
+  errors: 0,
+  lastCleanup: Date.now()
+};
+
+// Enhanced lock system with timeout and metadata
+const importLocks = new Map();
+const lockTimeouts = new Map();
+
+// Component loading configuration
+const config = {
+  cacheMaxAge: 5 * 60 * 1000, // 5 minutes
+  cacheMaxSize: 100,
+  lockTimeout: 30000, // 30 seconds
+  retryAttempts: 2,
+  retryDelay: 1000,
+  enableDebug: false,
+  enablePreloading: true
+};
+
+// Enhanced cache management utilities
+function cleanupCache() {
+  const now = Date.now();
+  if (now - cacheStats.lastCleanup < config.cacheMaxAge) return;
+
+  for (const [url, data] of componentCache.entries()) {
+    if (now - data.timestamp > config.cacheMaxAge) {
+      componentCache.delete(url);
+    }
+  }
+  
+  if (componentCache.size > config.cacheMaxSize) {
+    const entries = Array.from(componentCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = entries.slice(0, entries.length - config.cacheMaxSize);
+    toRemove.forEach(([url]) => componentCache.delete(url));
+  }
+  
+  cacheStats.lastCleanup = now;
+}
+
+function getFromCache(url) {
+  const cached = componentCache.get(url);
+  if (cached && Date.now() - cached.timestamp < config.cacheMaxAge) {
+    cacheStats.hits++;
+    if (config.enableDebug) {
+      console.log(`Cache hit for ${url}`);
+    }
+    return cached.data;
+  }
+  cacheStats.misses++;
+  return null;
+}
+
+function setInCache(url, data) {
+  componentCache.set(url, {
+    data,
+    timestamp: Date.now(),
+    size: new Blob([data]).size
+  });
+  cleanupCache();
+  
+  if (config.enableDebug) {
+    console.log(`Cached ${url} (${componentCache.size} items)`);
+  }
+}
+
+// Enhanced lock management with timeout
+function acquireLock(lockKey) {
+  if (importLocks.has(lockKey)) {
+    if (config.enableDebug) {
+      console.log(`Component already loading for ${lockKey}`);
+    }
+    return false;
+  }
+  
+  importLocks.set(lockKey, Date.now());
+  
+  // Set up timeout for lock release
+  const timeoutId = setTimeout(() => {
+    if (importLocks.has(lockKey)) {
+      console.warn(`Lock timeout for ${lockKey}`);
+      releaseLock(lockKey);
+    }
+  }, config.lockTimeout);
+  
+  lockTimeouts.set(lockKey, timeoutId);
+  return true;
+}
+
+function releaseLock(lockKey) {
+  importLocks.delete(lockKey);
+  const timeoutId = lockTimeouts.get(lockKey);
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+    lockTimeouts.delete(lockKey);
+  }
+}
+
+export const importComponent = componentErrorBoundary.wrapAsync(async function(path, targetElement) {
+  // Create a unique key for this import based on the target element
+  const lockKey = `${targetElement.id || targetElement.getAttribute('data-component-id') || 'anonymous'}-${path}`;
+  
+  // If this component is already being loaded, return early
+  if (!acquireLock(lockKey)) {
+    if (config.enableDebug) {
+      console.log(`Component ${path} is already being loaded for target`, targetElement);
+    }
+    return;
+  }
+  
+  const startTime = Date.now();
+  let attempt = 0;
+  
+  try {
+    if (!targetElement) {
+      throw new Error("Target element is required");
+    }
+
+    // Show enhanced loading indicator with path info
+    targetElement.innerHTML = `
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading ${path}...</div>
+      </div>
+    `;
+
+    // Full component URL with error handling
+    const componentUrl = path.startsWith('/') ? path.slice(1) : `components/${path}`;
+    
+    // Get HTML from cache or fetch with retry logic
+    let html = getFromCache(componentUrl);
+    
+    if (!html) {
+      let lastError;
       
       for (attempt = 0; attempt <= config.retryAttempts; attempt++) {
-        i18n.t('ui_loading_path')nst response = await feti18n.t('ui_full_component_url_with_error_handling_const_componenturl_path_startswith_path_slice_1_components_path_get_html_from_cache_or_fetch_with_retry_logic_let_html_getfromcache_componenturl_if_html_let_lasterror_for_attempt_0_attempt')TP ${response.status} loading component ${path}: ${response.statusText} - ${errorText}`
+        try {
+          const response = await fetch(componentUrl, {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+            cache: 'no-store'
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `HTTP ${response.status} loading component ${path}: ${response.statusText} - ${errorText}`
             );
           }
           
@@ -28,13 +184,238 @@ i18n.t('ui_advanced_cache_with_metadata_and_versioning_const_componentcache_new_
           
         } catch (error) {
           lastError = error;
-          cacheStats.errors++;i18n.t('ui_settimeout_resolve_config_retrydelay_attempt_1_if_html_throw_lasterror_new_error_failed_to_load_component_path_after_config_retryattempts_1_attempts_parse_html_with_error_handling_let_doc_try_const_parser_new_domparser_doc_parser_parsefromstring_html_i18n_t_ui_text_hi18n_t_ui_settimeout_resolve_config_retrydelay_attempt_1_if_html_throw_lasterror_new_error_failed_to_load_component_path_after_config_retryattempts_1_attempts_parse_html_with_error_handling_let_doc_try_const_parser_new_domparser_doc_parser_parsefromstring_html_text_html_check_for_parsing_errors_const_parsererror_doc_queryselector_parsererror_if_parsererror_throw_new_error_html_parsing_error_in_component_path_parsererror_textcontent_catch_parseerror_throw_new_error_failed_to_parse_html_for_component_path_parseerror_message_process_all_nodes_with_enhanced_error_handling_and_tracking_const_allnodes_doc_queryselectorall_style_doc_queryselectorall_script_doc_body_childnodes_filter_node_node_node_nodetype_1_only_element_nodes_const_loadpromises_const_loadedresources_new_set_let_blobcounter_0_for_const_node_of_allnodes_try_if_node_nodename_script_const_ismodule_node_type_module_node_getattribute_type_module_if_ismodule_if_node_src_for_esolvedurl_const_modulepromise_import_resolvedurl_catch_err_console_error_failed_to_load_module_resolvedurl_err_emit_component_error_type_module_url_resolvedurl_error_err_message_throw_err_loadpromises_push_modi18n_t_ui_console_error_failed_to_load_module_resolvedurl_err_emit_component_error_type_module_url_resolvedurl_error_err_message_throw_err_loadpromises_push_modulepromise_else_handle_inline_module_scripts_const_virtualurl_componenturl_replace_g_blobcounter_js_if_loadedresources_has_virtualurl_loadedresources_add_virtualurl_transform_relative_import_paths_to_absolute_urls_with_enhanced_regex_let_content_node_textcontent_replace_import_s_s_from_s_g_match_bindings_importpath_convert_relative_or_root_based_e_g_src_to_absolute_urls_if_https_test_importpath_const_absoluteurl_new_url_importpath_globalthis_location_origin_href_return_import_bindings_from_absoluteurl_return_match_add_sourceurl_for_debugging_and_error_tracking_content_n_sourceurl_virtualurl_create_a_blob_from_the_rewritten_content_const_blob_new_blob_content_type_text_javascript_const_bloburl_url_createobjecturl_blob_const_modulepromise_import_bloburl_catch_err_console_error_failed_to_load_inline_module_virtualurl_err_emit_component_error_type_inline_module_url_virtualurl_error_err_message_throw_err_finally_clean_up_blob_url_to_prevent_memory_leaks_settimeout_url_revokeobjecturl_bloburl_1000_loadpromises_push_modulepromise_else_non_module_script_with_enhanced_handling_const_script_document_createelement_script_copy_all_attributes_with_filtering_array_from_node_attributes_foreach_attr_if_attr_name_type_attr_value_module_script_setattribute_attr_name_attr_value_script_textcontent_node_textcontent_if_script_src_const_promise_new_promise_resolve_reject_script_onload_emit_component_loaded_type_script_src_script_src_resolve_script_onerror_const_error_new_error_failed_to_load_script_script_src_emit_component_error_type_script_src_script_src_error_error_message_reject_error_loadpromises_push_promise_targetelement_appendchild_script_else_if_node_nodename_style_node_nodename_link_node_rel_stylesheet_enhanced_style_link_handling_const_clone_node_clonenode_true_if_clone_tagname_link_clone_rel_stylesheet_const_promise_new_promise_resolve_reject_clone_onload_emit_component_loaded_type_stylesheet_href_clone_href_resolve_clone_onerror_const_error_new_error_failed_to_load_stylesheet_clone_href_emit_component_error_type_stylesheet_href_clone_href_error_error_message_reject_error_loadpromises_push_promise_targetelement_appendchild_clone_else_enhanced_dom_node_cloning_with_error_handling_try_const_clone_node_clonenode_true_targetelement_appendchild_clone_catch_cloneerror_console_warn_failed_to_clone_node_node_nodename_cloneerror_emit_component_warning_type_clone_error_nodename_node_nodename_error_cloneerror_message_catch_nodeerror_console_error_error_processing_node_node_nodename_nodeerror_emit_component_error_type_node_processing_nodename_node_nodename_error_nodeerror_message_wait_for_all_tracked_external_scripts_styles_to_finish_loading_with_enhanced_error_handling_try_await_promise_all_loadpromises_catch_loaderror_console_error_error_loading_resources_for_component_path_loaderror_throw_new_error_component_resource_loading_failed_loaderror_message_remove_loading_indicator_with_enhanced_cleanup_const_loadingel_targetelement_queryselector_scope_loading_if_loadingel_loadingel_remove_load_any_nested_components_with_error_handling_try_await_loadcomponents_targetelement_catch_nestederror_console_warn_error_loading_nested_components_for_path_nestederror_emit_component_warning_type_nested_components_path_error_nestederror_message_emit_component_loaded_event_const_loadtime_date_now_starttime_emit_component_loaded_type_component_path_loadtime_attempt_attempt_1_cachehit_getfromcache_componenturl_null_if_config_enabledebug_console_log_component_path_loaded_in_loadtime_ms_return_parsed_document_return_doc_catch_error_enhanced_error_handling_with_the_new_system_await_handleerror_error_component_componentsystem_function_importcomponent_path_targetelementid_targetelement_id_unknown_lockkey_show_error_in_ui_targetelement_innerhtml')_18n_t_ui_error_actions')">
-          <ii18n.t('ui_error_message')class="i18n.t('ui_i18n_t_ui_error_retry')" onclick="i18n.t('ui_i18n_t_ui_error_message_tcomponent_path_this_parentelement_parentelement_parentelement')">Retry</button>
-          <button class="i18n.t('ui_i18n_t_ui_error_refresh')" i18n.t('ui_retry')ck="i18n.t('ui_i18n_t_ui_window_locati18n_t_ui_retry_eload')">Reload Page</button>
+          cacheStats.errors++;
+          
+          if (attempt < config.retryAttempts) {
+            await new Promise(resolve => setTimeout(resolve, config.retryDelay * (attempt + 1)));
+          }
+        }
+      }
+      
+      if (!html) {
+        throw lastError || new Error(`Failed to load component ${path} after ${config.retryAttempts + 1} attempts`);
+      }
+    }
+    
+    // Parse HTML with error handling
+    let doc;
+    try {
+      const parser = new DOMParser();
+      doc = parser.parseFromString(html, "text/html");
+      
+      // Check for parsing errors
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        throw new Error(`HTML parsing error in component ${path}: ${parserError.textContent}`);
+      }
+    } catch (parseError) {
+      throw new Error(`Failed to parse HTML for component ${path}: ${parseError.message}`);
+    }
+
+    // Process all nodes with enhanced error handling and tracking
+    const allNodes = [
+      ...doc.querySelectorAll("style"),
+      ...doc.querySelectorAll("script"),
+      ...doc.body.childNodes,
+    ].filter(node => node && node.nodeType === 1); // Only element nodes
+
+    const loadPromises = [];
+    const loadedResources = new Set();
+    let blobCounter = 0;
+
+    for (const node of allNodes) {
+      try {
+        if (node.nodeName === "SCRIPT") {
+          const isModule = node.type === "module" || node.getAttribute("type") === "module";
+
+          if (isModule) {
+            if (node.src) {
+              // For <script type="module" src="..." use dynamic import
+              const resolvedUrl = new URL(node.src, globalThis.location.origin).toString();
+
+              // Check if module is already being loaded
+              if (!loadedResources.has(resolvedUrl)) {
+                loadedResources.add(resolvedUrl);
+                
+                const modulePromise = import(resolvedUrl)
+                  .catch((err) => {
+                    console.error(`Failed to load module ${resolvedUrl}:`, err);
+                    emit('component.error', { type: 'module', url: resolvedUrl, error: err.message });
+                    throw err;
+                  });
+                
+                loadPromises.push(modulePromise);
+              }
+            } else {
+              // Handle inline module scripts
+              const virtualUrl = `${componentUrl.replace(/\//g, '_')}.${++blobCounter}.js`;
+
+              if (!loadedResources.has(virtualUrl)) {
+                loadedResources.add(virtualUrl);
+                
+                // Transform relative import paths to absolute URLs with enhanced regex
+                let content = node.textContent.replace(
+                  /import\s+([^'"]+)\s+from\s+["']([^"']+)["']/g,
+                  (match, bindings, importPath) => {
+                    // Convert relative OR root-based (e.g. /src/...) to absolute URLs
+                    if (!/^https?:\/\//.test(importPath)) {
+                      const absoluteUrl = new URL(importPath, globalThis.location.origin).href;
+                      return `import ${bindings} from "${absoluteUrl}"`;
+                    }
+                    return match;
+                  }
+                );
+
+                // Add sourceURL for debugging and error tracking
+                content += `\n//# sourceURL=${virtualUrl}`;
+
+                // Create a Blob from the rewritten content
+                const blob = new Blob([content], { type: "text/javascript" });
+                const blobUrl = URL.createObjectURL(blob);
+
+                const modulePromise = import(blobUrl)
+                  .catch((err) => {
+                    console.error(`Failed to load inline module ${virtualUrl}:`, err);
+                    emit('component.error', { type: 'inline-module', url: virtualUrl, error: err.message });
+                    throw err;
+                  })
+                  .finally(() => {
+                    // Clean up blob URL to prevent memory leaks
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                  });
+
+                loadPromises.push(modulePromise);
+              }
+            }
+          } else {
+            // Non-module script with enhanced handling
+            const script = document.createElement("script");
+            
+            // Copy all attributes with filtering
+            Array.from(node.attributes || []).forEach((attr) => {
+              if (attr.name !== 'type' || attr.value !== 'module') {
+                script.setAttribute(attr.name, attr.value);
+              }
+            });
+            
+            script.textContent = node.textContent;
+
+            if (script.src) {
+              const promise = new Promise((resolve, reject) => {
+                script.onload = () => {
+                  emit('component.loaded', { type: 'script', src: script.src });
+                  resolve();
+                };
+                script.onerror = () => {
+                  const error = new Error(`Failed to load script: ${script.src}`);
+                  emit('component.error', { type: 'script', src: script.src, error: error.message });
+                  reject(error);
+                };
+              });
+              loadPromises.push(promise);
+            }
+
+            targetElement.appendChild(script);
+          }
+        } else if (node.nodeName === "STYLE" || (node.nodeName === "LINK" && node.rel === "stylesheet")) {
+          // Enhanced style/link handling
+          const clone = node.cloneNode(true);
+
+          if (clone.tagName === "LINK" && clone.rel === "stylesheet") {
+            const promise = new Promise((resolve, reject) => {
+              clone.onload = () => {
+                emit('component.loaded', { type: 'stylesheet', href: clone.href });
+                resolve();
+              };
+              clone.onerror = () => {
+                const error = new Error(`Failed to load stylesheet: ${clone.href}`);
+                emit('component.error', { type: 'stylesheet', href: clone.href, error: error.message });
+                reject(error);
+              };
+            });
+            loadPromises.push(promise);
+          }
+
+          targetElement.appendChild(clone);
+        } else {
+          // Enhanced DOM node cloning with error handling
+          try {
+            const clone = node.cloneNode(true);
+            targetElement.appendChild(clone);
+          } catch (cloneError) {
+            console.warn(`Failed to clone node ${node.nodeName}:`, cloneError);
+            emit('component.warning', { type: 'clone-error', nodeName: node.nodeName, error: cloneError.message });
+          }
+        }
+      } catch (nodeError) {
+        console.error(`Error processing node ${node.nodeName}:`, nodeError);
+        emit('component.error', { type: 'node-processing', nodeName: node.nodeName, error: nodeError.message });
+      }
+    }
+
+    // Wait for all tracked external scripts/styles to finish loading with enhanced error handling
+    try {
+      await Promise.all(loadPromises);
+    } catch (loadError) {
+      console.error(`Error loading resources for component ${path}:`, loadError);
+      throw new Error(`Component resource loading failed: ${loadError.message}`);
+    }
+
+    // Remove loading indicator with enhanced cleanup
+    const loadingEl = targetElement.querySelector(':scope > .loading');
+    if (loadingEl) {
+      loadingEl.remove();
+    }
+
+    // Load any nested components with error handling
+    try {
+      await loadComponents([targetElement]);
+    } catch (nestedError) {
+      console.warn(`Error loading nested components for ${path}:`, nestedError);
+      emit('component.warning', { type: 'nested-components', path, error: nestedError.message });
+    }
+
+    // Emit component loaded event
+    const loadTime = Date.now() - startTime;
+    emit('component.loaded', { 
+      type: 'component', 
+      path, 
+      loadTime, 
+      attempt: attempt + 1,
+      cacheHit: getFromCache(componentUrl) !== null
+    });
+
+    if (config.enableDebug) {
+      console.log(`Component ${path} loaded in ${loadTime}ms`);
+    }
+
+    // Return parsed document
+    return doc;
+  } catch (error) {
+    // Enhanced error handling with the new system
+    await handleError(error, {
+      component: 'ComponentSystem',
+      function: 'importComponent',
+      path,
+      targetElementId: targetElement.id || 'unknown',
+      lockKey
+    });
+    
+    // Show error in UI
+    targetElement.innerHTML = `
+      <div class="component-error">
+        <div class="error-title">Component Loading Error</div>
+        <div class="error-path">${path}</div>
+        <div class="error-message">${error.message}</div>
+        <div class="error-actions">
+          <button class="error-retry" onclick="importComponent('${path}', this.parentElement.parentElement.parentElement)">Retry</button>
+          <button class="error-refresh" onclick="window.location.reload()">Reload Page</button>
         </div>
       </div>
     `;
-    i18n.t('ui_reload_page')errori18n.t('ui_reload_page')ly {
+    
+    throw error;
+  } finally {
     // Release the lock when done, regardless of success or failure
     releaseLock(lockKey);
   }
@@ -48,23 +429,23 @@ export async function loadComponents(roots = [document.documentElement]) {
 
     // Find all top-level components and load them in parallel
     const components = rootElements.flatMap((root) =>
-      Array.from(root.querySelectorAll("i18n.t('ui_i18n_t_ui_x_component')"))
+      Array.from(root.querySelectorAll("x-component"))
     );
 
     if (components.length === 0) return;
 
     await Promise.all(
       components.map(async (component) => {   
-        const path = component.getAttribute("i18n.t('ui_i18n_t_ui_path')");
+        const path = component.getAttribute("path");
         if (!path) {
-          console.error("i18n.t('ui_i18n_t_ui_x_component_missing_path_attribute')", component);
+          console.error("x-component missing path attribute:", component);
           return;
         }
         await importComponent(path, component);
       })
     );
   } catch (error) {
-    console.error("i18n.t('ui_i18n_t_ui_error_loading_components')", error);
+    console.error("Error loading components:", error);
   }
 }
 
@@ -107,8 +488,8 @@ const observer = new MutationObserver((mutations) => {
       if (node.nodeType === 1) {
         // ELEMENT_NODE
         // Check if this node or its descendants contain x-component(s)
-        if (node.matches?.("i18n.t('ui_i18n_t_ui_x_component')")) {
-          importComponent(node.getAttribute("i18n.t('ui_i18n_t_ui_path')"), node);
+        if (node.matches?.("x-component")) {
+          importComponent(node.getAttribute("path"), node);
         } else if (node.querySelectorAll) {
           loadComponents([node]);
         }

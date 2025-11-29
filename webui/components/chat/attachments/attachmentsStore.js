@@ -1,6 +1,6 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
-import { fetchApi } from "i18n.t('ui_i18n_t_ui_js_api_js')";
-import { uploadFileChunked } from "i18n.t('ui_i18n_t_ui_js_uploadschunked_js')";
+import { createStore } from "/static/js/AlpineStore.js";
+import { fetchApi } from "/static/js/api.js";
+import { uploadFileChunked } from "/static/js/uploadsChunked.js";
 
 const model = {
   // State properties
@@ -35,7 +35,7 @@ const model = {
       // initialize upload tracking fields (will be populated once upload starts)
       attachment.progressBytes = 0;
       attachment.totalBytes = attachment.file ? attachment.file.size : 0;
-      attachment.status = "i18n.t('ui_i18n_t_ui_pending')"; // pending | uploading | uploaded | error | quarantined
+      attachment.status = "pending"; // pending | uploading | uploaded | error | quarantined
       attachment.attachmentId = null;
       attachment.sha256 = null;
       this.attachments.push(attachment);
@@ -47,7 +47,10 @@ const model = {
     if (index >= 0 && index < this.attachments.length) {
       this.attachments.splice(index, 1);
       this.updateAttachmentState();
-i18n.t('ui_0_index') clearAttachments() {
+    }
+  },
+
+  clearAttachments() {
     this.attachments = [];
     this.updateAttachmentState();
   },
@@ -59,6 +62,584 @@ i18n.t('ui_0_index') clearAttachments() {
         existing.name === newAttachment.name &&
         existing.file &&
         newAttachment.file &&
-        existing.file.sii18n.t('ui_existing_name_newattachment_name_existing_file_newattachment_file_existing_file_size_newattachment_file_size_return_isduplicate_updateattachmentstate_this_hasattachments_this_attachments_length_0_drag_drop_overlay_control_methods_showdragdropoverlay_this_dragdropoverlayvisible_true_hidedragdropoverlay_this_di18n_t_ui_attachment_url_e_target_result_this_addattachment_attachment_reader_readasdataurl_file_show_success_feedback_console_log_clipboard_image_pasted_successfully_filename_catch_error_console_error_failed_to_handle_clipboard_image_error_update_handlefileupload_to_use_the_attachments_store_handlefileupload_event_const_files_event_target_files_this_handlefiles_files_event_target_value_clear_uploader_selection_to_fix_issue_where_same_file_is_ignored_the_second_time_file_handling_logic_moved_from_index_js_handlefiles_files_console_log_handlefiles_called_with_files_length_files_array_from_files_foreach_file_console_log_processing_file_file_name_file_type_const_ext_file_name_split_pop_tolowercase_const_isimage_jpg_jpeg_png_bmp_gif_webp_svg_includes_ext_const_attachment_file_file_type_isimage_image_file_name_file_name_extension_ext_displayinfo_this_getattachmentdisplayinfo_file_if_isimage_read_image_as_data_url_for_preview_const_reader_new_filereader_reader_onload_e_attachment_url_e_target_result_this_addattachment_attachment_reader_readasdataurl_file_else_for_non_image_files_add_directly_this_addattachment_attachment_get_attachments_for_sending_message_getattachmentsforsending_return_list_of_successfully_uploaded_descriptor_objects_for_message_send_return_this_attachments_filter_a_a_status_uploaded_a_status_quarantined_map_a_id_a_attachmentid_filename_a_name_mime_a_file_type_application_octet_stream_size_a_totalbytes_sha256_a_sha256_status_a_status_path_a_path_null_set_after_upload_generate_server_side_api_url_for_file_for_device_sync_prior_server_urls_removed_use_attachment_descriptors_with_path_check_if_file_is_an_image_based_on_extension_isimagefile_filename_const_imageextensions_jpg_jpeg_png_gif_bmp_webp_svg_const_extension_filename_split_pop_tolowercase_return_imageextensions_includes_extension_get_attachment_preview_url_server_url_for_persistence_blob_url_for_current_session_getattachmentpreviewurl_attachment_if_attachment_return_null_uploaded_descriptor_has_path_if_attachment_path_return_attachment_mime_attachment_mime_startswith_image_attachment_path_this_getfilepreviewurl_attachment_filename_attachment_name_pre_upload_object_with_file_if_attachment_file_if_attachment_type_image_return_attachment_url_url_createobjecturl_attachment_file_return_this_getfilepreviewurl_attachment_name_if_typeof_attachment_string_return_this_getserverimgurl_attachment_return_null_getfilepreviewurl_filename_const_extension_filename_split_pop_tolowercase_const_types_archive_files_zip_archive_rar_archive_7z_archive_tar_archive_gz_archive_document_files_pdf_document_doc_document_docx_document_txt_document_rtf_document_odt_document_code_files_py_code_js_code_html_code_css_code_json_code_xml_code_md_code_yml_code_yaml_code_sql_code_sh_code_bat_code_spreadsheet_files_xls_document_xlsx_document_csv_document_presentation_files_ppt_document_pptx_document_odp_document_const_type_types_extension_file_return_public_type_svg_enhanced_method_to_get_attachment_display_info_for_ui_getattachmentdisplayinfo_attachment_if_descriptor_returned_from_backend_if_attachment_attachment_attachmentid_attachment_path_const_isimage_attachment_mime_attachment_mime_startswith_image_return_filename_attachment_filename_attachment_name_extension_attachment_filename_attachment_name_split_pop_touppercase_isimage_previewurl_isimage_attachment_path_this_getfilepreviewurl_attachment_filename_attachment_name_clickhandler_if_isimage_this_openimagemodal_attachment_path_attachment_filename_attachment_name_else_window_open_attachment_path_blank_progressbytes_attachment_progressbytes_totalbytes_attachment_totalbytes_status_attachment_status_pre_upload_object_if_attachment_attachment_file_const_isimage_attachment_type_image_return_filename_attachment_name_extension_attachment_name_split_pop_touppercase_isimage_previewurl_this_getattachmentpreviewurl_attachment_clickhandler_if_isimage_attachment_url_this_openimagemodal_attachment_url_attachment_name_progressbytes_attachment_progressbytes_totalbytes_attachment_totalbytes_status_attachment_status_if_typeof_attachment_string_const_isimage_this_isimagefile_attachment_return_filename_attachment_extension_attachment_split_pop_touppercase_isimage_previewurl_isimage_this_getserverimgurl_attachment_this_getfilepreviewurl_attachment_clickhandler_if_isimage_this_openimagemodal_this_getserverimgurl_attachment_attachment_progressbytes_null_totalbytes_null_status_unknown_return_filename_unknown_extension_isimage_false_previewurl_null_clickhandler_progressbytes_null_totalbytes_null_status_unknown_async_uploadall_sessionid_if_this_attachments_length_return_this_uploading_true_this_sessionid_sessionid_const_chunk_threshold_8_1024_1024_8mb_const_pending_this_attachments_filter_a_a_status_pending_try_const_small_pending_filter_a_a_file_size_0_i_js_code_i18n_t_ui_html_code_i18n_t_ui_css_code_i18ni18n_t_ui_a_file_size_0_chunk_threshold_let_results_upload_large_files_via_chunked_api_sequentially_for_const_a_of_large_a_status_uploading_const_d_await_this_uploadchunked_a_sessionid_if_d_a_status_d_status_quarantined_quarantined_uploaded_a_attachmentid_d_id_a_sha256_d_sha256_a_path_d_path_a_progressbytes_a_totalbytes_results_push_d_else_a_status_error_upload_small_files_in_one_batch_if_small_length_small_foreach_a_a_status_uploading_const_form_new_formdata_form_append_session_id_sessionid_small_foreach_a_form_append_files_a_file_a_name_const_resp_await_fetch_v1_uploads_method_post_body_form_credentials_same_origin_if_resp_ok_const_txt_await_resp_text_small_foreach_a_a_status_error_a_error_txt_else_const_descriptors_await_resp_json_descriptors_foreach_d_const_match_this_attachments_find_x_x_name_d_filename_x_status_uploading_x_status_pending_if_match_match_status_d_status_quarantined_quarantined_uploaded_match_attachmentid_d_id_match_sha256_d_sha256_match_path_d_path_match_progressbytes_match_totalbytes_results_push_d_return_results_catch_err_pending_foreach_a_a_status_error_a_error_err_message_string_err_return_finally_this_uploading_false_this_updateattachmentstate_async_retryattachment_attachment_if_attachment_attachment_file_return_attachment_status_pending_attachment_progressbytes_0_attachment_error_null_clear_resume_key_in_case_it_existed_const_resumekey_chunk_upload_this_sessionid_unspecified_attachment_name_attachment_file_size_sessionstorage_removeitem_resumekey_decide_path_chunked_vs_single_const_chunk_threshold_8_1024_1024_if_attachment_file_size_0_chunk_threshold_attachment_status_uploading_const_d_await_this_uploadchunked_attachment_this_sessionid_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_else_attachment_status_error_else_single_file_post_const_form_new_formdata_form_append_session_id_this_sessionid_form_append_files_attachment_file_attachment_name_attachment_status_uploading_const_resp_await_fetch_v1_uploads_method_post_body_form_credentials_same_origin_if_resp_ok_const_arr_await_resp_json_const_d_arr_find_x_x_filename_attachment_name_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_else_attachment_status_error_else_attachment_status_error_this_updateattachmentstate_async_resumeattachment_attachment_if_attachment_attachment_file_return_if_attachment_status_uploading_return_only_resume_mid_upload_simply_invoke_chunked_path_which_will_detect_existing_offset_via_sessionstorage_key_const_chunk_threshold_8_1024_1024_if_attachment_file_size_0_ssbytes_0_attachment_error_null_clear_resume_key_in_case_it_existed_const_resumekey_chunk_upload_this_sessionid_unspecified_attachment_name_attachment_file_size_sessionstorage_removeitem_resumekey_decide_path_chunked_vs_single_const_chunk_threshold_8_1024_1024_if_attachment_file_size_0_chunk_threshold_attachment_status_uploading_const_d_await_this_uploadchunked_attachment_this_sessionid_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_else_attachment_status_error_else_single_file_post_const_form_new_formdata_form_append_session_id_this_sessionid_form_append_files_attachment_file_attachment_name_attachment_status_uploading_const_resp_await_fetch_v1_uploads_method_post_body_form_credentials_same_origin_if_resp_ok_const_arr_await_resp_json_const_d_arr_find_x_x_filename_attachment_name_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_else_attachment_status_error_else_attachment_status_error_this_updateattachmentstate_async_resumeattachment_attachment_if_attachment_attachment_file_return_if_attachment_status_uploading_return_only_resume_mid_upload_simply_invoke_chunked_path_which_will_detect_existing_offset_via_sessionstorage_key_const_chunk_threshold_8_1024_1024_if_attachment_file_size_0_chunk_threshold_return_not_chunked_const_d_await_this_uploadchunked_attachment_this_sessionid_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_this_updateattachmentstate_async_uploadchunked_attachment_sessionid_try_const_descriptor_await_uploadfilechunked_attachment_file_sessionid_info_attachment_progressbytes_info_bytesuploaded_attachment_speedbps_info_speedbps_attachment_etaseconds_info_etaseconds_if_info_done_attachment_status_uploading_i18n_t_ui_will_be_flipped_on_finalize_event_resume_true_return_descriptor_catch_e_return_null_update_progress_from_sse_uploads_progress_events_applyprogressevent_ev_if_ev_metadata_filename_return_const_filename_ev_metadata_filename_const_match_this_attachments_find_a_a_name_filename_if_match_return_if_typeof_ev_metadata_bytes_uploaded_number_i18n_t_ui_match_progressbytes_ev_metadata_bytes_uploaded_if_ev_metadata_status_uploaded_i18n_t_ui_match_progressbytes_match_totalbytes_match_status_ev_metadata_status_if_ev_metadata_attachment_id_match_attachmentid_ev_metadata_attachment_id_if_typeof_ev_metadata_bytes_total_number_i18n_t_ui_match_bytestotal_ev_metadata_bytes_total_else_if_ev_metadata_status_uploading_i18n_t_ui_match_status_uploading_i18n_t_ui_percent_speed_derived_if_typeof_match_progressbytes_number_i18n_t_ui_typeof_match_totalbytes_number_i18n_t_ui_match_totalbytes_0_match_percent_match_progressbytes_match_totalbytes_download_an_attachment_item_has_path_produced_by_backend_async_downloadattachment_item_try_const_url_item_item_path_item_path_null_if_url_window_toastfetcherror_attachment_not_downloadable_i18n_t_ui_no_path_available_i18n_t_ui_return_const_a_document_createelement_a_i18n_t_ui_a_href_url_a_target_blank_i18n_t_ui_a_rel_noopener_i18n_i18n_t_ui_0_index_catch_error_window_toastfetcherror_error_downloading_file_i18n_t_ui_error_generate_guid_for_unique_filenames_generateguid_return_xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx_i18n_t_ui_replace_xy_g_function_c_const_r_math_random_16_0_const_v_c_x_i18n_t_ui_r_r_0x3_0x8_return_v_tostring_16_image_modal_methods_openimagemodal_imageurl_imagename_this_currentimageurl_imageurl_this_currentimagenai18n_t_ui_existing_name_newattachment_name_existing_file_newattachment_file_existing_file_size_newattachment_file_size_return_isduplicate_updateattachmentstate_this_hasattachments_this_attachments_length_0_drag_drop_overlay_control_methods_showdragdropoverlay_this_dragdropoverlayvisible_true_hidedragdropoverlay_this_dragdropoverlayvisible_false_setup_drag_and_drop_event_handlers_setupdragdrophandlers_let_dragcounter_0_prevent_default_drag_behaviors_dragenter_dragover_dragleave_drop_foreach_eventname_document_addeventlistener_eventname_e_e_preventdefault_e_stoppropagation_false_handle_drag_enter_document_addeventlistener_dragenter_e_dragcounter_if_dragcounter_1_this_showdragdropoverlay_false_handle_drag_leave_document_addeventlistener_dragleave_e_dragcounter_if_dragcounter_0_this_hidedragdropoverlay_false_handle_drop_document_addeventlistener_drop_e_console_log_drop_detected_with_files_e_datatransfer_files_length_dragcounter_0_this_hidedragdropoverlay_const_files_e_datatransfer_files_this_handlefiles_files_false_setup_paste_event_handler_for_clipboard_images_setuppastehandler_console_log_setting_up_paste_handler_document_addeventlistener_paste_e_console_log_paste_event_detected_target_e_target_tagname_const_items_e_clipboarddata_items_let_imagefound_false_console_log_checking_clipboard_items_items_length_first_check_if_there_are_any_images_in_the_clipboard_for_let_i_0_i_t_this_updateattachmentstate_removeattachment_index_if_index_0_index')this_updateattachmentstate_removeattachment_index_if_index_0_index_this_attachments_length_this_attachments_splice_index_1_this_updateattachmentstate_clearattachments_this_attachments_this_updateattachmentstate_validateduplicates_newattachment_check_if_attachment_already_exists_based_on_name_and_size_const_isduplicate_this_attachments_some_existing_existing_name_newattachment_name_exi18n.t('ui_existing_name_newattachment_name_existing_file_newattachment_file_existing_file_size_newattachment_file_size_return_isduplicate_updateattachmentstate_this_hasattachments_this_attachments_length_0_drag_drop_overlay_control_methods_showdragdropoverlay_this_dragdropoverlayvisible_true_hidedragdropoverlay_this_dragdropoverlayvisible_false_setup_drag_and_drop_event_handlers_setupdragdrophandlers_let_dragcounter_0_prevent_default_drag_behaviors_i18n_t_ui_dragenter_i18n_t_ui_dragover_i18n_t_ui_dragleave_i18n_t_ui_drop_foreach_eventname_document_addeventlistener_eventname_e_e_preventdefault_e_stoppropagation_false_handle_drag_enter_document_addeventlistener_i18n_t_ui_dragenter_e_dragcounter_if_dragcounter_1_this_showdragdropoverlay_false_handle_drag_leave_document_addeventlistener_i18n_t_ui_dragleave_e_dragcounter_if_dragcounter_0_this_hidedragdropoverlay_false_handle_drop_document_addeventlistener_i18n_t_ui_drop_e_console_log_i18n_t_ui_drop_detected_with_files_e_datatransfer_files_length_dragcounter_0_this_hidedragdropoverlay_const_files_e_datatransfer_files_this_handlefiles_files_false_setup_paste_event_handler_for_clipboard_images_setuppastehandler_console_log_i18n_t_ui_setting_up_paste_handler_document_addeventlistener_i18n_t_ui_paste_e_console_log_i18n_t_ui_paste_event_detected_target_e_target_tagname_const_items_e_clipboarddata_items_let_imagefound_false_console_log_i18n_t_ui_checking_clipboard_items_items_length_first_check_if_there_are_any_images_in_the_clipboard_for_let_i_0_i')clipboard_allowing_normal_text_paste_in_input_field')"i18n.t('ui_return_if_no_images_found_and_not_in_input_field_do_nothing_if_imagefound_console_log')"i18n.t('ui_no_images_in_clipboard')"i18n.t('ui_handle_clipboard_image_pasting_async_handleclipboardimage_blob_try_generate_unique_filename_const_guid_this_generateguid_const_filename_clipboard_guid_png_create_file_object_from_blob_const_file_new_file_blob_filename_type')"i18n.t('ui_image_png')"i18n.t('ui_create_attachment_object_const_attachment_file_file_type')"i18n.t('ui_image')"i18n.t('ui_name_filename_extension')"i18n.t('ui_png')"i18n.t('ui_displayinfo_this_getattachmentdisplayinfo_file_read_as_data_url_for_preview_const_reader_new_filereader_reader_onload_e_attachment_url_e_target_result_this_addattachment_attachment_reader_readasdataurl_file_show_success_feedback_console_log')"i18n.t('ui_clipboard_image_pasted_successfully')"i18n.t('ui_filename_catch_error_console_error')"i18n.t('ui_failed_to_handle_clipboard_image')"i18n.t('ui_error_update_handlefileupload_to_use_the_attachments_store_handlefileupload_event_const_files_event_target_files_this_handlefiles_files_event_target_value')""i18n.t('ui_i18n_t_ui_clear_uploader_selection_to_fix_issue_where_same_file_is_ignored_the_second_time_file_handling_logic_moved_from_index_js_handlefiles_files_console_log')"handleFiles called with"i18n.t('ui_i18n_t_ui_files_length')"files"i18n.t('ui_i18n_t_ui_array_from_files_foreach_file_console_log')"Processing file:"i18n.t('ui_i18n_t_ui_file_name_file_type_const_ext_file_name_split')"."i18n.t('ui_i18n_t_ui_pop_tolowercase_const_isimage')"jpg"i18n.t('ui_i18n_t_ui')"jpeg"i18n.t('ui_i18n_t_ui')"png"i18n.t('ui_i18n_t_ui')"bmp"i18n.t('ui_i18n_t_ui')"gif"i18n.t('ui_i18n_t_ui')"webp"i18n.t('ui_i18n_t_ui')"svg"i18n.t('ui_i18n_t_ui_includes_ext_const_attachment_file_file_type_isimage')"image"i18n.t('ui_i18n_t_ui')"file"i18n.t('ui_i18n_t_ui_name_file_name_extension_ext_displayinfo_this_getattachmentdisplayinfo_file_if_isimage_read_image_as_data_url_for_preview_const_reader_new_filereader_reader_onload_e_attachment_url_e_target_result_this_addattachment_attachment_reader_readasdataurl_file_else_for_non_image_files_add_directly_this_addattachment_attachment_get_attachments_for_sending_message_getattachmentsforsending_return_list_of_successfully_uploaded_descriptor_objects_for_message_send_return_this_attachments_filter_a_a_status')"uploaded"i18n.t('ui_i18n_t_ui_a_status')"quarantined"i18n.t('ui_i18n_t_ui_map_a_id_a_attachmentid_filename_a_name_mime_a_file_type')"application/octet-stream"i18n.t('ui_i18n_t_ui_size_a_totalbytes_sha256_a_sha256_status_a_status_path_a_path_null_set_after_upload_generate_server_side_api_url_for_file_for_device_sync_prior_server_urls_removed_use_attachment_descriptors_with_path_check_if_file_is_an_image_based_on_extension_isimagefile_filename_const_imageextensions')"jpg"i18n.t('ui_i18n_t_ui')"jpeg"i18n.t('ui_i18n_t_ui')"png"i18n.t('ui_i18n_t_ui')"gif"i18n.t('ui_i18n_t_ui')"bmp"i18n.t('ui_i18n_t_ui')"webp"i18n.t('ui_i18n_t_ui')"svg"i18n.t('ui_i18n_t_ui_const_extension_filename_split')"."i18n.t('ui_i18n_t_ui_pop_tolowercase_return_imageextensions_includes_extension_get_attachment_preview_url_server_url_for_persistence_blob_url_for_current_session_getattachmentpreviewurl_attachment_if_attachment_return_null_uploaded_descriptor_has_path_if_attachment_path_return_attachment_mime_attachment_mime_startswith')"image/"i18n.t('ui_i18n_t_ui_attachment_path_this_getfilepreviewurl_attachment_filename_attachment_name_pre_upload_object_with_file_if_attachment_file_if_attachment_type')"image"i18n.t('ui_i18n_t_ui_return_attachment_url_url_createobjecturl_attachment_file_return_this_getfilepreviewurl_attachment_name_if_typeof_attachment')"string"i18n.t('ui_i18n_t_ui_return_this_getserverimgurl_attachment_return_null_getfilepreviewurl_filename_const_extension_filename_split')"."i18n.t('ui_i18n_t_ui_pop_tolowercase_const_types_archive_files_zip')"archive"i18n.t('ui_i18n_t_ui_rar')"archive"i18n.t('ui_i18n_t_ui')"7z"i18n.t('ui_i18n_t_ui')"archive"i18n.t('ui_i18n_t_ui_tar')"archive"i18n.t('ui_i18n_t_ui_gz')"archive"i18n.t('ui_i18n_t_ui_document_files_pdf')"document"i18n.t('ui_i18n_t_ui_doc')"document"i18n.t('ui_i18n_t_ui_docx')"document"i18n.t('ui_i18n_t_ui_txt')"document"i18n.t('ui_i18n_t_ui_rtf')"document"i18n.t('ui_i18n_t_ui_odt')"document"i18n.t('ui_i18n_t_ui_code_files_py')"code"i18n.t('ui_i18n_t_ui_js')"code"i18n.t('ui_i18n_t_ui_html')"code"i18n.t('ui_i18n_t_ui_css')"code"i18n.t('ui_i18n_t_ui_json')"code"i18n.t('ui_i18n_t_ui_xml')"code"i18n.t('ui_i18n_t_ui_md')"code"i18n.t('ui_i18n_t_ui_yml')"code"i18n.t('ui_i18n_t_ui_yaml')"code"i18n.t('ui_i18n_t_ui_sql')"code"i18n.t('ui_i18n_t_ui_sh')"code"i18n.t('ui_i18n_t_ui_bat')"code"i18n.t('ui_i18n_t_ui_spreadsheet_files_xls')"document"i18n.t('ui_i18n_t_ui_xlsx')"document"i18n.t('ui_i18n_t_ui_csv')"document"i18n.t('ui_i18n_t_ui_presentation_files_ppt')"document"i18n.t('ui_i18n_t_ui_pptx')"document"i18n.t('ui_i18n_t_ui_odp')"document"i18n.t('ui_i18n_t_ui_const_type_types_extension')"file"i18n.t('ui_i18n_t_ui_return_public_type_svg_enhanced_method_to_get_attachment_display_info_for_ui_getattachmentdisplayinfo_attachment_if_descriptor_returned_from_backend_if_attachment_attachment_attachmentid_attachment_path_const_isimage_attachment_mime_attachment_mime_startswith')"image/"i18n.t('ui_i18n_t_ui_return_filename_attachment_filename_attachment_name_extension_attachment_filename_attachment_name')""i18n.t('ui_i18n_t_ui_split')"."i18n.t('ui_i18n_t_ui_pop_touppercase_isimage_previewurl_isimage_attachment_path_this_getfilepreviewurl_attachment_filename_attachment_name_clickhandler_if_isimage_this_openimagemodal_attachment_path_attachment_filename_attachment_name_else_window_open_attachment_path')"_blank"i18n.t('ui_i18n_t_ui_progressbytes_attachment_progressbytes_totalbytes_attachment_totalbytes_status_attachment_status_pre_upload_object_if_attachment_attachment_file_const_isimage_attachment_type')"image"i18n.t('ui_i18n_t_ui_return_filename_attachment_name_extension_attachment_name')""i18n.t('ui_i18n_t_ui_split')"."i18n.t('ui_i18n_t_ui_pop_touppercase_isimage_previewurl_this_getattachmentpreviewurl_attachment_clickhandler_if_isimage_attachment_url_this_openimagemodal_attachment_url_attachment_name_progressbytes_attachment_progressbytes_totalbytes_attachment_totalbytes_status_attachment_status_if_typeof_attachment')"string"i18n.t('ui_i18n_t_ui_const_isimage_this_isimagefile_attachment_return_filename_attachment_extension_attachment_split')"."i18n.t('ui_i18n_t_ui_pop')""i18n.t('ui_i18n_t_ui_touppercase_isimage_previewurl_isimage_this_getserverimgurl_attachment_this_getfilepreviewurl_attachment_clickhandler_if_isimage_this_openimagemodal_this_getserverimgurl_attachment_attachment_progressbytes_null_totalbytes_null_status')"unknown"i18n.t('ui_i18n_t_ui_return_filename')"unknown"i18n.t('ui_i18n_t_ui_extension')""i18n.t('ui_i18n_t_ui_isimage_false_previewurl_null_clickhandler_progressbytes_null_totalbytes_null_status')"unknown"i18n.t('ui_i18n_t_ui_async_uploadall_sessionid_if_this_attachments_length_return_this_uploading_true_this_sessionid_sessionid_const_chunk_threshold_8_1024_1024_8mb_const_pending_this_attachments_filter_a_a_status')"pending"i18n.t('ui_i18n_t_ui_try_const_small_pending_filter_a_a_file_size_0_chunk_threshold_const_large_pending_filter_a_a_file_size_0_chunk_threshold_let_results_upload_large_files_via_chunked_api_sequentially_for_const_a_of_large_a_status')"uploading"i18n.t('ui_i18n_t_ui_const_d_await_this_uploadchunked_a_sessionid_if_d_a_status_d_status')"quarantined"i18n.t('ui_i18n_t_ui')"quarantined"i18n.t('ui_i18n_t_ui')"uploaded"i18n.t('ui_i18n_t_ui_a_attachmentid_d_id_a_sha256_d_sha256_a_path_d_path_a_progressbytes_a_totalbytes_results_push_d_else_a_status')"error"i18n.t('ui_i18n_t_ui_upload_small_files_in_one_batch_if_small_length_small_foreach_a_a_status')"uploading"i18n.t('ui_i18n_t_ui_const_form_new_formdata_form_append')"session_id"i18n.t('ui_i18n_t_ui_sessionid')""i18n.t('ui_i18n_t_ui_small_foreach_a_form_append')"files"i18n.t('ui_i18n_t_ui_a_file_a_name_const_resp_await_fetch')"/v1/uploads"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_body_form_credentials')"same-origin"i18n.t('ui_i18n_t_ui_if_resp_ok_const_txt_await_resp_text_small_foreach_a_a_status')"error"i18n.t('ui_i18n_t_ui_a_error_txt_else_const_descriptors_await_resp_json_descriptors_foreach_d_const_match_this_attachments_find_x_x_name_d_filename_x_status')"uploading"i18n.t('ui_i18n_t_ui_x_status')"pending"i18n.t('ui_i18n_t_ui_if_match_match_status_d_status')"quarantined"i18n.t('ui_i18n_t_ui')"quarantined"i18n.t('ui_i18n_t_ui')"uploaded"i18n.t('ui_i18n_t_ui_match_attachmentid_d_id_match_sha256_d_sha256_match_path_d_path_match_progressbytes_match_totalbytes_results_push_d_return_results_catch_err_pending_foreach_a_a_status')"error"i18n.t('ui_i18n_t_ui_a_error_err_message_string_err_return_finally_this_uploading_false_this_updateattachmentstate_async_retryattachment_attachment_if_attachment_attachment_file_return_attachment_status_pending_attachment_progressbytes_0_attachment_error_null_clear_resume_key_in_case_it_existed_const_resumekey_chunk_upload_this_sessionid_unspecified_attachment_name_attachment_file_size_sessionstorage_removeitem_resumekey_decide_path_chunked_vs_single_const_chunk_threshold_8_1024_1024_if_attachment_file_size_0_chunk_threshold_attachment_status_uploading_const_d_await_this_uploadchunked_attachment_this_sessionid_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_else_attachment_status_error_else_single_file_post_const_form_new_formdata_form_append_session_id_this_sessionid_form_append_files_attachment_file_attachment_name_attachment_status_uploading_const_resp_await_fetch_v1_uploads_method_post_body_form_credentials_same_origin_if_resp_ok_const_arr_await_resp_json_const_d_arr_find_x_x_filename_attachment_name_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_else_attachment_status_error_else_attachment_status_error_this_updateattachmentstate_async_resumeattachment_attachment_if_attachment_attachment_file_return_if_attachment_status_uploading_return_only_resume_mid_upload_simply_invoke_chunked_path_which_will_detect_existing_offset_via_sessionstorage_key_const_chunk_threshold_8_1024_1024_if_attachment_file_size_0_chunk_threshold_return_not_chunked_const_d_await_this_uploadchunked_attachment_this_sessionid_if_d_attachment_status_d_status_quarantined_quarantined_uploaded_attachment_attachmentid_d_id_attachment_sha256_d_sha256_attachment_path_d_path_attachment_progressbytes_attachment_totalbytes_this_updateattachmentstate_async_uploadchunked_attachment_sessionid_try_const_descriptor_await_uploadfilechunked_attachment_file_sessionid_info_attachment_progressbytes_info_bytesuploaded_attachment_speedbps_info_speedbps_attachment_etaseconds_info_etaseconds_if_info_done_attachment_status')"uploading"i18n.t('ui_i18n_t_ui_will_be_flipped_on_finalize_event_resume_true_return_descriptor_catch_e_return_null_update_progress_from_sse_uploads_progress_events_applyprogressevent_ev_if_ev_metadata_filename_return_const_filename_ev_metadata_filename_const_match_this_attachments_find_a_a_name_filename_if_match_return_if_typeof_ev_metadata_bytes_uploaded')"number"i18n.t('ui_i18n_t_ui_match_progressbytes_ev_metadata_bytes_uploaded_if_ev_metadata_status')"uploaded"i18n.t('ui_i18n_t_ui_match_progressbytes_match_totalbytes_match_status_ev_metadata_status_if_ev_metadata_attachment_id_match_attachmentid_ev_metadata_attachment_id_if_typeof_ev_metadata_bytes_total')"number"i18n.t('ui_i18n_t_ui_match_bytestotal_ev_metadata_bytes_total_else_if_ev_metadata_status')"uploading"i18n.t('ui_i18n_t_ui_match_status')"uploading"i18n.t('ui_i18n_t_ui_percent_speed_derived_if_typeof_match_progressbytes')"number"i18n.t('ui_i18n_t_ui_typeof_match_totalbytes')"number"i18n.t('ui_i18n_t_ui_match_totalbytes_0_match_percent_match_progressbytes_match_totalbytes_download_an_attachment_item_has_path_produced_by_backend_async_downloadattachment_item_try_const_url_item_item_path_item_path_null_if_url_window_toastfetcherror')"Attachment not downloadable"i18n.t('ui_i18n_t_ui')"No path available"i18n.t('ui_i18n_t_ui_return_const_a_document_createelement')"a"i18n.t('ui_i18n_t_ui_a_href_url_a_target')"_blank"i18n.t('ui_i18n_t_ui_a_rel')"noopener"i18n.t('ui_i18n_i18n_t_ui_0_index_catch_error_window_toastfetcherror')"Error downloading file"i18n.t('ui_i18n_t_ui_error_generate_guid_for_unique_filenames_generateguid_return')"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"i18n.t('ui_i18n_t_ui_replace_xy_g_function_c_const_r_math_random_16_0_const_v_c')"x"i18n.t('ui_i18n_t_ui_r_r_0x3_0x8_return_v_tostring_16_image_modal_methods_openimagemodal_imageurl_imagename_this_currentimageurl_imageurl_this_currentimagename_imagename_this_imageloaded_false_this_imageerror_false_this_zoomlevel_1_open_the_modal_using_the_modals_system_if_window_openmodal_window_openmodal')"chat/attachments/imageModal.html"i18n.t('ui_i18n_t_ui_closeimagemodal_this_currentimageurl_null_this_currentimagename_null_this_imageloaded_false_this_imageerror_false_this_zoomlevel_1_zoom_controls_zoomin_this_zoomlevel_math_min_this_zoomlevel_1_2_5_max_5x_zoom_this_updateimagezoom_zoomout_this_zoomlevel_math_max_this_zoomlevel_1_2_0_1_min_0_1x_zoom_this_updateimagezoom_resetzoom_this_zoomlevel_1_this_updateimagezoom_updateimagezoom_const_img_document_queryselector')".modal-image"i18n.t('ui_i18n_t_ui_if_img_img_style_transform_scale_this_zoomlevel_const_store_createstore')"chatAttachments", model);
+        existing.file.size === newAttachment.file.size
+    );
+    return !isDuplicate;
+  },
+
+  updateAttachmentState() {
+    this.hasAttachments = this.attachments.length > 0;
+  },
+
+  // Drag drop overlay control methods
+  showDragDropOverlay() {
+    this.dragDropOverlayVisible = true;
+  },
+
+  hideDragDropOverlay() {
+    this.dragDropOverlayVisible = false;
+  },
+
+  // Setup drag and drop event handlers
+  setupDragDropHandlers() {
+
+    let dragCounter = 0;
+
+    // Prevent default drag behaviors
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+      document.addEventListener(
+        eventName,
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        },
+        false
+      );
+    });
+
+    // Handle drag enter
+    document.addEventListener(
+      "dragenter",
+      (e) => {
+
+        dragCounter++;
+        if (dragCounter === 1) {
+
+          this.showDragDropOverlay();
+        }
+      },
+      false
+    );
+
+    // Handle drag leave
+    document.addEventListener(
+      "dragleave",
+      (e) => {
+        dragCounter--;
+        if (dragCounter === 0) {
+          this.hideDragDropOverlay();
+        }
+      },
+      false
+    );
+
+    // Handle drop
+    document.addEventListener(
+      "drop",
+      (e) => {
+        console.log("Drop detected with files:", e.dataTransfer.files.length);
+        dragCounter = 0;
+        this.hideDragDropOverlay();
+
+        const files = e.dataTransfer.files;
+        this.handleFiles(files);
+      },
+      false
+    );
+  },
+
+  // Setup paste event handler for clipboard images
+  setupPasteHandler() {
+    console.log("Setting up paste handler...");
+    document.addEventListener("paste", (e) => {
+      console.log("Paste event detected, target:", e.target.tagName);
+
+      const items = e.clipboardData.items;
+      let imageFound = false;
+      console.log("Checking clipboard items:", items.length);
+
+      // First, check if there are any images in the clipboard
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf("image") !== -1) {
+          imageFound = true;
+          const blob = item.getAsFile();
+          if (blob) {
+            e.preventDefault(); // Prevent default paste behavior for images
+            this.handleClipboardImage(blob);
+            console.log("Image detected in clipboard, processing...");
+          }
+          break; // Only handle the first image found
+        }
+      }
+
+      // If no images found and we're in an input field, let normal text paste happen
+      if (
+        !imageFound &&
+        (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+      ) {
+        console.log(
+          "No images in clipboard, allowing normal text paste in input field"
+        );
+        return;
+      }
+
+      // If no images found and not in input field, do nothing
+      if (!imageFound) {
+        console.log("No images in clipboard");
+      }
+    });
+  },
+
+  // Handle clipboard image pasting
+  async handleClipboardImage(blob) {
+    try {
+      // Generate unique filename
+      const guid = this.generateGUID();
+      const filename = `clipboard-${guid}.png`;
+
+      // Create file object from blob
+      const file = new File([blob], filename, { type: "image/png" });
+
+      // Create attachment object
+      const attachment = {
+        file: file,
+        type: "image",
+        name: filename,
+        extension: "png",
+        displayInfo: this.getAttachmentDisplayInfo(file),
+      };
+
+      // Read as data URL for preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachment.url = e.target.result;
+        this.addAttachment(attachment);
+      };
+      reader.readAsDataURL(file);
+
+      // Show success feedback
+      console.log("Clipboard image pasted successfully:", filename);
+    } catch (error) {
+      console.error("Failed to handle clipboard image:", error);
+    }
+  },
+
+  // Update handleFileUpload to use the attachments store
+  handleFileUpload(event) {
+    const files = event.target.files;
+    this.handleFiles(files);
+    event.target.value = ""; // clear uploader selection to fix issue where same file is ignored the second time
+  },
+
+  // File handling logic (moved from index.js)
+  handleFiles(files) {
+    console.log("handleFiles called with", files.length, "files");
+    Array.from(files).forEach((file) => {
+      console.log("Processing file:", file.name, file.type);
+      const ext = file.name.split(".").pop().toLowerCase();
+      const isImage = ["jpg", "jpeg", "png", "bmp", "gif", "webp", "svg"].includes(
+        ext
+      );
+
+      const attachment = {
+        file: file,
+        type: isImage ? "image" : "file",
+        name: file.name,
+        extension: ext,
+        displayInfo: this.getAttachmentDisplayInfo(file),
+      };
+
+      if (isImage) {
+        // Read image as data URL for preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          attachment.url = e.target.result;
+          this.addAttachment(attachment);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // For non-image files, add directly
+        this.addAttachment(attachment);
+      }
+    });
+  },
+
+  // Get attachments for sending message
+  getAttachmentsForSending() {
+    // Return list of successfully uploaded descriptor objects for message send
+    return this.attachments
+      .filter((a) => a.status === "uploaded" || a.status === "quarantined")
+      .map((a) => ({
+        id: a.attachmentId,
+        filename: a.name,
+        mime: a.file?.type || "application/octet-stream",
+        size: a.totalBytes,
+        sha256: a.sha256,
+        status: a.status,
+         path: a.path || null, // set after upload
+      }));
+  },
+
+  // Generate server-side API URL for file (for device sync)
+   // Prior server URLs removed; use attachment descriptors with .path
+
+  // Check if file is an image based on extension
+  isImageFile(filename) {
+    const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"];
+    const extension = filename.split(".").pop().toLowerCase();
+    return imageExtensions.includes(extension);
+  },
+
+  // Get attachment preview URL (server URL for persistence, blob URL for current session)
+  getAttachmentPreviewUrl(attachment) {
+    if (!attachment) return null;
+    // uploaded descriptor (has path)
+    if (attachment.path) {
+      return attachment.mime && attachment.mime.startsWith("image/") ? attachment.path : this.getFilePreviewUrl(attachment.filename || attachment.name);
+    }
+    // pre-upload object with file
+    if (attachment.file) {
+      if (attachment.type === "image") return attachment.url || URL.createObjectURL(attachment.file);
+      return this.getFilePreviewUrl(attachment.name);
+    }
+    if (typeof attachment === "string") return this.getServerImgUrl(attachment);
+    return null;
+  },
+
+  getFilePreviewUrl(filename) {
+    const extension = filename.split(".").pop().toLowerCase();
+    const types = {
+      // Archive files
+      zip: "archive",
+      rar: "archive",
+      "7z": "archive",
+      tar: "archive",
+      gz: "archive",
+      // Document files
+      pdf: "document",
+      doc: "document",
+      docx: "document",
+      txt: "document",
+      rtf: "document",
+      odt: "document",
+      // Code files
+      py: "code",
+      js: "code",
+      html: "code",
+      css: "code",
+      json: "code",
+      xml: "code",
+      md: "code",
+      yml: "code",
+      yaml: "code",
+      sql: "code",
+      sh: "code",
+      bat: "code",
+      // Spreadsheet files
+      xls: "document",
+      xlsx: "document",
+      csv: "document",
+      // Presentation files
+      ppt: "document",
+      pptx: "document",
+      odp: "document",
+    };
+    const type = types[extension] || "file";
+    return `/public/${type}.svg`;
+  },
+
+  // Enhanced method to get attachment display info for UI
+  getAttachmentDisplayInfo(attachment) {
+    // If descriptor returned from backend
+    if (attachment && attachment.attachmentId && attachment.path) {
+      const isImage = attachment.mime && attachment.mime.startsWith("image/");
+      return {
+        filename: attachment.filename || attachment.name,
+        extension: (attachment.filename || attachment.name || "").split(".").pop().toUpperCase(),
+        isImage,
+        previewUrl: isImage ? attachment.path : this.getFilePreviewUrl(attachment.filename || attachment.name),
+        clickHandler: () => {
+          if (isImage) {
+            this.openImageModal(attachment.path, attachment.filename || attachment.name);
+          } else {
+            window.open(attachment.path, "_blank");
+          }
+        },
+        progressBytes: attachment.progressBytes,
+        totalBytes: attachment.totalBytes,
+        status: attachment.status,
+      };
+    }
+    // Pre-upload object
+    if (attachment && attachment.file) {
+      const isImage = attachment.type === "image";
+      return {
+        filename: attachment.name,
+        extension: (attachment.name || "").split(".").pop().toUpperCase(),
+        isImage,
+        previewUrl: this.getAttachmentPreviewUrl(attachment),
+        clickHandler: () => {
+          if (isImage && attachment.url) {
+            this.openImageModal(attachment.url, attachment.name);
+          }
+        },
+        progressBytes: attachment.progressBytes,
+        totalBytes: attachment.totalBytes,
+        status: attachment.status,
+      };
+    }
+    if (typeof attachment === "string") {
+      const isImage = this.isImageFile(attachment);
+      return {
+        filename: attachment,
+        extension: (attachment.split(".").pop() || "").toUpperCase(),
+        isImage,
+        previewUrl: isImage ? this.getServerImgUrl(attachment) : this.getFilePreviewUrl(attachment),
+        clickHandler: () => {
+          if (isImage) this.openImageModal(this.getServerImgUrl(attachment), attachment);
+        },
+        progressBytes: null,
+        totalBytes: null,
+        status: "unknown",
+      };
+    }
+    return {
+      filename: "unknown",
+      extension: "",
+      isImage: false,
+      previewUrl: null,
+      clickHandler: () => {},
+      progressBytes: null,
+      totalBytes: null,
+      status: "unknown",
+    };
+  },
+
+  async uploadAll(sessionId) {
+    if (!this.attachments.length) return [];
+    this.uploading = true;
+    this.sessionId = sessionId;
+    const CHUNK_THRESHOLD = 8 * 1024 * 1024; // 8MB
+    const pending = this.attachments.filter(a => a.status === "pending");
+    try {
+      const small = pending.filter(a => (a.file?.size || 0) <= CHUNK_THRESHOLD);
+      const large = pending.filter(a => (a.file?.size || 0) > CHUNK_THRESHOLD);
+      let results = [];
+      // Upload large files via chunked API, sequentially
+      for (const a of large) {
+        a.status = "uploading";
+        const d = await this.uploadChunked(a, sessionId);
+        if (d) {
+          a.status = d.status === "quarantined" ? "quarantined" : "uploaded";
+          a.attachmentId = d.id;
+          a.sha256 = d.sha256;
+          a.path = d.path;
+          a.progressBytes = a.totalBytes;
+          results.push(d);
+        } else {
+          a.status = "error";
+        }
+      }
+      // Upload small files in one batch
+      if (small.length) {
+        small.forEach(a => a.status = "uploading");
+        const form = new FormData();
+        form.append("session_id", sessionId || "");
+        small.forEach(a => form.append("files", a.file, a.name));
+        const resp = await fetch("/v1/uploads", { method: "POST", body: form, credentials: "same-origin" });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          small.forEach(a => { a.status = "error"; a.error = txt; });
+        } else {
+          const descriptors = await resp.json();
+          descriptors.forEach(d => {
+            const match = this.attachments.find(x => x.name === d.filename && (x.status === "uploading" || x.status === "pending"));
+            if (match) {
+              match.status = d.status === "quarantined" ? "quarantined" : "uploaded";
+              match.attachmentId = d.id;
+              match.sha256 = d.sha256;
+              match.path = d.path;
+              match.progressBytes = match.totalBytes;
+            }
+            results.push(d);
+          });
+        }
+      }
+      return results;
+    } catch (err) {
+      pending.forEach(a => { a.status = "error"; a.error = err?.message || String(err); });
+      return [];
+    } finally {
+      this.uploading = false;
+      this.updateAttachmentState();
+    }
+  },
+
+  async retryAttachment(attachment) {
+    if (!attachment || !attachment.file) return;
+    attachment.status = 'pending';
+    attachment.progressBytes = 0;
+    attachment.error = null;
+    // Clear resume key in case it existed
+    const resumeKey = `chunk-upload:${this.sessionId||'unspecified'}:${attachment.name}:${attachment.file.size}`;
+    sessionStorage.removeItem(resumeKey);
+    // Decide path: chunked vs single
+    const CHUNK_THRESHOLD = 8 * 1024 * 1024;
+    if ((attachment.file.size||0) > CHUNK_THRESHOLD) {
+      attachment.status = 'uploading';
+      const d = await this.uploadChunked(attachment, this.sessionId);
+      if (d) {
+        attachment.status = d.status === 'quarantined' ? 'quarantined' : 'uploaded';
+        attachment.attachmentId = d.id; attachment.sha256 = d.sha256; attachment.path = d.path;
+        attachment.progressBytes = attachment.totalBytes;
+      } else {
+        attachment.status = 'error';
+      }
+    } else {
+      // Single file POST
+      const form = new FormData();
+      form.append('session_id', this.sessionId || '');
+      form.append('files', attachment.file, attachment.name);
+      attachment.status = 'uploading';
+      const resp = await fetch('/v1/uploads', { method: 'POST', body: form, credentials: 'same-origin' });
+      if (resp.ok) {
+        const arr = await resp.json();
+        const d = arr.find(x => x.filename === attachment.name);
+        if (d) {
+          attachment.status = d.status === 'quarantined' ? 'quarantined' : 'uploaded';
+          attachment.attachmentId = d.id; attachment.sha256 = d.sha256; attachment.path = d.path;
+          attachment.progressBytes = attachment.totalBytes;
+        } else {
+          attachment.status = 'error';
+        }
+      } else {
+        attachment.status = 'error';
+      }
+    }
+    this.updateAttachmentState();
+  },
+
+  async resumeAttachment(attachment) {
+    if (!attachment || !attachment.file) return;
+    if (attachment.status !== 'uploading') return; // only resume mid-upload
+    // Simply invoke chunked path which will detect existing offset via sessionStorage key
+    const CHUNK_THRESHOLD = 8 * 1024 * 1024;
+    if ((attachment.file.size||0) <= CHUNK_THRESHOLD) return; // not chunked
+    const d = await this.uploadChunked(attachment, this.sessionId);
+    if (d) {
+      attachment.status = d.status === 'quarantined' ? 'quarantined' : 'uploaded';
+      attachment.attachmentId = d.id; attachment.sha256 = d.sha256; attachment.path = d.path;
+      attachment.progressBytes = attachment.totalBytes;
+    }
+    this.updateAttachmentState();
+  },
+
+  async uploadChunked(attachment, sessionId) {
+    try {
+      const descriptor = await uploadFileChunked(attachment.file, sessionId, (info) => {
+        attachment.progressBytes = info.bytesUploaded;
+        attachment.speedBps = info.speedBps;
+        attachment.etaSeconds = info.etaSeconds;
+        if (info.done) attachment.status = "uploading"; // will be flipped on finalize event
+      }, { resume: true });
+      return descriptor;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  // Update progress from SSE uploads.progress events
+  applyProgressEvent(ev) {
+    if (!ev?.metadata?.filename) return;
+    const filename = ev.metadata.filename;
+    const match = this.attachments.find(a => a.name === filename);
+    if (!match) return;
+    if (typeof ev.metadata.bytes_uploaded === "number") {
+      match.progressBytes = ev.metadata.bytes_uploaded;
+    }
+    if (ev.metadata.status === "uploaded") {
+      match.progressBytes = match.totalBytes;
+      match.status = ev.metadata.status;
+      if (ev.metadata.attachment_id) match.attachmentId = ev.metadata.attachment_id;
+      if (typeof ev.metadata.bytes_total === "number") {
+        match.bytesTotal = ev.metadata.bytes_total;
+      }
+    } else if (ev.metadata.status === "uploading") {
+      match.status = "uploading";
+    }
+    // percent & speed derived
+    if (typeof match.progressBytes === "number" && typeof match.totalBytes === "number" && match.totalBytes > 0) {
+      match.percent = match.progressBytes / match.totalBytes;
+    }
+  },
+
+  // Download an attachment (item has .path produced by backend)
+  async downloadAttachment(item) {
+    try {
+      const url = (item && item.path) ? item.path : null;
+      if (!url) {
+        window.toastFetchError("Attachment not downloadable", "No path available");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.click();
+    } catch (error) {
+      window.toastFetchError("Error downloading file", error);
+    }
+  },
+
+  // Generate GUID for unique filenames
+  generateGUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c == "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
+  },
+
+  // Image modal methods
+  openImageModal(imageUrl, imageName) {
+    this.currentImageUrl = imageUrl;
+    this.currentImageName = imageName;
+    this.imageLoaded = false;
+    this.imageError = false;
+    this.zoomLevel = 1;
+
+    // Open the modal using the modals system
+    if (window.openModal) {
+      window.openModal("chat/attachments/imageModal.html");
+    }
+  },
+
+  closeImageModal() {
+    this.currentImageUrl = null;
+    this.currentImageName = null;
+    this.imageLoaded = false;
+    this.imageError = false;
+    this.zoomLevel = 1;
+  },
+
+  // Zoom controls
+  zoomIn() {
+    this.zoomLevel = Math.min(this.zoomLevel * 1.2, 5); // Max 5x zoom
+    this.updateImageZoom();
+  },
+
+  zoomOut() {
+    this.zoomLevel = Math.max(this.zoomLevel / 1.2, 0.1); // Min 0.1x zoom
+    this.updateImageZoom();
+  },
+
+  resetZoom() {
+    this.zoomLevel = 1;
+    this.updateImageZoom();
+  },
+
+  updateImageZoom() {
+    const img = document.querySelector(".modal-image");
+    if (img) {
+      img.style.transform = `scale(${this.zoomLevel})`;
+    }
+  },
+};
+
+const store = createStore("chatAttachments", model);
 
 export { store };

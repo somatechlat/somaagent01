@@ -12,7 +12,76 @@ export async function openImageModal(src, refreshInterval = 0) {
     }
 
     if (refreshInterval > 0) {
-      // Add or update timesti18n.t('ui_0_adi18n.t('ui_0_add_or_update_timesti18n_t_ui_0_add_or_update_timestamp_to_bypass_cache_const_addtimestamp_url_const_urlobj_new_url_url_window_location_origin_urlobj_searchparams_set_t_date_now_return_urlobj_tostring_check_if_image_viewer_is_still_active_const_isimagevieweractive_const_container_document_queryselector_image_viewer_container_if_container_return_false_check_if_element_or_any_parent_is_hidden_let_element_container_while_element_const_style_window_getcomputedstyle_element_if_style_display_none_style_visibility_hidden_style_opacity_0_return_false_element_element_parentelement_return_true_preload_next_image_before_displaying_const_preloadandupdate_async_currentimg_const_nextsrc_addtimestamp_src_create_a_promise_that_resolves_when_the_image_is_loaded_const_preloadpromise_new_promise_resolve_reject_const_tempimg_new_image_tempimg_onload_resolve_nextsrc_tempimg_onerror_reject_tempimg_src_nextsrc_try_wait_for_preload_to_complete_const_loadedsrc_await_preloadpromise_check_if_this_interval_is_still_the_active_one_if_currentimg_isimagevieweractive_currentimg_src_loadedsrc_catch_err_console_error_failed_to_preload_image_err_imgsrc_addtimestamp_src_set_up_periodic_refresh_with_preloading_activeintervalid_setinterval_if_isimagevieweractive_clearinterval_activeintervalid_activeintervalid_null_return_const_img_document_queryselector_image_viewer_img_if_img_preloadandupdate_img_refreshinterval_const_html_ontainer')')"i18n.t('ui_src')"i18n.t('ui_imgsrc')"i18n.t('ui_div_const_filename_src_split')"/"i18n.t('ui_i18n_t_ui_pop_open_the_modal_with_the_generated_html_await_window_genericmodalproxy_openmodal_filename')""i18n.t('ui_i18n_t_ui_html_catch_e_window_toastfrontenderror')"Error fetching history: "i18n.t('ui_i18n_t_ui_e_message')"Image History Error");
+      // Add or update timestamp to bypass cache
+      const addTimestamp = (url) => {
+        const urlObj = new URL(url, window.location.origin);
+        urlObj.searchParams.set('t', Date.now());
+        return urlObj.toString();
+      };
+
+      // Check if image viewer is still active
+      const isImageViewerActive = () => {
+        const container = document.querySelector('#image-viewer-container');
+        if (!container) return false;
+
+        // Check if element or any parent is hidden
+        let element = container;
+        while (element) {
+          const style = window.getComputedStyle(element);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+            return false;
+          }
+          element = element.parentElement;
+        }
+        return true;
+      };
+
+      // Preload next image before displaying
+      const preloadAndUpdate = async (currentImg) => {
+        const nextSrc = addTimestamp(src);
+        // Create a promise that resolves when the image is loaded
+        const preloadPromise = new Promise((resolve, reject) => {
+          const tempImg = new Image();
+          tempImg.onload = () => resolve(nextSrc);
+          tempImg.onerror = reject;
+          tempImg.src = nextSrc;
+        });
+
+        try {
+          // Wait for preload to complete
+          const loadedSrc = await preloadPromise;
+          // Check if this interval is still the active one
+          if (currentImg && isImageViewerActive()) {
+            currentImg.src = loadedSrc;
+          }
+        } catch (err) {
+          console.error('Failed to preload image:', err);
+        }
+      };
+
+      imgSrc = addTimestamp(src);
+
+      // Set up periodic refresh with preloading
+      activeIntervalId = setInterval(() => {
+        if (!isImageViewerActive()) {
+          clearInterval(activeIntervalId);
+          activeIntervalId = null;
+          return;
+        }
+        const img = document.querySelector('.image-viewer-img');
+        if (img) {
+          preloadAndUpdate(img);
+        }
+      }, refreshInterval);
+    }
+
+    const html = `<div id="image-viewer-container"><img class="image-viewer-img" src="${imgSrc}" /></div>`;
+    const fileName = src.split("/").pop();
+
+    // Open the modal with the generated HTML
+    await window.genericModalProxy.openModal(fileName, "", html);
+  } catch (e) {
+    window.toastFrontendError("Error fetching history: " + e.message, "Image History Error");
     return;
   }
 }

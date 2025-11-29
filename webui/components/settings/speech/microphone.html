@@ -3,20 +3,35 @@
 <head>
     <title>Microhone settings</title>
 
-    <!-- i18n.t('ui_microhone_settings')store -->
-    <script type="i18n.t('ui_i18n_t_ui_module')">
-        import { store } from "i18ni18n.t('ui_import_store_from_i18n_t_ui_microphone_setting_store_js_console_log_i18n_t_ui_mi18n_t_ui_microhone_settings_store_js_loaded')
+    <!-- Import the alpine store -->
+    <script type="module">
+        import { store } from "./microphone-setting-store.js";
+        console.log("microphone-setting-store.js loaded");
+    </script>
 </head>
 
 <body>
 
-    <!-- This construct of x-di18n.t('ui_import_store_from_microphone_setting_store_js_console_log_microphone_setting_store_js_loaded')template x-if="i18n.t('ui_i18n_t_ui_store_microphonesetting')">
+    <!-- This construct of x-data + x-if is used to ensure the component is only rendered when the store is available -->
+    <div x-data>
+        <template x-if="$store.microphoneSetting">
 
             <div>
-                <select x-model="i18n.t('ui_i18n_t_ui_store_microphonesetting_selecteddevice')"
-                    @change="i18n.t('ui_i18n_t_ui_store_microphonesetting_onselectdevice')"
-                    x-show="i18n.t('ui_i18n_t_ui_store_microphonesetting_devices_length_0')">
-                    <template x-for="i18n.t('ui_i18n_t_ui_option_in_store_microphonesetting_devices')" :key="i18n.t('ui_i18n_t_ui_option_deviceid_i18n_t_ui_0_option_value')"i18n.t('ui_option_deviceid')"i18n.t('ui_x_text')"i18n.t('ui_option_label')"i18n.t('ui_selected')"i18n.t('ui_option_deviceid_store_microphonesetting_selecteddevice')"i18n.t('ui_option_template_select_button_class')"i18n.t('ui_btn_btn_field')"i18n.t('ui_x_show')"i18n.t('ui_store_microphonesetting_devices_length_0_store_microphonesetting_requestingpermission')"i18n.t('ui_click')"i18n.t('ui_store_microphonesetting_requestpermission')"i18n.t('ui_request_permission_to_sei18n.t('ui_request_permission_to_select_device')t_permissii18n.t('ui_i18n_t_ui_request_permission_to_select_device_t_ui_btn_btn_field_x_show_i18n_t_ui_store_microphonesetting_requestingpermission_click_i18n_t_ui_store_microphonesetting_requestpermission')xt="i18n.t('ui_i18n_t_ui_i18n_t_ui_waiting_for_devices_retry')"></span>
+                <select x-model="$store.microphoneSetting.selectedDevice"
+                    @change="$store.microphoneSetting.onSelectDevice()"
+                    x-show="$store.microphoneSetting.devices.length > 0">
+                    <template x-for="option in $store.microphoneSetting.devices" :key="option.deviceId">
+                        <option :value="option.deviceId" x-text="option.label"
+                            :selected="option.deviceId === $store.microphoneSetting.selectedDevice"></option>
+                    </template>
+                </select>
+                <button class="btn btn-field" 
+                    x-show="$store.microphoneSetting.devices.length == 0 && !$store.microphoneSetting.requestingPermission"
+                    @click="$store.microphoneSetting.requestPermission()">Request permission to select device</button>
+                <button class="btn btn-field" 
+                    x-show="$store.microphoneSetting.requestingPermission"
+                    @click="$store.microphoneSetting.requestPermission()">
+                    <span>Waiting for devices... [retry]</span>
                 </button>
             </div>
 

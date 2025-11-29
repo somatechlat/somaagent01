@@ -1,24 +1,43 @@
 <html>
 <head>
-    <script type="i18n.t('ui_i18n_t_ui_module')">
-        // Usi18n.t('ui_uses_alpine_bridge_store_notificationsse_exposed_by_index_js')ipt>
+    <script type="module">
+        // Uses Alpine bridge '$store.notificationSse' exposed by index.js
+    </script>
 </head>
 <body>
     <div x-data>
-        <!-- Always render; bindings update oni18n.t('ui_uses_alpine_bridge_store_notificationsse_exposed_by_index_js')_toggle')"i18n.t('ui_style')"i18n.t('ui_display_inline_flex_align_items_center_cursor_pointer_position_relative')"i18n.t('ui_class')"i18n.t('ui_has_unread_store_notificationsse_unreadcount_0_0_has_notifications_store_notificationsse_count_0_0')"i18n.t('ui_click')"i18n.t('ui_openmodal_notifications_notification_modal_html')"i18n.t('ui_titi18n_t_ui_0_has_notifications_store_notificationsse_count_0_0_click_openmodal_notifications_notification_modal_html_title_i18n_t_tooltip_viewnotifications_x_bind_aria_label_i18n_t_tooltip_viewnotifications_span_id')"i18n.t('ui_notification_badge')"i18n.t('ui_x_show')"i18n.t('ui_store_noti18n.t('ui_notifications')unreadcount_0_0')"i18n.t('ui_class')"i18n.t('ui_notification_badge')"i18n.t('ui_x_text')"i18n.t('ui_store_notificationsse_unrei18n.t('ui_0_class_notification_badge_x_text_store_notificationsse_unreadcount_0')    <div class="i18n.t('ui_i18n_t_ui_conn_indicator')"
-             :class="i18n.t('ui_i18n_t_ui_conn_store_conn_status_offline')"
-              :title="i18n.t('ui_i18n_t_ui_i18n_t_tooltip_offline')"
-             aria-live="i18n.t('ui_i18n_t_ui_polite')"
-             x-bind:aria-label="i18n.t('ui_i18n_t_ui_i18n_t_tooltip_offline')">
+        <!-- Always render; bindings update once Alpine store present -->
+        <div class="notification-toggle" style="display:inline-flex;align-items:center;cursor:pointer;position:relative;"
+             :class="{
+                 'has-unread': ($store.notificationSse?.unreadCount || 0) > 0,
+                 'has-notifications': ($store.notificationSse?.count || 0) > 0
+             }"
+             @click="openModal('notifications/notification-modal.html')"
+             title="View Notifications">
+            <div class="notification-icon">
+                <span class="material-symbols-outlined">notifications</span>
+            </div>
+            <span id="notification-badge"
+                  x-show="($store.notificationSse?.unreadCount || 0) > 0"
+                  class="notification-badge"
+                  x-text="$store.notificationSse?.unreadCount || 0"></span>
+        </div>
+
+        <!-- Adjacent small connection indicator (do not replace bell) -->
+        <div class="conn-indicator"
+             :class="`conn-${$store.conn?.status || 'offline'}`"
+             :title="$store.conn?.tooltip || 'Offline'"
+             aria-live="polite"
+             x-bind:aria-label="$store.conn?.tooltip || 'Offline'">
         </div>
 
         <!-- SomaBrain health indicator -->
-        <div class="i18n.t('ui_i18n_t_ui_brain_indicator')"
-             :class="i18n.t('ui_i18n_t_ui_brain_store_somabrain_state_unknown')"
-            :title="i18n.t('ui_i18n_t_ui_i18n_t_tooltip_somabrainunknown')"
-             aria-live="i18n.t('ui_i18n_t_ui_polite')"
-             x-bind:aria-label="i18n.t('ui_i18n_t_ui_i18n_t_tooltip_somabrainunknown')">
-            <span class="i18n.t('ui_i18n_t_ui_material_symbols_outlinedi18n_t_ui_neurology_logy_span_div_language_selector_simple_toggle_div_class')"i18n.t('ui_lang_selector')"i18n.t('ui_style')"i18n.t('ui_display_inline_flex_align_items_center_cursor_pointer_margin_left_8px')"i18n.t('ui_click')"i18n.t('ui_const_newlocale_store_i18nlocale_locale_en_es_en_i18n_setlocale_newlocale_store_i18nlocale_locale_newlocale')"i18n.t('ui_title')"i18n.t('ui_i18n_t_tooltip_language')"i18n.t('ui_x_bind_aria_label')"i18n.t('ui_i18n_t_tooltip_language')"i18n.t('ui_span_class')"i18n.t('ui_i18n.t('ui_language')_symboli18n.t('ui_i18n_t_ui_language')i_language_span_i18n_t_ui_language_div_theme_toggle_dark_light_div_class')"i18n.t('ui_theme_toggle')"i18n.t('ui_style')"i18n.t('ui_display_inline_flex_align_items_center_cursor_pointer_margin_left_8px')"i18n.t('ui_click')"i18n.t('ui_const_isdark_document_body_classlist_contains_dark_toggledarkmode_isdark')"i18n.t('ui_title')"i18n.t('ui_i18n_t_tooltip_toggletheme')"i18n.t('ui_x_bind_aria_label')"i18n.t('ui_i18n_t_tooltip_toggletheme')"i18n.t('ui_span_class')"i18n.t('ui_material_symbols_outlined')"i18n.t('ui_x_text')"i18n.t('ui_document_body_classlist_contains_dark_dark_mode_light_mode')"></span>
+        <div class="brain-indicator"
+             :class="`brain-${$store.somabrain?.state || 'unknown'}`"
+             :title="$store.somabrain?.tooltip || 'SomaBrain status unknown'"
+             aria-live="polite"
+             x-bind:aria-label="$store.somabrain?.tooltip || 'SomaBrain status unknown'">
+            <span class="material-symbols-outlined">neurology</span>
         </div>
     </div>
 </body>

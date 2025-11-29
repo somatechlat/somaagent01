@@ -1,31 +1,288 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
-import { updateChatInput, sendMessage } from "i18n.t('ui_i18n_t_ui_index_js')";
-import { sleep } from "i18n.t('ui_i18n_t_ui_js_sleep_js')";
-import { store as microphoneSettingStore } from "i18n.t('ui_i18n_t_ui_components_settings_speech_mii18n_t_ui_1_return_bycomma_flatmap_p_i_splitdeep_i_t_ui_inactive')",
-  ACTIVATING: "i18n.t('ui_i18n_t_ui_activating')",
-  LISTENING: "i18n.t('ui_i18n_t_ui_listening')",
-  RECORDING: "i18n.t('ui_i18n_t_ui_recording')",
-  WAITING: "i18n.t('ui_i18n_t_ui_waiting')",
-  PROCESSING: "i18n.t('ui_i18n_t_ui_processing')",
+import { createStore } from "/static/js/AlpineStore.js";
+import { updateChatInput, sendMessage } from "/static/index.js";
+import { sleep } from "/static/js/sleep.js";
+import { store as microphoneSettingStore } from "/static/components/settings/speech/microphone-setting-store.js";
+
+const Status = {
+  INACTIVE: "inactive",
+  ACTIVATING: "activating",
+  LISTENING: "listening",
+  RECORDING: "recording",
+  WAITING: "waiting",
+  PROCESSING: "processing",
 };
 
 // Create the speech store
 const model = {
   // STT Settings
-  stt_model_size: "i18n.t('ui_i18n_t_ui_tiny')",
-  stt_language: "i18n.t('ui_i18n_t_ui_en')",
-  stt_silence_threshold: 0.05,i18n.t('ui_maxchunklength_for_let_i_0_i')eout: 2000,
+  stt_model_size: "tiny",
+  stt_language: "en",
+  stt_silence_threshold: 0.05,
+  stt_silence_duration: 1000,
+  stt_waiting_timeout: 2000,
 
   // TTS Settings
   tts_kokoro: false,
 
   // TTS State
   isSpeaking: false,
-  speakingId: ""i18n.t('ui_i18n_t_ui_speakingtext')""i18n.t('ui_i18n_t_ui_currentaudio_null_audioel_null_audiocontext_null_userhasinteracted_false_stopspeechchain_false_ttsstream_null_stt_state_microphoneinput_null_isprocessingclick_false_selecteddevice_null_getti18n_t_ui_const_toks_let_start_0_for_let_i_0_i_s_microphoneinput_status_status_inactive_updatemicrophonebuttonui_const_microphonebutton_document_getelementbyid')"microphone-button"i18n.t('ui_i18n_t_ui_if_microphonebutton_return_const_status_this_micstatus_microphonebutton_classlist_remove')"mic-inactive"i18n.t('ui_i18n_t_ui')"mic-activating"i18n.t('ui_i18n_t_ui')"mic-listening"i18n.t('ui_i18n_t_ui')"mic-recording"i18n.t('ui_i18n_t_ui')"mic-waiting"i18n.t('ui_i18n_t_ui')"mic-processing"i18n.t('ui_i18n_t_ui_microphonebutton_classlist_add_mic_status_tolowercase_microphonebutton_setattribute')"data-status"i18n.t('ui_i18ni18n_t_ui_l_trim_for_const_line_of_lines_if_line_trim_continue_process_each_line_into_sentence_tokens_and_add_to_chunks_const_sentences_sentencetokens_line_trim_initialchunks_push_sentences_step_2_merge_short_chunks_until_they_meet_minimum_length_criteria_const_finalchunks_let_currentchunk_for_let_i_0_i_oggle_finally_settimeout_this_isprocessingclick_false_300_initialize_speech_functionality_async_init_await_this_loadsettings_this_setupbrowsertts_this_setupuserinteractionhandling_load_settings_from_server_async_loadsettings_try_const_response_await_fetchapi')"/v1/settings/sections"i18n.t('ui_i18n_t_ui_method')"GET"i18n.t('ui_i18n_t_ui_const_data_await_response_jsi18n_t_ui_min_chunk_length_finalchunks_push_currentchunk_currentchunk_continue_current_chunk_exists_check_if_we_should_merge_if_currentchunk_length_ll_this_field_id_this_field_id_field_value_catch_error_window_toastfetcherror')"Failed to load speech settings"i18n.t('ui_i18n_t_ui_error_console_error')"Failed to load speech settings:"i18n.t('ui_i18n_t_ui_error_setup_browser_tts_setupbrowsertts_this_synth_window_speechsynthesis_this_browserutterance_null_setup_user_interaction_handling_for_autoplay_policy_setupuserinteractionhandling_const_enableaudio_if_this_userhasinteracted_this_userhasinteracted_true_create_a_dummy_audio_context_to')"unlock"i18n.t('ui_i18n_t_ui_audio_try_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_audiocontext_resume_catch_e_listen_for_any_user_interaction_const_events')"click"i18n.t('ui_i18n_t_ui')"touchstart"i18n.t('ui_i18n_t_ui')"keydown"i18n.t('ui_i18n_t_ui')"mousedown"i18n.t('ui_i18n_t_ui_events_foreach_event_document_addeventlistener_event_enableaudio_once_true_passivei18n_t_ui_chunk_trimend_show_a_prompt_to_user_to_enable_audio_showaudiopermissionprompt_if_window_toast_window_toast_click_anywhere_to_enable_audio_playback_info_5000_else_browser_tts_async_speakwithbrowser_text_waitforprevious_false_terminator_null_wait_for_previous_to_finish_if_requested_while_waitforprevious_this_isspeaking_await_sleep_25_if_terminator_terminator_return_stop_previous_if_any_this_stopaudio_this_browserutterance_new_speechsynthesisutterance_text_this_browserutterance_onstart_this_isspeaking_true_this_browserutterance_onend_this_isspeaking_false_this_synth_speak_this_browserutterance_kokoro_tts_async_speakwithkokoro_text_waitforprevious_false_terminator_null_try_synthesize_on_the_backend_const_response_await_sendjsondata_synthesize_text_wait_for_previous_to_finish_if_requested_while_waitforprevious_this_isspeaking_await_sleep_25_if_terminator_terminator_return_stop_previous_if_any_this_stopaudio_if_response_success_if_response_audio_parts_multiple_chunks_play_sequentially_for_const_audiopart_of_response_audio_parts_if_terminator_terminator_return_await_this_playaudio_audiopart_await_sleep_100_brief_pause_else_if_response_audio_single_audio_this_playaudio_response_audio_else_throw_new_error_kokoro_tts_error_response_error_catch_error_throw_new_error_kokoro_tts_error_error_play_base64_audio_async_playaudio_base64audio_return_new_promise_resolve_reject_const_audio_this_audioel_this_audioel_this_audioel_new_audio_reset_any_previous_playback_state_audio_pause_audio_currenttime_0_audio_onplay_this_isspeaking_true_audio_onended_this_isspeaking_false_this_currentaudio_null_resolve_audio_onerror_error_this_isspeaking_false_this_currentaudio_null_reject_error_audio_src_data_audio_wav_base64_base64audio_this_currentaudio_audio_audio_play_catch_error_this_isspeaking_false_this_currentaudio_null_if_error_name_notallowederror_this_showaudiopermissionprompt_this_userhasinteracted_false_reject_error_stop_current_speech_chain_stop_this_stopaudio_stop_current_audio_immediately_if_this_ttsstream_this_ttsstream_stopped_true_set_stop_on_current_stream_stop_current_speech_audio_stopaudio_if_this_synth_speaking_this_synth_cancel_if_this_audioel_this_audioel_pause_this_audioel_currenttime_0_this_currentaudio_null_this_isspeaking_false_clean_text_for_tts_cleantext_text_use_sub_character_ascii_26_0x1a_for_placeholders_to_avoid_conflicts_with_actual_text_const_sub_x1a_non_printable_substitute_character_const_codeplaceholder_sub_code_sub_const_tableplaceholder_sub_table_sub_helper_function_to_handle_both_closed_and_unclosed_patterns_replacement_can_be_a_string_or_null_to_remove_function_handlepatterns_inputtext_closedpattern_unclosedpattern_replacement_process_closed_patterns_first_let_processed_inputtext_replace_closedpattern_replacement_if_the_text_changed_it_means_we_found_and_replaced_closed_patterns_if_processed_inputtext_return_processed_else_no_closed_patterns_found_check_for_unclosed_ones_const_unclosedmatch_inputtext_match_unclosedpattern_if_unclosedmatch_replace_the_unclosed_pattern_return_inputtext_replace_unclosedpattern_replacement_no_patterns_found_return_original_return_inputtext_handle_code_blocks_text_handlepatterns_text_a_za_z0_9_n_s_s_g_closed_code_blocks_a_za_z0_9_n_s_s_g_unclosed_code_blocks_codeplaceholder_replace_inline_code_ticks_with_content_preserved_text_text_replace_g_1_remove_backticks_but_keep_content_handle_html_tags_text_handlepatterns_text_n_finalchunks_map_chuni18n_t_ui_hunk_trimend_show_a_promi18n_t_ui_gs_closed_html_tags_udiopermissionprompt_ii18n_t_ui_s_s_g_unclosed_html_tags_remove_html_tags_completely_handle_self_closing_html_tags_text_handlepatterns_text_false_terminator_null_wait_fi18n_t_ui_g_complete_self_closing_tags_rprevious_this_isspeakingi18n_t_ui_g_incomplete_self_closing_tags_remove_markdown_links_label_url_label_text_text_replace_g_1_remove_markdown_formatting_text_text_replace_g_handle_tables_both_complete_and_partial_check_if_text_contains_a_table_like_pattern_if_text_includes_find_consecutive_lines_with_characters_table_rows_const_tablelines_text_split_n_filter_line_line_includes_line_trim_startswith_if_tablelines_length_0_replace_each_table_line_with_a_placeholder_for_const_line_of_tablelines_text_text_replace_line_tableplaceholder_else_just_handle_individual_table_rows_text_text_replace_n_g_tableplaceholder_remove_emojis_and_private_unicode_blocks_text_text_replace_u2700_u27bf_ue000_uf8ff_ud83c_udc00_udfff_ud83d_udc00_udfff_u2011_u26ff_ud83e_udd10_uddff_g_replace_urls_with_just_the_domain_name_text_text_replace_https_s_g_match_try_return_new_url_match_hostname_catch_return_remove_email_addresses_text_text_replace_s_s_g_replace_uuids_with_uuid_text_text_replace_0_9a_f_8_0_9a_f_4_0_9a_f_4_0_9a_f_4_0_9a_f_12_g_uuid_collapse_multiple_spaces_tabs_to_a_single_space_but_preserve_newlines_text_text_replace_t_g_function_to_merge_consecutive_placeholders_of_any_type_function_mergeplaceholders_txt_placeholder_replacement_create_regex_for_consecutive_placeholders_with_possible_whitespace_between_const_regex_new_regexp_placeholder_s_placeholder_g_merge_consecutive_placeholders_until_no_more_found_while_regex_test_txt_txt_txt_replace_regex_placeholder_replace_all_remaining_placeholders_with_human_readable_text_return_txt_replace_new_regexp_placeholder_g_replacement_apply_placeholder_merging_for_both_types_text_mergeplaceholders_text_codeplaceholder_see_code_attached_text_mergeplaceholders_text_tableplaceholder_see_table_attached_trim_leading_trailing_whitespace_text_text_trim_return_text_initialize_microphone_input_async_initmicrophone_if_this_microphoneinput_return_this_microphoneinput_this_microphoneinput_new_microphoneinput_async_text_isfinal_if_isfinal_this_sendmessage_text_const_initialized_await_this_microphoneinput_initialize_return_initialized_this_microphoneinput_null_async_sendmessage_text_text_voice_text_updatechatinput_text_if_this_microphoneinput_messagesent_this_microphoneinput_messagesent_true_await_sendmessage_request_microphone_permission_delegate_to_microphoneinput_async_requestmicrophonepermission_return_this_microphoneinput_this_microphoneinput_requestpermission_microphoneinput_prototype_requestpermission_call_null_microphone_input_class_simplified_for_store_integration_class_microphoneinput_constructor_updatecallback_this_mediarecorder_null_this_audiochunks_this_lastchunk_this_updatecallback_updatecallback_this_messagesent_false_this_audiocontext_null_this_mediastreamsource_null_this_analysernode_null_this_status_status_inactive_this_lastaudiotime_null_this_waitingtimer_null_this_silencestarttime_null_this_hasstartedrecording_false_this_analysisframe_null_get_status_return_this_status_set_status_newstatus_if_this_status_newstatus_return_const_oldstatus_this_status_this_status_newstatus_this_handlestatuschange_oldstatus_newstatus_async_initialize_set_status_to_activating_at_the_start_of_initialization_this_status_status_activating_try_get_selected_device_from_microphone_settings_const_selecteddevice_microphonesettingstore_getselecteddevice_const_stream_await_navigator_mediadevices_getusermedia_audio_deviceid_selecteddevice_selecteddevice_deviceid_exact_selecteddevice_deviceid_undefined_echocancellation_true_noisesuppression_true_channelcount_1_this_mediarecorder_new_mediarecorder_stream_this_mediarecorder_ondataavailable_event_if_event_data_size_0_this_status_status_recording_this_status_status_waiting_if_this_lastchunk_this_audiochunks_push_this_lastchunk_this_lastchunk_null_this_audiochunks_push_event_data_else_if_this_status_status_listening_this_lastchunk_event_data_this_setupaudioanalysis_stream_return_true_catch_error_console_error_microphone_initialization_error_error_toast_failed_to_access_microphone_please_check_permissions_error_return_false_handlestatuschange_oldstatus_newstatus_if_newstatus_status_recording_this_lastchunk_null_switch_newstatus_case_status_inactive_this_handleinactivestate_break_case_status_listening_this_handlelisteningstate_break_case_status_recording_this_handlerecordingstate_break_case_status_waiting_this_handlewaitingstate_break_case_status_processing_this_handleprocessingstate_break_handleinactivestate_this_stoprecording_this_stopaudioanalysis_if_this_waitingtimer_cleartimeout_this_waitingtimer_this_waitingtimer_null_handlelisteningstate_this_stoprecording_this_audiochunks_this_hasstartedrecording_false_this_silencestarttime_null_this_lastaudiotime_null_this_messagesent_false_this_startaudioanalysis_handlerecordingstate_if_this_hasstartedrecording_this_mediarecorder_state_recording_this_hasstartedrecording_true_this_mediarecorder_start_1000_if_this_waitingtimer_cleartimeout_this_waitingtimer_this_waitingtimer_null_handlewaitingstate_this_waitingtimer_settimeout_if_this_status_status_waiting_this_status_status_processing_store_stt_waiting_timeout_handleprocessingstate_this_stoprecording_this_process_setupaudioanalysis_stream_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_mediastreamsource_this_audiocontext_createmediastreamsource_stream_this_analysernode_this_audiocontext_createanalyser_this_analysernode_fftsize_2048_this_analysernode_mindecibels_90_this_analysernode_maxdecibels_10_this_analysernode_smoothingtimeconstant_0_85_this_mediastreamsource_connect_this_analysernode_startaudioanalysis_const_analyzeframe_if_this_status_status_inactive_return_const_dataarray_new_uint8array_this_analysernode_fftsize_this_analysernode_getbytetimedomaindata_dataarray_let_sum_0_for_let_i_0_i_event_data_size_0_this_status_status_recording_this_status_status_waiting_if_this_lastchunk_this_audiochunks_push_this_lastchunk_this_lastchunk_null_this_audiochunks_push_event_data_else_if_this_status_status_listening_this_lastchunk_event_data_this_setupaudioanalysis_stream_return_true_catch_error_console_error')"Microphone initialization error:"i18n.t('ui_i18n_t_ui_error_toast')"Failed to access microphone. Please check permissions."i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_return_false_handlestatuschange_oldstatus_newstatus_if_newstatus_status_recording_this_lastchunk_null_switch_newstatus_case_status_inactive_this_handleinactivestate_break_case_status_listening_this_handlelisteningstate_break_case_status_recording_this_handlerecordingstate_break_case_status_waiting_this_handlewaitingstate_break_case_status_processing_this_handleprocessingstate_break_handleinactivestate_this_stoprecording_this_stopaudioanalysis_if_this_waitingtimer_cleartimeout_this_waitingtimer_this_waitingtimer_null_handlelisteningstate_this_stoprecording_this_audiochunks_this_hasstartedrecording_false_this_silencestarttime_null_this_lastaudiotime_null_this_messagesent_false_this_startaudioanalysis_handlerecordingstate_if_this_hasstartedrecording_this_mediarecorder_state')"recording"i18n.t('ui_i18n_t_ui_this_hasstartedrecording_true_this_mediarecorder_start_1000_if_this_waitingtimer_cleartimeout_this_waitingtimer_this_waitingtimer_null_handlewaitingstate_this_waitingtimer_settimeout_if_this_status_status_waiting_this_status_status_processing_store_stt_waiting_timeout_handleprocessingstate_this_stoprecording_this_process_setupaudioanalysis_stream_this_audiocontexi18n_t_ui_this_isprocessingclick_false_300_initialize_speech_functionality_async_init_await_this_loadsettings_this_setupbrowsertts_this_setupuserinteractionhandling_load_settings_from_server_async_loadsettings_try_const_response_await_fetchapi_v1_settings_sections_method_get_const_data_await_response_json_const_sections_data_sections_const_speechsection_sections_find_s_s_title_speech_if_speechsection_array_isarray_speechsection_fields_for_const_field_of_speechsection_fields_if_object_prototype_hasownproperty_call_this_field_id_this_field_id_field_value_catch_error_window_toastfetcherror_failed_to_load_speech_settings_error_console_error_failed_to_load_speech_settings_error_setup_browser_tts_setupbrowsertts_this_synth_window_speechsynthesis_this_browserutterance_null_setup_user_interaction_handling_for_autoplay_policy_setupuserinteractionhandling_const_enableaudio_if_this_userhasinteracted_this_userhasinteracted_true_create_a_dummy_audio_context_to_unlock_audio_try_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_audiocontext_resume_catch_e_listen_for_any_user_interaction_const_events_click_touchstart_keydown_mousedown_events_foreach_event_document_addeventlistener_event_enableaudio_once_true_passive_true_main_speak_function_allows_to_speak_a_stream_of_text_that_is_generated_piece_by_piece_async_speakstream_id_text_finished_false_if_already_running_the_same_stream_do_nothing_if_this_ttsstream_this_ttsstream_id_id_this_ttsstream_text_text_this_ttsstream_finished_finished_return_if_user_has_not_interacted_after_reload_do_not_play_audio_if_this_userhasinteracted_return_this_showaudiopermissionprompt_new_stream_if_this_ttsstream_this_ttsstream_id_id_this_stop_stop_potential_previous_stream_create_new_stream_data_this_ttsstream_id_text_finished_running_false_lastchunkindex_1_stopped_false_chunks_else_update_existing_stream_data_this_ttsstream_finished_finished_this_ttsstream_texti18n_t_ui_0_terminator_at_the_end_finish_stream_data_this_ttsstream_running_false_simplified_speak_function_speak_a_single_finished_piece_of_text_async_speak_text_const_id_math_random_return_await_this_speakstream_id_text_true_speak_wrapper_async_speak_text_waitforprevious_terminator_default_browser_speech_if_this_tts_kokoro_return_await_this_speakwithbrowser_text_waitforprevious_terminator_kokoro_tts_try_await_await_this_speakwithkokoro_text_waitforprevious_terminator_catch_error_console_error_error_return_await_this_speakwithbrowser_text_waitforprevious_terminator_chunktext_text_maxchunklength_135_lineseparator_const_inc_limit_maxchunklength_2_const_min_chunk_length_20_minimum_length_for_a_chunk_before_merging_only_split_by_word_if_needed_unchanged_const_splitdeep_seg_if_seg_length_ing')"i18n.t('ui_listening')"i18n.t('ui_recording')"i18n.t('ui_recording')"i18n.t('ui_waiting')"i18n.t('ui_waiting')"i18n.t('ui_processing')"i18n.t('ui_processing')"i18n.t('ui_create_the_speech_store_const_model_stt_settings_stt_model_size')"i18n.t('ui_tiny')"i18n.t('ui_stt_language')"i18n.t('ui_en')"i18n.t('ui_stt_silence_threshold_0_05_stt_silence_duration_1000_stt_waiting_timeout_2000_tts_settings_tts_kokoro_false_tts_state_isspeaking_false_speakingid')""i18n.t('ui_i18n_t_ui_speakingtext')""i18n.t('ui_i18n_t_ui_currentaudio_null_audioel_null_audiocontext_null_userhasinteracted_false_stopspeechchain_false_ttsstream_null_stt_state_microphoneinput_null_isprocessingclick_false_selecteddevice_null_getter_for_micstatus_delegates_to_microphoneinput_get_micstatus_return_this_microphoneinput_status_status_inactive_updatemicrophonebuttonui_const_microphonebutton_document_getelementbyid')"microphone-button"i18n.t('ui_i18n_t_ui_if_microphonebutton_return_const_status_this_micstatus_microphonebutton_classlist_remove')"mic-inactive"i18n.t('ui_i18n_t_ui')"mic-activating"i18n.t('ui_i18n_t_ui')"mic-listening"i18n.t('ui_i18n_t_ui')"mic-recording"i18n.t('ui_i18n_t_ui')"mic-waiting"i18n.t('ui_i18n_t_ui')"mic-processing"i18n.t('ui_i18n_t_ui_microphonebutton_classlist_add_mic_status_tolowercase_microphonebutton_setattribute')"data-status"i18n.t('ui_i18n_t_ui_status_async_handlemicrophoneclick_if_this_isprocessingclick_return_this_isprocessingclick_true_try_reset_mic_input_if_device_has_changed_in_settings_const_device_microphonesettingstore_getselecteddevice_if_device_this_selecteddevice_this_selecteddevice_device_this_microphoneinput_null_if_this_microphoneinput_await_this_initmicrophone_if_this_microphoneinput_await_this_microphoneinput_toggle_finally_settimeout_this_isprocessingclick_false_300_initialize_speech_functionality_async_init_await_this_loadsettings_this_setupbrowsertts_this_setupuserinteractionhandling_load_settings_from_server_async_loadsettings_try_const_response_await_fetchapi')"/v1/settings/sections"i18n.t('ui_i18n_t_ui_method')"GET"i18n.t('ui_i18n_t_ui_const_data_await_response_json_const_sections_data_sections_const_speechsection_sections_find_s_s_title')"Speech"i18n.t('ui_i18n_t_ui_if_speechsection_array_isarray_speechsection_fields_for_const_field_of_speechsection_fields_if_object_prototype_hasownproperty_call_this_field_id_this_field_id_field_value_catch_error_window_toastfetcherror')"Failed to load speech settings"i18n.t('ui_i18n_t_ui_error_console_error')"Failed to load speech settings:"i18n.t('ui_i18n_t_ui_error_setup_browser_tts_setupbrowsertts_this_synth_window_speechsynthesis_this_browserutterance_null_setup_user_interaction_handling_for_autoplay_policy_setupuserinteractionhandling_const_enableaudio_if_this_userhasinteracted_this_userhasinteracted_true_create_a_dummy_audio_context_to')"unlock"i18n.t('ui_i18n_t_ui_audio_try_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_audiocontext_resume_catch_e_listen_for_any_user_interaction_const_events')"click"i18n.t('ui_i18n_t_ui')"touchstart"i18n.t('ui_i18n_t_ui')"keydown"i18n.t('ui_i18n_t_ui')"mousedown"i18n.t('ui_i18n_t_ui_events_foreach_event_document_addeventlistener_event_enableaudio_once_true_passive_true_main_speak_function_allows_to_speak_a_stream_of_text_that_is_generated_piece_by_piece_async_speakstream_id_text_finished_false_if_already_running_the_same_stream_do_nothing_if_this_ttsstream_this_ttsstream_id_id_this_ttsstream_text_text_this_ttsstream_finished_finished_return_if_user_has_not_interacted_after_reload_do_not_play_audio_if_this_userhasinteracted_return_this_showaudiopermissionprompt_new_stream_if_this_ttsstream_this_ttsstream_id_id_this_stop_stop_potential_previous_stream_create_new_stream_data_this_ttsstream_id_text_finished_running_false_lastchunkindex_1_stopped_false_chunks_else_update_existing_stream_data_this_ttsstream_finished_finished_this_ttsstream_text_text_cleanup_text_const_cleantext_this_cleantext_text_if_cleantext_trim_return_chunk_it_for_faster_processing_this_ttsstream_chunks_this_chunktext_cleantext_if_this_ttsstream_chunks_length_0_return_if_stream_was_already_running_just_updating_chunks_is_enough_if_this_ttsstream_running_return_else_this_ttsstream_running_true_proceed_to_running_phase_terminator_function_to_kill_the_stream_if_new_stream_has_started_const_terminator_this_ttsstream_id_id_this_ttsstream_stopped_const_spoken_loop_chunks_from_last_spoken_chunk_index_for_let_i_this_ttsstream_lastchunkindex_1_i_this_ttsstream_chunks_length_i_do_not_speak_the_last_chunk_until_finished_it_is_being_generated_if_i_this_ttsstream_chunks_length_1_this_ttsstream_finished_break_set_the_index_of_last_spoken_chunk_this_ttsstream_lastchunkindex_i_speak_the_chunk_spoken_push_this_ttsstream_chunks_i_await_this_speak_this_ttsstream_chunks_i_i_0_terminator_at_the_end_finish_stream_data_this_ttsstream_running_false_simplified_speak_function_speak_a_single_finished_piece_of_text_async_speak_text_const_id_math_random_return_await_this_speakstream_id_text_true_speak_wrapper_async_speak_text_waitforprevious_terminator_default_browser_speech_if_this_tts_kokoro_return_await_this_speakwithbrowser_text_waitforprevious_terminator_kokoro_tts_try_await_await_this_speakwithkokoro_text_waitforprevious_terminator_catch_error_console_error_error_return_await_this_speakwithbrowser_text_waitforprevious_terminator_chunktext_text_maxchunklength_135_lineseparator')"..."i18n.t('ui_i18n_t_ui_const_inc_limit_maxchunklength_2_const_min_chunk_length_20_minimum_length_for_a_chunk_before_merging_only_split_by_word_if_needed_unchanged_const_splitdeep_seg_if_seg_length_inc_limit_return_seg_const_bycomma_seg_match_g_if_bycomma_length_1_return_bycomma_flatmap_p_i_splitdeep_i_bycomma_length_1_p_p_replace')""i18n.t('ui_i18n_t_ui_const_out_let_part')"";
+  speakingId: "",
+  speakingText: "",
+  currentAudio: null,
+  audioEl: null,
+  audioContext: null,
+  userHasInteracted: false,
+  stopSpeechChain: false,
+  ttsStream: null,
+
+  // STT State
+  microphoneInput: null,
+  isProcessingClick: false,
+  selectedDevice: null,
+
+  // Getter for micStatus - delegates to microphoneInput
+  get micStatus() {
+    return this.microphoneInput?.status || Status.INACTIVE;
+  },
+
+  updateMicrophoneButtonUI() {
+    const microphoneButton = document.getElementById("microphone-button");
+    if (!microphoneButton) return;
+    const status = this.micStatus;
+    microphoneButton.classList.remove(
+      "mic-inactive",
+      "mic-activating",
+      "mic-listening",
+      "mic-recording",
+      "mic-waiting",
+      "mic-processing"
+    );
+    microphoneButton.classList.add(`mic-${status.toLowerCase()}`);
+    microphoneButton.setAttribute("data-status", status);
+  },
+
+  async handleMicrophoneClick() {
+    if (this.isProcessingClick) return;
+    this.isProcessingClick = true;
+    try {
+      // reset mic input if device has changed in settings
+      const device = microphoneSettingStore.getSelectedDevice();
+      if (device != this.selectedDevice) {
+        this.selectedDevice = device;
+        this.microphoneInput = null;
+
+      }
+
+      if (!this.microphoneInput) {
+        await this.initMicrophone();
+      }
+
+      if (this.microphoneInput) {
+        await this.microphoneInput.toggle();
+      }
+    } finally {
+      setTimeout(() => {
+        this.isProcessingClick = false;
+      }, 300);
+    }
+  },
+
+  // Initialize speech functionality
+  async init() {
+    await this.loadSettings();
+    this.setupBrowserTTS();
+    this.setupUserInteractionHandling();
+  },
+
+  // Load settings from server
+  async loadSettings() {
+    try {
+      const response = await fetchApi("/v1/ui/settings/sections", { method: "GET" });
+      const data = await response.json();
+      const sections = data?.sections || [];
+      const speechSection = sections.find((s) => s.title === "Speech");
+      if (speechSection && Array.isArray(speechSection.fields)) {
+        for (const field of speechSection.fields) {
+          if (Object.prototype.hasOwnProperty.call(this, field.id)) {
+            this[field.id] = field.value;
+          }
+        }
+      }
+    } catch (error) {
+      window.toastFetchError("Failed to load speech settings", error);
+      console.error("Failed to load speech settings:", error);
+    }
+  },
+
+  // Setup browser TTS
+  setupBrowserTTS() {
+    this.synth = window.speechSynthesis;
+    this.browserUtterance = null;
+  },
+
+  // Setup user interaction handling for autoplay policy
+  setupUserInteractionHandling() {
+    const enableAudio = () => {
+      if (!this.userHasInteracted) {
+        this.userHasInteracted = true;
+
+
+        // Create a dummy audio context to "unlock" audio
+        try {
+          this.audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+          this.audioContext.resume();
+        } catch (e) {
+
+        }
+      }
+    };
+
+    // Listen for any user interaction
+    const events = ["click", "touchstart", "keydown", "mousedown"];
+    events.forEach((event) => {
+      document.addEventListener(event, enableAudio, {
+        once: true,
+        passive: true,
+      });
+    });
+  },
+
+  // main speak function, allows to speak a stream of text that is generated piece by piece
+  async speakStream(id, text, finished = false) {
+    // if already running the same stream, do nothing
+    if (
+      this.ttsStream &&
+      this.ttsStream.id === id &&
+      this.ttsStream.text === text &&
+      this.ttsStream.finished === finished
+    )
+      return;
+
+    // if user has not interacted (after reload), do not play audio
+    if (!this.userHasInteracted) return this.showAudioPermissionPrompt();
+
+    // new stream
+    if (!this.ttsStream || this.ttsStream.id !== id) {
+      // this.stop(); // stop potential previous stream
+      // create new stream data
+      this.ttsStream = {
+        id,
+        text,
+        finished,
+        running: false,
+        lastChunkIndex: -1,
+        stopped: false,
+        chunks: [],
+      };
+    } else {
+      // update existing stream data
+      this.ttsStream.finished = finished;
+      this.ttsStream.text = text;
+    }
+
+    // cleanup text
+    const cleanText = this.cleanText(text);
+    if (!cleanText.trim()) return;
+
+    // chunk it for faster processing
+    this.ttsStream.chunks = this.chunkText(cleanText);
+    if (this.ttsStream.chunks.length == 0) return;
+
+    // if stream was already running, just updating chunks is enough
+    if (this.ttsStream.running) return;
+    else this.ttsStream.running = true; // proceed to running phase
+
+    // terminator function to kill the stream if new stream has started
+    const terminator = () =>
+      this.ttsStream?.id !== id || this.ttsStream?.stopped;
+
+    const spoken = [];
+
+    // loop chunks from last spoken chunk index
+    for (
+      let i = this.ttsStream.lastChunkIndex + 1;
+      i < this.ttsStream.chunks.length;
+      i++
+    ) {
+      // do not speak the last chunk until finished (it is being generated)
+      if (i == this.ttsStream.chunks.length - 1 && !this.ttsStream.finished)
+        break;
+
+      // set the index of last spoken chunk
+      this.ttsStream.lastChunkIndex = i;
+
+      // speak the chunk
+      spoken.push(this.ttsStream.chunks[i]);
+      await this._speak(this.ttsStream.chunks[i], i > 0, () => terminator());
+    }
+
+    // at the end, finish stream data
+    this.ttsStream.running = false;
+  },
+
+  // simplified speak function, speak a single finished piece of text
+  async speak(text) {
+    const id = Math.random();
+    return await this.speakStream(id, text, true);
+  },
+
+  // speak wrapper
+  async _speak(text, waitForPrevious, terminator) {
+    // default browser speech
+    if (!this.tts_kokoro)
+      return await this.speakWithBrowser(text, waitForPrevious, terminator);
+
+    // kokoro tts
+    try {
+      await await this.speakWithKokoro(text, waitForPrevious, terminator);
+    } catch (error) {
+      console.error(error);
+      return await this.speakWithBrowser(text, waitForPrevious, terminator);
+    }
+  },
+
+  chunkText(text, { maxChunkLength = 135, lineSeparator = "..." } = {}) {
+    const INC_LIMIT = maxChunkLength * 2;
+    const MIN_CHUNK_LENGTH = 20; // minimum length for a chunk before merging
+
+    // Only split by ,/word if needed (unchanged)
+    const splitDeep = (seg) => {
+      if (seg.length <= INC_LIMIT) return [seg];
+      const byComma = seg.match(/[^,]+(?:,|$)/g);
+      if (byComma.length > 1)
+        return byComma.flatMap((p, i) =>
+          splitDeep(i < byComma.length - 1 ? p : p.replace(/,$/, ""))
+        );
+      const out = [];
+      let part = "";
       for (const word of seg.split(/\s+/)) {
         const need = part ? part.length + 1 + word.length : word.length;
         if (need <= maxChunkLength) {
-          part += (part ? " "i18n.t('ui_i18n_t_ui')""i18n.t('ui_i18n_t_ui_word_else_if_part_out_push_part_if_word_length_maxchunklength_for_let_i_0_i_word_length_i_maxchunklength_out_push_word_slice_i_i_maxchunklength_part')""i18n.t('ui_i18n_t_ui_else_part_word_if_part_out_push_part_return_out_only_split_on_followed_by_space_const_sentencetokens_line_const_toks_let_start_0_for_let_i_0_i_line_length_i_const_c_line_i_if_c')"."i18n.t('ui_i18n_t_ui_c')"!"i18n.t('ui_i18n_t_ui_c')"?") &&
+          part += (part ? " " : "") + word;
+        } else {
+          if (part) out.push(part);
+          if (word.length > maxChunkLength) {
+            for (let i = 0; i < word.length; i += maxChunkLength)
+              out.push(word.slice(i, i + maxChunkLength));
+            part = "";
+          } else {
+            part = word;
+          }
+        }
+      }
+      if (part) out.push(part);
+      return out;
+    };
+
+    // Only split on [.!?] followed by space
+    const sentenceTokens = (line) => {
+      const toks = [];
+      let start = 0;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (
+          (c === "." || c === "!" || c === "?") &&
           /\s/.test(line[i + 1] || "")
         ) {
           toks.push(line.slice(start, i + 1));
@@ -48,15 +305,250 @@ const model = {
       initialChunks.push(...sentences);
     }
 
-    // Step 2: Merge short chunks until they meet minimum length criterii18n.t('ui_l_trim_for_const_line_of_lines_if_line_trim_continue_process_each_line_into_sentence_tokens_and_add_to_chunks_const_sentences_sentencetokens_line_trim_initialchunks_push_sentences_step_2_merge_short_chunks_until_they_meet_minimum_length_criteria_const_finalchunks_let_currentchunk_i18n_t_ui_for_let_i_0_i_initialchunks_length_i_const_chunk_initialchunks_i_if_current_chunk_is_empty_start_with_this_chunk_if_currentchunk_currentchunk_chunk_if_this_is_the_last_chunk_or_it_s_already_long_enough_add_it_if_i_initialchunks_length_1_currentchunk_length_min_chunk_length_finalchunks_push_currentchunk_currentchunk_i18n_t_ui_continue_current_chunk_exists_check_if_we_should_merge_if_currentchunk_length_min_chunk_length_try_to_merge_with_separator_const_merged_currentchunk_i18n_t_ui_lineseparator_i18n_t_ui_chunk_check_if_merged_chunk_fits_within_max_length_if_merged_length_maxchunklength_currentchunk_merged_else_doesn_t_fit_add_current_chunk_and_start_new_one_finalchunks_push_currentchunk_currentchunk_chunk_else_current_chunk_is_already_long_enough_add_it_and_start_new_one_finalchunks_push_currentchunk_currentchunk_chunk_if_this_is_the_last_chunk_add_whatever_is_in_the_buffer_if_i_initialchunks_length_1_currentchunk_finalchunks_push_currentchunk_return_finalchunks_map_chunk_chunk_trimend_show_a_prompt_to_user_to_enable_audio_showaudiopermissionprompt_if_window_toast_window_toast_click_anywhere_to_enable_audio_playback_i18n_t_ui_info_i18n_t_ui_5000_else_browser_tts_async_speakwithbrowser_text_waitforprevious_false_terminator_null_wait_for_previous_to_finish_if_requested_while_waitforprevious_this_isspeaking_await_sleep_25_if_terminator_terminator_return_stop_previous_if_any_this_stopaudio_this_browserutterance_new_speechsynthesisutterance_text_this_browserutterance_onstart_this_isspeaking_true_this_browserutterance_onend_this_isspeaking_false_this_synth_speak_this_browserutterance_kokoro_tts_async_speakwithkokoro_text_waitforprevious_false_terminator_null_try_synthesize_on_the_backend_const_response_await_sendjsondata_synthesize_i18n_t_ui_text_wait_for_previous_to_finish_if_requested_while_waitforprevious_this_isspeaking_await_sleep_25_if_terminator_terminator_return_stop_previous_if_any_this_stopaudio_if_response_success_if_response_audio_parts_multiple_chunks_play_sequentially_for_const_audiopart_of_response_audio_parts_if_terminator_terminator_return_await_this_playaudio_audiopart_await_sleep_100_brief_pause_else_if_response_audio_single_audio_this_playaudio_response_audio_else_throw_new_error_kokoro_tts_error_i18n_t_ui_response_error_catch_error_throw_new_error_kokoro_tts_error_i18n_t_ui_error_play_base64_audio_async_playaudio_base64audio_return_new_promise_resolve_reject_const_audio_this_audioel_this_audioel_this_audioel_new_audio_reset_any_previous_playback_state_audio_pause_audio_currenttime_0_audio_onplay_this_isspeaking_true_audio_onended_this_isspeaking_false_this_currentaudio_null_resolve_audio_onerror_error_this_isspeaking_false_this_currentaudio_null_reject_error_audio_src_data_audio_wav_base64_base64audio_this_currentaudio_audio_audio_play_catch_error_this_isspeaking_false_this_currentaudio_null_if_error_name_notallowederror_i18n_t_ui_this_showaudiopermissionprompt_this_userhasinteracted_false_reject_error_stop_current_speech_chain_stop_this_stopaudio_stop_current_audio_immediately_if_this_ttsstream_this_ttsstream_stopped_true_set_stop_on_current_stream_stop_current_speech_audio_stopaudio_if_this_synth_speaking_this_synth_cancel_if_this_audioel_this_audioel_pause_this_audioel_currenttime_0_this_currentaudio_null_this_isspeaking_false_clean_text_for_tts_cleantext_text_use_sub_character_ascii_26_0x1a_for_placeholders_to_avoid_conflicts_with_actual_text_const_sub_x1a_i18n_t_ui_non_printable_substitute_character_const_codeplaceholder_sub_code_i18n_t_ui_sub_const_tableplaceholder_sub_table_i18n_t_ui_sub_helper_function_to_handle_both_closed_and_unclosed_patterns_replacement_can_be_a_string_or_null_to_remove_function_handlepatterns_inputtext_closedpattern_unclosedpattern_replacement_process_closed_patterns_first_let_processed_inputtext_replace_closedpattern_replacement_i18n_t_ui_if_the_text_changed_it_means_we_found_and_replaced_closed_patterns_if_processed_inputtext_return_processed_else_no_closed_patterns_found_check_for_unclosed_ones_const_unclosedmatch_inputtext_match_unclosedpattern_if_unclosedmatch_replace_the_unclosed_pattern_return_inputtext_replace_unclosedpattern_replacement_no_patterns_found_return_original_return_inputtext_handle_code_blocks_text_handlepatterns_text_a_za_z0_9_n_s_s_g_closed_code_blocks_a_za_z0_9_n_s_s_g_unclosed_code_blocks_codeplaceholder_replace_inline_code_ticks_with_content_preserved_text_text_replace_g_i18n_t_ui_1_remove_backticks_but_keep_content_handle_html_tags_text_handlepatterns_text')ompletely
+    // Step 2: Merge short chunks until they meet minimum length criteria
+    const finalChunks = [];
+    let currentChunk = "";
+
+    for (let i = 0; i < initialChunks.length; i++) {
+      const chunk = initialChunks[i];
+
+      // If current chunk is empty, start with this chunk
+      if (!currentChunk) {
+        currentChunk = chunk;
+        // If this is the last chunk or it's already long enough, add it
+        if (
+          i === initialChunks.length - 1 ||
+          currentChunk.length >= MIN_CHUNK_LENGTH
+        ) {
+          finalChunks.push(currentChunk);
+          currentChunk = "";
+        }
+        continue;
+      }
+
+      // Current chunk exists, check if we should merge
+      if (currentChunk.length < MIN_CHUNK_LENGTH) {
+        // Try to merge with separator
+        const merged = currentChunk + " " + lineSeparator + " " + chunk;
+
+        // Check if merged chunk fits within max length
+        if (merged.length <= maxChunkLength) {
+          currentChunk = merged;
+        } else {
+          // Doesn't fit, add current chunk and start new one
+          finalChunks.push(currentChunk);
+          currentChunk = chunk;
+        }
+      } else {
+        // Current chunk is already long enough, add it and start new one
+        finalChunks.push(currentChunk);
+        currentChunk = chunk;
+      }
+
+      // If this is the last chunk, add whatever is in the buffer
+      if (i === initialChunks.length - 1 && currentChunk) {
+        finalChunks.push(currentChunk);
+      }
+    }
+
+    return finalChunks.map((chunk) => chunk.trimEnd());
+  },
+
+  // Show a prompt to user to enable audio
+  showAudioPermissionPrompt() {
+    if (window.toast) {
+      window.toast("Click anywhere to enable audio playback", "info", 5000);
+    } else {
+
+    }
+  },
+
+  // Browser TTS
+  async speakWithBrowser(text, waitForPrevious = false, terminator = null) {
+    // wait for previous to finish if requested
+    while (waitForPrevious && this.isSpeaking) await sleep(25);
+    if (terminator && terminator()) return;
+
+    // stop previous if any
+    this.stopAudio();
+
+    this.browserUtterance = new SpeechSynthesisUtterance(text);
+    this.browserUtterance.onstart = () => {
+      this.isSpeaking = true;
+    };
+    this.browserUtterance.onend = () => {
+      this.isSpeaking = false;
+    };
+
+    this.synth.speak(this.browserUtterance);
+  },
+
+  // Kokoro TTS
+  async speakWithKokoro(text, waitForPrevious = false, terminator = null) {
+    try {
+      // synthesize on the backend
+      const response = await sendJsonData("/synthesize", { text });
+
+      // wait for previous to finish if requested
+      while (waitForPrevious && this.isSpeaking) await sleep(25);
+      if (terminator && terminator()) return;
+
+      // stop previous if any
+      this.stopAudio();
+
+      if (response.success) {
+        if (response.audio_parts) {
+          // Multiple chunks - play sequentially
+          for (const audioPart of response.audio_parts) {
+            if (terminator && terminator()) return;
+            await this.playAudio(audioPart);
+            await sleep(100); // Brief pause
+          }
+        } else if (response.audio) {
+          // Single audio
+          this.playAudio(response.audio);
+        }
+      } else {
+        throw new Error("Kokoro TTS error:", response.error);
+      }
+    } catch (error) {
+      throw new Error("Kokoro TTS error:", error);
+    }
+  },
+
+  // Play base64 audio
+  async playAudio(base64Audio) {
+    return new Promise((resolve, reject) => {
+      const audio = this.audioEl ? this.audioEl : (this.audioEl = new Audio());
+
+      // Reset any previous playback state
+      audio.pause();
+      audio.currentTime = 0;
+
+      audio.onplay = () => {
+        this.isSpeaking = true;
+      };
+      audio.onended = () => {
+        this.isSpeaking = false;
+        this.currentAudio = null;
+        resolve();
+      };
+      audio.onerror = (error) => {
+        this.isSpeaking = false;
+        this.currentAudio = null;
+        reject(error);
+      };
+
+      audio.src = `data:audio/wav;base64,${base64Audio}`;
+      this.currentAudio = audio;
+
+      audio.play().catch((error) => {
+        this.isSpeaking = false;
+        this.currentAudio = null;
+
+        if (error.name === "NotAllowedError") {
+          this.showAudioPermissionPrompt();
+          this.userHasInteracted = false;
+        }
+        reject(error);
+      });
+    });
+  },
+
+  // Stop current speech chain
+  stop() {
+    this.stopAudio(); // stop current audio immediately
+    if (this.ttsStream) this.ttsStream.stopped = true; // set stop on current stream
+  },
+
+  // Stop current speech audio
+  stopAudio() {
+    if (this.synth?.speaking) {
+      this.synth.cancel();
+    }
+
+    if (this.audioEl) {
+      this.audioEl.pause();
+      this.audioEl.currentTime = 0;
+    }
+    this.currentAudio = null;
+    this.isSpeaking = false;
+  },
+
+  // Clean text for TTS
+  cleanText(text) {
+    // Use SUB character (ASCII 26, 0x1A) for placeholders to avoid conflicts with actual text
+    const SUB = "\x1A"; // non-printable substitute character
+    const codePlaceholder = SUB + "code" + SUB;
+    const tablePlaceholder = SUB + "table" + SUB;
+
+    // Helper function to handle both closed and unclosed patterns
+    // replacement can be a string or null (to remove)
+    function handlePatterns(
+      inputText,
+      closedPattern,
+      unclosedPattern,
+      replacement
+    ) {
+      // Process closed patterns first
+      let processed = inputText.replace(closedPattern, replacement || "");
+
+      // If the text changed, it means we found and replaced closed patterns
+      if (processed !== inputText) {
+        return processed;
+      } else {
+        // No closed patterns found, check for unclosed ones
+        const unclosedMatch = inputText.match(unclosedPattern);
+        if (unclosedMatch) {
+          // Replace the unclosed pattern
+          return inputText.replace(unclosedPattern, replacement || "");
+        }
+      }
+
+      // No patterns found, return original
+      return inputText;
+    }
+
+    // Handle code blocks
+    text = handlePatterns(
+      text,
+      /```(?:[a-zA-Z0-9]*\n)?[\s\S]*?```/g, // closed code blocks
+      /```(?:[a-zA-Z0-9]*\n)?[\s\S]*$/g, // unclosed code blocks
+      codePlaceholder
     );
 
-    i18n.t('ui_')Handle self-closing HTMLi18n.t('ui_gs_closed_html_tags')
+    // Replace inline code ticks with content preserved
+    text = text.replace(/`([^`]*)`/g, "$1"); // remove backticks but keep content
+
+    // Handle HTML tags
+    text = handlePatterns(
       text,
-      /<[i18n.t('ui_s_s_g_unclosed_html_tags_remove_html_tags_completely_handle_self_closing_html_tags_text_handlepatterns_text')ove markdown links: [label](ui18n.t('ui_g_complete_self_closing_tags')\]\([^\)]+\)/g, "i18n.t('ui_i18n_t_ui_1')");
+      /<[a-zA-Z][a-zA-Z0-9]*>.*?<\/[a-zA-Z][a-zA-Z0-9]*>/gs, // closed HTML tags
+      /<[a-zA-Z][a-zA-Z0-9]*>[\s\S]*$/g, // unclosed HTML tags
+      "" // remove HTML tags completely
+    );
+
+    // Handle self-closing HTML tags
+    text = handlePatterns(
+      text,
+      /<[a-zA-Z][a-zA-Z0-9]*(\/| [^>]*\/>)/g, // complete self-closing tags
+      /<[a-zA-Z][a-zA-Z0-9]* [^>]*$/g, // incomplete self-closing tags
+      ""
+    );
+
+    // Remove markdown links: [label](url) → label
+    text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
 
     // Remove markdown formatting: *, _, #
-    text = text.replace(/[*_#]+/g, ""i18n.t('ui_i18n_t_ui_handle_tables_both_complete_and_partial_check_if_text_contains_a_table_like_pattern_if_text_includes')"|"i18n.t('ui_i18n_t_ui_find_consecutive_lines_with_characters_table_rows_const_tablelines_text_split')"\n"i18n.t('ui_i18n_t_ui_filter_line_line_includes')"|"i18n.t('ui_i18n_t_ui_line_trim_startswith')"|"));
+    text = text.replace(/[*_#]+/g, "");
+
+    // Handle tables - both complete and partial
+    // Check if text contains a table-like pattern
+    if (text.includes("|")) {
+      // Find consecutive lines with | characters (table rows)
+      const tableLines = text
+        .split("\n")
+        .filter((line) => line.includes("|") && line.trim().startsWith("|"));
       if (tableLines.length > 0) {
         // Replace each table line with a placeholder
         for (const line of tableLines) {
@@ -84,8 +576,375 @@ const model = {
     });
 
     // Remove email addresses
-    // text = text.replace(/\S+@\S+/g, ""i18n.t('ui_i18n_t_ui_replace_uuids_with_uuid_text_text_replace_0_9a_f_8_0_9a_f_4_0_9a_f_4_0_9a_f_4_0_9a_f_12_g')"UUID"
+    // text = text.replace(/\S+@\S+/g, "");
+
+    // Replace UUIDs with 'UUID'
+    text = text.replace(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g,
+      "UUID"
     );
 
     // Collapse multiple spaces/tabs to a single space, but preserve newlines
-    text = text.replace(/[ \t]+/g, " "i18n.t('ui_i18n_t_ui_function_to_merge_consecutive_placeholders_of_any_type_function_mergeplaceholders_txt_placeholder_replacement_create_regex_for_consecutive_placeholders_with_possible_whitespace_between_const_regex_new_regexp_placeholder')"\\s*"i18n.t('ui_i18n_t_ui_placeholder')"g"i18n.t('ui_i18n_t_ui_merge_consecutive_placeholders_until_no_more_found_while_regex_test_txt_txt_txt_replace_regex_placeholder_replace_all_remaining_placeholders_with_human_readable_text_return_txt_replace_new_regexp_placeholder')"g"i18n.t('ui_i18n_t_ui_replacement_apply_placeholder_merging_for_both_types_text_mergeplaceholders_text_codeplaceholder')"See code attached ..."i18n.t('ui_i18n_t_ui_text_mergeplaceholders_text_tableplaceholder')"See table attached ..."i18n.t('ui_i18n_t_ui_trim_leading_trailing_whitespace_text_text_trim_return_text_initialize_microphone_input_async_initmicrophone_if_this_microphoneinput_return_this_microphoneinput_this_microphoneinput_new_microphoneinput_async_text_isfinal_if_isfinal_this_sendmessage_text_const_initialized_await_this_microphoneinput_initialize_return_initialized_this_microphoneinput_null_async_sendmessage_text_text')"(voice) "i18n.t('ui_i18n_t_ui_text_updatechatinput_text_if_this_microphoneinput_messagesent_this_microphoneinput_messagesent_true_await_sendmessage_request_microphone_permission_delegate_to_microphoneinput_async_requestmicrophonepermission_return_this_microphoneinput_this_microphoneinput_requestpermission_microphoneinput_prototype_requestpermission_call_null_microphone_input_class_simplified_for_store_integration_class_microphoneinput_constructor_updatecallback_this_mediarecorder_null_this_audiochunks_this_lastchunk_this_updatecallback_updatecallback_this_messagesent_false_this_audiocontext_null_this_mediastreamsource_null_this_analysernode_null_this_status_status_inactive_this_lastaudiotime_null_this_waitingtimer_null_this_silencestarttime_null_this_hasstartedrecording_false_this_analysisframe_null_get_status_return_this_status_set_status_newstatus_if_this_status_newstatus_return_const_oldstatus_this_status_this_status_newstatus_this_handlestatuschange_oldstatus_newstatus_async_initialize_set_status_to_activating_at_the_start_of_initialization_this_status_status_activating_try_get_selected_device_from_microphone_settings_const_selecteddevice_microphonesettingstore_getselecteddevice_const_stream_await_navigator_mediadevices_getusermedia_audio_deviceid_selecteddevice_selecteddevice_deviceid_exact_selecteddevice_deviceid_undefined_echocancellation_true_noisesuppression_true_channelcount_1_this_mediarecorder_new_mediarecorder_stream_this_mediarecorder_ondataavailable_event_if_event_data_size_0_this_status_status_recording_this_status_status_waiting_if_this_lastchunk_this_audiochunks_push_this_lastchunk_this_lastchunk_null_this_audiochunks_push_event_data_else_if_this_status_status_listening_this_lastchunk_event_data_this_setupaudioanalysis_stream_return_true_catch_error_console_error')"Microphone initialization error:"i18n.t('ui_i18n_t_ui_error_toast')"Failed to access microphone. Please check permissions."i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_return_false_handlestatuschange_oldstatus_newstatus_if_newstatus_status_recording_this_lastchunk_null_switch_newstatus_case_status_inactive_this_handleinactivestate_break_case_status_listening_this_handlelisteningstate_break_case_status_recording_this_handlerecordingstate_break_case_status_waiting_this_handlewaitingstate_break_case_status_processing_this_handleprocessingstate_break_handleinactivestate_this_stoprecording_this_stopaudioanalysis_if_this_waitingtimer_cleartimeout_this_waitingtimer_this_waitingtimer_null_handlelisteningstate_this_stoprecording_this_audiochunks_this_hasstartedrecording_false_this_silencestarttime_null_this_lastaudiotime_null_this_messagesent_false_this_startaudioanalysis_handlerecordingstate_if_this_hasstartedrecording_this_mediarecorder_state')"recording"i18n.t('ui_i18n_t_ui_this_hasstartedrecording_true_this_mediarecorder_start_1000_if_this_waitingtimer_cleartimeout_this_waitingtimer_this_waitingtimer_null_handlewaitingstate_this_waitingtimer_settimeout_if_this_status_status_waiting_this_status_status_processing_store_stt_waiting_timeout_handleprocessingstate_this_stoprecording_this_process_setupaudioanalysis_stream_this_audiocontexi18n_t_ui_this_isprocessingclick_false_300_initialize_speech_functionality_async_init_await_this_loadsettings_this_setupbrowsertts_this_setupuserinteractionhandling_load_settings_from_server_async_loadsettings_try_const_response_await_fetchapi_v1_settings_sections_method_get_const_data_await_response_json_const_sections_data_sections_const_speechsection_sections_find_s_s_title_speech_if_speechsection_array_isarray_speechsection_fields_for_const_field_of_speechsection_fields_if_object_prototype_hasownproperty_call_this_field_id_this_field_id_field_value_catch_error_window_toastfetcherror_failed_to_load_speech_settings_error_console_error_failed_to_load_speech_settings_error_setup_browser_tts_setupbrowsertts_this_synth_window_speechsynthesis_this_browserutterance_null_setup_user_interaction_handling_for_autoplay_policy_setupuserinteractionhandling_const_enableaudio_if_this_userhasinteracted_this_userhasinteracted_true_create_a_dummy_audio_context_to_unlock_audio_try_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_audiocontext_resume_catch_e_listen_for_any_user_interaction_const_events_click_touchstart_keydown_mousedown_events_foreach_event_document_addeventlistener_event_enableaudio_once_true_passive_true_main_speak_function_allows_to_speak_a_stream_of_text_that_is_generated_piece_by_piece_async_speakstream_id_text_finished_false_if_already_running_the_same_stream_do_nothing_if_this_ttsstream_this_ttsstream_id_id_this_ttsstream_text_text_this_ttsstream_finished_finished_return_if_user_has_not_interacted_after_reload_do_not_play_audio_if_this_userhasinteracted_return_this_showaudiopermissionprompt_new_stream_if_this_ttsstream_this_ttsstream_id_id_this_stop_stop_potential_previous_stream_create_new_stream_data_this_ttsstream_id_text_finished_running_false_lastchunkindex_1_stopped_false_chunks_else_update_existing_stream_data_this_ttsstream_finished_finished_this_ttsstream_text_text_cleanup_text_const_cleantext_this_cleantext_text_if_cleantext_trim_return_chunk_it_for_faster_processing_this_ttsstream_chunks_this_chunktext_cleantext_if_this_ttsstream_chunks_length_0_return_if_stream_was_already_running_just_updating_chunks_is_enough_if_this_ttsstream_running_return_else_this_ttsstream_running_true_proceed_to_running_phase_terminator_function_to_kill_the_stream_if_new_stream_has_started_const_terminator_this_ttsstream_id_id_this_ttsstream_stopped_const_spoken_loop_chunks_from_last_spoken_chunk_index_for_let_i_this_ttsstream_lastchunkindex_1_i_stener')"DOMContentLoaded", () => speechStore.init());
+    text = text.replace(/[ \t]+/g, " ");
+
+    // Function to merge consecutive placeholders of any type
+    function mergePlaceholders(txt, placeholder, replacement) {
+      // Create regex for consecutive placeholders (with possible whitespace between)
+      const regex = new RegExp(placeholder + "\\s*" + placeholder, "g");
+      // Merge consecutive placeholders until no more found
+      while (regex.test(txt)) {
+        txt = txt.replace(regex, placeholder);
+      }
+      // Replace all remaining placeholders with human-readable text
+      return txt.replace(new RegExp(placeholder, "g"), replacement);
+    }
+
+    // Apply placeholder merging for both types
+    text = mergePlaceholders(text, codePlaceholder, "See code attached ...");
+    text = mergePlaceholders(text, tablePlaceholder, "See table attached ...");
+
+    // Trim leading/trailing whitespace
+    text = text.trim();
+
+    return text;
+  },
+
+  // Initialize microphone input
+  async initMicrophone() {
+    if (this.microphoneInput) return this.microphoneInput;
+
+    this.microphoneInput = new MicrophoneInput(async (text, isFinal) => {
+      if (isFinal) {
+        this.sendMessage(text);
+      }
+    });
+
+    const initialized = await this.microphoneInput.initialize();
+    return initialized ? this.microphoneInput : null;
+  },
+
+  async sendMessage(text) {
+    text = "(voice) " + text;
+    updateChatInput(text);
+    if (!this.microphoneInput.messageSent) {
+      this.microphoneInput.messageSent = true;
+      await sendMessage();
+    }
+  },
+
+  // Request microphone permission - delegate to MicrophoneInput
+  async requestMicrophonePermission() {
+    return this.microphoneInput
+      ? this.microphoneInput.requestPermission()
+      : MicrophoneInput.prototype.requestPermission.call(null);
+  },
+};
+
+// Microphone Input Class (simplified for store integration)
+class MicrophoneInput {
+  constructor(updateCallback) {
+    this.mediaRecorder = null;
+    this.audioChunks = [];
+    this.lastChunk = [];
+    this.updateCallback = updateCallback;
+    this.messageSent = false;
+    this.audioContext = null;
+    this.mediaStreamSource = null;
+    this.analyserNode = null;
+    this._status = Status.INACTIVE;
+    this.lastAudioTime = null;
+    this.waitingTimer = null;
+    this.silenceStartTime = null;
+    this.hasStartedRecording = false;
+    this.analysisFrame = null;
+  }
+
+  get status() {
+    return this._status;
+  }
+
+  set status(newStatus) {
+    if (this._status === newStatus) return;
+
+    const oldStatus = this._status;
+    this._status = newStatus;
+
+
+    this.handleStatusChange(oldStatus, newStatus);
+  }
+
+  async initialize() {
+    // Set status to activating at the start of initialization
+    this.status = Status.ACTIVATING;
+    try {
+      // get selected device from microphone settings
+      const selectedDevice = microphoneSettingStore.getSelectedDevice();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId:
+            selectedDevice && selectedDevice.deviceId
+              ? { exact: selectedDevice.deviceId }
+              : undefined,
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
+      });
+
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (
+          event.data.size > 0 &&
+          (this.status === Status.RECORDING || this.status === Status.WAITING)
+        ) {
+          if (this.lastChunk) {
+            this.audioChunks.push(this.lastChunk);
+            this.lastChunk = null;
+          }
+          this.audioChunks.push(event.data);
+        } else if (this.status === Status.LISTENING) {
+          this.lastChunk = event.data;
+        }
+      };
+
+      this.setupAudioAnalysis(stream);
+      return true;
+    } catch (error) {
+      console.error("Microphone initialization error:", error);
+      toast("Failed to access microphone. Please check permissions.", "error");
+      return false;
+    }
+  }
+
+  handleStatusChange(oldStatus, newStatus) {
+    if (newStatus != Status.RECORDING) {
+      this.lastChunk = null;
+    }
+
+    switch (newStatus) {
+      case Status.INACTIVE:
+        this.handleInactiveState();
+        break;
+      case Status.LISTENING:
+        this.handleListeningState();
+        break;
+      case Status.RECORDING:
+        this.handleRecordingState();
+        break;
+      case Status.WAITING:
+        this.handleWaitingState();
+        break;
+      case Status.PROCESSING:
+        this.handleProcessingState();
+        break;
+    }
+  }
+
+  handleInactiveState() {
+    this.stopRecording();
+    this.stopAudioAnalysis();
+    if (this.waitingTimer) {
+      clearTimeout(this.waitingTimer);
+      this.waitingTimer = null;
+    }
+  }
+
+  handleListeningState() {
+    this.stopRecording();
+    this.audioChunks = [];
+    this.hasStartedRecording = false;
+    this.silenceStartTime = null;
+    this.lastAudioTime = null;
+    this.messageSent = false;
+    this.startAudioAnalysis();
+  }
+
+  handleRecordingState() {
+    if (!this.hasStartedRecording && this.mediaRecorder.state !== "recording") {
+      this.hasStartedRecording = true;
+      this.mediaRecorder.start(1000);
+
+    }
+    if (this.waitingTimer) {
+      clearTimeout(this.waitingTimer);
+      this.waitingTimer = null;
+    }
+  }
+
+  handleWaitingState() {
+    this.waitingTimer = setTimeout(() => {
+      if (this.status === Status.WAITING) {
+        this.status = Status.PROCESSING;
+      }
+    }, store.stt_waiting_timeout);
+  }
+
+  handleProcessingState() {
+    this.stopRecording();
+    this.process();
+  }
+
+  setupAudioAnalysis(stream) {
+    this.audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
+    this.mediaStreamSource = this.audioContext.createMediaStreamSource(stream);
+    this.analyserNode = this.audioContext.createAnalyser();
+    this.analyserNode.fftSize = 2048;
+    this.analyserNode.minDecibels = -90;
+    this.analyserNode.maxDecibels = -10;
+    this.analyserNode.smoothingTimeConstant = 0.85;
+    this.mediaStreamSource.connect(this.analyserNode);
+  }
+
+  startAudioAnalysis() {
+    const analyzeFrame = () => {
+      if (this.status === Status.INACTIVE) return;
+
+      const dataArray = new Uint8Array(this.analyserNode.fftSize);
+      this.analyserNode.getByteTimeDomainData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const amplitude = (dataArray[i] - 128) / 128;
+        sum += amplitude * amplitude;
+      }
+      const rms = Math.sqrt(sum / dataArray.length);
+      const now = Date.now();
+
+      // Update status based on audio level (ignore if TTS is speaking)
+      if (rms > this.densify(store.stt_silence_threshold)) {
+        this.lastAudioTime = now;
+        this.silenceStartTime = null;
+
+        if (
+          (this.status === Status.LISTENING ||
+            this.status === Status.WAITING) &&
+          !store.isSpeaking
+        ) {
+          this.status = Status.RECORDING;
+        }
+      } else if (this.status === Status.RECORDING) {
+        if (!this.silenceStartTime) {
+          this.silenceStartTime = now;
+        }
+
+        const silenceDuration = now - this.silenceStartTime;
+        if (silenceDuration >= store.stt_silence_duration) {
+          this.status = Status.WAITING;
+        }
+      }
+
+      this.analysisFrame = requestAnimationFrame(analyzeFrame);
+    };
+
+    this.analysisFrame = requestAnimationFrame(analyzeFrame);
+  }
+
+  stopAudioAnalysis() {
+    if (this.analysisFrame) {
+      cancelAnimationFrame(this.analysisFrame);
+      this.analysisFrame = null;
+    }
+  }
+
+  stopRecording() {
+    if (this.mediaRecorder?.state === "recording") {
+      this.mediaRecorder.stop();
+      this.hasStartedRecording = false;
+    }
+  }
+
+  densify(x) {
+    return Math.exp(-5 * (1 - x));
+  }
+
+  async process() {
+    if (this.audioChunks.length === 0) {
+      this.status = Status.LISTENING;
+      return;
+    }
+
+    const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
+    const base64 = await this.convertBlobToBase64Wav(audioBlob);
+
+    try {
+      const result = await sendJsonData("/transcribe", { audio: base64 });
+      const text = this.filterResult(result.text || "");
+
+      if (text) {
+
+        await this.updateCallback(result.text, true);
+      }
+    } catch (error) {
+      window.toastFetchError("Transcription error", error);
+      console.error("Transcription error:", error);
+    } finally {
+      this.audioChunks = [];
+      this.status = Status.LISTENING;
+    }
+  }
+
+  convertBlobToBase64Wav(audioBlob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(",")[1];
+        resolve(base64Data);
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(audioBlob);
+    });
+  }
+
+  filterResult(text) {
+    text = text.trim();
+    let ok = false;
+    while (!ok) {
+      if (!text) break;
+      if (text[0] === "{" && text[text.length - 1] === "}") break;
+      if (text[0] === "(" && text[text.length - 1] === ")") break;
+      if (text[0] === "[" && text[text.length - 1] === "]") break;
+      ok = true;
+    }
+    if (ok) return text;
+    else {}
+  }
+
+  // Toggle microphone between active and inactive states
+  async toggle() {
+    const hasPermission = await this.requestPermission();
+    if (!hasPermission) return;
+
+    // Toggle between listening and inactive
+    if (this.status === Status.INACTIVE || this.status === Status.ACTIVATING) {
+      this.status = Status.LISTENING;
+    } else {
+      this.status = Status.INACTIVE;
+    }
+  }
+
+  // Request microphone permission
+  async requestPermission() {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      return true;
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      toast(
+        "Microphone access denied. Please enable microphone access in your browser settings.",
+        "error"
+      );
+      return false;
+    }
+  }
+}
+
+export const store = createStore("speech", model);
+
+// Initialize speech store
+// window.speechStore = speechStore;
+
+// Event listeners
+document.addEventListener("settings-updated", () => store.loadSettings());
+// document.addEventListener("DOMContentLoaded", () => speechStore.init());

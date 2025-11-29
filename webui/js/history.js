@@ -1,31 +1,50 @@
-import { getContext } from "i18n.t('ui_i18n_t_ui_index_js')";
+import { getContext } from "../index.js";
 
 export async function openHistoryModal() {
     try {
-        const hist = await window.sendJsonData("i18n.t('ui_i18n_t_ui_history_get')", { context: getContext() });
+        const hist = await window.sendJsonData("/history_get", { context: getContext() });
         // const data = JSON.stringify(hist.history, null, 4);
         const data = hist.history
         const size = hist.tokens
-        await showEditorModal(data, "i18n.t('ui_i18n_t_ui_markdown')", `History ~${size} tokens`, "i18n.t('ui_i18n_t_ui_conversation_history_visible_to_the_llm_history_is_compressed_to_fit_into_the_context_window_over_time')");
+        await showEditorModal(data, "markdown", `History ~${size} tokens`, "Conversation history visible to the LLM. History is compressed to fit into the context window over time.");
     } catch (e) {
-        window.toastFrontendError("i18n.t('ui_i18n_t_ui_error_fetching_history')" + e.message, "i18n.t('ui_i18n_t_ui_chat_history_error')");
+        window.toastFrontendError("Error fetching history: " + e.message, "Chat History Error");
         return
     }
 }
 
 export async function openCtxWindowModal() {
     try {
-        const win = await window.sendJsonData("i18n.t('ui_i18n_t_ui_ctx_window_get')", { context: getContext() });
+        const win = await window.sendJsonData("/ctx_window_get", { context: getContext() });
         const data = win.content
         const size = win.tokens
-        await showEditorModal(data, "i18n.t('ui_i18n_t_ui_markdown')", `Context window ~${size} tokens`, "i18n.t('ui_i18n_t_ui_data_passed_to_the_llm_during_last_interaction_contains_system_message_conversation_history_and_rag')");
+        await showEditorModal(data, "markdown", `Context window ~${size} tokens`, "Data passed to the LLM during last interaction. Contains system message, conversation history and RAG.");
     } catch (e) {
-        window.toastFrontendError("i18n.t('ui_i18n_t_ui_error_fetching_context')" + e.message, "i18n.t('ui_i18n_t_ui_context_error')");
+        window.toastFrontendError("Error fetching context: " + e.message, "Context Error");
         return
     }
 }
 
-async function showEditorModal(data, type = "i18n.t('ui_i18n_t_ui_json')", title, description = ""i18n.t('ui_i18n_t_ui_generate_the_html_with_json_viewer_container_const_html_div_id')"json-viewer-container"i18n.t('ui_i18n_t_ui_div_open_the_modal_with_the_generated_html_await_window_genericmodalproxy_openmodal_title_description_html')"history-viewer"i18n.t('ui_i18n_t_ui_initialize_the_json_viewer_after_the_modal_is_rendered_const_container_document_getelementbyid')"json-viewer-container"i18n.t('ui_i18n_t_ui_if_container_const_editor_ace_edit')"json-viewer-container"i18n.t('ui_i18n_t_ui_const_dark_localstorage_getitem_darkmode_if_dark')"false"i18n.t('ui_i18n_t_ui_editor_settheme')"ace/theme/github_dark"i18n.t('ui_i18n_t_ui_else_editor_settheme')"ace/theme/tomorrow"i18n.t('ui_i18n_t_ui_editor_session_setmode')"ace/mode/" + type);
+async function showEditorModal(data, type = "json", title, description = "") {
+    // Generate the HTML with JSON Viewer container
+    const html = `<div id="json-viewer-container"></div>`;
+
+    // Open the modal with the generated HTML
+    await window.genericModalProxy.openModal(title, description, html, ["history-viewer"]);
+
+    // Initialize the JSON Viewer after the modal is rendered
+    const container = document.getElementById("json-viewer-container");
+    if (container) {
+        const editor = ace.edit("json-viewer-container");
+
+        const dark = localStorage.getItem('darkMode')
+        if (dark != "false") {
+            editor.setTheme("ace/theme/github_dark");
+        } else {
+            editor.setTheme("ace/theme/tomorrow");
+        }
+
+        editor.session.setMode("ace/mode/" + type);
         editor.setValue(data);
         editor.clearSelection();
         // editor.session.$toggleFoldWidget(5, {})

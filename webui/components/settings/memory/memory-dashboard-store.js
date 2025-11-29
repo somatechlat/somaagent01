@@ -1,14 +1,389 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
-import { getContext } from "i18n.t('ui_i18n_t_ui_index_js')";
-import * as API from "i18n.t('ui_i18n_t_ui_js_api_js')";
-import { openModal, closeModal } from "i18n.t('ui_i18n_t_ui_js_modals_js')";
+import { createStore } from "/static/js/AlpineStore.js";
+import { getContext } from "/static/index.js";
+import * as API from "/static/js/api.js";
+import { openModal, closeModal } from "/static/js/modals.js";
 // Unified notifications (SSE + REST)
-import { store as notificationsSse } from "i18n.t('ui_i18n_t_ui_components_notifications_notificationsstore_js')";
-import * as bus from "i18n.t('ui_i18n_t_ui_js_event_bus_js')";
+import { store as notificationsSse } from "/static/components/notifications/notificationsStore.js";
+import * as bus from "/static/js/event-bus.js";
 
 // Helper function for toasts
-function justToast(text, type = "i18n.t('ui_i18n_t_ui_info')", timeout = 5000) {
-  try { notificationsSse.create({ type, title: text, body: ""i18n.t('ui_i18n_t_ui_severity_type_ttl_seconds_math_max_1_timeout_1000_catch_memory_dashboard_store_const_memorydashboardstore_data_memories_currentpage_1_itemsperpage_10_state_loading_false_loadingsubdirs_false_initializingmemory_false_error_null_message_null_memory_subdirectories_memorysubdirs_selectedmemorysubdir')"default"i18n.t('ui_i18n_t_ui_memoryinitialized_track_which_subdirs_have_been_initialized_search_and_filters_searchquery')""i18n.t('ui_i18n_t_ui_areafilter')""i18n.t('ui_i18n_t_ui_threshold_parsefloat_localstorage_getitem')"memoryDashboard_threshold"i18n.t('ui_i18n_t_ui')"0.6"i18n.t('ui_i18n_t_ui_limit_parseint_localstorage_getitem')"memoryDashboard_limit"i18n.t('ui_i18n_t_ui')"1000"i18n.t('ui_i18n_t_ui_stats_totalcount_0_totaldbcount_0_knowledgecount_0_conversationcount_0_areascount_memory_detail_modal_standard_modal_approach_detailmemory_null_editmode_false_editmemorybackup_null_sse_only_no_polling_retained_prior_fields_removed_async_openmodal_await_openmodal')"settings/memory/memory-dashboard.html"i18n.t('ui_i18n_t_ui_init_this_initialize_async_onopen_await_this_getcurrentmemorysubdir_await_this_loadmemorysubdirs_await_this_searchmemories_subscribe_to_sse_bus_events_for_memory_invalidations_if_this_businited_this_businited_true_this_unsubs_this_unsubs_push_bus_on')"memory.list.update"i18n.t('ui_i18n_t_ui_this_searchmemories_true_this_unsubs_push_bus_on')"sse:event"i18n.t('ui_i18n_t_ui_ev_try_const_t_ev_type_tolowercase_if_t_startswith_memory_t_assistant_final_silent_refresh_retains_pagination_selections_this_searchmemories_true_catch_async_initialize_reset_state_when_opening_but_keep_directory_from_context_this_currentpage_1_this_searchquery')""i18n.t('ui_i18n_t_ui_this_areafilter')""i18n.t('ui_i18n_t_ui_get_current_memory_subdirectory_from_application_context_await_this_getcurrentmemorysubdir_await_this_loadmemorysubdirs_automatically_search_with_selected_subdirectory_if_this_selectedmemorysubdir_await_this_searchmemories_sse_subscriptions_already_established_in_onopen_no_polling_async_getcurrentmemorysubdir_try_try_to_get_current_memory_subdirectory_from_the_backend_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"get_current_memory_subdir"i18n.t('ui_i18n_t_ui_context_id_getcontext_if_response_success_response_memory_subdir_this_selectedmemorysubdir_response_memory_subdir_else_this_selectedmemorysubdir')"default"i18n.t('ui_i18n_t_ui_catch_error_console_error')"Failed to get current memory subdirectory:"i18n.t('ui_i18n_t_ui_error_this_selectedmemorysubdir')"default"i18n.t('ui_i18n_t_ui_async_loadmemorysubdirs_this_loadingsubdirs_true_this_error_null_try_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"get_memory_subdirs"i18n.t('ui_i18n_t_ui_if_response_success_let_subdirs_response_subdirs')"default"i18n.t('ui_i18n_t_ui_sort_alphabetically_but_ensure')"default"i18n.t('ui_i18n_t_ui_is_always_first_subdirs_subdirs_filter_dir_dir')"default"i18n.t('ui_i18n_t_ui_sort_if_response_subdirs_response_subdirs_includes')"default"i18n.t('ui_i18n_t_ui_subdirs_unshift')"default"i18n.t('ui_i18n_t_ui_else_subdirs_unshift')"default"i18n.t('ui_i18n_t_ui_this_memorysubdirs_subdirs_ensure_the_currently_selected_subdirectory_exists_in_the_list_if_this_memorysubdirs_includes_this_selectedmemorysubdir_this_selectedmemorysubdir')"default"i18n.t('ui_i18n_t_ui_else_this_error_response_error')"Failed to load memory subdirectories"i18n.t('ui_i18n_t_ui_this_memorysubdirs')"default"i18n.t('ui_i18n_t_ui_this_selectedmemorysubdir')"default"i18n.t('ui_i18n_t_ui_catch_error_this_error_error_message')"Failed to load memory subdirectories"i18n.t('ui_i18n_t_ui_this_memorysubdirs')"default"i18n.t('ui_i18n_t_ui_only_fallback_to_default_if_current_selection_is_not_available_if_this_memorysubdirs_includes_this_selectedmemorysubdir_this_selectedmemorysubdir')"default"i18n.t('ui_i18n_t_ui_console_error')"Memory subdirectory loading error:"i18n.t('ui_i18n_t_ui_error_finally_this_loadingsubdirs_false_async_searchmemories_silent_false_save_limit_to_localstorage_for_persistence_localstorage_setitem')"memoryDashboard_limit"i18n.t('ui_i18n_t_ui_this_limit_tostring_localstorage_setitem')"memoryDashboard_threshold"i18n.t('ui_i18n_t_ui_this_threshold_tostring_if_silent_this_loading_true_this_error_null_this_message_null_check_if_this_memory_subdirectory_needs_initialization_if_this_memoryinitialized_this_selectedmemorysubdir_this_initializingmemory_true_try_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"search"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_area_this_areafilter_search_this_searchquery_limit_this_limit_threshold_this_threshold_if_response_success_preserve_existing_selections_during_sse_driven_silent_refresh_const_existingselections_if_silent_this_memories_this_memories_foreach_memory_if_memory_selected_existingselections_memory_id_true_add_selected_property_to_each_memory_item_for_mass_selection_this_memories_response_memories_map_memory_memory_selected_existingselections_memory_id_false_this_totalcount_response_total_count_0_this_totaldbcount_response_total_db_count_0_this_knowledgecount_response_knowledge_count_0_this_conversationcount_response_conversation_count_0_if_silent_this_message_response_message_null_this_currentpage_1_reset_to_first_page_when_loading_new_data_else_for_silent_updates_adjust_current_page_if_it_exceeds_available_pages_if_this_currentpage_this_totalpages_this_totalpages_0_this_currentpage_this_totalpages_mark_this_subdirectory_as_initialized_this_memoryinitialized_this_selectedmemorysubdir_true_else_if_silent_this_error_response_error')"Failed to search memories"i18n.t('ui_i18n_t_ui_this_memories_this_message_null_else_for_silent_updates_just_log_the_error_but_don_t_break_the_ui_console_warn')"Memory dashboard silent refresh failed:"i18n.t('ui_i18n_t_ui_response_error_catch_error_if_silent_this_error_error_message')"Failed to search memories"i18n.t('ui_i18n_t_ui_this_memories_this_message_null_console_error')"Memory search error:"i18n.t('ui_i18n_t_ui_error_else_for_silent_updates_just_log_the_error_but_don_t_break_the_ui_console_warn')"Memory dashboard silent refresh error:"i18n.t('ui_i18n_t_ui_error_finally_if_silent_this_loading_false_this_initializingmemory_false_async_clearsearch_this_areafilter')""i18n.t('ui_i18n_t_ui_this_searchquery')""i18n.t('ui_i18n_t_ui_this_currentpage_1_immediately_trigger_a_new_search_with_cleared_filters_await_this_searchmemories_async_onmemorysubdirchange_clear_current_results_when_subdirectory_changes_then_refresh_await_this_clearsearch_pagination_get_totalpages_return_math_ceil_this_memories_length_this_itemsperpage_get_paginatedmemories_const_start_this_currentpage_1_this_itemsperpage_const_end_start_this_itemsperpage_return_this_memories_slice_start_end_gotopage_page_if_page_1_page_this_totalpages_this_currentpage_page_nextpage_if_this_currentpage_this_totalpages_this_currentpage_prevpage_if_this_currentpage_1_this_currentpage_mass_selection_get_selectedmemories_return_this_memories_filter_memory_memory_selected_get_selectedcount_return_this_selectedmemories_length_get_allselected_return_this_memories_length_0_this_memories_every_memory_memory_selected_get_someselected_return_this_memories_some_memory_memory_selected_toggleselectall_const_shouldselectall_this_allselected_this_memories_foreach_memory_memory_selected_shouldselectall_clearselection_this_memories_foreach_memory_memory_selected_false_bulk_operations_async_bulkdeletememories_const_selectedmemories_this_selectedmemories_if_selectedmemories_length_0_return_const_confirmmessage_are_you_sure_you_want_to_delete_selectedmemories_length_selected_memories_this_cannot_be_undone_if_confirm_confirmmessage_return_try_this_loading_true_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"bulk_delete"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_memory_ids_selectedmemories_map_memory_memory_id_if_response_success_justtoast_successfully_deleted_selectedmemories_length_memories')"success"i18n.t('ui_i18n_t_ui_let_polling_refresh_the_data_instead_of_manual_manipulation_trigger_an_immediate_refresh_to_get_updated_state_from_backend_await_this_searchmemories_true_silent_refresh_else_justtoast_response_error')"Failed to delete selected memories"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_catch_error_justtoast_error_message')"Failed to delete selected memories"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_finally_this_loading_false_helper_method_to_format_a_complete_memory_with_all_metadata_formatmemoryforcopy_memory_let_formatted_memory_id_memory_id_area_memory_area_timestamp_this_formattimestamp_memory_timestamp_source_memory_knowledge_source')"Knowledge"i18n.t('ui_i18n_t_ui')"Conversation"i18n.t('ui_i18n_t_ui_memory_source_file_file_memory_source_file')""i18n.t('ui_i18n_t_ui_memory_tags_memory_tags_length_0_tags_memory_tags_join')", "i18n.t('ui_i18n_t_ui')""i18n.t('ui_i18n_t_ui_add_custom_metadata_if_present_if_memory_metadata_typeof_memory_metadata')"object"i18n.t('ui_i18n_t_ui_object_keys_memory_metadata_length_0_formatted')"\n\nMetadata:"i18n.t('ui_i18n_t_ui_for_const_key_value_of_object_entries_memory_metadata_const_displayvalue_typeof_value')"object" ? JSON.stringify(value, null, 2) : value;
+function justToast(text, type = "info", timeout = 5000) {
+  try { notificationsSse.create({ type, title: text, body: "", severity: type, ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
+}
+
+// Memory Dashboard Store
+const memoryDashboardStore = {
+  // Data
+  memories: [],
+  currentPage: 1,
+  itemsPerPage: 10,
+
+  // State
+  loading: false,
+  loadingSubdirs: false,
+  initializingMemory: false,
+  error: null,
+  message: null,
+
+  // Memory subdirectories
+  memorySubdirs: [],
+  selectedMemorySubdir: "default",
+  memoryInitialized: {}, // Track which subdirs have been initialized
+
+  // Search and filters
+  searchQuery: "",
+  areaFilter: "",
+  threshold: parseFloat(
+    localStorage.getItem("memoryDashboard_threshold") || "0.6"
+  ),
+  limit: parseInt(localStorage.getItem("memoryDashboard_limit") || "1000"),
+
+  // Stats
+  totalCount: 0,
+  totalDbCount: 0,
+  knowledgeCount: 0,
+  conversationCount: 0,
+  areasCount: {},
+
+  // Memory detail modal (standard modal approach)
+  detailMemory: null,
+  editMode: false,
+  editMemoryBackup: null,
+
+  // SSE only: no polling retained (prior fields removed)
+
+  async openModal() {
+    await openModal("settings/memory/memory-dashboard.html");
+  },
+
+  init() {
+    this.initialize();
+  },
+
+  async onOpen() {
+    await this.getCurrentMemorySubdir();
+    await this.loadMemorySubdirs();
+    await this.searchMemories();
+    // Subscribe to SSE/bus events for memory invalidations
+    if (!this._busInited) {
+      this._busInited = true;
+      this._unsubs = [];
+      this._unsubs.push(bus.on("memory.list.update", () => this.searchMemories(true)));
+      this._unsubs.push(bus.on("sse:event", (ev) => {
+        try {
+          const t = (ev?.type || '').toLowerCase();
+          if (t.startsWith('memory.') || t === 'assistant.final') {
+            // Silent refresh retains pagination & selections
+            this.searchMemories(true);
+          }
+        } catch {}
+      }));
+    }
+  },
+
+  async initialize() {
+    // Reset state when opening (but keep directory from context)
+    this.currentPage = 1;
+    this.searchQuery = "";
+    this.areaFilter = "";
+
+    // // Get current memory subdirectory from application context
+    // await this.getCurrentMemorySubdir();
+
+    // await this.loadMemorySubdirs();
+
+    // // Automatically search with selected subdirectory
+    // if (this.selectedMemorySubdir) {
+    //   await this.searchMemories();
+    // }
+
+    // SSE subscriptions already established in onOpen(); no polling
+  },
+
+  async getCurrentMemorySubdir() {
+    try {
+      // Try to get current memory subdirectory from the backend
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "get_current_memory_subdir",
+        context_id: getContext(),
+      });
+
+      if (response.success && response.memory_subdir) {
+        this.selectedMemorySubdir = response.memory_subdir;
+      } else {
+        this.selectedMemorySubdir = "default";
+      }
+    } catch (error) {
+      console.error("Failed to get current memory subdirectory:", error);
+      this.selectedMemorySubdir = "default";
+    }
+  },
+
+  async loadMemorySubdirs() {
+    this.loadingSubdirs = true;
+    this.error = null;
+
+    try {
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "get_memory_subdirs",
+      });
+
+      if (response.success) {
+        let subdirs = response.subdirs || ["default"];
+
+        // Sort alphabetically but ensure "default" is always first
+        subdirs = subdirs.filter((dir) => dir !== "default").sort();
+        if (response.subdirs && response.subdirs.includes("default")) {
+          subdirs.unshift("default");
+        } else {
+          subdirs.unshift("default");
+        }
+
+        this.memorySubdirs = subdirs;
+
+        // Ensure the currently selected subdirectory exists in the list
+        if (!this.memorySubdirs.includes(this.selectedMemorySubdir)) {
+          this.selectedMemorySubdir = "default";
+        }
+      } else {
+        this.error = response.error || "Failed to load memory subdirectories";
+        this.memorySubdirs = ["default"];
+        this.selectedMemorySubdir = "default";
+      }
+    } catch (error) {
+      this.error = error.message || "Failed to load memory subdirectories";
+      this.memorySubdirs = ["default"];
+      // Only fallback to default if current selection is not available
+      if (!this.memorySubdirs.includes(this.selectedMemorySubdir)) {
+        this.selectedMemorySubdir = "default";
+      }
+      console.error("Memory subdirectory loading error:", error);
+    } finally {
+      this.loadingSubdirs = false;
+    }
+  },
+
+  async searchMemories(silent = false) {
+    // Save limit to localStorage for persistence
+    localStorage.setItem("memoryDashboard_limit", this.limit.toString());
+    localStorage.setItem(
+      "memoryDashboard_threshold",
+      this.threshold.toString()
+    );
+
+    if (!silent) {
+      this.loading = true;
+      this.error = null;
+      this.message = null;
+
+      // Check if this memory subdirectory needs initialization
+      if (!this.memoryInitialized[this.selectedMemorySubdir]) {
+        this.initializingMemory = true;
+      }
+    }
+
+    try {
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "search",
+        memory_subdir: this.selectedMemorySubdir,
+        area: this.areaFilter,
+        search: this.searchQuery,
+        limit: this.limit,
+        threshold: this.threshold,
+      });
+
+      if (response.success) {
+        // Preserve existing selections during SSE-driven silent refresh
+        const existingSelections = {};
+        if (silent && this.memories) {
+          this.memories.forEach((memory) => { if (memory.selected) existingSelections[memory.id] = true; });
+        }
+
+        // Add selected property to each memory item for mass selection
+        this.memories = (response.memories || []).map((memory) => ({
+          ...memory,
+          selected: existingSelections[memory.id] || false,
+        }));
+        this.totalCount = response.total_count || 0;
+        this.totalDbCount = response.total_db_count || 0;
+        this.knowledgeCount = response.knowledge_count || 0;
+        this.conversationCount = response.conversation_count || 0;
+
+        if (!silent) {
+          this.message = response.message || null;
+          this.currentPage = 1; // Reset to first page when loading new data
+        } else {
+          // For silent updates, adjust current page if it exceeds available pages
+          if (this.currentPage > this.totalPages && this.totalPages > 0) {
+            this.currentPage = this.totalPages;
+          }
+        }
+
+        // Mark this subdirectory as initialized
+        this.memoryInitialized[this.selectedMemorySubdir] = true;
+      } else {
+        if (!silent) {
+          this.error = response.error || "Failed to search memories";
+          this.memories = [];
+          this.message = null;
+        } else {
+          // For silent updates, just log the error but don't break the UI
+          console.warn("Memory dashboard silent refresh failed:", response.error);
+        }
+      }
+    } catch (error) {
+      if (!silent) {
+        this.error = error.message || "Failed to search memories";
+        this.memories = [];
+        this.message = null;
+        console.error("Memory search error:", error);
+      } else {
+        // For silent updates, just log the error but don't break the UI
+        console.warn("Memory dashboard silent refresh error:", error);
+      }
+    } finally {
+      if (!silent) {
+        this.loading = false;
+        this.initializingMemory = false;
+      }
+    }
+  },
+
+  async clearSearch() {
+    this.areaFilter = "";
+    this.searchQuery = "";
+    this.currentPage = 1;
+
+    // Immediately trigger a new search with cleared filters
+    await this.searchMemories();
+  },
+
+  async onMemorySubdirChange() {
+    // Clear current results when subdirectory changes then refresh
+    await this.clearSearch();
+  },
+
+  // Pagination
+  get totalPages() {
+    return Math.ceil(this.memories.length / this.itemsPerPage);
+  },
+
+  get paginatedMemories() {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    const end = start + this.itemsPerPage;
+    return this.memories.slice(start, end);
+  },
+
+  goToPage(page) {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+    }
+  },
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+    }
+  },
+
+  prevPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+    }
+  },
+
+  // Mass selection
+  get selectedMemories() {
+    return this.memories.filter((memory) => memory.selected);
+  },
+
+  get selectedCount() {
+    return this.selectedMemories.length;
+  },
+
+  get allSelected() {
+    return (
+      this.memories.length > 0 &&
+      this.memories.every((memory) => memory.selected)
+    );
+  },
+
+  get someSelected() {
+    return this.memories.some((memory) => memory.selected);
+  },
+
+  toggleSelectAll() {
+    const shouldSelectAll = !this.allSelected;
+    this.memories.forEach((memory) => {
+      memory.selected = shouldSelectAll;
+    });
+  },
+
+  clearSelection() {
+    this.memories.forEach((memory) => {
+      memory.selected = false;
+    });
+  },
+
+  // Bulk operations
+  async bulkDeleteMemories() {
+    const selectedMemories = this.selectedMemories;
+    if (selectedMemories.length === 0) return;
+
+    const confirmMessage = `Are you sure you want to delete ${selectedMemories.length} selected memories? This cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      this.loading = true;
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "bulk_delete",
+        memory_subdir: this.selectedMemorySubdir,
+        memory_ids: selectedMemories.map((memory) => memory.id),
+      });
+
+      if (response.success) {
+        justToast(
+          `Successfully deleted ${selectedMemories.length} memories`,
+          "success"
+        );
+
+        // Let polling refresh the data instead of manual manipulation
+        // Trigger an immediate refresh to get updated state from backend
+        await this.searchMemories(true); // silent refresh
+      } else {
+        justToast(
+          response.error || "Failed to delete selected memories",
+          "error"
+        );
+      }
+    } catch (error) {
+      justToast(error.message || "Failed to delete selected memories", "error");
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  // Helper method to format a complete memory with all metadata
+  formatMemoryForCopy(memory) {
+    let formatted = `=== Memory ID: ${memory.id} ===
+Area: ${memory.area}
+Timestamp: ${this.formatTimestamp(memory.timestamp)}
+Source: ${memory.knowledge_source ? "Knowledge" : "Conversation"}
+${memory.source_file ? `File: ${memory.source_file}` : ""}
+${
+  memory.tags && memory.tags.length > 0 ? `Tags: ${memory.tags.join(", ")}` : ""
+}`;
+
+    // Add custom metadata if present
+    if (
+      memory.metadata &&
+      typeof memory.metadata === "object" &&
+      Object.keys(memory.metadata).length > 0
+    ) {
+      formatted += "\n\nMetadata:";
+      for (const [key, value] of Object.entries(memory.metadata)) {
+        const displayValue =
+          typeof value === "object" ? JSON.stringify(value, null, 2) : value;
         formatted += `\n${key}: ${displayValue}`;
       }
     }
@@ -26,24 +401,307 @@ ${memory.content_full}
 
     const content = selectedMemories
       .map((memory) => this.formatMemoryForCopy(memory))
-      .join("\n"i18n.t('ui_i18n_t_ui_this_copytoclipboard_content_false_justtoast_copied_selectedmemories_length_memories_with_metadata_to_clipboard')"success"i18n.t('ui_i18n_t_ui_bulkexportmemories_const_selectedmemories_this_selectedmemories_if_selectedmemories_length_0_return_const_exportdata_export_timestamp_new_date_toisostring_memory_subdir_this_selectedmemorysubdir_total_memories_selectedmemories_length_memories_selectedmemories_map_memory_id_memory_id_area_memory_area_timestamp_memory_timestamp_content_memory_content_full_tags_memory_tags_knowledge_source_memory_knowledge_source_source_file_memory_source_file_null_metadata_memory_metadata_const_jsonstring_json_stringify_exportdata_null_2_const_blob_new_blob_jsonstring_type')"application/json"i18n.t('ui_i18n_t_ui_const_url_url_createobjecturl_blob_const_timestamp_new_date_toisostring_split')"T"i18n.t('ui_i18n_t_ui_0_const_filename_memories_this_selectedmemorysubdir_selected_selectedmemories_length_timestamp_json_const_a_document_createelement')"a"i18n.t('ui_i18n_t_ui_a_href_url_a_download_filename_document_body_appendchild_a_a_click_document_body_removechild_a_url_revokeobjecturl_url_justtoast_exported_selectedmemories_length_selected_memories_to_filename')"success"i18n.t('ui_i18n_t_ui_memory_detail_modal_standard_approach_showmemorydetails_memory_this_detailmemory_memory_this_editmode_false_this_editmemorybackup_null_use_global_modal_system_openmodal')"settings/memory/memory-detail-modal.html"i18n.t('ui_i18n_t_ui_closememorydetails_this_detailmemory_null_utilities_formattimestamp_timestamp_compact_false_if_timestamp_timestamp')"unknown"i18n.t('ui_i18n_t_ui_return')"Unknown"i18n.t('ui_i18n_t_ui_const_date_new_date_timestamp_if_isnan_date_gettime_return')"Invalid Date"i18n.t('ui_i18n_t_ui_if_compact_for_table_display_mm_dd_hh_mm_return_date_tolocaledatestring')"en-US"i18n.t('ui_i18n_t_ui_month')"2-digit"i18n.t('ui_i18n_t_ui_day')"2-digit"i18n.t('ui_i18n_t_ui')" "i18n.t('ui_i18n_t_ui_date_tolocaletimestring')"en-US"i18n.t('ui_i18n_t_ui_hour12_false_hour')"2-digit"i18n.t('ui_i18n_t_ui_minute')"2-digit"i18n.t('ui_i18n_t_ui_else_for_details_full_format_return_date_tolocaledatestring')"en-US"i18n.t('ui_i18n_t_ui_year')"numeric"i18n.t('ui_i18n_t_ui_month')"long"i18n.t('ui_i18n_t_ui_day')"numeric"i18n.t('ui_i18n_t_ui')" at "i18n.t('ui_i18n_t_ui_date_tolocaletimestring')"en-US"i18n.t('ui_i18n_t_ui_hour12_true_hour')"numeric"i18n.t('ui_i18n_t_ui_minute')"2-digit"i18n.t('ui_i18n_t_ui_formattags_tags_if_array_isarray_tags_tags_length_0_return')"None"i18n.t('ui_i18n_t_ui_return_tags_join')", "i18n.t('ui_i18n_t_ui_getareacolor_area_const_colors_main')"#3b82f6"i18n.t('ui_i18n_t_ui_fragments')"#10b981"i18n.t('ui_i18n_t_ui_solutions')"#8b5cf6"i18n.t('ui_i18n_t_ui_instruments')"#f59e0b"i18n.t('ui_i18n_t_ui_return_colors_area')"#6c757d"i18n.t('ui_i18n_t_ui_copytoclipboard_text_toastsuccess_true_if_navigator_clipboard_window_issecurecontext_navigator_clipboard_writetext_text_then_if_toastsuccess_justtoast')"Copied to clipboard!"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_catch_err_console_error')"Clipboard copy failed:"i18n.t('ui_i18n_t_ui_err_this_fallbackcopytoclipboard_text_toastsuccess_else_this_fallbackcopytoclipboard_text_toastsuccess_fallbackcopytoclipboard_text_toastsuccess_true_const_textarea_document_createelement')"textarea"i18n.t('ui_i18n_t_ui_textarea_value_text_textarea_style_position')"fixed"i18n.t('ui_i18n_t_ui_textarea_style_left')"-999999px"i18n.t('ui_i18n_t_ui_textarea_style_top')"-999999px"i18n.t('ui_i18n_t_ui_document_body_appendchild_textarea_textarea_focus_textarea_select_try_document_execcommand')"copy"i18n.t('ui_i18n_t_ui_if_toastsuccess_justtoast')"Copied to clipboard!"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_catch_err_console_error')"Fallback clipboard copy failed:"i18n.t('ui_i18n_t_ui_err_justtoast')"Failed to copy to clipboard"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_document_body_removechild_textarea_async_deletememory_memory_if_confirm_are_you_sure_you_want_to_delete_this_memory_from_memory_area_return_try_check_if_this_is_the_memory_currently_being_viewed_in_detail_modal_const_isviewingthismemory_this_detailmemory_this_detailmemory_id_memory_id_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"delete"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_memory_id_memory_id_if_response_success_justtoast')"Memory deleted successfully"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_if_we_were_viewing_this_memory_in_detail_modal_close_it_if_isviewingthismemory_this_detailmemory_null_closemodal_close_the_detail_modal_let_polling_refresh_the_data_instead_of_manual_manipulation_trigger_an_immediate_refresh_to_get_updated_state_from_backend_await_this_searchmemories_true_silent_refresh_else_justtoast_failed_to_delete_memory_response_error')"error"i18n.t('ui_i18n_t_ui_catch_error_console_error')"Memory deletion error:"i18n.t('ui_i18n_t_ui_error_justtoast')"Failed to delete memory"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_exportmemories_if_this_memories_length_0_justtoast')"No memories to export"i18n.t('ui_i18n_t_ui')"warning"i18n.t('ui_i18n_t_ui_return_try_const_exportdata_memory_subdir_this_selectedmemorysubdir_export_timestamp_new_date_toisostring_total_memories_this_memories_length_search_query_this_searchquery_area_filter_this_areafilter_memories_this_memories_map_memory_id_memory_id_area_memory_area_timestamp_memory_timestamp_content_memory_content_full_metadata_memory_metadata_const_blob_new_blob_json_stringify_exportdati18n_t_ui_this_searchmemories_true_this_unsubs_push_bus_on_sse_event_ev_try_const_t_ev_type_tolowercase_if_t_startswith_memory_t_assistant_final_silent_refresh_retains_pagination_selections_this_searchmemories_true_catch_async_initialize_reset_state_when_opening_but_keep_directory_from_context_this_currentpage_1_this_searchquery_this_areafilter_get_current_memory_subdirectory_from_application_context_await_this_getcurrentmemorysubdir_await_this_loadmemorysubdirs_automatically_search_with_selected_subdirectory_if_this_selectedmemorysubdir_await_this_searchmemories_sse_subscriptions_already_established_in_onopen_no_polling_async_getcurrentmemorysubdir_try_try_to_get_current_memory_subdirectory_from_the_backend_const_response_await_api_calljsonapi_memory_dashboard_action_get_current_memory_subdir_context_id_getcontext_if_response_success_response_memory_subdir_this_selectedmemorysubdir_response_memory_subdir_else_this_selectedmemorysubdir_default_catch_error_console_error_failed_to_get_current_memory_subdirectory_error_this_selectedmemorysubdir_default_async_loadmemorysubdirs_this_loadingsubdirs_true_this_error_null_try_const_response_await_api_calljsonapi_memory_dashboard_action_get_memory_subdirs_if_response_success_let_subdirs_response_subdirs_default_sort_alphabetically_but_ensure_default_is_always_first_subdirs_subdirs_filter_dir_dir_default_sort_if_response_subdirs_response_subdirs_includes_default_subdirs_unshift_default_else_subdirs_unshift_default_this_memorysubdirs_subdirs_ensure_the_currently_selected_subdirectory_exists_in_the_list_if_this_memorysubdirs_includes_this_selectedmemorysubdir_this_selectedmemorysubdir_default_else_this_error_response_error_failed_to_load_memory_subdirectories_this_memorysubdirs_default_this_selectedmemorysubdir_default_catch_error_this_error_error_message_failed_to_load_memory_subdirectories_this_memorysubdirs_default_only_fallback_to_default_if_current_selection_is_not_available_if_this_memorysubdirs_includes_this_selectedmemorysubdir_this_selectedmemorysubdir_default_console_error_memory_subdirectory_loading_error_error_finally_this_loadingsubdirs_false_async_searchmemories_silent_false_save_limit_to_localstorage_for_persistence_localstorage_setitem_memorydashboard_limit_this_limit_tostring_localstorage_setitem_memorydashboard_threshold_this_threshold_tostring_if_silent_this_loading_true_this_error_null_this_message_null_check_if_this_memory_subdirectory_needs_initialization_if_this_memoryinitialized_this_selectedmemorysubdir_this_initializingmemory_true_try_const_response_await_api_calljsonapi_memory_dashboard_action_search_memory_subdir_this_selectedmemorysubdir_area_this_areafilter_search_this_searchquery_limit_this_limit_threshold_this_threshold_if_response_success_preserve_existing_selections_during_sse_driven_silent_refresh_const_existingselections_if_silent_this_memories_this_memories_foreach_memory_if_memory_selected_existingselections_memory_id_true_add_selected_property_to_each_memory_item_for_mass_selection_this_memories_response_memories_map_memory_memory_selected_existingselections_memory_id_false_this_totalcount_response_total_count_0_this_totaldbcount_response_total_db_count_0_this_knowledgecount_response_knowledge_count_0_this_conversationcount_response_conversation_count_0_if_silent_this_message_response_message_null_this_currentpage_1_reset_to_first_page_when_loading_new_data_else_for_silent_updates_adjust_current_page_if_it_exceeds_available_pages_if_this_currentpage_this_totalpages_this_totalpages_0_this_currentpage_this_totalpages_mark_this_subdirectory_as_initialized_this_memoryinitialized_this_selectedmemorysubdir_true_else_if_silent_this_error_response_error_failed_to_search_memories_this_memories_this_message_null_else_for_silent_updates_just_log_the_error_but_don_t_break_the_ui_console_warn_memory_dashboard_silent_refresh_failed_response_error_catch_error_if_silent_this_error_error_message_failed_to_search_memories_this_memories_this_message_null_console_error_memory_search_error_error_else_for_silent_updates_just_log_the_error_but_don_t_break_the_ui_console_warn_memory_dashboard_silent_refresh_error_error_finally_if_silent_this_loading_false_this_initializingmemory_false_async_clearsearch_this_areafilter_this_searchquery_this_currentpage_1_immediately_trigger_a_new_search_with_cleared_filters_await_this_searchmemories_async_onmemorysubdirchange_clear_current_results_when_subdirectory_changes_then_refresh_await_this_clearsearch_pagination_get_totalpages_return_math_ceil_this_memories_length_this_itemsperpage_get_paginatedmemories_const_start_this_currentpage_1_this_itemsperpage_const_end_start_this_itemsperpage_return_this_memories_slice_start_end_gotopage_page_if_page_1_page_ory_true_try_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"search"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_area_this_areafilter_search_this_searchquery_limit_this_limit_threshold_this_threshold_if_response_success_preserve_existing_selections_during_sse_driven_silent_refresh_const_existingselections_if_silent_this_memories_this_memories_foreach_memory_if_memory_selected_existingselections_memory_id_true_add_selected_property_to_each_memory_item_for_mass_selection_this_memories_response_memories_map_memory_memory_selected_existingselections_memory_id_false_this_totalcount_response_total_count_0_this_totaldbcount_response_total_db_count_0_this_knowledgecount_response_knowledge_count_0_this_conversationcount_response_conversation_count_0_if_silent_this_message_response_message_null_this_currentpage_1_reset_to_first_page_when_loading_new_data_else_for_silent_updates_adjust_current_page_if_it_exceeds_available_pages_if_this_currentpage_this_totalpages_this_totalpages_0_this_currentpage_this_totalpages_mark_this_subdirectory_as_initialized_this_memoryinitialized_this_selectedmemorysubdir_true_else_if_silent_this_error_response_error')"Failed to search memories"i18n.t('ui_i18n_t_ui_this_memories_this_message_null_else_for_silent_updates_just_log_the_error_but_don_t_break_the_ui_console_warn')"Memory dashboard silent refresh failed:"i18n.t('ui_i18n_t_ui_response_error_catch_error_if_silent_this_error_error_message')"Failed to search memories"i18n.t('ui_i18n_t_ui_this_memories_this_message_null_console_error')"Memory search error:"i18n.t('ui_i18n_t_ui_error_else_for_silent_updates_just_log_the_error_but_don_t_break_the_ui_console_warn')"Memory dashboard silent refresh error:"i18n.t('ui_i18n_t_ui_error_finally_if_silent_this_loading_false_this_initializingmemory_false_async_clearsearch_this_areafilter')""i18n.t('ui_i18n_t_ui_this_searchquery')""i18n.t('ui_i18n_t_ui_this_currentpage_1_immediately_trigger_a_new_search_with_cleared_filters_await_this_searchmemories_async_onmemorysubdirchange_clear_current_results_when_subdirectory_changes_then_refresh_await_this_clearsearch_pagination_get_totalpages_return_math_ceil_this_memories_length_this_itemsperpage_get_paginatedmemories_const_start_this_currentpage_1_this_itemsperpage_const_end_start_this_itemsperpage_return_this_memories_slice_start_end_gotopage_page_if_page_1_page_this_totalpages_this_currentpage_page_nextpage_if_this_currentpage_this_totalpages_this_currentpage_prevpage_if_this_currentpage_1_this_currentpage_mass_selection_get_selectedmemories_return_this_memories_filter_memory_memory_selected_get_selectedcount_return_this_selectedmemories_length_get_allselected_return_this_memories_length_0_this_memories_every_memory_memory_selected_get_someselected_return_this_memories_some_memory_memory_selected_toggleselectall_const_shouldselectall_this_allselected_this_memories_foreach_memory_memory_selected_shouldselectall_clearselection_this_memories_foreach_memory_memory_selected_false_bulk_operations_async_bulkdeletememories_const_selectedmemories_this_selectedmemories_if_selectedmemories_length_0_return_const_confirmmessage_are_you_sure_you_want_to_delete_selectedmemories_length_selected_memories_this_cannot_be_undone_if_confirm_confirmmessage_return_try_this_loading_true_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"bulk_delete"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_memory_ids_selectedmemories_map_memory_memory_id_if_response_success_justtoast_successfully_deleted_selectedmemories_length_memories')"success"i18n.t('ui_i18n_t_ui_let_polling_refresh_the_data_instead_of_manual_manipulation_trigger_an_immediate_refresh_to_get_updated_state_from_backend_await_this_searchmemories_true_silent_refresh_else_justtoast_response_error')"Failed to delete selected memories"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_catch_error_justtoast_error_message')"Failed to delete selected memories"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_finally_this_loading_false_helper_method_to_format_a_complete_memory_with_all_metadata_formatmemoryforcopy_memory_let_formatted_memory_id_memory_id_area_memory_area_timestamp_this_formattimestamp_memory_timestamp_source_memory_knowledge_source')"Knowledge"i18n.t('ui_i18n_t_ui')"Conversation"i18n.t('ui_i18n_t_ui_memory_source_file_file_memory_source_file')""i18n.t('ui_i18n_t_ui_memory_tags_memory_tags_length_0_tags_memory_tags_join')", "i18n.t('ui_i18n_t_ui')""i18n.t('ui_i18n_t_ui_add_custom_metadata_if_present_if_memory_metadata_typeof_memory_metadata')"object"i18n.t('ui_i18n_t_ui_object_keys_memory_metadata_length_0_formatted')"\n\nMetadata:"i18n.t('ui_i18n_t_ui_for_const_key_value_of_object_entries_memory_metadata_const_displayvalue_typeof_value')"object" ? JSON.stringify(value, null, 2) : value;
-        formatted += `\n${key}: ${displayValue}`;
-      }
-    }
+      .join("\n");
 
-    formatted += `\n\nContent:
-${memory.content_full}
-
-`;
-    return formatted;
+    this.copyToClipboard(content, false);
+    justToast(
+      `Copied ${selectedMemories.length} memories with metadata to clipboard`,
+      "success"
+    );
   },
 
-  bulkCopyMemories() {
+  bulkExportMemories() {
     const selectedMemories = this.selectedMemories;
     if (selectedMemories.length === 0) return;
 
-    const content = selectedMemories
-      .map((memory) => this.formatMemoryForCopy(memory))
-      .join("\n"i18n.t('ui_i18n_t_ui_this_copytoclipboard_content_false_justtoast_copied_selectedmemories_length_memories_with_metadata_to_clipboard')"success"i18n.t('ui_i18n_t_ui_bulkexportmemories_const_selectedmemories_this_selectedmemories_if_selectedmemories_length_0_return_const_exportdata_export_timestamp_new_date_toisostring_memory_subdir_this_selectedmemorysubdir_total_memories_selectedmemories_length_memories_selectedmemories_map_memory_id_memory_id_area_memory_area_timestamp_memory_timestamp_content_memory_content_full_tags_memory_tags_knowledge_source_memory_knowledge_source_source_file_memory_source_file_null_metadata_memory_metadata_const_jsonstring_json_stringify_exportdata_null_2_const_blob_new_blob_jsonstring_type')"application/json"i18n.t('ui_i18n_t_ui_const_url_url_createobjecturl_blob_const_timestamp_new_date_toisostring_split')"T"i18n.t('ui_i18n_t_ui_0_const_filename_memories_this_selectedmemorysubdir_selected_selectedmemories_length_timestamp_json_const_a_document_createelement')"a"i18n.t('ui_i18n_t_ui_a_href_url_a_download_filename_document_body_appendchild_a_a_click_document_body_removechild_a_url_revokeobjecturl_url_justtoast_exported_selectedmemories_length_selected_memories_to_filename')"success"i18n.t('ui_i18n_t_ui_memory_detail_modal_standard_approach_showmemorydetails_memory_this_detailmemory_memory_this_editmode_false_this_editmemorybackup_null_use_global_modal_system_openmodal')"settings/memory/memory-detail-modal.html"i18n.t('ui_i18n_t_ui_closememorydetails_this_detailmemory_null_utilities_formattimestamp_timestamp_compact_false_if_timestamp_timestamp')"unknown"i18n.t('ui_i18n_t_ui_return')"Unknown"i18n.t('ui_i18n_t_ui_const_date_new_date_timestamp_if_isnan_date_gettime_return')"Invalid Date"i18n.t('ui_i18n_t_ui_if_compact_for_table_display_mm_dd_hh_mm_return_date_tolocaledatestring')"en-US"i18n.t('ui_i18n_t_ui_month')"2-digit"i18n.t('ui_i18n_t_ui_day')"2-digit"i18n.t('ui_i18n_t_ui')" "i18n.t('ui_i18n_t_ui_date_tolocaletimestring')"en-US"i18n.t('ui_i18n_t_ui_hour12_false_hour')"2-digit"i18n.t('ui_i18n_t_ui_minute')"2-digit"i18n.t('ui_i18n_t_ui_else_for_details_full_format_return_date_tolocaledatestring')"en-US"i18n.t('ui_i18n_t_ui_year')"numeric"i18n.t('ui_i18n_t_ui_month')"long"i18n.t('ui_i18n_t_ui_day')"numeric"i18n.t('ui_i18n_t_ui')" at "i18n.t('ui_i18n_t_ui_date_tolocaletimestring')"en-US"i18n.t('ui_i18n_t_ui_hour12_true_hour')"numeric"i18n.t('ui_i18n_t_ui_minute')"2-digit"i18n.t('ui_i18n_t_ui_formattags_tags_if_array_isarray_tags_tags_length_0_return')"None"i18n.t('ui_i18n_t_ui_return_tags_join')", "i18n.t('ui_i18n_t_ui_getareacolor_area_const_colors_main')"#3b82f6"i18n.t('ui_i18n_t_ui_fragments')"#10b981"i18n.t('ui_i18n_t_ui_solutions')"#8b5cf6"i18n.t('ui_i18n_t_ui_instruments')"#f59e0b"i18n.t('ui_i18n_t_ui_return_colors_area')"#6c757d"i18n.t('ui_i18n_t_ui_copytoclipboard_text_toastsuccess_true_if_navigator_clipboard_window_issecurecontext_navigator_clipboard_writetext_text_then_if_toastsuccess_justtoast')"Copied to clipboard!"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_catch_err_console_error')"Clipboard copy failed:"i18n.t('ui_i18n_t_ui_err_this_fallbackcopytoclipboard_text_toastsuccess_else_this_fallbackcopytoclipboard_text_toastsuccess_fallbackcopytoclipboard_text_toastsuccess_true_const_textarea_document_createelement')"textarea"i18n.t('ui_i18n_t_ui_textarea_value_text_textarea_style_position')"fixed"i18n.t('ui_i18n_t_ui_textarea_style_left')"-999999px"i18n.t('ui_i18n_t_ui_textarea_style_top')"-999999px"i18n.t('ui_i18n_t_ui_document_body_appendchild_textarea_textarea_focus_textarea_select_try_document_execcommand')"copy"i18n.t('ui_i18n_t_ui_if_toastsuccess_justtoast')"Copied to clipboard!"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_catch_err_console_error')"Fallback clipboard copy failed:"i18n.t('ui_i18n_t_ui_err_justtoast')"Failed to copy to clipboard"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_document_body_removechild_textarea_async_deletememory_memory_if_confirm_are_you_sure_you_want_to_delete_this_memory_from_memory_area_return_try_check_if_this_is_the_memory_currently_being_viewed_in_detail_modal_const_isviewingthismemory_this_detailmemory_this_detailmemory_id_memory_id_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"delete"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_memory_id_memory_id_if_response_success_justtoast')"Memory deleted successfully"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_if_we_were_viewing_this_memory_in_detail_modal_close_it_if_isviewingthismemory_this_detailmemory_null_closemodal_close_the_detail_modal_let_polling_refresh_the_data_instead_of_manual_manipulation_trigger_an_immediate_refresh_to_get_updated_state_from_backend_await_this_searchmemories_true_silent_refresh_else_justtoast_failed_to_delete_memory_response_error')"error"i18n.t('ui_i18n_t_ui_catch_error_console_error')"Memory deletion error:"i18n.t('ui_i18n_t_ui_error_justtoast')"Failed to delete memory"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_exportmemories_if_this_memories_length_0_justtoast')"No memories to export"i18n.t('ui_i18n_t_ui')"warning"i18n.t('ui_i18n_t_ui_return_try_const_exportdata_memory_subdir_this_selectedmemorysubdir_export_timestamp_new_date_toisostring_total_memories_this_memories_length_search_query_this_searchquery_area_filter_this_areafilter_memories_this_memories_map_memory_id_memory_id_area_memory_area_timestamp_memory_timestamp_content_memory_content_full_metadata_memory_metadata_const_blob_new_blob_json_stringify_exportdata_null_2_type')"application/json"i18n.t('ui_i18n_t_ui_const_url_url_createobjecturl_blob_const_a_document_createelement')"a"i18n.t('ui_i18n_t_ui_a_href_url_a_download_memory_export_this_selectedmemorysubdir_new_date_toisostring_split')"T"i18n.t('ui_i18n_t_ui_0_json_document_body_appendchild_a_a_click_document_body_removechild_a_url_revokeobjecturl_url_justtoast')"Memory export completed"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_catch_error_console_error')"Memory export error:"i18n.t('ui_i18n_t_ui_error_justtoast')"Failed to export memories"i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_removed_polling_methods_sse_provides_update_triggers_call_this_when_the_dialog_component_is_closed_or_destroyed_cleanup_no_polling_to_stop_clean_sse_subscriptions_if_array_isarray_this_unsubs_this_unsubs_foreach_u_try_u_catch_this_unsubs_clear_data_without_triggering_a_new_search_component_is_being_destroyed_this_areafilter')""i18n.t('ui_i18n_t_ui_this_searchquery')""i18n.t('ui_i18n_t_ui_this_memories_this_totalcount_0_this_totaldbcount_0_this_knowledgecount_0_this_conversationcount_0_this_areascount_this_message_null_this_currentpage_1_this_editmemorybackup_enableeditmode_this_editmode_true_this_editmemorybackup_json_stringify_this_detailmemory_store_backup_canceleditmode_this_editmode_false_this_detailmemory_json_parse_this_editmemorybackup_restore_backup_async_confirmeditmode_try_const_response_await_api_calljsonapi')"memory_dashboard"i18n.t('ui_i18n_t_ui_action')"update"i18n.t('ui_i18n_t_ui_memory_subdir_this_selectedmemorysubdir_original_json_parse_this_editmemorybackup_edited_this_detailmemory_if_response_success_justtoast')"Memory updated successfully"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_await_this_searchmemories_true_silent_refresh_else_justtoast_failed_to_update_memory_response_error')"error"i18n.t('ui_i18n_t_ui_this_editmode_false_this_editmemorybackup_null_discard_backup_catch_error_console_error')"Error confirming edit mode:"i18n.t('ui_i18n_t_ui_error_justtoast')"Failed to save memory changes."i18n.t('ui_i18n_t_ui')"error"i18n.t('ui_i18n_t_ui_const_store_createstore')"memoryDashboardStore", memoryDashboardStore);
+    const exportData = {
+      export_timestamp: new Date().toISOString(),
+      memory_subdir: this.selectedMemorySubdir,
+      total_memories: selectedMemories.length,
+      memories: selectedMemories.map((memory) => ({
+        id: memory.id,
+        area: memory.area,
+        timestamp: memory.timestamp,
+        content: memory.content_full,
+        tags: memory.tags || [],
+        knowledge_source: memory.knowledge_source,
+        source_file: memory.source_file || null,
+        metadata: memory.metadata || {},
+      })),
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const timestamp = new Date().toISOString().split("T")[0];
+    const filename = `memories_${this.selectedMemorySubdir}_selected_${selectedMemories.length}_${timestamp}.json`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    justToast(
+      `Exported ${selectedMemories.length} selected memories to ${filename}`,
+      "success"
+    );
+  },
+
+  // Memory detail modal (standard approach)
+  showMemoryDetails(memory) {
+    this.detailMemory = memory;
+    this.editMode = false;
+    this.editMemoryBackup = null;
+    // Use global modal system
+    openModal("settings/memory/memory-detail-modal.html");
+  },
+
+  closeMemoryDetails() {
+    this.detailMemory = null;
+  },
+
+  // Utilities
+  formatTimestamp(timestamp, compact = false) {
+    if (!timestamp || timestamp === "unknown") {
+      return "Unknown";
+    }
+
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
+
+    if (compact) {
+      // For table display: MM/DD HH:mm
+      return (
+        date.toLocaleDateString("en-US", {
+          month: "2-digit",
+          day: "2-digit",
+        }) +
+        " " +
+        date.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    } else {
+      // For details: Full format
+      return (
+        date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }) +
+        " at " +
+        date.toLocaleTimeString("en-US", {
+          hour12: true,
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      );
+    }
+  },
+
+  formatTags(tags) {
+    if (!Array.isArray(tags) || tags.length === 0) return "None";
+    return tags.join(", ");
+  },
+
+  getAreaColor(area) {
+    const colors = {
+      main: "#3b82f6",
+      fragments: "#10b981",
+      solutions: "#8b5cf6",
+      instruments: "#f59e0b",
+    };
+    return colors[area] || "#6c757d";
+  },
+
+  copyToClipboard(text, toastSuccess = true) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          if(toastSuccess)
+            justToast("Copied to clipboard!", "success");
+        })
+        .catch((err) => {
+          console.error("Clipboard copy failed:", err);
+          this.fallbackCopyToClipboard(text, toastSuccess);
+        });
+    } else {
+      this.fallbackCopyToClipboard(text, toastSuccess);
+    }
+  },
+
+  fallbackCopyToClipboard(text, toastSuccess = true) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      if(toastSuccess)
+        justToast("Copied to clipboard!", "success");
+    } catch (err) {
+      console.error("Fallback clipboard copy failed:", err);
+      justToast("Failed to copy to clipboard", "error");
+    }
+    document.body.removeChild(textArea);
+  },
+
+  async deleteMemory(memory) {
+    if (
+      !confirm(
+        `Are you sure you want to delete this memory from ${memory.area}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Check if this is the memory currently being viewed in detail modal
+      const isViewingThisMemory =
+        this.detailMemory && this.detailMemory.id === memory.id;
+
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "delete",
+        memory_subdir: this.selectedMemorySubdir,
+        memory_id: memory.id,
+      });
+
+      if (response.success) {
+        justToast("Memory deleted successfully", "success");
+
+        // If we were viewing this memory in detail modal, close it
+        if (isViewingThisMemory) {
+          this.detailMemory = null;
+          closeModal(); // Close the detail modal
+        }
+
+        // Let polling refresh the data instead of manual manipulation
+        // Trigger an immediate refresh to get updated state from backend
+        await this.searchMemories(true); // silent refresh
+      } else {
+        justToast(`Failed to delete memory: ${response.error}`, "error");
+      }
+    } catch (error) {
+      console.error("Memory deletion error:", error);
+      justToast("Failed to delete memory", "error");
+    }
+  },
+
+  exportMemories() {
+    if (this.memories.length === 0) {
+      justToast("No memories to export", "warning");
+      return;
+    }
+
+    try {
+      const exportData = {
+        memory_subdir: this.selectedMemorySubdir,
+        export_timestamp: new Date().toISOString(),
+        total_memories: this.memories.length,
+        search_query: this.searchQuery,
+        area_filter: this.areaFilter,
+        memories: this.memories.map((memory) => ({
+          id: memory.id,
+          area: memory.area,
+          timestamp: memory.timestamp,
+          content: memory.content_full,
+          metadata: memory.metadata,
+        })),
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `memory-export-${this.selectedMemorySubdir}-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      justToast("Memory export completed", "success");
+    } catch (error) {
+      console.error("Memory export error:", error);
+      justToast("Failed to export memories", "error");
+    }
+  },
+
+  // Removed polling methods; SSE provides update triggers
+
+  // Call this when the dialog/component is closed or destroyed
+  cleanup() {
+    // No polling to stop; clean SSE subscriptions
+    if (Array.isArray(this._unsubs)) {
+      this._unsubs.forEach((u) => { try { u(); } catch {} });
+      this._unsubs = [];
+    }
+    // Clear data without triggering a new search (component is being destroyed)
+    this.areaFilter = "";
+    this.searchQuery = "";
+    this.memories = [];
+    this.totalCount = 0;
+    this.totalDbCount = 0;
+    this.knowledgeCount = 0;
+    this.conversationCount = 0;
+    this.areasCount = {};
+    this.message = null;
+    this.currentPage = 1;
+    this.editMemoryBackup;
+  },
+
+  enableEditMode() {
+    this.editMode = true;
+    this.editMemoryBackup = JSON.stringify(this.detailMemory); // store backup
+  },
+
+  cancelEditMode() {
+    this.editMode = false;
+    this.detailMemory = JSON.parse(this.editMemoryBackup); // restore backup
+  },
+
+  async confirmEditMode() {
+    try {
+
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "update",
+        memory_subdir: this.selectedMemorySubdir,
+        original: JSON.parse(this.editMemoryBackup),
+        edited: this.detailMemory,
+      });
+
+      if(response.success){
+        justToast("Memory updated successfully", "success");
+        await this.searchMemories(true); // silent refresh
+      }else{
+        justToast(`Failed to update memory: ${response.error}`, "error");
+      }
+
+      this.editMode = false;
+      this.editMemoryBackup = null; // discard backup
+    } catch (error) {
+      console.error("Error confirming edit mode:", error);
+      justToast("Failed to save memory changes.", "error");
+    }
+  },
+};
+
+const store = createStore("memoryDashboardStore", memoryDashboardStore);
 
 export { store };

@@ -1,9 +1,9 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
+import { createStore } from "/static/js/AlpineStore.js";
 
 // define the model object holding data and functions
 const model = {
-    example1:"i18n.t('ui_i18n_t_ui_example_1')",
-    example2:"i18n.t('ui_i18n_t_ui_example_2')",
+    example1:"Example 1",
+    example2:"Example 2",
 
     // gets called when the store is created
     init(){
@@ -17,7 +17,7 @@ const model = {
 };
 
 // convert it to alpine store
-const store = createStore("i18n.t('ui_i18n_t_ui_examplestore')", model);
+const store = createStore("_exampleStore", model);
 
 // export for use in other files
 export { store };
