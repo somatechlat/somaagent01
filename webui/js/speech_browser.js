@@ -1,17 +1,17 @@
-import { pipeline, read_audio } from './transformers@3.0.2.js';
-import { updateChatInput, sendMessage } from '../index.js';
+import { pipeline, read_audio } from 'i18n.t('ui_transformers_3_0_2_js')';
+import { updateChatInput, sendMessage } from 'i18n.t('ui_index_js')';
 
-const microphoneButton = document.getElementById('microphone-button');
+const microphoneButton = document.getElementById('i18n.t('ui_microphone_button')');
 let microphoneInput = null;
 let isProcessingClick = false;
 
 const Status = {
-    INACTIVE: 'inactive',
-    ACTIVATING: 'activating',
-    LISTENING: 'listening',
-    RECORDING: 'recording',
-    WAITING: 'waiting',
-    PROCESSING: 'processing'
+    INACTIVE: 'i18n.t('ui_inactive')',
+    ACTIVATING: 'i18n.t('ui_activating')',
+    LISTENING: 'i18n.t('ui_listening')',
+    RECORDING: 'i18n.t('ui_recording')',
+    WAITING: 'i18n.t('ui_waiting')',
+    PROCESSING: 'i18n.t('ui_processing')'
 };
 
 class MicrophoneInput {
@@ -28,16 +28,12 @@ class MicrophoneInput {
         this.analyserNode = null;
         this._status = Status.INACTIVE;
 
-        // Timing properties
-        this.lastAudioTime = null;
+        i18n.t('ui_mic_status_changed_from_oldstatus_to_newstatus')ll;
         this.waitingTimer = null;
-        this.silenceStartTime = null;
-        this.hasStartedRecording = false;
-        this.analysisFrame = null;
-
-        this.options = {
-            modelSize: 'tiny',
-            language: 'en',
+        this.silenceStartTime =i18n.t('ui_mic_oldstatus_tolowercase')Recording = false;
+        this.analysisFrami18n.t('ui_mic_newstatus_tolowercase')s = {
+            modelSize: 'i18n.t('ui_tiny')',
+            language: 'i18n.t('ui_en')',
             silenceThreshold: 0.15,
             silenceDuration: 1000,
             waitingTimeout: 2000,
@@ -60,7 +56,7 @@ class MicrophoneInput {
         // Update UI
         microphoneButton.classList.remove(`mic-${oldStatus.toLowerCase()}`);
         microphoneButton.classList.add(`mic-${newStatus.toLowerCase()}`);
-        microphoneButton.setAttribute('data-status', newStatus);
+        microphoneButton.setAttribute('i18n.t('ui_data_status')', newStatus);
 
         // Handle state-specific behaviors
         this.handleStatusChange(oldStatus, newStatus);
@@ -101,43 +97,7 @@ class MicrophoneInput {
 
     handleListeningState() {
         this.stopRecording();
-        this.audioChunks = [];
-        this.hasStartedRecording = false;
-        this.silenceStartTime = null;
-        this.lastAudioTime = null;
-        this.messageSent = false;
-        this.startAudioAnalysis();
-    }
-
-    handleRecordingState() {
-        if (!this.hasStartedRecording && this.mediaRecorder.state !== 'recording') {
-            this.hasStartedRecording = true;
-            this.mediaRecorder.start(1000);
-            console.log('Speech started');
-        }
-        if (this.waitingTimer) {
-            clearTimeout(this.waitingTimer);
-            this.waitingTimer = null;
-        }
-    }
-
-    handleWaitingState() {
-        // Don't stop recording during waiting state
-        this.waitingTimer = setTimeout(() => i18n.t('ui_i18n_t_ui_if_this_status_status_waiting_this_status_status_processing_this_options_waitingtimeout_handleprocessingstate_this_stoprecording_this_process_stoprecording_if_this_mediarecorder_state_recording_this_mediarecorder_stop_this_hasstartedrecording_false_async_initialize_try_this_transcriber_await_pipeline_automatic_speech_recognition_xenova_whisper_this_options_modelsize_this_options_language_const_stream_await_navigator_mediadevices_getusermedia_audio_echocancellation_true_noisesuppression_true_channelcount_1_this_mediarecorder_new_mediarecorder_stream_this_mediarecorder_ondataavailable_event_if_event_data_size_0_this_status_status_recording_this_status_status_waiting_if_this_lastchunk_this_audiochunks_push_this_lastchunk_this_lastchunk_null_this_audiochunks_push_event_data_console_log_audio_chunk_received_total_chunks_this_audiochunks_length_else_if_this_status_status_listening_this_lastchunk_event_data_this_setupaudioanalysis_stream_return_true_catch_error_console_error_microphone_initialization_error_error_window_toastfrontenderror_failed_to_access_microphone_please_check_permissions_microphone_error_return_false_setupaudioanalysis_stream_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_mediastreamsource_this_audiocontext_createmediastreamsource_stream_this_analysernode_this_audiocontext_createanalyser_this_analysernode_fftsize_2048_this_analysernode_mindecibels_90_this_analysernode_maxdecibels_10_this_analysernode_smoothingtimeconstant_0_85_this_mediastreamsource_connect_this_analysernode_startaudioanalysis_const_analyzeframe_if_this_status_status_inactive_return_const_dataarray_new_uint8array_this_analysernode_fftsize_this_analysernode_getbytetimedomaindata_dataarray_calculate_rms_volume_let_sum_0_for_let_i_0_i')< dataArray.length; i++) {
-                const amplitude = (dataArray[i] - 128) / 128;
-                sum += amplitude * amplitude;
-            }
-            const rms = Math.sqrt(sum / dataArray.length);
-
-            const now = Date.now();
-
-            // Update status based on audio level
-            if (rms > this.options.silenceThreshold) {
-                this.lastAudioTime = now;
-                this.silenceStartTime = null;
-
-                if (this.status === Status.LISTENING || this.status === Status.WAITING) {
-                    if (!speech.isSpeaking()) // TODO? a better way to ignore agent's voice?
+       i18n.t('ui_i18n_t_ui_i18n_t_ui_if_this_status_status_waiting_this_status_status_processing_this_options_waitingtimeout_handleprocessingstate_this_stoprecording_this_process_stoprecording_if_this_mediarecorder_state_recording_this_mediarecorder_stop_this_hasstartedrecording_false_async_initialize_try_this_transcriber_await_pipeline_automatic_speech_recognition_xenova_whisper_this_options_modelsize_this_options_language_const_stream_await_navigator_mediadevices_getusermedia_audio_echocancellation_true_noisesuppression_true_channelcount_1_this_mediarecorder_new_mediarecorder_stream_this_mediarecorder_ondataavailable_event_if_event_data_size_0_this_status_status_recording_this_status_status_waiting_if_this_lastchunk_this_audiochunks_push_this_lastchunk_this_lastchunk_null_this_audiochunks_push_event_data_console_log_audio_chunk_received_total_chunks_this_audiochunks_length_else_if_this_status_status_listening_this_lastchunk_event_data_this_setupaudioanalysis_stream_return_true_catch_error_console_error_microphone_initialization_error_error_window_toastfrontenderror_failed_to_access_microphone_please_check_permissions_microphone_error_return_false_setupaudioanalysis_stream_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_mediastreamsource_this_audiocontext_createmediastreamsource_stream_this_analysernode_this_audiocontext_createanalyser_this_analysernode_fftsize_2048_this_analysernode_mindecibels_90_this_analysernode_maxdecibels_10_this_analysernode_smoothingtimeconstant_0_85_this_mediastreamsource_connect_this_analysernode_startaudioanalysis_const_analyzeframe_if_this_status_status_inactive_return_const_dataarray_new_uint8array_this_analysernode_fftsize_this_analysernode_getbytetimedomaindata_dataarray_calculate_rms_volume_let_sum_0_for_let_i_0_i')rror_window_toastfrontenderror_failed_to_access_microphone_please_check_permissions_microphone_error_return_false_setupaudioanalysis_stream_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_mediastreamsource_this_audiocontext_createmediastreamsource_stream_this_analysernode_this_audiocontext_createanalyser_this_analysernode_fftsize_2048_this_analysernode_mindecibels_90_this_analysernode_maxdecibels_10_this_analysernode_smoothingtimeconstant_0_85_this_mediastreamsource_connect_this_analysernode_startaudioanalysis_const_analyzeframe_if_this_status_status_inactive_return_const_dataarray_new_uint8array_this_analysernode_fftsize_this_analysernode_getbytetimedomaindata_dataarray_calculate_rms_volume_let_sum_0_for_let_i_0_i'i18n.t('ui_dataarray_length_i_const_amplitude_dataarray_i_128_128_sum_amplitude_amplitude_const_rms_math_sqrt_sum_dataarray_length_const_now_date_now_update_status_based_on_audio_level_if_rms_this_options_silencethreshold_this_lastaudiotime_now_this_silencestarttime_null_if_this_status_status_listening_this_status_status_waiting_if_speech_isspeaking_todo_a_better_way_to_ignore_agent')'s voice?
                         this.status = Status.RECORDING;
                 }
             } else if (this.status === Status.RECORDING) {
@@ -170,7 +130,7 @@ class MicrophoneInput {
             return;
         }
 
-        const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+        const audioBlob = new Blob(this.audioChunks, { type: 'i18n.t('ui_audio_wav')' });
         const audioUrl = URL.createObjectURL(audioBlob);
 
 
@@ -182,14 +142,12 @@ class MicrophoneInput {
             const text = this.filterResult(result.text || "")
 
             if (text) {
-                console.log('Transcription:', result.text);
+                console.log('i18n.t('ui_transcription')', result.text);
                 await this.updateCallback(result.text, true);
             }
         } catch (error) {
-            console.error('Transcription error:', error);
-            window.toastFrontendError('Transcription failed.', 'Speech Recognition Error');
-        } finally {
-            URL.revokeObjectURL(audioUrl);
+            console.error('i18n.t('ui_transcription_error')', error);
+            window.toastFrontendError('i18n.t('ui_transcription_failed')', 'i18n.t('ui_speech_recognition_erri18n.t('ui_discarding_transcription_text')       URL.revokeObjectURL(audioUrl);
             this.audioChunks = [];
             this.status = Status.LISTENING;
         }
@@ -200,73 +158,7 @@ class MicrophoneInput {
         let ok = false
         while (!ok) {
             if (!text) break
-            if (text[0] === '{' && text[text.length - 1] === '}') break
-            if (text[0] === '(' && text[text.length - 1] === ')') break
-            if (text[0] === '[' && text[text.length - 1] === ']') break
-            ok = true
-        }
-        if (ok) return text
-        else console.log(`Discarding transcription: ${text}`)
-    }
-}
-
-
-
-// Initialize and handle click events
-async function initializeMicrophoneInput() {
-    microphoneInput = new MicrophoneInput(
-        async (text, isFinal) => {
-            if (isFinal) {
-                updateChatInput(text);
-                if (!microphoneInput.messageSent) {
-                    microphoneInput.messageSent = true;
-                    await sendMessage();
-                }
-            }
-        },
-        {
-            modelSize: 'tiny',
-            language: 'en',
-            silenceThreshold: 0.07,
-            silenceDuration: 1000,
-            waitingTimeout: 1500
-        }
-    );
-    microphoneInput.status = Status.ACTIVATING;
-
-    return await microphoneInput.initialize();
-}
-
-microphoneButton.addEventListener('click', async () => {
-    if (isProcessingClick) return;
-    isProcessingClick = true;
-
-    const hasPermission = await requestMicrophonePermission();
-    if (!hasPermission) return;
-
-    try {
-        if (!microphoneInput && !await initializeMicrophoneInput()) {
-            return;
-        }
-
-        // Simply toggle between INACTIVE and LISTENING states
-        microphoneInput.status =
-            (microphoneInput.status === Status.INACTIVE || microphoneInput.status === Status.ACTIVATING) ? Status.LISTENING : Status.INACTIVE;
-    } finally {
-        setTimeout(() => {
-            isProcessingClick = false;
-        }, 300);
-    }
-});
-
-// Some error handling for microphone input
-async function requestMicrophonePermission() {
-    try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        return true;
-    } catch (err) {
-        console.error('Error accessing microphone:', err);
-        window.toastFrontendError('Microphone access denied. Please enable microphone access in your browser settings.', 'Microphone Error');
+            if (text[0] === '{'i18n.t('ui_text_text_length_1')'}'i18n.t('ui_break_if_text_0')'('i18n.t('ui_text_text_length_1')')'i18n.t('ui_break_if_text_0')'['i18n.t('ui_text_text_length_1')']'i18n.t('ui_break_ok_true_if_ok_return_text_else_console_log_discarding_transcription_text_initialize_and_handle_click_events_async_function_initializemicrophoneinput_microphoneinput_new_microphoneinput_async_text_isfinal_if_isfinal_updatechatinput_text_if_microphoneinput_messagesent_microphoneinput_messagesent_true_await_sendmessage_modelsize')'tiny'i18n.t('ui_language')'en'i18n.t('ui_silencethreshold_0_07_silenceduration_1000_waitingtimeout_1500_microphoneinput_status_status_activating_return_await_microphoneinput_initialize_microphonebutton_addeventlistener')'click'i18n.t('ui_async_if_isprocessingclick_return_isprocessingclick_true_const_haspermission_await_requestmicrophonepermission_if_haspermission_return_try_if_microphoneinput_await_initializemicrophoneinput_return_simply_toggle_between_inactive_and_listening_states_microphoneinput_status_microphoneinput_status_status_inactive_microphoneinput_status_status_activating_status_listening_status_inactive_finally_settimeout_isprocessingclick_false_300_some_error_handling_for_microphone_input_async_function_requestmicrophonepermission_try_await_navigator_mediadevices_getusermedia_audio_true_return_true_catch_err_console_error')'Error accessing microphone:'i18n.t('ui_err_window_toastfrontenderror')'Microphone access denied. Please enable microphone access in your browser settings.'i18n.t('ui_')'Microphone Error');
         return false;
     }
 }
@@ -281,12 +173,7 @@ class Speech {
     stripEmojis(str) {
         return str
             .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-    }
-
-    speak(text) {
-        console.log('Speaking:', text);
+            .replace(/\s+/g, ' 'i18n.t('ui_trim_speak_text_console_log')'Speaking:', text);
         // Stop any current utterance
         this.stop();
 

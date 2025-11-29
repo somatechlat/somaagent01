@@ -1,7 +1,7 @@
 // Create and keep a reference to a dynamic stylesheet for runtime CSS changes
 let dynamicStyleSheet;
 {
-  const style = document.createElement("i18n.t('ui_i18n_t_ui_style')");
+  const style = document.createElement("i18n.t('ui_i18n_t_i18n.t('ui_i18n_t_ui_style')')");
   style.appendChild(document.createTextNode(""));
   document.head.appendChild(style);
   dynamicStyleSheet = style.sheet;
@@ -33,7 +33,7 @@ export function toggleCssProperty(selector, property, value) {
   }
   // If not found, add it to the dynamic stylesheet
   const ruleIndex = dynamicStyleSheet.insertRule(
-    `${selector} {}`,
+    `i18n.t('ui_selector')`,
     dynamicStyleSheet.cssRules.length
   );
   const rule = dynamicStyleSheet.cssRules[ruleIndex];

@@ -1,37 +1,24 @@
-<script type="i18n.t('ui_i18n_t_ui_module')">
-    import { store } from "i18n.t('ui_i18n_t_ui_attachmentsstore_js')";
+<script type="i18n.t('ui_i18n_t_ui_i18n_t_ui_module')">
+    import { store } from "i18n.t('ui_i18n_t_ui_i18n_t_ui_attachmentsstore_js')";
 </script>
 
 <div x-data>
-    <template x-if="i18n.t('ui_i18n_t_ui_store_chatattachments')">
+    <template x-if="i18n.t('ui_i18n_t_ui_i18n_t_ui_store_chatattachments')">
 
-        <div x-show="i18n.t('ui_i18n_t_ui_store_chatattachments_hasattachments')" class=i18n.t('ui_import_store_from_i18n_t_ui_attachmentsstore_js')plate x-for="i18n.t('ui_i18n_t_ui_attachment_index_in_store_chatattachments_i18n_t_ui_import_store_from_attachmentsstore_js_div_class')"i18n.t('ui_attachment_item')"i18n.t('ui_class')"i18n.t('ui_image_type_attachment_type_image_attachment_mime_attachment_mime_startswith_image_file_type_attachment_type_image_attachment_mime_attachment_mime_startswith_image')"i18n.t('ui_div_class')"i18n.t('ui_attachment_header')"i18n.t('ui_span_class')"i18n.t('ui_file_title')"i18n.t('ui_x_text')"i18n.t('ui_attachment_name_attachment_filename')"i18n.t('ui_span_button_click')"i18n.t('ui_store_chatattachments_removeattachment_index')"i18n.t('ui_class')"i18n.t('ui_remove_attachment')"i18n.t('ui_times_button_div_template_x_if')"i18n.t('ui_attachment_type_image_attachment_url_attachment_path_attachment_mime_attachment_mime_startswith_image')"i18n.t('ui_img_i18n_t_ui_times_18n_t_ui_store_chatattachments_getattachmentpreviewurli18n.t('ui_times')ment')" class="i18n.t('ui_i18n_t_ui_attachment_preview')" :alt="i18n.t('ui_i18n_t_ui_attachment_name_attachment_filename')" style="i18n.t('ui_i18n_t_ui_cursor_pointer')"
-                            @click="i18n.t('ui_i18n_t_ui_store_chatattachments_openimagemodal_store_chatattachments_getattachmentpreviewurl_attachment_attachment_name_attachment_filename')">
-                    </template>
-                    <template x-if="i18n.t('ui_i18n_t_ui_attachment_type_image_attachment_mime_attachment_mime_startswith_image')">
-                        <div>
-                            <img :src="i18n.t('ui_i18n_t_ui_store_chatattachments_getattachmentdisplayinfo_attachment_previewurl')" class="i18n.t('ui_i18n_t_ui_file_icon')" :alt="i18n.t('ui_i18n_t_ui_attachment_extension')">
-                        </div>
-                    </template>
-                    <div class="i18n.t('ui_i18n_t_ui_attachment_progress')" x-show="i18n.t('ui_i18n_t_ui_attachment_status_uploading')">
-                        <div class="i18n.t('ui_i18n_t_ui_progress_bar')">
-                            <div class="i18n.t('ui_i18n_t_ui_progress_fill')" :style="i18n.t('ui_i18n_t_ui_width_attachment_progressbytes_0_attachment_totalbytes_1_100')"></div>
-                        </div>
-                        <div class="i18n.t('ui_i18n_t_ui_progress_text')">
-                            <span x-text="i18n.t('ui_i18n_t_ui_math_round_attachment_progressbytes_0_attachment_totalbytes_1_100')"></span>
-                            <template x-if="i18n.t('ui_i18n_t_ui_attachment_speedbps')">
-                                <span class="i18n.t('ui_i18n_t_ui_speed')" x-text="i18n.t('ui_i18n_t_ui_attachment_speedbps_1024_tofixed_1_kb_s')"></span>
-                            </template>
-                            <template x-if="i18n.t('ui_i18n_t_ui_attachment_etaseconds_attachment_etaseconds_0')">
-                                <span class="i18n.t('ui_i18n_t_ui_eta')" x-text="i18n.t('ui_i18n_t_ui_0_etaseconds_s')"></span>
-                            </template>
-                        </div>
+        <div x-show="i18n.t('ui_i18n_t_ui_i18n_t_ui_store_chatattachments_hasattachments')" class=i18n.t('ui_import_store_from_i18n_t_ui_attachmentsstore_js')plate x-for="ii18n.t('ui_i18n_t_ui_module')_i18n_t_ui_attachment_index_in_store_chai18n.t('ui_i18n_t_ui_attachmentsstore_js')ore_from_attachmentsstore_js_div_class')"i18n.t('ui_attaci18n.t('ui_i18n_t_ui_store_chatattachments')class')"i18n.t('ui_image_type_attaci18n.t('ui_i18n_t_ui_store_chatattachments_hasattachments')startswith_image_fi18n.t('ui_import_store_from_i18n_t_ui_attachmentsstore_js')achment_mime_startswithi18n.t('ui_i18n_t_ui_attachment_index_in_store_chatattachments_i18n_t_ui_import_store_from_attachmentsstore_js_div_class')t('ui_file_i18n.t('ui_attachment_ii18n.t('ui_import_store_from_i18n_t_ui_i18n_t_ui_attachmentsstore_js')ttachment_type_image_attachment_mime_attachment_mime_startswith_image_file_type_attachment_type_image_attachment_mime_attachment_mime_startswith_image'))"i18n.t('ui18n.t('ui_div_class')achment')"ii18n.t('ui_attachment_header')times_buttoi18n.t('ui_span_class')e_x_if')"i1i18n.t('ui_file_title')chment_typei18n.t('ui_x_text')tachment_uri18n.t('ui_attachment_name_attachment_filename')chment_mimei18n.t('ui_span_button_click')i18n.t('ui_i18n.t('ui_store_chatattachments_removeattachment_index')atattachmeni18n.t('ui_class')tachmentprei18n.t('ui_remove_attachment')es_ment')" i18n.t('ui_times_button_div_template_x_if')t_ui_attachi18n.t('ui_attachment_type_image_attachment_url_attachment_path_attachment_mime_attachment_mime_startswith_image')t('ui_i18n_i18n.t('ui_img_i18n_t_ui_times_18n_t_ui_store_chatattachments_getattachmentpreviewurli18n_t')_t_ui_i18ni18n.t('ui_ment')_store_chatattachmei18n.t('ui_i18n_t_ui_attachment_preview')tachments_getattaci18n.t('ui_i18n_t_ui_attachment_name_attachment_filename')hment_filename')">
+i18n.t('ui_i18n_t_ui_cursor_pointer')ate>
+                    <template x-if="i18n.t(i18n.t('ui_i18n_t_ui_store_chatattachments_openimagemodal_store_chatattachments_getattachmentpreviewurl_attachmei18n.t('ui_i18n_t_ui_i18n_t_ui_attachment_name_attachment_filename')g :src="i18n.t('ui_i18n_t_ui_i18n_t_ui_store_chatattachments_gei18n.t('ui_i18n_t_ui_attachment_type_image_attachment_mime_attachment_mime_startswith_image')ui_file_icon')" :alt="i18n.t('ui_i18n_t_ui_i18n_t_ui_attachment_extension')">
+    i18n.t('ui_i18n_t_ui_store_chatattachments_getattachmentdisplayinfo_attachment_previewurl')iv class="i18n.t('ui18n.t('ui_i18n_t_ui_file_icon')attachment_progresi18n.t('ui_i18n_t_ui_attachment_extension')_i18n_t_ui_attachment_status_uploading')">
+                        <div class="i18n.t('ui_i18n_t_ui_i18n_t_ui18n.t('ui_i18n_t_ui_attachment_progress')               <div ii18n.t('ui_i18n_t_ui_i18n_t_ui_attachment_extension')ding')ogress_fill')" :style="i18n.t('ui_i18n_t_ui_i18n_i18n.t('ui_i18n_t_ui_progress_bar')gressbytes_0_attachment_totalbytes_1_100')"></div>
+  i18n.t('ui_i18n_t_ui_progress_fill')v>
+                 i18n.t('ui_i18n_t_ui_width_attachment_progressbytes_0_attachment_totalbytes_1_100')                       <span x-text="i18n.t('ui_i18n_t_ui_i18n_t_ui_math_round_attachmi18n.t('ui_i18n_t_ui_progress_text')ment_totalbytes_1_100')"></span>
+                      i18n.t('ui_i18n_t_ui_math_round_attachment_progressbytes_0_attachment_totalbytes_1_100')                               <span class="i18n.t('ui_i18n_t_uii18n.t('ui_i18n_t_ui_attachment_speedbps').t('ui_i18n_t_ui_i18n_t_ui_attachment_speedbps_1024_tofixei18n.t('ui_i18n_t_ui_speed')>
+                  i18n.t('ui_i18n_t_ui_attachment_speedbps_1024_tofixed_1_kb_s')emplate x-if="i18n.t('ui_i18n_t_ui_i18n_t_ui_attachment_etaseconds_attachment_etaseconds_0')">
+         i18n.t('ui_i18n_t_ui_attachment_etaseconds_attachment_etaseconds_0')18n_t_ui_eta')" x-text="i18n.t('ui_i18n_t_ui_i18n_t_ui_0_ei18n.t('ui_i18n_t_ui_eta')/span>
+             i18n.t('ui_i18n_t_ui_0_etaseconds_s')                        </div>
                     </div>
-                    <div class="i18n.t('ui_i18n_t_ui_attachment_status')" x-show="i18n.t('ui_i18n_t_ui_attachment_status_error')">
-                        <span class="i18n.t('ui_i18n_t_ui_error_text')">Upload failed</span>
-     i18n.t('ui_upload_failed')      <bi18n.t('ui_upload_failed')i18n.t('ui_i1i18n.t('ui_i18n_t_ui_upload_failed')8n.t('ui_i18n_t_ui_store_chatattachments_retryattachment_attachment')">Rei18n.t('ui_retry')button>
-            i18n.t('ui_rei18n_t_ui_retry_button')18n.t('ui_i18n_t_ui_attachment_resume')" x-show="i18n.t('ui_i18n_t_ui_attachment_status_uploading_attachment_progressbytes_attachment_totalbytes_sessionstorage_getitem_chunk_upload_store_chatattachments_sessionid_unspecified_attachment_name_attachment_filename_attachment_totalbytes_attachment_size')">
-                        <button class="i18n.t('ui_i18n_t_ui_btn_btn_xs')" @click="i18n.t('ui_i18n_t_ui_store_chatattachments_resumeattachment_attachment')">i18n.t('ui_i18n_t_ui_resume')</button>
+                    <div class="i18n.t('ui_i18n_t_ui_i18n_t_ui_attachment_status')" x-show="i18n.t('ui_i18n_t_ui_attachment_status')_attachment_status_ei18n.t('ui_i18n_t_ui_attachment_status_error')an class="i18n.t('ui_i18n_t_ui_i18n_t_ui_error_texi18n.t('ui_i18n_t_ui_error_text')n>
+     i18n.t('ui_upload_failed')    i18n.t('ui_upload_failed')ploai18n.t('ui_upload_failed')ni18n.t('ui_ui18n.t('ui_i18n_t_ui_upload_failed')ui_i1i18n_t')ailed')8n.t('ui_i18n_t_ui_sti18n.t('ui_8n_t')atattachments_retryattachment_attachment')"i18n.t('ui_rei18n_t_i18n.t('ui_rei18n_t')ton_i1i18n.t('ui_rei18n_t_ui_retry_button_i18n_t_ui_rei18n_t_ui_retry_button_18n_t_ui_i18n_t_ui_attachment_resume_x_show_i18n_t_ui_i18n_t_ui_attachment_status_uploading_attachment_progressbytes_attachment_totalbytes_sessionstorage_getitem_chunk_upload_store_chatattachments_sessionid_unspecified_attachment_name_attachment_filename_attachment_totalbytes_attachment_size')8n_t')_ui_btn_btn_xs')" @click=i18n.t('ui_click_i18n_t')_ui_i18n_t_ui_store_chatattachments_resumeattachment_attachment'i18n.t('ui_ii18n.t('ui_i18n_t_ui_i18n_t_ui_resume')</button>
                     </div>
                 </div>
             </template>
