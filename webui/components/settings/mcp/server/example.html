@@ -1,67 +1,8 @@
 <html>
 
 <head>
-    <title>Connection to A0 MCP Server</title>
-
-</head>
-
-<body>
-    <div x-data>
-        <p>Agent Zero MCP Server is an SSE MCP running on the same URL and port as the Web UI + /mcp/sse or /mcp/http path.</p>
-        <p>The same applies if you run A0 on a public URL using a tunnel.</p>
-
-        <!-- API Token Information -->
-        <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 16px 0;">
-            <h4 style="margin: 0 0 8px 0; color: var(--color-text-primary);">API Token Information</h4>
-            <p style="margin: 0; color: var(--color-text-secondary); font-size: 14px;">
-                The token used in the URL is automatically generated from your username and password.
-                This same token is also used for external API endpoints. The token changes when you update your credentials.
-            </p>
-        </div>
-
-        <h3>Example MCP Server Configuration JSON</h3>
-        <div id="mcp-server-example"></div>
-
-        <script>
-            setTimeout(() => {
-                const url = window.location.origin;
-                const token = settingsModalProxy.settings.sections.filter(x => x.id == "mcp_server")[0].fields.filter(x => x.id == "mcp_server_token")[0].value;
-                const jsonExample = JSON.stringify({
-                    "mcpServers":
-                    {
-                        "agent-zero": {
-                            "type": "sse",
-                            "url": `${url}/mcp/t-${token}/sse`
-                        },
-                        "agent-zero-http": {
-                            "type": "streamable-http",
-                            "url": `${url}/mcp/t-${token}/http`
-                        }
-                    }
-                }, null, 2);
-
-                const editor = ace.edit("mcp-server-example");
-                const dark = localStorage.getItem("darkMode");
-                if (dark != "false") {
-                    editor.setTheme("ace/theme/github_dark");
-                } else {
-                    editor.setTheme("ace/theme/tomorrow");
-                }
-                editor.session.setMode("ace/mode/json");
-                editor.setValue(jsonExample);
-                editor.clearSelection();
-                editor.setReadOnly(true);
-            }, 0);
-        </script>
-        <!-- </template> -->
-    </div>
-
-    <style>
-        #mcp-server-example {
-            width: 100%;
-            height: 15em;
-        }
-    </style>
+    <title>Connection to A0 i18n.t('ui_agent_zero_mcp_server_is_an_sse_mcp_running_on_the_same_url_and_port_as_the_web_ui_mcp_sse_or_mcp_http_path')he same URL and i18n.t('ui_the_same_applies_if_you_run_a0_oi18n_t_ui_connection_to_a0_mcp_server_el')plies if you run A0 oi18n.t('ui_connection_to_a0_mci18n.t('ui_i18n_t_ui_agent_zero_mcp_server_is_an_sse_mcp_running_on_the_same_url_and_port_as_the_web_ui_mcp_sse_or_mcp_http_path_6px_padding_12pi18n_t_ui_the_same_applies_if_you_run_a0_on_a_public_url_using_a_tunnel_0_8px_0_color_var_color_text_primary_api_token_information')')_0_8px_0_color_var_color_text_primary')"i18n.t('ui_api_token_information_h4_p_style')"i18n.t('ui_margin_0_color_i18n.t('ui_the_token_used_in_the_url_is_automatically_generated_from_your_username_and_password_ti18n_t_ui_api_token_information_o_used_for_external_api_endpoints_the_token_changes_when_you_update_your_credentials')te_your_crei18n.t('ui_i18n_t_ui_the_token_used_in_the_url_is_automatically_generated_from_your_username_and_password_this_same_token_is_also_used_for_external_api_endpoints_the_token_changes_when_you_update_your_credentials_const_token_seti18n_t_ui_example_mcp_server_configuration_json_ter_x_x_id_i18n_t_ui_mcp_server_0_fields_filter_x_x_id_i18n_i18n_t_ui_settimeout_const_url_window_location_origin_const_token_settingsmodalproxy_settings_sections_filter_x_x_id_mcp_server_0_fields_filter_x_x_id_mcp_server_token_0_value_const_jsonexample_json_stringify_mcpservers_agent_zero_type_sse_url_url_mcp_t_token_sse_agent_zero_http_type_streamable_http_url_url_mcp_t_token_http_null_2_const_editor_ace_edit_mcp_server_example_const_dark_localstorage_getitem_darkmode_if_dark_false_editor_settheme_ace_theme_github_dark_else_editor_settheme_ace_theme_tomorrow_editor_session_setmode_ace_mode_json_editor_setvalue_jsonexample_editor_clearselection_editor_setreadonly_true_0')     <!-- </template> i18n.t('ui_')i18n.t('ui_i18n_t_ui')style>
+        i18n.t('ui_mci18n.t('ui_i18n_t_ui_mcp_server_example_width_100_height_15em')r')tyle>
 
 </body>
 

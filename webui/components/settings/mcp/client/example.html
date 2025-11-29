@@ -6,75 +6,11 @@
 </head>
 
 <body>
-    <div x-data>
-        <p>Agent Zero uses standard JSON configuration known from other AI applications.<br>
-            The configuration is a JSON object containing "mcpServers" object where each key is an individual MCP
-            server.<br>
-            Local servers are defined by a "command", "args", "env" variables.<br>
-            Remote servers are defined by a "url", "headers".<br>
-            "disabled" can be set to true to disable a server without removing config.<br>
-            Custom "description" can be set to provide additional information about the server to A0.<br>
-            All servers can also define "init_timeout" and "tool_timeout" which override global settings.</p>
-
-
-        <h3>Example MCP Servers Configuration JSON</h3>
-        <div id="mcp-servers-example"></div>
-
-        <script>
-            setTimeout(() => {
-                const url = window.location.origin;
-                const jsonExample = JSON.stringify({
-                    "mcpServers":
-                    {
-                        "sqlite": {
-                            "command": "uvx",
-                            "args": [
-                                "mcp-server-sqlite",
-                                "--db-path",
-                                "/root/db.sqlite"
-                            ],
-                            "init_timeout": 10,
-                            "tool_timeout": 200
-                        },
-                        "sequential-thinking": {
-                            "disabled": true,
-                            "command": "npx",
-                            "args": [
-                                "--yes",
-                                "--package",
-                                "@modelcontextprotocol/server-sequential-thinking",
-                                "mcp-server-sequential-thinking"
-                            ]
-                        },
-                        "deep-wiki": {
-                            "description": "Use this MCP to analyze github repositories",
-                            "url": "https://mcp.deepwiki.com/sse"
-                        }
-                    }
-                }, null, 2);
-
-                const editor = ace.edit("mcp-servers-example");
-                const dark = localStorage.getItem("darkMode");
-                if (dark != "false") {
-                    editor.setTheme("ace/theme/github_dark");
-                } else {
-                    editor.setTheme("ace/theme/tomorrow");
-                }
-                editor.session.setMode("ace/mode/json");
-                editor.setValue(jsonExample);
-                editor.clearSelection();
-                editor.setReadOnly(true);
-            }, 0);
-        </script>
-        <!-- </template> -->
-    </div>
+    <div x-dai18n.t('ui_configuring_mcp_servers')ro uses standard JSON configuration known from other Ai18n.t('ui_agent_zero_uses_standard_json_configuration_known_from_other_ai_applications') "i18n.t('ui_i18ni18n.t('ui_the_configuration_is_a_json_object_containing_i18n_t_ui_mcpservers_object_where_each_key_is_an_individual_mcp_server')n.t('ui_i18n_t_uii18n.t('ui_local_servers_are_defined_by_a_i18n_t_ui_command_i18n_t_ui_args_i18n_t_ui_env_variables')e servers are defi18n.t('ui_remote_servers_are_defined_by_a_i18n_t_ui_url_i18n_t_ui_headers')r>i1i18n.t('ui_i18n_t_ui_configuring_mcp_servers_i_disabled_can_be_set_to_true_to_disable_a_server_wi18n_t_ui_agent_zero_uses_standard_json_configuration_known_from_other_ai_applications_be_set_to_providi18n_t_ui_the_configuration_is_a_json_object_containing_mcpservers_object_where_each_key_is_an_individual_mcp_server_and_i18n_t_ui_ti18n_t_ui_local_servers_are_defined_by_a_command_args_env_variables_xample_mcp_serveri18n_t_ui_remote_servers_are_defined_by_a_url_headers_ui_mcp_servers_i18n_t_ui_disabled_can_be_set_to_true_to_disable_a_server_without_removing_config_const_uri18n_t_ui_custom_description_can_be_set_to_provide_additional_information_about_the_server_to_a0_i18ni18n_t_ui_all_servers_can_also_define_init_timeout_and_tool_timeout_which_override_global_settings_i18n_t_ui_example_mcp_servers_configuration_json_t_ui_uvx_i18n_t_ui_args_i18n_t_ui_settimeout_const_url_window_location_origin_const_jsonexample_json_stringify_mcpservers_sqlite_command_uvx_args_mcp_server_sqlite_db_path_root_db_sqlite_init_timeout_10_tool_timeout_200_sequential_thinking_disabled_true_command_npx_args_yes_package_modelcontextprotocol_server_sequential_thinking_mcp_server_sequential_thinking_deep_wiki_description_use_this_mcp_to_analyze_github_repositories_url_https_mcp_deepwiki_com_sse_null_2_const_editor_ace_edit_mcp_servers_example_const_dark_localstorage_getitem_darkmode_if_dark_false_editor_settheme_ace_theme_github_dark_else_editor_settheme_ace_theme_tomorrow_editor_session_setmode_ace_mode_json_editor_setvalue_jsonexample_editor_clearselection_editor_setreadonly_true_0')</script>
+        <!-- </template> i18n.t('ui_i18n_t_ui')</div>
 
     <style>
-        #mcp-servers-example {
-            width: 100%;
-            height: 40em;
-        }
-    </style>
+        i18n.t('ui_i18n_t_ui_mcp_servers_example_width_100_height_40em')</style>
 
 </body>
 

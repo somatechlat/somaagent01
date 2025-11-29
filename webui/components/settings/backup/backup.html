@@ -1,49 +1,18 @@
 <html>
 <head>
     <title>Create Backup</title>
-    <script type="module">
-        import { store } from "./backup-store.js";
+    <script type="i18n.t('ui_i18n_t_ui_module')">
+        import { store } from "i18n.t('ui_i18n_t_ui_backup_store_js')";
     </script>
 </head>
-<body>
-    <div x-data>
-        <template x-if="$store.backupStore">
-            <div x-init="$store.backupStore.initBackup()" x-destroy="$store.backupStore.onClose()">
+<bodyi18n.t('ui_i18n_t_ui_create_backup_header_with_buttons_following_mcp_servers_pi18n_t_ui_import_store_from_backup_store_js_ation_json')re_initbackup')" x-destroy="i18n.t('ui_i18n_t_ui_store_backupstore_onclose')">
 
-                <!-- Header with buttons (following MCP servers pattern) -->
-                <h3>Backup Configuration JSON
-                    <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.formatJson()">Format</button>
-                    <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.resetToDefaults()">Reset</button>
-                    <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.dryRun()" :disabled="$store.backupStore.loading">Dry Run</button>
-                    <button class="btn slim primary" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.createBackup()" :disabled="$store.backupStore.loading">Create Backup</button>
-                </h3>
-
-                <!-- JSON Editor (upper part) -->
-                <div id="backup-metadata-editor"></div>
-
-                <!-- File Operations Display (lower part) -->
-                <h3 id="backup-operations">File Operations</h3>
-
-                <!-- File listing textarea -->
-                <div class="file-operations-container">
-                    <textarea id="backup-file-list"
-                              x-model="$store.backupStore.fileOperationsLog"
-                              readonly
-                              :placeholder="i18n.t('placeholder.fileOperations')"></textarea>
-                </div>
-
-                <!-- Loading indicator -->
-                <div x-show="$store.backupStore.loading" class="backup-loading">
-                    <span x-text="$store.backupStore.loadingMessage || 'Processing...'"></span>
-                </div>
-
-                <!-- Error display -->
-                <div x-show="$store.backupStore.error" class="backup-error">
-                    <span x-text="$store.backupStore.error"></span>
+        i18n.t('ui_create_backup')Header with buttons (following MCP seri18n.t('ui_format')i18n.t('ui_import_store_from_backup_store_js')ation JSON
+                    <button class="i18n.t('ui_i18n_t_ui_btn_slim')" style="i18n.t('ui_i18n_t_ui_margin_left_0_5em')"
+     i18n.t('ui_reset')              @click="i18n.t('ui_i18n_t_ui_store_backupstore_formatjson')">Format</button>
+                    <button class="i18n.t('ui_i18n_t_ui_btn_slim')" style="i18n.t('ui_i18n_t_ui_margin_lefi18n_t_ui_backup_configuration_json_n_t_ui_store_backupstore_resettodefaults')">Reset</button>
+                    <button class="i18n.t('ui_i18n_t_ui_btn_slim')" i18n.t('ui_format')"i18n.t('ui_i18n_t_ui_margin_left_0_5em')"
+                        @click="i18n.t('ui_i18n_t_ui_store_backupstore_dryrun')" :disabled="i18ni18n.t('ui_create_backup')_ui_store_backupstore_loading_i18n_t_ui_reset_run_button_button_class')"i18n.t('ui_btn_slim_primary')"i18n.t('ui_style')"i18n.t('ui_margin_left_0_5em')"i18n.t('ui_click')"i18n.t('ui_store_backupstore_crei18n.t('ui_dry_run')up')"i18n.t('ui_disabled')"i18n.t('ui_store_backupstore_loadii18n.t('ui_file_operations')_create_backup_button_h3_json_editor_upper_part_div_id')"i18n.t('ui_backup_mi18n.t('ui_create_backup')r')"i18n.t('ui_div_file_operations_display_lower_part_h3_id')"i18n.t('ui_backup_operations')"i18n.t('ui_file_operations_h3_file_listing_textarea_div_class')"i18n.t('ui_file_oi18n.t('ui_file_operations')iner')"i18n.t('ui_textarea_id')"i18n.t('ui_backup_file_list')"i18n.t('ui_x_model')"i18n.t('ui_store_backupstore_fileoperationslog')"i18n.t('ui_readonly_placeholder')"i18n.t('ui_i18n_t_placeholder_fileoperations')"i18n.t('ui_textarea_div_loading_indicator_div_x_show')"i18n.t('ui_store_backupstore_loading')"i18n.t('ui_class')"i18n.t('ui_backup_loading')"i18n.t('ui_span_x_text')"i18n.t('ui_store_backupstore_loadingmessage_processing')"i18n.t('ui_span_div_error_display_div_x_show')"i18n.t('ui_store_backupstore_error')"i18n.t('ui_class')"i18n.t('ui_backup_error')"i18n.t('ui_span_x_text')"i18n.t('ui_store_backupstore_error')"></span>
                 </div>
 
             </div>
@@ -51,44 +20,6 @@
     </div>
 
     <style>
-        .backup-loading {
-            width: 100%;
-            text-align: center;
-            margin-top: 2rem;
-            margin-bottom: 2rem;
-            color: var(--color-text-secondary);
-        }
-
-        #backup-metadata-editor {
-            width: 100%;
-            height: 25em;
-        }
-
-        .file-operations-container {
-            margin-top: 0.5em;
-            margin-bottom: 1em;
-        }
-
-        #backup-file-list {
-            width: 100%;
-            height: 15em;
-            font-family: monospace;
-            font-size: 0.85em;
-            background: var(--color-bg-primary);
-            color: var(--color-text-primary);
-            border: 1px solid var(--color-border);
-            border-radius: 4px;
-            padding: 0.5em;
-            resize: vertical;
-        }
-
-        .backup-error {
-            color: var(--color-error);
-            margin: 0.5rem 0;
-            padding: 0.5rem;
-            background: var(--color-error-bg);
-            border-radius: 4px;
-        }
-    </style>
+        i18n.t('ui_i18n.t('ui_i18n_t_ui_backup_loading_width_100_text_align_center_margin_top_2rem_margin_bottom_2rem_color_var_color_text_secondary_backup_metadata_editor_width_100_height_25em_file_operations_container_margin_top_0_5em_margin_bottom_1em_backup_file_list_width_100_height_15em_font_family_monospace_font_size_0_85em_background_var_color_bg_primary_color_var_color_text_primary_border_1px_solid_var_color_border_border_radius_4px_padding_0_5em_resize_vertical_backup_error_color_var_color_error_margin_0_5rem_0_padding_0_5rem_background_var_color_error_bg_border_radius_4px')</style>
 </body>
 </html>

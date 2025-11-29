@@ -200,6 +200,35 @@
     background: rgba(0, 0, 0, 0.08);
     color: #1f1f1f;
 }
+
+/* -------------------------------------------------------------------
+   Language and Theme selector styling (shares look‑and‑feel with the
+   notification toggle). These selectors appear next to the bell icon in
+   `notification-icons.html`.
+   ------------------------------------------------------------------- */
+.lang-selector,
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.lang-selector:hover,
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
 .light-mode .brain-indicator.brain-normal {
     background-color: #1db954;
     color: #01240d;

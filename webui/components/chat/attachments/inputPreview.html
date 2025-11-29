@@ -1,47 +1,37 @@
-<script type="module">
-    import { store } from "./attachmentsStore.js";
+<script type="i18n.t('ui_i18n_t_ui_module')">
+    import { store } from "i18n.t('ui_i18n_t_ui_attachmentsstore_js')";
 </script>
 
 <div x-data>
-    <template x-if="$store.chatAttachments">
+    <template x-if="i18n.t('ui_i18n_t_ui_store_chatattachments')">
 
-        <div x-show="$store.chatAttachments.hasAttachments" class="preview-section">
-            <template x-for="(attachment, index) in $store.chatAttachments.attachments" :key="index">
-                <div class="attachment-item"
-                    :class="{'image-type': (attachment.type === 'image') || (attachment.mime && attachment.mime.startsWith('image/')), 'file-type': !(attachment.type === 'image' || (attachment.mime && attachment.mime.startsWith('image/')))}">
-                    <div class="attachment-header">
-                        <span class="file-title" x-text="attachment.name || attachment.filename"></span>
-                        <button @click="$store.chatAttachments.removeAttachment(index)" class="remove-attachment">&times;</button>
-                    </div>
-                    <template x-if="(attachment.type === 'image' && attachment.url) || (attachment.path && attachment.mime && attachment.mime.startsWith('image/'))">
-                        <img :src="$store.chatAttachments.getAttachmentPreviewUrl(attachment)" class="attachment-preview" :alt="attachment.name || attachment.filename" style="cursor: pointer;"
-                            @click="$store.chatAttachments.openImageModal($store.chatAttachments.getAttachmentPreviewUrl(attachment), attachment.name || attachment.filename)">
+        <div x-show="i18n.t('ui_i18n_t_ui_store_chatattachments_hasattachments')" class=i18n.t('ui_import_store_from_i18n_t_ui_attachmentsstore_js')plate x-for="i18n.t('ui_i18n_t_ui_attachment_index_in_store_chatattachments_i18n_t_ui_import_store_from_attachmentsstore_js_div_class')"i18n.t('ui_attachment_item')"i18n.t('ui_class')"i18n.t('ui_image_type_attachment_type_image_attachment_mime_attachment_mime_startswith_image_file_type_attachment_type_image_attachment_mime_attachment_mime_startswith_image')"i18n.t('ui_div_class')"i18n.t('ui_attachment_header')"i18n.t('ui_span_class')"i18n.t('ui_file_title')"i18n.t('ui_x_text')"i18n.t('ui_attachment_name_attachment_filename')"i18n.t('ui_span_button_click')"i18n.t('ui_store_chatattachments_removeattachment_index')"i18n.t('ui_class')"i18n.t('ui_remove_attachment')"i18n.t('ui_times_button_div_template_x_if')"i18n.t('ui_attachment_type_image_attachment_url_attachment_path_attachment_mime_attachment_mime_startswith_image')"i18n.t('ui_img_i18n_t_ui_times_18n_t_ui_store_chatattachments_getattachmentpreviewurli18n.t('ui_times')ment')" class="i18n.t('ui_i18n_t_ui_attachment_preview')" :alt="i18n.t('ui_i18n_t_ui_attachment_name_attachment_filename')" style="i18n.t('ui_i18n_t_ui_cursor_pointer')"
+                            @click="i18n.t('ui_i18n_t_ui_store_chatattachments_openimagemodal_store_chatattachments_getattachmentpreviewurl_attachment_attachment_name_attachment_filename')">
                     </template>
-                    <template x-if="!(attachment.type === 'image') && !(attachment.mime && attachment.mime.startsWith('image/'))">
+                    <template x-if="i18n.t('ui_i18n_t_ui_attachment_type_image_attachment_mime_attachment_mime_startswith_image')">
                         <div>
-                            <img :src="$store.chatAttachments.getAttachmentDisplayInfo(attachment).previewUrl" class="file-icon" :alt="attachment.extension">
+                            <img :src="i18n.t('ui_i18n_t_ui_store_chatattachments_getattachmentdisplayinfo_attachment_previewurl')" class="i18n.t('ui_i18n_t_ui_file_icon')" :alt="i18n.t('ui_i18n_t_ui_attachment_extension')">
                         </div>
                     </template>
-                    <div class="attachment-progress" x-show="attachment.status === 'uploading'">
-                        <div class="progress-bar">
-                            <div class="progress-fill" :style="{ width: ((attachment.progressBytes||0) / (attachment.totalBytes||1) * 100) + '%'}"></div>
+                    <div class="i18n.t('ui_i18n_t_ui_attachment_progress')" x-show="i18n.t('ui_i18n_t_ui_attachment_status_uploading')">
+                        <div class="i18n.t('ui_i18n_t_ui_progress_bar')">
+                            <div class="i18n.t('ui_i18n_t_ui_progress_fill')" :style="i18n.t('ui_i18n_t_ui_width_attachment_progressbytes_0_attachment_totalbytes_1_100')"></div>
                         </div>
-                        <div class="progress-text">
-                            <span x-text="Math.round(((attachment.progressBytes||0)/(attachment.totalBytes||1))*100) + '%' "></span>
-                            <template x-if="attachment.speedBps">
-                                <span class="speed" x-text="(attachment.speedBps/1024).toFixed(1) + ' KB/s'"></span>
+                        <div class="i18n.t('ui_i18n_t_ui_progress_text')">
+                            <span x-text="i18n.t('ui_i18n_t_ui_math_round_attachment_progressbytes_0_attachment_totalbytes_1_100')"></span>
+                            <template x-if="i18n.t('ui_i18n_t_ui_attachment_speedbps')">
+                                <span class="i18n.t('ui_i18n_t_ui_speed')" x-text="i18n.t('ui_i18n_t_ui_attachment_speedbps_1024_tofixed_1_kb_s')"></span>
                             </template>
-                            <template x-if="attachment.etaSeconds && attachment.etaSeconds > 0">
-                                <span class="eta" x-text="'ETA ' + Math.ceil(attachment.etaSeconds) + 's'"></span>
+                            <template x-if="i18n.t('ui_i18n_t_ui_attachment_etaseconds_attachment_etaseconds_0')">
+                                <span class="i18n.t('ui_i18n_t_ui_eta')" x-text="i18n.t('ui_i18n_t_ui_0_etaseconds_s')"></span>
                             </template>
                         </div>
                     </div>
-                    <div class="attachment-status" x-show="attachment.status === 'error'">
-                        <span class="error-text">Upload failed</span>
-                        <button class="btn btn-xs" @click="$store.chatAttachments.retryAttachment(attachment)">Retry</button>
-                    </div>
-                    <div class="attachment-resume" x-show="attachment.status === 'uploading' && attachment.progressBytes < attachment.totalBytes && sessionStorage.getItem('chunk-upload:' + ($store.chatAttachments.sessionId||'unspecified') + ':' + (attachment.name||attachment.filename) + ':' + (attachment.totalBytes||attachment.size))">
-                        <button class="btn btn-xs" @click="$store.chatAttachments.resumeAttachment(attachment)">Resume</button>
+                    <div class="i18n.t('ui_i18n_t_ui_attachment_status')" x-show="i18n.t('ui_i18n_t_ui_attachment_status_error')">
+                        <span class="i18n.t('ui_i18n_t_ui_error_text')">Upload failed</span>
+     i18n.t('ui_upload_failed')      <bi18n.t('ui_upload_failed')i18n.t('ui_i1i18n.t('ui_i18n_t_ui_upload_failed')8n.t('ui_i18n_t_ui_store_chatattachments_retryattachment_attachment')">Rei18n.t('ui_retry')button>
+            i18n.t('ui_rei18n_t_ui_retry_button')18n.t('ui_i18n_t_ui_attachment_resume')" x-show="i18n.t('ui_i18n_t_ui_attachment_status_uploading_attachment_progressbytes_attachment_totalbytes_sessionstorage_getitem_chunk_upload_store_chatattachments_sessionid_unspecified_attachment_name_attachment_filename_attachment_totalbytes_attachment_size')">
+                        <button class="i18n.t('ui_i18n_t_ui_btn_btn_xs')" @click="i18n.t('ui_i18n_t_ui_store_chatattachments_resumeattachment_attachment')">i18n.t('ui_i18n_t_ui_resume')</button>
                     </div>
                 </div>
             </template>

@@ -3,22 +3,9 @@
 <head>
     <title>Drag Drop Overlay</title>
 
-    <script type="module">
-        import { store } from "./attachmentsStore.js";
-    </script>
-</head>
-
-<body>
-    <!-- Drag and Drop Overlay -->
+    <script type="i18n.t('ui_i18n_t_ui_module')">i18n.t('ui_drag_drop_overlay') store } from "i18n.t('ui_i18n_t_ui_attachmentsstore_js')"i18n.t('ui_import_store_from_i18n_t_ui_attachmentsstore_js') -->
     <div x-data>
-        <template x-if="$store.chatAttachments">
-            <div x-cloak x-show="$store.chatAttachments.dragDropOverlayVisible" id="dragdrop-overlay"
-                x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
-                x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-300"
-                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="dragdrop-overlay">
-                <img src="public/dragndrop.svg" alt="Drop files" class="dragdrop-icon">
-                <div class="dragdrop-text">Drop files to attach them to your message</div>
-                <div class="dragdrop-subtext"></div>
+  i18n.t('ui_drag_drop_overlay')-if="i18n.t('ui_i18n_t_ui_i18n.t('ui_i18n_t_ui_drag_drop_overlay_if_i18n_t_ui_store_chatattachments_i18n_t_ui_import_store_from_attachmentsstore_js_attachments_dragdropoverlayvisible_id_i18n_t_ui_dragdrop_overlay_x_transition_enter_i18n_t_ui_transition_ease_out_duration_300_x_transition_enter_start_i18n_t_ui_opacity_0_x_transition_enter_end_i18n_t_ui_opacity_100_x_transition_leave_i18n_t_ui_transition_ease_in_duration_300_x_transition_leave_start_i18n_t_ui_opacity_100_x_transition_leave_end_i18n_t_ui_opacity_0_class_i18n_t_ui_dragdrop_overlay')n.t('ui_public_dragndrop_svg')"i18n.t('ui_alt')"i18n.t('ui_drop_files')"i18n.t('ui_class')"i18n.t('ui_dragdrop_icon')"i18n.t('ui_div_class')"i18n.t('ui_dragdrop_text')i18n.t('ui_drop_files_toi18n_t_ui_drop_files_to_attach_them_to_your_message')div_class')"i18n.t('ui_dragdrop_subtext')"></div>
             </div>
         </template>
     </div>

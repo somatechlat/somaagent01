@@ -3,179 +3,21 @@
 <head>
     <title>MCP Servers Configuration</title>
 
-    <script type="module">
-        import { store } from "./mcp-servers-store.js";
-    </script>
-</head>
-
-<body>
-    <div x-data>
-        <template x-if="$store.mcpServersStore">
-            <div x-init="$store.mcpServersStore.initialize()" x-destroy="$store.mcpServersStore.onClose()">
+    <script type="i18n.t('ui_i18n_t_ui_module')">
+        import { store } from "i18n.t('ui_i18n_t_ui_mcp_servers_i18n_i18n.t('ui_mcp_servers_configuration')ation_json_x_data_template_x_if')"i18n.t('ui_store_mcpservi18n.t('ui_import_store_from_i18n_t_ui_mcp_servers_i18n_t_ui_mcp_servers_configuration_json_x_data')i18n.t('ui_i18n_t_ui_store_mcpserversstore_onclose')">
 
                 <h3>MCP Servers Configuration JSON
-                    <button class="btn slim" style="margin-left: 0.5em;"
-                        onclick="openModal('settings/mcp/client/example.html')">Examples</button>
-                    <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.mcpServersStore.formatJson()">Reformat</button>
-                    <button class="btn slim primary" :disabled="$store.mcpServersStore.loading"
-                        style="margin-left: 0.5em;" @click="$store.mcpServersStore.applyNow()">Apply now</button>
-                </h3>
-                <div id="mcp-servers-config-json"></div>
-
-                <h3 id="mcp-servers-status">Servers status (refreshing automatically)</h3>
-
-
-                <div class="server-list" x-show="!$store.mcpServersStore.loading">
-                    <template x-for="server in $store.mcpServersStore.servers" :key="server.name">
-                        <div class="server-item">
-                            <div class="server-main-row">
-                                <!-- Status indicator -->
-                                <div class="status-dot" x-data="{ connected: server.connected }">
-                                    <svg viewBox="0 0 16 16" width="12" height="12">
-                                        <circle cx="8" cy="8" r="6" x-bind:fill="server.connected 
+                    <button class="i18n.t('ui_i18n_t_i18n_t_ui_reformat_lim')" style="i18n.t('ui_i18n_t_ui_mi18n.t('ui_mcp_servers_configuration_json')="i18n.t('ui_i18n_t_ui_openmodal_settings_mcp_client_example_html')">Examples</button>
+                    <button class="i18n.t('ui_i18n_t_ui_bi18n_t_ui_apply_now')" style="i18n.ti18n.t('ui_examples')n_t_ui_margin_left_0_5em')"
+                        @click="i18n.t('ui_i18n_t_ui_store_mcpserversstore_formatjson')">Reformat</butti18n.t('ui_servers_status_refreshing_automatically')8n.t('ui_btn_slii18n.t('ui_reformat')y')"i18n.t('ui_disabled')"i18n.t('ui_store_mcpserversstore_loading')"i18n.t('ui_style')"i18n.t('ui_margin_left_0_5em')"i18n.t('ui_click')"i18n.t('ui_store_mcpserversstore_applynow')"i18n.t('ui_apply_now_button_h3_div_id')"i18n.t('ui_mcp_servers_config_json')i18n.t('ui_apply_now')ui_div_h3_id')"i18n.t('ui_mcp_servers_status')"i18n.t('ui_servers_status_refreshing_automatically_h3_div_class')"i18n.t('ui_server_list')"i18n.t('ui_x_show')"i1i18n.t('ui_servers_status_refreshing_automatically')i18n.t('ui_template_x_for')"i18n.t('ui_server_in_store_mcpserversstore_servers')"i18n.t('ui_key')"i18n.t('ui_server_name')"i18n.t('ui_div_class')"i18n.t('ui_server_item')"i18n.t('ui_i18n_t_ui_0_00c340_e40138_none_x_bind_opacity_server_connected_1_0_x_data')"i18n.t('ui_connected_server_connected')"i18n.t('ui_svg_viewbox')"i18ni18n.t('ui_i18n_t_ui_0_00c340_e40138_none_x_bind_opacity_server_connected_1_0_x_data_i18n_t_ui_connected_server_connected')18n_t_ui_x_bind_fill')"server.connected 
                                                 ? (server.error ? '#e40138' : (server.tool_count > 0 ? '#00c340' : '#e40138')) 
-                                                : 'none'" x-bind:opacity="server.connected ? 1 : 0" />
-                                        <circle cx="8" cy="8" r="6" fill="none" stroke="#e40138" stroke-width="2"
-                                            x-bind:opacity="server.connected ? 0 : 1" />
-                                    </svg>
-                                </div>
-
-                                <!-- Server name -->
-                                <span class="server-name" x-text="server.name"></span>
-
-                                <!-- Tool count (clickable if > 0, only for connected servers without errors) -->
-                                <span class="tool-count" x-show="server.tool_count > 0"
-                                    @click="$store.mcpServersStore.onToolCountClick && $store.mcpServersStore.onToolCountClick(server.name)"
-                                    x-text="server.tool_count + ' tools'"></span>
-
-                                <!-- Log button (only shown if has_log is true) -->
-                                <span class="log-btn" x-show="server.has_log"
-                                    @click="$store.mcpServersStore.getServerLog(server.name)">Log</span>
-                            </div>
-
-                            <!-- Error message (if any) -->
-                            <div class="server-error-row" x-show="server.error">
-                                <span class="server-error" x-text="server.error"></span>
-                            </div>
-                        </div>
-                    </template>
-                    <div x-show="$store.mcpServersStore.servers.length === 0" class="mcp-servers-loading">
-                        No servers
-                    </div>
-                </div>
-
-                <div x-show="$store.mcpServersStore.loading" class="mcp-servers-loading">
-                    Loading servers status...
-                </div>
-            </div>
+                                          i18n.t('ui_0_only_for_connected_servers_without_errors')cle_cx')"8"i18n.t('ui_i18ni18n.t('ui_0_00c340_e40138_i18n_t_ui_0_only_for_connected_servers_without_errors_cle_cx_8_i18n_t_ui_cy_8_i18n_t_ui_r_6_i18n_t_i18n_t_ui_0_click_store_mcpserversstore_ontoolcountclick_store_mcpserversstore_ontoolcountclick_server_name_x_text_server_tool_count_tools_t_ui_span_tool_count_clickable_if_0_only_for_connected_servers_without_errors_span_class_tool_count_i18n_t_ui_x_show_server_tool_count_0_i18n_t_ui_click_store_mcpserversstore_ontoolcountclick_store_mcpserversstore_ontoolcountclick_server_name_i18n_i18n_t_ui_log_ui_x_text_server_tool_count_tools_i18n_t_ui_span_log_button_only_shown_if_has_log_is_true_span_class_log_btn_i18n_t_ui_x_show_server_has_log_i18n_t_ui_click_store_mcpserversstore_getserverlog_server_name_i18n_t_ui_log_span_div_error_message_if_any_div_class_server_error_row_i18n_t_ui_x_show_server_error_i18n_t_ui_span_class_server_error_i18n_t_ui_x_text_server_error_i18n_t_ui_span_div_div_template_div_x_show_store_mcpserversstore_servers_length_0_i18n_t_ui_clai18n_t_ui_no_servers_ui_no_servers_div_div_div_x_show_store_mcpserversstore_loading_i18n_t_ui_class_mcp_servers_loading_loading_servi18n_t_ui_loading_servers_status')</div>
         </template>
     </div>
 
     <style>
 
-    .mcp-servers-loading {
-        width: 100%;
-        text-align: center;
-        margin-top: 2rem;
-        margin-bottom: 2rem;
-    }
-        #mcp-servers-config-json {
-            width: 100%;
-            height: 40em;
-        }
-
-        .server-list {
-            margin-top: 0.5em;
-            margin-bottom: 1em;
-        }
-
-        .server-item {
-            display: flex;
-            flex-direction: column;
-            padding: 0.5em 0.7em;
-            margin-bottom: 0.4em;
-            min-height: 2.2em;
-            /* Ensure consistent height even without errors */
-            border: 1px solid rgba(192, 192, 192, 0.161);
-            /* Silver with 30% opacity */
-            border-radius: 4px;
-        }
-
-        .server-list {
-            margin-top: 0.5em;
-            margin-bottom: 1em;
-            display: flex;
-            flex-direction: column;
-            gap: 0.2em;
-        }
-
-        .server-main-row {
-            display: flex;
-            align-items: center;
-            gap: 0.8em;
-            width: 100%;
-        }
-
-        .status-dot {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .server-name {
-            font-weight: 600;
-            min-width: 12em;
-        }
-
-        .tool-count {
-            color: var(--c-fg2);
-            font-size: 0.9em;
-            user-select: none;
-        }
-
-        .tool-count {
-            cursor: default;
-        }
-
-        .tool-count:hover {
-            opacity: 0.8;
-            cursor: pointer;
-        }
-
-        .config-status {
-            color: #e40138;
-            font-size: 0.85em;
-            opacity: 0.8;
-        }
-
-        .log-btn {
-            margin-left: auto;
-            font-size: 0.9em;
-            cursor: pointer;
-            text-decoration: none;
-            opacity: 0.85;
-        }
-
-        .log-btn:hover {
-            opacity: 1;
-        }
-
-        .server-error-row {
-            margin-left: 1.8em;
-            margin-top: 0.1em;
-            font-size: 0.8em;
-            color: #F44336;
-            opacity: 0.85;
-            line-height: 1.2;
-        }
-
-        .no-servers {
-            padding: 0.5em;
-            color: var(--c-fg2);
-            font-style: italic;
-        }
-    </style>
+    i18n.t('ui_mcp_serversi18n_t_ui_mcp_servers_loading_width_100_text_align_center_margin_top_2rem_margin_bottom_2rem_mcp_servers_config_json_width_100_height_40em_server_list_margin_top_0_5em_margin_bottom_1em_server_item_display_flex_flex_direction_column_padding_0_5em_0_7em_margin_bottom_0_4em_min_height_2_2em_ensure_consistent_height_even_without_errors_border_1px_solid_rgba_192_192_192_0_161_silver_with_30_opacity_border_radius_4px_server_list_margin_top_0_5em_margin_bottom_1em_display_flex_flex_direction_column_gap_0_2em_server_main_row_display_flex_align_items_center_gap_0_8em_width_100_status_dot_display_flex_align_items_center_justify_content_center_server_name_font_weight_600_min_width_12em_tool_count_color_var_c_fg2_font_size_0_9em_user_select_none_tool_count_cursor_default_tool_count_hover_opacity_0_8_cursor_pointer_config_status_color_e40138_font_size_0_85em_opacity_0_8_log_btn_margin_left_auto_font_size_0_9em_cursor_pointer_text_decoration_none_opacity_0_85_log_btn_hover_opacity_1_server_error_row_margin_left_1_8em_margin_top_0_1em_font_size_0_8em_color_f44336_opacity_0_85_line_height_1_2_no_servers_padding_0_5em_color_var_c_fg2_font_style_italic')</style>
 
 </body>
 
