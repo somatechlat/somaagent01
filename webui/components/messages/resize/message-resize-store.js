@@ -1,21 +1,21 @@
-import { createStore } from "../../../js/AlpineStore.js";
-import { toggleCssProperty } from "../../../js/css.js";
+import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
+import { toggleCssProperty } from "i18n.t('ui_i18n_t_ui_js_css_js')";
 
 const model = {
   settings: {},
 
   async init() {
     this.settings =
-      JSON.parse(localStorage.getItem("messageResizeSettings") || "null") ||
+      JSON.parse(localStorage.getItem("i18n.t('ui_i18n_t_ui_messageresizesettings')") || "i18n.t('ui_i18n_t_ui_null')") ||
       this._getDefaultSettings();
     this._applyAllSettings();
   },
 
   _getDefaultSettings() {
     return {
-      "message": { minimized: false, maximized: false },
-      "message-agent": { minimized: true, maximized: false },
-      "message-agent-response": { minimized: false, maximized: true },
+      "i18n.t('ui_i18n_t_ui_message')": { minimized: false, maximized: false },
+      "i18n.t('ui_i18n_t_ui_message_agent')": { minimized: true, maximized: false },
+      "i18n.t('ui_i18n_t_ui_message_agent_response')": { minimized: false, maximized: true },
     };
   },
 
@@ -30,7 +30,7 @@ const model = {
   _setSetting(className, setting) {
     this.settings[className] = setting;
     localStorage.setItem(
-      "messageResizeSettings",
+      "i18n.t('ui_i18n_t_ui_messageresizesettings')",
       JSON.stringify(this.settings)
     );
   },
@@ -105,7 +105,7 @@ const model = {
           // Apply scroll with instant behavior
           chatHistory.scrollTo({
             top: scrollTop,
-            behavior: "auto"
+            behavior: "i18n.t('ui_i18n_t_ui_auto')"
           });
         } catch (e) {
           // Silent error handling
@@ -116,22 +116,22 @@ const model = {
   _applySetting(className, setting) {
     toggleCssProperty(
       `.${className} .message-body`,
-      "max-height",
-      setting.maximized ? "unset" : "30em"
+      "i18n.t('ui_i18n_t_ui_max_height')",
+      setting.maximized ? "i18n.t('ui_i18n_t_ui_unset')" : "i18n.t('ui_i18n_t_ui_30em')"
     );
     toggleCssProperty(
       `.${className} .message-body`,
-      "overflow-y",
-      setting.maximized ? "hidden" : "auto"
+      "i18n.t('ui_i18n_t_ui_overflow_y')",
+      setting.maximized ? "i18n.t('ui_i18n_t_ui_hidden')" : "i18n.t('ui_i18n_t_ui_auto')"
     );
     toggleCssProperty(
       `.${className} .message-body`,
-      "display",
-      setting.minimized ? "none" : "block"
+      "i18n.t('ui_i18n_t_ui_display')",
+      setting.minimized ? "i18n.t('ui_i18n_t_ui_none')" : "i18n.t('ui_i18n_t_ui_block')"
     );
   },
 };
 
-const store = createStore("messageResize", model);
+const store = createStore("i18n.t('ui_i18n_t_ui_messageresize')", model);
 
 export { store };

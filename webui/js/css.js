@@ -1,7 +1,7 @@
 // Create and keep a reference to a dynamic stylesheet for runtime CSS changes
 let dynamicStyleSheet;
 {
-  const style = document.createElement("style");
+  const style = document.createElement("i18n.t('ui_i18n_t_ui_style')");
   style.appendChild(document.createTextNode(""));
   document.head.appendChild(style);
   dynamicStyleSheet = style.sheet;

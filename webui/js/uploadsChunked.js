@@ -1,40 +1,7 @@
 // Adaptive chunked uploader module
 // Provides resumable, observable chunked upload for large files.
 // Usage: import { uploadFileChunked } from '/js/uploadsChunked.js';
-// uploadFileChunked(file, sessionId, (info) => { /* progress */ })
-
-export async function uploadFileChunked(file, sessionId, onProgress = () => {}, opts = {}) {
-  const filename = file.name;
-  const size = file.size;
-  const mime = file.type || 'application/octet-stream';
-  const resumeKey = `chunk-upload:${sessionId || 'unspecified'}:${filename}:${size}`;
-  const state = { started: performance.now(), lastBytes: 0, lastTs: performance.now() };
-  let startOffset = 0;
-  if (opts.resume && sessionStorage.getItem(resumeKey)) {
-    try { startOffset = parseInt(sessionStorage.getItem(resumeKey), 10) || 0; } catch (_) { startOffset = 0; }
-  }
-
-  // INIT
-  const initResp = await fetch('/v1/uploads/init', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify({ filename, size, mime, session_id: sessionId })
-  });
-  if (!initResp.ok) throw new Error(await initResp.text() || 'init failed');
-  const initData = await initResp.json();
-  const uploadId = initData.upload_id;
-  const chunkSize = initData.chunk_size || (4 * 1024 * 1024);
-
-  // Helper: progress callback wrapper (adds speed/eta)
-  function emitProgress(bytesUploaded, done = false) {
-    const now = performance.now();
-    const deltaBytes = bytesUploaded - state.lastBytes;
-    const deltaMs = now - state.lastTs || 1;
-    const speedBps = deltaBytes * 1000 / deltaMs; // bytes/sec instantaneous
-    const percent = initData.size_expected ? (bytesUploaded / initData.size_expected) : null;
-    let etaSeconds = null;
-    if (percent && percent > 0 && percent < 1) {
+// uploadFileChunked(file, sessionId, (info) => i18n.t('ui_i18n_t_ui_progress_export_async_function_uploadfilechunked_file_sessionid_onprogress_opts_const_filename_file_name_const_size_file_size_const_mime_file_type_application_octet_stream_const_resumekey_chunk_upload_sessionid_unspecified_filename_size_const_state_started_performance_now_lastbytes_0_lastts_performance_now_let_startoffset_0_if_opts_resume_sessionstorage_getitem_resumekey_try_startoffset_parseint_sessionstorage_getitem_resumekey_10_0_catch_startoffset_0_init_const_initresp_await_fetch_v1_uploads_init_method_post_headers_content_type_application_json_credentials_same_origin_body_json_stringify_filename_size_mime_session_id_sessionid_if_initresp_ok_throw_new_error_await_initresp_text_init_failed_const_initdata_await_initresp_json_const_uploadid_initdata_upload_id_const_chunksize_initdata_chunk_size_4_1024_1024_helper_progress_callback_wrapper_adds_speed_eta_function_emitprogress_bytesuploaded_done_false_const_now_performance_now_const_deltabytes_bytesuploaded_state_lastbytes_const_deltams_now_state_lastts_1_const_speedbps_deltabytes_1000_deltams_bytes_sec_instantaneous_const_percent_initdata_size_expected_bytesuploaded_initdata_size_expected_null_let_etaseconds_null_if_percent_percent_0_percent')< 1) {
       etaSeconds = ((initData.size_expected - bytesUploaded) / (speedBps || 1));
     }
     state.lastBytes = bytesUploaded; state.lastTs = now;
@@ -53,7 +20,7 @@ export async function uploadFileChunked(file, sessionId, onProgress = () => {}, 
 
   // CHUNKS
   let offset = startOffset;
-  if (offset > 0 && offset < size) {
+  if (offset > i18n.t('ui_i18n_t_ui_0_offset')< size) {
     emitProgress(offset, false); // resume indicator
   }
 

@@ -1,49 +1,17 @@
 <html>
 <head>
     <title>Notification Toast Stack</title>
-    <script type="module">
+    <script type="i18n.t('ui_i18n_t_ui_module')">
         // Uses unified notifications SSE store (notificationsStore.js) bridged via Alpine as $store.notificationSse
     </script>
 </head>
 <body>
     <div x-data>
-        <template x-if="$store.notificationSse">
-            <!-- Toast Stack Container -->
-            <div class="toast-stack-container"
-                 x-show="$store.notificationSse.toastStack && $store.notificationSse.toastStack.length > 0">
+        <templatei18n.t('ui_notification_toast_stack')notificationsse')"i18n.t('ui_toast_si18n_t_ui_uses_unified_notifications_sse_store_notificationsstore_js_bridged_via_alpine_as_store_notificationsse_i_store_notificationsse_toaststack_store_notificationsse_toaststack_length_0')">
 
-            <template x-for="(toast, index) in $store.notificationSse.toastStack" :key="toast.toastId">
-                <div class="toast-item"
-                     :class="'notification-' + (toast.severity || toast.type || 'info')"
-                     @click="globalThis.notificationsSse?.openModal && globalThis.notificationsSse.openModal()"
-                     x-transition:enter="toast-enter"
-                     x-transition:leave="toast-leave">
-
-                    <!-- Toast Icon -->
-                    <div class="toast-icon">
-                        <span class="material-symbols-outlined" x-text="toast.type === 'error' ? 'error' : (toast.type === 'warning' ? 'warning' : (toast.type === 'success' ? 'check_circle' : 'info'))"></span>
-                    </div>
-
-                    <!-- Toast Content -->
-                    <div class="toast-content">
-                        <div class="toast-title"
-                             x-show="toast.title"
-                             x-text="toast.title">
-                        </div>
-                        <div class="toast-message"
-                             x-text="toast.message">
-                        </div>
-                        <!-- <div class="toast-timestamp"
-                             x-text="$store.notificationStore.formatTimestamp(toast.timestamp)">
-                        </div> -->
-                    </div>
-
-                    <!-- Toast Dismiss -->
-                    <button class="toast-dismiss"
-                            @click.stop="globalThis.notificationsSse?.dismissToast && globalThis.notificationsSse.dismissToast(toast.toastId)"
-                            :title="i18n.t('tooltip.dismiss')">
-                        <span class="material-symbols-outlined">close</span>
-                    </button>
+            <template x-for="i18n.t('ui_i18n_t_ui_toast_index_in_store_notificationsse_toaststack')" :key="i18n.t('ui_i18n_t_ui_toast_toastid')">
+                <div class="i18n.t('ui_i18n_t_ui_toast_item')"
+                     :clai18n.t('ui_0')tification_toast_severity_toast_type_info')"i18n.t('ui_click')"i18n.t('ui_globalthis_notificationssse_openmodal_globalthis_notificationssse_openmodal')"i18n.t('ui_x_transition_enter')"i18n.t('ui_toast_enter')"i18n.t('ui_x_transition_leave')"i18n.t('ui_toast_leave')"i18n.t('ui_toast_icon_div_class')"i18n.t('ui_toast_icon')"i18n.t('ui_span_class')"i18n.t('ui_material_symbols_outlined')"i18n.t('ui_x_text')"i18n.t('ui_toast_type_error_error_toast_type_warning_warning_toast_type_success_check_circle_info')"i18n.t('ui_span_div_toast_content_div_class')"i18n.t('ui_toast_content')"i18n.t('ui_div_class')"i18n.t('ui_toast_title')"i18n.t('ui_x_show')"i18n.t('ui_toast_title')"i18n.t('ui_x_text')"i18n.t('ui_toast_title')"i18n.t('ui_div_div_class')"i18n.t('ui_toast_message')"i18n.t('ui_x_text')"i18n.t('ui_toast_message')"i18n.t('ui_div_div_class')"i18n.t('ui_toast_timestamp')"ii18n.t('ui_')t('ui_store_notificai18n.t('ui_i18n_t_ui_ss')p')"i18n.t('ui_div_div_i18n_t_ui_ss_button_class')"i18n.t('ui_toast_dismiss')"i18n.t('ui_click_stop')"i18n.t('ui_globalthis_notificationssse_dismisstoast_globalthis_notificationssse_dismisstoast_toast_toastid')"i18n.t('ui_title')"i18n.t('ui_i18n_t_tooltip_dismiss')"i18n.t('ui_span_class')"i18n.t('ui_material_symbols_outlined')">i18n.t('ui_closi18n.t('ui_i18n_t_ui_close')             </button>
                 </div>
             </template>
           </div>
@@ -51,172 +19,6 @@
     </div>
 
     <style>
-        /* Toast Stack Container */
-        .toast-stack-container {
-            position: absolute;
-            bottom: 5px; /* Spacing from the bottom of the zero-height container */
-            padding-right: 5px;
-            z-index: 15000;
-            display: flex;
-            flex-direction: column-reverse; /* Stack toasts upwards */
-            gap: 8px;
-            pointer-events: none;
-            max-width: 400px;
-            right: 5px; /* Anchor to the right */
-            align-items: flex-end;
-        }
-
-        /* Individual Toast Items */
-        .toast-item {
-            pointer-events: auto;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 16px;
-            background: var(--color-panel);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            /* backdrop-filter: blur(10px); */
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            position: relative;
-            min-height: 60px;
-        }
-
-        .toast-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Toast Type Styling */
-        .toast-item.notification-info {
-            border-left: 4px solid #2196F3;
-            /* background: rgba(33, 150, 243, 0.1); */
-        }
-
-        .toast-item.notification-success {
-            border-left: 4px solid #4CAF50;
-            /* background: rgba(76, 175, 80, 0.1); */
-        }
-
-        .toast-item.notification-warning {
-            border-left: 4px solid #FF9800;
-            /* background: rgba(255, 152, 0, 0.1); */
-        }
-
-        .toast-item.notification-error {
-            border-left: 4px solid #F44336;
-            /* background: rgba(244, 67, 54, 0.1); */
-        }
-
-        .toast-item.notification-progress {
-            border-left: 4px solid #9C27B0;
-            /* background: rgba(156, 39, 176, 0.1); */
-        }
-
-        /* Toast Icon */
-        .toast-icon {
-            font-size: 1.2rem;
-            line-height: 1;
-            min-width: 24px;
-            text-align: center;
-            margin-top: 2px;
-        }
-
-        /* Toast Content */
-        .toast-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .toast-title {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--color-primary);
-            margin-bottom: 4px;
-            line-height: 1.3;
-        }
-
-        .toast-message {
-            font-size: 0.85rem;
-            color: var(--color-text);
-            line-height: 1.4;
-            margin-bottom: 4px;
-        }
-
-        .toast-timestamp {
-            font-size: 0.75rem;
-            color: var(--color-text);
-            opacity: 0.6;
-        }
-
-        /* Toast Dismiss */
-        .toast-dismiss {
-            background: transparent; /* No background by default */
-            border: none;
-            border-radius: 4px;
-            color: var(--color-text);
-            cursor: pointer;
-            padding: 4px 6px;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-            opacity: 1; /* Always visible */
-        }
-
-        .toast-dismiss:hover {
-            background: var(--color-panel);
-            color: var(--color-primary);
-        }
-
-        /* Toast Animations */
-        .toast-enter {
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            opacity: 0;
-            transform: translateX(100%) scale(0.8);
-        }
-
-        .toast-leave {
-            transition: all 0.2s ease;
-            opacity: 0;
-            transform: translateX(100%) scale(0.8);
-        }
-
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .toast-stack-container {
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
-
-            .toast-item {
-                padding: 12px;
-                font-size: 0.9rem;
-            }
-
-            .toast-title {
-                font-size: 0.85rem;
-            }
-
-            .toast-message {
-                font-size: 0.8rem;
-            }
-        }
-
-        /* Accessibility */
-        @media (prefers-reduced-motion: reduce) {
-            .toast-enter,
-            .toast-leave {
-                transition: none;
-            }
-
-            .toast-item:hover {
-                transform: none;
-            }
-        }
-    </style>
+        i18n.t('ui_toasi18n.t('ui_i18n_t_ui_toast_stack_container_toast_stack_container_position_absolute_bottom_5px_spacing_from_the_bottom_of_the_zero_height_container_padding_right_5px_z_index_15000_display_flex_flex_direction_column_reverse_stack_toasts_upwards_gap_8px_pointer_events_none_max_width_400px_right_5px_anchor_to_the_right_align_items_flex_end_individual_toast_items_toast_item_pointer_events_auto_display_flex_align_items_flex_start_gap_12px_padding_16px_background_var_color_panel_border_1px_solid_var_color_border_border_radius_8px_cursor_pointer_transition_all_0_2s_ease_backdrop_filter_blur_10px_box_shadow_0_4px_12px_rgba_0_0_0_0_3_position_relative_min_height_60px_toast_item_hover_transform_translatey_2px_box_shadow_0_6px_20px_rgba_0_0_0_0_4_toast_type_styling_toast_item_notification_info_border_left_4px_solid_2196f3_background_rgba_33_150_243_0_1_toast_item_notification_success_border_left_4px_solid_4caf50_background_rgba_76_175_80_0_1_toast_item_notification_warning_border_left_4px_solid_ff9800_background_rgba_255_152_0_0_1_toast_item_notification_error_border_left_4px_solid_f44336_background_rgba_244_67_54_0_1_toast_item_notification_progress_border_left_4px_solid_9c27b0_background_rgba_156_39_176_0_1_toast_icon_toast_icon_font_size_1_2rem_line_height_1_min_width_24px_text_align_center_margin_top_2px_toast_content_toast_content_flex_1_min_width_0_toast_title_font_weight_600_font_size_0_9rem_color_var_color_primary_margin_bottom_4px_line_height_1_3_toast_message_font_size_0_85rem_color_var_color_text_line_height_1_4_margin_bottom_4px_toast_timestamp_font_size_0_75rem_color_var_color_text_opacity_0_6_toast_dismiss_toast_dismiss_background_transparent_no_background_by_default_border_none_border_radius_4px_color_var_color_text_cursor_pointer_padding_4px_6px_font_size_0_8rem_transition_all_0_2s_ease_opacity_1_always_visible_toast_dismiss_hover_background_var_color_panel_color_var_color_primary_toast_animations_toast_enter_transition_all_0_3s_cubic_bezier_0_68_0_55_0_265_1_55_opacity_0_transform_translatex_100_scale_0_8_toast_leave_transition_all_0_2s_ease_opacity_0_transform_translatex_100_scale_0_8_mobile_responsive_media_max_width_768px_toast_stack_container_bottom_10px_right_10px_left_10px_max_width_none_toast_item_padding_12px_font_size_0_9rem_toast_title_font_size_0_85rem_toast_message_font_size_0_8rem_accessibility_media_prefers_reduced_motion_reduce_toast_enter_toast_leave_transition_none_toast_item_hover_transform_none')</style>
 </body>
 </html>

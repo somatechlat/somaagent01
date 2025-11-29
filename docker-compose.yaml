@@ -1,3 +1,4 @@
+version: "3.9"
 # Canonical Docker Compose file for Agent Zero
 # This file defines all services for the development environment.
 
@@ -335,11 +336,10 @@ services:
     <<: *agent-service
     container_name: somaAgent01_fasta2a-gateway
     profiles: ["dev"]
+    # Simplified dependencies for compose validation (no condition syntax).
     depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
+      - kafka-init
+      - redis
     command:
       - python3
       - -m
@@ -367,11 +367,11 @@ services:
     # No profile restriction ensures it runs on any `docker compose up`.
     # Keeping the original configuration but removing the dev‑only profile.
     # profiles: ["dev"]
+    # Dependency on kafka-init and redis is optional for UI testing; removed to avoid
+    # validation errors caused by condition syntax in older compose versions.
     depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
+      - kafka-init
+      - redis
     command:
       - celery
       - -A

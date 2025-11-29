@@ -1,6 +1,6 @@
 ;                (function() {
-                    window.require(["ace/snippets/jade"], function(m) {
-                        if (typeof module == "object" && typeof exports == "object" && module) {
+                    window.require(["i18n.t('ui_ace_snippets_jade')"], function(m) {
+                        if (typeof module == "i18n.t('ui_object')" && typeof exports == "i18n.t('ui_object')" && module) {
                             module.exports = m;
                         }
                     });

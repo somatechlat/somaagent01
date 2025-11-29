@@ -6,129 +6,65 @@
 
 <body>
     <div x-data>
-        <template x-if="$store.memoryDashboardStore && $store.memoryDashboardStore.detailMemory">
-            <div class="memory-detail-container">
+        <template x-if="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_store_memorydashboardstore_detailmemory')">
+            <div class="i18n.t('ui_i18n_t_ui_memory_detail_container')">
                 <!-- Compact Modal Header -->
-                <div class="modal-header modal-header-compact">
-                    <div class="header-info">
-                        <span class="area-badge"
-                              :style="`background-color: ${$store.memoryDashboardStore.getAreaColor($store.memoryDashboardStore.detailMemory?.area)}`"
-                              x-text="$store.memoryDashboardStore.detailMemory?.area?.toUpperCase() || 'UNKNOWN'"></span>
-                        <span class="timestamp-text" x-text="$store.memoryDashboardStore.formatTimestamp($store.memoryDashboardStore.detailMemory?.timestamp, true)"></span>
-                        <span class="source-text" x-text="$store.memoryDashboardStore.detailMemory?.knowledge_source ? 'Knowledge' : 'Conversation'"></span>
-                    </div>
-                    <div class="header-actions">
-                        <!-- View Mode Buttons -->
-                        <template x-if="!$store.memoryDashboardStore.editMode">
-                            <div style="display: flex; gap: 0.5rem;">
-                                
-                                <button class="btn btn-action-header copy-all" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.formatMemoryForCopy($store.memoryDashboardStore.detailMemory))"
-                                        title="Copy Complete Memory with Metadata">
-                                    <span class="material-symbols-outlined">copy_all</span> All
+                <div class="i18n.t('ui_i18n_t_ui_modal_header_modal_header_compact')">
+                    <div class="i18n.t('ui_i18n_t_ui_header_info')">
+                        <span class="i18n.t('ui_i18n_t_ui_area_badge')"
+                              :style="i18n.t('ui_i18n_t_ui_background_color_store_memorydashboardstore_getareacolor_store_memorydashboardstore_detailmemory_area')"
+                              x-text="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_detailmemory_area_touppercase_unknown')"></span>
+                        <span class="i18n.t('ui_i18n_t_ui_timestamp_text')" x-text="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_formattimestamp_store_memorydashboardstore_detailmemory_timestamp_true')"></span>
+        i18n.t('ui_copy_all')        i18n.t('ui_all')urce_text')" i18n.t('ui_memory_details')('ui_store_memorydashboardstore_detailmemory_knowledge_source_knowledge_conversation')"i18n.t('ui_span_div_div_class')"i18n.t('ui_header_actions')"i18n.t('ui_view_mode_buttons_template_x_if')"i18n.t('ui_store_memorydashboardstore_editmode')"i18n.t('ui_div_style')"i18n.t('ui_display_flex_gap_0_5rem')"i18n.t('ui_button_class')"i18n.t('ui_btn_btn_action_i18n.t('ui_content_copy')all')"i1i18n.t('ui_content')dashboardstore_copytoclipboard_store_memorydashboardstore_formatmemoryforcopy_store_memorydashboardstore_detailmemory')"i18n.t('ui_title')"i18n.t('ui_copy_complete_memory_with_metadata')"i18n.t('ui_span_class')"i18n.t('ui_material_symbols_outlined')"i18n.t('ui_copy_all_span_all_button_button_class')"i18n.t('ui_btn_bi18n.t('ui_i18n_t_ui_copy_all_i18n_t_ui_all_i_material_symbols_outlined_edit_document')copytoclipboard_store_memorydashboardstore_detailmemory_content_full')"i18n.t('ui_title')"i18n.t('ui_copy_content_only')"i18n.t('ui_span_class')"i18n.t('ui_material_symbols_outlined')"i18n.t('ui_content_copy_span_content_button_div_style')"i18n.t('ui_width_2em')"i18n.t('ui_div_button_class')"i18n.t('ui_btn_btn_action_header_edit')"i18n.t('ui_click')"i18n.t('ui_store_memorydashboardstore_enableeditmode')"i18n.t('ui_delete')('ui_title')"i18n.t('ui_edit_memory')"i18n.t('ui_i18n_t_ui_copy_all_i18n_t_ui_all_i_material_symbols_outlined')">edit_document</span>
                                 </button>
-                                <button class="btn btn-action-header copy-content" @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.detailMemory?.content_full)"
-                                        title="Copy Content Only">
-                                    <span class="material-symbols-outlined">content_copy</span> Content
-                                </button>
-                                <div style="width:2em"></div>
-                                <button class="btn btn-action-header edit" @click="$store.memoryDashboardStore.enableEditMode()"
-                                        title="Edit Memory">
-                                    <span class="material-symbols-outlined">edit_document</span>
-                                </button>
-                                <button class="btn btn-action-header delete danger" @click="$store.memoryDashboardStore.deleteMemory($store.memoryDashboardStore.detailMemory)"
-                                        title="Delete Memory">
-                                    <span class="material-symbols-outlined">delete</span>
-                                </button>
-                            </div>
-                        </template>
-                        <!-- Edit Mode Buttons -->
-                        <template x-if="$store.memoryDashboardStore.editMode">
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-action-header cancel" @click="$store.memoryDashboardStore.cancelEditMode()"
-                                        title="Cancel Edit">
-                                    <span class="material-symbols-outlined">close</span>
-                                </button>
-                                <button class="btn btn-action-header confirm" @click="$store.memoryDashboardStore.confirmEditMode()"
-                                        title="Confirm Changes">
-                                    <span class="material-symbols-outlined">check</span>
+                                <button class="i18n.t('ui_i18n_t_ui_btn_btn_action_header_delete_dangeri18n.t('ui_i18n_t_ui_edit_document_div_style_i18n_t_ui_display_flex_gap_0_5rem')mory')"
+                                        title="i18n.t('ui_i18n_i18n_t_ui_content_copy_memory_i18n_t_ui_content_span_class')"i18n.t('ui_material_symbols_outlined')"i18n.t('ui_delete_span_button_div_template_edit_mode_buttons_template_x_if')"i18n.t('ui_store_memorydashboardstore_editmode')"i18n.t('ui_i18n_t_ui_edit_document_div_style')"i18n.t('ui_display_flex_gap_0_5rem')"i18n.t('ui_button_class')"i18n.t('ui_btn_btn_action_header_cancel')"i18n.t('ui_click')"i18n.t('ui_store_memorydashboardstore_canceleditmode')"i18n.t('ui_title')"i18n.t('ui_cancel_edit')"i18n.t('ui_span_class')"i18n.t('ui_material_symbols_outlined')i18n.t('ui_delete')e</span>
+                   i18n.t('ui_check')        </button>
+                                <button class="i18n.t('ui_i18n_t_ui_btn_btn_action_header_confirm')" @click="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_confirmeditmode')"
+                i18n.t('ui_i18n_t_ui_close')e="i18n.t('ui_i18n_t_ui_confirm_changes')">
+                                    <span class="i18n.t('ui_i18n_t_ui_material_symbols_outlined')">check</span>
                                 </button>
 
                             </div>
-                        </template>
+                   i18n.t('ui_memory_content')e>
                     </div>
                 </div>
 
                 <!-- Modal Body -->
-                <div class="modal-body">
+ i18n.t('ui_close')          <div class="i18n.t('ui_i18n_t_ui_modal_body')">
                     <!-- Main Content Section -->
-                    <div class="content-section-main">
-                        <div class="content-block">
+                    <div class="i18n.t('ui_i18n_t_ui_content_section_main')">
+                        <div class="i18n.t('ui_i18n_t_ui_content_block')">
                             <h4>Memory Content</h4>
-                            <template x-if="!$store.memoryDashboardStore.editMode">
-                                <div class="memory-content-display">
-                                    <p x-text="$store.memoryDashboardStore.detailMemory?.content_full"></p>
-                                </div>
-                            </template>
-                            <template x-if="$store.memoryDashboardStore.editMode">
-                                <textarea class="memory-content-display" x-model="$store.memoryDashboardStore.detailMemory.content_full"></textarea>
-                            </template>
+                            <template x-ii18n.t('ui_check')8n.t('ui_store_memorydai18n.t('ui_i18n_t_ui_memory_content')('ui_div_class')"i18n.t('ui_memory_content_display')"i18n.t('ui_p_x_text')"i18n.t('ui_store_memorydashboardstore_detailmemory_content_full')"i18n.t('ui_p_div_template_template_x_if')"i18n.t('ui_store_memorydashboardstore_editmode')"i18n.t('ui_i18n_t_ui_memory_content_textarea_class')"i18n.t('ui_memory_content_display')"i18n.t('ui_x_model')"i18n.t('ui_store_memorydashboardstore_detailmemory_content_full')"i18n.t('ui_textarea_template_div_tags_section_div_class')"i18n.t('ui_ci18n.t('ui_tags')nt_block')"i18n.t('ui_x_show')"i18n.t('ui_store_memorydashboardstore_detailmemory_tags_store_memorydashboardstore_detailmemory_tags_length_0')"i18n.t('ui_h4_tags_h4_div_class')"i18n.t('ui_tags_display')"i18n.t('ui_template_x_for')"i18n.t('ui_tag_in_store_memorydashboardstore_detailmemory_tags')"i18n.t('ui_key')"i18n.t('ui_tag')"i18n.t('ui_span_class')"i18n.t('ui_tag_displai18n.t('ui_i18n_t_ui_0_i18n_t_ui_tags')t('ui_span_template_i18n_t_ui_0_i18n_t_ui_tags_div_div_metadata_sidebar_div_class')"i18n.t('ui_metadata_sidebar')"i18n.t('ui_h4_metadata_h4_basic_info_div_class')"i18n.t('uii18n.t('ui_metadata')a_group')"i18n.t('ui_div_class')"i18n.t('ui_metadata_item')"i18n.t('ui_span_class')"i18n.t('ui_metadata_label')"i18n.t('ui_id_span_span_class')"i18n.t('ui_metadata_vi18n.t('ui_metadata')x-text="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_detailmemory_id_n_i18n.t('ui_id')"></span>
+                            </div>
+                            <div class="i18n.t('ui_i18n_t_ui_metadata_item')">
+                                <span cli18n.t('ui_id')="i18n.t('ui_i18n_t_ui_metadata_label')">Area:</span>
+                                <span class="i18n.t('ui_i18n_t_ui_metadata_value')" x-text="i18n.t('ui_i18n_t_ui_store_memorydashi18n.t('ui_area')store_detailmemory_area_n_a')"></span>
+                            </div>
+                            <div class="i18n.t('ui_i18n_t_ui_metadata_i18n_t_ui_area')">
+                                <span class="i18n.t('ui_i18n_t_ui_metadata_label')">Source:</span>
+                                <span class="i18n.t('ui_i18n_t_ui_metadata_value')" x-texi18n.t('ui_source').t('ui_i18n_t_ui_store_memorydashboardstore_detailmemory_knowledge_source_knowledge_conversation')"></span>
+                 i18n.t('ui_source')    </div>
                         </div>
 
-                        <!-- Tags Section -->
-                        <div class="content-block" x-show="$store.memoryDashboardStore.detailMemory?.tags && $store.memoryDashboardStore.detailMemory.tags.length > 0">
-                            <h4>Tags</h4>
-                            <div class="tags-display">
-                                <template x-for="tag in $store.memoryDashboardStore.detailMemory?.tags || []" :key="tag">
-                                    <span class="tag-display" x-text="tag"></span>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Metadata Sidebar -->
-                    <div class="metadata-sidebar">
-                        <h4>Metadata</h4>
-
-                        <!-- Basic Info -->
-                        <div class="metadata-group">
-                            <div class="metadata-item">
-                                <span class="metadata-label">ID:</span>
-                                <span class="metadata-value" x-text="$store.memoryDashboardStore.detailMemory?.id || 'N/A'"></span>
-                            </div>
-                            <div class="metadata-item">
-                                <span class="metadata-label">Area:</span>
-                                <span class="metadata-value" x-text="$store.memoryDashboardStore.detailMemory?.area || 'N/A'"></span>
-                            </div>
-                            <div class="metadata-item">
-                                <span class="metadata-label">Source:</span>
-                                <span class="metadata-value" x-text="$store.memoryDashboardStore.detailMemory?.knowledge_source ? 'Knowledge' : 'Conversation'"></span>
-                            </div>
-                        </div>
-
-                        <!-- Timestamps -->
-                        <div class="metadata-group">
+                      i18n.t('ui_i18n_t_ui_source')                       <div class="i18n.t('ui_i18n_t_ui_metadata_group')">
                             <h5>Timestamps</h5>
-                            <div class="metadata-item">
-                                <span class="metadata-label">Created:</span>
-                                <span class="metadata-value" x-text="$store.memoryDashboardStore.formatTimestamp($store.memoryDashboardStore.detailMemory?.timestamp, false)"></span>
+                            <div class="i18n.t('ui_i18n_t_i18n.t('ui_timestamps')a_item')">
+                                <span class="i18n.t('ui_i18n_t_ui_metadata_label')">Created:</span>
+            i18n.t('ui_timestamps')   i18n.t('ui_created')span class="i18n.t('i18n.t('ui_i18n_t_ui_timestamps')text="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_formattimestamp_store_memi18n_t_ui_created_oardstore_detailmemory_timestamp_false')"></span>
                             </div>
                         </div>
 
                         <!-- Source Information -->
-                        <div class="metadata-group" x-show="$store.memoryDashboardStore.detailMemory?.source_file">
-                            <h5>Source File</h5>
-                            <div class="metadata-item">
-                                <span class="metadata-value source-file-display" x-text="$store.memoryDashboardStore.detailMemory?.source_file"></span>
+                        <div class="i18n.t('ui_i18n_t_ui_metadata_group')" x-show="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_detailmemory_source_file')">
+                            <h5>Source File</h5>i18n.t('ui_source_file')                  <div class="i18n.t('ui_i18n_t_ui_metadata_item')">
+                              i18n.ti18n.t('ui_i18n_t_ui_source_file_ss_i18n_t_ui_metadata_value_source_file_display_x_text_i18n_t_ui_store_memorydashboardstore_detailmemory_source_file')ource_file')"></span>
                             </div>
                         </div>
 
                         <!-- All Custom Metadata -->
-                        <div class="metadata-group" x-show="$store.memoryDashboardStore.detailMemory?.metadata && Object.keys($store.memoryDashboardStore.detailMemory.metadata).length > 0">
-                            <h5>Raw Metadata</h5>
-                            <template x-for="[key, value] in Object.entries($store.memoryDashboardStore.detailMemory?.metadata || {})" :key="key">
-                                <div class="metadata-item">
-                                    <span class="metadata-label" x-text="key + ':'"></span>
-                                    <span class="metadata-value" x-text="typeof value === 'object' ? JSON.stringify(value) : value"></span>
+                        <div class="i18n.t('ui_i18n_t_ui_metadata_group')" x-show="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_detailmemory_metadata_object_keys_store_memorydashboardstore_detailmemory_metadata_length_0')"i18n.t('ui_raw_metadata')              i18n.t('ui_i18n_t_ui_0_for_i18n_t_ui_raw_metadata_key_value_in_object_entries_store_memorydashboardstore_detailmemory_metadata_key_i18n_t_ui_key')'ui_key')"i18n.t('ui_div_class')"i18n.t('ui_metadata_item')"i18n.t('ui_span_class')"i18n.t('ui_metadata_label')"i18n.t('ui_x_text')"i18n.t('ui_key')"i18n.t('ui_span_span_class')"i18n.t('ui_metadata_value')"i18n.t('ui_x_text')"i18n.t('ui_typeof_value_object_json_stringify_value_value')"></span>
                                 </div>
                             </template>
                         </div>
@@ -138,271 +74,7 @@
             </div>
         </template>
         <style>
-            .modal-header-compact {
-                background: linear-gradient(135deg, var(--color-panel) 0%, var(--color-background) 100%);
-                position: sticky;
-                padding-left: 0.8rem;
-                border-radius: 6px;
-                top: 0;
-                z-index: 100;
-            }
-        
-            .header-info {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                font-size: 0.9rem;
-            }
-        
-            .timestamp-text,
-            .source-text {
-                color: var(--color-text);
-                opacity: 0.8;
-                padding: 0.25rem 0.5rem;
-                border-radius: var(--border-radius);
-                font-size: 0.75rem;
-                font-weight: 500;
-                border: 1px solid;
-            }
-        
-            .btn-action-header {
-                padding: 0.4rem 0.6rem;
-                display: flex;
-                align-items: center;
-                gap: 0.25rem;
-                background: var(--color-message-bg);
-                color: var(--color-text);
-            }
-        
-            .btn-action-header .material-symbols-outlined {
-                font-size: 18px;
-            }
-        
-            .btn-action-header.delete:hover {
-                border-color: var(--color-accent);
-                color: var(--color-accent);
-            }
-        
-            .btn-action-header.copy-all:hover,
-            .btn-action-header.copy-content:hover,
-            .btn-action-header.edit:hover {
-                border-color: var(--color-primary);
-                color: var(--color-primary);
-            }
-        
-            .btn-action-header.confirm:hover {
-                border-color: #4CAF50;
-                color: #4CAF50;
-                background: var(--color-background);
-            }
-        
-            .btn-action-header.cancel:hover {
-                border-color: var(--color-accent);
-                color: var(--color-accent);
-                background: var(--color-background);
-            }
-        
-            .modal-body {
-                display: flex;
-                min-height: 60vh;
-                max-height: 100%;
-            }
-        
-            .content-section-main {
-                flex: 1;
-                padding: 1.5rem;
-                padding-bottom: 0;
-                overflow-y: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-        
-            .content-block {
-                /* margin-bottom: 3rem; */
-                display: flex;
-                flex-direction: column;
-                min-height: 0;
-            }
-            
-            /* Make the first content block (Memory Content) take all available space */
-            .content-block:first-child {
-                flex: 1;
-                /* margin-bottom: 1.5rem; */
-                min-height: 0;
-            }
-        
-            .content-block h4 {
-                margin: 0 0 1rem 0;
-                color: var(--color-text);
-                font-size: 1.1rem;
-                font-weight: 600;
-                /* border-bottom: 1px solid var(--color-border); */
-                /* padding-bottom: 0.5rem; */
-            }
-        
-            .memory-content-display {
-                border: 1px solid var(--color-border);
-                border-radius: 8px;
-                /* padding: 1.5rem; */
-                line-height: 1.6;
-                color: var(--color-text);
-                /* Fixed height: parent container minus 1rem */
-                flex: 1;
-                min-height: 25em;
-                /* Ensure textarea uses same styling */
-                font-family: inherit;
-                font-size: inherit;
-                resize: none;
-                width: 100%;
-                box-sizing: border-box;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .memory-content-display p {
-                background: var(--color-panel);
-                margin: 0;
-                padding: 1.5rem;
-                white-space: pre-wrap;
-                word-break: break-word;
-                overflow-y: auto;
-                overflow-x: hidden;
-                height: 0;
-                flex-grow: 1;
-            }
-            
-            textarea.memory-content-display {
-                padding: 1.5rem;
-                overflow-y: auto;
-                display: block;
-            }
-        
-            .tags-display {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                background: var(--color-background);
-                padding: 0.75rem;
-                border-radius: 8px;
-                border: 1px solid var(--color-border);
-            }
-        
-            .tag-display {
-                background: var(--color-primary);
-                color: white;
-                padding: 0.25rem 0.75rem;
-                border-radius: 12px;
-                font-size: 0.75rem;
-                font-weight: 500;
-            }
-        
-            .metadata-sidebar {
-                min-width: 300px;
-                max-width: 350px;
-                background: var(--color-panel);
-                border-left: 1px solid var(--color-border);
-                padding: 1.5rem;
-                overflow-y: auto;
-                max-height: 50em;
-            }
-        
-            .metadata-sidebar h4 {
-                margin: 0 0 1rem 0;
-                color: var(--color-text);
-                font-size: 1.1rem;
-                font-weight: 600;
-            }
-        
-            .metadata-group {
-                margin-bottom: 1.5rem;
-            }
-        
-            .metadata-group h5 {
-                margin: 0 0 0.75rem 0;
-                color: var(--color-text);
-                opacity: 0.7;
-                font-size: 0.9rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-        
-            .metadata-item {
-                display: flex;
-                flex-direction: column;
-                gap: 0.25rem;
-                margin-bottom: 0.75rem;
-                padding: 0.5rem;
-                background: var(--color-background);
-                border: 1px solid var(--color-border);
-                border-radius: 6px;
-            }
-        
-            .metadata-label {
-                font-size: 0.8rem;
-                font-weight: 600;
-                color: var(--color-text);
-                opacity: 0.7;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-            }
-        
-            .metadata-value {
-                font-size: 0.9rem;
-                color: var(--color-text);
-                word-break: break-all;
-                line-height: 1.4;
-            }
-        
-            .source-file-display {
-                font-family: monospace;
-                background: var(--color-panel);
-                padding: 0.5rem;
-                border-radius: 4px;
-                border: 1px solid var(--color-border);
-            }
-        
-            .memory-detail-container {
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-            }
-            
-            /* Responsive design for modal */
-            @media (max-width: 870px) {
-                .modal-body {
-                    flex-direction: column;
-                }
-        
-                .metadata-sidebar {
-                    min-width: unset;
-                    max-width: unset;
-                    min-height: unset;
-                    border-left: none;
-                    border-top: 1px solid var(--color-border);
-                }
-
-                .metadata-item {
-                    display: block;
-                }
-        
-                .modal-header-compact {
-                    padding: 0.75rem 1rem;
-                    flex-wrap: wrap;
-                    gap: 0.75rem;
-                }
-        
-                .header-info {
-                    flex-wrap: wrap;
-                }
-        
-                .content-section-main,
-                .metadata-sidebar {
-                    padding: 1rem;
-                }
-            }
-        </style>
+            i18n.t('ui_moi18n.t('ui_i18n_t_ui_modal_header_compact_background_linear_gradient_135deg_var_color_panel_0_var_color_background_100_position_sticky_padding_left_0_8rem_border_radius_6px_top_0_z_index_100_header_info_display_flex_align_items_center_gap_0_5rem_font_size_0_9rem_timestamp_text_source_text_color_var_color_text_opacity_0_8_padding_0_25rem_0_5rem_border_radius_var_border_radius_font_size_0_75rem_font_weight_500_border_1px_solid_btn_action_header_padding_0_4rem_0_6rem_display_flex_align_items_center_gap_0_25rem_background_var_color_message_bg_color_var_color_text_btn_action_header_material_symbols_outlined_font_size_18px_btn_action_header_delete_hover_border_color_var_color_accent_color_var_color_accent_btn_action_header_copy_all_hover_btn_action_header_copy_content_hover_btn_action_header_edit_hover_border_color_var_color_primary_color_var_color_primary_btn_action_header_confirm_hover_border_color_4caf50_color_4caf50_background_var_color_background_btn_action_header_cancel_hover_border_color_var_color_accent_color_var_color_accent_background_var_color_background_modal_body_display_flex_min_height_60vh_max_height_100_content_section_main_flex_1_padding_1_5rem_padding_bottom_0_overflow_y_hidden_display_flex_flex_direction_column_content_block_margin_bottom_3rem_display_flex_flex_direction_column_min_height_0_make_the_first_content_block_memory_content_take_all_available_space_content_block_first_child_flex_1_margin_bottom_1_5rem_min_height_0_content_block_h4_margin_0_0_1rem_0_color_var_color_text_font_size_1_1rem_font_weight_600_border_bottom_1px_solid_var_color_border_padding_bottom_0_5rem_memory_content_display_border_1px_solid_var_color_border_border_radius_8px_padding_1_5rem_line_height_1_6_color_var_color_text_fixed_height_parent_container_minus_1rem_flex_1_min_height_25em_ensure_textarea_uses_same_styling_font_family_inherit_font_size_inherit_resize_none_width_100_box_sizing_border_box_overflow_hidden_display_flex_flex_direction_column_memory_content_display_p_background_var_color_panel_margin_0_padding_1_5rem_white_space_pre_wrap_word_break_break_word_overflow_y_auto_overflow_x_hidden_height_0_flex_grow_1_textarea_memory_content_display_padding_1_5rem_overflow_y_auto_display_block_tags_display_display_flex_flex_wrap_wrap_gap_0_5rem_background_var_color_background_padding_0_75rem_border_radius_8px_border_1px_solid_var_color_border_tag_display_background_var_color_primary_color_white_padding_0_25rem_0_75rem_border_radius_12px_font_size_0_75rem_font_weight_500_metadata_sidebar_min_width_300px_max_width_350px_background_var_color_panel_border_left_1px_solid_var_color_border_padding_1_5rem_overflow_y_auto_max_height_50em_metadata_sidebar_h4_margin_0_0_1rem_0_color_var_color_text_font_size_1_1rem_font_weight_600_metadata_group_margin_bottom_1_5rem_metadata_group_h5_margin_0_0_0_75rem_0_color_var_color_text_opacity_0_7_font_size_0_9rem_font_weight_600_text_transform_uppercase_letter_spacing_0_5px_metadata_item_display_flex_flex_direction_column_gap_0_25rem_margin_bottom_0_75rem_padding_0_5rem_background_var_color_background_border_1px_solid_var_color_border_border_radius_6px_metadata_label_font_size_0_8rem_font_weight_600_color_var_color_text_opacity_0_7_text_transform_uppercase_letter_spacing_0_3px_metadata_value_font_size_0_9rem_color_var_color_text_word_break_break_all_line_height_1_4_source_file_display_font_family_monospace_background_var_color_panel_padding_0_5rem_border_radius_4px_border_1px_solid_var_color_border_memory_detail_container_display_flex_flex_direction_column_height_100_responsive_design_for_modal_media_max_width_870px_modal_body_flex_direction_column_metadata_sidebar_min_width_unset_max_width_unset_min_height_unset_border_left_none_border_top_1px_solid_var_color_border_metadata_item_display_block_modal_header_compact_padding_0_75rem_1rem_flex_wrap_wrap_gap_0_75rem_header_info_flex_wrap_wrap_content_section_main_metadata_sidebar_padding_1rem')</style>
     </div>
 </body>
 

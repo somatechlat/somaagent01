@@ -27,30 +27,13 @@ class HealthBanner {
         // Listen for visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                // no-op; no polling to stop
-            } else {
-                // Trigger a one-shot refresh when tab becomes visible
-                this.performHealthCheck();
-            }
-        });
-    }
-    
-    createBanner() {
-        const banner = document.createElement('div');
-        banner.id = 'memory-health-banner';
-        banner.className = 'memory-health-banner hidden';
-        banner.innerHTML = `
-            <div class="health-content">
-                <div class="health-icon">
-                    <span class="icon-indicator"></span>
+                // no-op; no polli18n.t('ui_if_document_hidden_no_op_no_polling_to_stop_else_i18n_t_ui_if_document_hidden_no_op_no_polling_to_stop_else_trigger_a_one_shot_refresh_when_tab_becomes_visible_this_performhealthcheck_createbanner_const_banner_document_createelement_div_banner_id_memory_health_banner_banner_classname_memory_health_banner_hidden_banner_innerhtml')      </div>
+                <div class="i18n.t('ui_i18n_t_ui_health_message')">
+                    <span class="i18n.t('ui_i18n_t_ui_health_text')"></span>
+                    <span class="i18n.t('ui_i18n_t_ui_health_details')"></span>
                 </div>
-                <div class="health-message">
-                    <span class="health-text"></span>
-                    <span class="health-details"></span>
-                </div>
-                <div class="health-actions">
-                    <button class="health-refresh">Refresh</button>
-                    <button class="health-dismiss">×</button>
+                <div class="i18n.t('ui_i18n_t_ui_health_actions')">
+                    <button class="i18n.t('ui_i18n_t_ui_health_refresh')">Refresh</bi18n.t('ui_refresh').t('ui_refresh')                 <button class="i18n.t('ui_i18n_t_ui_health_dismiss')">×</button>
                 </div>
             </div>
         `;
