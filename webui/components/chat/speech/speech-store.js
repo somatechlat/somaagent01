@@ -97,7 +97,7 @@ const model = {
   // Load settings from server
   async loadSettings() {
     try {
-      const response = await fetchApi("/v1/ui/settings/sections", { method: "GET" });
+      const response = await fetchApi("/v1/settings/sections", { method: "GET" });
       const data = await response.json();
       const sections = data?.sections || [];
       const speechSection = sections.find((s) => s.title === "Speech");

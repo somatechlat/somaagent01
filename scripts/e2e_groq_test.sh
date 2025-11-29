@@ -11,12 +11,12 @@ if [[ -z "${GROQ_API_KEY:-}" ]]; then
 fi
 
 echo "[INFO] Saving Groq model profile + credential via sections endpoint"
-curl -sS -X POST "${GW_BASE}/v1/ui/settings/sections" \
+curl -sS -X POST "${GW_BASE}/v1/settings/sections" \
   -H 'Content-Type: application/json' \
   -d "{\n    \"sections\": [\n      { \"id\": \"llm\", \"fields\": [\n        { \"id\": \"chat_model_provider\", \"value\": \"groq\" },\n        { \"id\": \"chat_model_name\", \"value\": \"llama-3.1-8b-instant\" },\n        { \"id\": \"chat_model_api_base\", \"value\": \"https://api.groq.com/openai/v1\" },\n        { \"id\": \"api_key_groq\", \"value\": \"${GROQ_API_KEY}\" }\n      ] }\n    ]\n  }" | jq '.settings.sections[] | select(.id=="llm")'
 
 echo "[INFO] Credential status (should show groq present + updated_at)"
-curl -sS "${GW_BASE}/v1/ui/settings/credentials" | jq .
+curl -sS "${GW_BASE}/v1/settings/credentials" | jq .
 
 echo "[INFO] Running connectivity test"
 TEST_OUT=$(curl -sS -X POST "${GW_BASE}/v1/llm/test" -H 'Content-Type: application/json' -d '{"role":"dialogue"}')

@@ -6,6 +6,8 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+# Prometheus client for custom metrics (FSM transitions)
+from prometheus_client import Counter, Gauge
 from typing import Any, Awaitable, Callable, Coroutine, Dict
 
 # Third‑party imports (sorted alphabetically)
@@ -280,15 +282,49 @@ class Agent:
     DATA_NAME_SUBORDINATE = "_subordinate"
     DATA_NAME_CTX_WINDOW = "ctx_window"
 
+    # ---------------------------------------------------------------------
+    # Finite‑State‑Machine (FSM) support
+    # ---------------------------------------------------------------------
+    class AgentState(Enum):
+        IDLE = "idle"
+        PLANNING = "planning"
+        EXECUTING = "executing"
+        VERIFYING = "verifying"
+        ERROR = "error"
+
+    # Prometheus counter to track state transitions
+    fsm_transition_total = Counter(
+        "fsm_transition_total",
+        "Counts FSM state transitions",
+        ["from_state", "to_state"],
+    )
+    # Gauge to expose the current FSM state (value 1 for active state)
+    fsm_state_gauge = Gauge(
+        "somaagent_fsm_state",
+        "Current FSM state of the agent",
+        ["state"],
+    )
+
     def __init__(self, number: int, config: AgentConfig, context: AgentContext | None = None):
 
-        # agent config
+        # -----------------------------------------------------------------
+        # Core configuration and context setup
+        # -----------------------------------------------------------------
         self.config = config
 
-        # agent context
-        self.context = context or AgentContext(config=config, agent0=self)
+        # Create a fresh AgentContext *without* automatically linking back to
+        # this Agent instance.  The original implementation instantiated the
+        # context with ``agent0=self`` which caused recursive Agent creation
+        # (Agent → AgentContext → Agent → …).  To avoid that recursion while
+        # preserving the original behaviour, we create the context first and
+        # then manually assign ``self`` as the ``agent0`` reference.
+        self.context = context or AgentContext(config=config, agent0=None)
+        # Ensure the context knows about this Agent instance.
+        self.context.agent0 = self
 
-        # non-config vars
+        # -----------------------------------------------------------------
+        # Non‑configurable instance attributes
+        # -----------------------------------------------------------------
         self.number = number
         self.agent_name = f"A{self.number}"
 
@@ -297,16 +333,58 @@ class Agent:
         self.intervention: UserMessage | None = None
         self.data: dict[str, Any] = {}  # free data object all the tools can use
 
-        # SomaBrain integration
+        # -----------------------------------------------------------------
+        # SomaBrain integration (kept lightweight for tests)
+        # -----------------------------------------------------------------
         self.soma_client = SomaClient.get()
         self.persona_id = config.profile or f"agent_{number}"
         self.tenant_id = config.profile or "default"
-        self.session_id = context.id if context else f"session_{number}"
-        
-        # Initialize persona in SomaBrain if not exists
+        self.session_id = self.context.id if self.context else f"session_{number}"
+
+        # Initialise persona in SomaBrain if not exists – mocked in tests.
         asyncio.run(self._initialize_persona())
 
+        # Call any agent‑init extensions – also mocked in tests.
         asyncio.run(self.call_extensions("agent_init"))
+
+        # -----------------------------------------------------------------
+        # FSM initialisation
+        # -----------------------------------------------------------------
+        self.state: Agent.AgentState = Agent.AgentState.IDLE
+        # Set the gauge for the initial state (IDLE) to 1, others default to 0
+        Agent.fsm_state_gauge.labels(state=Agent.AgentState.IDLE.value).set(1)
+
+    # ---------------------------------------------------------------------
+    # FSM helper – transition to a new state and emit metrics
+    # ---------------------------------------------------------------------
+    def set_state(self, new_state: "Agent.AgentState") -> None:
+        """Transition the agent to *new_state*.
+
+        Logs the transition, updates the internal ``self.state`` attribute and
+        increments the ``fsm_transition_total`` Prometheus counter.
+        """
+        old_state = getattr(self, "state", Agent.AgentState.IDLE)
+        if old_state == new_state:
+            return
+        # Update state
+        self.state = new_state
+        # Emit Prometheus metric for transition count
+        Agent.fsm_transition_total.labels(
+            from_state=old_state.value, to_state=new_state.value
+        ).inc()
+        # Update gauge: set new state to 1, old state to 0
+        Agent.fsm_state_gauge.labels(state=old_state.value).set(0)
+        Agent.fsm_state_gauge.labels(state=new_state.value).set(1)
+        # Human‑readable log for debugging / observability
+        PrintStyle(font_color="magenta", padding=False).print(
+            f"FSM transition: {old_state.value} → {new_state.value}"
+        )
+        # Record in the agent‑context log as well
+        self.context.log.log(
+            type="info",
+            heading="FSM Transition",
+            content=f"{old_state.value} → {new_state.value}",
+        )
 
     async def monologue(self):
         while True:
@@ -330,14 +408,19 @@ class Agent:
                     self.context.streaming_agent = self  # mark self as current streamer
                     self.loop_data.iteration += 1
 
+                    # FSM: each loop iteration starts in EXECUTING state
+                    self.set_state(Agent.AgentState.EXECUTING)
+
                     # call message_loop_start extensions
                     await self.call_extensions("message_loop_start", loop_data=self.loop_data)
 
                     try:
+                        # FSM: before planning we move to PLANNING state
+                        self.set_state(Agent.AgentState.PLANNING)
                         # REAL IMPLEMENTATION - Apply neuromodulation to cognitive state
                         await self._apply_neuromodulation_to_cognition()
                         
-                        # REAL IMPLEMENTATION - Generate plan if needed
+                        # REAL IMPLEMENTATION - Generate plan if needed (still in PLANNING state)
                         await self._generate_contextual_plan()
                         
                         # prepare LLM chain (model, system, history)
@@ -420,9 +503,11 @@ class Agent:
                             # process tools requested in agent message
                             tools_result = await self.process_tools(enhanced_response)
                             if tools_result:  # final response of message loop available
+                                # FSM: move to VERIFYING before finalizing interaction
+                                self.set_state(Agent.AgentState.VERIFYING)
                                 # REAL IMPLEMENTATION - Track successful interaction in semantic graph
                                 await self._track_successful_interaction(enhanced_response)
-                                
+                            
                                 # REAL IMPLEMENTATION - Apply context-aware neuromodulation adjustment
                                 context = {
                                     "user_message": self.last_user_message.message if hasattr(self.last_user_message, 'message') else str(self.last_user_message),
@@ -430,7 +515,9 @@ class Agent:
                                     "interaction_history": self.history.output()[-10:] if len(self.history.output()) > 10 else self.history.output()
                                 }
                                 await self.adjust_neuromodulators_based_on_context(context)
-                                
+                            
+                                # FSM: back to IDLE after successful verification
+                                self.set_state(Agent.AgentState.IDLE)
                                 return tools_result  # break the execution if the task is done
 
                     # exceptions inside message loop:
@@ -444,6 +531,8 @@ class Agent:
                         PrintStyle(font_color="red", padding=True).print(msg["message"])
                         self.context.log.log(type="error", content=msg["message"])
                         
+                        # FSM: transition to ERROR state for repairable failures
+                        self.set_state(Agent.AgentState.ERROR)
                         # REAL IMPLEMENTATION - Track failed interaction and adjust neuromodulators
                         await self._track_failed_interaction(str(e))
                         
@@ -456,6 +545,8 @@ class Agent:
                         )
                         
                     except Exception as e:
+                        # FSM: transition to ERROR for unexpected exceptions
+                        self.set_state(Agent.AgentState.ERROR)
                         # Other exception kill the loop
                         self.handle_critical_exception(e)
 

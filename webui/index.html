@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <!-- Base URL for relative asset paths; ensures they resolve under /static/ -->
     <base href="/static/">
-    <title>Agent Zero</title>
+    <title x-text="i18n.t('title.agentZero')">Agent Zero</title>
     <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="css/messages.css">
@@ -146,7 +146,7 @@
         <div class="icons-section" id="hide-button" x-data="{ connected: true }">
             <!--Sidebar-->
             <!-- Sidebar Toggle Button -->
-            <button id="toggle-sidebar" class="toggle-sidebar-button" aria-label="Toggle Sidebar" aria-expanded="false">
+            <button id="toggle-sidebar" class="toggle-sidebar-button" :aria-label="i18n.t('aria.toggleSidebar')" aria-expanded="false">
                 <span aria-hidden="true">
                     <!-- Hamburger Icon -->
                     <svg id="sidebar-hamburger-svg" xmlns="http://www.w3.org/2000/svg" width="22" height="22"
@@ -167,12 +167,12 @@
             <!--Sidebar upper elements-->
             <div class="left-panel-top">
                 <div class="config-section" x-data="{ showQuickActions: true }">
-                    <button class="config-button" id="resetChat" @click="resetChat()">Reset Chat</button>
-                    <button class="config-button" id="newChat" @click="newChat()">New Chat</button>
-                    <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
-                    <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
-                    <button class="config-button" id="restart" @click="restart()">Restart</button>
-                    <button class="config-button" id="settings" @click="settingsModalProxy.openModal()"><svg
+                        <button class="config-button" id="resetChat" @click="resetChat()" x-text="i18n.t('sidebar.resetChat')"></button>
+                        <button class="config-button" id="newChat" @click="newChat()" x-text="i18n.t('sidebar.newChat')"></button>
+                        <button class="config-button" id="loadChats" @click="loadChats()" x-text="i18n.t('sidebar.loadChats')"></button>
+                        <button class="config-button" id="loadChat" @click="saveChat()" x-text="i18n.t('sidebar.saveChat')"></button>
+                        <button class="config-button" id="restart" @click="restart()" x-text="i18n.t('sidebar.restart')"></button>
+                        <button class="config-button" id="settings" @click="settingsModalProxy.openModal()" x-text="i18n.t('sidebar.settings')"><svg
                             xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-5.0 -17.0 110.0 135.0"
                             fill="currentColor" width="24" height="24">
                             <path
@@ -183,7 +183,7 @@
                             </path>
                         </svg>Settings</button>
                     <button class="config-button" id="memory-dash"
-                        @click="openModal('settings/memory/memory-dashboard.html');">Memory</button>
+                        @click="openModal('settings/memory/memory-dashboard.html');" x-text="i18n.t('sidebar.memory')"></button>
 
 
                 </div>
@@ -191,8 +191,8 @@
                 <!-- Tabs container -->
                 <div class="tabs-container">
                     <div class="tabs">
-                        <div class="tab active" id="chats-tab">Chats</div>
-                        <div class="tab" id="tasks-tab">Tasks</div>
+                        <div class="tab active" id="chats-tab" x-text="i18n.t('tabs.chats')"></div>
+                        <div class="tab" id="tasks-tab" x-text="i18n.t('tabs.tasks')"></div>
                     </div>
                 </div>
 
@@ -214,7 +214,7 @@
                             </template>
                         </ul>
                         <div class="empty-list-message" x-show="contexts.length === 0">
-                            <p><i>No chats to list.</i></p>
+                            <p><i x-text="i18n.t('empty.chats')"></i></p>
                         </div>
                     </div>
                 </div>
@@ -278,7 +278,7 @@
                             </template>
                         </ul>
                         <div class="empty-list-message" x-show="tasks.length === 0">
-                            <p><i>No tasks to list.</i></p>
+                            <p><i x-text="i18n.t('empty.tasks')"></i></p>
                         </div>
                     </div>
                 </div>
@@ -299,7 +299,7 @@
                         <ul class="config-list" id="pref-list" x-show="prefOpen" x-collapse x-transition>
                             <!-- Preferences Items -->
                             <li x-data="{ autoScroll: true }">
-                                <span>Autoscroll</span>
+                                <span x-text="i18n.t('label.autoscroll')"></span>
                                 <label class="switch">
                                     <input id="auto-scroll-switch" type="checkbox" x-model="autoScroll"
                                         x-effect="globalThis.safeCall('toggleAutoScroll',autoScroll)">
@@ -323,7 +323,7 @@
                                 </label>
                             </li>
                             <li x-data="{ showThoughts: true }">
-                                <span>Show thoughts</span>
+                                <span x-text="i18n.t('label.showThoughts')"></span>
                                 <label class="switch">
                                     <input type="checkbox" x-model="showThoughts"
                                         x-effect="globalThis.safeCall('toggleThoughts',showThoughts)">
@@ -331,7 +331,7 @@
                                 </label>
                             </li>
                             <li x-data="{ showJson: false }">
-                                <span>Show JSON</span>
+                                <span x-text="i18n.t('label.showJSON')"></span>
                                 <label class="switch">
                                     <input type="checkbox" x-model="showJson"
                                         x-effect="globalThis.safeCall('toggleJson',showJson)">
@@ -339,7 +339,7 @@
                                 </label>
                             </li>
                             <li x-data="{ showUtils: false }">
-                                <span>Show utility messages</span>
+                                <span x-text="i18n.t('label.showUtility')"></span>
                                 <label class="switch">
                                     <input type="checkbox" x-model="showUtils"
                                         x-effect="globalThis.safeCall('toggleUtils',showUtils)">
@@ -492,11 +492,11 @@
 
                     <!-- Container for textarea and button -->
                     <div id="chat-input-container" style="position: relative;">
-                        <textarea id="chat-input" placeholder="Type your message here..." rows="1"></textarea>
+                        <textarea id="chat-input" :placeholder="i18n.t('placeholder.chatInput')" rows="1"></textarea>
 
                         <!-- Expand button inside the textarea container -->
                         <button id="expand-button" @click="$store.fullScreenInputModal.openModal()"
-                            aria-label="Expand input">
+                            :aria-label="i18n.t('aria.expandInput')">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path
                                     d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
@@ -507,7 +507,7 @@
                     <div id="chat-buttons-wrapper">
 
                         <!-- Send button -->
-                        <button class="chat-button" id="send-button" aria-label="Send message">
+                        <button class="chat-button" id="send-button" :aria-label="i18n.t('aria.sendMessage')">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
                                 <path d="M25 20 L75 50 L25 80" fill="none" stroke="currentColor" stroke-width="15">
                                 </path>
@@ -516,7 +516,7 @@
 
                         <!-- Microphone button -->
                         <button class="chat-button mic-inactive" id="microphone-button"
-                            aria-label="Start/Stop recording" @click="$store.speech && $store.speech.handleMicrophoneClick()"
+                            :aria-label="i18n.t('aria.recordToggle')" @click="$store.speech && $store.speech.handleMicrophoneClick()"
                             x-effect="$store.speech && $store.speech.updateMicrophoneButtonUI()">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18" fill="currentColor">
                                 <path
@@ -655,7 +655,7 @@
                                     <li x-show="activeTab === 'external'">
                                         <a href="#section-tunnel">
                                             <img src="public/tunnel.svg" alt="Tunnel">
-                                            <span>Flare Tunnel</span>
+                                            <span x-text="i18n.t('label.flareTunnel')"></span>
                                         </a>
                                     </li>
                                 </ul>
@@ -772,7 +772,7 @@
                                     <li>
                                         <a href="#section-task-scheduler">
                                             <img src="public/task_scheduler.svg" alt="Task Scheduler">
-                                            <span>Task Scheduler</span>
+                                            <span x-text="i18n.t('label.taskScheduler')"></span>
                                         </a>
                                     </li>
                                 </ul>
@@ -805,7 +805,7 @@
                                                 <div class="scheduler-form-help">A unique name to identify this task
                                                 </div>
                                             </div>
-                                            <input type="text" x-model="editingTask.name" placeholder="Enter task name">
+                                            <input type="text" x-model="editingTask.name" :placeholder="i18n.t('placeholder.taskName')">
                                         </div>
 
                                         <!-- Task Type Selection -->
@@ -939,7 +939,7 @@
                                                             <input type="text" id="newPlannedTime-create"
                                                                 x-ref="plannedTimeCreate"
                                                                 class="scheduler-flatpickr-input"
-                                                                placeholder="Select date and time">
+                                                                :placeholder="i18n.t('placeholder.selectDateTime')">
                                                             <!-- Create Task Form Add Time Button -->
                                                             <button @click.prevent="
                                                                 const input = $refs.plannedTimeCreate;
@@ -1008,7 +1008,7 @@
                                             </div>
                                             <div class="input-group">
                                                 <input type="text" x-model="editingTask.token"
-                                                    placeholder="Token for ad-hoc task">
+                                                    :placeholder="i18n.t('placeholder.adHocToken')">
                                                 <button class="scheduler-task-action"
                                                     @click="editingTask.token = generateRandomToken()">
                                                     Generate
@@ -1024,7 +1024,7 @@
                                                     assistant</div>
                                             </div>
                                             <textarea x-model="editingTask.system_prompt"
-                                                placeholder="System instructions for the AI"></textarea>
+                                                :placeholder="i18n.t('placeholder.systemInstructions')"></textarea>
                                         </div>
 
                                         <!-- User Prompt -->
@@ -1035,7 +1035,7 @@
                                                     executed</div>
                                             </div>
                                             <textarea x-model="editingTask.prompt"
-                                                placeholder="User message for the AI"></textarea>
+                                                :placeholder="i18n.t('placeholder.userMessage')"></textarea>
                                         </div>
 
                                         <!-- Attachments Field -->
@@ -1627,7 +1627,7 @@
                         <div x-show="!isLoading">
                             <div class="path-navigator">
                                 <!-- Up Button -->
-                                <button class="text-button back-button" @click="navigateUp()" aria-label="Navigate Up">
+                                <button class="text-button back-button" @click="navigateUp()" :aria-label="i18n.t('aria.navigateUp')">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10.5 15">
                                         <path d="m.75,5.25L5.25.75m0,0l4.5,4.5M5.25.75v13.5" fill="none"
                                             stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
