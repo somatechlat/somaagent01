@@ -1,18 +1,15 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
+import { createStore } from "i18n.t('ui_i18n_t_ui_i18n_t_ui_js_alpinestore_js')";
 
 // Global function references
 const sendJsonData = globalThis.sendJsonData;
 const toast = globalThis.toast;
 const fetchApi = globalThis.fetchApi;
 
-// ⚠️ CRITICAL: The .env file contains API keys and essential configuration.
-// This file is REQUIRED for Agent Zero to function and must be backed up.
+// ⚠️ CRITICAL: The .env file contains API keys and esseni18n.t('ui_i18n_t_ui_js_alpinestore_js')le is REQUIRED for Agent Zero to function and must be backed up.
 
 const model = {
   // State
-  mode: 'backup', // 'backup' or 'restore'
-  loading: false,
-  loadingMessage: '',
+  mode: 'backup', // 'backup' or 'resti18n.t('ui_agent_zero_backup_timestamp_slice_0_10'),
   error: '',
 
   // File operations log (shared between backup and restore)
@@ -20,60 +17,12 @@ const model = {
 
   // Backup state
   backupMetadataConfig: null,
-  includeHidden: false,
-  previewStats: { total: 0, truncated: false },
-  backupEditor: null,
-
-  // Enhanced file preview state
-  previewMode: 'grouped', // 'grouped' or 'flat'
-  previewFiles: [],
-  previewGroups: [],
-  filteredPreviewFiles: [],
-  fileSearchFilter: '',
-  expandedGroups: new Set(),
-
-  // Progress state
-  progressData: null,
-  progressEventSource: null,
-
-  // Restore state
-  backupFile: null,
-  backupMetadata: null,
-  restorePatterns: '',
-  overwritePolicy: 'overwrite',
-  cleanBeforeRestore: false,
-  restoreEditor: null,
-  restoreResult: null,
-
-  // Initialization
-  async initBackup() {
-    this.mode = 'backup';
-    this.resetState();
-    await this.initBackupEditor();
-    await this.updatePreview();
-  },
-
-  async initRestore() {
-    this.mode = 'restore';
-    this.resetState();
-    await this.initRestoreEditor();
-  },
-
-  resetState() {
-    this.loading = false;
-    this.error = '';
-    this.backupFile = null;
-    this.backupMetadata = null;
-    this.restoreResult = null;
-    this.fileOperationsLog = '';
-  },
-
-  // File operations logging
-  addFileOperation(message) {
-    const timestamp = new Date().toLocaleTimeString();
-    this.fileOperationsLog += `[${timestamp}] ${message}\n`;
-
-    // Auto-scroll to bottom - use setTimeout since $nextTick is not available in stores
+  includeHidden: i18n.t('ui_backup')
+  previ18n.t('ui_backup')ts: { i18n.t('ui_restore')0, truncated: false },
+  backupEditor: ni18n.t('ui_error')Eni18n.t('ui_file_operations_log_shared_between_backup_and_restore_fileoperationslog')ili18n.t('ui_backup_state_backupmetadataconfig_null_includehidden_false_previewstats_total_0_truncated_false_backupeditor_null_enhanced_file_preview_state_previewmode')e state
+ i18n.t('ui_')upFile: ni18n.t('ui_or')
+  baci18n.t('ui_previewfiles_previewgroups_filteredpreviewfiles_filesearchfilter')toi18n.t('ui_expandedgroups_new_set_progress_state_progressdata_null_progresseventsource_null_restore_state_backupfile_null_backupmetadata_null_restorepatterns')  i18n.t('ui_overwritepolicy')view();
+  }i18n.t('ui_cleanbeforerestore_false_restoreeditor_null_restoreresult_null_initialization_async_initbackup_this_mode')   this.i18n.t('ui_this_resetstate_await_this_initbackupeditor_await_this_updatepreview_async_initrestore_this_mode')fileOperai18n.t('ui_this_resetstate_await_this_initrestoreeditor_resetstate_this_loading_false_this_error')rii18n.t('ui_this_backupfile_null_this_backupmetadata_null_this_restoreresult_null_this_fileoperationslog')extTick is not available in stores
     setTimeout(() => {
       const textarea = document.getElementById(this.mode === 'backup' ? 'backup-file-list' : 'restore-file-list');
       if (textarea) {
@@ -86,441 +35,69 @@ const model = {
     this.fileOperationsLog = '';
   },
 
-  // Cleanup method for modal close
-  onClose() {
-    this.resetState();
+  // Cleanup method fori18n.t('ui_backup') closi18n.t('ui_backup_file_list')    ti18n.t('ui_restore_file_list')
     if (this.backupEditor) {
       this.backupEditor.destroy();
       this.backupEditor = null;
     }
     if (this.restoreEditor) {
-      this.restoreEditor.destroy();
-      this.restoreEditor = null;
-    }
-  },
-
-  // Get default backup metadata with resolved patterns from backend
-  async getDefaultBackupMetadata() {
-    const timestamp = new Date().toISOString();
-
-    try {
-      // Get resolved default patterns from backend
-      const response = await sendJsonData("i18n.t('ui_i18n_t_ui_backup_get_defaults')", {});
-
-      if (response.success) {
-        // Use patterns from backend with resolved absolute paths
-        const include_patterns = response.default_patterns.include_patterns;
-        const exclude_patterns = response.default_patterns.exclude_patterns;
-
-        return {
-          backup_name: `agent-zero-backup-${timestamp.slice(0, 10)}`,
-          include_hidden: false,
-          include_patterns: include_patterns,
-          exclude_patterns: exclude_patterns,
-          backup_config: {
-            compression_level: 6,
-            integrity_check: true
-          }
-        };
-      }
-    } catch (error) {
-      console.warn("i18n.t('ui_i18n_t_ui_failed_to_get_default_patterns_from_backend_using_fallback')");
-    }
-
-    // Fallback patterns (will be overridden by backend on first use)
-    return {
-      backup_name: `agent-zero-backup-${timestamp.slice(0, 10)}`,
+      this.restoreEditor.dei18n.t('ui_cleanup_method_for_modal_close_onclose_this_resetstate_if_this_backupeditor_this_backupeditor_destroy_this_backupeditor_null_if_this_restoreeditor_this_restoreeditor_destroy_this_restoreeditor_null_get_default_backup_metadata_with_resolved_patterns_from_backend_async_getdefaultbackupmetadata_const_timestamp_new_date_toisostring_try_get_resolved_default_patterns_from_backend_const_response_await_sendjsondata_i18n_t') exclude_patterns = response.defaui18n.t('ui_if_response_success_use_patterns_from_backend_with_resolved_absolute_paths_const_include_patterns_response_default_patterns_include_patterns_const_exclude_patterns_response_default_patterns_exclude_patterns_return_backup_name_agent_zero_backup_timestamp_slice_0_10_include_hidden_false_include_patterns_include_patterns_exclude_patterns_exclude_patterns_backup_config_compression_level_6_integrity_check_true_catch_error_console_warn_i18n_t')ice(0, 10)}`,
       include_hidden: false,
       include_patterns: [
-        // These will be replaced with resolved absolute paths by backend
-        "i18n.t('ui_i18n_t_ui_loading_default_patterns_from_backend')"
-      ],
-      exclude_patterns: [],
-      backup_config: {
-        compression_level: 6,
-        integrity_check: true
-      }
-    };
+    i18n.t('ui_fallback_patterns_will_be_overridden_by_backend_on_first_use_return_backup_name_agent_zero_backup_timestamp_slice_0_10_include_hidden_false_include_patterns_these_will_be_replaced_with_resolved_absolute_paths_by_backend_i18n_t')nagement - Following Agent Zero ACE editor patterns
+i18n.t('ui_exclude_patterns_backup_config_compression_level_6_integrity_check_true_editor_management_following_agent_zero_ace_editor_patterns_async_initbackupeditor_const_container_document_getelementbyid_i18n_t')t('ui_i18n_t_ui_i18n_t_ui_darkmode')"i18n.t('ui_if_container_const_editor_ace_edit_i18n_t')
+        editor.setTheme("i18n.t('ui_i18n.t('ui_const_dark_localstorage_getitem_i18n_t') else {
+        editor.i18n.t('ui_if_dark_i18n_t')i18n_t_ui_ace_theme_i18n.t('ui_editor_settheme_i18n_t')ssion.setMode("i18n.t('ui_i18n_t_ui_i18n.t('ui_else_editor_settheme_i18n_t')th default backup metadata
+      i18n.t('ui_editor_session_setmode_i18n_t')Metadata();
+      editor.seti18n.t('ui_initialize_with_default_backup_metadata_const_defaultmetadata_await_this_getdefaultbackupmetadata_editor_setvalue_json_stringify_defaultmetadata_null_2_editor_clearselection_auto_update_preview_on_changes_debounced_let_timeout_editor_on')  });
+
+ i18n.t('ui_cleartimeout_timeout_timeout_settimeout_this_updatepreview_1000_this_backupeditor_editor_async_initrestoreeditor_const_container_document_getelementbyid_i18n_t')ore_metadata_editor')");
+
+      const i18n.t('ui_if_container_const_editor_ace_edit_i18n_t')mode')");
+      if (dark != "i18n.t('ui18n.t('ui_const_dark_localstorage_getitem_i18n_t')i18n.t('ui_preview_error_error_message')ui_if_dark_i18n_t')ark')");
+      } elsi18n.t('ui_editor_settheme_i18n_t')i_i18n_t_ui_i18n_t_ui_ace_theme_tomoi18n.t('ui_else_editor_settheme_i18n_t')n.t('ui_i18n_t_ui_i18n_t_ui_ace_mi18n.t('ui_editor_session_setmode_i18n_t')itor.clearSelection();
+
+    i18n.t('ui_editor_setvalue')chani18n.t('ui_editor_clearselection_auto_validate_json_on_changes_editor_on')     thii18n.t('ui_this_validaterestoremetadai18n.t('ui_pattern')toreeditor_editor_unified_editor_value_getter_following_mcp_servers_pattern_geteditorvalue_const_editor_this_mode') editor.i18n.t('ui_this_backupeditor_this_restoreeditor_return_editor_editor_getvalue')n)
+ i18n.t('ui_unified_json_formatting_following_mcp_servers_pattern_formatjson_const_editor_this_mode')turn;
+
+ i18n.t('ui_this_backupeditor_this_restoreeditor_if_editor_return_try_const_currentcontent_editor_getvalue_const_parsed_json_parse_currentcontent_const_formatted_json_stringify_parsed_null_2_editor_setvalue_formatted_editor_clearselection_editor_navigatefilestart_catch_error_console_error_i18n_t')rror = "i18n.t('ui_i18n_t_ui_i18n_t_i18n.t('ui_error_this_error_i18n_t') }
   },
 
-  // Editor Management - Following Agent Zero ACE editor patterns
-  async initBackupEditor() {
-    const container = document.getElementById("i18n.t('ui_i18n_t_ui_backup_metadata_editor')");
-    if (container) {
-      const editor = ace.edit("i18n.t('ui_i18n_t_ui_backup_metadata_editor')");
-
-      const dark = localStorage.getItem("i18n.t('ui_i18n_t_ui_darkmode')");
-      if (dark != "i18n.t('ui_i18n_t_ui_false')") {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_github_dark')");
-      } else {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_tomorrow')");
-      }
-
-      editor.session.setMode("i18n.t('ui_i18n_t_ui_ace_mode_json')");
-
-      // Initialize with default backup metadata
-      const defaultMetadata = await this.getDefaultBackupMetadata();
-      editor.setValue(JSON.stringify(defaultMetadata, null, 2));
-      editor.clearSelection();
-
-      // Auto-update preview on changes (debounced)
-      let timeout;
-      editor.on('change', () => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          this.updatePreview();
-        }, 1000);
-      });
-
-      this.backupEditor = editor;
-    }
-  },
-
-  async initRestoreEditor() {
-    const container = document.getElementById("i18n.t('ui_i18n_t_ui_restore_metadata_editor')");
-    if (container) {
-      const editor = ace.edit("i18n.t('ui_i18n_t_ui_restore_metadata_editor')");
-
-      const dark = localStorage.getItem("i18n.t('ui_i18n_t_ui_darkmode')");
-      if (dark != "i18n.t('ui_i18n_t_ui_false')") {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_github_dark')");
-      } else {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_tomorrow')");
-      }
-
-      editor.session.setMode("i18n.t('ui_i18n_t_ui_ace_mode_json')");
-      editor.setValue('{}');
-      editor.clearSelection();
-
-      // Auto-validate JSON on changes
-      editor.on('change', () => {
-        this.validateRestoreMetadata();
-      });
-
-      this.restoreEditor = editor;
-    }
-  },
-
-  // Unified editor value getter (following MCP servers pattern)
-  getEditorValue() {
-    const editor = this.mode === 'backup' ? this.backupEditor : this.restoreEditor;
-    return editor ? editor.getValue() : '{}';
-  },
-
-  // Unified JSON formatting (following MCP servers pattern)
-  formatJson() {
-    const editor = this.mode === 'backup' ? this.backupEditor : this.restoreEditor;
-    if (!editor) return;
-
-    try {
-      const currentContent = editor.getValue();
-      const parsed = JSON.parse(currentContent);
-      const formatted = JSON.stringify(parsed, null, 2);
-
-      editor.setValue(formatted);
-      editor.clearSelection();
-      editor.navigateFileStart();
-    } catch (error) {
-      console.error("i18n.t('ui_i18n_t_ui_failed_to_format_json')", error);
-      this.error = "i18n.t('ui_i18n_t_ui_invalid_json')" + error.message;
-    }
-  },
-
-  // Enhanced File Preview Operations
-  async updatePreview() {
-    try {
-      const metadataText = this.getEditorValue();
-      const metadata = JSON.parse(metadataText);
-
-      if (!metadata.include_patterns || metadata.include_patterns.length === 0) {
-        this.previewStats = { total: 0, truncated: false };
-        this.previewFiles = [];
-        this.previewGroups = [];
-        return;
-      }
-
-      // Convert patterns arrays back to string format for API
-      const patternsString = this.convertPatternsToString(metadata.include_patterns, metadata.exclude_patterns);
-
-      // Get grouped preview for better UX
-      const response = await sendJsonData("i18n.t('ui_i18n_t_ui_backup_preview_grouped')", {
+  // Enhanced Filei18n.t('ui_error_message_enhanced_file_preview_operations_async_updatepreview_try_const_meti18n.t('ui_invalid_backup_metadata_error_message')ata_json_parse_metadatatext_if_metadata_include_patterns_metadata_include_patterns_length_0_this_previewstats_total_0_truncated_false_this_previewfiles_this_previewgroups_return_convert_patterns_arrays_back_to_string_format_for_api_const_patternsstring_this_convertpatternstostring_metadata_include_patterns_metadata_exclude_patterns_get_grouped_preview_for_better_ux_const_response_await_sendjsondata_i18n_t') {
         patterns: patternsString,
-        include_hidden: metadata.include_hidden || false,
-        max_depth: 3,
-        search_filter: this.fileSearchFilter
-      });
+i18n.t('ui_patterns_patternsstring_include_hidden_metadata_include_hidden_false_max_depth_3_search_filter_this_filesearchfilter_if_response_success_this_previewgroups_response_groups_this_previewstats_response_stats_flatten_groups_for_flat_view_this_previewfiles_response_groups_foreach_group_this_previewfiles_push_group_files_this_applyfilesearch_else_this_error_response_error_catch_error_this_error_preview_error_error_message_convert_pattern_arrays_to_string_format_for_backend_api_convertpatternstostring_includepatterns_excludepatterns_const_patterns_add_include_patterns_if_includepatterns_patterns_push_includepatterns_add_exclude_patterns_with')   i18n.t('ui_prefix_if_excludepatterns_excludepatterns_foreach_pattern_patterns_push_pattern_return_patterns_join')metai18n.t('ui_validation_for_backup_metadata_validatebackupmetadata_try_const_metadatatext_this_geteditorvalue_const_metadata_json_parse_metadatatext_validate_required_fields_if_array_isarray_metadata_include_patterns_throw_new_error')    }
+      if (!Array.isArray(metai18n.t('ui_if_array_isarray_metadata_exclude_patterns_throw_new_error')    }
+      if (!metadata.backup_nai18n.t('ui_if_metadata_backup_name_typeof_metadata_backup_name')kup_namei18n.t('ui_throw_new_error'));
+      }
 
-      if (response.success) {
-        this.previewGroups = response.groups;
-        this.previewStats = response.stats;
+      this.backupMetadataConi18n.t('ui_this_backupmetadataconfig_metadata_this_error')r)i18n.t('ui_return_true_catch_error_this_error_invalid_backup_metadata_error_message_return_false_file_preview_ui_management_initfilepreview_this_filesearchfilter') ti18n.t('ui_this_expandedgroups_clear_this_previewmode_localstorage_getitem')
+  togglePreviewModi18n.t('ui_')
+    thisi18n.t('ui_togglepreviewmode_this_previewmode_this_previewmode')lStorage.i18n.t('ui_')Item('i18n.t('ui_')kupPreviei18n.t('ui_localstorage_setitem')  },
 
-        // Flatten groups for flat view
-        this.previewFiles = [];
-        response.groups.forEach(group => {
-          this.previewFiles.push(...group.files);
-        });
+  toggleGroupi18n.t('ui_this_previewmode_togglegroup_grouppath_if_this_expandedgroups_has_grouppath_this_expandedgroups_delete_grouppath_else_this_expandedgroups_add_grouppath_isgroupexpanded_grouppath_return_this_expandedgroups_has_grouppath_debouncefilesearch_cleartimeout_this_searchtimeout_this_searchtimeout_settimeout_this_applyfilesearch_300_clearfilesearch_this_filesearchfilter')api18n.t('ui_this_applyfilesearch_applyfilesearch_if_this_filesearchfilter_trim_this_filteredpreviewfiles_this_previewfiles_else_const_search_this_filesearchfilter_tolowercase_this_filteredpreviewfiles_this_previewfiles_filter_file_file_path_tolowercase_includes_search_async_exportfilelist_const_filelist_this_previewfiles_map_f_f_path_join')st],i18n.t('ui_const_blob_new_blob_filelist_type')ateObjectURLi18n.t('ui_const_url_url_createobjecturl_blob_coni18n.t('ui_metadata_backup_name_zip')') 'bi18n.t('ui_a_href_url_a_download')   URL.revokeObjectURLi18n.t('ui_a_click_url_revokeobjecturl_url_async_copyfilelisttoclipboard_const_filelist_this_previewfiles_map_f_f_path_join')lipbi18n.t('ui_try_await_navigator_clipboard_writetext_filelist_window_toastfrontendinfo')ard');
+    } catch (error) {
+  i18n.t('ui_')  window.toi18n.t('ui_catch_error_window_toastfrontenderror')d Error');
+    }
+  },
 
-        this.applyFileSearch();
+  // Bi18n.t('ui_')kup Creation usini18n.t('ui_backup_creation_using_direct_api_call_async_createbackup_validate_i18n.t('ui_backup_creation_failed_response_status_response_statustext')his_loading_true_this_error')  i18n.t('ui_thi18n.t('ui_error_this_error')ns_this_addfileoperation')onst metadata = this.backupMei18n.t('ui_backup_error_error_message')_backupmetadataconfig_use_fetch_i18n.t('ui_error_error_message')reate_returns_a_file_download_not_json_const_response_await_fetchapi')T',
+        headi18n.t('ui_method')': 'api18n.t('ui_headers')      body: JSi18n.t('ui_').stringify({
+     i18n.t('ui_body_json_stringify_include_patterns_metadata_include_patterns_exclude_patterns_metadata_exclude_patterns_include_hidden_metadata_include_hidden_false_backup_name_metadata_backup_name_if_response_ok_handle_file_download_const_blob_await_response_blob_const_url_window_url_createobjecturl_blob_const_a_document_createelement')wnli18n.t('ui_a_href_url_a_downi18n.t('ui_backupname_zip')kup_name_zip_a_click_window_url_revokeobjecturl_url_this_addfileoperation')lly!');
+        window.toastFrontendInfo('Baci18n.t('ui_window_toastfrontendinfo')lly', 'Backup Status');
       } else {
-        this.error = response.error;
-      }
-    } catch (error) {
-      this.error = `Preview error: ${error.message}`;
-    }
-  },
+     i18n.t('ui_') // Try to parsi18n.t('ui_else_try_to_parse_error_response_const_errortext_await_response_text_try_const_errorjson_json_parse_errortext_this_error_errorjson_error')h {
+          this.errori18n.t('ui_catch_this_error_backup_creation_failed_response_status_response_statustext_this_addfileoperation_error_this_error_catch_error_this_error_backup_error_error_message_this_addfileoperation_error_error_message_finally_this_loading_false_async_downloadbackup_backuppath_backupname_try_const_response_await_fetchapi')OST',
+        headi18n.t('ui_method')': 'api18n.t('ui_headers')      body: JSi18n.t('ui_').stringify({ backui18n.t('ui_body_json_stringify_backup_path_backuppath_if_response_ok_const_blob_await_response_blob_const_url_window_url_createobjecturl_blob_const_a_document_createelement')wnli18n.t('ui_a_href_url_a_download_backupname_zip_a_click_window_url_revokeobjecturl_url_catch_error_console_error') cancelBackup() {i18n.t('ui_error_cancelbackup_if_this_progresseventsource_this_progresseventsource_close_this_progresseventsource_null_this_loading_false_this_progressdata_null_resettodefaults_this_getdefaultbackupmetadata_then_defaultmetadata_if_this_backupeditor_this_backupeditor_setvalue_json_stringify_defaultmetadata_null_2_this_backupeditor_clearselection_this_updatepreview_dry_run_functionality_async_dryrun_if_this_mode')p();
+   i18n.t('ui_await_this_di18n.t('ui_found_response_files_length_files_that_would_be_backed_up')_dryrunrestore_async_dryrunbackup_validate_backup_metadata_first_if_this_validatebackupi18n.t('ui_index_1_file_path_this_formatfilesize_file_size')leOperations();
+    i18n.t('ui_this_clearfileopi18n.t('ui_ntotal_response_files_length_files_this_formatfilesize_response_files_reduce_sum_f_sum_f_size_0')st_patternsstring_this_convertpatternstostring_metadata_include_patterns_metadata_exclude_patterns_const_response_await_sendjsondata_i18n_t'){
+        pai18n.t('ui_error_response_error')        include_hidden: metadata.include_hidden || fali18n.t('ui_dry_run_error_error_message')    });
 
-  // Convert pattern arrays to string format for backend API
-  convertPatternsToString(includePatterns, excludePatterns) {
-    const patterns = [];
-
-    // Add include patterns
-    if (includePatterns) {
-      patterns.push(...includePatterns);
-    }
-
-    // Add exclude patterns with '!' prefix
-    if (excludePatterns) {
-      excludePatterns.forEach(pattern => {
-        patterns.push(`!${pattern}`);
-      });
-    }
-
-    return patterns.join('\n');
-  },
-
-  // Validation for backup metadata
-  validateBackupMetadata() {
-    try {
-      const metadataText = this.getEditorValue();
-      const metadata = JSON.parse(metadataText);
-
-      // Validate required fields
-      if (!Array.isArray(metadata.include_patterns)) {
-        throw new Error('include_patterns must be an array');
-      }
-      if (!Array.isArray(metadata.exclude_patterns)) {
-        throw new Error('exclude_patterns must be an array');
-      }
-      if (!metadata.backup_name || typeof metadata.backup_name !== 'string') {
-        throw new Error('backup_name must be a non-empty string');
-      }
-
-      this.backupMetadataConfig = metadata;
-      this.error = '';
-      return true;
-    } catch (error) {
-      this.error = `Invalid backup metadata: ${error.message}`;
-      return false;
-    }
-  },
-
-  // File Preview UI Management
-  initFilePreview() {
-    this.fileSearchFilter = '';
-    this.expandedGroups.clear();
-    this.previewMode = localStorage.getItem('backupPreviewMode') || 'grouped';
-  },
-
-  togglePreviewMode() {
-    this.previewMode = this.previewMode === 'grouped' ? 'flat' : 'grouped';
-    localStorage.setItem('backupPreviewMode', this.previewMode);
-  },
-
-  toggleGroup(groupPath) {
-    if (this.expandedGroups.has(groupPath)) {
-      this.expandedGroups.delete(groupPath);
-    } else {
-      this.expandedGroups.add(groupPath);
-    }
-  },
-
-  isGroupExpanded(groupPath) {
-    return this.expandedGroups.has(groupPath);
-  },
-
-  debounceFileSearch() {
-    clearTimeout(this.searchTimeout);
-    this.searchTimeout = setTimeout(() => {
-      this.applyFileSearch();
-    }, 300);
-  },
-
-  clearFileSearch() {
-    this.fileSearchFilter = '';
-    this.applyFileSearch();
-  },
-
-  applyFileSearch() {
-    if (!this.fileSearchFilter.trim()) {
-      this.filteredPreviewFiles = this.previewFiles;
-    } else {
-      const search = this.fileSearchFilter.toLowerCase();
-      this.filteredPreviewFiles = this.previewFiles.filter(file =>
-        file.path.toLowerCase().includes(search)
-      );
-    }
-  },
-
-  async exportFileList() {
-    const fileList = this.previewFiles.map(f => f.path).join('\n');
-    const blob = new Blob([fileList], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'backup-file-list.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  },
-
-  async copyFileListToClipboard() {
-    const fileList = this.previewFiles.map(f => f.path).join('\n');
-    try {
-      await navigator.clipboard.writeText(fileList);
-      window.toastFrontendInfo('File list copied to clipboard', 'Clipboard');
-    } catch (error) {
-      window.toastFrontendError('Failed to copy to clipboard', 'Clipboard Error');
-    }
-  },
-
-  // Backup Creation using direct API call
-  async createBackup() {
-    // Validate backup metadata first
-    if (!this.validateBackupMetadata()) {
-      return;
-    }
-
-    try {
-      this.loading = true;
-      this.error = '';
-      this.clearFileOperations();
-      this.addFileOperation('Starting backup creation...');
-
-      const metadata = this.backupMetadataConfig;
-
-      // Use fetch directly since backup_create returns a file download, not JSON
-      const response = await fetchApi('/backup_create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          include_patterns: metadata.include_patterns,
-          exclude_patterns: metadata.exclude_patterns,
-          include_hidden: metadata.include_hidden || false,
-          backup_name: metadata.backup_name
-        })
-      });
-
-      if (response.ok) {
-        // Handle file download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${metadata.backup_name}.zip`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-
-        this.addFileOperation('Backup created and downloaded successfully!');
-        window.toastFrontendInfo('Backup created and downloaded successfully', 'Backup Status');
-      } else {
-        // Try to parse error response
-        const errorText = await response.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          this.error = errorJson.error || 'Backup creation failed';
-        } catch {
-          this.error = `Backup creation failed: ${response.status} ${response.statusText}`;
-        }
-        this.addFileOperation(`Error: ${this.error}`);
-      }
-
-    } catch (error) {
-      this.error = `Backup error: ${error.message}`;
-      this.addFileOperation(`Error: ${error.message}`);
-    } finally {
-      this.loading = false;
-    }
-  },
-
-  async downloadBackup(backupPath, backupName) {
-    try {
-      const response = await fetchApi('/backup_download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ backup_path: backupPath })
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${backupName}.zip`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (error) {
-      console.error('Download error:', error);
-    }
-  },
-
-  cancelBackup() {
-    if (this.progressEventSource) {
-      this.progressEventSource.close();
-      this.progressEventSource = null;
-    }
-    this.loading = false;
-    this.progressData = null;
-  },
-
-  resetToDefaults() {
-    this.getDefaultBackupMetadata().then(defaultMetadata => {
-      if (this.backupEditor) {
-        this.backupEditor.setValue(JSON.stringify(defaultMetadata, null, 2));
-        this.backupEditor.clearSelection();
-      }
-      this.updatePreview();
-    });
-  },
-
-  // Dry run functionality
-  async dryRun() {
-    if (this.mode === 'backup') {
-      await this.dryRunBackup();
-    } else if (this.mode === 'restore') {
-      await this.dryRunRestore();
-    }
-  },
-
-  async dryRunBackup() {
-    // Validate backup metadata first
-    if (!this.validateBackupMetadata()) {
-      return;
-    }
-
-    try {
-      this.loading = true;
-      this.loadingMessage = 'Performing dry run...';
-      this.clearFileOperations();
-      this.addFileOperation('Starting backup dry run...');
-
-      const metadata = this.backupMetadataConfig;
-      const patternsString = this.convertPatternsToString(metadata.include_patterns, metadata.exclude_patterns);
-
-      const response = await sendJsonData("i18n.t('ui_i18n_t_ui_backup_test')", {
-        patterns: patternsString,
-        include_hidden: metadata.include_hidden || false,
-        max_files: 10000
-      });
-
-      if (response.success) {
-        this.addFileOperation(`Found ${response.files.length} files that would be backed up:`);
+      if (response.succi18n.t('ui_error_error_message')FileOperation(`Found ${response.files.length} files that would be backed up:`);
         response.files.forEach((file, index) => {
           this.addFileOperation(`${index + 1}. ${file.path} (${this.formatFileSize(file.size)})`);
         });
         this.addFileOperation(`\nTotal: ${response.files.length} files, ${this.formatFileSize(response.files.reduce((sum, f) => sum + f.size, 0))}`);
-        this.addFileOperation('Dry run completed successfully.');
-      } else {
-        this.error = response.error;
+        this.addFileOperation('Dry run completed successfullyi18n.t('ui_dry_run_completed_successfully')s.error = response.error;
         this.addFileOperation(`Error: ${response.error}`);
       }
     } catch (error) {
@@ -533,50 +110,29 @@ const model = {
 
   async dryRunRestore() {
     if (!this.backupFile) {
-      this.error = 'Please select a backup file first';
-      return;
-    }
-
-    try {
+      this.error = 'Please select a backup file fii18n.t('ui_please_select_a_backup_file_first')y {
       this.loading = true;
-      this.loadingMessage = 'Performing restore dry run...';
-      this.clearFileOperations();
-      this.addFileOperation('Starting restore dry run...');
+      this.loadingMessage = 'Performing restore dry run...'i18n.t('ui_performing_restore_dryi18n.t('ui_clean_before_restore_result_files_to_delete_length_files_would_be_deleted')'ui_starting_restore_dry_run')w FormData();
+      formData.append('backup_file', this.backupFile)i1i18n.t('ui_index_1_delete_file_path')('metadata', this.getEditorValuei18n.t('ui_metadata')   formData.append('overwrite_policy', this.overwri18n.t('ui_overwrite_policy')  formData.append('clean_before_restore', this.cli18n.t('ui_clean_before_restori18n.t('ui_result_files_to_restore_length_files_would_be_restored')preview', {
+  i18n.t('ui_backup_restore_preview')       body: formData
+i18n.t('ui_post')  });
 
-      const formData = new FormData();
-      formData.append('backup_file', this.backupFile);
-      formData.append('metadata', this.getEditorValue());
-      formData.append('overwrite_policy', this.overwritePolicy);
-      formData.append('clean_before_restore', this.cleanBeforeRestore);
-
-      const response = await fetchApi('/backup_restore_preview', {
-        method: 'POST',
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
+     i18n.t('ui_index_1_restore_file_original_path_file_target_path')
         // Show delete operations if clean before restore is enabled
         if (result.files_to_delete && result.files_to_delete.length > 0) {
-          this.addFileOperation(`Clean before restore - ${result.files_to_delete.length} files would be deleted:`);
-          result.files_to_delete.forEach((file, index) => {
-            this.addFileOperation(`${index + 1}. DELETE: ${file.path}`);
+          this.addi18n.t('ui_nskipped_result_skipped_files_length_files')files_to_delete.length} files would be deleted:`);
+          result.files_to_delete.forEach((filei18n.t('ui_index_1_file_original_path_file_reason')ndex + 1}. DELETE: ${file.path}`);
           });
           this.addFileOperation('');
         }
 
         // Show restore operations
         if (result.files_to_restore && result.files_to_restore.length > 0) {
-          this.addFileOperation(`${result.files_to_restore.length} files would be restored:`);
-          result.files_to_restore.forEach((file, index) => {
+          this.addFileOperi18n.t('ui_nsummary_deletecount_to_delete_restorecount_to_restore_skippedcount_skipped')les_to_restore.forEach((file, index) => {
             this.addFileOperation(`${index + 1}. RESTORE: ${file.original_path} -> ${file.target_path}`);
-          });
-        }
-
-        // Show skipped files
-        if (result.skipped_files && result.skipped_files.length > 0) {
-          this.addFileOperation(`\nSkipped ${result.skipped_files.length} files:`);
+   i18n.t('ui_error_result_error')        // Show skipped files
+        if (result.skippi18n.t('ui_dry_run_error_error_message')s.length > 0) {
+          this.ai18n.t('ui_error_error_message')ped ${result.skipped_files.length} files:`);
           result.skipped_files.forEach((file, index) => {
             this.addFileOperation(`${index + 1}. ${file.original_path} (${file.reason})`);
           });
@@ -587,9 +143,7 @@ const model = {
         const skippedCount = result.skipped_files?.length || 0;
 
         this.addFileOperation(`\nSummary: ${deleteCount} to delete, ${restoreCount} to restore, ${skippedCount} skipped`);
-        this.addFileOperation('Dry run completed successfully.');
-      } else {
-        this.error = result.error;
+        this.addFileOperation('Dry run completed successfullyi18n.t('ui_dry_run_completed_successfully')s.error = result.error;
         this.addFileOperation(`Error: ${result.error}`);
       }
     } catch (error) {
@@ -607,134 +161,30 @@ const model = {
 
     this.backupFile = file;
     this.error = '';
-    this.restoreResult = null;
+    this.restoreResult = nuli18n.t('ui_this_restoreresult_null_try_this_loading_true_this_loadingmessage');
 
-    try {
-      this.loading = true;
-      this.loadingMessage = 'Inspecting backup archive...';
-
-      const formData = new FormData();
-      formData.append('backup_file', file);
-
-      const response = await fetchApi('/backup_inspect', {
-        method: 'POST',
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        this.backupMetadata = result.metadata;
-
-        // Load complete metadata for JSON editing
-        this.restoreMetadata = JSON.parse(JSON.stringify(result.metadata)); // Deep copy
-
-        // Initialize restore editor with complete metadata JSON
-        if (this.restoreEditor) {
-          this.restoreEditor.setValue(JSON.stringify(this.restoreMetadata, null, 2));
-          this.restoreEditor.clearSelection();
-        }
-
-        // Validate backup compatibility
-        this.validateBackupCompatibility();
-      } else {
-        this.error = result.error;
-        this.backupMetadata = null;
-      }
-    } catch (error) {
-      this.error = `Inspection error: ${error.message}`;
-      this.backupMetadata = null;
-    } finally {
-      this.loading = false;
+      const formData = new i18n.t('ui_const_formdata_new_formdata_formdata_append')onst responsei18n.t('ui_fili18n.t('ui_inspection_error_error_message')thod: 'POST',
+  i18n.t('ui_method')
+     i18n.t('ui_body_formdata_const_result_await_response_json_if_result_success_this_backupmetadata_result_metadata_load_complete_metadata_for_json_editing_this_restoremetadata_json_parse_json_stringify_result_metadata_deep_copy_initialize_restore_editor_with_complete_metadata_json_if_this_restoreeditor_this_restoreeditor_setvalue_json_stringify_this_restoremetadata_null_2_this_restoreeditor_clearselection_validate_backup_compatibility_this_validatebackupcompatibility_else_this_error_result_error_this_backupmetadata_null_catch_error_this_error_inspection_error_error_message_ti18n.t('ui_backup_created_with_agent_zero_backupversion_current_version_is_currentversion')s_backupmetadata_return_const_warnings_check_agent_zero_version_compatibility_note_both_backup_and_current_versions_are_obtained_via_git_get_git_info_const_backupversion_this_backupmetadata_agent_zero_version_const_currentversion_i1i18n.t('ui_backup_is_math_floor_dayssincebackup_days_old')from_git_get_git_info_on_backend_if_backupversion_currentversion_backupversion_i18n_t')_ui_development')") {
+    i18n.t('ui_warnings_push_backup_created_with_agent_zero_backupversion_current_version_is_currentversion_check_backup_age_const_backupdate_new_date_this_baci18n.t('ui_compatibility_warnings_warnings_join')te_now_backupdate_1000_60_60_24_if_dayssincebackup_30_warnings_push_backup_is_math_floor_dayssincebackup_days_old_check_system_compatibility_const_systeminfo_this_backupmetadata_system_info_if_systeminfo_systeminfo_system_could_add_platform_specific_warnings_here_if_warnings_length_0_window_toastfrontendwarning_compatibility_warnings_warnings_join')Backi18n.t('ui_')mpatibility');
     }
-  },
+ i18n.t('ui_async_performrestore_if_this_backupfile_this_error')lect a backup file';
+      rei18n.t('ui_return_try_this_loading_true_this_loadingmessage') files...';
+      thi18n.t('ui_this_error')thi18n.t('ui_this_clearfileoperations_this_addfileoperation')file restoration...');
 
-  validateBackupCompatibility() {
-    if (!this.backupMetadata) return;
-
-    const warnings = [];
-
-    // Check Agent Zero version compatibility
-    // Note: Both backup and current versions are obtained via git.get_git_info()
-    const backupVersion = this.backupMetadata.agent_zero_version;
-    const currentVersion = "i18n.t('ui_i18n_t_ui_current')"; // Retrieved from git.get_git_info() on backend
-
-    if (backupVersion !== currentVersion && backupVersion !== "i18n.t('ui_i18n_t_ui_development')") {
-      warnings.push(`Backup created with Agent Zero ${backupVersion}, current version is ${currentVersion}`);
-    }
-
-    // Check backup age
-    const backupDate = new Date(this.backupMetadata.timestamp);
-    const daysSinceBackup = (Date.now() - backupDate) / (1000 * 60 * 60 * 24);
-
-    if (daysSinceBackup > 30) {
-      warnings.push(`Backup is ${Math.floor(daysSinceBackup)} days old`);
-    }
-
-    // Check system compatibility
-    const systemInfo = this.backupMetadata.system_info;
-    if (systemInfo && systemInfo.system) {
-      // Could add platform-specific warnings here
-    }
-
-    if (warnings.length > 0) {
-      window.toastFrontendWarning(`Compatibility warnings: ${warnings.join(', ')}`, 'Backup Compatibility');
-    }
-  },
-
-  async performRestore() {
-    if (!this.backupFile) {
-      this.error = 'Please select a backup file';
-      return;
-    }
-
-    try {
-      this.loading = true;
-      this.loadingMessage = 'Restoring files...';
-      this.error = '';
-      this.clearFileOperations();
-      this.addFileOperation('Starting file restoration...');
-
-      const formData = new FormData();
-      formData.append('backup_file', this.backupFile);
-      formData.append('metadata', this.getEditorValue());
-      formData.append('overwrite_policy', this.overwritePolicy);
-      formData.append('clean_before_restore', this.cleanBeforeRestore);
-
-      const response = await fetchApi('/backup_restore', {
-        method: 'POST',
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Log deleted files if clean before restore was enabled
-        if (result.deleted_files && result.deleted_files.length > 0) {
-          this.addFileOperation(`Clean before restore - Successfully deleted ${result.deleted_files.length} files:`);
-          result.deleted_files.forEach((file, index) => {
-            this.addFileOperation(`${index + 1}. DELETED: ${file.path}`);
-          });
-          this.addFileOperation('');
-        }
+      i18n.t('ui_const_formdata_new_formdata_formdata_append')le', this.baci18n.t('ui_this_backupfile_formdata_append'), this.geti18n.t('ui_this_geteditorvalue_formdata_append')_policy', this.ovei18n.t('ui_this_overwritepolicy_formdata_append')ore_restore', this.clei18n.t('ui_this_cleanbeforerestore_const_response_await_fetchapi')estore', {
+      ii18n.t('ui_clean_before_restore_successfully_deleted_result_deleted_files_length_files')_if_result_success_log_deleted_files_if_clean_before_restore_was_enabled_if_result_deleted_files_i18n.t('ui_index_1_deleted_file_path')addfileoperation_clean_before_restore_successfully_deleted_result_deleted_files_length_files_result_deleted_files_foreach_file_i18n.t('ui_successfully_restored_result_restored_files_length_files')ddfileoperation')   }
 
         // Log restored files
-        this.addFileOperation(`Successfully restored ${result.restored_files.length} files:`);
-        result.restored_files.forEach((file, index) => {
+        this.addFileOperation(`Successfuli18n.t('ui_index_1_restored_file_archive_path_file_target_path')t.restored_files.forEach((file, index) => {
           this.addFileOperation(`${index + 1}. RESTORED: ${file.archive_path} -> ${file.target_path}`);
-        });
-
-        // Log skipped files
-        if (result.skipped_files && result.skipped_files.length > 0) {
-          this.addFileOperation(`\nSkipped ${result.skipped_files.length} files:`);
-          result.skipped_files.forEach((file, index) => {
-            this.addFileOperation(`${index + 1}. ${file.original_path} (${file.reason})`);
-          });
-        }
+  i18n.t('ui_nskipped_result_skipped_files_length_files') if (result.skipped_files && result.skipped_files.length > 0) {
+          this.addFileOperation(`i18n.t('ui_index_1_file_original_path_file_reason')         result.skipped_files.forEach((file, index) => {
+            this.addFileOperation(`${index + 1}. ${file.original_path} (${file.reasoi18n.t('ui_nerrors_during_restoration') }
 
         // Log errors
         if (result.errors && result.errors.length > 0) {
-          this.addFileOperation(`\nErrors during restoration:`);
+        i18n.t('ui_index_1_error_original_path_error_error'):`);
           result.errors.forEach((error, index) => {
             this.addFileOperation(`${index + 1}. ${error.original_path}: ${error.error}`);
           });
@@ -742,15 +192,10 @@ const model = {
 
         const deletedCount = result.deleted_files?.length || 0;
         const restoredCount = result.restored_files.length;
-        const skippedCount = result.skipped_files?.length || 0;
-        const errorCount = result.errors?.length || 0;
-
-        this.addFileOperation(`\nRestore completed: ${deletedCount} deleted, ${restoredCount} restored, ${skippedCount} skipped, ${errorCount} errors`);
+       i18n.t('ui_nrestore_completed_deletedcount_deleted_restoredcount_restored_skippedcount_skipped_errorcount_errors')   this.addFileOperation(`\nRestore completed: ${deletedCount} deleted, ${restoredCount} restored, ${skippedCount} skipped, ${errorCount} errors`);
         this.restoreResult = result;
-        window.toastFrontendInfo('Restore completed successfully', 'Restore Status');
-      } else {
-        this.error = result.error;
-        this.addFileOperation(`Error: ${result.error}`);
+        window.toastFroi18n.t('ui_error_result_error')18n.t('ui_restore_completed_successfully')e Sti18n.t('i18n.t('ui_restore_error_error_message')     this.error = result.error;
+i18n.t('ui_error_error_message')ration(`Error: ${result.error}`);
       }
     } catch (error) {
       this.error = `Restore error: ${error.message}`;
@@ -766,60 +211,16 @@ const model = {
       const metadataText = this.getEditorValue();
       const metadata = JSON.parse(metadataText);
 
-      // Validate required fields
+  i18n.t('ui_timestamp_message_n')elds
       if (!Array.isArray(metadata.include_patterns)) {
-        throw new Error('include_patterns must be an array');
-      }
+        throw new Error('include_pai18n.t('ui_include_patterns_must_be_an_array')}
       if (!Array.isArray(metadata.exclude_patterns)) {
-        throw new Error('exclude_patterns must be an array');
-      }
+      i18n.t('ui_invalid_json_metadata_error_message')_exclude_patterns_must_be_an_array')}
 
       this.restoreMetadata = metadata;
       this.error = '';
-      return true;
-    } catch (error) {
-      this.error = `Invalid JSON metadata: ${error.message}`;
-      return false;
-    }
-  },
-
-  getCurrentRestoreMetadata() {
-    if (this.validateRestoreMetadata()) {
-      return this.restoreMetadata;
-    }
-    return null;
-  },
-
-  // Restore Operations - Metadata Control
-  resetToOriginalMetadata() {
-    if (this.backupMetadata) {
-      this.restoreMetadata = JSON.parse(JSON.stringify(this.backupMetadata)); // Deep copy
-
-      if (this.restoreEditor) {
-        this.restoreEditor.setValue(JSON.stringify(this.restoreMetadata, null, 2));
-        this.restoreEditor.clearSelection();
-      }
-    }
-  },
-
-  // Utility
-  formatTimestamp(timestamp) {
-    if (!timestamp) return 'Unknown';
-    return new Date(timestamp).toLocaleString();
-  },
-
-  formatFileSize(bytes) {
-    if (!bytes) return '0 B';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-  },
-
-  formatDate(dateString) {
-    if (!dateString) return 'Unknown';
-    return new Date(dateString).toLocaleDateString();
-  }
-};
-
-const store = createStore("i18n.t('ui_i18n_t_ui_backupstore')", model);
+      rei18n.t('ui_return_true_catch_error_this_error_invalid_json_metadata_error_message_return_false_getcurrentrestoremetadata_if_this_validaterestoremetadata_return_this_restoremetadata_return_null_restore_operations_metadata_control_resettooriginalmetadata_if_this_backupmetadata_this_restoremetadata_json_parse_json_stringify_this_backupmetadata_deep_copy_if_this_restoreeditor_this_restoreeditor_setvalue_json_stringify_this_restoremetadata_null_2_this_restoreeditor_clearselection_utility_formattimestamp_timestamp_if_timestamp_return')
+    retui18n.t('ui_return_new_date_timestamp_tolocalestring_formatfilesize_bytes_if_bytes_return') consi18n.t('ui_const_sizes') 'Mi18n.t('ui_'), 'Gi18n.t('ui_')];
+ i18n.t('ui_') coni18n.t('ui_const_i_math_floor_mai18n.t('ui_bytes_math_pow_1024_i_tofixed_1_sizes_i')_i_tofixed_1_sizes_i_formatdate_datestring_if_datestring_return')
+    retui18n.t('ui_return_new_date_datestring_tolocaledatestring_consi18n.t('ui_agent_zero_backup_timestamp_slice_0_10')ackupstore')", model);
 export { store };

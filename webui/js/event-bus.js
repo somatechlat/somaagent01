@@ -1,15 +1,8 @@
 // Enhanced event bus for UI modules with improved architecture, error handling, and performance
-import { handleError } from "i18n.t('ui_i18n_t_ui_error_handling_js')";
-// API: on(event, handler) => i18n.t('ui_i18n_t_ui_unsubscribe_fn_emit_event_payload_once_event_handler_namespacing_use_dot_notation_e_g_ui_status_progress_wildcard_subscription_not_implemented_for_simplicity_core_event_handlers_storage_with_metadata_const_handlers_new_map_eventname_set')<{fn: Function, metadata: Object}>
-i18n.t('ui_i18n_t_ui_const_eventhistory_new_map_eventname_array')<{timestamp: number, payload: any}>
-const eventStats = new Map(); // eventName -> {emits: number, errors: number}
-
-// Event bus configuration
-const config = {
+import { handleError } from "i18n.t('ui_i18n_t_i18n.t('ui_i18n_t_ui_error_handling_js')')";
+// API: on(event, handler) => i18n.t('i18n.t('ui_i18n_t_ui_unsubscribe_fn_emit_event_payload_once_event_handler_namespacing_use_dot_notation_e_g_ui_status_progress_wildcard_subscription_not_implemented_for_simplicity_core_event_handlers_storage_with_metadata_const_handlers_new_map_eventname_set')')<{fi18n.t('ui_i18n_t_ui_i18n_t_ui_unsubscribe_fn_emit_event_payload_once_event_handler_namespacing_use_dot_notation_e_g_ui_status_progress_wildcard_subscription_not_implemented_for_simplicity_core_event_handlers_storage_with_metadata_const_handlers_new_map_eventname_set')ig = {
   maxHistorySize: 100,
-  enableDebug: false,
-  enableProfiling: false,
-  enableWildcard: false,
+  enai18n.t('ui_i18n_t_ui_i18n_t_ui_const_eventhistory_new_map_eventname_array')e,
   maxHandlersPerEvent: 1000,
   emitTimeout: 5000
 };
@@ -24,12 +17,12 @@ const performanceMetrics = {
 
 // Enhanced event subscription with metadata and validation
 export function on(event, fn, options = {}) {
-  if (typeof event !== 'string' || !event.trim()) {
-    throw new Error('Event name must be a non-empty string');
+  if (typeof event !== 'i18n.t('ui_string')' || !event.trim()) {
+    throw new Error('i18n.t('ui_event_name_must_be_a_non_empty_string')');
   }
   
-  if (typeof fn !== 'function') {
-    throw new Error('Handler must be a function');
+  if (typeof fn !== 'i18n.t('ui_function')') {
+    throw new Error('i18n.t('ui_handler_must_be_a_function')');
   }
 
   // Check handler limit per event
@@ -39,12 +32,7 @@ export function on(event, fn, options = {}) {
     return () => {}; // Return no-op unsubscribe function
   }
 
-  if (!handlers.has(event)) {
-    handlers.set(event, new Set());
-  }
-
-  const handlerData = {
-    fn,
+  if (!handlers.has(eventi18n.t('ui_maximum_handlers_config_maxhandlersperevent_reached_for_event_event'),
     metadata: {
       subscribedAt: Date.now(),
       callCount: 0,
@@ -96,7 +84,7 @@ export function once(event, fn, options = {}) {
     try {
       fn(payload);
     } catch (error) {
-      console.error('Event bus once handler error:', event, error);
+      console.error('i18n.t('ui_event_bus_once_handler_error')', event, error);
       throw error;
     } finally {
       // Always unsubscribe, even if handler throws
@@ -115,8 +103,8 @@ export function emit(event, payload) {
   const startTime = config.enableProfiling ? performance.now() : 0;
   
   try {
-    if (typeof event !== 'string' || !event.trim()) {
-      throw new Error('Event name must be a non-empty string');
+    if (typeof event !== 'i18n.t('ui_string')' || !event.trim()) {
+      throw new Error('i18n.t('ui_event_name_must_be_a_non_empty_string')');
     }
 
     // Update performance metrics
@@ -154,8 +142,7 @@ export function emit(event, payload) {
       });
 
       const emitHandlers = async () => {
-        for (const handlerData of handlersToCall) {
-          try {
+        for (const hai18n.t('ui_event_emit_timeout_for_event')          try {
             // Update handler metadata
             handlerData.metadata.callCount++;
             handlerData.metadata.lastCalled = now;
@@ -168,18 +155,18 @@ export function emit(event, payload) {
             
             // Use centralized error handling
             handleError(error, {
-              component: 'EventBus',
-              function: 'emit',
+              component: 'i18n.t('ui_eventbus')',
+              function: 'i18n.t('ui_emit')',
               event,
-              handler: handlerData.fn.name || 'anonymous',
+              handler: handlerData.fn.name || 'i18n.t('ui_anonymous')',
               payloadType: typeof payload
             }).then(errorData => {
               // Emit error event if not already handling an error
-              if (event !== 'eventbus.error') {
-                emit('eventbus.error', {
+              if (event !== 'i18n.t('ui_eventbus_error')') {
+                emit('i18n.t('ui_eventbus_error')', {
                   event,
                   errorId: errorData.id,
-                  handler: handlerData.fn.name || 'anonymous',
+                  handler: handlerData.fn.name || 'i18n.t('ui_anonymous')',
                   payload
                 });
               }
@@ -192,9 +179,7 @@ export function emit(event, payload) {
       Promise.race([emitHandlers(), timeoutPromise])
         .catch(error => {
           console.error(`Event emit failed for ${event}:`, error);
-          stats.errors++;
-        });
-    }
+          i18n.t('ui_event_emit_failed_for_event') }
 
     // Update performance metrics
     if (config.enableProfiling) {
@@ -211,12 +196,12 @@ export function emit(event, payload) {
 
   } catch (error) {
     handleError(error, {
-      component: 'EventBus',
-      function: 'emit',
+      component: 'i18n.t('ui_eventbus')',
+      function: 'i18n.t('ui_emit')',
       event,
-      severity: 'critical'
+      severity: 'i18n.t('ui_critical')'
     }).then(errorData => {
-      emit('eventbus.critical', { 
+      emit('i18n.t('ui_eventbus_critical')', { 
         event, 
         errorId: errorData.id, 
         payload 
@@ -281,7 +266,7 @@ export function waitForEvent(event, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       unsubscribe();
-      reject(new Error(`Timeout waiting for event: ${event}`));
+      reject(new Error(`i18n.t('ui_timeout_waiting_for_event_event')`));
     }, timeout);
 
     const unsubscribe = once(event, (payload) => {
