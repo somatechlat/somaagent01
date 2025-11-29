@@ -1,7 +1,7 @@
 // Comprehensive error handling system for web UI components
 // Provides consistent error handling, logging, recovery, and user feedback
 
-import { emit } from "i18n.t('ui_i18n_t_ui_event_bus_js')";
+import { emit } from "./event-bus.js";
 
 // Error handling configuration
 const errorConfig = {
@@ -39,7 +39,58 @@ const ErrorSeverity = {
 };
 
 // Error history and statistics
-const errorHistory = new Map(); // errorId -> i18n.t('ui_i18n_t_ui_error_data_const_errorstats_total_0_bytype_new_map_byseverity_new_map_recovered_0_unresolved_0_error_id_generation_let_erroridcounter_0_function_generateerrorid_return_err_date_now_erroridcounter_error_classification_helper_function_classifyerror_error_const_message_error_message_tolowercase_const_status_error_status_error_statuscode_network_errors_if_error_name_networkerror_message_includes_network_message_includes_fetch_return_errortypes_network_authentication_errors_if_status_401_message_includes_unauthorized_message_includes_authentication_return_errortypes_authentication_authorization_errors_if_status_403_message_includes_forbidden_message_includes_authorization_return_errortypes_authorization_not_found_errors_if_status_404_message_includes_not_found_return_errortypes_not_found_rate_limiting_if_status_429_message_includes_rate_limit_message_includes_too_many_requests_return_errortypes_rate_limit_timeout_errors_if_error_name_timeouterror_message_includes_timeout_return_errortypes_timeout_server_errors_if_status_500_status')< 600) {
+const errorHistory = new Map(); // errorId -> error data
+const errorStats = {
+  total: 0,
+  byType: new Map(),
+  bySeverity: new Map(),
+  recovered: 0,
+  unresolved: 0
+};
+
+// Error ID generation
+let errorIdCounter = 0;
+function generateErrorId() {
+  return `err_${Date.now()}_${++errorIdCounter}`;
+}
+
+// Error classification helper
+function classifyError(error) {
+  const message = (error.message || '').toLowerCase();
+  const status = error.status || error.statusCode;
+  
+  // Network errors
+  if (error.name === 'NetworkError' || message.includes('network') || message.includes('fetch')) {
+    return ErrorTypes.NETWORK;
+  }
+  
+  // Authentication errors
+  if (status === 401 || message.includes('unauthorized') || message.includes('authentication')) {
+    return ErrorTypes.AUTHENTICATION;
+  }
+  
+  // Authorization errors
+  if (status === 403 || message.includes('forbidden') || message.includes('authorization')) {
+    return ErrorTypes.AUTHORIZATION;
+  }
+  
+  // Not found errors
+  if (status === 404 || message.includes('not found')) {
+    return ErrorTypes.NOT_FOUND;
+  }
+  
+  // Rate limiting
+  if (status === 429 || message.includes('rate limit') || message.includes('too many requests')) {
+    return ErrorTypes.RATE_LIMIT;
+  }
+  
+  // Timeout errors
+  if (error.name === 'TimeoutError' || message.includes('timeout')) {
+    return ErrorTypes.TIMEOUT;
+  }
+  
+  // Server errors
+  if (status >= 500 && status < 600) {
     return ErrorTypes.SERVER;
   }
   
@@ -49,7 +100,7 @@ const errorHistory = new Map(); // errorId -> i18n.t('ui_i18n_t_ui_error_data_co
   }
   
   // Client errors
-  if (status >i18n.t('ui_i18n_t_ui_400_status')< 500) {
+  if (status >= 400 && status < 500) {
     return ErrorTypes.CLIENT;
   }
   
@@ -65,7 +116,99 @@ function determineSeverity(error, type) {
     return ErrorSeverity.CRITICAL;
   }
   
-  if (status >i18n.t('ui_i18n_t_ui_500_return_errorseverity_high_high_severity_errors_if_type_errortypes_server_type_errortypes_network_return_errorseverity_high_medium_severity_errors_if_type_errortypes_validation_type_errortypes_timeout_type_errortypes_rate_limit_return_errorseverity_medium_low_severity_for_everything_else_return_errorseverity_low_user_friendly_error_messages_function_getusermessage_error_type_severity_const_custommessages_errortypes_network_network_connection_error_please_check_your_internet_connection_errortypes_authentication_authentication_required_please_log_in_again_errortypes_authorization_you_don_t_have_permission_to_perform_this_action_errortypes_not_found_the_requested_resource_was_not_found_errortypes_server_server_error_occurred_our_team_has_been_notified_errortypes_timeout_request_timed_out_please_try_again_errortypes_rate_limit_too_many_requests_please_wait_and_try_again_errortypes_validation_invalid_input_please_check_your_data_and_try_again_errortypes_client_request_error_please_check_your_input_and_try_again_return_custommessages_type_errorconfig_defaultusermessage_error_logging_function_logerror_errordata_if_errorconfig_enableconsole_const_logmethod_errordata_severity_errorseverity_critical_error_errordata_severity_errorseverity_high_warn_log_console_logmethod_errordata_severity_touppercase_errordata_type_errordata_message_errorid_errordata_id_timestamp_errordata_timestamp_context_errordata_context_stack_errordata_stack_event_emission_for_errors_function_emiterrorevent_errordata_if_errorconfig_enableevents_emit_error_occurred_errordata_emit_error_errordata_type_errordata_emit_error_errordata_severity_errordata_user_feedback_function_showuserfeedback_errordata_if_errorconfig_enableuserfeedback_return_use_the_notification_system_if_available_if_globalthis_notificationsssestore_try_globalthis_notificationsssestore_create_type_error_title_errordata_usermessage_body_errordata_message_severity_errordata_severity_ttl_seconds_math_max_3_math_min_15_errordata_severity_errorseverity_critical_15_8_metadata_errorid_errordata_id_errortype_errordata_type_context_errordata_context_catch_notificationerror_console_warn_failed_to_show_error_notification_notificationerror_fallback_to_alert_if_errordata_severity_errorseverity_critical_errordata_severity_errorseverity_high_alert_errordata_usermessage_error_recovery_strategies_const_recoverystrategies_errortypes_network_async_errordata_network_recovery_retry_with_exponential_backoff_for_let_attempt_1_attempt')<= errorConfig.recoveryAttempts; attempt++) {
+  if (status >= 500) {
+    return ErrorSeverity.HIGH;
+  }
+  
+  // High severity errors
+  if (type === ErrorTypes.SERVER || type === ErrorTypes.NETWORK) {
+    return ErrorSeverity.HIGH;
+  }
+  
+  // Medium severity errors
+  if (type === ErrorTypes.VALIDATION || type === ErrorTypes.TIMEOUT || type === ErrorTypes.RATE_LIMIT) {
+    return ErrorSeverity.MEDIUM;
+  }
+  
+  // Low severity for everything else
+  return ErrorSeverity.LOW;
+}
+
+// User-friendly error messages
+function getUserMessage(error, type, severity) {
+  const customMessages = {
+    [ErrorTypes.NETWORK]: 'Network connection error. Please check your internet connection.',
+    [ErrorTypes.AUTHENTICATION]: 'Authentication required. Please log in again.',
+    [ErrorTypes.AUTHORIZATION]: 'You don\'t have permission to perform this action.',
+    [ErrorTypes.NOT_FOUND]: 'The requested resource was not found.',
+    [ErrorTypes.SERVER]: 'Server error occurred. Our team has been notified.',
+    [ErrorTypes.TIMEOUT]: 'Request timed out. Please try again.',
+    [ErrorTypes.RATE_LIMIT]: 'Too many requests. Please wait and try again.',
+    [ErrorTypes.VALIDATION]: 'Invalid input. Please check your data and try again.',
+    [ErrorTypes.CLIENT]: 'Request error. Please check your input and try again.'
+  };
+  
+  return customMessages[type] || errorConfig.defaultUserMessage;
+}
+
+// Error logging
+function logError(errorData) {
+  if (errorConfig.enableConsole) {
+    const logMethod = errorData.severity === ErrorSeverity.CRITICAL ? 'error' : 
+                     errorData.severity === ErrorSeverity.HIGH ? 'warn' : 'log';
+    
+    console[logMethod](`[${errorData.severity.toUpperCase()}] ${errorData.type}: ${errorData.message}`, {
+      errorId: errorData.id,
+      timestamp: errorData.timestamp,
+      context: errorData.context,
+      stack: errorData.stack
+    });
+  }
+}
+
+// Event emission for errors
+function emitErrorEvent(errorData) {
+  if (errorConfig.enableEvents) {
+    emit('error.occurred', errorData);
+    emit(`error.${errorData.type}`, errorData);
+    emit(`error.${errorData.severity}`, errorData);
+  }
+}
+
+// User feedback
+function showUserFeedback(errorData) {
+  if (!errorConfig.enableUserFeedback) return;
+  
+  // Use the notification system if available
+  if (globalThis.notificationsSseStore) {
+    try {
+      globalThis.notificationsSseStore.create({
+        type: 'error',
+        title: errorData.userMessage,
+        body: errorData.message,
+        severity: errorData.severity,
+        ttl_seconds: Math.max(3, Math.min(15, errorData.severity === ErrorSeverity.CRITICAL ? 15 : 8)),
+        metadata: {
+          errorId: errorData.id,
+          errorType: errorData.type,
+          context: errorData.context
+        }
+      });
+    } catch (notificationError) {
+      console.warn('Failed to show error notification:', notificationError);
+      // Fallback to alert
+      if (errorData.severity === ErrorSeverity.CRITICAL || errorData.severity === ErrorSeverity.HIGH) {
+        alert(errorData.userMessage);
+      }
+    }
+  }
+}
+
+// Error recovery strategies
+const recoveryStrategies = {
+  [ErrorTypes.NETWORK]: async (errorData) => {
+    // Network recovery: retry with exponential backoff
+    for (let attempt = 1; attempt <= errorConfig.recoveryAttempts; attempt++) {
       try {
         await new Promise(resolve => setTimeout(resolve, errorConfig.recoveryDelay * attempt));
         // Try to fetch a simple endpoint to check connectivity

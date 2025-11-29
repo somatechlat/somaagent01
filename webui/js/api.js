@@ -5,7 +5,30 @@
  * @param {any} data - The data to send to the API
  * @returns {Promise<any>} The JSON response from the API
  */
-export async function callJi18n.t('ui_the_json_response_from_the_api_export_async_function_calljsonapi_endpoint_data_const_response_await_fetchapi_endpoint_method_post_headers_content_type_application_json_credentials_same_origin_body_json_stringify_data_if_response_ok_const_error_await_response_text_throw_new_error_error_const_jsonresponse_await_response_json_return_jsonresponse_fetch_wrapper_for_a0_apis_no_csrf_token_flow_uses_same_origin_credentials_only_param_string_url_the_url_to_fetch_param_object_request_the_fetch_request_options_returns_promise')The fetch response
+export async function callJsonApi(endpoint, data) {
+  const response = await fetchApi(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
+  const jsonResponse = await response.json();
+  return jsonResponse;
+}
+
+/**
+ * Fetch wrapper for A0 APIs
+ * No CSRF token flow; uses same-origin credentials only.
+ * @param {string} url - The URL to fetch
+ * @param {Object} [request] - The fetch request options
+ * @returns {Promise<Response>} The fetch response
  */
 export async function fetchApi(url, request) {
   async function _wrap(retry) {
@@ -53,7 +76,7 @@ export async function fetchApi(url, request) {
     const response = await fetch(url, finalRequest);
 
     // If redirect to login, handle immediately
-    if (response.redirected && response.url.endsWith("i18n.t('ui_i18n_t_ui_login')")) {
+    if (response.redirected && response.url.endsWith("/login")) {
       window.location.href = response.url;
       return;
     }

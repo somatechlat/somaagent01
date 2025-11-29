@@ -1,4 +1,431 @@
-i18n.t('ui_refreshing_refreshbutton_disabled_true_refreshbutton_classlist_add_refreshing_try_first_stop_any_existing_tunnel_const_stopresponse_await_fetchapi_tunnel_proxy_method_post_headers_content_type_application_json_body_json_stringify_action_stop_check_if_stopping_was_successful_const_stopdata_await_stopresponse_json_if_stopdata_success_console_warn_warning_couldn_t_stop_existing_tunnel_cleanly_continue_anyway_since_we_want_to_create_a_new_one_then_generate_a_new_one_await_this_generatelink_catch_error_console_error_error_refreshing_tunnel_error_window_toastfrontenderror_error_refreshing_tunnel_tunnel_error_this_isloading_false_this_loadingtext_finally_reset_refresh_button_refreshbutton_innerhtml_originalcontent_refreshbutton_disabled_false_refreshbutton_classlist_remove_refreshing_async_generatelink_first_check_if_authentication_is_enabled_try_const_authcheckresponse_await_fetchapi_v1_settings_sections_const_authdataraw_await_authcheckresponse_json_const_authdata_settings_sections_authdataraw_sections_find_the_auth_login_and_auth_password_in_the_settings_let_hasauth_false_if_authdata_authdata_settings_authdata_settings_sections_for_const_section_of_authdata_settings_sections_if_section_fields_const_authloginfield_section_fields_find_field_field_id_auth_login_const_authpasswordfield_section_fields_find_field_field_id_auth_password_if_authloginfield_authpasswordfield_authloginfield_value_authpasswordfield_value_hasauth_true_break_if_no_authentication_is_set_warn_the_user_if_hasauth_const_proceed_confirm_warning_no_authentication_is_configured_for_your_agent_zero_instance_n_n_creating_a_public_tunnel_without_authentication_means_anyone_with_the_url_can_access_your_agent_zero_instance_n_n_it_is_recommended_to_set_up_authentication_in_the_settings_authentication_section_before_creating_a_public_tunnel_n_n_do_you_want_to_proceed_anyway_if_proceed_return_user_cancelled_catch_error_console_error_error_checking_authentication_status_error_continue_anyway_if_we_can_t_check_auth_status_this_isloading_true_this_loadingtext_creating_tunnel_change_create_button_appearance_const_createbutton_document_queryselector_tunnel_settings_section_tunnel_actions_btn_ok_if_createbutton_createbutton_innerhtml')p"i18n.t('ui_i18n_t_ui_check_if_stopping_was_successful_consi18n_t_ui_progress_activity_stoprespi18n_t_ui_creating_createbutton_disabled_true_createbutton_classlist_add_creating_try_call_the_backend_api_to_create_a_tunnel_const_response_await_fetchapi_tunnel_proxy_method_post_headers_content_type_application_json_body_json_stringify_action_create_provider_this_provider_port_window_location_port_window_location_protocol_https_443_80_const_data_await_response_json_if_data_success_data_tunnel_url_store_the_tunnel_url_in_localstorage_for_persistence_localstorage_setitem_agent_zero_tunnel_url_data_tunnel_url_this_tunnellink_data_tunnel_url_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_show_success_message_to_confirm_creation_window_toastfrontendinfo_tunnel_created_successfully_tunnel_status_else_the_tunnel_might_still_be_starting_up_check_again_after_a_delay_this_loadingtext_tunnel_creation_taking_longer_than_expected_wait_for_5_seconds_and_check_if_the_tunnel_is_running_await_new_promise_resolve_settimeout_resolve_5000_check_if_tunnel_is_running_now_try_const_statusresponse_await_fetchapi_tunnel_proxy_method_post_headers_content_type_application_json_body_json_stringify_action_get_const_statusdata_await_statusresponse_json_if_statusdata_success_statusdata_tunnel_url_tunnel_is_now_running_we_can_update_the_ui_localstorage_setitem_agent_zero_tunnel_url_statusdata_tunnel_url_this_tunnellink_statusdata_tunnel_url_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_window_toastfrontendinfo_tunnel_created_successfully_tunnel_status_return_catch_statuserror_console_error_error_checking_tunnel_status_statuserror_if_we_get_here_the_tunnel_really_failed_to_start_const_errormessage_data_message_failed_to_create_tunnel_please_try_again_window_toastfrontenderror_errormessage_tunnel_error_console_error_tunnel_creation_failed_data_catch_error_window_toastfrontenderror_error_creating_tunnel_tunnel_error_console_error_error_creating_tunnel_error_finally_this_isloading_false_this_loadingtext_reset_create_button_if_it_s_still_in_the_dom_const_createbutton_document_queryselector_tunnel_settings_section_tunnel_actions_btn_ok_if_createbutton_createbutton_innerhtml_han_expected')"i18n.t('ui_wait_for_5_secondsi18n.t('ui_play_circle')if_the_ti18n.t('ui_create_tunnel_createbutton_disabled_false_createbutton_classlist_remove_creating_async_stoptunnel_if_confirm_are_you_sure_you_want_to_stop_the_tunnel_the_url_will_no_longer_be_accessible_this_isloading_true_this_loadingtext_stopping_tunnel_try_call_the_backend_to_stop_the_tunnel_const_response_await_fetchapi_tunnel_proxy_method_post_headers_content_type_application_json_body_json_stringify_action_stop_const_data_await_response_json_if_data_success_clear_the_stored_url_localstorage_removeitem_agent_zero_tunnel_url_clear_qr_code_const_qrcontainer_document_getelementbyid_qrcode_tunnel_if_qrcontainer_qrcontainer_innerhtml_this_qrcodeinstance_null_update_ui_state_this_tunnellink_this_linkgenerated_false_window_toastfrontendinfo_tunnel_stopped_successfully_tunnel_status_else_window_toastfrontenderror_failed_to_stop_tunnel_tunnel_error_reset_stop_button_stopbutton_innerhtml_originalstopcontent_stopbutton_disabled_false_stopbutton_classlist_remove_stopping_catch_error_window_toastfrontenderror_error_stopping_tunnel_tunnel_error_console_error_error_stopping_tunnel_error_reset_stop_button_stopbutton_innerhtml_originalstopcontent_stopbutton_disabled_false_stopbutton_classlist_remove_stopping_finally_this_isloading_false_this_loadingtext_copytoclipboard_if_this_tunnellink_return_const_copybutton_document_queryselector_tunnel_settings_section_copy_link_button_const_originalcontent_copybutton_innerhtml_navigator_clipboard_writetext_this_tunnellink_then_update_button_to_show_success_state_copybutton_innerhtml')"i18n.t('ui_i18n_t_ui_this_qrcodeinstance_null_update_ui18n_t_ui_check_te_this_i18n_t_ui_copied_copybutton_classlist_add_copy_success_show_toast_notification_window_toastfrontendinfo_tunnel_url_copied_to_clipboard_clipboard_reset_button_after_2_seconds_settimeout_copybutton_innerhtml_originalcontent_copybutton_classlist_remove_copy_success_2000_catch_err_console_error_failed_to_copy_url_err_window_toastfrontenderror_failed_to_copy_tunnel_url_clipboard_error_show_error_state_copybutton_innerhtml_if_we_have_a_stored_tunnel_url_const_storedtui18n_t_ui_close_rl_localstorage_getitem_agent_zero_tunnel_url_if_storedtunnelurl_use_the_stored_url_but_verify_it_s_still_valid_const_verifyresponse_await_fetchapi_tunnel_proxy_method_post_headers_content_type_application_json_body_json_stringify_action_verify_url_storedtunnelurl_const_verifydata_await_verifyresponse_json_if_verifydata_success_verifydata_is_valid_this_tunnellink_storedtunnelurl_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_else_clear_stale_url_localstorage_removeitem_agent_zero_tunnel_url_this_tunnellink_this_linkgenerated_false_else_no_stored_url_show_the_generate_button_this_tunnellink_this_linkgenerated_false_catch_error_console_error_error_checking_tunnel_status_error_this_tunnellink_this_linkgenerated_false_async_refreshlink_call_generate_but_with_a_confirmation_first_if_confirm_are_you_sure_you_want_to_generate_a_new_tunnel_url_the_old_url_will_no_longer_work_this_isloading_true_this_loadingtext_refreshing_tunnel_change_refresh_button_appearance_const_refreshbutton_document_queryselector_tunnel_settings_section_refresh_link_button_const_originalcontent_refreshbutton_innerhtml_refreshbutton_innerhtml_ror')"Error generating QR code:"i18n.t('ui_i18n_t_ui_error_qrcontainer_innerhtml_div_class')"qr-error"i18n.t('ui_i18n_t_ui_qr_code_generation_failed_div_async_checktunnelstatus_try_const_response_await_fetchapi')"/tunnel_proxy"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_headers')"Content-Type"i18n.t('ui_i18n_t_ui')"application/json"i18n.t('ui_i18n_t_ui_body_json_stringify_action')"get"i18n.t('ui_i18n_t_ui_const_data_await_response_json_if_data_success_data_tunnel_url_update_the_stored_url_if_it_s_different_from_what_we_have_if_this_tunnellink_data_tunnel_url_this_tunnellink_data_tunnel_url_localstorage_setitem')"agent_zero_tunnel_url"i18n.t('ui_i18n_t_ui_data_tunnel_url_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_else_check_if_we_have_a_stored_tunnel_url_const_storedtunnelurl_localstorage_getitem')"agent_zero_tunnel_url"i18n.t('ui_i18n_t_ui_if_storedtunnelurl_use_the_stored_url_but_verify_it_s_still_valid_const_verifyresponse_await_fetchapi')"/tunnel_proxy"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_headers')"Content-Type"i18n.t('ui_i18n_t_ui')"application/json"i18n.t('ui_i18n_t_ui_body_json_stringify_action')"verify"i18n.t('ui_i18n_t_ui_url_storedtunnelurl_const_verifydata_await_verifyresponse_json_if_verifydata_success_verifydata_is_valid_this_tunnellink_storedtunnelurl_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_else_clear_stale_url_localstorage_removeitem')"agent_zero_tunnel_url"i18n.t('ui_i18n_t_ui_this_tunnellink')""i18n.t('ui_i18n_t_ui_this_linkgenerated_false_else_no_stored_url_show_the_generate_button_this_tunnellink')""i18n.t('ui_i18n_t_ui_this_linkgenerated_false_catch_error_console_error')"Error checking tunnel status:"i18n.t('ui_i18n_t_ui_error_this_tunnellink')""i18n.t('ui_i18n_t_ui_this_linkgenerated_false_async_refreshlink_call_generate_but_with_a_confirmation_first_if_confirm')"Are you sure you want to generate a new tunnel URL? The old URL will no longer work."i18n.t('ui_i18n_t_ui_this_isloading_true_this_loadingtext')"Refreshing tunnel..."i18n.t('ui_i18n_t_ui_change_refresh_button_appearance_const_refreshbutton_document_queryselector')"#tunnel-settings-section .refresh-link-button"i18n.t('ui_i18n_t_ui_const_originalcontent_refreshbutton_innerhtml_refreshbutton_innerhtml_span_class')"icon material-symbols-outlined spin"i18n.t('ui_i18n_t_ui_progress_activity_span_refreshing_refreshbutton_disabled_true_refreshbutton_classlist_add')"refreshing"i18n.t('ui_i18n_t_ui_try_first_stop_any_existing_tunnel_const_stopresponse_await_fetchapi')"/tunnel_proxy"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_headers')"Content-Type"i18n.t('ui_i18n_t_ui')"application/json"i18n.t('ui_i18n_t_ui_body_json_stringify_action')"stop"i18n.t('ui_i18n_t_ui_check_if_stopping_was_successful_const_stopdata_await_stopresponse_json_if_stopdata_success_console_warn')"Warning: Couldn't stop existing tunnel cleanly"i18n.t('ui_i18n_t_ui_continue_anyway_since_we_want_to_create_a_new_one_then_generate_a_new_one_await_this_generatelink_catch_error_console_error')"Error refreshing tunnel:"i18n.t('ui_i18n_t_ui_error_window_toastfrontenderror')"Error refreshing tunnel"i18n.t('ui_i18n_t_ui')"Tunnel Error"i18n.t('ui_i18n_t_ui_this_isloading_false_this_loadingtext')""i18n.t('ui_i18n_t_ui_finally_reset_refresh_button_refreshbutton_innerhtml_originalcontent_refreshbutton_disabled_false_refreshbutton_classlist_remove')"refreshing"i18n.t('ui_i18n_t_ui_async_generatelink_first_check_if_authentication_is_enabled_try_const_authcheckresponse_await_fetchapi')"/v1/settings/sections"i18n.t('ui_i18n_t_ui_const_authdataraw_await_authcheckresponse_json_const_authdata_settings_sections_authdataraw_sections_find_the_auth_login_and_auth_password_in_the_settings_let_hasauth_false_if_authdata_authdata_settings_authdata_settings_sections_for_const_section_of_authdata_settings_sections_if_section_fields_const_authloginfield_section_fields_find_field_field_id')"auth_login"i18n.t('ui_i18n_t_ui_const_authpasswordfield_section_fields_find_field_field_id')"auth_password"i18n.t('ui_i18n_t_ui_if_authloginfield_authpasswordfield_authloginfield_value_authpasswordfield_value_hasauth_true_break_if_no_authentication_is_set_warn_the_user_if_hasauth_const_proceed_confirm')"WARNING: No authentication is configured for your Agent Zero instance.\n\n"i18n.t('ui_i18n_t_ui')"Creating a public tunnel without authentication means anyone with the URL "i18n.t('ui_i18n_t_ui')"can access your Agent Zero instance.\n\n"i18n.t('ui_i18n_t_ui')"It is recommended to set up authentication in the Settings > Authentication section "i18n.t('ui_i18n_t_ui')"before creating a public tunnel.\n\n"i18n.t('ui_i18n_t_ui')"Do you want to proceed anyway?"i18n.t('ui_i18n_t_ui_if_proceed_return_user_cancelled_catch_error_console_error')"Error checking authentication status:"i18n.t('ui_i18n_t_ui_error_continue_anyway_if_we_can_t_check_auth_status_this_isloading_true_this_loadingtext')"Creating tunnel..."i18n.t('ui_i18n_t_ui_change_create_button_appearance_const_createbutton_document_queryselector')"#tunnel-settings-section .tunnel-actions .btn-ok"i18n.t('ui_i18n_t_ui_if_createbutton_createbutton_innerhtml_span_class')"icon material-symbols-outlined spin"i18n.t('ui_i18n_t_ui_progress_activity_span_creating_createbutton_disabled_true_createbutton_classlist_add')"creating"i18n.t('ui_i18n_t_ui_try_call_the_backend_api_to_create_a_tunnel_const_response_await_fetchapi')"/tunnel_proxy"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_headers')"Content-Type"i18n.t('ui_i18n_t_ui')"application/json"i18n.t('ui_i18n_t_ui_body_json_stringify_action')"create"i18n.t('ui_i18n_t_ui_provider_this_provider_port_window_location_port_window_location_protocol_https_443_80_const_data_await_response_json_if_data_success_data_tunnel_url_store_the_tunnel_url_in_localstorage_for_persistence_localstorage_setitem')"agent_zero_tunnel_url"i18n.t('ui_i18n_t_ui_data_tunnel_url_this_tunnellink_data_tunnel_url_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_show_success_message_to_confirm_creation_window_toastfrontendinfo')"Tunnel created successfully"i18n.t('ui_i18n_t_ui')"Tunnel Status"i18n.t('ui_i18n_t_ui_else_the_tunnel_might_still_be_starting_up_check_again_after_a_delay_this_loadingtext')"Tunnel creation taking longer than expected..."i18n.t('ui_i18n_t_ui_wait_for_5_seconds_and_check_if_the_tunnel_is_running_await_new_promise_resolve_settimeout_resolve_5000_check_if_tunnel_is_running_now_try_const_statusresponse_await_fetchapi')"/tunnel_proxy"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_headers')"Content-Type"i18n.t('ui_i18n_t_ui')"application/json"i18n.t('ui_i18n_t_ui_body_json_stringify_action')"get"i18n.t('ui_i18n_t_ui_const_statusdata_await_statusresponse_json_if_statusdata_success_statusdata_tunnel_url_tunnel_is_now_running_we_can_update_the_ui_localstorage_setitem')"agent_zero_tunnel_url"i18n.t('ui_i18n_t_ui_statusdata_tunnel_url_this_tunnellink_statusdata_tunnel_url_this_linkgenerated_true_generate_qr_code_for_the_tunnel_url_sleep_skip_then_this_generateqrcode_window_toastfrontendinfo')"Tunnel created successfully"i18n.t('ui_i18n_t_ui')"Tunnel Status"i18n.t('ui_i18n_t_ui_return_catch_statuserror_console_error')"Error checking tunnel status:"i18n.t('ui_i18n_t_ui_statuserror_if_we_get_here_the_tunnel_really_failed_to_start_const_errormessage_data_message')"Failed to create tunnel. Please try again."i18n.t('ui_i18n_t_ui_window_toastfrontenderror_errormessage')"Tunnel Error"i18n.t('ui_i18n_t_ui_console_error')"Tunnel creation failed:"i18n.t('ui_i18n_t_ui_data_catch_error_window_toastfrontenderror')"Error creating tunnel"i18n.t('ui_i18n_t_ui')"Tunnel Error"i18n.t('ui_i18n_t_ui_console_error')"Error creating tunnel:"i18n.t('ui_i18n_t_ui_error_finally_this_isloading_false_this_loadingtext')""i18n.t('ui_i18n_t_ui_reset_create_button_if_it_s_still_in_the_dom_const_createbutton_document_queryselector')"#tunnel-settings-section .tunnel-actions .btn-ok"i18n.t('ui_i18n_t_ui_if_createbutton_createbutton_innerhtml_span_class')"icon material-symbols-outlined"i18n.t('ui_i18n_t_ui_play_circle_span_create_tunnel_createbutton_disabled_false_createbutton_classlist_remove')"creating"i18n.t('ui_i18n_t_ui_async_stoptunnel_if_confirm')"Are you sure you want to stop the tunnel? The URL will no longer be accessible."i18n.t('ui_i18n_t_ui_this_isloading_true_this_loadingtext')"Stopping tunnel..."i18n.t('ui_i18n_t_ui_try_call_the_backend_to_stop_the_tunnel_const_response_await_fetchapi')"/tunnel_proxy"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_headers')"Content-Type"i18n.t('ui_i18n_t_ui')"application/json"i18n.t('ui_i18n_t_ui_body_json_stringify_action')"stop"i18n.t('ui_i18n_t_ui_const_data_await_response_json_if_data_success_clear_the_stored_url_localstorage_removeitem')"agent_zero_tunnel_url"i18n.t('ui_i18n_t_ui_clear_qr_code_const_qrcontainer_document_getelementbyid')"qrcode-tunnel"i18n.t('ui_i18n_t_ui_if_qrcontainer_qrcontainer_innerhtml')""i18n.t('ui_i18n_t_ui_this_qrcodeinstance_null_update_ui_state_this_tunnellink')""i18n.t('ui_i18n_t_ui_this_linkgenerated_false_window_toastfrontendinfo')"Tunnel stopped sui18n.t('ui_qr_code_generation_failed')Tunnel Status"i18n.t('ui_i18n_t_ui_else_window_toastfrontenderror')"Failed to stop tunnel"i18n.t('ui_i18n_t_ui')"Tunnel Error"i18n.t('ui_i18n_t_ui_reset_stop_button_stopbutton_innerhtml_originalstopcontent_stopbutton_disabled_false_stopbutton_classlist_remove')"stopping"i18n.t('ui_i18n_t_ui_catch_error_window_toastfrontenderror')"Error stopping tunnel"i18n.t('ui_i18n_t_ui')"Tunnel Error"i18n.t('ui_i18n_t_ui_console_error')"Error stopping tunnel:"i18n.t('ui_i18n_t_ui_error_reset_stop_button_stopbutton_innerhtml_originalstopcontent_stopbutton_disabled_false_stopbutton_classlist_remove')"stopping"i18n.t('ui_i18n_t_ui_finally_this_isloading_false_this_loadingtext')""i18n.t('ui_i18n_t_ui_copytoclipboard_if_this_tunnellink_return_const_copybutton_document_queryselector')"#tunnel-settings-section .copy-link-button"i18n.t('ui_i18n_t_ui_const_originalcontent_copybutton_innerhtml_navigator_clipboard_writetext_this_tunnellink_then_update_button_to_show_success_state_copybutton_innerhtml_span_class')"icon material-symbols-outlined"i18n.t('ui_i18n_t_ui_check_span_copied_copybutton_classlist_add')"copy-success"i18n.t('ui_i18n_t_ui_show_toast_notification_window_toastfrontendinfo')"Tunnel URL copied to clipboard!"i18n.t('ui_i18n_t_ui')"Clipboard"i18n.t('ui_i18n_t_ui_reset_button_after_2_seconds_settimeout_copybutton_innerhtml_originalcontent_copybutton_classlist_remove')"copy-success"i18n.t('ui_i18n_t_ui_2000_catch_err_console_error')"Failed to copy URL: "i18n.t('ui_i18n_t_ui_err_window_toastfrontenderror')"Failed to copy tunnel URL"i18n.t('ui_i18n_t_ui')"Clipboard Error"i18n.t('ui_i18n_t_ui_show_error_state_copybutton_innerhtml_span_class')"icon material-symbols-outlined"i18n.t('ui_i18n_t_ui_close_span_failed_copybutton_classlist_add')"copy-error"i18n.t('ui_i18n_t_ui_reset_button_after_2_seconds_settimeout_copybutton_innerhtml_originalcontent_copybutton_classlist_remove')"copy-error"i18n.t('ui_i18n_t_ui_2000_convert_it_to_alpine_store_const_store_createstore')"tunnelStore", model);
+import { createStore } from "/static/js/AlpineStore.js";
+import * as Sleep from "/static/js/sleep.js";
 
-// export fori18n.t('ui_progress_activity')es
+// define the model object holding data and functions
+const model = {
+  isLoading: false,
+  tunnelLink: "",
+  linkGenerated: false,
+  loadingText: "",
+  qrCodeInstance: null,
+  provider: "cloudflared",
+
+  init() {
+    this.checkTunnelStatus();
+  },
+
+  generateQRCode() {
+    if (!this.tunnelLink) return;
+
+    const qrContainer = document.getElementById("qrcode-tunnel");
+    if (!qrContainer) return;
+
+    // Clear any existing QR code
+    qrContainer.innerHTML = "";
+
+    try {
+      // Generate new QR code
+      this.qrCodeInstance = new QRCode(qrContainer, {
+        text: this.tunnelLink,
+        width: 128,
+        height: 128,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      qrContainer.innerHTML =
+        '<div class="qr-error">QR code generation failed</div>';
+    }
+  },
+
+  async checkTunnelStatus() {
+    try {
+      const response = await fetchApi("/tunnel_proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "get" }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.tunnel_url) {
+        // Update the stored URL if it's different from what we have
+        if (this.tunnelLink !== data.tunnel_url) {
+          this.tunnelLink = data.tunnel_url;
+          localStorage.setItem("agent_zero_tunnel_url", data.tunnel_url);
+        }
+        this.linkGenerated = true;
+        // Generate QR code for the tunnel URL
+        Sleep.Skip().then(() => this.generateQRCode());
+      } else {
+        // Check if we have a stored tunnel URL
+        const storedTunnelUrl = localStorage.getItem("agent_zero_tunnel_url");
+
+        if (storedTunnelUrl) {
+          // Use the stored URL but verify it's still valid
+          const verifyResponse = await fetchApi("/tunnel_proxy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action: "verify", url: storedTunnelUrl }),
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success && verifyData.is_valid) {
+            this.tunnelLink = storedTunnelUrl;
+            this.linkGenerated = true;
+            // Generate QR code for the tunnel URL
+            Sleep.Skip().then(() => this.generateQRCode());
+          } else {
+            // Clear stale URL
+            localStorage.removeItem("agent_zero_tunnel_url");
+            this.tunnelLink = "";
+            this.linkGenerated = false;
+          }
+        } else {
+          // No stored URL, show the generate button
+          this.tunnelLink = "";
+          this.linkGenerated = false;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking tunnel status:", error);
+      this.tunnelLink = "";
+      this.linkGenerated = false;
+    }
+  },
+
+  async refreshLink() {
+    // Call generate but with a confirmation first
+    if (
+      confirm(
+        "Are you sure you want to generate a new tunnel URL? The old URL will no longer work."
+      )
+    ) {
+
+      this.isLoading = true;
+      this.loadingText = "Refreshing tunnel...";
+
+      // Change refresh button appearance
+      const refreshButton = document.querySelector("#tunnel-settings-section .refresh-link-button");
+      const originalContent = refreshButton.innerHTML;
+      refreshButton.innerHTML =
+        '<span class="icon material-symbols-outlined spin">progress_activity</span> Refreshing...';
+      refreshButton.disabled = true;
+      refreshButton.classList.add("refreshing");
+
+      try {
+        // First stop any existing tunnel
+        const stopResponse = await fetchApi("/tunnel_proxy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: "stop" }),
+        });
+
+        // Check if stopping was successful
+        const stopData = await stopResponse.json();
+        if (!stopData.success) {
+          console.warn("Warning: Couldn't stop existing tunnel cleanly");
+          // Continue anyway since we want to create a new one
+        }
+
+        // Then generate a new one
+        await this.generateLink();
+      } catch (error) {
+        console.error("Error refreshing tunnel:", error);
+        window.toastFrontendError("Error refreshing tunnel", "Tunnel Error");
+        this.isLoading = false;
+        this.loadingText = "";
+      } finally {
+        // Reset refresh button
+        refreshButton.innerHTML = originalContent;
+        refreshButton.disabled = false;
+        refreshButton.classList.remove("refreshing");
+      }
+    }
+  },
+
+  async generateLink() {
+    // First check if authentication is enabled
+    try {
+      const authCheckResponse = await fetchApi("/v1/ui/settings/sections");
+      const authDataRaw = await authCheckResponse.json();
+      const authData = { settings: { sections: authDataRaw.sections || [] } };
+
+      // Find the auth_login and auth_password in the settings
+      let hasAuth = false;
+
+      if (authData && authData.settings && authData.settings.sections) {
+        for (const section of authData.settings.sections) {
+          if (section.fields) {
+            const authLoginField = section.fields.find(
+              (field) => field.id === "auth_login"
+            );
+            const authPasswordField = section.fields.find(
+              (field) => field.id === "auth_password"
+            );
+
+            if (
+              authLoginField &&
+              authPasswordField &&
+              authLoginField.value &&
+              authPasswordField.value
+            ) {
+              hasAuth = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // If no authentication is set, warn the user
+      if (!hasAuth) {
+        const proceed = confirm(
+          "WARNING: No authentication is configured for your Agent Zero instance.\n\n" +
+            "Creating a public tunnel without authentication means anyone with the URL " +
+            "can access your Agent Zero instance.\n\n" +
+            "It is recommended to set up authentication in the Settings > Authentication section " +
+            "before creating a public tunnel.\n\n" +
+            "Do you want to proceed anyway?"
+        );
+
+        if (!proceed) {
+          return; // User cancelled
+        }
+      }
+    } catch (error) {
+      console.error("Error checking authentication status:", error);
+      // Continue anyway if we can't check auth status
+    }
+
+    this.isLoading = true;
+    this.loadingText = "Creating tunnel...";
+
+    // Change create button appearance
+    const createButton = document.querySelector("#tunnel-settings-section .tunnel-actions .btn-ok");
+    if (createButton) {
+      createButton.innerHTML =
+        '<span class="icon material-symbols-outlined spin">progress_activity</span> Creating...';
+      createButton.disabled = true;
+      createButton.classList.add("creating");
+    }
+
+    try {
+      // Call the backend API to create a tunnel
+      const response = await fetchApi("/tunnel_proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "create",
+          provider: this.provider,
+          // port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80)
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.tunnel_url) {
+        // Store the tunnel URL in localStorage for persistence
+        localStorage.setItem("agent_zero_tunnel_url", data.tunnel_url);
+
+        this.tunnelLink = data.tunnel_url;
+        this.linkGenerated = true;
+
+        // Generate QR code for the tunnel URL
+        Sleep.Skip().then(() => this.generateQRCode());
+
+        // Show success message to confirm creation
+        window.toastFrontendInfo(
+          "Tunnel created successfully",
+          "Tunnel Status"
+        );
+      } else {
+        // The tunnel might still be starting up, check again after a delay
+        this.loadingText = "Tunnel creation taking longer than expected...";
+
+        // Wait for 5 seconds and check if the tunnel is running
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+
+        // Check if tunnel is running now
+        try {
+          const statusResponse = await fetchApi("/tunnel_proxy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action: "get" }),
+          });
+
+          const statusData = await statusResponse.json();
+
+          if (statusData.success && statusData.tunnel_url) {
+            // Tunnel is now running, we can update the UI
+            localStorage.setItem(
+              "agent_zero_tunnel_url",
+              statusData.tunnel_url
+            );
+            this.tunnelLink = statusData.tunnel_url;
+            this.linkGenerated = true;
+
+            // Generate QR code for the tunnel URL
+            Sleep.Skip().then(() => this.generateQRCode());
+
+            window.toastFrontendInfo(
+              "Tunnel created successfully",
+              "Tunnel Status"
+            );
+            return;
+          }
+        } catch (statusError) {
+          console.error("Error checking tunnel status:", statusError);
+        }
+
+        // If we get here, the tunnel really failed to start
+        const errorMessage =
+          data.message || "Failed to create tunnel. Please try again.";
+        window.toastFrontendError(errorMessage, "Tunnel Error");
+        console.error("Tunnel creation failed:", data);
+      }
+    } catch (error) {
+      window.toastFrontendError("Error creating tunnel", "Tunnel Error");
+      console.error("Error creating tunnel:", error);
+    } finally {
+      this.isLoading = false;
+      this.loadingText = "";
+
+      // Reset create button if it's still in the DOM
+      const createButton = document.querySelector("#tunnel-settings-section .tunnel-actions .btn-ok");
+      if (createButton) {
+        createButton.innerHTML =
+          '<span class="icon material-symbols-outlined">play_circle</span> Create Tunnel';
+        createButton.disabled = false;
+        createButton.classList.remove("creating");
+      }
+    }
+  },
+
+  async stopTunnel() {
+    if (
+      confirm(
+        "Are you sure you want to stop the tunnel? The URL will no longer be accessible."
+      )
+    ) {
+      this.isLoading = true;
+      this.loadingText = "Stopping tunnel...";
+
+      try {
+        // Call the backend to stop the tunnel
+        const response = await fetchApi("/tunnel_proxy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: "stop" }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Clear the stored URL
+          localStorage.removeItem("agent_zero_tunnel_url");
+
+          // Clear QR code
+          const qrContainer = document.getElementById("qrcode-tunnel");
+          if (qrContainer) {
+            qrContainer.innerHTML = "";
+          }
+          this.qrCodeInstance = null;
+
+          // Update UI state
+          this.tunnelLink = "";
+          this.linkGenerated = false;
+
+          window.toastFrontendInfo(
+            "Tunnel stopped successfully",
+            "Tunnel Status"
+          );
+        } else {
+          window.toastFrontendError("Failed to stop tunnel", "Tunnel Error");
+
+          // Reset stop button
+          stopButton.innerHTML = originalStopContent;
+          stopButton.disabled = false;
+          stopButton.classList.remove("stopping");
+        }
+      } catch (error) {
+        window.toastFrontendError("Error stopping tunnel", "Tunnel Error");
+        console.error("Error stopping tunnel:", error);
+
+        // Reset stop button
+        stopButton.innerHTML = originalStopContent;
+        stopButton.disabled = false;
+        stopButton.classList.remove("stopping");
+      } finally {
+        this.isLoading = false;
+        this.loadingText = "";
+      }
+    }
+  },
+
+  copyToClipboard() {
+    if (!this.tunnelLink) return;
+
+    const copyButton = document.querySelector("#tunnel-settings-section .copy-link-button");
+    const originalContent = copyButton.innerHTML;
+
+    navigator.clipboard
+      .writeText(this.tunnelLink)
+      .then(() => {
+        // Update button to show success state
+        copyButton.innerHTML =
+          '<span class="icon material-symbols-outlined">check</span> Copied!';
+        copyButton.classList.add("copy-success");
+
+        // Show toast notification
+        window.toastFrontendInfo(
+          "Tunnel URL copied to clipboard!",
+          "Clipboard"
+        );
+
+        // Reset button after 2 seconds
+        setTimeout(() => {
+          copyButton.innerHTML = originalContent;
+          copyButton.classList.remove("copy-success");
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy URL: ", err);
+        window.toastFrontendError(
+          "Failed to copy tunnel URL",
+          "Clipboard Error"
+        );
+
+        // Show error state
+        copyButton.innerHTML =
+          '<span class="icon material-symbols-outlined">close</span> Failed';
+        copyButton.classList.add("copy-error");
+
+        // Reset button after 2 seconds
+        setTimeout(() => {
+          copyButton.innerHTML = originalContent;
+          copyButton.classList.remove("copy-error");
+        }, 2000);
+      });
+  },
+};
+
+// convert it to alpine store
+const store = createStore("tunnelStore", model);
+
+// export for use in other files
 export { store };

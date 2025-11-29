@@ -1,16 +1,502 @@
 // Import the component loader and page utilities
-import { importComponent } from "i18n.t('ui_i18n_t_ui_components_js')";
-import { handleError, createErrorBoundary } from "i18n.t('ui_i18n_t_ui_error_handling_js')";
+import { importComponent } from "./components.js";
+import { handleError, createErrorBoundary } from "./error-handling.js";
 
 // Create error boundary for modal system
 const modalErrorBoundary = createErrorBoundary('ModalSystem', (errorData) => {
   // Return fallback modal UI
   const fallbackModal = document.createElement('div');
-  fallbackModal.className = 'modal-erroi18n.t('ui_times')ack';
+  fallbackModal.className = 'modal-error-fallback';
   fallbackModal.innerHTML = `
-    <div class="i18n.t('ui_i18n_t_ui_modal_error_content')">
+    <div class="modal-error-content">
       <h3>Modal Error</h3>
-      <p>${errorDi18n.t('ui_setup_close_button_handler_with_proper_event_prevention_const_close_button_newmodal_queryselector_modal_close_close_button_addeventlistener_click_event_event_preventdefault_event_stoppropagation_closemodal_add_modal_to_dom_document_body_appendchild_newmodal_initialize_modal_state_const_modaldata_element_newmodal_title_newmodal_queryselector_modal_title_body_newmodal_queryselector_modal_bd_close_close_button_styles_scripts_isopen_true_createdat_date_now_name_name_show_the_modal_with_proper_animation_requestanimationframe_newmodal_classlist_add_show_newmodal_style_opacity_0_newmodal_style_transform_scale_0_9i18n.t('ui_return_fallback_modal_ui_const_fallbackmodal_document_createelement_div_fallbackmodal_classname_modal_erroi18n_t_ui_times_ack_fallbackmodal_innerhtml')out_if_modalstack_includes_modaldata_newmodal_focus_100_ri18n.t('ui_modal_error')data_catch_error_console_error_error_creating_modal_element_error_throw_new_error_failed_to_create_modal_error_message_enhanced_modal_opening_with_proper_lifecycle_management_and_error_handling_export_const_openmodal_modalerrorboundary_wrapasync_async_function_modalpath_options_try_try_store_the_currently_focused_element_for_later_restoration_const_activeelement_document_activeelement_if_activeelement_activeelement_setattribute_data_last_focused_true_create_new_modal_instance_with_name_const_modalname_options_name_modalpath_modal_date_now_const_modal_createmodalelement_modalname_set_up_mutation_observer_for_modal_removal_detection_const_observer_new_mutationobserver_obs_if_document_contains_modal_element_obs_disconnect_resolve_observer_observe_document_body_childlist_true_subtree_true_set_loading_state_with_better_ux_modal_body_innerhtml')ationduration_modalstate_activemodalcount_modalstack_length_enhanced_modal_creation_with_proper_error_handlingi18n.t('ui_loading_modalpath')nt_function_createmodalelemei18n.t('ui_add_modal_to_stack_immediately_for_proper_state_management_modalstack_push_modal_handle_body_overflow_for_proper_modal_behavior_if_modalstack_length_1_const_scrollbarwidth_window_innerwidth_document_documentelement_clientwidth_document_body_style_overflow_hidden_document_body_style_paddingright_scrollbarwidth_px_use_importcomponent_to_load_the_modal_content_with_enhanced_error_handling_const_componentpath_modalpath_startswith_modalpath_slice_1_modalpath_load_modal_content_with_proper_error_handling_and_timing_importcomponent_componentpath_modal_body_then_doc_try_set_the_title_from_the_document_with_fallback_modal_title_innerhtml_doc_doc_title_modalpath_apply_css_classes_from_document_if_available_if_doc_doc_html_doc_html_classlist_const_inner_modal_element_queryselector_modal_inner_if_inner_inner_classlist_add_array_from_doc_html_classlist_if_doc_doc_body_doc_body_classlist_modal_body_classlist_add_array_from_doc_body_classlist_trigger_modal_ready_event_modal_element_dispatchevent_new_customevent_modalready_detail_modal_path_modalpath_focus_management_for_accessibility_settimeout_if_modal_element_document_contains_modal_element_modal_element_focus_move_focus_to_first_focusable_element_if_available_const_firstfocusable_modal_element_queryselector_button_href_input_select_textarea_tabindex_not_tabindex_1_if_firstfocusable_firstfocusable_focus_100_catch_rendererror_console_error_error_rendering_modal_content_rendererror_modal_body_innerhtml')al_error_message_enhanced_modal_opening_with_proper_lifecycle_managi18n.t('ui_rendering_error')_handling_export_const_openmodal_modalerrorboundari18n.t('ui_failed_to_render_modal_content_rendererror_message')tore_the_currently_focused_element_for_li18n.t('ui_catch_error_console_error_error_loading_modal_content_error_modal_body_innerhtml')nst_modalname_options_name_modalpath_modal_date_now_const_modal_ci18n.t('ui_loading_error')ment_modalname_set_up_mutation_observer_for_modai18n.t('ui_failed_to_load_modal_content_error_message')nobserver_obs_if_document_contains_modal_element_obs_disconnect_resolve_observer_obsei18n.t('ui_retry')ocument_body_childlist_true_subtree_true_set_loading_state_with_better_ux_modal_body_innerhtml_div_class')"i18n.t('ui_modal_loading')"i18n.t('ui_div_class')"i18n.t('ui_loading_spinner')"i18n.t('ui_div_div_class')"i18n.t('ui_loading_text')"i18n.t('ui_loading_modalpath_div_div_add_modal_to_stack_immediately_for_proper_state_management_modalstack_push_modal_handle_body_overflow_for_proper_modal_behavior_if_modalstack_length_1_const_scrollbarwidth_window_innerwidth_document_documentelement_clientwidth_document_body_style_overflow')"i18n.t('ui_hidden')"i18n.t('ui_document_body_style_paddingright_scrollbarwidth_px_use_importcomponent_to_load_the_modal_content_with_enhanced_error_handling_const_componentpath_modalpath_startswith_modalpath_slice_1_modalpath_load_modal_content_with_proper_error_handling_and_timing_importcomponent_componentpath_modal_body_then_doc_try_set_the_title_from_the_document_with_fallback_modal_title_innerhtml_doc_doc_title_modalpath_apply_css_classes_from_document_if_available_if_doc_doc_html_doc_html_classlist_const_inner_modal_element_queryselector')"i18n.t('ui_modal_inner')"i18n.t('ui_if_inner_inner_classlist_add_array_from_doc_html_classlist_if_doc_doc_body_doc_body_classlist_modal_body_classlist_add_array_from_doc_body_classlist_trigger_modal_ready_event_modal_element_dispatchevent_new_customevent_modalready_detail_modal_path_modalpath_focus_management_for_accessibility_settimeout_if_modal_element_document_contains_modal_element_modal_element_focus_move_focus_to_first_focusable_element_if_available_const_firstfocusable_modal_element_queryselector_button_href_input_select_textarea_tabindex_not_tabindex')"i18n.t('ui_1')"i18n.t('ui_if_firstfocusable_firstfocusable_focus_100_catch_rendererror_console_error_error_rendering_modal_content_rendererror_modal_body_innerhtml_div_class')"i18n.t('ui_modal_error')"i18n.t('ui_div_class')"i18n.t('ui_error_title')"i18n.t('ui_rendering_error_div_div_class')"i18n.t('ui_error_message')"i18n.t('ui_failed_to_render_modal_content_rendererror_message_div_div_catch_error_console_error')"i18n.t('ui_error_loading_modal_content')"i18n.t('ui_error_modal_body_innerhtml_div_class')"i18n.t('ui_modal_error')"i18n.t('ui_div_class')"i18n.t('ui_error_title')"i18n.t('ui_loading_error_div_div_class')"i18n.t('ui_error_message')"i18n.t('ui_failed_to_load_modal_content_error_message_div_button_class')"i18n.t('ui_error_retry')"i18n.t('ui_onclick')"i18n.t('ui_openmodal_modalpath')"i18n.t('ui_retry_button_div_reject_promise_if_modal_loading_fails_critically_if_options_rejectonerror_reject_error_finally_update_modal_z_indexes_regardless_of_load_outcome_updatemodalzindexes_catch_error_await_handleerror_error_component_modalsystem_function_openmodal_modalpath_options_json_stringify_options_throw_error_enhanced_modal_close_function_with_proper_lifecycle_management_export_function_closemodal_modalname_null_if_modalstack_length_0_return_try_let_modalindex_modalstack_length_1_default_to_last_modal_let_modal_if_modalname_find_the_modal_with_the_specified_name_in_the_stack_modalindex_modalstack_findindex_modal_modal_name_modalname_if_modalindex_1_return_modal_not_found_in_stack_get_the_modal_from_stack_at_the_found_index_modal_modalstack_modalindex_remove_the_modal_from_stack_modalstack_splice_modalindex_1_else_just_remove_the_last_modal_modal_modalstack_pop_if_modal_modal_element_console_warn_invalid_modal_object_or_element_return_mark_modal_as_closing_modal_isopen_false_remove_modal_specific_styles_and_scripts_with_proper_cleanup_try_if_array_isarray_modal_styles_modal_styles_foreach_styleid_const_styleelement_document_queryselector_data_modal_style')"i18n.t('ui_styleid')"i18n.t('ui_if_styleelement_styleelement_remove_if_array_isarray_modal_scripts_modal_scripts_foreach_scriptid_const_scriptelement_document_queryselector_data_modal_script')"i18n.t('ui_scriptid')"i18n.t('ui_if_scriptelement_scriptelement_remove_catch_cleanuperror_console_warn_error_cleaning_up_modal_resources_cleanuperror_animate_modal_closure_modal_element_style_opacity')"0"i18n.t('ui_i18n_t_ui_modal_element_style_transform')"scale(0.9)"i18n.t('ui_i18n_t_ui_modal_element_classlist_remove')"show"i18n.t('ui_i18n_t_ui_remove_the_modal_element_from_dom_after_animation_completes_const_removemodalelement_try_if_modal_element_modal_eli18n_t_ui_return_fallback_modal_ui_const_fallbackmodal_document_createelement_div_fallbackmodal_classname_modal_error_fallback_fallbackmodal_innerhtml_for_proper_animation_comi18n_t_ui_modal_error_st_transitionhandler_event_ii18n_t_ui_errordata_usermessage_city_modal_element_removeeventlistener_transitionend_transitionhandler_removemodalelemi18n_t_ui_close_odal_element_addeventlistener_transii18n_t_ui_document_body_appendchild_fallbackmodal_return_fallbackmodal_modal_functionality_with_improved_architecture_const_modalstack_const_modalstate_isinitialized_false_activemodalcount_0_backdropzindex_2999_basemodalzindex_3000_modalspacing_20_animationduration_300_create_a_single_backdrop_for_all_modals_with_improved_event_handling_const_backdrop_document_createelement_div_backdrop_classname_modal_backdrop_backdrop_style_display_none_backdrop_style_backdropfilter_blur_5px_backdrop_style_transition_opacity_modalstate_animationduration_ms_ease_backdrop_style_opacity_0_improved_backdrop_click_handling_with_proper_event_delegation_backdrop_addeventlistener_click_event_if_event_target_backdrop_closemodal_prevent_backdrop_clicks_from_bubbling_when_clicking_inside_modal_backdrop_addeventlistener_mousedown_event_if_event_target_backdrop_event_preventdefault_document_body_appendchild_backdrop_enhanced_z_index_management_with_proper_stacking_and_animation_function_updatemodalzindexes_const_basemodalzindex_modalspacing_backdropzindex_animationduration_modalstate_update_z_index_for_all_modals_with_proper_stacking_modalstack_foreach_modal_index_const_zindex_basemodalzindex_index_modalspacing_modal_element_style_zindex_zindex_add_transition_for_smooth_appearance_disappearance_if_modal_element_style_transition_modal_element_style_transition_transform_animationduration_ms_ease_opacity_animationduration_ms_ease_enhanced_backdrop_visibility_handling_with_animation_if_modalstack_length_0_backdrop_style_display_block_animate_backdrop_opacity_settimeout_backdrop_style_opacity_1_10_if_modalstack_length_1_for_multiple_modals_position_backdrop_between_the_top_two_const_topmodalindex_modalstack_length_1_const_previousmodalzindex_basemodalzindex_topmodalindex_1_modalspacing_backdrop_style_zindex_previousmodalzindex_modalspacing_2_else_for_single_modal_position_backdrop_below_it_backdrop_style_zindex_backdropzindex_else_animate_backdrop_fade_out_backdrop_style_opacity_0_hide_backdrop_after_animation_completes_settimeout_if_modalstack_length_0_backdrop_style_display_none_animationduration_modalstate_activemodalcount_modalstack_length_enhanced_modal_creation_with_proper_error_handling_and_lifecycle_management_function_createmodalelement_name_try_create_modal_element_with_proper_attributes_const_newmodal_document_createelement_div_newmodal_classname_modal_newmodal_modalname_name_modal_date_now_save_name_to_the_object_newmodal_setattribute_role_dialog_newmodal_setattribute_aria_modal_true_newmodal_setattribute_aria_labelledby_modal_title_name_newmodal_tabindex_1_make_focusable_add_enhanced_click_handler_with_proper_event_delegation_newmodal_addeventlistener_click_event_only_close_if_clicking_directly_on_the_modal_container_not_its_content_if_event_target_newmodal_closemodal_add_keyboard_event_handling_for_accessibility_newmodal_addeventlistener_keydown_event_if_event_key_escape_closemodal_create_enhanced_modal_structure_with_proper_accessibility_newmodal_innerhtml_s_with_improved_event_handling_const_backdrop_document_createelement')"i18n.t('ui_div')"i18n.t('ui_backdrop_classname')"i18n.t('ui_modal_backdrop')"i18n.t('ui_backdrop_style_display')"i18n.t('ui_none')"i18n.t('ui_backdrop_style_backdropfilter')"i18n.t('ui_blur_5px')"i18n.t('ui_backdrop_style_transition_opacity_modalstate_animationduration_ms_ease_backdrop_style_opacity')"0"i18n.t('ui_i18n_t_ui_improved_backdrop_click_handling_with_proper_event_delegation_backdrop_addeventlistener')"click"i18n.t('ui_i18n_t_ui_event_if_event_target_backdrop_closemodal_prevent_backdrop_clicks_from_bubbling_when_clicking_inside_modal_backdrop_addeventlistener')"mousedown"i18n.t('ui_i18n_t_ui_event_if_event_target_backdrop_event_preventdefault_document_body_appendchild_backdrop_enhanced_z_index_management_with_proper_stacking_and_animation_function_updatemodalzindexes_const_basemodalzindex_modalspacing_backdropzindex_animationduration_modalstate_update_z_index_for_all_modals_with_proper_stacking_modalstack_foreach_modal_index_const_zindex_basemodalzindex_index_modalspacing_modal_element_style_zindex_zindex_add_transition_for_smooth_appearance_disappearance_if_modal_element_style_transition_modal_element_style_transition_transform_animationduration_ms_ease_opacity_animationduration_ms_ease_enhanced_backdrop_visibility_handling_with_animation_if_modalstack_length_0_backdrop_style_display')"block"i18n.t('ui_i18n_t_ui_animate_backdrop_opacity_settimeout_backdrop_style_opacity')"1"i18n.t('ui_i18n_t_ui_10_if_modalstack_length_1_for_multiple_modals_position_backdrop_between_the_top_two_const_topmodalindex_modalstack_length_1_const_previousmodalzindex_basemodalzindex_topmodalindex_1_modalspacing_backdrop_style_zindex_previousmodalzindex_modalspacing_2_else_for_single_modal_position_backdrop_below_it_backdrop_style_zindex_backdropzindex_else_animate_backdrop_fade_out_backdrop_style_opacity')"0"i18n.t('ui_i18n_t_ui_hide_backdrop_after_animation_completes_settimeout_if_modalstack_length_0_backdrop_style_display')"none"i18n.t('ui_i18n_t_ui_animationduration_modalstate_activemodalcount_modalstack_length_enhanced_modal_creation_with_proper_error_handling_and_lifecycle_management_function_createmodalelement_name_try_create_modal_element_with_proper_attributes_const_newmodal_document_createelement')"div"i18n.t('ui_i18n_t_ui_newmodal_classname')"modal"i18n.t('ui_i18n_t_ui_newmodal_modalname_name_modal_date_now_save_name_to_the_object_newmodal_setattribute')"role"i18n.t('ui_i18n_t_ui')"dialog"i18n.t('ui_i18n_t_ui_newmodal_setattribute')"aria-modal"i18n.t('ui_i18n_t_ui')"true"i18n.t('ui_i18n_t_ui_newmodal_setattribute')"aria-labelledby"i18n.t('ui_i18n_t_ui_modal_title_name_newmodal_tabindex_1_make_focusable_add_enhanced_click_handler_with_proper_event_delegation_newmodal_addeventlistener')"click"i18n.t('ui_i18n_t_ui_event_only_close_if_clicking_directly_on_the_modal_container_not_its_content_if_event_target_newmodal_closemodal_add_keyboard_event_handling_for_accessibility_newmodal_addeventlistener')"keydown"i18n.t('ui_i18n_t_ui_event_if_event_key')"Escape"i18n.t('ui_i18n_t_ui_closemodal_create_enhanced_modal_structure_with_proper_accessibility_newmodal_innerhtml_div_class')"modal-inner"i18n.t('ui_i18n_t_ui_div_class')"modal-header"i18n.t('ui_i18n_t_ui_h2_class')"modal-title"i18n.t('ui_i18n_t_ui_id')"modal-title-${name}"i18n.t('ui_i18n_t_ui_h2_button_class')"modal-close"i18n.t('ui_i18n_t_ui_aria_label')"Close modal"i18n.t('ui_i18n_t_ui_times_button_div_div_class')"modal-scroll"i18n.t('ui_i18n_t_ui_div_class')"modal-bd"i18n.t('ui_i18n_t_ui_div_div_div_setup_close_button_handler_with_proper_event_prevention_const_close_button_newmodal_queryselector')".modal-close"i18n.t('ui_i18n_t_ui_close_button_addeventlistener')"click"i18n.t('ui_i18n_t_ui_event_event_preventdefault_event_stoppropagation_closemodal_add_modal_to_dom_document_body_appendchild_newmodal_initialize_modal_state_const_modaldata_element_newmodal_title_newmodal_queryselector')".modal-title"i18n.t('ui_i18n_t_ui_body_newmodal_queryselector')".modal-bd"i18n.t('ui_i18n_t_ui_close_close_button_styles_scripts_isopen_true_createdat_date_now_name_name_show_the_modal_with_proper_animation_requestanimationframe_newmodal_classlist_add')"show"i18n.t('ui_i18n_t_ui_newmodal_style_opacity')"0"i18n.t('ui_i18n_t_ui_newmodal_style_transform')"scale(0.9)"i18n.t('ui_i18n_t_ui_trigger_animation_requestanimationframe_newmodal_style_opacity')"1"i18n.t('ui_i18n_t_ui_newmodal_style_transform')"scale(1)"i18n.t('ui_i18n_t_ui_update_modal_z_indexes_updatemodalzindexes_focus_management_for_accessibility_settimeout_if_modalstack_includes_modaldata_newmodal_focus_100_return_modaldata_catch_error_console_error')"Error creating modal element:"i18n.t('ui_i18n_t_ui_error_throw_new_error_failed_to_create_modal_error_message_enhanced_modal_opening_with_proper_lifecycle_management_and_error_handling_export_const_openmodal_modalerrorboundary_wrapasync_async_function_modalpath_options_try_try_store_the_currently_focused_element_for_later_restoration_const_activeelement_document_activeelement_if_activeelement_activeelement_setattribute_data_last_focused_true_create_new_modal_instance_with_name_const_modalname_options_name_modalpath_modal_date_now_const_modal_createmodalelement_modalname_set_up_mutation_observer_for_modal_removal_detection_const_observer_new_mutationobserver_obs_if_document_contains_modal_element_obs_disconnect_resolve_observer_observe_document_body_childlist_true_subtree_true_set_loading_state_with_better_ux_modal_body_innerhtml_div_class')"modal-loading"i18n.t('ui_i18n_t_ui_div_class')"loading-spinner"i18n.t('ui_i18n_t_ui_div_div_class')"loading-text"i18n.t('ui_i18n_t_ui_loading_modalpath_div_div_add_modal_to_stack_immediately_for_proper_state_management_modalstack_push_modal_handle_body_overflow_for_proper_modal_behavior_if_modalstack_length_1_const_scrollbarwidth_window_innerwidth_document_documentelement_clientwidth_document_body_style_overflow')"hidden"i18n.t('ui_i18n_t_ui_document_body_style_paddingright_scrollbarwidth_px_use_importcomponent_to_load_the_modal_content_with_enhanced_error_handling_const_componentpath_modalpath_startswith_modalpath_slice_1_modalpath_load_modal_content_with_proper_error_handling_and_timing_importcomponent_componentpath_modal_body_then_doc_try_set_the_title_from_the_document_with_fallback_modal_title_innerhtml_doc_doc_title_modalpath_apply_css_classes_from_document_if_available_if_doc_doc_html_doc_html_classlist_const_inner_modal_element_queryselector')".modal-inner"i18n.t('ui_i18n_t_ui_if_inner_inner_classlist_add_array_from_doc_html_classlist_if_doc_doc_body_doc_body_classlist_modal_body_classlist_add_array_from_doc_body_classlist_trigger_modal_ready_event_modal_element_dispatchevent_new_customevent_modalready_detail_modal_path_modalpath_focus_management_for_accessibility_settimeout_if_modal_element_document_contains_modal_element_modal_element_focus_move_focus_to_first_focusable_element_if_available_const_firstfocusable_modal_element_queryselector_button_href_input_select_textarea_tabindex_not_tabindex')"-1"i18n.t('ui_i18n_t_ui_if_firstfocusable_firstfocusable_focus_100_catch_rendererror_console_error_error_rendering_modal_content_rendererror_modal_body_innerhtml_div_class')"modal-error"i18n.t('ui_i18n_t_ui_div_class')"error-title"i18n.t('ui_i18n_t_ui_rendering_error_div_div_class')"error-message"i18n.t('ui_i18n_t_ui_failed_to_render_modal_content_rendererror_message_div_div_catch_error_console_error')"Error loading modal content:"i18n.t('ui_i18n_t_ui_error_modal_body_innerhtml_div_class')"modal-error"i18n.t('ui_i18n_t_ui_div_class')"error-title"i18n.t('ui_i18n_t_ui_loading_error_div_div_class')"error-message"i18n.t('ui_i18n_t_ui_failed_to_load_modal_content_error_message_div_button_class')"error-retry"i18n.t('ui_i18n_t_ui_onclick')"openModal('${modalPath}')"i18n.t('ui_i18n_t_ui_retry_button_div_reject_promise_if_modal_loading_fails_critically_if_options_rejectonerror_reject_error_finally_update_modal_z_indexes_regardless_of_load_outcome_updatemodalzindexes_catch_error_await_handleerror_error_component_modalsystem_function_openmodal_modalpath_options_json_stringify_options_throw_error_enhanced_modal_close_function_with_proper_lifecycle_management_export_function_closemodal_modalname_null_if_modalstack_length_0_return_try_let_modalindex_modalstack_length_1_default_to_last_modal_let_modal_if_modalname_find_the_modal_with_the_specified_name_in_the_stack_modalindex_modalstack_findindex_modal_modal_name_modalname_if_modalindex_1_return_modal_not_found_in_stack_get_the_modal_from_stack_at_the_found_index_modal_modalstack_modalindex_remove_the_modal_from_stack_modalstack_splice_modalindex_1_else_just_remove_the_last_modal_modal_modalstack_pop_if_modal_modal_element_console_warn_invalid_modal_object_or_element_return_mark_modal_as_closing_modal_isopen_false_remove_modal_specific_styles_and_scripts_with_proper_cleanup_try_if_array_isarray_modal_styles_modal_styles_foreach_styleid_const_styleelement_document_queryselector_data_modal_style')"${styleId}"i18n.t('ui_i18n_t_ui_if_styleelement_styleelement_remove_if_array_isarray_modal_scripts_modal_scripts_foreach_scriptid_const_scriptelement_document_queryselector_data_modal_script')"${scriptId}"i18n.t('ui_i18n_t_ui_if_scriptelement_scriptelement_remove_catch_cleanuperror_console_warn_error_cleaning_up_modal_resources_cleanuperror_animate_modal_closure_modal_element_style_opacity')"0"i18n.t('ui_i18n_t_ui_modal_element_style_transform')"scale(0.9)"i18n.t('ui_i18n_t_ui_modal_element_classlist_remove')"show"i18n.t('ui_i18n_t_ui_remove_the_modal_element_from_dom_after_animation_completes_const_removemodalelement_try_if_modal_element_modal_eli18n_t_ui_return_fallback_modal_ui_const_fallbackmodal_document_createelement_div_fallbackmodal_classname_modal_error_fallback_fallbackmodal_innerhtml_for_proper_animation_comi18n_t_ui_modal_error_st_transitionhandler_event_ii18n_t_ui_errordata_usermessage_city_modal_element_removeeventlistener_transitionend_transitionhandler_removemodalelemi18n_t_ui_close_odal_element_addeventlistener_transitionend_transitionhandler_once_true_fallback_timeout_in_case_transition_doesn_t_fire_const_fallbacktimeout_settimeout_modal_element_removeeventlistener_transitionend_transitionhandler_removemodalelement_modalstate_animationduration_100_handle_backdrop_visibility_and_body_overflow_if_modalstack_length_0_no_modals_left_restore_normal_state_document_body_style_overflow')""i18n.t('ui_i18n_t_ui_document_body_style_paddingright')""i18n.t('ui_i18n_t_ui_remove_potential_scrollbar_compensation_return_focus_to_the_element_that_opened_the_modal_const_lastfocusedelement_document_queryselector_data_last_focused_if_lastfocusedelement_lastfocusedelement_focus_lastfocusedelement_removeattribute_data_last_focused_else_return_focus_to_the_previous_modal_if_modalstack_length_0_const_previousmodal_modalstack_modalstack_length_1_if_previousmodal_previousmodal_element_previousmodal_element_focus_update_modal_z_indexes_after_state_change_updatemodalzindexes_clear_the_fallback_timeout_if_modal_was_removed_successfully_modal_element_addeventlistener_transitionend_cleartimeout_fallbacktimeout_once_true_catch_error_console_error_error_closing_modal_error_fallback_force_cleanup_if_something_went_wrong_try_modalstack_foreach_modal_if_modal_element_modal_element_parentnode_modal_element_parentnode_removechild_modal_element_modalstack_length_0_updatemodalzindexes_document_body_style_overflow')""i18n.t('ui_i18n_t_ui_catch_fallbackerror_console_error_fallback_cleanup_failed_fallbackerror_function_to_scroll_to_element_by_id_within_the_last_modal_export_function_scrollmodal_id_if_id_return_get_the_last_modal_in_the_stack_const_lastmodal_modalstack_modalstack_length_1_element_if_lastmodal_return_find_the_modal_container_and_target_element_const_modalcontainer_lastmodal_queryselector')".modal-scroll"i18n.t('ui_i18n_t_ui_const_targetelement_lastmodal_queryselector_id_if_modalcontainer_targetelement_modalcontainer_scrollto_top_targetelement_offsettop_20_20px_padding_from_top_behavior')"smooth"i18n.t('ui_i18n_t_ui_make_scrollmodal_globally_available_globalthis_scrollmodal_scrollmodal_handle_modal_content_loading_from_clicks_document_addeventlistener')"click"i18n.t('ui_i18n_t_ui_async_e_const_modaltrigger_e_target_closest')"[data-modal-content]"i18n.t('ui_i18n_t_ui_if_modaltrigger_e_preventdefault_if_modaltrigger_hasattribute')"disabled"i18n.t('ui_i18n_t_ui_modaltrigger_classlist_contains')"disabled"i18n.t('ui_i18n_t_ui_return_const_modalpath_modaltrigger_getattribute')"href"i18n.t('ui_i18n_t_ui_await_openmodal_modalpath_close_modal_on_escape_key_closes_only_the_top_modal_document_addeventlistener')"keydown"i18n.t('ui_i18n_t_ui_e_if_e_key')"Escape" && modalStack.length > 0) {
+      <p>${errorData.userMessage}</p>
+      <button onclick="this.closest('.modal-error-fallback').remove()">Close</button>
+    </div>
+  `;
+  document.body.appendChild(fallbackModal);
+  return fallbackModal;
+});
+
+// Modal functionality with improved architecture
+const modalStack = [];
+const modalState = {
+  isInitialized: false,
+  activeModalCount: 0,
+  backdropZIndex: 2999,
+  baseModalZIndex: 3000,
+  modalSpacing: 20,
+  animationDuration: 300
+};
+
+// Create a single backdrop for all modals with improved event handling
+const backdrop = document.createElement("div");
+backdrop.className = "modal-backdrop";
+backdrop.style.display = "none";
+backdrop.style.backdropFilter = "blur(5px)";
+backdrop.style.transition = `opacity ${modalState.animationDuration}ms ease`;
+backdrop.style.opacity = "0";
+
+// Improved backdrop click handling with proper event delegation
+backdrop.addEventListener("click", (event) => {
+  if (event.target === backdrop) {
+    closeModal();
+  }
+});
+
+// Prevent backdrop clicks from bubbling when clicking inside modal
+backdrop.addEventListener("mousedown", (event) => {
+  if (event.target === backdrop) {
+    event.preventDefault();
+  }
+});
+
+document.body.appendChild(backdrop);
+
+// Enhanced z-index management with proper stacking and animation
+function updateModalZIndexes() {
+  const { baseModalZIndex, modalSpacing, backdropZIndex, animationDuration } = modalState;
+  
+  // Update z-index for all modals with proper stacking
+  modalStack.forEach((modal, index) => {
+    const zIndex = baseModalZIndex + (index * modalSpacing);
+    modal.element.style.zIndex = zIndex;
+    
+    // Add transition for smooth appearance/disappearance
+    if (!modal.element.style.transition) {
+      modal.element.style.transition = `transform ${animationDuration}ms ease, opacity ${animationDuration}ms ease`;
+    }
+  });
+
+  // Enhanced backdrop visibility handling with animation
+  if (modalStack.length > 0) {
+    backdrop.style.display = "block";
+    
+    // Animate backdrop opacity
+    setTimeout(() => {
+      backdrop.style.opacity = "1";
+    }, 10);
+    
+    if (modalStack.length > 1) {
+      // For multiple modals, position backdrop between the top two
+      const topModalIndex = modalStack.length - 1;
+      const previousModalZIndex = baseModalZIndex + ((topModalIndex - 1) * modalSpacing);
+      backdrop.style.zIndex = previousModalZIndex + (modalSpacing / 2);
+    } else {
+      // For single modal, position backdrop below it
+      backdrop.style.zIndex = backdropZIndex;
+    }
+  } else {
+    // Animate backdrop fade out
+    backdrop.style.opacity = "0";
+    
+    // Hide backdrop after animation completes
+    setTimeout(() => {
+      if (modalStack.length === 0) {
+        backdrop.style.display = "none";
+      }
+    }, animationDuration);
+  }
+  
+  modalState.activeModalCount = modalStack.length;
+}
+
+// Enhanced modal creation with proper error handling and lifecycle management
+function createModalElement(name) {
+  try {
+    // Create modal element with proper attributes
+    const newModal = document.createElement("div");
+    newModal.className = "modal";
+    newModal.modalName = name || `modal-${Date.now()}`; // save name to the object
+    newModal.setAttribute("role", "dialog");
+    newModal.setAttribute("aria-modal", "true");
+    newModal.setAttribute("aria-labelledby", `modal-title-${name}`);
+    newModal.tabIndex = -1; // Make focusable
+    
+    // Add enhanced click handler with proper event delegation
+    newModal.addEventListener("click", (event) => {
+      // Only close if clicking directly on the modal container, not its content
+      if (event.target === newModal) {
+        closeModal();
+      }
+    });
+
+    // Add keyboard event handling for accessibility
+    newModal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    });
+
+    // Create enhanced modal structure with proper accessibility
+    newModal.innerHTML = `
+      <div class="modal-inner">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-title-${name}"></h2>
+          <button class="modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-scroll">
+          <div class="modal-bd"></div>
+        </div>
+      </div>
+    `;
+
+    // Setup close button handler with proper event prevention
+    const close_button = newModal.querySelector(".modal-close");
+    close_button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeModal();
+    });
+
+    // Add modal to DOM
+    document.body.appendChild(newModal);
+
+    // Initialize modal state
+    const modalData = {
+      element: newModal,
+      title: newModal.querySelector(".modal-title"),
+      body: newModal.querySelector(".modal-bd"),
+      close: close_button,
+      styles: [],
+      scripts: [],
+      isOpen: true,
+      createdAt: Date.now(),
+      name: name
+    };
+
+    // Show the modal with proper animation
+    requestAnimationFrame(() => {
+      newModal.classList.add("show");
+      newModal.style.opacity = "0";
+      newModal.style.transform = "scale(0.9)";
+      
+      // Trigger animation
+      requestAnimationFrame(() => {
+        newModal.style.opacity = "1";
+        newModal.style.transform = "scale(1)";
+      });
+    });
+
+    // Update modal z-indexes
+    updateModalZIndexes();
+
+    // Focus management for accessibility
+    setTimeout(() => {
+      if (modalStack.includes(modalData)) {
+        newModal.focus();
+      }
+    }, 100);
+
+    return modalData;
+  } catch (error) {
+    console.error("Error creating modal element:", error);
+    throw new Error(`Failed to create modal: ${error.message}`);
+  }
+}
+
+// Enhanced modal opening with proper lifecycle management and error handling
+export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, options = {}) {
+  try {
+    try {
+      // Store the currently focused element for later restoration
+      const activeElement = document.activeElement;
+      if (activeElement) {
+        activeElement.setAttribute('data-last-focused', 'true');
+      }
+
+      // Create new modal instance with name
+      const modalName = options.name || modalPath || `modal-${Date.now()}`;
+      const modal = createModalElement(modalName);
+
+      // Set up mutation observer for modal removal detection
+      const observer = new MutationObserver((_, obs) => {
+        if (!document.contains(modal.element)) {
+          obs.disconnect();
+          resolve();
+        }
+      });
+      
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true 
+      });
+
+      // Set loading state with better UX
+      modal.body.innerHTML = `
+        <div class="modal-loading">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Loading ${modalPath}...</div>
+        </div>
+      `;
+
+      // Add modal to stack immediately for proper state management
+      modalStack.push(modal);
+
+      // Handle body overflow for proper modal behavior
+      if (modalStack.length === 1) {
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow = "hidden";
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+
+      // Use importComponent to load the modal content with enhanced error handling
+      const componentPath = modalPath.startsWith('/') ? modalPath.slice(1) : modalPath;
+
+      // Load modal content with proper error handling and timing
+      importComponent(componentPath, modal.body)
+        .then((doc) => {
+          try {
+            // Set the title from the document with fallback
+            modal.title.innerHTML = (doc && doc.title) || modalPath;
+            
+            // Apply CSS classes from document if available
+            if (doc && doc.html && doc.html.classList) {
+              const inner = modal.element.querySelector(".modal-inner");
+              if (inner) {
+                inner.classList.add(...Array.from(doc.html.classList));
+              }
+            }
+            
+            if (doc && doc.body && doc.body.classList) {
+              modal.body.classList.add(...Array.from(doc.body.classList));
+            }
+
+            // Trigger modal ready event
+            modal.element.dispatchEvent(new CustomEvent('modalReady', {
+              detail: { modal, path: modalPath }
+            }));
+
+            // Focus management for accessibility
+            setTimeout(() => {
+              if (modal.element && document.contains(modal.element)) {
+                modal.element.focus();
+                
+                // Move focus to first focusable element if available
+                const firstFocusable = modal.element.querySelector(
+                  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                if (firstFocusable) {
+                  firstFocusable.focus();
+                }
+              }
+            }, 100);
+
+          } catch (renderError) {
+            console.error('Error rendering modal content:', renderError);
+            modal.body.innerHTML = `
+              <div class="modal-error">
+                <div class="error-title">Rendering Error</div>
+                <div class="error-message">Failed to render modal content: ${renderError.message}</div>
+              </div>
+            `;
+          }
+        })
+        .catch((error) => {
+          console.error("Error loading modal content:", error);
+          modal.body.innerHTML = `
+            <div class="modal-error">
+              <div class="error-title">Loading Error</div>
+              <div class="error-message">Failed to load modal content: ${error.message}</div>
+              <button class="error-retry" onclick="openModal('${modalPath}')">Retry</button>
+            </div>
+          `;
+          
+          // Reject promise if modal loading fails critically
+          if (options.rejectOnError) {
+            reject(error);
+          }
+        })
+        .finally(() => {
+          // Update modal z-indexes regardless of load outcome
+          updateModalZIndexes();
+        });
+
+    } catch (error) {
+      await handleError(error, {
+        component: 'ModalSystem',
+        function: 'openModal',
+        modalPath,
+        options: JSON.stringify(options)
+      });
+      throw error;
+    }
+  });
+
+// Enhanced modal close function with proper lifecycle management
+export function closeModal(modalName = null) {
+  if (modalStack.length === 0) return;
+
+  try {
+    let modalIndex = modalStack.length - 1; // Default to last modal
+    let modal;
+
+    if (modalName) {
+      // Find the modal with the specified name in the stack
+      modalIndex = modalStack.findIndex((modal) => modal.name === modalName);
+      if (modalIndex === -1) return; // Modal not found in stack
+
+      // Get the modal from stack at the found index
+      modal = modalStack[modalIndex];
+      // Remove the modal from stack
+      modalStack.splice(modalIndex, 1);
+    } else {
+      // Just remove the last modal
+      modal = modalStack.pop();
+    }
+
+    if (!modal || !modal.element) {
+      console.warn('Invalid modal object or element');
+      return;
+    }
+
+    // Mark modal as closing
+    modal.isOpen = false;
+
+    // Remove modal-specific styles and scripts with proper cleanup
+    try {
+      if (Array.isArray(modal.styles)) {
+        modal.styles.forEach((styleId) => {
+          const styleElement = document.querySelector(`[data-modal-style="${styleId}"]`);
+          if (styleElement) {
+            styleElement.remove();
+          }
+        });
+      }
+      if (Array.isArray(modal.scripts)) {
+        modal.scripts.forEach((scriptId) => {
+          const scriptElement = document.querySelector(`[data-modal-script="${scriptId}"]`);
+          if (scriptElement) {
+            scriptElement.remove();
+          }
+        });
+      }
+    } catch (cleanupError) {
+      console.warn('Error cleaning up modal resources:', cleanupError);
+    }
+
+    // Animate modal closure
+    modal.element.style.opacity = "0";
+    modal.element.style.transform = "scale(0.9)";
+    modal.element.classList.remove("show");
+
+    // Remove the modal element from DOM after animation completes
+    const removeModalElement = () => {
+      try {
+        if (modal.element && modal.element.parentNode) {
+          modal.element.parentNode.removeChild(modal.element);
+        }
+      } catch (removeError) {
+        console.warn('Error removing modal element from DOM:', removeError);
+      }
+    };
+
+    // Use transitionend event for proper animation completion
+    const transitionHandler = (event) => {
+      if (event.propertyName === 'opacity') {
+        modal.element.removeEventListener('transitionend', transitionHandler);
+        removeModalElement();
+      }
+    };
+
+    modal.element.addEventListener('transitionend', transitionHandler, { once: true });
+
+    // Fallback timeout in case transition doesn't fire
+    const fallbackTimeout = setTimeout(() => {
+      modal.element.removeEventListener('transitionend', transitionHandler);
+      removeModalElement();
+    }, modalState.animationDuration + 100);
+
+    // Handle backdrop visibility and body overflow
+    if (modalStack.length === 0) {
+      // No modals left - restore normal state
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = ""; // Remove potential scrollbar compensation
+      
+      // Return focus to the element that opened the modal
+      const lastFocusedElement = document.querySelector('[data-last-focused]');
+      if (lastFocusedElement) {
+        lastFocusedElement.focus();
+        lastFocusedElement.removeAttribute('data-last-focused');
+      }
+    } else {
+      // Return focus to the previous modal
+      if (modalStack.length > 0) {
+        const previousModal = modalStack[modalStack.length - 1];
+        if (previousModal && previousModal.element) {
+          previousModal.element.focus();
+        }
+      }
+    }
+
+    // Update modal z-indexes after state change
+    updateModalZIndexes();
+
+    // Clear the fallback timeout if modal was removed successfully
+    modal.element.addEventListener('transitionend', () => {
+      clearTimeout(fallbackTimeout);
+    }, { once: true });
+
+  } catch (error) {
+    console.error('Error closing modal:', error);
+    // Fallback: force cleanup if something went wrong
+    try {
+      modalStack.forEach(modal => {
+        if (modal.element && modal.element.parentNode) {
+          modal.element.parentNode.removeChild(modal.element);
+        }
+      });
+      modalStack.length = 0;
+      updateModalZIndexes();
+      document.body.style.overflow = "";
+    } catch (fallbackError) {
+      console.error('Fallback cleanup failed:', fallbackError);
+    }
+  }
+}
+
+// Function to scroll to element by ID within the last modal
+export function scrollModal(id) {
+  if (!id) return;
+
+  // Get the last modal in the stack
+  const lastModal = modalStack[modalStack.length - 1].element;
+  if (!lastModal) return;
+
+  // Find the modal container and target element
+  const modalContainer = lastModal.querySelector(".modal-scroll");
+  const targetElement = lastModal.querySelector(`#${id}`);
+
+  if (modalContainer && targetElement) {
+    modalContainer.scrollTo({
+      top: targetElement.offsetTop - 20, // 20px padding from top
+      behavior: "smooth",
+    });
+  }
+}
+
+// Make scrollModal globally available
+globalThis.scrollModal = scrollModal;
+
+// Handle modal content loading from clicks
+document.addEventListener("click", async (e) => {
+  const modalTrigger = e.target.closest("[data-modal-content]");
+  if (modalTrigger) {
+    e.preventDefault();
+    if (
+      modalTrigger.hasAttribute("disabled") ||
+      modalTrigger.classList.contains("disabled")
+    ) {
+      return;
+    }
+    const modalPath = modalTrigger.getAttribute("href");
+    await openModal(modalPath);
+  }
+});
+
+// Close modal on escape key (closes only the top modal)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modalStack.length > 0) {
     closeModal();
   }
 });

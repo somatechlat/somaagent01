@@ -4,48 +4,84 @@
     <title></title>
 
     <!-- Import the alpine store -->
-    <script type="i18n.t('ui_i18n_t_ui_module')">
-        import { store } from "i18n.t('ui_i18n_t_ui_tunnel_store_js')";
+    <script type="module">
+        import { store } from "./tunnel-store.js";
     </script>
 </head>
 
 <body>
 
     <!-- This construct of x-data + x-if is used to ensure the component is only rendered when the store is available -->
-    <dii18n.t('ui_import_store_from_i18n_t_ui_tunnel_store_js')re_tunnelstore')">
+    <div x-data>
+        <template x-if="$store.tunnelStore">
 
             <!-- Keep in mind that <template> can have only one root element inside -->
-            <div id="i18n.t('ui_i18n_t_ui_tunnel_settings_section')">
-                <div class="i18n.t('ui_i18n_t_ui_section_title')">Flare Tunnel</div>
-       i18n.t('ui_can_have_only_one_root_element_inside')ription')">Create a secure public URL to access your Agent Zero instance ai18n.t('ui_import_store_from_ti18n.t('ui_flare_tunnel')js')             <!-- Tunnel content UI -->
-                <div clasi18n.t('ui_create_a_secure_public_url_to_access_your_agent_zero_instance_ai18n_t_ui_import_store_from_tunnel_store_js')          <div class="i18n.t('ui_i18n_t_ui_field_label')">
-                            <div class="i18n.t('ui_i1i18n_t_ui_can_have_only_one_root_element_inside_div_class')"i18n.t('ui_field_description')"i18n.t('ui_select_providei18n_t_ui_flare_tunnel_tunnel_div_div_i18n_t_ui_create_a_secure_public_url_to_access_your_agent_zero_instance_anytime_anywhere_ui_ti18n.t('ui_select_providei18n_t_ui_flare_tunnel_tunnel')i_store_tunnelstore_provider')"
-                 i18n.t('ui_i18n_t_ui_create_a_secure_public_url_to_access_your_agent_zero_instance_anytime_anywhere_ui_tunnel_provider_x_model_i18n_t_ui_store_tunnelstore_provider_disabled_i18n_t_ui_store_tunnelstore_isloading')_select_provider_for_public_tunnel')     i18n.t('ui_cloudfli18n_t_ui_tunnel_provider')  </div>
-                    <!-- Loi18n.t('ui_i18n_t_ui_select_provider_for_public_tunnel')   <div class="i18n.t('ui_i18n_t_ui_loading_spinner')" x-show="i18n.t('ui_i18n_t_ui_store_tunnelstore_isloading')">
-                        <span class="i18n.t('ui_i18n_t_ui_icon_materiai18n_t_ui_cloudflare_outlined_spin')">progress_activity</span>
-                       i18n.t('ui_serveo') x-text="i18n.t('ui_i18n_t_ui_store_tunnelstore_loadingtei18n.t('ui_progress_activity')nel_request')"></span>
-        i18n.t('ui_i18n_t_ui_serveo_x_text_i18n_t_ui_store_tunnelstore_loadingtext_processing_tunnel_request')   <div x-show="i18n.t('ui_i18n_t_ui_store_tunnelstore_isloading')">
+            <div id="tunnel-settings-section">
+                <div class="section-title">Flare Tunnel</div>
+                <div class="section-description">Create a secure public URL to access your Agent Zero instance anytime,
+                    anywhere.</div>
+                <!-- Tunnel content UI -->
+                <div class="tunnel-container">
+                    <div class="field">
+                        <div class="field-label">
+                            <div class="field-title">Tunnel provider</div>
+                            <div class="field-description">Select provider for public tunnel</div>
+                        </div>
+                        <div class="field-control">
+                            <select id="tunnel-provider" x-model="$store.tunnelStore.provider"
+                                :disabled="$store.tunnelStore.isLoading">
+                                <option value="cloudflared">Cloudflare</option>
+                                <option value="serveo">Serveo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Loading spinner for tunnel operations -->
+                    <div class="loading-spinner" x-show="$store.tunnelStore.isLoading">
+                        <span class="icon material-symbols-outlined spin">progress_activity</span>
+                        <span x-text="$store.tunnelStore.loadingText || 'Processing tunnel request...'"></span>
+                    </div>
+
+                    <!-- Tunnel content when not loading -->
+                    <div x-show="!$store.tunnelStore.isLoading">
                         <!-- Tunnel link display when generated -->
-               i18n.t('ui_progress_activity')ss="i18n.t('ui_i18n_t_ui_tunnel_link_container')" x-show="i18n.t('ui_i18n_i18n.t('ui_i18n_t_ui_progress_activity_ss_i18n_t_ui_tunnel_link_container_x_show_i18n_t_ui_store_tunnelstore_linkgenerated')   <input type="i18n.t('ui_i18n_t_ui_text')" class="i18n.t('ui_i18n_t_ui_tunnel_link_input')" :value="i18n.t('ui_i18n_t_ui_store_tunnelstore_tunnellink')"
+                        <div class="tunnel-link-container" x-show="$store.tunnelStore.linkGenerated">
+                            <div class="tunnel-link-field">
+                                <input type="text" class="tunnel-link-input" :value="$store.tunnelStore.tunnelLink"
                                     readonly>
-                                <div class="i18n.t('ui_i18n_t_ui_buttons_row')">
-                                    <button class="i18n.t('ui_i18n_t_ui_copy_link_button')" @click="i18n.t('ui_i18n_t_ui_store_tunnelstore_copytoclipboard')"
-                                        title="i18n.t('ui_i18n_t_ui_copy_to_clipboard')">
-                                        <span class="i18n.t('ui_i18n_t_ui_icon_material_symbols_outlini18n.t('ui_content_copy')t_copy</i18n.t('ui_copy')      </button>
-                                    <button class="i18n.t('ui_i18n_t_ui_refresh_link_button')" @click="i18n.t('ui_i18n_t_ui_store_tunnelstore_refreshlink')"
-                            i18n.t('ui_content_copy')title="i18n.t('ui_ii18n_t_ui_copy_span_class')"i18n.t('ui_icon_material_symbols_outlinei18n.t('ui_refresh')n.t('ui_i18n.t('ui_refresh')s')"i18ni18n.t('ui_refresh')tunnel_qi18n.t('ui_refresh')    <div class="i18n.t('ui_i18n_t_ui_tunnel_qr_code')" id="i18n.t('ui_i18n_t_ui_qrcode_tunnel')">
+                                <div class="buttons-row">
+                                    <button class="copy-link-button" @click="$store.tunnelStore.copyToClipboard()"
+                                        title="Copy to clipboard">
+                                        <span class="icon material-symbols-outlined">content_copy</span> Copy
+                                    </button>
+                                    <button class="refresh-link-button" @click="$store.tunnelStore.refreshLink()"
+                                        title="Generate new URL">
+                                        <span class="icon material-symbols-outlined">refresh</span> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="tunnel-qr-container">
+                                <div class="tunnel-qr-code" id="qrcode-tunnel">
                                     <!-- QR code will be generated here -->
                                 </div>
-                                <div class="i18n.t('ui_i18n_t_ui_tunnel_qr_label')">Scan with mobile device</div>
+                                <div class="tunnel-qr-label">Scan with mobile device</div>
                             </div>
-                         i18n.t('ui_scan_with_mobile_device')ui_i18n_t_ui_tunnel_link_info')"i18n.t('ui_scan_with_mobile_device')           Share this URL to allow others to access your Agent Zero instance.
+                            <div class="tunnel-link-info">
+                                Share this URL to allow others to access your Agent Zero instance.
                             </div>
-                    i18n.t('ui_share_this_url_to_allow_others_to_access_your_agent_zero_instance') Ui18n.t('ui_i18n_t_ui_share_this_url_to_allow_others_to_access_your_agent_zero_instance_url_will_persist_until_you_stop_the_tunnel_or_restart_the_docker_container_i18n_t_ui_this_url_will_persist_until_you_stop_the_tunnel_or_restart_the_docker_container')ui_store_tunnelstore_stoptunnel')">
-                                    <span class="i18n.t('ui_i18n_t_ui_icon_material_symbols_outlined')">stop_circle</span> Stop Tunnel
-                   i18n.t('ui_stop_circle')18n.t('ui18n.t('ui_stop_tunnel_i18n_t_ui_stop_circle_i18n_t_ui_stop_tunnel')l button when no link exists -->
-                        <div class="i18n.t('ui_i18n_t_ui_tunnel_actions')" x-show="i18n.t('ui_i18n_t_ui_store_tunnelstore_linkgenerated')">
-                            <button class="i18n.t('ui_i18n_t_ui_btn_btn_ok')" @click="i18n.t('ui_i18n_t_ui_store_tunnelstore_generatelink')">
-                                <span class="i18n.t('ui_i18n_t_ui_icon_material_symbols_outlined')">i18n.t('ui_i18n_t_ui_play_circle')</span> i18n.t('ui_i18n_t_ui_create_tunnel')</button>
+                            <div class="tunnel-link-persistence">
+                                This URL will persist until you stop the tunnel or restart the Docker container.
+                            </div>
+                            <div class="stop-tunnel-container">
+                                <button class="btn btn-danger" @click="$store.tunnelStore.stopTunnel()">
+                                    <span class="icon material-symbols-outlined">stop_circle</span> Stop Tunnel
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Generate tunnel button when no link exists -->
+                        <div class="tunnel-actions" x-show="!$store.tunnelStore.linkGenerated">
+                            <button class="btn btn-ok" @click="$store.tunnelStore.generateLink()">
+                                <span class="icon material-symbols-outlined">play_circle</span> Create Tunnel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -56,7 +92,279 @@
 
     <!-- Optional style for the component -->
     <style>
-        i18n.t('ui_i18n_t_ui_tunnel_modal_styles_tunnel_container_padding_1rem_width_100_tunnel_description_margin_bottom_1_5rem_text_align_center_tunnel_actions_display_flex_justify_content_center_margin_top_2rem_margin_bottom_2rem_tunnel_link_container_margin_top_1rem_display_flex_flex_direction_column_gap_1rem_tunnel_link_field_display_flex_align_items_center_margin_bottom_0_5rem_background_color_var_bg_color_secondary_border_1px_solid_var_border_color_border_radius_4px_tunnel_link_input_flex_1_padding_0_75rem_background_color_transparent_border_none_color_var_text_color_font_size_0_9rem_outline_none_copy_link_button_padding_0_5rem_0_75rem_background_none_border_none_border_left_1px_solid_var_border_color_color_var_text_color_cursor_pointer_transition_background_color_0_2s_copy_link_button_hover_background_color_var_bg_color_tertiary_copy_link_button_i_refresh_link_button_i_btn_i_margin_right_6px_tunnel_link_info_margin_top_1rem_font_size_1rem_color_var_text_color_text_align_center_line_height_1_5_loading_spinner_display_flex_justify_content_center_align_items_center_margin_top_2rem_margin_bottom_2rem_min_height_38px_font_style_italic_color_var_text_color_secondary_loading_spinner_i_font_size_1_5rem_margin_right_10px_color_var_accent_color_refresh_link_button_padding_0_5rem_0_75rem_background_none_border_none_border_left_1px_solid_var_border_color_color_var_text_color_cursor_pointer_transition_background_color_0_2s_refresh_link_button_hover_background_color_var_bg_color_tertiary_color_var_accent_color_tunnel_link_persistence_margin_top_0_75rem_font_size_0_95rem_color_rgba_255_255_255_0_7_text_align_center_font_style_italic_btn_danger_background_color_dc3545_color_white_border_none_btn_danger_hover_background_color_bd2130_stop_tunnel_container_margin_top_20px_display_flex_justify_content_center_section_title_icon_styling_section_title_i_margin_right_8px_copy_button_states_copy_success_background_color_rgba_40_167_69_0_15_important_color_28a745_important_border_left_1px_solid_rgba_40_167_69_0_5_important_transition_all_0_3s_ease_in_out_copy_error_background_color_rgba_220_53_69_0_15_important_color_dc3545_important_border_left_1px_solid_rgba_220_53_69_0_5_important_transition_all_0_3s_ease_in_out_animation_for_copy_button_keyframes_pulse_0_transform_scale_1_50_transform_scale_1_05_100_transform_scale_1_copy_success_copy_error_animation_pulse_0_5s_refresh_button_state_refreshing_opacity_0_7_pointer_events_none_background_color_rgba_108_117_125_0_15_important_border_left_1px_solid_rgba_108_117_125_0_5_important_create_and_stop_button_states_creating_stopping_opacity_0_8_pointer_events_none_cursor_not_allowed_creating_background_color_rgba_0_123_255_0_7_important_stopping_background_color_rgba_220_53_69_0_7_important_qr_code_styles_tunnel_qr_container_display_flex_align_items_center_justify_content_flex_start_gap_1rem_margin_0_5rem_0_padding_1rem_background_color_var_bg_color_secondary_border_1px_solid_var_border_color_border_radius_8px_tunnel_qr_code_flex_shrink_0_display_flex_align_items_center_justify_content_center_min_width_128px_min_height_128px_background_color_white_border_radius_8px_padding_8px_tunnel_qr_code_canvas_tunnel_qr_code_img_border_radius_4px_max_width_100_max_height_100_tunnel_qr_label_font_size_0_9rem_color_var_text_color_secondary_text_align_center_line_height_1_4_flex_1_qr_error_color_var_error_color_dc3545_font_size_0_8rem_text_align_center_padding_1rem_background_color_rgba_220_53_69_0_1_border_radius_4px_border_1px_solid_rgba_220_53_69_0_2_responsive_design_for_qr_code_container_media_max_width_640px_tunnel_qr_container_flex_direction_column_text_align_center_gap_0_75rem_padding_0_75rem_tunnel_qr_code_min_width_100px_min_height_100px_align_self_center_tunnel_qr_label_text_align_center_light_mode_adjustments_light_mode_tunnel_qr_code_background_color_ffffff_border_1px_solid_e0e0e0_light_mode_qr_error_background_color_rgba_220_53_69_0_05_color_dc3545')</style>
+        /* Tunnel Modal Styles */
+        .tunnel-container {
+            padding: 1rem;
+            width: 100%;
+        }
+
+        .tunnel-description {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .tunnel-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .tunnel-link-container {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .tunnel-link-field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            background-color: var(--bg-color-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .tunnel-link-input {
+            flex: 1;
+            padding: 0.75rem;
+            background-color: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .copy-link-button {
+            padding: 0.5rem 0.75rem;
+            background: none;
+            border: none;
+            border-left: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .copy-link-button:hover {
+            background-color: var(--bg-color-tertiary);
+        }
+
+        .copy-link-button i,
+        .refresh-link-button i,
+        .btn i {
+            margin-right: 6px;
+        }
+
+        .tunnel-link-info {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: var(--text-color);
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            min-height: 38px;
+            font-style: italic;
+            color: var(--text-color-secondary);
+        }
+
+        .loading-spinner i {
+            font-size: 1.5rem;
+            margin-right: 10px;
+            color: var(--accent-color);
+        }
+
+        .refresh-link-button {
+            padding: 0.5rem 0.75rem;
+            background: none;
+            border: none;
+            border-left: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .refresh-link-button:hover {
+            background-color: var(--bg-color-tertiary);
+            color: var(--accent-color);
+        }
+
+        .tunnel-link-persistence {
+            margin-top: 0.75rem;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            font-style: italic;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #bd2130;
+        }
+
+        .stop-tunnel-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Section title icon styling */
+        .section-title i {
+            margin-right: 8px;
+        }
+
+        /* Copy button states */
+        .copy-success {
+            background-color: rgba(40, 167, 69, 0.15) !important;
+            color: #28a745 !important;
+            border-left: 1px solid rgba(40, 167, 69, 0.5) !important;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .copy-error {
+            background-color: rgba(220, 53, 69, 0.15) !important;
+            color: #dc3545 !important;
+            border-left: 1px solid rgba(220, 53, 69, 0.5) !important;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Animation for copy button */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .copy-success,
+        .copy-error {
+            animation: pulse 0.5s;
+        }
+
+        /* Refresh button state */
+        .refreshing {
+            opacity: 0.7;
+            pointer-events: none;
+            background-color: rgba(108, 117, 125, 0.15) !important;
+            border-left: 1px solid rgba(108, 117, 125, 0.5) !important;
+        }
+
+        /* Create and Stop button states */
+        .creating,
+        .stopping {
+            opacity: 0.8;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        .creating {
+            background-color: rgba(0, 123, 255, 0.7) !important;
+        }
+
+        .stopping {
+            background-color: rgba(220, 53, 69, 0.7) !important;
+        }
+
+        /* QR Code Styles */
+        .tunnel-qr-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 1rem;
+            margin: 0.5rem 0;
+            padding: 1rem;
+            background-color: var(--bg-color-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .tunnel-qr-code {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 128px;
+            min-height: 128px;
+            background-color: white;
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .tunnel-qr-code canvas,
+        .tunnel-qr-code img {
+            border-radius: 4px;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .tunnel-qr-label {
+            font-size: 0.9rem;
+            color: var(--text-color-secondary);
+            text-align: center;
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .qr-error {
+            color: var(--error-color, #dc3545);
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 1rem;
+            background-color: rgba(220, 53, 69, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+
+        /* Responsive design for QR code container */
+        @media (max-width: 640px) {
+            .tunnel-qr-container {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.75rem;
+                padding: 0.75rem;
+            }
+
+            .tunnel-qr-code {
+                min-width: 100px;
+                min-height: 100px;
+                align-self: center;
+            }
+
+            .tunnel-qr-label {
+                text-align: center;
+            }
+        }
+
+        /* Light mode adjustments */
+        .light-mode .tunnel-qr-code {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+        }
+
+        .light-mode .qr-error {
+            background-color: rgba(220, 53, 69, 0.05);
+            color: #dc3545;
+        }
+    </style>
 
 </body>
 

@@ -123,7 +123,88 @@ class MicrophoneInput {
 
     handleWaitingState() {
         // Don't stop recording during waiting state
-        this.waitingTimer = setTimeout(() => i18n.t('ui_i18n_t_ui_if_this_status_status_waiting_this_status_status_processing_this_options_waitingtimeout_handleprocessingstate_this_stoprecording_this_process_stoprecording_if_this_mediarecorder_state_recording_this_mediarecorder_stop_this_hasstartedrecording_false_async_initialize_try_this_transcriber_await_pipeline_automatic_speech_recognition_xenova_whisper_this_options_modelsize_this_options_language_const_stream_await_navigator_mediadevices_getusermedia_audio_echocancellation_true_noisesuppression_true_channelcount_1_this_mediarecorder_new_mediarecorder_stream_this_mediarecorder_ondataavailable_event_if_event_data_size_0_this_status_status_recording_this_status_status_waiting_if_this_lastchunk_this_audiochunks_push_this_lastchunk_this_lastchunk_null_this_audiochunks_push_event_data_console_log_audio_chunk_received_total_chunks_this_audiochunks_length_else_if_this_status_status_listening_this_lastchunk_event_data_this_setupaudioanalysis_stream_return_true_catch_error_console_error_microphone_initialization_error_error_window_toastfrontenderror_failed_to_access_microphone_please_check_permissions_microphone_error_return_false_setupaudioanalysis_stream_this_audiocontext_new_window_audiocontext_window_webkitaudiocontext_this_mediastreamsource_this_audiocontext_createmediastreamsource_stream_this_analysernode_this_audiocontext_createanalyser_this_analysernode_fftsize_2048_this_analysernode_mindecibels_90_this_analysernode_maxdecibels_10_this_analysernode_smoothingtimeconstant_0_85_this_mediastreamsource_connect_this_analysernode_startaudioanalysis_const_analyzeframe_if_this_status_status_inactive_return_const_dataarray_new_uint8array_this_analysernode_fftsize_this_analysernode_getbytetimedomaindata_dataarray_calculate_rms_volume_let_sum_0_for_let_i_0_i')< dataArray.length; i++) {
+        this.waitingTimer = setTimeout(() => {
+            if (this.status === Status.WAITING) {
+                this.status = Status.PROCESSING;
+            }
+        }, this.options.waitingTimeout);
+    }
+
+    handleProcessingState() {
+        this.stopRecording();
+        this.process();
+    }
+
+    stopRecording() {
+        if (this.mediaRecorder?.state === 'recording') {
+            this.mediaRecorder.stop();
+            this.hasStartedRecording = false;
+        }
+    }
+
+    async initialize() {
+        try {
+            this.transcriber = await pipeline(
+                'automatic-speech-recognition',
+                `Xenova/whisper-${this.options.modelSize}.${this.options.language}`
+            );
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    channelCount: 1
+                }
+            });
+
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0 &&
+                    (this.status === Status.RECORDING || this.status === Status.WAITING)) {
+                    if (this.lastChunk) {
+                        this.audioChunks.push(this.lastChunk);
+                        this.lastChunk = null;
+                    }
+                    this.audioChunks.push(event.data);
+                    console.log('Audio chunk received, total chunks:', this.audioChunks.length);
+                }
+                else if (this.status === Status.LISTENING) {
+                    this.lastChunk = event.data;
+                }
+            };
+
+            this.setupAudioAnalysis(stream);
+            return true;
+        } catch (error) {
+
+            console.error('Microphone initialization error:', error);
+            window.toastFrontendError('Failed to access microphone. Please check permissions.', 'Microphone Error');
+            return false;
+        }
+    }
+
+    setupAudioAnalysis(stream) {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.mediaStreamSource = this.audioContext.createMediaStreamSource(stream);
+        this.analyserNode = this.audioContext.createAnalyser();
+        this.analyserNode.fftSize = 2048;
+        this.analyserNode.minDecibels = -90;
+        this.analyserNode.maxDecibels = -10;
+        this.analyserNode.smoothingTimeConstant = 0.85;
+        this.mediaStreamSource.connect(this.analyserNode);
+    }
+
+
+    startAudioAnalysis() {
+        const analyzeFrame = () => {
+            if (this.status === Status.INACTIVE) return;
+
+            const dataArray = new Uint8Array(this.analyserNode.fftSize);
+            this.analyserNode.getByteTimeDomainData(dataArray);
+
+            // Calculate RMS volume
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
                 const amplitude = (dataArray[i] - 128) / 128;
                 sum += amplitude * amplitude;
             }

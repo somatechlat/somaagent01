@@ -1,6 +1,6 @@
-define("i18n.t('ui_ace_theme_textmate')",["i18n.t('ui_require')","i18n.t('ui_exports')","i18n.t('ui_module')","i18n.t('ui_ace_theme_textmate_css')","i18n.t('ui_ace_lib_dom')"],function(e,t,n){"i18n.t('ui_use_strict')";t.isDark=!1,t.cssClass="i18n.t('ui_ace_tm')",t.cssText=e("i18n.t('ui_textmate_css')"),t.$id="i18n.t('ui_ace_theme_textmate')";var r=e("i18n.t('ui_lib_dom')");r.importCssString(t.cssText,t.cssClass,!1)});                (function() {
-                    window.require(["i18n.t('ui_ace_theme_textmate')"], function(m) {
-                        if (typeof module == "i18n.t('ui_object')" && typeof exports == "i18n.t('ui_object')" && module) {
+define("ace/theme/textmate",["require","exports","module","ace/theme/textmate-css","ace/lib/dom"],function(e,t,n){"use strict";t.isDark=!1,t.cssClass="ace-tm",t.cssText=e("./textmate-css"),t.$id="ace/theme/textmate";var r=e("../lib/dom");r.importCssString(t.cssText,t.cssClass,!1)});                (function() {
+                    window.require(["ace/theme/textmate"], function(m) {
+                        if (typeof module == "object" && typeof exports == "object" && module) {
                             module.exports = m;
                         }
                     });

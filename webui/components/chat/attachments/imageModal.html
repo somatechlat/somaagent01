@@ -3,57 +3,145 @@
 <head>
     <title>Image Viewer</title>
 
-    <script type="i18n.t('ui_i18n_t_ui_module')">
-        import { store } from "i18n.t('ui_i18n_t_ui_attachmentsstore_js')";
+    <script type="module">
+        import { store } from "./attachmentsStore.js";
     </script>
 </head>
 
 <body>
     <div x-data>
-        <template x-if="i18n.t('ui_i18n_t_ui_store_chatattachments')">
-            <div id="i18n.t('ui_i18n_t_ui_image_modal_content')" class="i18n.t('ui_i18n_t_ui_image_moi18n_t_ui_image_viewer_r')">
-                <!-- Image display areai18n.t('ui_import_store_from_attachmentsstore_js')isplay_wrapper')"i18n.t('ui_img_x_show')"i18n.t('ui_store_chatattachments_currentimageurl')"i18n.t('ui_src')"i18n.t('ui_store_chatattachments_currentimageurl')"i18n.t('ui_alt')"i18n.t('ui_store_chatattachments_currentimagename_image')"i18n.t('ui_class')"i18n.t('ui_modal_image')"i18n.t('ui_load')"i18n.t('ui_store_chatattachments_imageloaded_true')"i18n.t('ui_error')"i18n.t('ui_store_chatattachments_imageerror_true')"i18n.t('ui_loading_indicator_div_x_show')"i18n.t('ui_store_chatattachments_imageloaded_store_chatattachments_imageerror')"i18n.t('ui_class')"i18n.t('ui_loading_indicator')"i18n.t('ui_div_class')"i18n.t('ui_loading_spinner')"i18n.t('ui_div_p_loading_image_p_div_i18n.t('ui_loading_image')div_x_show_i18n_t_ui_loading_image_e_chatattachments_imageerror')" class="i18n.t('ui_i18n_t_ui_error_indicator')">
+        <template x-if="$store.chatAttachments">
+            <div id="image-modal-content" class="image-modal-container">
+                <!-- Image display area -->
+                <div class="image-display-wrapper">
+                    <img 
+                        x-show="$store.chatAttachments.currentImageUrl" 
+                        :src="$store.chatAttachments.currentImageUrl" 
+                        :alt="$store.chatAttachments.currentImageName || 'Image'"
+                        class="modal-image"
+                        @load="$store.chatAttachments.imageLoaded = true"
+                        @error="$store.chatAttachments.imageError = true"
+                    />
+                    
+                    <!-- Loading indicator -->
+                    <div x-show="!$store.chatAttachments.imageLoaded && !$store.chatAttachments.imageError" class="loading-indicator">
+                        <div class="loading-spinner"></div>
+                        <p>Loading image...</p>
+                    </div>
+                    
+                    <!-- Error indicator -->
+                    <div x-show="$store.chatAttachments.imageError" class="error-indicator">
                         <p>Failed to load image</p>
                     </div>
                 </div>
 
-                <!-- Simple zoom coi18n.t('ui_failed_to_load_image')_failed_to_load_image')v class="i18n.t('ui_i18n_t_ui_zoom_controls')">
-                    <button @ci18n.t('ui_i18n_t_ui_failed_to_load_image_v_class_i18n_t_ui_zoom_controls')m_btn')" title="i18n.t('ui_i18n_t_ui_zoom_out')">−</button>
-                    <button @click="i18n.t('ui_i18n_t_ui_store_chatattachments_resetzoom')" class="i18n.t('ui_i18n_t_ui_zoom_btn')" title="i18n.t('ui_i18n_t_ui_reset')">⌂</button>
-                    <button @click="i18n.t('ui_i18n_t_ui_store_chatattachments_zoomin')" class="i18n.t('ui_i18n_t_ui_zoom_btn')" title="i18n.t('ui_i18n_t_ui_zoom_in')">+</button>
+                <!-- Simple zoom controls -->
+                <div class="zoom-controls">
+                    <button @click="$store.chatAttachments.zoomOut()" class="zoom-btn" title="Zoom Out">−</button>
+                    <button @click="$store.chatAttachments.resetZoom()" class="zoom-btn" title="Reset">⌂</button>
+                    <button @click="$store.chatAttachments.zoomIn()" class="zoom-btn" title="Zoom In">+</button>
                 </div>
             </div>
         </template>
     </div>
 
     <style>
-        i18n.t('ui_i18n.t('ui_i18n_t_ui_image_modal_container_width_100_height_100_display_flex_flex_direction_column_align_items_center_justify_content_center_position_relative_background_var_color_bg_secondary_image_display_wrapper_flex_1_display_flex_align_items_center_justify_content_center_overflow_auto_width_100_height_100_position_relative_modal_image_max_width_100_max_height_100_object_fit_contain_transition_transform_0_2s_ease_cursor_grab_modal_image_active_cursor_grabbing_loading_indicator_error_indicator_display_flex_flex_direction_column_align_items_center_justify_content_center_color_var_color_text_secondary_loading_spinner_width_40px_height_40px_border_3px_solid_var_color_border_border_top_3px_solid_var_color_primary_border_radius_50_animation_spin_1s_linear_infinite_margin_bottom_10px_keyframes_spin_0_transform_rotate_0deg_100_transform_rotate_360deg_zoom_controls_position_absolute_bottom_20px_right_20px_display_flex_align_items_center_gap_4px_background_rgba_0_0_0_0_6_padding_6px_border_radius_12px_backdrop_filter_blur_5px_zoom_btn_background_transparent_border_none_color_white_cursor_pointer_padding_6px_10px_border_radius_6px_font_size_16px_font_weight_500_min_width_32px_height_32px_display_flex_align_items_center_justify_content_center_transition_background_color_0_2s_ease_zoom_btn_hover_background_rgba_255_255_255_0_15_dark_mode_adjustments_dark_mode_image_modal_container_background_var_color_bg_secondary')_store_from_i18n_t_ui_attachmentsstore_js')   <title>Image Viewer</title>
+        .image-modal-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: var(--color-bg-secondary);
+        }
 
-    <script type="i18n.t('ui_i18n_t_ui_module')">
-        import { store } from "i18n.t('ui_i18n_t_ui_attachmentsstore_js')";
-    </script>
-</head>
+        .image-display-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
 
-<body>
-    <div x-data>
-        <template x-if="i18n.t('ui_i18n_t_ui_store_chatattachments')">
-            <div id="i18n.t('ui_i18n_t_ui_image_modal_content')" class="i18n.t('ui_i18n_t_ui_image_moi18n_t_ui_image_viewer_r')">
-                <!-- Image display areai18n.t('ui_import_store_from_attachmentsstore_js')isplay_wrapper')"i18n.t('ui_img_x_show')"i18n.t('ui_store_chatattachments_currentimageurl')"i18n.t('ui_src')"i18n.t('ui_store_chatattachments_currentimageurl')"i18n.t('ui_alt')"i18n.t('ui_store_chatattachments_currentimagename_image')"i18n.t('ui_class')"i18n.t('ui_modal_image')"i18n.t('ui_load')"i18n.t('ui_store_chatattachments_imageloaded_true')"i18n.t('ui_error')"i18n.t('ui_store_chatattachments_imageerror_true')"i18n.t('ui_loading_indicator_div_x_show')"i18n.t('ui_store_chatattachments_imageloaded_store_chatattachments_imageerror')"i18n.t('ui_class')"i18n.t('ui_loading_indicator')"i18n.t('ui_div_class')"i18n.t('ui_loading_spinner')"i18n.t('ui_div_p_loading_image_p_div_error_indicator_div_x_show_i18n_t_ui_loading_image_e_chatattachments_imageerror')" class="i18n.t('ui_i18n_t_ui_error_indicator')">
-                        <p>Failed to load image</p>
-                    </div>
-                </div>
+        .modal-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.2s ease;
+            cursor: grab;
+        }
 
-                <!-- Simple zoom controls -->i18n.t('ui_failed_to_load_image')v class="i18n.t('ui_i18n_t_ui_zoom_controls')">
-                    <button @click="i18n.t('ui_i18n_t_ui_store_chatattachments_zoomout')" class="i18n.t('ui_i18n_t_ui_zoom_btn')" title="i18n.t('ui_i18n_t_ui_zoom_out')">−</button>
-                    <button @click="i18n.t('ui_i18n_t_ui_store_chatattachments_resetzoom')" class="i18n.t('ui_i18n_t_ui_zoom_btn')" title="i18n.t('ui_i18n_t_ui_reset')">⌂</button>
-                    <button @click="i18n.t('ui_i18n_t_ui_store_chatattachments_zoomin')" class="i18n.t('ui_i18n_t_ui_zoom_btn')" title="i18n.t('ui_i18n_t_ui_zoom_in')">+</button>
-                </div>
-            </div>
-        </template>
-    </div>
+        .modal-image:active {
+            cursor: grabbing;
+        }
 
-    <style>
-        i18n.t('ui_image_modal_container_width_100_height_100_display_flex_flex_direction_column_align_items_center_justify_content_center_position_relative_background_var_color_bg_secondary_image_display_wrapper_flex_1_display_flex_align_items_center_justify_content_center_overflow_auto_width_100_height_100_position_relative_modal_image_max_width_100_max_height_100_object_fit_contain_transition_transform_0_2s_ease_cursor_grab_modal_image_active_cursor_grabbing_loading_indicator_error_indicator_display_flex_flex_direction_column_align_items_center_justify_content_center_color_var_color_text_secondary_loading_spinner_width_40px_height_40px_border_3px_solid_var_color_border_border_top_3px_solid_var_color_primary_border_radius_50_animation_spin_1s_linear_infinite_margin_bottom_10px_keyframes_spin_0_transform_rotate_0deg_100_transform_rotate_360deg_zoom_controls_position_absolute_bottom_20px_right_20px_display_flex_align_items_center_gap_4px_background_rgba_0_0_0_0_6_padding_6px_border_radius_12px_backdrop_filter_blur_5px_zoom_btn_background_transparent_border_none_color_white_cursor_pointer_padding_6px_10px_border_radius_6px_font_size_16px_font_weight_500_min_width_32px_height_32px_display_flex_align_items_center_justify_content_center_transition_background_color_0_2s_ease_zoom_btn_hover_background_rgba_255_i18n.t('ui_image_viewer')_dark_mode_adjustments_dark_mode_image_modal_container_background_var_color_bg_secondary')</style>
+        .loading-indicator, .error-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-secondary);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--color-border);
+            border-top: 3px solid var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        .zoom-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            min-width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Dark mode adjustments */
+        .dark-mode .image-modal-container {
+            background: var(--color-bg-secondary);
+        }
+    </style>
 
 </body>
 

@@ -1,4 +1,4 @@
-import { createStore } from "i18n.t('ui_i18n_t_ui_js_alpinestore_js')";
+import { createStore } from "/static/js/AlpineStore.js";
 
 // Global function references
 const sendJsonData = globalThis.sendJsonData;
@@ -105,7 +105,7 @@ const model = {
 
     try {
       // Get resolved default patterns from backend
-      const response = await sendJsonData("i18n.t('ui_i18n_t_ui_backup_get_defaults')", {});
+      const response = await sendJsonData("backup_get_defaults", {});
 
       if (response.success) {
         // Use patterns from backend with resolved absolute paths
@@ -124,7 +124,7 @@ const model = {
         };
       }
     } catch (error) {
-      console.warn("i18n.t('ui_i18n_t_ui_failed_to_get_default_patterns_from_backend_using_fallback')");
+      console.warn("Failed to get default patterns from backend, using fallback");
     }
 
     // Fallback patterns (will be overridden by backend on first use)
@@ -133,7 +133,7 @@ const model = {
       include_hidden: false,
       include_patterns: [
         // These will be replaced with resolved absolute paths by backend
-        "i18n.t('ui_i18n_t_ui_loading_default_patterns_from_backend')"
+        "# Loading default patterns from backend..."
       ],
       exclude_patterns: [],
       backup_config: {
@@ -145,18 +145,18 @@ const model = {
 
   // Editor Management - Following Agent Zero ACE editor patterns
   async initBackupEditor() {
-    const container = document.getElementById("i18n.t('ui_i18n_t_ui_backup_metadata_editor')");
+    const container = document.getElementById("backup-metadata-editor");
     if (container) {
-      const editor = ace.edit("i18n.t('ui_i18n_t_ui_backup_metadata_editor')");
+      const editor = ace.edit("backup-metadata-editor");
 
-      const dark = localStorage.getItem("i18n.t('ui_i18n_t_ui_darkmode')");
-      if (dark != "i18n.t('ui_i18n_t_ui_false')") {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_github_dark')");
+      const dark = localStorage.getItem("darkMode");
+      if (dark != "false") {
+        editor.setTheme("ace/theme/github_dark");
       } else {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_tomorrow')");
+        editor.setTheme("ace/theme/tomorrow");
       }
 
-      editor.session.setMode("i18n.t('ui_i18n_t_ui_ace_mode_json')");
+      editor.session.setMode("ace/mode/json");
 
       // Initialize with default backup metadata
       const defaultMetadata = await this.getDefaultBackupMetadata();
@@ -177,18 +177,18 @@ const model = {
   },
 
   async initRestoreEditor() {
-    const container = document.getElementById("i18n.t('ui_i18n_t_ui_restore_metadata_editor')");
+    const container = document.getElementById("restore-metadata-editor");
     if (container) {
-      const editor = ace.edit("i18n.t('ui_i18n_t_ui_restore_metadata_editor')");
+      const editor = ace.edit("restore-metadata-editor");
 
-      const dark = localStorage.getItem("i18n.t('ui_i18n_t_ui_darkmode')");
-      if (dark != "i18n.t('ui_i18n_t_ui_false')") {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_github_dark')");
+      const dark = localStorage.getItem("darkMode");
+      if (dark != "false") {
+        editor.setTheme("ace/theme/github_dark");
       } else {
-        editor.setTheme("i18n.t('ui_i18n_t_ui_ace_theme_tomorrow')");
+        editor.setTheme("ace/theme/tomorrow");
       }
 
-      editor.session.setMode("i18n.t('ui_i18n_t_ui_ace_mode_json')");
+      editor.session.setMode("ace/mode/json");
       editor.setValue('{}');
       editor.clearSelection();
 
@@ -221,8 +221,8 @@ const model = {
       editor.clearSelection();
       editor.navigateFileStart();
     } catch (error) {
-      console.error("i18n.t('ui_i18n_t_ui_failed_to_format_json')", error);
-      this.error = "i18n.t('ui_i18n_t_ui_invalid_json')" + error.message;
+      console.error("Failed to format JSON:", error);
+      this.error = "Invalid JSON: " + error.message;
     }
   },
 
@@ -243,7 +243,7 @@ const model = {
       const patternsString = this.convertPatternsToString(metadata.include_patterns, metadata.exclude_patterns);
 
       // Get grouped preview for better UX
-      const response = await sendJsonData("i18n.t('ui_i18n_t_ui_backup_preview_grouped')", {
+      const response = await sendJsonData("backup_preview_grouped", {
         patterns: patternsString,
         include_hidden: metadata.include_hidden || false,
         max_depth: 3,
@@ -506,7 +506,7 @@ const model = {
       const metadata = this.backupMetadataConfig;
       const patternsString = this.convertPatternsToString(metadata.include_patterns, metadata.exclude_patterns);
 
-      const response = await sendJsonData("i18n.t('ui_i18n_t_ui_backup_test')", {
+      const response = await sendJsonData("backup_test", {
         patterns: patternsString,
         include_hidden: metadata.include_hidden || false,
         max_files: 10000
@@ -657,9 +657,9 @@ const model = {
     // Check Agent Zero version compatibility
     // Note: Both backup and current versions are obtained via git.get_git_info()
     const backupVersion = this.backupMetadata.agent_zero_version;
-    const currentVersion = "i18n.t('ui_i18n_t_ui_current')"; // Retrieved from git.get_git_info() on backend
+    const currentVersion = "current"; // Retrieved from git.get_git_info() on backend
 
-    if (backupVersion !== currentVersion && backupVersion !== "i18n.t('ui_i18n_t_ui_development')") {
+    if (backupVersion !== currentVersion && backupVersion !== "development") {
       warnings.push(`Backup created with Agent Zero ${backupVersion}, current version is ${currentVersion}`);
     }
 
@@ -821,5 +821,5 @@ const model = {
   }
 };
 
-const store = createStore("i18n.t('ui_i18n_t_ui_backupstore')", model);
+const store = createStore("backupStore", model);
 export { store };

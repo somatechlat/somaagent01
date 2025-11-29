@@ -2,23 +2,1090 @@
 
 <head>
     <title>Memory Dashboard</title>
-    <script type="i18n.t('ui_i18n_t_ui_module')">
-        imi18n.t('ui_content_copy') } from "i18n.t('ui_i18n_t_ui_memory_dashboard_store_js')";
+    <script type="module">
+        import { store } from "./memory-dashboard-store.js";
     </script>
 </head>
 
 <body>
     <div x-data>
-        <template x-if="i18n.t('ui_i18n_t_ui_store_memorydashboardstore')">
-            <div x-create="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_onopen')" x-destroy="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_cleanup')"
-                class="i18n.t('ui_i18n_t_ui_memory_dashboard')">
+        <template x-if="$store.memoryDashboardStore">
+            <div x-create="$store.memoryDashboardStore.onOpen()" x-destroy="$store.memoryDashboardStore.cleanup()"
+                class="memory-dashboard">
 
                 <!-- Search and Filters Section -->
-                <div clai18n.t('ui_delete')8n.t('ui_memory_filters_header')"i18n.t('ui_div_class')"i18n.t(i18n.t('ui_memory_dashboard')_inline_filter_memory_dir')"i18n.t('ui_label_for')"i18n.ti18n.t('ui_imi18n_t_ui_content_copy_from_i18n_t_ui_memory_dashboard_store_js')'ui_memory_subdir_select')"i18n.t('ui_x_model')"i18n.t('ui_store_memorydashboardstore_selectedmemorysubdir')"i18n.t('ui_change')"i18n.t('ui_store_memorydashboardstore_onmemorysubdirchange')"i18n.t('ui_i18n_t_ui_0_class_mass_action_toolbar_e_loadingsubdirs')">
-                            <template x-for="i18n.t('ui_i18n_t_ui_subdir_in_store_memorydashboardstore_memorysui18n_t_ui_memories_selected_option_value')"i18n.t('ui_subdir')"i18n.t('ui_x_text')"i18n.t('ui_subdir')"i18n.t('ui_selected')"i18n.t('ui_subdir_store_memorydashboardstore_selectedmemorysubdir')"i18n.t('ui_option_tempi18n.t('ui_memory_directory')ontent_copy_div_i18n_t_ui_copy_filter_group_inline_filter_area')">
-                        <label for="i18n.t('ui_i18n_t_ui_area_filter')">Area</label>
-                        <select id="i18n.t('ui_i18n_t_ui_area_filter')" x-model="i18n.t('ui_i18n_t_ui_store_memorydashboardstore_areafilter')">
-                            <option value=""i18n.t('ui_i18n_t_ui_all_areas_opti18n_t_ui_download_on_value')"main"i18n.t('ui_i18n_t_ui_main_option_oi18n_t_ui_export_fragments_option_option_value')"solutions"i18n.t('ui_i18n_t_ui_solutions_option_option_value')"instruments"i18n.t('ui_i18n_t_ui_instruments_option_select_div_div_class')"filter-group-inline filter-limit"i18n.t('ui_i18n_t_ui_label_for')"limit-input"i18n.t('ui_i18n_t_ui_limit_label_input_type')"number"i18n.t('ui_ii18n.t('ui_i18n_t_ui_content_copy')x_mi18n_t_ui_deleti18n.t('ui_i18n_t_ui_copy_filter_group_inline_filter_area')'ui_step')"10"i18n.t('ui_div_div_classi18n.t('ui_area')18n.t('ui_filter_threshold')"i18n.t('ui_label_for')"i18n.t('ui_threshold_input')"i18n.t('ui_threshold_strong_x_text')"i18n.t('ui_store_memorydashboardstore_threshold_tofixed_2')"i18n.t('ui_strong_label_input_type')"i18n.t('ui_range')"i18n.t('ui_id')i18n.t('ui_close')shold-input"i18n.t('ui_i18n_t_ui_x_model_number')"i18n.t('ui_clear')old"i18n.t('ui_i18n_t_ui_min')"0"i18n.t('ui_i18n_t_ui_max')"1"i18n.t('ui_i18n_t_ui_step')"0.01"i18n.t('ui_i18n_t_ui_div_input_type')"text"i18n.t('ui_i18n_t_ui_id')"search-input"i18n.t('ui_i18n_t_ui_x_model')"$store.memoryDashboardStore.searchQuery"i18n.t('ui_i18n_t_ui_placeholder')"Search memory content..."i18n.t('ui_i18n_t_ui_keyup_enter')"$store.memoryDashboardStore.searchMemories()"i18n.t('ui_i18n_t_ui_button_class')"btn btn-ok btn-search"i18n.t('ui_i18n_t_ui_click')"$store.memi18n.t('ui_database')oardStore.searchMemories()"i18n.t('ui_i18n_t_ui_dii18n_t_ui_total')"$store.memoryDashboardStore.loading || $store.memoryDashboardStore.loadingSubdirs"i18n.t('ui_i18n_t_ui_span_x_show')"!$store.memoryDashboardStore.initializingMemory"i18n.t('ui_i18n_t_ui_search_span_span_x_show')"$store.memoryDashboardStore.initializingMemory"i18n.t('ui_i18n_t_ui_init_spi18n_t_ui_filtered_button_class')"btn btn-cancel btn-clear"i18n.t('ui_i18n_t_ui_click')"$store.memoryDashboardStore.clearSearch()"i18n.t('ui_i18n_t_ui_clear_button_div_loading_state_div_x_show')"$store.memoryDashboardStore.loading"i18n.t('ui_i18n_t_ui_class')"loading-state"i18n.t('ui_i18n_t_ui_div_class')"loading-si18n.t('ui_knowledge').t('ui_div_span_x_show')"i18n.t('ui_store_memorydashboardstore_initializingmemory')"i18n.t('ui_searching_memories_span_span_x_show')"i18n.t('ui_store_memorydashboardstore_initializingmemory')"i18n.t('ui_initializing_memory_database_span_div_error_state_div_x_show')"i18n.t('ui_store_memorydashbi18n_t_ui_conversation_r')"i18n.t('ui_class')"i18n.t('ui_error_state')"i18n.t('ui_span_x_text')"i18n.t('ui_store_memorydashboardstore_error')"i18n.t('ui_span_div_memory_table_div_x_show')"i18n.t('ui_store_memorydashboardstore_loading_store_memorydashboardstore_error')"i18n.t('ui_class')"i18n.t('ui_memory_table_container')"i18n.t('ui_status_bar_div_class')"i18n.t('ui_i18n_t_ui_1_how')"!$store.memoryDashboardStore.loading"i18n.t('ui_i18n_t_ui_div_class')"status-info"i18n.t('ui_i18n_t_ui_span_class')"status-item"i18n.t('ui_i18n_t_ui_span_class')"material-symbols-outlined"i18n.t('ui_i18n_t_ui_database_span_total_strong_x_text')"$store.memoryDashboardStore.totalDbCount"i18n.t('ui_i18n_t_uii18n_t_ui_chevron_left_span_class')"status-separator"i18n.t('ui_i18n_t_ui_span_span_class')"status-item"i18n.t('ui_i18n_t_ui_filtered_strong_x_text')"$store.memoryDashboardStore.totalCoui18n.t('ui_page')18n.t('ui_strong_span_span_class')"i18n.t('ui_status_separator')"i18n.t('ui_span_span_class')"i18n.t('ui_status_item')"i18n.t('ui_knowledge_strong_x_text')"i18n.t('ui_store_memorydashboardstore_knowledgecount')"i18n.t('ui_strong_span_span_class')"i18n.t('ui_status_separator')"i18n.t('ui_span_span_class')"i18n.t('ui_status_item')"i18n.t('ui_conversation_strong_x_text')"i18n.t('ui_store_memorydashboardstore_conversationcount')"i18n.t('ui_strong_span_div_pagination_div_class')"i18n.t('ui_status_pagination')"i18n.t('ui_x_show')"i18n.t('ui_store_memorydashboardstore_totalpages_1')"i18n.t('ui_button_class')"i18n.t('ui_btn_btn_icon')"i18n.t('ui_click')"i18n.t('ui_store_memorydashboardstore_prevpagei18n_t_ui_of_i18n_t_ui_disabled')"$store.memoryDashboardStore.currentPage === 1"i18n.t('ui_i18n_t_ui_title')"Previ18n.t('ui_1_i18n_t_ui_button_class_btn_btn_icon_i18n_t_ui_click_store_memorydashboardstore_prevpagei18n_t_ui_of_i18n_t_ui_disabled_store_memorydashboardstore_currentpage_1_i18n_t_ui_title_previous_page_i18n_t_ui_span_class_material_symbols_outlined_i18n_t_ui_chevron_left_span_button_div_class_page_input_group_i18n_t_ui_label_page_label_input_type_number_i18n_t_ui_class_page_input_i18n_t_ui_x_model_number_store_memorydashboardstore_currentpage_i18n_t_ui_change_store_memorydashboardstore_gotopage_store_memorydashboardstore_currentpage_i18n_t_ui_keyup_enter_store_memorydashbi18n_t_ui_chevron_right_opage_store_memorydashboardstore_currentpage_i18n_t_ui_min_1_i18n_t_ui_max_store_memorydashboardstore_totalpages_i18n_t_ui_span_class_page_total_i18n_t_ui_of_strong_x_text_store_memorydashboardstore_totalpages_i18n_t_ui_strong_span_div_button_class_btn_btn_icon_i18n_t_ui_click_store_memorydashboardstore_nextpage_i18n_t_ui18n_t_ui_no_memories_found_matching_the_current_filters_rydashboardstore_totalpages_i18n_t_ui_title_next_page_i18n_t_ui_span_class_material_symbols_outlined_i18n_t_ui_chevron_right_span_button_div_div_mass_action_toolbar_div_x_show_store_memorydashboardstore_selectedcount_0_i18n_t_ui_class_mass_action_toolbar_i18n_t_ui_div_class_selection_info_i18n_t_ui_span_x_text_store_memorydashboardstore_si18n_t_ui_modal_inner_modal_with_footer_display_flex_flex_direction_column_modal_inner_modal_with_footer_modal_scroll_flex_1_min_height_0_modal_inner_modal_with_footer_modal_footer_flex_shrink_0_memory_filters_header_display_grid_grid_template_columns_35_25_10_auto_grid_template_rows_auto_auto_gap_0_75rem_align_items_center_margin_1rem_0_padding_1rem_background_var_color_panel_border_1px_solid_var_color_border_border_radius_8px_grid_positioning_for_desktop_2_rows_filter_memory_dir_grid_column_1_grid_row_1_filter_area_grid_column_2_grid_row_1_filter_limit_grid_column_3_grid_row_1_filter_threshold_grid_column_4_grid_row_2_search_input_grid_column_1_3_grid_row_2_btn_search_grid_column_3_grid_row_2_justify_content_center_btn_clear_grid_column_4_grid_row_1_justify_self_end_filter_group_inline_display_flex_flex_1_align_items_center_gap_0_5rem_filter_group_inline_label_font_size_0_85rem_font_weight_600_color_var_color_text_opacity_0_8_white_space_nowrap_filter_group_inline_select_filter_group_inline_input_border_1px_solid_var_color_border_flex_0_auto_min_width_0_filter_group_inline_select_focus_filter_group_inline_input_focus_outline_none_border_color_var_color_primary_background_var_color_input_focus_filter_group_inline_filter_limit_flex_0_0_auto_filter_limit_input_flex_0_0_150_search_input_flex_1_border_1px_solid_var_color_border_font_size_0_9rem_height_38px_search_input_focus_outline_none_border_color_var_color_primary_background_var_color_input_focus_filter_threshold_label_font_size_0_85rem_opacity_0_8_memory_status_bar_display_flex_justify_content_space_between_align_items_center_padding_0_75rem_1rem_background_var_color_panel_border_bottom_1px_solid_var_color_border_border_radius_8px_margin_bottom_1rem_font_size_0_9rem_status_info_display_flex_align_items_center_gap_0_5rem_flex_wrap_wrap_status_item_display_flex_align_items_center_gap_0_25rem_status_item_strong_color_var_color_primary_font_weight_600_status_item_material_symbols_outlined_font_size_18px_opacity_0_6_status_separator_color_var_color_border_margin_0_0_25rem_status_pagination_display_flex_align_items_center_gap_0_5rem_btn_icon_background_transparent_border_1px_solid_var_color_border_color_var_color_text_padding_0_25rem_display_flex_align_items_center_font_size_0_btn_icon_hover_not_disabled_background_var_color_panel_border_color_var_color_primary_color_var_color_text_btn_icon_disabled_opacity_0_4_cursor_not_allowed_btn_icon_material_symbols_outlined_font_size_20px_page_input_group_display_flex_align_items_center_gap_0_5rem_page_input_group_label_opacity_0_8_page_total_color_var_color_text_opacity_0_8_font_size_0_85rem_white_space_nowrap_page_total_strong_color_var_color_primary_font_weight_600_page_input_width_60px_padding_0_25rem_0_5rem_text_align_center_border_1px_solid_var_color_border_background_var_color_input_color_var_color_text_border_radius_4px_font_size_0_85rem_height_28px_page_input_focus_outline_none_border_color_var_color_primary_background_var_color_input_focus_remove_spinner_arrows_page_input_webkit_inner_spin_button_page_input_webkit_outer_spin_button_webkit_appearance_none_margin_0_page_input_type_number_moz_appearance_textfield_appearance_textfield_loading_state_error_state_no_memories_init_message_text_align_center_padding_2rem_color_var_color_text_opacity_0_8_background_var_color_panel_border_1px_solid_var_color_border_border_radius_8px_margin_1rem_0_loading_state_display_grid_align_items_center_init_message_color_var_color_primary_border_color_var_color_primary_error_state_color_var_color_accent_border_color_var_color_accent_loading_spinner_width_24px_height_24px_min_width_24px_min_height_24px_max_width_24px_max_height_24px_border_3px_solid_var_color_border_border_top_color_var_color_primary_border_radius_50_animation_spin_1s_linear_infinite_margin_0_auto_0_5rem_flex_shrink_0_flex_grow_0_display_inline_block_position_relative_box_sizing_border_box_keyframes_spin_to_transform_rotate_360deg_memory_table_container_border_1px_solid_var_color_border_border_radius_8px_memory_table_width_100_border_collapse_collapse_table_layout_fixed_col_select_width_5_col_metadata_width_10em_col_preview_col_actions_width_4em_memory_table_th_memory_table_td_padding_1rem_0_75rem_text_align_left_vertical_align_top_border_bottom_1px_solid_var_color_border_overflow_hidden_metadata_cell_overflow_visible_white_space_normal_word_wrap_break_word_metadata_info_display_flex_flex_direction_column_gap_0_5rem_metadata_row_display_flex_align_items_center_gap_0_5rem_metadata_timestamp_font_size_0_85rem_color_var_color_text_font_family_monospace_area_badge_color_white_padding_0_35rem_0_75rem_border_radius_16px_font_size_0_75rem_font_weight_bold_text_transform_uppercase_select_cell_col_select_text_align_center_padding_0_65rem_0_5rem_important_select_cell_input_type_checkbox_col_select_input_type_checkbox_cursor_pointer_transform_scale_1_2_memory_row_selected_background_var_color_panel_border_left_3px_solid_var_color_primary_mass_action_toolbar_display_flex_justify_content_space_between_align_items_center_padding_1rem_background_var_color_panel_border_1px_solid_var_color_primary_border_radius_8px_margin_1rem_0_margin_0_animation_slidedown_0_3s_ease_btn_mass_align_items_center_border_1px_solid_var_color_border_gap_0_25rem_display_flex_background_var_color_background_color_var_color_text_btn_mass_hover_border_color_var_color_primary_color_var_color_primary_btn_mass_delete_hover_border_color_var_color_accent_color_var_color_accent_selection_info_font_weight_600_mass_actions_display_flex_gap_0_5rem_btn_mass_material_symbols_outlined_font_size_18px_btn_mass_hover_border_color_var_color_primary_background_var_color_panel_btn_mass_delete_hover_border_color_var_color_accent_color_var_color_accent_keyframes_slidedown_from_opacity_0_transform_translatey_10px_to_opacity_1_transform_translatey_0_memory_table_th_background_var_color_panel_font_weight_600_color_var_color_text_position_sticky_top_0_z_index_10_border_bottom_2px_solid_var_color_border_memory_table_tbody_tr_border_bottom_1px_solid_var_color_border_memory_table_tbody_tr_last_child_border_bottom_none_memory_table_tbody_tr_memory_row_td_height_5em_source_type_padding_0_25rem_0_5rem_border_radius_var_border_radius_font_size_0_75rem_font_weight_500_text_align_center_border_1px_solid_white_space_nowrap_flex_shrink_0_content_preview_metadata_info_height_5_5em_overflow_hidden_word_wrap_break_word_overflow_wrap_break_word_tags_display_flex_gap_0_25rem_margin_top_0_5rem_flex_wrap_wrap_tag_background_var_color_panel_border_1px_solid_var_color_border_padding_0_2rem_0_4rem_border_radius_6px_font_size_0_7rem_color_var_color_text_opacity_0_8_actions_cell_padding_0_important_position_relative_actions_wrapper_position_absolute_top_0_left_0_right_0_bottom_0_display_flex_flex_direction_column_align_items_center_justify_content_center_table_action_buttons_extends_btn_btn_action_background_none_border_1px_solid_var_color_border_padding_0_25rem_margin_0_0_1rem_color_var_color_text_opacity_0_7_display_inline_flex_btn_action_material_symbols_outlined_font_size_18px_btn_action_hover_opacity_1_background_var_color_panel_border_color_var_color_primary_color_var_color_primary_transform_translatey_1px_btn_action_view_hover_background_var_color_panel_border_color_var_color_primary_color_var_color_primary_btn_action_copy_hover_background_var_color_panel_border_color_var_color_primary_color_var_color_primary_btn_action_delete_hover_background_var_color_panel_border_color_var_color_accent_color_var_color_accent_responsive_design_media_max_width_870px_memory_dashboard_padding_0_5rem_memory_filters_header_padding_0_75rem_memory_filters_header_display_flex_flex_wrap_wrap_gap_0_75rem_reset_grid_positioning_filter_memory_dir_filter_area_filter_limit_filter_threshold_search_input_btn_search_btn_clear_grid_column_auto_grid_row_auto_filter_group_inline_width_100_flex_direction_row_align_items_center_gap_0_5rem_filter_group_inline_label_font_size_0_9rem_margin_bottom_0_25rem_filter_group_inline_select_filter_group_inline_input_height_42px_font_size_1rem_filter_group_inline_filter_limit_flex_33_filter_limit_input_flex_1_mobile_order_and_layout_force_items_to_specific_widths_filter_memory_dir_order_1_flex_1_1_100_filter_area_order_2_flex_1_1_100_filter_limit_order_3_flex_1_1_100_btn_clear_order_6_flex_40_min_width_80px_padding_0_height_42px_justify_content_center_search_input_order_5_flex_auto_width_100_height_42px_search_button_and_threshold_on_same_row_btn_search_order_7_flex_40_height_42px_padding_0_1rem_min_width_80px_filter_threshold_order_4_flex_40_flex_direction_column_align_items_stretch_gap_0_5rem_padding_0_filter_threshold_label_font_size_0_9rem_width_100_display_flex_justify_content_space_between_filter_threshold_input_type_range_width_100_memory_status_bar_flex_direction_column_gap_0_75rem_status_info_width_100_justify_content_center_flex_wrap_wrap_gap_0_5rem_1rem_status_info_material_symbols_outlined_font_size_18px_status_pagination_width_100_justify_content_center_padding_top_0_5rem_border_top_1px_solid_var_color_border_memory_table_th_memory_table_td_padding_0_5rem_0_25rem_font_size_0_85rem_actions_cell_min_width_60px_width_60px_col_select_width_8_col_metadata_width_27_col_preview_width_55_col_actions_width_10')</style>
+                <div class="memory-filters-header">
+                    <div class="filter-group-inline filter-memory-dir">
+                        <label for="memory-subdir-select">Memory Directory</label>
+                        <select id="memory-subdir-select" x-model="$store.memoryDashboardStore.selectedMemorySubdir"
+                            @change="$store.memoryDashboardStore.onMemorySubdirChange()"
+                            :disabled="$store.memoryDashboardStore.loadingSubdirs">
+                            <template x-for="subdir in $store.memoryDashboardStore.memorySubdirs" :key="subdir">
+                                <option :value="subdir" x-text="subdir"
+                                    :selected="subdir === $store.memoryDashboardStore.selectedMemorySubdir">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="filter-group-inline filter-area">
+                        <label for="area-filter">Area</label>
+                        <select id="area-filter" x-model="$store.memoryDashboardStore.areaFilter">
+                            <option value="">All Areas</option>
+                            <option value="main">Main</option>
+                            <option value="fragments">Fragments</option>
+                            <option value="solutions">Solutions</option>
+                            <option value="instruments">Instruments</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group-inline filter-limit">
+                        <label for="limit-input">Limit:</label>
+                        <input type="number" id="limit-input" x-model.number="$store.memoryDashboardStore.limit"
+                            min="10" max="1000" step="10" />
+                    </div>
+
+                    <div class="filter-threshold">
+                        <label for="threshold-input">Threshold: <strong
+                                x-text="$store.memoryDashboardStore.threshold.toFixed(2)"></strong></label>
+                        <input type="range" id="threshold-input" x-model.number="$store.memoryDashboardStore.threshold"
+                            min="0" max="1" step="0.01" />
+                    </div>
+
+                    <input type="text" id="search-input" x-model="$store.memoryDashboardStore.searchQuery"
+                        placeholder="Search memory content..."
+                        @keyup.enter="$store.memoryDashboardStore.searchMemories()" />
+
+                    <button class="btn btn-ok btn-search" @click="$store.memoryDashboardStore.searchMemories()"
+                        :disabled="$store.memoryDashboardStore.loading || $store.memoryDashboardStore.loadingSubdirs">
+                        <span x-show="!$store.memoryDashboardStore.initializingMemory">Search</span>
+                        <span x-show="$store.memoryDashboardStore.initializingMemory">Init...</span>
+                    </button>
+
+                    <button class="btn btn-cancel btn-clear" @click="$store.memoryDashboardStore.clearSearch()">
+                        Clear
+                    </button>
+                </div>
+
+                <!-- Loading state -->
+                <div x-show="$store.memoryDashboardStore.loading" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <span x-show="!$store.memoryDashboardStore.initializingMemory">Searching memories...</span>
+                    <span x-show="$store.memoryDashboardStore.initializingMemory">Initializing memory database...</span>
+                </div>
+
+                <!-- Error state -->
+                <div x-show="$store.memoryDashboardStore.error" class="error-state">
+                    <span x-text="$store.memoryDashboardStore.error"></span>
+                </div>
+
+                <!-- Memory table -->
+                <div x-show="!$store.memoryDashboardStore.loading && !$store.memoryDashboardStore.error"
+                    class="memory-table-container">
+
+                    <!-- Status Bar -->
+                    <div class="memory-status-bar" x-show="!$store.memoryDashboardStore.loading">
+                        <div class="status-info">
+                            <span class="status-item">
+                                <span class="material-symbols-outlined">database</span>
+                                Total: <strong x-text="$store.memoryDashboardStore.totalDbCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Filtered: <strong x-text="$store.memoryDashboardStore.totalCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Knowledge: <strong x-text="$store.memoryDashboardStore.knowledgeCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Conversation: <strong x-text="$store.memoryDashboardStore.conversationCount"></strong>
+                            </span>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="status-pagination" x-show="$store.memoryDashboardStore.totalPages > 1">
+                            <button class="btn btn-icon" @click="$store.memoryDashboardStore.prevPage()"
+                                :disabled="$store.memoryDashboardStore.currentPage === 1" title="Previous Page">
+                                <span class="material-symbols-outlined">chevron_left</span>
+                            </button>
+                            <div class="page-input-group">
+                                <label>Page</label>
+                                <input type="number" class="page-input"
+                                    x-model.number="$store.memoryDashboardStore.currentPage"
+                                    @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    :min="1" :max="$store.memoryDashboardStore.totalPages" />
+                                <span class="page-total">of <strong
+                                        x-text="$store.memoryDashboardStore.totalPages"></strong></span>
+                            </div>
+                            <button class="btn btn-icon" @click="$store.memoryDashboardStore.nextPage()"
+                                :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages"
+                                title="Next Page">
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mass action toolbar -->
+                    <div x-show="$store.memoryDashboardStore.selectedCount > 0" class="mass-action-toolbar">
+                        <div class="selection-info">
+                            <span x-text="$store.memoryDashboardStore.selectedCount"></span> memories selected
+                        </div>
+
+                        <div class="mass-actions">
+                            <button class="btn btn-mass copy" @click="$store.memoryDashboardStore.bulkCopyMemories()"
+                                title="Copy Selected Content">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                Copy
+                            </button>
+
+                            <button class="btn btn-mass export"
+                                @click="$store.memoryDashboardStore.bulkExportMemories()"
+                                title="Export Selected Memories">
+                                <span class="material-symbols-outlined">download</span>
+                                Export
+                            </button>
+
+                            <button class="btn btn-mass delete"
+                                @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                                title="Delete Selected Memories">
+                                <span class="material-symbols-outlined">delete</span>
+                                Delete
+                            </button>
+
+                            <button class="btn btn-mass clear" @click="$store.memoryDashboardStore.clearSelection()"
+                                title="Clear Selection">
+                                <span class="material-symbols-outlined">close</span>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="memory-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-select">
+                                        <input type="checkbox" :checked="$store.memoryDashboardStore.allSelected"
+                                            :indeterminate="$store.memoryDashboardStore.someSelected && !$store.memoryDashboardStore.allSelected"
+                                            @change="$store.memoryDashboardStore.toggleSelectAll()"
+                                            title="Select/Deselect All" />
+                                    </th>
+                                    <th class="col-metadata">Metadata</th>
+                                    <th class="col-preview">Preview</th>
+                                    <th class="col-actions"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="memory in $store.memoryDashboardStore.paginatedMemories"
+                                    :key="memory.id">
+                                    <tr class="memory-row" :class="{'selected': memory.selected}"
+                                        @click="$store.memoryDashboardStore.showMemoryDetails(memory)"
+                                        style="cursor: pointer;">
+                                        <!-- Selection checkbox -->
+                                        <td class="select-cell" @click.stop="memory.selected = !memory.selected">
+                                            <input type="checkbox" x-model="memory.selected" />
+                                        </td>
+
+                                        <!-- Metadata (merged Area, Timestamp, Source) -->
+                                        <td class="metadata-cell">
+                                            <div class="metadata-info">
+                                                <div class="metadata-row">
+                                                    <span class="area-badge"
+                                                        :style="`background-color: ${$store.memoryDashboardStore.getAreaColor(memory.area)}`"
+                                                        x-text="(memory.area || 'UNKNOWN').toUpperCase()"></span>
+                                                </div>
+                                                <div class="metadata-row">
+                                                    <template x-if="memory.knowledge_source">
+                                                        <span class="source-type knowledge">Knowledge</span>
+                                                    </template>
+                                                    <template x-if="!memory.knowledge_source">
+                                                        <span class="source-type conversation">Conversation</span>
+                                                    </template>
+                                                </div>
+                                                <div class="metadata-row metadata-timestamp">
+                                                    <span
+                                                        x-text="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, true)"
+                                                        :title="$store.memoryDashboardStore.formatTimestamp(memory.timestamp, false)"></span>
+                                                </div>
+
+                                            </div>
+                                        </td>
+
+                                        <!-- Content preview -->
+                                        <td class="preview-cell">
+                                            <div class="content-preview"
+                                                x-text="memory.content_full.substring(0, 200) + (memory.content_full.length > 200 ? '...' : '')">
+                                            </div>
+                                            <div class="tags" x-show="memory.tags && memory.tags.length > 0">
+                                                <template x-for="tag in memory.tags" :key="tag">
+                                                    <span class="tag" x-text="tag"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+
+                                        <!-- Actions -->
+                                        <td class="actions-cell" @click.stop>
+                                            <div class="actions-wrapper">
+                                                <button class="btn btn-action copy"
+                                                    @click="$store.memoryDashboardStore.copyToClipboard($store.memoryDashboardStore.formatMemoryForCopy(memory))"
+                                                    title="Copy Memory">
+                                                    <span class="material-symbols-outlined">content_copy</span>
+                                                </button>
+
+                                                <button class="btn btn-action delete"
+                                                    @click="$store.memoryDashboardStore.deleteMemory(memory)"
+                                                    title="Delete Memory">
+                                                    <span class="material-symbols-outlined">delete</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+
+
+
+                    </div>
+
+                    <!-- Mass action toolbar -->
+                    <div x-show="$store.memoryDashboardStore.selectedCount > 0" class="mass-action-toolbar">
+                        <div class="selection-info">
+                            <span x-text="$store.memoryDashboardStore.selectedCount"></span> memories selected
+                        </div>
+
+                        <div class="mass-actions">
+                            <button class="btn btn-mass copy" @click="$store.memoryDashboardStore.bulkCopyMemories()"
+                                title="Copy Selected Content">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                Copy
+                            </button>
+
+                            <button class="btn btn-mass export"
+                                @click="$store.memoryDashboardStore.bulkExportMemories()"
+                                title="Export Selected Memories">
+                                <span class="material-symbols-outlined">download</span>
+                                Export
+                            </button>
+
+                            <button class="btn btn-mass delete"
+                                @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                                title="Delete Selected Memories">
+                                <span class="material-symbols-outlined">delete</span>
+                                Delete
+                            </button>
+
+                            <button class="btn btn-mass clear" @click="$store.memoryDashboardStore.clearSelection()"
+                                title="Clear Selection">
+                                <span class="material-symbols-outlined">close</span>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <!-- Status Bar -->
+                    <div class="memory-status-bar" x-show="!$store.memoryDashboardStore.loading">
+                        <div class="status-info">
+                            <span class="status-item">
+                                <span class="material-symbols-outlined">database</span>
+                                Total: <strong x-text="$store.memoryDashboardStore.totalDbCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Filtered: <strong x-text="$store.memoryDashboardStore.totalCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Knowledge: <strong x-text="$store.memoryDashboardStore.knowledgeCount"></strong>
+                            </span>
+                            <span class="status-separator">•</span>
+                            <span class="status-item">
+                                Conversation: <strong x-text="$store.memoryDashboardStore.conversationCount"></strong>
+                            </span>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="status-pagination" x-show="$store.memoryDashboardStore.totalPages > 1">
+                            <button class="btn btn-icon" @click="$store.memoryDashboardStore.prevPage()"
+                                :disabled="$store.memoryDashboardStore.currentPage === 1" title="Previous Page">
+                                <span class="material-symbols-outlined">chevron_left</span>
+                            </button>
+                            <div class="page-input-group">
+                                <label>Page</label>
+                                <input type="number" class="page-input"
+                                    x-model.number="$store.memoryDashboardStore.currentPage"
+                                    @change="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    @keyup.enter="$store.memoryDashboardStore.goToPage($store.memoryDashboardStore.currentPage)"
+                                    :min="1" :max="$store.memoryDashboardStore.totalPages" />
+                                <span class="page-total">of <strong
+                                        x-text="$store.memoryDashboardStore.totalPages"></strong></span>
+                            </div>
+                            <button class="btn btn-icon" @click="$store.memoryDashboardStore.nextPage()"
+                                :disabled="$store.memoryDashboardStore.currentPage === $store.memoryDashboardStore.totalPages"
+                                title="Next Page">
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <!-- No memories message -->
+                    <div x-show="$store.memoryDashboardStore.memories.length === 0 && !$store.memoryDashboardStore.message"
+                        class="no-memories">
+                        No memories found matching the current filters.
+                    </div>
+
+                    <!-- Initialization message -->
+                    <div x-show="$store.memoryDashboardStore.message" class="init-message">
+                        <span x-text="$store.memoryDashboardStore.message"></span>
+                    </div>
+
+
+
+                </div>
+
+
+
+            </div>
+        </template>
+    </div>
+
+    <style>
+        .modal-inner.modal-with-footer {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-inner.modal-with-footer .modal-scroll {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .modal-inner.modal-with-footer .modal-footer {
+            flex-shrink: 0;
+        }
+
+        .memory-filters-header {
+            display: grid;
+            grid-template-columns: 35% 25% 10% auto;
+            grid-template-rows: auto auto;
+            gap: 0.75rem;
+            align-items: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+        }
+
+        /* Grid positioning for desktop - 2 rows */
+        .filter-memory-dir {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .filter-area {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .filter-limit {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .filter-threshold {
+            grid-column: 4;
+            grid-row: 2;
+        }
+
+        #search-input {
+            grid-column: 1 / 3;
+            grid-row: 2;
+        }
+
+        .btn-search {
+            grid-column: 3;
+            grid-row: 2;
+            justify-content: center;
+        }
+
+        .btn-clear {
+            grid-column: 4;
+            grid-row: 1;
+            justify-self: end;
+        }
+
+        .filter-group-inline {
+            display: flex;
+            flex: 1;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group-inline label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text);
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
+        .filter-group-inline select,
+        .filter-group-inline input {
+            border: 1px solid var(--color-border);
+            flex: 0 auto;
+            min-width: 0;
+        }
+
+        .filter-group-inline select:focus,
+        .filter-group-inline input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            background: var(--color-input-focus);
+        }
+
+        .filter-group-inline.filter-limit {
+            flex: 0 0 auto;
+        }
+
+        .filter-limit input {
+            flex: 0 0 150%;
+        }
+
+
+        #search-input {
+            flex: 1;
+            border: 1px solid var(--color-border);
+            font-size: 0.9rem;
+            height: 38px;
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            background: var(--color-input-focus);
+        }
+
+        .filter-threshold label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .memory-status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--color-panel);
+            border-bottom: 1px solid var(--color-border);
+            border-radius: 8px;
+            /* margin-bottom: 1rem; */
+            font-size: 0.9rem;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .status-item strong {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .status-item .material-symbols-outlined {
+            font-size: 18px;
+            opacity: 0.6;
+        }
+
+        .status-separator {
+            color: var(--color-border);
+            margin: 0 0.25rem;
+        }
+
+        .status-pagination {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            font-size: 0;
+        }
+
+        .btn-icon:hover:not(:disabled) {
+            background: var(--color-panel);
+            border-color: var(--color-primary);
+            color: var(--color-text);
+        }
+
+        .btn-icon:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-icon .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        .page-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-input-group label {
+            opacity: 0.8;
+        }
+
+        .page-total {
+            color: var(--color-text);
+            opacity: 0.8;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .page-total strong {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .page-input {
+            width: 60px;
+            padding: 0.25rem 0.5rem;
+            text-align: center;
+            border: 1px solid var(--color-border);
+            background: var(--color-input);
+            color: var(--color-text);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            height: 28px;
+        }
+
+        .page-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            background: var(--color-input-focus);
+        }
+
+        /* Remove spinner arrows */
+        .page-input::-webkit-inner-spin-button,
+        .page-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .page-input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        .loading-state,
+        .error-state,
+        .no-memories,
+        .init-message {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-text);
+            opacity: 0.8;
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .loading-state {
+            display: grid;
+            align-items: center;
+        }
+
+        .init-message {
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .error-state {
+            color: var(--color-accent);
+            border-color: var(--color-accent);
+        }
+
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            min-height: 24px;
+            max-width: 24px;
+            max-height: 24px;
+            border: 3px solid var(--color-border);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 0.5rem;
+            flex-shrink: 0;
+            flex-grow: 0;
+            display: inline-block;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .memory-table-container {
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+        }
+
+        .memory-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .col-select {
+            width: 5%;
+        }
+
+        .col-metadata {
+            width: 10em;
+        }
+
+        .col-preview {}
+
+        .col-actions {
+            width: 4em;
+        }
+
+        .memory-table th,
+        .memory-table td {
+            padding: 1rem 0.75rem;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid var(--color-border);
+            overflow: hidden;
+        }
+
+        .metadata-cell {
+            overflow: visible;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        .metadata-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .metadata-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metadata-timestamp {
+            font-size: 0.85rem;
+            color: var(--color-text);
+            font-family: monospace;
+        }
+
+        .area-badge {
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .select-cell,
+        .col-select {
+            text-align: center;
+            padding: 0.65rem 0.5rem !important;
+        }
+
+        .select-cell input[type="checkbox"],
+        .col-select input[type="checkbox"] {
+            cursor: pointer;
+            transform: scale(1.2);
+        }
+
+        .memory-row.selected {
+            background: var(--color-panel);
+            border-left: 3px solid var(--color-primary);
+        }
+
+        .mass-action-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--color-panel);
+            /* border: 1px solid var(--color-primary); */
+            /* border-radius: 8px; */
+            /* margin: 1rem 0; */
+            margin: 0;
+            animation: slideDown 0.3s ease;
+        }
+
+        .btn-mass {
+            align-items: center;
+            border: 1px solid var(--color-border);
+            gap: 0.25rem;
+            display: flex;
+            background: var(--color-background);
+            color: var(--color-text);
+        }
+
+        .btn-mass:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        .btn-mass.delete:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        .selection-info {
+            font-weight: 600;
+        }
+
+        .mass-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-mass .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .btn-mass:hover {
+            border-color: var(--color-primary);
+            background: var(--color-panel);
+        }
+
+        .btn-mass.delete:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .memory-table th {
+            background: var(--color-panel);
+            font-weight: 600;
+            color: var(--color-text);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .memory-table tbody tr {
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .memory-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .memory-table tbody tr.memory-row>td {
+            height: 5em;
+        }
+
+        .source-type {
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-align: center;
+            border: 1px solid;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .content-preview,
+        .metadata-info {
+            height: 5.5em;
+            overflow: hidden;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .tags {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: var(--color-text);
+            opacity: 0.8;
+        }
+
+        .actions-cell {
+            padding: 0 !important;
+            position: relative;
+        }
+
+        .actions-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Table action buttons - extends .btn */
+        .btn-action {
+            background: none;
+            border: 1px solid var(--color-border);
+            padding: 0.25rem;
+            margin: 0 0.1rem;
+            color: var(--color-text);
+            opacity: 0.7;
+            display: inline-flex;
+        }
+
+        .btn-action .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .btn-action:hover {
+            opacity: 1;
+            background: var(--color-panel);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            transform: translateY(-1px);
+        }
+
+        .btn-action.view:hover {
+            background: var(--color-panel);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        .btn-action.copy:hover {
+            background: var(--color-panel);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        .btn-action.delete:hover {
+            background: var(--color-panel);
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        /* Responsive design */
+        @media (max-width: 870px) {
+            .memory-dashboard {
+                padding: 0.5rem;
+            }
+
+            .memory-filters-header {
+                padding: 0.75rem;
+            }
+
+            .memory-filters-header {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            /* Reset grid positioning */
+            .filter-memory-dir,
+            .filter-area,
+            .filter-limit,
+            .filter-threshold,
+            #search-input,
+            .btn-search,
+            .btn-clear {
+                grid-column: auto;
+                grid-row: auto;
+            }
+
+            .filter-group-inline {
+                width: 100%;
+                flex-direction: row;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .filter-group-inline label {
+                font-size: 0.9rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .filter-group-inline select,
+            .filter-group-inline input {
+                height: 42px;
+                font-size: 1rem;
+            }
+
+            .filter-group-inline.filter-limit {
+                flex: 33%;
+            }
+
+            .filter-limit input {
+                flex: 1;
+            }
+
+            /* Mobile order and layout - force items to specific widths */
+            .filter-memory-dir {
+                order: 1;
+                flex: 1 1 100%;
+            }
+
+            .filter-area {
+                order: 2;
+                flex: 1 1 100%;
+            }
+
+            .filter-limit {
+                order: 3;
+                flex: 1 1 100%;
+            }
+
+            .btn-clear {
+                order: 6;
+                flex: 40%;
+                min-width: 80px;
+                padding: 0;
+                height: 42px;
+                justify-content: center;
+            }
+
+            #search-input {
+                order: 5;
+                flex: auto;
+                width: 100%;
+                height: 42px;
+            }
+
+            /* Search button and threshold on same row */
+            .btn-search {
+                order: 7;
+                flex: 40%;
+                height: 42px;
+                padding: 0 1rem;
+                min-width: 80px;
+            }
+
+            .filter-threshold {
+                order: 4;
+                flex: 40%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+                padding: 0;
+            }
+
+            .filter-threshold label {
+                font-size: 0.9rem;
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .filter-threshold input[type="range"] {
+                width: 100%;
+            }
+
+            .memory-status-bar {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .status-info {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 0.5rem 1rem;
+            }
+
+            .status-info .material-symbols-outlined {
+                font-size: 18px;
+            }
+
+            .status-pagination {
+                width: 100%;
+                justify-content: center;
+                padding-top: 0.5rem;
+                border-top: 1px solid var(--color-border);
+            }
+
+            .memory-table th,
+            .memory-table td {
+                padding: 0.5rem 0.25rem;
+                font-size: 0.85rem;
+            }
+
+            .actions-cell {
+                min-width: 60px;
+                width: 60px;
+            }
+
+            .col-select {
+                width: 8%;
+            }
+
+            .col-metadata {
+                width: 27%;
+            }
+
+            .col-preview {
+                width: 55%;
+            }
+
+            .col-actions {
+                width: 10%;
+            }
+        }
+    </style>
 
     </template>
     </div>

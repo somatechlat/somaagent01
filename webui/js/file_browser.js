@@ -3,21 +3,266 @@ const fileBrowserModalProxy = {
   isLoading: false,
 
   browser: {
-    title: "i18n.t('ui_i18n_t_ui_file_browser')",
-    currentPath: ""i18n.t('ui_i18n_t_ui_entries_parentpath')""i18n.t('ui_i18n_t_ui_sortby')"name"i18n.t('ui_i18n_t_ui_sortdirection')"asc"i18n.t('ui_i18n_t_ui_initialize_navigation_history_history_async_openmodal_path_const_modalel_document_getelementbyid')"fileBrowserModal"i18n.t('ui_i18n_t_ui_const_modalad_alpine_data_modalel_modalad_isopen_true_modalad_isloading_true_modalad_history_reset_history_when_opening_modal_initialize_currentpath_to_root_if_it_s_empty_if_path_modalad_browser_currentpath_path_else_if_modalad_browser_currentpath_modalad_browser_currentpath')"$WORK_DIR"i18n.t('ui_i18n_t_ui_await_modalad_fetchfiles_modalad_browser_currentpath_isarchive_filename_const_archiveexts')"zip"i18n.t('ui_i18n_t_ui')"tar"i18n.t('ui_i18n_t_ui')"gz"i18n.t('ui_i18n_t_ui')"rar"i18n.t('ui_i18n_t_ui')"7z"i18n.t('ui_i18n_t_ui_const_ext_filename_split')"."i18n.t('ui_i18n_t_ui_pop_tolowercase_return_archiveexts_includes_ext_asyi18n_t_ui_folders_always_come_first_if_a_is_dir_b_is_dir_return_a_is_dir_1_1_const_direction_this_browser_sortdirection_asc_1_1_switch_this_browser_sortby_case_name_return_direction_a_name_localecompare_b_name_case_size_return_direction_a_size_b_size_case_date_return_direction_new_date_a_modified_new_date_b_modified_default_return_0_togglesort_column_if_this_browser_sortby_column_this_browser_sortdirection_this_browser_sortdirection_asc_desc_asc_else_this_browser_sortby_column_this_browser_sortdirection_asc_async_deletefile_file_if_confirm_are_you_sure_you_want_to_delete_file_name_return_try_const_response_await_fetchapi_delete_work_dir_file_method_post_headers_content_type_application_json_body_json_stringify_path_file_path_currentpath_this_browser_currentpath_if_response_ok_const_data_await_response_json_this_browser_entries_this_browser_entries_filter_entry_entry_path_file_path_alert_file_deleted_successfully_else_alert_error_deleting_file_await_response_text_catch_error_window_toastfrontenderror_error_deleting_file_error_message_file_delete_error_alert_error_deleting_file_async_handlefileupload_event_try_const_files_event_target_files_if_files_length_return_const_formdata_new_formdata_formdata_append_path_this_browser_currentpath_for_let_i_0_i_data_await_response_json_this_browser_entries_this_browser_entries_filter_entry_entry_path_file_path_alert')"File deleted successfully."i18n.t('ui_i18n_t_ui_else_alert_error_deleting_file_await_response_text_catch_error_window_toastfrontenderror')"Error deleting file: "i18n.t('ui_i18n_t_ui_error_message')"File Delete Error"i18n.t('ui_i18n_t_ui_alert')"Error deleting file"i18n.t('ui_i18n_t_ui_async_handlefileupload_event_try_const_files_event_target_files_if_files_length_return_const_formdata_new_formdata_formdata_append')"path"i18n.t('ui_i18n_t_ui_this_browser_currentpath_for_let_i_0_i_files_length_i_const_ext_files_i_name_split')"."i18n.t('ui_i18n_t_ui_pop_tolowercase_if')"zip"i18n.t('ui_i18n_t_ui')"tar"i18n.t('ui_i18n_t_ui')"gz"i18n.t('ui_i18n_t_ui')"rar"i18n.t('ui_i18n_t_ui')"7z"i18n.t('ui_i18n_t_ui_includes_ext_if_files_i_size_100_1024_1024_100mb_alert_file_files_i_name_exceeds_the_maximum_allowed_size_of_100mb_continue_formdata_append')"files[]"i18n.t('ui_i18n_t_ui_files_i_proceed_with_upload_after_validation_const_response_await_fetchapi')"/upload_work_dir_files"i18n.t('ui_i18n_t_ui_method')"POST"i18n.t('ui_i18n_t_ui_body_formdata_if_response_ok_const_data_await_response_json_update_the_file_list_with_new_data_this_browser_entries_data_data_entries_map_entry_entry_uploadstatus_data_failed_includes_entry_name')"failed"i18n.t('ui_i18n_t_ui')"success"i18n.t('ui_i18n_t_ui_this_browser_currentpath_data_data_current_path_this_browser_parentpath_data_data_parent_path_show_success_message_if_data_failed_data_failed_length_0_const_failedfiles_data_failed_map_file_file_name_file_error_join')"\n");
+    title: "File Browser",
+    currentPath: "",
+    entries: [],
+    parentPath: "",
+    sortBy: "name",
+    sortDirection: "asc",
+  },
+
+  // Initialize navigation history
+  history: [],
+
+  async openModal(path) {
+    const modalEl = document.getElementById("fileBrowserModal");
+    const modalAD = Alpine.$data(modalEl);
+
+    modalAD.isOpen = true;
+    modalAD.isLoading = true;
+    modalAD.history = []; // reset history when opening modal
+
+    // Initialize currentPath to root if it's empty
+    if (path) modalAD.browser.currentPath = path;
+    else if (!modalAD.browser.currentPath)
+      modalAD.browser.currentPath = "$WORK_DIR";
+
+    await modalAD.fetchFiles(modalAD.browser.currentPath);
+  },
+
+  isArchive(filename) {
+    const archiveExts = ["zip", "tar", "gz", "rar", "7z"];
+    const ext = filename.split(".").pop().toLowerCase();
+    return archiveExts.includes(ext);
+  },
+
+  async fetchFiles(path = "") {
+    this.isLoading = true;
+    try {
+      const response = await fetchApi(
+        `/get_work_dir_files?path=${encodeURIComponent(path)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        this.browser.entries = data.data.entries;
+        this.browser.currentPath = data.data.current_path;
+        this.browser.parentPath = data.data.parent_path;
+      } else {
+        console.error("Error fetching files:", await response.text());
+        this.browser.entries = [];
+      }
+    } catch (error) {
+      window.toastFrontendError("Error fetching files: " + error.message, "File Browser Error");
+      this.browser.entries = [];
+    } finally {
+      this.isLoading = false;
+    }
+  },
+
+  async navigateToFolder(path) {
+    // Push current path to history before navigating
+    if (this.browser.currentPath !== path) {
+      this.history.push(this.browser.currentPath);
+    }
+    await this.fetchFiles(path);
+  },
+
+  async navigateUp() {
+    if (this.browser.parentPath !== "") {
+      // Push current path to history before navigating up
+      this.history.push(this.browser.currentPath);
+      await this.fetchFiles(this.browser.parentPath);
+    }
+  },
+
+  sortFiles(entries) {
+    return [...entries].sort((a, b) => {
+      // Folders always come first
+      if (a.is_dir !== b.is_dir) {
+        return a.is_dir ? -1 : 1;
+      }
+
+      const direction = this.browser.sortDirection === "asc" ? 1 : -1;
+      switch (this.browser.sortBy) {
+        case "name":
+          return direction * a.name.localeCompare(b.name);
+        case "size":
+          return direction * (a.size - b.size);
+        case "date":
+          return direction * (new Date(a.modified) - new Date(b.modified));
+        default:
+          return 0;
+      }
+    });
+  },
+
+  toggleSort(column) {
+    if (this.browser.sortBy === column) {
+      this.browser.sortDirection =
+        this.browser.sortDirection === "asc" ? "desc" : "asc";
+    } else {
+      this.browser.sortBy = column;
+      this.browser.sortDirection = "asc";
+    }
+  },
+
+  async deleteFile(file) {
+    if (!confirm(`Are you sure you want to delete ${file.name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetchApi("/delete_work_dir_file", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path: file.path,
+          currentPath: this.browser.currentPath,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.browser.entries = this.browser.entries.filter(
+          (entry) => entry.path !== file.path
+        );
+        alert("File deleted successfully.");
+      } else {
+        alert(`Error deleting file: ${await response.text()}`);
+      }
+    } catch (error) {
+      window.toastFrontendError("Error deleting file: " + error.message, "File Delete Error");
+      alert("Error deleting file");
+    }
+  },
+
+  async handleFileUpload(event) {
+    try {
+      const files = event.target.files;
+      if (!files.length) return;
+
+      const formData = new FormData();
+      formData.append("path", this.browser.currentPath);
+
+      for (let i = 0; i < files.length; i++) {
+        const ext = files[i].name.split(".").pop().toLowerCase();
+        if (!["zip", "tar", "gz", "rar", "7z"].includes(ext)) {
+          if (files[i].size > 100 * 1024 * 1024) {
+            // 100MB
+            alert(
+              `File ${files[i].name} exceeds the maximum allowed size of 100MB.`
+            );
+            continue;
+          }
+        }
+        formData.append("files[]", files[i]);
+      }
+
+      // Proceed with upload after validation
+      const response = await fetchApi("/upload_work_dir_files", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update the file list with new data
+        this.browser.entries = data.data.entries.map((entry) => ({
+          ...entry,
+          uploadStatus: data.failed.includes(entry.name) ? "failed" : "success",
+        }));
+        this.browser.currentPath = data.data.current_path;
+        this.browser.parentPath = data.data.parent_path;
+
+        // Show success message
+        if (data.failed && data.failed.length > 0) {
+          const failedFiles = data.failed
+            .map((file) => `${file.name}: ${file.error}`)
+            .join("\n");
           alert(`Some files failed to upload:\n${failedFiles}`);
         }
       } else {
         alert(data.message);
       }
     } catch (error) {
-      window.toastFrontendError("i18n.t('ui_i18n_t_ui_error_uploading_files')" + error.message, "i18n.t('ui_i18n_t_ui_file_upload_error')");
-      alert("i18n.t('ui_i18n_t_ui_error_uploading_files')");
+      window.toastFrontendError("Error uploading files: " + error.message, "File Upload Error");
+      alert("Error uploading files");
     }
   },
 
   downloadFile(file) {
-    const link = document.createElement("a"i18n.t('ui_i18n_t_ui_link_href_download_work_dir_file_path_encodeuricomponent_file_path_link_download_file_name_document_body_appendchild_link_link_click_document_body_removechild_link_helper_functions_formatfilesize_size_if_size_0_return')"0 Bytes"i18n.t('ui_i18n_t_ui_const_k_1024_const_sizes')"Bytes"i18n.t('ui_i18n_t_ui')"KB"i18n.t('ui_i18n_t_ui')"MB"i18n.t('ui_i18n_t_ui')"GB"i18n.t('ui_i18n_t_ui')"TB"i18n.t('ui_i18n_t_ui_const_i_math_floor_math_log_size_math_log_k_return_parsefloat_size_math_pow_k_i_tofixed_2')" "i18n.t('ui_i18n_t_ui_sizes_i_formatdate_datestring_const_options_year')"numeric"i18n.t('ui_i18n_t_ui_month')"short"i18n.t('ui_i18n_t_ui_day')"numeric"i18n.t('ui_i18n_t_ui_hour')"2-digit"i18n.t('ui_i18n_t_ui_minute')"2-digit"i18n.t('ui_i18n_t_ui_return_new_date_datestring_tolocaledatestring_undefined_options_handleclose_this_isopen_false_wait_for_alpine_to_be_ready_document_addeventlistener')"alpine:init"i18n.t('ui_i18n_t_ui_alpine_data')"fileBrowserModalProxy"i18n.t('ui_i18n_t_ui_init_object_assign_this_filebrowsermodalproxy_ensure_immediate_file_fetch_when_modal_opens_this_watch')"isOpen"i18n.t('ui_i18n_t_ui_async_value_if_value_await_this_fetchfiles_this_browser_currentpath_keep_the_global_assignment_for_backward_compatibility_window_filebrowsermodalproxy_filebrowsermodalproxy_openfilelink_async_function_path_try_const_resp_await_window_sendjsondata')"/file_info"i18n.t('ui_i18n_t_ui_path_if_resp_exists_window_toastfrontenderror')"File does not exist."i18n.t('ui_i18n_t_ui')"File Error"i18n.t('ui_i18n_t_ui_return_if_resp_is_dir_filebrowsermodalproxy_openmodal_resp_abs_path_else_filebrowsermodalproxy_downloadfile_path_resp_abs_path_name_resp_file_name_catch_e_window_toastfrontenderror')"Error opening file: "i18n.t('ui_i18n_t_ui_e_message')"File Open Error");
+    const link = document.createElement("a");
+    link.href = `/download_work_dir_file?path=${encodeURIComponent(file.path)}`;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+  
+  // Helper Functions
+  formatFileSize(size) {
+    if (size === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(size) / Math.log(k));
+    return parseFloat((size / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  },
+
+  formatDate(dateString) {
+    const options = {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  },
+
+  handleClose() {
+    this.isOpen = false;
+  },
+};
+
+// Wait for Alpine to be ready
+document.addEventListener("alpine:init", () => {
+  Alpine.data("fileBrowserModalProxy", () => ({
+    init() {
+      Object.assign(this, fileBrowserModalProxy);
+      // Ensure immediate file fetch when modal opens
+      this.$watch("isOpen", async (value) => {
+        if (value) {
+          await this.fetchFiles(this.browser.currentPath);
+        }
+      });
+    },
+  }));
+});
+
+// Keep the global assignment for backward compatibility
+window.fileBrowserModalProxy = fileBrowserModalProxy;
+
+openFileLink = async function (path) {
+  try {
+    const resp = await window.sendJsonData("/file_info", { path });
+    if (!resp.exists) {
+      window.toastFrontendError("File does not exist.", "File Error");
+      return;
+    }
+
+    if (resp.is_dir) {
+      fileBrowserModalProxy.openModal(resp.abs_path);
+    } else {
+      fileBrowserModalProxy.downloadFile({
+        path: resp.abs_path,
+        name: resp.file_name,
+      });
+    }
+  } catch (e) {
+    window.toastFrontendError("Error opening file: " + e.message, "File Open Error");
   }
 };
 window.openFileLink = openFileLink;

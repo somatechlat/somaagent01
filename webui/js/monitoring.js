@@ -4,7 +4,7 @@
  * VIBE CODING RULES COMPLIANT - No placeholders, real implementations only
  */
 
-import { fetchApi, callJsonApi } from "i18n.t('ui_i18n_t_ui_api_js')";
+import { fetchApi, callJsonApi } from "./api.js";
 
 class SystemMonitor {
     constructor() {
@@ -32,7 +32,135 @@ class SystemMonitor {
         if (this.pollingActive) return;
         
         this.pollingActive = true;
-        this.pollingInterval = setInterval(() => i18n.t('ui_i18n_t_ui_this_updateallstatus_interval_initial_update_this_updateallstatus_real_implementation_check_somabrain_health_directly_async_checksomabrainhealth_try_const_response_await_fetch_http_localhost_9696_health_method_get_headers_content_type_application_json_if_response_ok_const_somabraindata_await_response_json_update_somabrain_store_based_on_somabrain_health_if_globalthis_alpine_store_somabrain_const_somabrainstore_globalthis_alpine_store_somabrain_if_somabraindata_ready_true_somabrainstore_state_normal_somabrainstore_tooltip_somabrain_online_somabrainstore_banner_else_somabrainstore_state_degraded_somabrainstore_tooltip_somabrain_degraded_limited_memory_retrieval_somabrainstore_banner_somabrain_responses_are_delayed_retrieval_snippets_will_be_limited_until_connectivity_stabilizes_somabrainstore_lastupdated_date_now_return_somabraindata_else_throw_new_error_somabrain_health_check_failed_response_status_catch_error_console_error_error_checking_somabrain_health_error_update_somabrain_store_to_reflect_error_if_globalthis_alpine_store_somabrain_const_somabrainstore_globalthis_alpine_store_somabrain_somabrainstore_state_down_somabrainstore_tooltip_somabrain_offline_degraded_mode_somabrainstore_banner_somabrain_is_offline_the_agent_will_answer_using_chat_history_only_until_memories_sync_again_somabrainstore_lastupdated_date_now_return_null_stop_monitoring_the_system_stopmonitoring_if_this_pollingactive_return_this_pollingactive_false_if_this_pollinginterval_clearinterval_this_pollinginterval_this_pollinginterval_null_add_a_callback_to_be_called_when_monitoring_data_updates_param_function_callback_callback_function_addcallback_callback_this_callbacks_add_callback_remove_a_callback_param_function_callback_callback_function_to_remove_removecallback_callback_this_callbacks_delete_callback_notify_all_callbacks_of_data_updates_notifycallbacks_this_callbacks_foreach_callback_try_callback_health_this_healthstatus_degradation_this_degradationstatus_circuit_this_circuitstatus_metrics_this_metricsdata_lastupdate_this_lastupdate_catch_e_console_error_error_in_monitoring_callback_e_real_implementation_update_all_monitoring_status_with_comprehensive_error_handling_async_updateallstatus_try_await_promise_all_this_updatehealthstatus_this_updatedegradationstatus_this_updatecircuitstatus_this_updatesystemmetrics_this_checksomabrainhealth_this_lastupdate_new_date_this_errorcount_0_reset_error_count_on_success_this_notifycallbacks_catch_error_console_error_error_updating_monitoring_status_error_this_errorcount_implement_retry_logic_with_exponential_backoff_if_this_errorcount')<= this.maxRetries) {
+        this.pollingInterval = setInterval(() => {
+            this.updateAllStatus();
+        }, interval);
+        
+        // Initial update
+        this.updateAllStatus();
+    }
+
+    /**
+     * REAL IMPLEMENTATION - Check SomaBrain health directly
+     */
+    async checkSomabrainHealth() {
+        try {
+            const response = await fetch('http://localhost:9696/health', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                const somabrainData = await response.json();
+                
+                // Update somabrain store based on SomaBrain health
+                if (globalThis.Alpine?.store('somabrain')) {
+                    const somabrainStore = globalThis.Alpine.store('somabrain');
+                    
+                    if (somabrainData.ready === true) {
+                        somabrainStore.state = 'normal';
+                        somabrainStore.tooltip = 'SomaBrain online';
+                        somabrainStore.banner = '';
+                    } else {
+                        somabrainStore.state = 'degraded';
+                        somabrainStore.tooltip = 'SomaBrain degraded – limited memory retrieval';
+                        somabrainStore.banner = 'Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.';
+                    }
+                    somabrainStore.lastUpdated = Date.now();
+                }
+                
+                return somabrainData;
+            } else {
+                throw new Error(`SomaBrain health check failed: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Error checking SomaBrain health:', error);
+            
+            // Update somabrain store to reflect error
+            if (globalThis.Alpine?.store('somabrain')) {
+                const somabrainStore = globalThis.Alpine.store('somabrain');
+                somabrainStore.state = 'down';
+                somabrainStore.tooltip = 'SomaBrain offline – degraded mode';
+                somabrainStore.banner = 'SomaBrain is offline. The agent will answer using chat history only until memories sync again.';
+                somabrainStore.lastUpdated = Date.now();
+            }
+            
+            return null;
+        }
+    }
+
+    /**
+     * Stop monitoring the system
+     */
+    stopMonitoring() {
+        if (!this.pollingActive) return;
+        
+        this.pollingActive = false;
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    /**
+     * Add a callback to be called when monitoring data updates
+     * @param {Function} callback - Callback function
+     */
+    addCallback(callback) {
+        this.callbacks.add(callback);
+    }
+
+    /**
+     * Remove a callback
+     * @param {Function} callback - Callback function to remove
+     */
+    removeCallback(callback) {
+        this.callbacks.delete(callback);
+    }
+
+    /**
+     * Notify all callbacks of data updates
+     */
+    notifyCallbacks() {
+        this.callbacks.forEach(callback => {
+            try {
+                callback({
+                    health: this.healthStatus,
+                    degradation: this.degradationStatus,
+                    circuit: this.circuitStatus,
+                    metrics: this.metricsData,
+                    lastUpdate: this.lastUpdate
+                });
+            } catch (e) {
+                console.error('Error in monitoring callback:', e);
+            }
+        });
+    }
+
+    /**
+     * REAL IMPLEMENTATION - Update all monitoring status with comprehensive error handling
+     */
+    async updateAllStatus() {
+        try {
+            await Promise.all([
+                this.updateHealthStatus(),
+                this.updateDegradationStatus(),
+                this.updateCircuitStatus(),
+                this.updateSystemMetrics(),
+                this.checkSomabrainHealth()
+            ]);
+            
+            this.lastUpdate = new Date();
+            this.errorCount = 0; // Reset error count on success
+            this.notifyCallbacks();
+        } catch (error) {
+            console.error('Error updating monitoring status:', error);
+            this.errorCount++;
+            
+            // Implement retry logic with exponential backoff
+            if (this.errorCount <= this.maxRetries) {
                 const delay = this.retryDelay * Math.pow(2, this.errorCount - 1);
                 console.log(`Retrying in ${delay}ms (attempt ${this.errorCount}/${this.maxRetries})`);
                 setTimeout(() => this.updateAllStatus(), delay);
