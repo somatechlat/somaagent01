@@ -31,7 +31,7 @@
                 <button class="btn btn-field" 
                     x-show="$store.microphoneSetting.requestingPermission"
                     @click="$store.microphoneSetting.requestPermission()">
-                    <span>Waiting for devices... [retry]</span>
+                    <span x-text="i18n.t('ui.waiting_for_devices_retry')"></span>
                 </button>
             </div>
 

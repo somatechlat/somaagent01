@@ -156,7 +156,7 @@ const model = {
   async generateLink() {
     // First check if authentication is enabled
     try {
-      const authCheckResponse = await fetchApi("/v1/ui/settings/sections");
+      const authCheckResponse = await fetchApi("/v1/settings/sections");
       const authDataRaw = await authCheckResponse.json();
       const authData = { settings: { sections: authDataRaw.sections || [] } };
 

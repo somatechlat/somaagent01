@@ -6,7 +6,8 @@ from pydantic import BaseModel
 
 from services.common.ui_settings_store import UiSettingsStore
 
-router = APIRouter(prefix="/v1/ui/settings", tags=["ui"])
+# Updated to remove redundant '/ui' segment as per new architecture.
+router = APIRouter(prefix="/v1/settings", tags=["settings"])
 STORE = UiSettingsStore()
 
 

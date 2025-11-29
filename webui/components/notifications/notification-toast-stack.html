@@ -41,7 +41,7 @@
                     <!-- Toast Dismiss -->
                     <button class="toast-dismiss"
                             @click.stop="globalThis.notificationsSse?.dismissToast && globalThis.notificationsSse.dismissToast(toast.toastId)"
-                            title="Dismiss">
+                            :title="i18n.t('tooltip.dismiss')">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>

@@ -93,7 +93,7 @@ const settingsModalProxy = {
 
         //get settings from backend
         try {
-            const resp = await fetchApi('/v1/ui/settings/sections');
+            const resp = await fetchApi('/v1/settings');
             if (!resp.ok) {
                 throw new Error(await resp.text());
             }
@@ -107,12 +107,12 @@ const settingsModalProxy = {
                 "buttons": [
                     {
                         "id": "save",
-                        "title": "Save",
+                        "title": i18n.t('settings.save'),
                         "classes": "btn btn-ok"
                     },
                     {
                         "id": "cancel",
-                        "title": "Cancel",
+                        "title": i18n.t('settings.cancel'),
                         "type": "secondary",
                         "classes": "btn btn-cancel"
                     }
@@ -212,7 +212,7 @@ const settingsModalProxy = {
             const modalAD = modalEl ? Alpine.$data(modalEl) : null;
             const sections = modalAD?.settings?.sections || [];
             try {
-                const response = await fetchApi('/v1/ui/settings/sections', {
+                const response = await fetchApi('/v1/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sections }),
@@ -371,7 +371,7 @@ document.addEventListener('alpine:init', function () {
             async fetchSettings() {
                 try {
                     this.isLoading = true;
-                    const response = await fetchApi('/v1/ui/settings/sections');
+                    const response = await fetchApi('/v1/settings');
                     if (response.ok) {
                         const data = await response.json();
                         if (data && data.sections) {

@@ -6,7 +6,7 @@ Usage:
   - Provide a JSON file containing a list of profiles with keys: role, deployment_mode, model, base_url, temperature, kwargs
   - Or use --single to push a single profile via CLI arguments.
 
-This script will attempt the UI-friendly /v1/ui/settings PUT first (which overlays the dialogue profile),
+This script will attempt the UI-friendly /v1/settings PUT first (which overlays the dialogue profile),
 then fall back to the ModelProfile CRUD endpoints if necessary.
 """
 import argparse
@@ -20,7 +20,7 @@ import requests
 from services.common import env
 
 GATEWAY_BASE = env.get("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016") or "http://127.0.0.1:21016"
-UI_SETTINGS = f"{GATEWAY_BASE}/v1/ui/settings"
+UI_SETTINGS = f"{GATEWAY_BASE}/v1/settings"
 MODEL_PROFILES = f"{GATEWAY_BASE}/v1/model-profiles"
 
 
@@ -51,7 +51,7 @@ def migrate(profiles: List[Dict[str, Any]]) -> int:
         ok = _push_via_ui_settings(p)
         if ok:
             print(
-                f"ok: profile {p.get('role')}@{p.get('deployment_mode') or 'DEV'} via /v1/ui/settings"
+                f"ok: profile {p.get('role')}@{p.get('deployment_mode') or 'DEV'} via /v1/settings"
             )
             continue
         ok = _push_via_api(p)

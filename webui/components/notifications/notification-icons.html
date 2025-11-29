@@ -26,17 +26,17 @@
         <!-- Adjacent small connection indicator (do not replace bell) -->
         <div class="conn-indicator"
              :class="`conn-${$store.conn?.status || 'offline'}`"
-             :title="$store.conn?.tooltip || 'Offline'"
+             :title="i18n.t('tooltip.offline')"
              aria-live="polite"
-             x-bind:aria-label="$store.conn?.tooltip || 'Offline'">
+             x-bind:aria-label="i18n.t('tooltip.offline')">
         </div>
 
         <!-- SomaBrain health indicator -->
         <div class="brain-indicator"
              :class="`brain-${$store.somabrain?.state || 'unknown'}`"
-             :title="$store.somabrain?.tooltip || 'SomaBrain status unknown'"
+             :title="i18n.t('tooltip.somabrainUnknown')"
              aria-live="polite"
-             x-bind:aria-label="$store.somabrain?.tooltip || 'SomaBrain status unknown'">
+             x-bind:aria-label="i18n.t('tooltip.somabrainUnknown')">
             <span class="material-symbols-outlined">neurology</span>
         </div>
     </div>

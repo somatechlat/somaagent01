@@ -29,7 +29,7 @@ async function fetchList({ limit = 50, unreadOnly = false } = {}) {
     const params = new URLSearchParams();
     params.set("limit", String(limit));
     if (unreadOnly) params.set("unread_only", "true");
-    const resp = await fetch(`/v1/ui/notifications?${params.toString()}`, { credentials: "include" });
+    const resp = await fetch(`/v1/notifications?${params.toString()}`, { credentials: "include" });
     if (!resp.ok) throw new Error(`list failed ${resp.status}`);
     const data = await resp.json();
     state.list = data.notifications || [];
@@ -44,7 +44,7 @@ async function fetchList({ limit = 50, unreadOnly = false } = {}) {
 }
 
 async function create({ type, title, body, severity = "info", ttl_seconds, meta }) {
-  const resp = await fetch("/v1/ui/notifications", {
+  const resp = await fetch("/v1/notifications", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type, title, body, severity, ttl_seconds, meta }),
@@ -62,7 +62,7 @@ async function create({ type, title, body, severity = "info", ttl_seconds, meta 
 }
 
 async function markRead(id) {
-  const resp = await fetch(`/v1/ui/notifications/${encodeURIComponent(id)}/read`, { method: "POST", credentials: "include" });
+  const resp = await fetch(`/v1/notifications/${encodeURIComponent(id)}/read`, { method: "POST", credentials: "include" });
   if (!resp.ok) throw new Error(`markRead failed ${resp.status}`);
   const idx = state.list.findIndex(n => n.id === id);
   if (idx >= 0) {
@@ -73,7 +73,7 @@ async function markRead(id) {
 }
 
 async function clearAll() {
-  const resp = await fetch(`/v1/ui/notifications/clear`, { method: "DELETE", credentials: "include" });
+  const resp = await fetch(`/v1/notifications/clear`, { method: "DELETE", credentials: "include" });
   if (!resp.ok) throw new Error(`clear failed ${resp.status}`);
   state.list = [];
   recalcUnread();
