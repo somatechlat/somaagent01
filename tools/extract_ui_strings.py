@@ -32,7 +32,12 @@ def collect_strings() -> list[str]:
     Returns a sorted list of distinct strings.
     """
     strings: set[str] = set()
+    # Directories to skip (vendor libraries, build artefacts, etc.)
+    EXCLUDE_DIRS = {"vendor", "node_modules", "dist", "build"}
     for file_path in ROOT.rglob("*.*"):
+        # Skip files inside excluded directories.
+        if any(part in EXCLUDE_DIRS for part in file_path.parts):
+            continue
         # Determine file type by extension.
         ext = file_path.suffix.lstrip('.').lower()
         for typ, pattern in PATTERNS:
@@ -47,6 +52,12 @@ def collect_strings() -> list[str]:
                 s = match.group(1).strip()
                 # Skip numbers, empty strings, and obvious placeholders.
                 if not s or s.isnumeric():
+                    continue
+                # Skip strings that are already wrapped in i18n.t()
+                start, _ = match.span(1)
+                lookbehind_start = max(0, start - 8)
+                preceding = content[lookbehind_start:start]
+                if "i18n.t('" in preceding or 'i18n.t("' in preceding:
                     continue
                 strings.add(s)
     return sorted(strings)
