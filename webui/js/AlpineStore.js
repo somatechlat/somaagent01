@@ -27,33 +27,16 @@ export function createStore(name, initialState) {
   if (globalThis.Alpine) {
     globalThis.Alpine.store(name, initialState);
   } else {
-    document.addEventListener("i18n.t('ui_i18n_t_ui_i18n_t_ui_alpine_init')", () => Alpine.store(name, initialState));
+  i18n.t('ui_i18n_t_ui_i18n_t_ui_alpine_init')t('ui_i18n_t_ui_i18n_t_ui_i18n_t_ui_alpine_init')", () => Alpine.store(name, initialState));
   }
 
-  // Store the proxy
-  stores.set(name, proxyi18n.t('ui_i18n_t_ui_alpine_init')T} */ (proxy); // explicitly cast for linter support
+  // Si18n.t('ui_i18n_t_ui_alpine_init')set(name, proxyi18n.t('ui_i18n_t_ui_alpine_init')T} */ (proxy); // explicitly cast for linter support
 }
 
 // -------------------------------------------------------------------
 // Helper: create a store for i18n locale persistence (VIBE compliant).
 // -------------------------------------------------------------------
-// The UI now includes a language selector that toggles between "i18n.t('ui_i18n_t_ui_i18n_t_ui_en')" and "i18n.t('ui_i18n_t_ui_i18n_t_ui_es')".
-// We expose a dedicated Alpine store named "i18i18n.t('ui_i18n_t_ui_en')ui_i18n_t_ui_i18ni18n.t('ui_i18n_t_ui_es')mponents can
-// read/write the current locale. The value ii18n.t('ui_i18n_t_ui_i18nlocale')orage`
-// under the key "i18n.t('ui_i18n_t_ui_i18n_t_ui_locale')" to survive page reloads.
-// This function should be callei18n.t('ui_i18n_t_ui_locale')ootstrap.
-export funci18n.t('ui_localstorage')aleStore() {
-  const saved = typeof localStorage !== "i18n.t('ui_i18n_t_ui_i18n_t_ui_undefined')" ? localStorage.getItem("i18n.t('ui_i18n_t_uii18n.t('ui_i18n_t_ui_undefined'): null;
-  const initial = saved === i18n.t('ui_i18n_t_ui_locale')ui_i18n_t_ui_es')" ? "i18n.t('ui_i18n_t_ui_i18n_t_i18n.t('ui_i18n_t_ui_es')n.t('ui_i18n_t_i18n.t('ui_i18n_t_ui_es')')"; // defaulti18n.t('ui_i18n_t_ui_en')/ The store shape matches UI expectations: $store.i18nLocale.locale
-  const store = createStore("i18n.t('ui_i18n_t_ui_i18n_t_ui_i18nloci18n.t('ui_i18n_t_ui_i18nlocale')al });
-  // Keep `localStorage` in sync when the store chai18n.t('ui_localstorage')typeof Proxy !== "i18n.t('ui_i18n_t_ui_i18n_t_i18n.t('ui_i18n_t_ui_undefined') // Proxy already forwards set operations to the Alpine store; we add a watcher.
-    // Alpine does not provide a native watcher for arbitrary stores, so we use a
-    // simple interval poll (lightweight) – acceptable for a small UI.
-    let last = store.value;
-    setInterval(() => {
-      if (store.value !== last) {
-        last = store.value;
-        try { localStorage.setItem("i18n.t('ui_i18n_t_i18n.t('ui_i18n_t_ui_locale')')", store.value); } catch (_) {}
+// The UI now includes a li18n.t('ui_i18n_t_ui_i18n_t_ui_en')gles between "i18i18n.t('ui_i18n_t_ui_i18n_t_ui_es')ui_i18n_t_ui_en')" and "i18n.t('ui_i18n_t_ui_i18n_t_ui_i18n_ti18n.t('ui_i18n_t_ui_en')e expose a dedicated Alpinei18n.t('ui_i18n_t_ui_es')18n.t('ui_i18i18n_t_ui_i18n_t_ui_en_ui_i18n_t_ui_i18ni18n_t_ui_i18n_i18n.t('ui_i18n_t_ui_i18nlocale')ad_write_the_current_locale_the_vali18n.t('ui_i18n_t_ui_i18n_t_ui_localei18n.t('ui_under_the_key_i18n_t_ui_i18n_t_ui_i18n_t_ui_locale_to_survive_page_reloads_this_function_should_be_callei18n_t_ui_i18n_t_ui_locale_ootstrap_export_funci18n_t_ui_localstorage_alestore_const_saved_typeof_localstorage_i18n_t_ui_i18n_t_ui_i18n_t_ui_undefined_localstorage_getitem_i18n_t_ui_i18n_t_uii18n_t_ui_i18n_t_ui_undefined_null_const_initial_saved_i18n_t_ui_i18n_t_ui_locale_ui_i18n_t_ui_es_i18n_t_ui_i18n_t_ui_i18n_t_i18n_t_ui_i18n_t_ui_es_n_t_ui_i18n_t_i18n_t_ui_i18n_t_ui_es_defaulti18n_t_ui_i18n_t_ui_en_the_store_shape_matches_ui_expectations_store_i18nlocale_locale_const_store_createstore_i18n_t_ui_i18n_t_ui_i18n_t_ui_i18nloci18n_t_ui_i18n_t_ui_i18nlocale_al_keep')i18n_t_ui_i18nlocale'))"i18n.t('ui_i18n_t_ui_i18n_t_ui_i18nloci18n.t('ui_i18n_t_ui_i18nloci18n.t('ui_localstorage')/ Keep `localStorage` in syni18n.t('ui_i18n_t_ui_i18n_t_i18n_t')'ui_localstorage')typeofi18n.t('ui_proxy_already_forwards_set_operations_to_the_alpine_store_we_add_a_watcher_alpine_does_not_provide_a_native_watcher_for_arbitrary_stores_so_we_use_a_simple_interval_poll_lightweight_acceptable_for_a_small_ui_let_last_store_value_setinterval_if_store_value_last_last_store_value_try_localstorage_setitem_i18n_t')'ui_i18n_t_i18n.t('i18n.t('ui_i18n_t_ui_locale')')')", store.value); } catch (_) {}
       }
     }, 500);
   }

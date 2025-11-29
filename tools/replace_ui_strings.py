@@ -148,7 +148,15 @@ def _replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) ->
     for typ, pattern in PATTERNS:
         for match in pattern.finditer(content):
             raw = match.group(1).strip()
-            if not raw or raw.isnumeric():
+            # Skip empty, numeric or already‑i18n strings.
+            if not raw or raw.isnumeric() or raw.startswith("ui_"):
+                continue
+            start, end = match.span(1)
+            # Detect if this literal is already inside an i18n.t call.
+            # Look back a few characters for the pattern i18n.t(' or i18n.t(".
+            lookbehind_start = max(0, start - 8)
+            preceding = content[lookbehind_start:start]
+            if "i18n.t('" in preceding or 'i18n.t("' in preceding:
                 continue
             key = _slugify(raw)
             # Ensure dictionary entries exist.
@@ -158,7 +166,6 @@ def _replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) ->
             if key not in es:
                 es[key] = ""
             replacement = f"i18n.t('{key}')"
-            start, end = match.span(1)
             # Adjust for previous replacements that changed the string length.
             start += offset
             end += offset
