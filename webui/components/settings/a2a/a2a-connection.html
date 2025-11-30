@@ -1,26 +1,26 @@
 <html>
 
 <head>
-    <title>Connection to A0 A2A Server</title>
+    <title data-i18n-key="a2a.title">Connection to A0 A2A Server</title>
 </head>
 
 <body>
     <div x-data>
-        <p>Agent Zero A2A Server enables FastA2A protocol communication with other agents.</p>
-        <p>Other agents can connect using the URL below (replace host if needed):</p>
+        <p data-i18n-key="a2a.desc">Agent Zero A2A Server enables FastA2A protocol communication with other agents.</p>
+        <p data-i18n-key="a2a.instructions">Other agents can connect using the URL below (replace host if needed):</p>
 
         <!-- API Token Information -->
         <div
             style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 16px 0;">
-            <h4 style="margin: 0 0 8px 0; color: var(--color-text-primary);">API Token Information</h4>
+            <h4 style="margin: 0 0 8px 0; color: var(--color-text-primary);" data-i18n-key="a2a.apiTitle">API Token Information</h4>
             <p style="margin: 0; color: var(--color-text-secondary); font-size: 14px;">
-                The token used in the URL is automatically generated from your username and password.
+                <span data-i18n-key="a2a.apiInfo">The token used in the URL is automatically generated from your username and password.
                 This same token is also used for external API endpoints. The token changes when you update your
-                credentials.
+                credentials.</span>
             </p>
         </div>
 
-        <h3>A2A Connection URL</h3>
+        <h3 data-i18n-key="a2a.url">A2A Connection URL</h3>
         <div id="a2a-connection-example"></div>
 
         <script>
