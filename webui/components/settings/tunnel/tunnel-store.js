@@ -13,6 +13,9 @@ const model = {
   provider: "cloudflared",
 
   init() {
+    if (!globalThis.SA_API_PATHS || !globalThis.SA_API_PATHS.has("/tunnel_proxy")) {
+      return;
+    }
     this.checkTunnelStatus();
   },
 

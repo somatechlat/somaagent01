@@ -96,6 +96,8 @@ const model = {
 
   // Load settings from server
   async loadSettings() {
+    if (!globalThis.SA_API_PATHS) return;
+    if (!globalThis.SA_API_PATHS.has("/v1/ui/settings/sections")) return;
     try {
       const response = await fetchApi("/v1/ui/settings/sections", { method: "GET" });
       const data = await response.json();

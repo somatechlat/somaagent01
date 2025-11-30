@@ -28,6 +28,21 @@
     <!-- Load i18n runtime early so all modules can call i18n.t -->
     <script type="module" src="js/i18n.js"></script>
 
+    <!-- Early error logger to surface parse/exec errors before modules abort -->
+    <script>
+        window.addEventListener('error', function (e) {
+            console.error('BOOTSTRAP ERROR', {
+                message: e.message,
+                file: e.filename,
+                line: e.lineno,
+                column: e.colno
+            });
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+            console.error('BOOTSTRAP REJECTION', e.reason);
+        });
+    </script>
+
     <script>
         globalThis.safeCall = function (name, ...args) {
             if (window[name]) window[name](...args)
@@ -110,11 +125,9 @@
     <!-- Load main entry script from the static mount (base href is /static/) -->
     <script type="module" src="index.js"></script>
 
-    <!-- Load Alpine.js core first -->
-    <!-- Load Alpine.js collapse plugin before core to avoid warning -->
+    <!-- Load Alpine.js core + collapse plugin -->
     <script defer src="vendor/alpine/alpine.collapse.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
     <script type="module" src="js/initFw.js"></script>
 
     <script src="vendor/ace-min/ace.js"></script>
@@ -478,7 +491,7 @@
 
                 <!-- Attachment Preview section -->
                 <div>
-                    <x-component path="/chat/attachments/inputPreview.html" />
+                    <x-component path="chat/attachments/inputPreview.html" />
                 </div>
 
                 <!-- Top row with input and buttons -->
