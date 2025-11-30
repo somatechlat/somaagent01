@@ -644,7 +644,7 @@
                                 <div class="settings-tab" :class="{'active': activeTab === 'developer'}"
                                     @click="switchTab('developer')" title="Developer">Developer</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'scheduler'}"
-                                    @click="switchTab('scheduler')" title="Task Scheduler">Task Scheduler</div>
+                                    @click="switchTab('scheduler')" title="Task Scheduler" data-i18n-title="scheduler.title" data-i18n-key="scheduler.title">Task Scheduler</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'backup'}"
                                     @click="switchTab('backup')" title="Backup & Restore">Backup & Restore</div>
                             </div>
@@ -782,29 +782,25 @@
                                 <ul>
                                     <li>
                                         <a href="#section-task-scheduler">
-                                            <img src="public/task_scheduler.svg" alt="Task Scheduler">
-                                            <span>Task Scheduler</span>
+                                            <img src="public/task_scheduler.svg" alt="Task Scheduler" data-i18n-aria-label="scheduler.title">
+                                            <span data-i18n-key="scheduler.title">Task Scheduler</span>
                                         </a>
                                     </li>
                                 </ul>
                             </nav>
 
                             <div id="section-task-scheduler" class="section" x-data="schedulerSettings">
-                                <div class="section-title">Task Scheduler</div>
-                                <div class="section-description">Manage scheduled tasks and automated processes for
+                                <div class="section-title" data-i18n-key="scheduler.title">Task Scheduler</div>
+                                <div class="section-description" data-i18n-key="scheduler.description">Manage scheduled tasks and automated processes for
                                     Agent Zero.</div>
 
                                 <!-- Create Task Form -->
                                 <div class="scheduler-form" x-show="isCreating">
                                     <div class="scheduler-form-header">
-                                        <div class="scheduler-form-title">Create New Task</div>
+                                        <div class="scheduler-form-title" data-i18n-key="scheduler.createTitle">Create New Task</div>
                                         <div class="scheduler-form-actions">
-                                            <button class="btn btn-ok btn-field" @click="saveTask()">
-                                                Save
-                                            </button>
-                                            <button class="btn btn-cancel" @click="cancelEdit()">
-                                                Cancel
-                                            </button>
+                                            <button class="btn btn-ok btn-field" @click="saveTask()" data-i18n-key="scheduler.save">Save</button>
+                                            <button class="btn btn-cancel" @click="cancelEdit()" data-i18n-key="scheduler.cancel">Cancel</button>
                                         </div>
                                     </div>
 
@@ -812,31 +808,31 @@
                                         <!-- Task Name -->
                                         <div class="scheduler-form-field">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">Task Name</label>
-                                                <div class="scheduler-form-help">A unique name to identify this task
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.taskName">Task Name</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.taskNameHelp">A unique name to identify this task
                                                 </div>
                                             </div>
-                                            <input type="text" x-model="editingTask.name" placeholder="Enter task name">
+                                            <input type="text" x-model="editingTask.name" placeholder="Enter task name" data-i18n-placeholder="scheduler.taskNamePlaceholder">
                                         </div>
 
                                         <!-- Task Type Selection -->
                                         <div class="scheduler-form-field">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">Type</label>
-                                                <div class="scheduler-form-help">Task execution method</div>
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.type">Type</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.typeHelp">Task execution method</div>
                                             </div>
                                             <select x-model="editingTask.type">
-                                                <option value="scheduled">Scheduled (Cron)</option>
-                                                <option value="adhoc">Ad-hoc (Manual)</option>
-                                                <option value="planned">Planned (Specific Times)</option>
+                                                <option value="scheduled" data-i18n-key="scheduler.typeScheduled">Scheduled (Cron)</option>
+                                                <option value="adhoc" data-i18n-key="scheduler.typeAdhoc">Ad-hoc (Manual)</option>
+                                                <option value="planned" data-i18n-key="scheduler.typePlanned">Planned (Specific Times)</option>
                                             </select>
                                         </div>
 
                                         <!-- Task State in Create Form - Add after Task Type -->
                                         <div class="scheduler-form-field" x-show="isCreating">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">State</label>
-                                                <div class="scheduler-form-help">Select the initial state of the task
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.state">State</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.stateHelp">Select the initial state of the task
                                                 </div>
                                             </div>
                                             <div>
@@ -855,15 +851,15 @@
                                                         @click="editingTask.state = 'error'">error</span>
                                                 </div>
                                                 <div class="scheduler-state-explanation">
-                                                    <span x-show="editingTask.state === 'idle'"><strong>idle</strong>:
+                                                    <span x-show="editingTask.state === 'idle'" data-i18n-key="scheduler.stateIdle"><strong>idle</strong>:
                                                         ready to run</span>
                                                     <span
-                                                        x-show="editingTask.state === 'running'"><strong>running</strong>:
+                                                        x-show="editingTask.state === 'running'" data-i18n-key="scheduler.stateRunning"><strong>running</strong>:
                                                         currently executing</span>
                                                     <span
-                                                        x-show="editingTask.state === 'disabled'"><strong>disabled</strong>:
+                                                        x-show="editingTask.state === 'disabled'" data-i18n-key="scheduler.stateDisabled"><strong>disabled</strong>:
                                                         won't execute automatically</span>
-                                                    <span x-show="editingTask.state === 'error'"><strong>error</strong>:
+                                                    <span x-show="editingTask.state === 'error'" data-i18n-key="scheduler.stateError"><strong>error</strong>:
                                                         task encountered an error</span>
                                                 </div>
                                             </div>
@@ -873,33 +869,33 @@
                                         <div class="scheduler-form-field full-width"
                                             x-show="editingTask.type === 'scheduled'">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">Schedule</label>
-                                                <div class="scheduler-form-help">Cron schedule for automated execution
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.schedule">Schedule</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.scheduleHelp">Cron schedule for automated execution
                                                     (minute hour day month weekday)</div>
                                             </div>
                                             <div class="scheduler-schedule-builder">
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label">Minute</span>
+                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.minute">Minute</span>
                                                     <input type="text" x-model="editingTask.schedule.minute"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label">Hour</span>
+                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.hour">Hour</span>
                                                     <input type="text" x-model="editingTask.schedule.hour"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label">Day</span>
+                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.day">Day</span>
                                                     <input type="text" x-model="editingTask.schedule.day"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label">Month</span>
+                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.month">Month</span>
                                                     <input type="text" x-model="editingTask.schedule.month"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label">Weekday</span>
+                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.weekday">Weekday</span>
                                                     <input type="text" x-model="editingTask.schedule.weekday"
                                                         placeholder="*" maxlength="9">
                                                 </div>
@@ -910,13 +906,13 @@
                                         <div class="scheduler-form-field full-width"
                                             x-show="editingTask.type === 'planned'">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">Plan</label>
-                                                <div class="scheduler-form-help">Specific execution times for this task
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.plan">Plan</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.planHelp">Specific execution times for this task
                                                 </div>
                                             </div>
                                             <div class="scheduler-plan-builder">
                                                 <div class="scheduler-plan-todo">
-                                                    <span class="scheduler-plan-label">Upcoming Executions</span>
+                                                    <span class="scheduler-plan-label" data-i18n-key="scheduler.upcoming">Upcoming Executions</span>
                                                     <div class="scheduler-todo-list">
                                                         <template
                                                             x-if="editingTask.plan && Array.isArray(editingTask.plan.todo) && editingTask.plan.todo.length > 0">
@@ -941,7 +937,7 @@
                                                         </template>
                                                         <template
                                                             x-if="!editingTask.plan || !Array.isArray(editingTask.plan.todo) || editingTask.plan.todo.length === 0">
-                                                            <div class="scheduler-empty-plan">
+                                                            <div class="scheduler-empty-plan" data-i18n-key="scheduler.noPlanned">
                                                                 No scheduled execution times yet. Add one below.
                                                             </div>
                                                         </template>
@@ -950,7 +946,7 @@
                                                             <input type="text" id="newPlannedTime-create"
                                                                 x-ref="plannedTimeCreate"
                                                                 class="scheduler-flatpickr-input"
-                                                                placeholder="Select date and time">
+                                                                placeholder="Select date and time" data-i18n-placeholder="scheduler.selectDate">
                                                             <!-- Create Task Form Add Time Button -->
                                                             <button @click.prevent="
                                                                 const input = $refs.plannedTimeCreate;
@@ -1001,7 +997,7 @@
                                                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                                                 </svg>
-                                                                Add Time
+                                                                <span data-i18n-key="scheduler.addTime">Add Time</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -1013,16 +1009,16 @@
                                         <div class="scheduler-form-field full-width"
                                             x-show="editingTask.type === 'adhoc'">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">Token</label>
-                                                <div class="scheduler-form-help">Token used to trigger this task
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.token">Token</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.tokenHelp">Token used to trigger this task
                                                     externally</div>
                                             </div>
                                             <div class="input-group">
                                                 <input type="text" x-model="editingTask.token"
-                                                    placeholder="Token for ad-hoc task">
+                                                    placeholder="Token for ad-hoc task" data-i18n-placeholder="scheduler.tokenPlaceholder">
                                                 <button class="scheduler-task-action"
                                                     @click="editingTask.token = generateRandomToken()">
-                                                    Generate
+                                                    <span data-i18n-key="scheduler.generate">Generate</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -1030,12 +1026,12 @@
                                         <!-- System Prompt -->
                                         <div class="scheduler-form-field full-width">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label">System Prompt</label>
-                                                <div class="scheduler-form-help">System-level instructions for the
+                                                <label class="scheduler-form-label" data-i18n-key="scheduler.system">System Prompt</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.systemHelp">System-level instructions for the
                                                     assistant</div>
                                             </div>
                                             <textarea x-model="editingTask.system_prompt"
-                                                placeholder="System instructions for the AI"></textarea>
+                                                placeholder="System instructions for the AI" data-i18n-placeholder="scheduler.systemPlaceholder"></textarea>
                                         </div>
 
                                         <!-- User Prompt -->
