@@ -360,8 +360,8 @@ export function drawMessageResponse(
     temp,
     true,
     "message-agent-response",
-    null,
-    ["message-ai"],
+    kvps,
+    ["message", "response", "message-ai"],
     [],
     true,
     true

@@ -82,6 +82,10 @@ const settingsModalProxy = {
     },
 
     async openModal() {
+        if (globalThis.SA_API_PATHS && !globalThis.SA_API_PATHS.has("/v1/ui/settings/sections")) {
+            await toastFrontendError(t('settings.unavailable', 'Settings service unavailable'), t('settings.errorTitle', 'Settings Error'));
+            return;
+        }
         // Debug: Settings modal opening
         const modalEl = document.getElementById('settingsModal');
         const modalAD = modalEl ? Alpine.$data(modalEl) : null;
@@ -96,9 +100,12 @@ const settingsModalProxy = {
         //get settings from backend
         try {
             const resp = await fetchApi('/v1/ui/settings/sections');
-            if (!resp.ok) {
-                throw new Error(await resp.text());
+            if (resp.status === 404) {
+                await toastFrontendError(t('settings.unavailable', 'Settings service unavailable'), t('settings.errorTitle', 'Settings Error'));
+                if (modalAD) modalAD.isOpen = false;
+                return;
             }
+            if (!resp.ok) throw new Error(await resp.text());
             const payload = await resp.json();
             const sectionsPayload = payload?.sections || payload?.settings?.sections || [];
             const configTitle = payload?.title || t('settings.title', 'Settings');

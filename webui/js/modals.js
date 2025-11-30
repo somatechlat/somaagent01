@@ -200,7 +200,6 @@ function createModalElement(name) {
 // Enhanced modal opening with proper lifecycle management and error handling
 export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, options = {}) {
   try {
-    try {
       // Store the currently focused element for later restoration
       const activeElement = document.activeElement;
       if (activeElement) {
@@ -252,7 +251,7 @@ export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, 
             // Set the title from the document with fallback
             modal.title.innerHTML = (doc && doc.title) || modalPath;
             
-            // Apply CSS classes from document if available
+      // Apply CSS classes from document if available
             if (doc && doc.html && doc.html.classList) {
               const inner = modal.element.querySelector(".modal-inner");
               if (inner) {

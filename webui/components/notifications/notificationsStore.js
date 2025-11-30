@@ -30,6 +30,10 @@ async function fetchList({ limit = 50, unreadOnly = false } = {}) {
     params.set("limit", String(limit));
     if (unreadOnly) params.set("unread_only", "true");
     const resp = await fetch(`/v1/ui/notifications?${params.toString()}`, { credentials: "include" });
+    if (resp.status === 404) {
+      state.error = "notifications endpoint unavailable";
+      return;
+    }
     if (!resp.ok) throw new Error(`list failed ${resp.status}`);
     const data = await resp.json();
     state.list = data.notifications || [];
@@ -50,6 +54,7 @@ async function create({ type, title, body, severity = "info", ttl_seconds, meta 
     body: JSON.stringify({ type, title, body, severity, ttl_seconds, meta }),
     credentials: "include",
   });
+  if (resp.status === 404) throw new Error("notifications endpoint unavailable");
   if (!resp.ok) throw new Error(`create failed ${resp.status}`);
   const data = await resp.json();
   const item = data.notification;
