@@ -7,9 +7,9 @@ const componentErrorBoundary = createErrorBoundary('ComponentSystem', (errorData
   return {
     type: 'error',
     html: `<div class="component-error-boundary">
-      <h3>Component Error</h3>
+      <h3>${globalThis.i18n ? i18n.t('components.errorTitle') : 'Component Error'}</h3>
       <p>${errorData.userMessage}</p>
-      <button onclick="window.location.reload()">Reload Page</button>
+      <button onclick="window.location.reload()">${globalThis.i18n ? i18n.t('actions.reloadPage') : 'Reload Page'}</button>
     </div>`
   };
 });
@@ -141,7 +141,7 @@ export const importComponent = componentErrorBoundary.wrapAsync(async function(p
     targetElement.innerHTML = `
       <div class="loading">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading ${path}...</div>
+        <div class="loading-text">${globalThis.i18n ? i18n.t('components.loading', 'Loading {path}...').replace('{path}', path) : `Loading ${path}...`}</div>
       </div>
     `;
 
