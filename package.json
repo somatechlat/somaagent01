@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "ui:test": "npx playwright test tests/playwright/ui-smoke.spec.ts",
+    "ui:test:headed": "UI_BASE_URL=http://localhost:21016 npx playwright test tests/playwright/ui-smoke.spec.ts --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0"
+  }
+}
