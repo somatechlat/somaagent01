@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Memory Dashboard</title>
+    <title data-i18n-key="memory.title">Memory Dashboard</title>
     <script type="module">
         import { store } from "./memory-dashboard-store.js";
     </script>
@@ -16,7 +16,7 @@
                 <!-- Search and Filters Section -->
                 <div class="memory-filters-header">
                     <div class="filter-group-inline filter-memory-dir">
-                        <label for="memory-subdir-select">Memory Directory</label>
+                        <label for="memory-subdir-select" data-i18n-key="memory.directory">Memory Directory</label>
                         <select id="memory-subdir-select" x-model="$store.memoryDashboardStore.selectedMemorySubdir"
                             @change="$store.memoryDashboardStore.onMemorySubdirChange()"
                             :disabled="$store.memoryDashboardStore.loadingSubdirs">
@@ -29,40 +29,40 @@
                     </div>
 
                     <div class="filter-group-inline filter-area">
-                        <label for="area-filter">Area</label>
+                        <label for="area-filter" data-i18n-key="memory.area">Area</label>
                         <select id="area-filter" x-model="$store.memoryDashboardStore.areaFilter">
-                            <option value="">All Areas</option>
-                            <option value="main">Main</option>
-                            <option value="fragments">Fragments</option>
-                            <option value="solutions">Solutions</option>
-                            <option value="instruments">Instruments</option>
+                            <option value="" data-i18n-key="memory.areaAll">All Areas</option>
+                            <option value="main" data-i18n-key="memory.areaMain">Main</option>
+                            <option value="fragments" data-i18n-key="memory.areaFragments">Fragments</option>
+                            <option value="solutions" data-i18n-key="memory.areaSolutions">Solutions</option>
+                            <option value="instruments" data-i18n-key="memory.areaInstruments">Instruments</option>
                         </select>
                     </div>
 
                     <div class="filter-group-inline filter-limit">
-                        <label for="limit-input">Limit:</label>
+                        <label for="limit-input" data-i18n-key="memory.limit">Limit:</label>
                         <input type="number" id="limit-input" x-model.number="$store.memoryDashboardStore.limit"
                             min="10" max="1000" step="10" />
                     </div>
 
                     <div class="filter-threshold">
-                        <label for="threshold-input">Threshold: <strong
+                        <label for="threshold-input" data-i18n-key="memory.threshold">Threshold: <strong
                                 x-text="$store.memoryDashboardStore.threshold.toFixed(2)"></strong></label>
                         <input type="range" id="threshold-input" x-model.number="$store.memoryDashboardStore.threshold"
                             min="0" max="1" step="0.01" />
                     </div>
 
                     <input type="text" id="search-input" x-model="$store.memoryDashboardStore.searchQuery"
-                        placeholder="Search memory content..."
+                        placeholder="Search memory content..." data-i18n-placeholder="memory.searchPlaceholder"
                         @keyup.enter="$store.memoryDashboardStore.searchMemories()" />
 
                     <button class="btn btn-ok btn-search" @click="$store.memoryDashboardStore.searchMemories()"
                         :disabled="$store.memoryDashboardStore.loading || $store.memoryDashboardStore.loadingSubdirs">
-                        <span x-show="!$store.memoryDashboardStore.initializingMemory">Search</span>
-                        <span x-show="$store.memoryDashboardStore.initializingMemory">Init...</span>
+                        <span x-show="!$store.memoryDashboardStore.initializingMemory" data-i18n-key="memory.search">Search</span>
+                        <span x-show="$store.memoryDashboardStore.initializingMemory" data-i18n-key="memory.init">Init...</span>
                     </button>
 
-                    <button class="btn btn-cancel btn-clear" @click="$store.memoryDashboardStore.clearSearch()">
+                    <button class="btn btn-cancel btn-clear" @click="$store.memoryDashboardStore.clearSearch()" data-i18n-key="memory.clear">
                         Clear
                     </button>
                 </div>
@@ -70,8 +70,8 @@
                 <!-- Loading state -->
                 <div x-show="$store.memoryDashboardStore.loading" class="loading-state">
                     <div class="loading-spinner"></div>
-                    <span x-show="!$store.memoryDashboardStore.initializingMemory">Searching memories...</span>
-                    <span x-show="$store.memoryDashboardStore.initializingMemory">Initializing memory database...</span>
+                    <span x-show="!$store.memoryDashboardStore.initializingMemory" data-i18n-key="memory.searching">Searching memories...</span>
+                    <span x-show="$store.memoryDashboardStore.initializingMemory" data-i18n-key="memory.initializing">Initializing memory database...</span>
                 </div>
 
                 <!-- Error state -->

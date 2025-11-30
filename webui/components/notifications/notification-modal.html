@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Notifications</title>
+    <title data-i18n-key="notif.title">Notifications</title>
     <script type="module">
         // Modal now binds to Alpine store 'notificationSse' (fed by SSE)
         import { store as notificationsSse } from "./notificationsStore.js";
@@ -19,8 +19,8 @@
                     <div class="notification-header-actions">
                         <button class="notification-action" @click="globalThis.notificationsSse?.clearAll && globalThis.notificationsSse.clearAll()"
                             :disabled="!$store.notificationSse || ($store.notificationSse.list||[]).length === 0"
-                            title="Clear All">
-                            <span class="material-symbols-outlined">delete</span> Clear All
+                            title="Clear All" data-i18n-title="notif.clearAllTitle">
+                            <span class="material-symbols-outlined">delete</span> <span data-i18n-key="notif.clearAll">Clear All</span>
                         </button>
                     </div>
                 </div>
@@ -50,9 +50,9 @@
                                 <!-- Expand Toggle Button (as last row element) -->
                                 <button class="notification-expand-toggle" x-show="notification.detail"
                                     @click.stop="expanded = !expanded"
-                                    :title="expanded ? 'Collapse Details' : 'Expand Details'">
-                                    <span x-show="!expanded">▶ Show Details</span>
-                                    <span x-show="expanded">▼ Hide Details</span>
+                                    :title="expanded ? i18n.t('notif.collapseDetailsTitle') : i18n.t('notif.expandDetailsTitle')">
+                                    <span x-show="!expanded" data-i18n-key="notif.showDetails">▶ Show Details</span>
+                                    <span x-show="expanded" data-i18n-key="notif.hideDetails">▼ Hide Details</span>
                                 </button>
 
                                 <!-- Expandable Detail Content -->
@@ -76,7 +76,7 @@
                     <div class="notification-empty-icon">
                         <span class="material-symbols-outlined">notifications</span>
                     </div>
-                    <p>No notifications to display</p>
+                    <p data-i18n-key="notif.empty">No notifications to display</p>
                 </div>
             </div>
         </template>

@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title></title>
+    <title data-i18n-key="tunnel.title"></title>
 
     <!-- Import the alpine store -->
     <script type="module">
@@ -17,28 +17,28 @@
 
             <!-- Keep in mind that <template> can have only one root element inside -->
             <div id="tunnel-settings-section">
-                <div class="section-title">Flare Tunnel</div>
-                <div class="section-description">Create a secure public URL to access your Agent Zero instance anytime,
+                <div class="section-title" data-i18n-key="tunnel.heading">Flare Tunnel</div>
+                <div class="section-description" data-i18n-key="tunnel.description">Create a secure public URL to access your Agent Zero instance anytime,
                     anywhere.</div>
                 <!-- Tunnel content UI -->
                 <div class="tunnel-container">
                     <div class="field">
                         <div class="field-label">
-                            <div class="field-title">Tunnel provider</div>
-                            <div class="field-description">Select provider for public tunnel</div>
+                            <div class="field-title" data-i18n-key="tunnel.provider">Tunnel provider</div>
+                            <div class="field-description" data-i18n-key="tunnel.providerDesc">Select provider for public tunnel</div>
                         </div>
                         <div class="field-control">
                             <select id="tunnel-provider" x-model="$store.tunnelStore.provider"
                                 :disabled="$store.tunnelStore.isLoading">
-                                <option value="cloudflared">Cloudflare</option>
-                                <option value="serveo">Serveo</option>
+                                <option value="cloudflared" data-i18n-key="tunnel.cloudflare">Cloudflare</option>
+                                <option value="serveo" data-i18n-key="tunnel.serveo">Serveo</option>
                             </select>
                         </div>
                     </div>
                     <!-- Loading spinner for tunnel operations -->
                     <div class="loading-spinner" x-show="$store.tunnelStore.isLoading">
                         <span class="icon material-symbols-outlined spin">progress_activity</span>
-                        <span x-text="$store.tunnelStore.loadingText || 'Processing tunnel request...'"></span>
+                        <span x-text="$store.tunnelStore.loadingText || i18n.t('tunnel.processing')"></span>
                     </div>
 
                     <!-- Tunnel content when not loading -->
@@ -50,12 +50,12 @@
                                     readonly>
                                 <div class="buttons-row">
                                     <button class="copy-link-button" @click="$store.tunnelStore.copyToClipboard()"
-                                        title="Copy to clipboard">
-                                        <span class="icon material-symbols-outlined">content_copy</span> Copy
+                                        title="Copy to clipboard" data-i18n-title="tunnel.copyTitle">
+                                        <span class="icon material-symbols-outlined">content_copy</span> <span data-i18n-key="tunnel.copy">Copy</span>
                                     </button>
                                     <button class="refresh-link-button" @click="$store.tunnelStore.refreshLink()"
-                                        title="Generate new URL">
-                                        <span class="icon material-symbols-outlined">refresh</span> Refresh
+                                        title="Generate new URL" data-i18n-title="tunnel.refreshTitle">
+                                        <span class="icon material-symbols-outlined">refresh</span> <span data-i18n-key="tunnel.refresh">Refresh</span>
                                     </button>
                                 </div>
                             </div>
@@ -63,24 +63,24 @@
                                 <div class="tunnel-qr-code" id="qrcode-tunnel">
                                     <!-- QR code will be generated here -->
                                 </div>
-                                <div class="tunnel-qr-label">Scan with mobile device</div>
+                                <div class="tunnel-qr-label" data-i18n-key="tunnel.scan">Scan with mobile device</div>
                             </div>
                             <div class="tunnel-link-info">
-                                Share this URL to allow others to access your Agent Zero instance.
+                                <span data-i18n-key="tunnel.share">Share this URL to allow others to access your Agent Zero instance.</span>
                             </div>
                             <div class="tunnel-link-persistence">
-                                This URL will persist until you stop the tunnel or restart the Docker container.
+                                <span data-i18n-key="tunnel.persistence">This URL will persist until you stop the tunnel or restart the Docker container.</span>
                             </div>
                             <div class="stop-tunnel-container">
                                 <button class="btn btn-danger" @click="$store.tunnelStore.stopTunnel()">
-                                    <span class="icon material-symbols-outlined">stop_circle</span> Stop Tunnel
+                                    <span class="icon material-symbols-outlined">stop_circle</span> <span data-i18n-key="tunnel.stop">Stop Tunnel</span>
                                 </button>
                             </div>
                         </div>
                         <!-- Generate tunnel button when no link exists -->
                         <div class="tunnel-actions" x-show="!$store.tunnelStore.linkGenerated">
                             <button class="btn btn-ok" @click="$store.tunnelStore.generateLink()">
-                                <span class="icon material-symbols-outlined">play_circle</span> Create Tunnel
+                                <span class="icon material-symbols-outlined">play_circle</span> <span data-i18n-key="tunnel.create">Create Tunnel</span>
                             </button>
                         </div>
                     </div>

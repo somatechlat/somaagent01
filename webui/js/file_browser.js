@@ -3,7 +3,7 @@ const fileBrowserModalProxy = {
   isLoading: false,
 
   browser: {
-    title: "File Browser",
+    title: () => (globalThis.i18n ? i18n.t("files.title") : "File Browser"),
     currentPath: "",
     entries: [],
     parentPath: "",
@@ -38,6 +38,7 @@ const fileBrowserModalProxy = {
 
   async fetchFiles(path = "") {
     this.isLoading = true;
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
     try {
       const response = await fetchApi(
         `/get_work_dir_files?path=${encodeURIComponent(path)}`
@@ -53,7 +54,7 @@ const fileBrowserModalProxy = {
         this.browser.entries = [];
       }
     } catch (error) {
-      window.toastFrontendError("Error fetching files: " + error.message, "File Browser Error");
+      window.toastFrontendError(t("files.fetchError", "Error fetching files: ") + error.message, t("files.errorTitle", "File Browser Error"));
       this.browser.entries = [];
     } finally {
       this.isLoading = false;
@@ -108,7 +109,8 @@ const fileBrowserModalProxy = {
   },
 
   async deleteFile(file) {
-    if (!confirm(`Are you sure you want to delete ${file.name}?`)) {
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+    if (!confirm(`${t('files.confirmDelete', 'Are you sure you want to delete')} ${file.name}?`)) {
       return;
     }
 
@@ -129,17 +131,18 @@ const fileBrowserModalProxy = {
         this.browser.entries = this.browser.entries.filter(
           (entry) => entry.path !== file.path
         );
-        alert("File deleted successfully.");
+        alert(t("files.deleteSuccess", "File deleted successfully."));
       } else {
-        alert(`Error deleting file: ${await response.text()}`);
+        alert(`${t("files.deleteError", "Error deleting file:")} ${await response.text()}`);
       }
     } catch (error) {
-      window.toastFrontendError("Error deleting file: " + error.message, "File Delete Error");
-      alert("Error deleting file");
+      window.toastFrontendError(t("files.deleteError", "Error deleting file: ") + error.message, t("files.deleteErrorTitle", "File Delete Error"));
+      alert(t("files.deleteError", "Error deleting file"));
     }
   },
 
   async handleFileUpload(event) {
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
     try {
       const files = event.target.files;
       if (!files.length) return;
@@ -153,7 +156,7 @@ const fileBrowserModalProxy = {
           if (files[i].size > 100 * 1024 * 1024) {
             // 100MB
             alert(
-              `File ${files[i].name} exceeds the maximum allowed size of 100MB.`
+              `${t('files.sizeExceeded', 'File exceeds the maximum allowed size of 100MB')}: ${files[i].name}`
             );
             continue;
           }
@@ -182,14 +185,14 @@ const fileBrowserModalProxy = {
           const failedFiles = data.failed
             .map((file) => `${file.name}: ${file.error}`)
             .join("\n");
-          alert(`Some files failed to upload:\n${failedFiles}`);
+          alert(`${t('files.uploadFailed', 'Some files failed to upload:')}\n${failedFiles}`);
         }
       } else {
-        alert(data.message);
+        alert(data.message || t('files.uploadError', 'Error uploading files'));
       }
     } catch (error) {
-      window.toastFrontendError("Error uploading files: " + error.message, "File Upload Error");
-      alert("Error uploading files");
+      window.toastFrontendError(t("files.uploadError", "Error uploading files: ") + error.message, t("files.uploadErrorTitle", "File Upload Error"));
+      alert(t("files.uploadError", "Error uploading files"));
     }
   },
 
