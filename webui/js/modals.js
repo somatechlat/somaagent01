@@ -2,6 +2,8 @@
 import { importComponent } from "./components.js";
 import { handleError, createErrorBoundary } from "./error-handling.js";
 
+const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+
 // Create error boundary for modal system
 const modalErrorBoundary = createErrorBoundary('ModalSystem', (errorData) => {
   // Return fallback modal UI
@@ -9,9 +11,9 @@ const modalErrorBoundary = createErrorBoundary('ModalSystem', (errorData) => {
   fallbackModal.className = 'modal-error-fallback';
   fallbackModal.innerHTML = `
     <div class="modal-error-content">
-      <h3>Modal Error</h3>
+      <h3>${t('modal.errorTitle', 'Modal Error')}</h3>
       <p>${errorData.userMessage}</p>
-      <button onclick="this.closest('.modal-error-fallback').remove()">Close</button>
+      <button onclick="this.closest('.modal-error-fallback').remove()">${t('actions.close', 'Close')}</button>
     </div>
   `;
   document.body.appendChild(fallbackModal);
@@ -226,7 +228,7 @@ export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, 
       modal.body.innerHTML = `
         <div class="modal-loading">
           <div class="loading-spinner"></div>
-          <div class="loading-text">Loading ${modalPath}...</div>
+          <div class="loading-text">${t('modal.loading', 'Loading {path}...').replace('{path}', modalPath)}</div>
         </div>
       `;
 
@@ -286,8 +288,8 @@ export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, 
             console.error('Error rendering modal content:', renderError);
             modal.body.innerHTML = `
               <div class="modal-error">
-                <div class="error-title">Rendering Error</div>
-                <div class="error-message">Failed to render modal content: ${renderError.message}</div>
+                <div class="error-title">${t('modal.renderErrorTitle', 'Rendering Error')}</div>
+                <div class="error-message">${t('modal.renderErrorMessage', 'Failed to render modal content: {error}').replace('{error}', renderError.message)}</div>
               </div>
             `;
           }
@@ -296,9 +298,9 @@ export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, 
           console.error("Error loading modal content:", error);
           modal.body.innerHTML = `
             <div class="modal-error">
-              <div class="error-title">Loading Error</div>
-              <div class="error-message">Failed to load modal content: ${error.message}</div>
-              <button class="error-retry" onclick="openModal('${modalPath}')">Retry</button>
+              <div class="error-title">${t('modal.loadErrorTitle', 'Loading Error')}</div>
+              <div class="error-message">${t('modal.loadErrorMessage', 'Failed to load modal content: {error}').replace('{error}', error.message)}</div>
+              <button class="error-retry" onclick="openModal('${modalPath}')">${t('actions.retry', 'Retry')}</button>
             </div>
           `;
           

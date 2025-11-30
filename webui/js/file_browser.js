@@ -207,9 +207,16 @@ const fileBrowserModalProxy = {
   
   // Helper Functions
   formatFileSize(size) {
-    if (size === 0) return "0 Bytes";
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+    if (size === 0) return `0 ${t('files.unit.bytes', 'Bytes')}`;
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const sizes = [
+      t('files.unit.bytes', 'Bytes'),
+      t('files.unit.kb', 'KB'),
+      t('files.unit.mb', 'MB'),
+      t('files.unit.gb', 'GB'),
+      t('files.unit.tb', 'TB')
+    ];
     const i = Math.floor(Math.log(size) / Math.log(k));
     return parseFloat((size / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   },
@@ -252,7 +259,8 @@ openFileLink = async function (path) {
   try {
     const resp = await window.sendJsonData("/file_info", { path });
     if (!resp.exists) {
-      window.toastFrontendError("File does not exist.", "File Error");
+      const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+      window.toastFrontendError(t("files.notExist", "File does not exist."), t("files.errorTitle", "File Error"));
       return;
     }
 
@@ -265,7 +273,8 @@ openFileLink = async function (path) {
       });
     }
   } catch (e) {
-    window.toastFrontendError("Error opening file: " + e.message, "File Open Error");
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+    window.toastFrontendError(t("files.openError", "Error opening file: ") + e.message, t("files.openErrorTitle", "File Open Error"));
   }
 };
 window.openFileLink = openFileLink;

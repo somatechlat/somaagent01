@@ -80,8 +80,9 @@ export async function openImageModal(src, refreshInterval = 0) {
 
     // Open the modal with the generated HTML
     await window.genericModalProxy.openModal(fileName, "", html);
-  } catch (e) {
-    window.toastFrontendError("Error fetching history: " + e.message, "Image History Error");
-    return;
-  }
+    } catch (e) {
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        window.toastFrontendError(t('images.historyError', 'Error fetching history: ') + e.message, t('images.historyErrorTitle', 'Image History Error'));
+        return;
+    }
 }
