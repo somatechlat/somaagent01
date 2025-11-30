@@ -141,5 +141,11 @@
   "files.sizeExceeded": "File exceeds the maximum allowed size of 100MB",
   "files.uploadFailed": "Some files failed to upload:",
   "files.uploadError": "Error uploading files:",
-  "files.uploadErrorTitle": "File Upload Error"
+  "files.uploadErrorTitle": "File Upload Error",
+  "a2a.title": "Connection to A0 A2A Server",
+  "a2a.desc": "Agent Zero A2A Server enables FastA2A protocol communication with other agents.",
+  "a2a.instructions": "Other agents can connect using the URL below (replace host if needed):",
+  "a2a.apiTitle": "API Token Information",
+  "a2a.apiInfo": "The token used in the URL is automatically generated from your username and password. This same token is also used for external API endpoints. The token changes when you update your credentials.",
+  "a2a.url": "A2A Connection URL"
 }
