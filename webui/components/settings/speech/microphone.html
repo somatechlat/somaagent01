@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Microhone settings</title>
+    <title data-i18n-key="speech.title">Microphone settings</title>
 
     <!-- Import the alpine store -->
     <script type="module">
@@ -27,11 +27,11 @@
                 </select>
                 <button class="btn btn-field" 
                     x-show="$store.microphoneSetting.devices.length == 0 && !$store.microphoneSetting.requestingPermission"
-                    @click="$store.microphoneSetting.requestPermission()">Request permission to select device</button>
+                    @click="$store.microphoneSetting.requestPermission()" data-i18n-key="speech.request">Request permission to select device</button>
                 <button class="btn btn-field" 
                     x-show="$store.microphoneSetting.requestingPermission"
                     @click="$store.microphoneSetting.requestPermission()">
-                    <span>Waiting for devices... [retry]</span>
+                    <span data-i18n-key="speech.waiting">Waiting for devices... [retry]</span>
                 </button>
             </div>
 

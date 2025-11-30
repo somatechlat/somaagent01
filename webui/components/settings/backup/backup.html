@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>Create Backup</title>
+    <title data-i18n-key="backup.title">Create Backup</title>
     <script type="module">
         import { store } from "./backup-store.js";
     </script>
@@ -11,34 +11,34 @@
             <div x-init="$store.backupStore.initBackup()" x-destroy="$store.backupStore.onClose()">
 
                 <!-- Header with buttons (following MCP servers pattern) -->
-                <h3>Backup Configuration JSON
+                <h3 data-i18n-key="backup.configTitle">Backup Configuration JSON
                     <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.formatJson()">Format</button>
+                        @click="$store.backupStore.formatJson()" data-i18n-key="backup.format">Format</button>
                     <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.resetToDefaults()">Reset</button>
+                        @click="$store.backupStore.resetToDefaults()" data-i18n-key="backup.reset">Reset</button>
                     <button class="btn slim" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.dryRun()" :disabled="$store.backupStore.loading">Dry Run</button>
+                        @click="$store.backupStore.dryRun()" :disabled="$store.backupStore.loading" data-i18n-key="backup.dryrun">Dry Run</button>
                     <button class="btn slim primary" style="margin-left: 0.5em;"
-                        @click="$store.backupStore.createBackup()" :disabled="$store.backupStore.loading">Create Backup</button>
+                        @click="$store.backupStore.createBackup()" :disabled="$store.backupStore.loading" data-i18n-key="backup.create">Create Backup</button>
                 </h3>
 
                 <!-- JSON Editor (upper part) -->
                 <div id="backup-metadata-editor"></div>
 
                 <!-- File Operations Display (lower part) -->
-                <h3 id="backup-operations">File Operations</h3>
+                <h3 id="backup-operations" data-i18n-key="backup.operations">File Operations</h3>
 
                 <!-- File listing textarea -->
                 <div class="file-operations-container">
                     <textarea id="backup-file-list"
                               x-model="$store.backupStore.fileOperationsLog"
                               readonly
-                              placeholder="File operations will be displayed here..."></textarea>
+                              placeholder="File operations will be displayed here..." data-i18n-placeholder="backup.opsPlaceholder"></textarea>
                 </div>
 
                 <!-- Loading indicator -->
                 <div x-show="$store.backupStore.loading" class="backup-loading">
-                    <span x-text="$store.backupStore.loadingMessage || 'Processing...'"></span>
+                    <span x-text="$store.backupStore.loadingMessage || i18n.t('backup.processing')"></span>
                 </div>
 
                 <!-- Error display -->
