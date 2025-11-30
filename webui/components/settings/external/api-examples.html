@@ -1,33 +1,33 @@
 <html>
 
 <head>
-    <title>Agent Zero External API Examples</title>
+    <title data-i18n-key="api.title">Agent Zero External API Examples</title>
 </head>
 
 <body>
     <div x-data>
-        <p>Agent Zero provides external API endpoints for integration with other applications.</p>
-        <p>These endpoints use API key authentication and support text messages and file attachments.</p>
+        <p data-i18n-key="api.intro1">Agent Zero provides external API endpoints for integration with other applications.</p>
+        <p data-i18n-key="api.intro2">These endpoints use API key authentication and support text messages and file attachments.</p>
 
         <!-- API Token Information -->
         <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 16px 0;">
-            <h4 style="margin: 0 0 8px 0; color: var(--color-text-primary);">API Token Information</h4>
+            <h4 style="margin: 0 0 8px 0; color: var(--color-text-primary);" data-i18n-key="api.tokenTitle">API Token Information</h4>
             <p style="margin: 0; color: var(--color-text-secondary); font-size: 14px;">
-                The API token is automatically generated from your username and password.
+                <span data-i18n-key="api.tokenInfo">The API token is automatically generated from your username and password.
                 This same token is used for both MCP server connections and external API endpoints.
-                The token changes when you update your credentials.
+                The token changes when you update your credentials.</span>
             </p>
         </div>
 
         <!-- Section 1: api_message Endpoint -->
         <div class="api-section">
-            <h2>POST /api_message</h2>
+            <h2 data-i18n-key="api.messageHeading">POST /api_message</h2>
             <p style="margin: 0 0 16px 0; color: var(--color-text-secondary); font-size: 14px;">
-                Send messages to Agent Zero and receive responses. Supports text messages, file attachments, and conversation continuity.
+                <span data-i18n-key="api.messageDesc">Send messages to Agent Zero and receive responses. Supports text messages, file attachments, and conversation continuity.</span>
             </p>
 
             <!-- API Reference -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">API Reference</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.reference">API Reference</h3>
             <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 0 0 20px 0;">
                 <p style="margin: 0 0 8px 0; color: var(--color-text-secondary); font-size: 14px;">
                     <strong>Parameters:</strong><br>
@@ -42,27 +42,27 @@
             </div>
 
             <!-- JavaScript Examples -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">JavaScript Examples</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.jsExamples">JavaScript Examples</h3>
 
-            <h4>Basic Usage Example</h4>
+            <h4 data-i18n-key="api.basic">Basic Usage Example</h4>
             <div id="api-basic-example"></div>
 
-            <h4>Conversation Continuation Example</h4>
+            <h4 data-i18n-key="api.continuation">Conversation Continuation Example</h4>
             <div id="api-continuation-example"></div>
 
-            <h4>File Attachment Example</h4>
+            <h4 data-i18n-key="api.attachment">File Attachment Example</h4>
             <div id="api-attachment-example"></div>
         </div>
 
         <!-- Section 2: api_log_get Endpoint -->
         <div class="api-section">
-            <h2>GET/POST /api_log_get</h2>
+            <h2 data-i18n-key="api.logHeading">GET/POST /api_log_get</h2>
             <p style="margin: 0 0 16px 0; color: var(--color-text-secondary); font-size: 14px;">
-                Retrieve log data by context ID, limited to a specified number of entries from the newest.
+                <span data-i18n-key="api.logDesc">Retrieve log data by context ID, limited to a specified number of entries from the newest.</span>
             </p>
 
             <!-- API Reference -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">API Reference</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.reference">API Reference</h3>
             <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 0 0 20px 0;">
                 <p style="margin: 0 0 8px 0; color: var(--color-text-secondary); font-size: 14px;">
                     <strong>Parameters:</strong><br>
@@ -75,24 +75,24 @@
             </div>
 
             <!-- JavaScript Examples -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">JavaScript Examples</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.jsExamples">JavaScript Examples</h3>
 
-            <h4>GET Request Example</h4>
+            <h4 data-i18n-key="api.logGet">GET Request Example</h4>
             <div id="api-log-get-example"></div>
 
-            <h4>POST Request Example</h4>
+            <h4 data-i18n-key="api.logPost">POST Request Example</h4>
             <div id="api-log-post-example"></div>
         </div>
 
         <!-- Section 3: api_terminate_chat Endpoint -->
         <div class="api-section">
-            <h2>POST /api_terminate_chat</h2>
+            <h2 data-i18n-key="api.terminateHeading">POST /api_terminate_chat</h2>
             <p style="margin: 0 0 16px 0; color: var(--color-text-secondary); font-size: 14px;">
-                Terminate and remove a chat context to free up resources. Similar to the MCP finish_chat function.
+                <span data-i18n-key="api.terminateDesc">Terminate and remove a chat context to free up resources. Similar to the MCP finish_chat function.</span>
             </p>
 
             <!-- API Reference -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">API Reference</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.reference">API Reference</h3>
             <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 0 0 20px 0;">
                 <p style="margin: 0 0 8px 0; color: var(--color-text-secondary); font-size: 14px;">
                     <strong>Parameters:</strong><br>
@@ -104,20 +104,20 @@
             </div>
 
             <!-- JavaScript Examples -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">JavaScript Examples</h3>
-            <h4>Basic Termination Examples</h4>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.jsExamples">JavaScript Examples</h3>
+            <h4 data-i18n-key="api.terminateExample">Basic Termination Examples</h4>
             <div id="api-terminate-example"></div>
         </div>
 
         <!-- Section 4: api_reset_chat Endpoint -->
         <div class="api-section">
-            <h2>POST /api_reset_chat</h2>
+            <h2 data-i18n-key="api.resetHeading">POST /api_reset_chat</h2>
             <p style="margin: 0 0 16px 0; color: var(--color-text-secondary); font-size: 14px;">
-                Reset a chat context to clear conversation history while keeping the context_id alive for continued use.
+                <span data-i18n-key="api.resetDesc">Reset a chat context to clear conversation history while keeping the context_id alive for continued use.</span>
             </p>
 
             <!-- API Reference -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">API Reference</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.reference">API Reference</h3>
             <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 0 0 20px 0;">
                 <p style="margin: 0 0 8px 0; color: var(--color-text-secondary); font-size: 14px;">
                     <strong>Parameters:</strong><br>
@@ -129,20 +129,20 @@
             </div>
 
             <!-- JavaScript Examples -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">JavaScript Examples</h3>
-            <h4>Basic Reset Examples</h4>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.jsExamples">JavaScript Examples</h3>
+            <h4 data-i18n-key="api.resetExample">Basic Reset Examples</h4>
             <div id="api-reset-example"></div>
         </div>
 
         <!-- Section 5: api_files_get Endpoint -->
         <div class="api-section">
-            <h2>POST /api_files_get</h2>
+            <h2 data-i18n-key="api.filesHeading">POST /api_files_get</h2>
             <p style="margin: 0 0 16px 0; color: var(--color-text-secondary); font-size: 14px;">
-                Retrieve file contents by paths, returning files as base64 encoded data. Useful for retrieving uploaded attachments.
+                <span data-i18n-key="api.filesDesc">Retrieve file contents by paths, returning files as base64 encoded data. Useful for retrieving uploaded attachments.</span>
             </p>
 
             <!-- API Reference -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">API Reference</h3>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.reference">API Reference</h3>
             <div style="background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; margin: 0 0 20px 0;">
                 <p style="margin: 0 0 8px 0; color: var(--color-text-secondary); font-size: 14px;">
                     <strong>Parameters:</strong><br>
@@ -154,8 +154,8 @@
             </div>
 
             <!-- JavaScript Examples -->
-            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);">JavaScript Examples</h3>
-            <h4>File Retrieval Examples</h4>
+            <h3 style="margin: 20px 0 12px 0; color: var(--color-text-primary);" data-i18n-key="api.jsExamples">JavaScript Examples</h3>
+            <h4 data-i18n-key="api.filesExample">File Retrieval Examples</h4>
             <div id="api-files-get-example"></div>
         </div>
 
