@@ -3,6 +3,8 @@
 
 import { emit } from "./event-bus.js";
 
+const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+
 // Error handling configuration
 const errorConfig = {
   enableConsole: true,
@@ -11,7 +13,7 @@ const errorConfig = {
   enableRecovery: true,
   enableReporting: false, // Could be enabled for production
   maxErrorHistory: 100,
-  defaultUserMessage: 'An unexpected error occurred. Please try again.',
+  defaultUserMessage: t('errors.defaultUserMessage', 'An unexpected error occurred. Please try again.'),
   recoveryAttempts: 3,
   recoveryDelay: 1000
 };
@@ -137,15 +139,15 @@ function determineSeverity(error, type) {
 // User-friendly error messages
 function getUserMessage(error, type, severity) {
   const customMessages = {
-    [ErrorTypes.NETWORK]: 'Network connection error. Please check your internet connection.',
-    [ErrorTypes.AUTHENTICATION]: 'Authentication required. Please log in again.',
-    [ErrorTypes.AUTHORIZATION]: 'You don\'t have permission to perform this action.',
-    [ErrorTypes.NOT_FOUND]: 'The requested resource was not found.',
-    [ErrorTypes.SERVER]: 'Server error occurred. Our team has been notified.',
-    [ErrorTypes.TIMEOUT]: 'Request timed out. Please try again.',
-    [ErrorTypes.RATE_LIMIT]: 'Too many requests. Please wait and try again.',
-    [ErrorTypes.VALIDATION]: 'Invalid input. Please check your data and try again.',
-    [ErrorTypes.CLIENT]: 'Request error. Please check your input and try again.'
+    [ErrorTypes.NETWORK]: t('errors.network', 'Network connection error. Please check your internet connection.'),
+    [ErrorTypes.AUTHENTICATION]: t('errors.authRequired', 'Authentication required. Please log in again.'),
+    [ErrorTypes.AUTHORIZATION]: t('errors.noPermission', "You don't have permission to perform this action."),
+    [ErrorTypes.NOT_FOUND]: t('errors.notFound', 'The requested resource was not found.'),
+    [ErrorTypes.SERVER]: t('errors.server', 'Server error occurred. Our team has been notified.'),
+    [ErrorTypes.TIMEOUT]: t('errors.timeout', 'Request timed out. Please try again.'),
+    [ErrorTypes.RATE_LIMIT]: t('errors.rateLimit', 'Too many requests. Please wait and try again.'),
+    [ErrorTypes.VALIDATION]: t('errors.validation', 'Invalid input. Please check your data and try again.'),
+    [ErrorTypes.CLIENT]: t('errors.client', 'Request error. Please check your input and try again.')
   };
   
   return customMessages[type] || errorConfig.defaultUserMessage;

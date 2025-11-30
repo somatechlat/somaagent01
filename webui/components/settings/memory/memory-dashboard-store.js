@@ -6,6 +6,8 @@ import { openModal, closeModal } from "/static/js/modals.js";
 import { store as notificationsSse } from "/static/components/notifications/notificationsStore.js";
 import * as bus from "/static/js/event-bus.js";
 
+const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+
 // Helper function for toasts
 function justToast(text, type = "info", timeout = 5000) {
   try { notificationsSse.create({ type, title: text, body: "", severity: type, ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
@@ -330,7 +332,7 @@ const memoryDashboardStore = {
     const selectedMemories = this.selectedMemories;
     if (selectedMemories.length === 0) return;
 
-    const confirmMessage = `Are you sure you want to delete ${selectedMemories.length} selected memories? This cannot be undone.`;
+    const confirmMessage = t('memory.deleteManyConfirm', `Are you sure you want to delete ${selectedMemories.length} selected memories? This cannot be undone.`).replace('{count}', selectedMemories.length);
     if (!confirm(confirmMessage)) return;
 
     try {
@@ -343,7 +345,7 @@ const memoryDashboardStore = {
 
       if (response.success) {
         justToast(
-          `Successfully deleted ${selectedMemories.length} memories`,
+          t('memory.deleteManySuccess', 'Successfully deleted {count} memories').replace('{count}', selectedMemories.length),
           "success"
         );
 
@@ -352,12 +354,12 @@ const memoryDashboardStore = {
         await this.searchMemories(true); // silent refresh
       } else {
         justToast(
-          response.error || "Failed to delete selected memories",
+          response.error || t('memory.deleteManyError', 'Failed to delete selected memories'),
           "error"
         );
       }
     } catch (error) {
-      justToast(error.message || "Failed to delete selected memories", "error");
+      justToast(error.message || t('memory.deleteManyError', 'Failed to delete selected memories'), "error");
     } finally {
       this.loading = false;
     }
@@ -551,10 +553,10 @@ ${memory.content_full}
     try {
       document.execCommand("copy");
       if(toastSuccess)
-        justToast("Copied to clipboard!", "success");
+        justToast(t('memory.copySuccess', 'Copied to clipboard!'), "success");
     } catch (err) {
       console.error("Fallback clipboard copy failed:", err);
-      justToast("Failed to copy to clipboard", "error");
+      justToast(t('memory.copyError', 'Failed to copy to clipboard'), "error");
     }
     document.body.removeChild(textArea);
   },
@@ -562,7 +564,7 @@ ${memory.content_full}
   async deleteMemory(memory) {
     if (
       !confirm(
-        `Are you sure you want to delete this memory from ${memory.area}?`
+        t('memory.deleteSingleConfirm', 'Are you sure you want to delete this memory from {area}?').replace('{area}', memory.area)
       )
     ) {
       return;
@@ -580,7 +582,7 @@ ${memory.content_full}
       });
 
       if (response.success) {
-        justToast("Memory deleted successfully", "success");
+        justToast(t('memory.deleteSingleSuccess', 'Memory deleted successfully'), "success");
 
         // If we were viewing this memory in detail modal, close it
         if (isViewingThisMemory) {

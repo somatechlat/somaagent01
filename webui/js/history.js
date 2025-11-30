@@ -2,25 +2,39 @@ import { getContext } from "../index.js";
 
 export async function openHistoryModal() {
     try {
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
         const hist = await window.sendJsonData("/history_get", { context: getContext() });
         // const data = JSON.stringify(hist.history, null, 4);
         const data = hist.history
         const size = hist.tokens
-        await showEditorModal(data, "markdown", `History ~${size} tokens`, "Conversation history visible to the LLM. History is compressed to fit into the context window over time.");
+        await showEditorModal(
+            data,
+            "markdown",
+            `${t('history.title', 'History')} ~${size} ${t('history.tokens', 'tokens')}`,
+            t('history.desc', 'Conversation history visible to the LLM. History is compressed to fit into the context window over time.')
+        );
     } catch (e) {
-        window.toastFrontendError("Error fetching history: " + e.message, "Chat History Error");
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        window.toastFrontendError(t('history.fetchError', 'Error fetching history: ') + e.message, t('history.errorTitle', 'Chat History Error'));
         return
     }
 }
 
 export async function openCtxWindowModal() {
     try {
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
         const win = await window.sendJsonData("/ctx_window_get", { context: getContext() });
         const data = win.content
         const size = win.tokens
-        await showEditorModal(data, "markdown", `Context window ~${size} tokens`, "Data passed to the LLM during last interaction. Contains system message, conversation history and RAG.");
+        await showEditorModal(
+            data,
+            "markdown",
+            `${t('history.ctxTitle', 'Context window')} ~${size} ${t('history.tokens', 'tokens')}`,
+            t('history.ctxDesc', 'Data passed to the LLM during last interaction. Contains system message, conversation history and RAG.')
+        );
     } catch (e) {
-        window.toastFrontendError("Error fetching context: " + e.message, "Context Error");
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        window.toastFrontendError(t('history.ctxError', 'Error fetching context: ') + e.message, t('history.ctxErrorTitle', 'Context Error'));
         return
     }
 }

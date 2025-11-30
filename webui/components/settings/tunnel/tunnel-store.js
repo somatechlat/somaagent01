@@ -1,6 +1,8 @@
 import { createStore } from "/static/js/AlpineStore.js";
 import * as Sleep from "/static/js/sleep.js";
 
+const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+
 // define the model object holding data and functions
 const model = {
   isLoading: false,
@@ -36,7 +38,7 @@ const model = {
     } catch (error) {
       console.error("Error generating QR code:", error);
       qrContainer.innerHTML =
-        '<div class="qr-error">QR code generation failed</div>';
+        `<div class="qr-error">${t('tunnel.qrError', 'QR code generation failed')}</div>`;
     }
   },
 
@@ -105,18 +107,18 @@ const model = {
     // Call generate but with a confirmation first
     if (
       confirm(
-        "Are you sure you want to generate a new tunnel URL? The old URL will no longer work."
+        t('tunnel.refreshConfirm', 'Are you sure you want to generate a new tunnel URL? The old URL will no longer work.')
       )
     ) {
 
       this.isLoading = true;
-      this.loadingText = "Refreshing tunnel...";
+      this.loadingText = t('tunnel.refreshing', 'Refreshing tunnel...');
 
       // Change refresh button appearance
       const refreshButton = document.querySelector("#tunnel-settings-section .refresh-link-button");
       const originalContent = refreshButton.innerHTML;
       refreshButton.innerHTML =
-        '<span class="icon material-symbols-outlined spin">progress_activity</span> Refreshing...';
+        `<span class="icon material-symbols-outlined spin">progress_activity</span> ${t('tunnel.refreshingShort', 'Refreshing...')}`;
       refreshButton.disabled = true;
       refreshButton.classList.add("refreshing");
 
@@ -141,7 +143,7 @@ const model = {
         await this.generateLink();
       } catch (error) {
         console.error("Error refreshing tunnel:", error);
-        window.toastFrontendError("Error refreshing tunnel", "Tunnel Error");
+        window.toastFrontendError(t('tunnel.refreshError', 'Error refreshing tunnel'), t('tunnel.errorTitle', 'Tunnel Error'));
         this.isLoading = false;
         this.loadingText = "";
       } finally {
@@ -189,12 +191,7 @@ const model = {
       // If no authentication is set, warn the user
       if (!hasAuth) {
         const proceed = confirm(
-          "WARNING: No authentication is configured for your Agent Zero instance.\n\n" +
-            "Creating a public tunnel without authentication means anyone with the URL " +
-            "can access your Agent Zero instance.\n\n" +
-            "It is recommended to set up authentication in the Settings > Authentication section " +
-            "before creating a public tunnel.\n\n" +
-            "Do you want to proceed anyway?"
+          t('tunnel.noAuthWarning', "WARNING: No authentication is configured for your Agent Zero instance.\n\nCreating a public tunnel without authentication means anyone with the URL can access your Agent Zero instance.\n\nIt is recommended to set up authentication in the Settings > Authentication section before creating a public tunnel.\n\nDo you want to proceed anyway?")
         );
 
         if (!proceed) {
@@ -207,13 +204,13 @@ const model = {
     }
 
     this.isLoading = true;
-    this.loadingText = "Creating tunnel...";
+    this.loadingText = t('tunnel.creating', 'Creating tunnel...');
 
     // Change create button appearance
     const createButton = document.querySelector("#tunnel-settings-section .tunnel-actions .btn-ok");
     if (createButton) {
       createButton.innerHTML =
-        '<span class="icon material-symbols-outlined spin">progress_activity</span> Creating...';
+        `<span class="icon material-symbols-outlined spin">progress_activity</span> ${t('tunnel.creatingShort', 'Creating...')}`;
       createButton.disabled = true;
       createButton.classList.add("creating");
     }
@@ -246,12 +243,12 @@ const model = {
 
         // Show success message to confirm creation
         window.toastFrontendInfo(
-          "Tunnel created successfully",
-          "Tunnel Status"
+          t('tunnel.createdSuccess', 'Tunnel created successfully'),
+          t('tunnel.statusTitle', 'Tunnel Status')
         );
       } else {
         // The tunnel might still be starting up, check again after a delay
-        this.loadingText = "Tunnel creation taking longer than expected...";
+        this.loadingText = t('tunnel.slowCreate', 'Tunnel creation taking longer than expected...');
 
         // Wait for 5 seconds and check if the tunnel is running
         await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -281,8 +278,8 @@ const model = {
             Sleep.Skip().then(() => this.generateQRCode());
 
             window.toastFrontendInfo(
-              "Tunnel created successfully",
-              "Tunnel Status"
+              t('tunnel.createdSuccess', 'Tunnel created successfully'),
+              t('tunnel.statusTitle', 'Tunnel Status')
             );
             return;
           }
@@ -292,12 +289,12 @@ const model = {
 
         // If we get here, the tunnel really failed to start
         const errorMessage =
-          data.message || "Failed to create tunnel. Please try again.";
-        window.toastFrontendError(errorMessage, "Tunnel Error");
+          data.message || t('tunnel.createFailed', 'Failed to create tunnel. Please try again.');
+        window.toastFrontendError(errorMessage, t('tunnel.errorTitle', 'Tunnel Error'));
         console.error("Tunnel creation failed:", data);
       }
     } catch (error) {
-      window.toastFrontendError("Error creating tunnel", "Tunnel Error");
+      window.toastFrontendError(t('tunnel.createError', 'Error creating tunnel'), t('tunnel.errorTitle', 'Tunnel Error'));
       console.error("Error creating tunnel:", error);
     } finally {
       this.isLoading = false;
@@ -307,7 +304,7 @@ const model = {
       const createButton = document.querySelector("#tunnel-settings-section .tunnel-actions .btn-ok");
       if (createButton) {
         createButton.innerHTML =
-          '<span class="icon material-symbols-outlined">play_circle</span> Create Tunnel';
+          `<span class="icon material-symbols-outlined">play_circle</span> ${t('tunnel.create', 'Create Tunnel')}`;
         createButton.disabled = false;
         createButton.classList.remove("creating");
       }
@@ -317,11 +314,19 @@ const model = {
   async stopTunnel() {
     if (
       confirm(
-        "Are you sure you want to stop the tunnel? The URL will no longer be accessible."
+        t('tunnel.stopConfirm', 'Are you sure you want to stop the tunnel? The URL will no longer be accessible.')
       )
     ) {
       this.isLoading = true;
-      this.loadingText = "Stopping tunnel...";
+      this.loadingText = t('tunnel.stopping', 'Stopping tunnel...');
+
+      const stopButton = document.querySelector("#tunnel-settings-section .stop-tunnel-container button");
+      const originalStopContent = stopButton ? stopButton.innerHTML : null;
+      if (stopButton) {
+        stopButton.innerHTML = `<span class="icon material-symbols-outlined spin">progress_activity</span> ${t('tunnel.stoppingShort', 'Stopping...')}`;
+        stopButton.disabled = true;
+        stopButton.classList.add("stopping");
+      }
 
       try {
         // Call the backend to stop the tunnel
@@ -350,26 +355,31 @@ const model = {
           this.tunnelLink = "";
           this.linkGenerated = false;
 
+          const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
           window.toastFrontendInfo(
-            "Tunnel stopped successfully",
-            "Tunnel Status"
+            t('tunnel.stopSuccess', 'Tunnel stopped successfully'),
+            t('tunnel.statusTitle', 'Tunnel Status')
           );
         } else {
-          window.toastFrontendError("Failed to stop tunnel", "Tunnel Error");
+          window.toastFrontendError(t('tunnel.stopFailed', 'Failed to stop tunnel'), t('tunnel.errorTitle', 'Tunnel Error'));
 
           // Reset stop button
+          if (stopButton && originalStopContent !== null) {
+            stopButton.innerHTML = originalStopContent;
+            stopButton.disabled = false;
+            stopButton.classList.remove("stopping");
+          }
+        }
+      } catch (error) {
+        window.toastFrontendError(t('tunnel.stopError', 'Error stopping tunnel'), t('tunnel.errorTitle', 'Tunnel Error'));
+        console.error("Error stopping tunnel:", error);
+
+        // Reset stop button
+        if (stopButton && originalStopContent !== null) {
           stopButton.innerHTML = originalStopContent;
           stopButton.disabled = false;
           stopButton.classList.remove("stopping");
         }
-      } catch (error) {
-        window.toastFrontendError("Error stopping tunnel", "Tunnel Error");
-        console.error("Error stopping tunnel:", error);
-
-        // Reset stop button
-        stopButton.innerHTML = originalStopContent;
-        stopButton.disabled = false;
-        stopButton.classList.remove("stopping");
       } finally {
         this.isLoading = false;
         this.loadingText = "";
@@ -388,13 +398,14 @@ const model = {
       .then(() => {
         // Update button to show success state
         copyButton.innerHTML =
-          '<span class="icon material-symbols-outlined">check</span> Copied!';
+          `<span class="icon material-symbols-outlined">check</span> ${t('tunnel.copySuccessButton', 'Copied!')}`;
         copyButton.classList.add("copy-success");
 
         // Show toast notification
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
         window.toastFrontendInfo(
-          "Tunnel URL copied to clipboard!",
-          "Clipboard"
+          t('tunnel.copySuccess', 'Tunnel URL copied to clipboard!'),
+          t('tunnel.clipboardTitle', 'Clipboard')
         );
 
         // Reset button after 2 seconds
@@ -406,13 +417,13 @@ const model = {
       .catch((err) => {
         console.error("Failed to copy URL: ", err);
         window.toastFrontendError(
-          "Failed to copy tunnel URL",
-          "Clipboard Error"
+          t('tunnel.copyError', 'Failed to copy tunnel URL'),
+          t('tunnel.clipboardErrorTitle', 'Clipboard Error')
         );
 
         // Show error state
         copyButton.innerHTML =
-          '<span class="icon material-symbols-outlined">close</span> Failed';
+          `<span class="icon material-symbols-outlined">close</span> ${t('tunnel.copyFailedButton', 'Failed')}`;
         copyButton.classList.add("copy-error");
 
         // Reset button after 2 seconds

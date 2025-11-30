@@ -8,6 +8,8 @@ import { store as attachmentsStore } from "./components/chat/attachments/attachm
 import { store as speechStore } from "./components/chat/speech/speech-store.js";
 import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "./js/error-handling.js";
 
+const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+
 // Create error boundary for main application
 const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
   // Show critical error UI
@@ -15,11 +17,11 @@ const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
   errorContainer.className = 'app-error-container';
   errorContainer.innerHTML = `
     <div class="app-error-content">
-      <h2>Application Error</h2>
+      <h2>${t('appError.title', 'Application Error')}</h2>
       <p>${errorData.userMessage}</p>
       <div class="error-actions">
-        <button onclick="window.location.reload()">Reload Application</button>
-        <button onclick="this.closest('.app-error-container').remove()">Dismiss</button>
+        <button onclick="window.location.reload()">${t('appError.reload', 'Reload Application')}</button>
+        <button onclick="this.closest('.app-error-container').remove()">${t('appError.dismiss', 'Dismiss')}</button>
       </div>
     </div>
   `;
@@ -54,48 +56,50 @@ let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 let pendingSomabrainState = null;
 
-const SOMABRAIN_COPY = {
+const SOMABRAIN_COPY = () => ({
   normal: {
-    tooltip: "SomaBrain online",
-    banner: "",
+    tooltip: t('somabrain.tooltip.normal', 'SomaBrain online'),
+    banner: t('somabrain.banner.normal', ''),
   },
   degraded: {
-    tooltip: "SomaBrain degraded – limited memory retrieval",
-    banner: "Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.",
+    tooltip: t('somabrain.tooltip.degraded', 'SomaBrain degraded – limited memory retrieval'),
+    banner: t('somabrain.banner.degraded', 'Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.'),
   },
   down: {
-    tooltip: "SomaBrain offline – degraded mode",
-    banner: "Somabrain is offline. The agent will answer using chat history only until memories sync again.",
+    tooltip: t('somabrain.tooltip.down', 'SomaBrain offline – degraded mode'),
+    banner: t('somabrain.banner.down', 'Somabrain is offline. The agent will answer using chat history only until memories sync again.'),
   },
   unknown: {
-    tooltip: "SomaBrain status unknown",
-    banner: "Somabrain status is unknown. We will keep retrying automatically.",
+    tooltip: t('somabrain.tooltip.unknown', 'Somabrain status unknown'),
+    banner: t('somabrain.banner.unknown', 'Somabrain status is unknown. We will keep retrying automatically.'),
   },
-};
+});
 
-const SOMABRAIN_REASON_COPY = {
+const SOMABRAIN_REASON_COPY = () => ({
   degraded: {
-    tooltip: "Somabrain degraded – retrying",
-    banner: "Limited signal from Somabrain; retrieval depth reduced temporarily.",
+    tooltip: t('somabrain.reason.tooltip.degraded', 'Somabrain degraded – retrying'),
+    banner: t('somabrain.reason.banner.degraded', 'Limited signal from Somabrain; retrieval depth reduced temporarily.'),
   },
   down: {
-    tooltip: "Somabrain offline",
-    banner: "Somabrain is unreachable right now. Responses may miss institutional knowledge.",
+    tooltip: t('somabrain.reason.tooltip.down', 'Somabrain offline'),
+    banner: t('somabrain.reason.banner.down', 'Somabrain is unreachable right now. Responses may miss institutional knowledge.'),
   },
   timeout: {
-    tooltip: "Somabrain timeouts detected",
-    banner: "Somabrain requests are timing out. The agent fell back to minimal context until requests succeed.",
+    tooltip: t('somabrain.reason.tooltip.timeout', 'Somabrain timeouts detected'),
+    banner: t('somabrain.reason.banner.timeout', 'Somabrain requests are timing out. The agent fell back to minimal context until requests succeed.'),
   },
   circuit_open: {
-    tooltip: "Somabrain circuit breaker open",
-    banner: "Somabrain calls were failing frequently. Circuit breaker is open until retries succeed.",
+    tooltip: t('somabrain.reason.tooltip.circuit_open', 'Somabrain circuit breaker open'),
+    banner: t('somabrain.reason.banner.circuit_open', 'Somabrain calls were failing frequently. Circuit breaker is open until retries succeed.'),
   },
-};
+});
 
 function describeSomabrainState(state, detail = {}) {
-  const normalized = SOMABRAIN_COPY[state] ? state : "unknown";
-  const base = SOMABRAIN_COPY[normalized];
-  const reasonKey = detail.reason && SOMABRAIN_REASON_COPY[detail.reason];
+  const map = SOMABRAIN_COPY();
+  const reasons = SOMABRAIN_REASON_COPY();
+  const normalized = map[state] ? state : "unknown";
+  const base = map[normalized];
+  const reasonKey = detail.reason && reasons[detail.reason];
   const tooltip = detail.tooltip || reasonKey?.tooltip || base.tooltip;
   let banner = detail.banner;
   if (typeof banner === "undefined") {
@@ -172,8 +176,8 @@ function pushSomabrainState(state, detail = {}) {
 function markSomabrainUnknown(reason) {
   const overrides = reason
     ? {
-        tooltip: `SomaBrain status unknown — ${reason}`,
-        banner: `SomaBrain status unknown — ${reason}.`,
+        tooltip: t('somabrain.unknownReasonTooltip', 'SomaBrain status unknown — {reason}').replace('{reason}', reason),
+        banner: t('somabrain.unknownReasonBanner', 'SomaBrain status unknown — {reason}.').replace('{reason}', reason),
         reason: "unknown",
       }
     : {};
@@ -296,7 +300,7 @@ export const sendMessage = appErrorBoundary.wrapAsync(async function() {
             operation: 'uploadAttachments',
             context
           });
-          toastFetchError("Attachment upload failed", e);
+          toastFetchError(t('attachments.uploadFailed', 'Attachment upload failed'), e);
           // proceed with message without attachments
         }
       }
@@ -316,7 +320,7 @@ export const sendMessage = appErrorBoundary.wrapAsync(async function() {
       });
       if (!response.ok) {
         const txt = await response.text();
-        throw new Error(txt || "Failed to enqueue message");
+        throw new Error(txt || t('chat.enqueueFailed', 'Failed to enqueue message'));
       }
       const json = await response.json();
       if (json?.session_id) setContext(json.session_id);
@@ -330,7 +334,7 @@ export const sendMessage = appErrorBoundary.wrapAsync(async function() {
       context,
       messageLength: chatInput.value.length
     });
-    toastFetchError("Error sending message", e); // Will use new notification system
+    toastFetchError(t('chat.sendError', 'Error sending message'), e); // Will use new notification system
   }
 });
 
@@ -432,12 +436,12 @@ globalThis.loadKnowledge = async function () {
       } else {
         const data = await response.json();
         toast(
-          "Knowledge files imported: " + data.filenames.join(", "),
+          t('knowledge.importSuccess', 'Knowledge files imported: {files}').replace('{files}', data.filenames.join(", ")),
           "success"
         );
       }
     } catch (e) {
-      toastFetchError("Error loading knowledge", e);
+      toastFetchError(t('knowledge.importError', 'Error loading knowledge'), e);
     }
   };
 
@@ -486,7 +490,7 @@ function setConnectionStatus(connected) {
     if (globalThis.Alpine?.store && globalThis.Alpine.store('conn')) {
       const s = globalThis.Alpine.store('conn');
       s.status = connected ? 'online' : 'offline';
-      s.tooltip = connected ? 'Online' : 'Offline';
+      s.tooltip = connected ? t('conn.online', 'Online') : t('conn.offline', 'Offline');
     }
   } catch {}
 }
@@ -502,27 +506,28 @@ let assistantBuffer = "";
 // Subscribe to stream lifecycle & events
 bus.on("stream.online", () => {
   setConnectionStatus(true);
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = 'Online'; } } catch {}
-  try { notificationsSseStore.create({ type: "system", title: "Connected", body: "Streaming online", severity: "success", ttl_seconds: 3 }); } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = t('conn.online', 'Online'); } } catch {}
+  try { notificationsSseStore.create({ type: "system", title: t('conn.connectedTitle', 'Connected'), body: t('conn.connectedBody', 'Streaming online'), severity: "success", ttl_seconds: 3 }); } catch {}
 });
 bus.on("stream.offline", (info) => {
   setConnectionStatus(false);
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = info?.reason ? `Offline — ${info.reason}` : 'Offline'; } } catch {}
-  try { notificationsSseStore.create({ type: "system", title: "Disconnected", body: "Backend stream offline", severity: "warning", ttl_seconds: 15 }); } catch {}
-  markSomabrainUnknown("stream offline");
+  const reasonText = info?.reason ? info.reason : t('conn.reason.offline', 'offline');
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = info?.reason ? t('conn.offlineReason', 'Offline — {reason}').replace('{reason}', reasonText) : t('conn.offline', 'Offline'); } } catch {}
+  try { notificationsSseStore.create({ type: "system", title: t('conn.disconnectedTitle', 'Disconnected'), body: t('conn.disconnectedBody', 'Backend stream offline'), severity: "warning", ttl_seconds: 15 }); } catch {}
+  markSomabrainUnknown(reasonText);
 });
 bus.on("stream.stale", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'stale'; const secs = Math.max(1, Math.round((info?.ms_since_heartbeat || 0)/1000)); s.tooltip = `Stale — ${secs}s since last heartbeat`; } } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'stale'; const secs = Math.max(1, Math.round((info?.ms_since_heartbeat || 0)/1000)); s.tooltip = t('conn.staleTooltip', 'Stale — {seconds}s since last heartbeat').replace('{seconds}', secs); } } catch {}
 });
 bus.on("stream.reconnecting", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'reconnecting'; const attempt = info?.attempt || 1; const delayMs = info?.delay || 0; s.tooltip = `Reconnecting (attempt ${attempt}, ${Math.round(delayMs)}ms)`; } } catch {}
-  try { notificationsSseStore.create({ type: "system", title: "Reconnecting", body: `Attempt ${info.attempt || 1}`, severity: "info", ttl_seconds: 4 }); } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'reconnecting'; const attempt = info?.attempt || 1; const delayMs = info?.delay || 0; s.tooltip = t('conn.reconnectingTooltip', 'Reconnecting (attempt {attempt}, {delay}ms)').replace('{attempt}', attempt).replace('{delay}', Math.round(delayMs)); } } catch {}
+  try { notificationsSseStore.create({ type: "system", title: t('conn.reconnectingTitle', 'Reconnecting'), body: t('conn.reconnectingBody', 'Attempt {attempt}').replace('{attempt}', info.attempt || 1), severity: "info", ttl_seconds: 4 }); } catch {}
 });
 bus.on("stream.retry.success", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = `Reconnected after ${info?.attempt || 1} attempts`; } } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = t('conn.reconnectedTooltip', 'Reconnected after {attempts} attempts').replace('{attempts}', info?.attempt || 1); } } catch {}
 });
 bus.on("stream.retry.giveup", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = `Reconnection paused after ${info?.attempt || 1} attempts`; } } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = t('conn.giveupTooltip', 'Reconnection paused after {attempts} attempts').replace('{attempts}', info?.attempt || 1); } } catch {}
 });
 bus.on("sse:event", (ev) => {
   if (ev && (!ev.session_id || ev.session_id === context)) {
@@ -675,7 +680,7 @@ globalThis.pauseAgent = async function (paused) {
   try {
     const resp = await sendJsonData("/pause", { paused: paused, context });
   } catch (e) {
-    globalThis.toastFetchError("Error pausing agent", e);
+    globalThis.toastFetchError(t('chat.pauseError', 'Error pausing agent'), e);
   }
 };
 
@@ -687,7 +692,7 @@ globalThis.resetChat = async function (ctxid = null) {
     resetCounter++;
     if (ctxid === null) updateAfterScroll();
   } catch (e) {
-    globalThis.toastFetchError("Error resetting chat", e);
+    globalThis.toastFetchError(t('chat.resetError', 'Error resetting chat'), e);
   }
 };
 
@@ -696,7 +701,7 @@ globalThis.newChat = async function () {
     newContext();
     updateAfterScroll();
   } catch (e) {
-    globalThis.toastFetchError("Error creating new chat", e);
+    globalThis.toastFetchError(t('chat.createError', 'Error creating new chat'), e);
   }
 };
 
@@ -730,10 +735,10 @@ globalThis.killChat = async function (id) {
 
     updateAfterScroll();
 
-    justToast("Chat deleted successfully", "success", 1000, "chat-removal");
+    justToast(t('chat.deleteSuccess', 'Chat deleted successfully'), "success", 1000, "chat-removal");
   } catch (e) {
     console.error("Error deleting chat:", e);
-    globalThis.toastFetchError("Error deleting chat", e);
+    globalThis.toastFetchError(t('chat.deleteError', 'Error deleting chat'), e);
   }
 };
 
@@ -934,7 +939,8 @@ globalThis.nudge = async function () {
   try {
     const resp = await sendJsonData("/nudge", { ctxid: getContext() });
   } catch (e) {
-    toastFetchError("Error nudging agent", e);
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+    toastFetchError(t("actions.nudgeError", "Error nudging agent"), e);
   }
 };
 
@@ -942,16 +948,17 @@ globalThis.restart = async function () {
   try {
     if (!getConnectionStatus()) {
       await toastFrontendError(
-        "Backend disconnected, cannot restart.",
-        "Restart Error"
+        (globalThis.i18n ? i18n.t('restart.disconnected', 'Backend disconnected, cannot restart.') : "Backend disconnected, cannot restart."),
+        (globalThis.i18n ? i18n.t('restart.errorTitle', 'Restart Error') : "Restart Error")
       );
       return;
     }
     // First try to initiate restart
     const resp = await sendJsonData("/restart", {});
   } catch (e) {
+    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
     // Show restarting message with no timeout and restart group
-    await toastFrontendInfo("Restarting...", "System Restart", 9999, "restart");
+    await toastFrontendInfo(t('restart.inProgress', 'Restarting...'), t('restart.title', 'System Restart'), 9999, "restart");
 
     let retries = 0;
     const maxRetries = 240; // Maximum number of retries (60 seconds with 250ms interval)
@@ -961,7 +968,7 @@ globalThis.restart = async function () {
         const resp = await sendJsonData("/health", {});
         // Server is back up, show success message that replaces the restarting message
         await new Promise((resolve) => setTimeout(resolve, 250));
-        await toastFrontendSuccess("Restarted", "System Restart", 5, "restart");
+        await toastFrontendSuccess(t('restart.success', 'Restarted'), t('restart.title', 'System Restart'), 5, "restart");
         return;
       } catch (e) {
         // Server still down, keep waiting
@@ -972,8 +979,8 @@ globalThis.restart = async function () {
 
     // If we get here, restart failed or took too long
     await toastFrontendError(
-      "Restart timed out or failed",
-      "Restart Error",
+      t('restart.timeout', 'Restart timed out or failed'),
+      t('restart.errorTitle', 'Restart Error'),
       8,
       "restart"
     );
@@ -1058,14 +1065,14 @@ document.addEventListener("DOMContentLoaded", () => {
       // Connection status Alpine store (used by bell-adjacent indicator)
       const connBridge = createAlpineStore('conn', { 
         status: 'offline', 
-        tooltip: 'Offline',
+        tooltip: t('conn.offline', 'Offline'),
         lastUpdate: Date.now()
       });
       
       // If connection already established before DOM ready, reflect it
       if (typeof connectionStatus === 'boolean') {
         connBridge.status = connectionStatus ? 'online' : 'offline';
-        connBridge.tooltip = connectionStatus ? 'Online' : 'Offline';
+        connBridge.tooltip = connectionStatus ? t('conn.online', 'Online') : t('conn.offline', 'Offline');
         connBridge.lastUpdate = Date.now();
       }
 
@@ -1094,7 +1101,7 @@ globalThis.loadChats = async function () {
     const response = await sendJsonData("/chat_load", { chats: fileContents });
 
     if (!response) {
-      toast("No response returned.", "error");
+      toast(t('chat.noResponse', 'No response returned.'), "error");
     }
     // else if (!response.ok) {
     //     if (response.message) {
@@ -1105,10 +1112,10 @@ globalThis.loadChats = async function () {
     // }
     else {
       setContext(response.ctxids[0]);
-      toast("Chats loaded.", "success");
+      toast(t('chats.loaded', 'Chats loaded.'), "success");
     }
   } catch (e) {
-    toastFetchError("Error loading chats", e);
+    toastFetchError(t('chats.loadError', 'Error loading chats'), e);
   }
 };
 
@@ -1117,7 +1124,7 @@ globalThis.saveChat = async function () {
     const response = await sendJsonData("/chat_export", { ctxid: context });
 
     if (!response) {
-      toast("No response returned.", "error");
+      toast(t('chat.noResponse', 'No response returned.'), "error");
     }
     //  else if (!response.ok) {
     //     if (response.message) {
@@ -1128,10 +1135,10 @@ globalThis.saveChat = async function () {
     // }
     else {
       downloadFile(response.ctxid + ".json", response.content);
-      toast("Chat file downloaded.", "success");
+      toast(t('chat.downloaded', 'Chat file downloaded.'), "success");
     }
   } catch (e) {
-    toastFetchError("Error saving chat", e);
+    toastFetchError(t('chat.saveError', 'Error saving chat'), e);
   }
 };
 

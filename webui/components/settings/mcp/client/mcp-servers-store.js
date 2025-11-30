@@ -50,7 +50,8 @@ const model = {
       this.editor.navigateFileStart();
     } catch (error) {
       console.error("Failed to format JSON:", error);
-      alert("Invalid JSON: " + error.message);
+      const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+      alert(t('mcp.invalidJson', 'Invalid JSON: ') + error.message);
     }
   },
 

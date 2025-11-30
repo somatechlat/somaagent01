@@ -376,9 +376,11 @@ const model = {
     const fileList = this.previewFiles.map(f => f.path).join('\n');
     try {
       await navigator.clipboard.writeText(fileList);
-      window.toastFrontendInfo('File list copied to clipboard', 'Clipboard');
+      const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+      window.toastFrontendInfo(t('backup.clipboardCopy', 'File list copied to clipboard'), t('backup.clipboardTitle', 'Clipboard'));
     } catch (error) {
-      window.toastFrontendError('Failed to copy to clipboard', 'Clipboard Error');
+      const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+      window.toastFrontendError(t('backup.clipboardError', 'Failed to copy to clipboard'), t('backup.clipboardErrorTitle', 'Clipboard Error'));
     }
   },
 
@@ -420,7 +422,8 @@ const model = {
         window.URL.revokeObjectURL(url);
 
         this.addFileOperation('Backup created and downloaded successfully!');
-        window.toastFrontendInfo('Backup created and downloaded successfully', 'Backup Status');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        window.toastFrontendInfo(t('backup.created', 'Backup created and downloaded successfully'), t('backup.statusTitle', 'Backup Status'));
       } else {
         // Try to parse error response
         const errorText = await response.text();
@@ -678,7 +681,8 @@ const model = {
     }
 
     if (warnings.length > 0) {
-      window.toastFrontendWarning(`Compatibility warnings: ${warnings.join(', ')}`, 'Backup Compatibility');
+      const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+      window.toastFrontendWarning(`${t('backup.compatWarnings', 'Compatibility warnings')}: ${warnings.join(', ')}`, t('backup.compatTitle', 'Backup Compatibility'));
     }
   },
 
@@ -747,7 +751,8 @@ const model = {
 
         this.addFileOperation(`\nRestore completed: ${deletedCount} deleted, ${restoredCount} restored, ${skippedCount} skipped, ${errorCount} errors`);
         this.restoreResult = result;
-        window.toastFrontendInfo('Restore completed successfully', 'Restore Status');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        window.toastFrontendInfo(t('restore.completed', 'Restore completed successfully'), t('restore.statusTitle', 'Restore Status'));
       } else {
         this.error = result.error;
         this.addFileOperation(`Error: ${result.error}`);

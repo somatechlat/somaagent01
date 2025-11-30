@@ -657,7 +657,7 @@ const fullComponentImplementation = function() {
             // Validate task data
             if (!this.editingTask.name.trim() || !this.editingTask.prompt.trim()) {
                 // showToast('Task name and prompt are required', 'error');
-                alert('Task name and prompt are required');
+                alert((globalThis.i18n ? i18n.t('scheduler.requiredFields') : 'Task name and prompt are required'));
                 return;
             }
 
@@ -960,7 +960,7 @@ const fullComponentImplementation = function() {
         // Delete a task
         async deleteTask(taskId) {
             // Confirm deletion
-            if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+            if (!confirm((globalThis.i18n ? i18n.t('scheduler.deleteConfirm') : 'Are you sure you want to delete this task? This action cannot be undone.'))) {
                 return;
             }
 

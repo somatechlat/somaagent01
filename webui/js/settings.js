@@ -10,6 +10,8 @@ if (typeof window !== 'undefined' && typeof window.toastFetchError !== 'function
   window.toastFetchError = safeToast;
 }
 
+const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+
 const settingsModalProxy = {
     isOpen: false,
     settings: {},
@@ -99,7 +101,7 @@ const settingsModalProxy = {
             }
             const payload = await resp.json();
             const sectionsPayload = payload?.sections || payload?.settings?.sections || [];
-            const configTitle = payload?.title || "Settings";
+            const configTitle = payload?.title || t('settings.title', 'Settings');
 
             // First load the settings data without setting the active tab
             const settings = {
@@ -107,12 +109,12 @@ const settingsModalProxy = {
                 "buttons": [
                     {
                         "id": "save",
-                        "title": "Save",
+                        "title": t('actions.save', 'Save'),
                         "classes": "btn btn-ok"
                     },
                     {
                         "id": "cancel",
-                        "title": "Cancel",
+                        "title": t('actions.cancel', 'Cancel'),
                         "type": "secondary",
                         "classes": "btn btn-cancel"
                     }
@@ -202,7 +204,7 @@ const settingsModalProxy = {
             });
 
         } catch (e) {
-            safeToast("Error getting settings", e);
+            safeToast(t('settings.fetchError', 'Error getting settings'), e);
         }
     },
 
@@ -226,8 +228,9 @@ const settingsModalProxy = {
                     modalAD.settings.sections = updatedSections;
                 }
                 document.dispatchEvent(new CustomEvent('settings-updated', { detail: data }));
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
                 if (typeof window.toastFrontendSuccess === 'function') {
-                    window.toastFrontendSuccess('Settings saved', 'Settings', 3);
+                    window.toastFrontendSuccess(t('settings.saved', 'Settings saved'), t('settings.title', 'Settings'), 3);
                 }
                 this.resolvePromise?.({
                     status: 'saved',
@@ -235,7 +238,8 @@ const settingsModalProxy = {
                 });
                 this.resolvePromise = null;
             } catch (e) {
-                window.toastFetchError?.('Error saving settings', e);
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                window.toastFetchError?.(t('settings.saveError', 'Error saving settings'), e);
                 return;
             }
         } else if (buttonId === 'cancel') {
@@ -377,13 +381,13 @@ document.addEventListener('alpine:init', function () {
                         if (data && data.sections) {
                             this.settingsData = { sections: data.sections };
                         } else {
-                            console.error('Invalid settings data format');
+                            console.error(t('settings.invalidFormat', 'Invalid settings data format'));
                         }
                     } else {
-                        console.error('Failed to fetch settings:', response.statusText);
+                        console.error(t('settings.fetchFailed', 'Failed to fetch settings:'), response.statusText);
                     }
                 } catch (error) {
-                    console.error('Error fetching settings:', error);
+                    console.error(t('settings.fetchError', 'Error getting settings'), error);
                 } finally {
                     this.isLoading = false;
                 }
@@ -423,7 +427,7 @@ document.addEventListener('alpine:init', function () {
                     for (const section of this.settingsData.sections) {
                         for (const field of section.fields) {
                             if (field.required && (!field.value || field.value.trim() === '')) {
-                                showToast(`${field.title} in ${section.title} is required`, 'error');
+                                showToast(t('settings.fieldRequired', '{field} in {section} is required').replace('{field}', field.title).replace('{section}', section.title), 'error');
                                 return;
                             }
                         }
@@ -447,16 +451,16 @@ document.addEventListener('alpine:init', function () {
                     });
 
                     if (response.ok) {
-                        showToast('Settings saved successfully', 'success');
+                        showToast(t('settings.savedSuccess', 'Settings saved successfully'), 'success');
                         // Refresh settings
                         await this.fetchSettings();
                     } else {
                         const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to save settings');
+                        throw new Error(errorData.error || t('settings.saveFailed', 'Failed to save settings'));
                     }
                 } catch (error) {
-                    console.error('Error saving settings:', error);
-                    showToast('Failed to save settings: ' + error.message, 'error');
+                    console.error(t('settings.saveErrorLog', 'Error saving settings:'), error);
+                    showToast(t('settings.saveFailedWithReason', 'Failed to save settings: {reason}').replace('{reason}', error.message), 'error');
                 }
             },
 
@@ -476,7 +480,7 @@ document.addEventListener('alpine:init', function () {
             // Test API connection
             async testConnection(field) {
                 try {
-                    field.testResult = 'Testing...';
+                    field.testResult = t('settings.testing', 'Testing...');
                     field.testStatus = 'loading';
 
                     // Find the API key field
@@ -491,7 +495,7 @@ document.addEventListener('alpine:init', function () {
                     }
 
                     if (!apiKey) {
-                        throw new Error('API key is required');
+                        throw new Error(t('settings.apiKeyRequired', 'API key is required'));
                     }
 
                     // Send test request
@@ -509,14 +513,14 @@ document.addEventListener('alpine:init', function () {
                     const data = await response.json();
 
                     if (response.ok && data.success) {
-                        field.testResult = 'Connection successful!';
+                        field.testResult = t('settings.connectionSuccess', 'Connection successful!');
                         field.testStatus = 'success';
                     } else {
-                        throw new Error(data.error || 'Connection failed');
+                        throw new Error(data.error || t('settings.connectionFailed', 'Connection failed'));
                     }
                 } catch (error) {
                     console.error('Connection test failed:', error);
-                    field.testResult = `Failed: ${error.message}`;
+                    field.testResult = t('settings.connectionFailedReason', 'Failed: {reason}').replace('{reason}', error.message);
                     field.testStatus = 'error';
                 }
             },
@@ -531,7 +535,7 @@ document.addEventListener('alpine:init', function () {
                             f.type = f.type === 'password' ? 'text' : 'password';
 
                             // Update button text
-                            field.value = f.type === 'password' ? 'Show' : 'Hide';
+                            field.value = f.type === 'password' ? t('actions.show', 'Show') : t('actions.hide', 'Hide');
 
                             break;
                         }
@@ -582,16 +586,17 @@ function showToast(message, type = 'info') {
     // Use new frontend notification system based on type
     if (window.Alpine && window.Alpine.store && window.Alpine.store('notificationStore')) {
         const store = window.Alpine.store('notificationStore');
+        const title = t('settings.title', 'Settings');
         switch (type.toLowerCase()) {
             case 'error':
-                return store.frontendError(message, "Settings", 5);
+                return store.frontendError(message, title, 5);
             case 'success':
-                return store.frontendInfo(message, "Settings", 3);
+                return store.frontendInfo(message, title, 3);
             case 'warning':
-                return store.frontendWarning(message, "Settings", 4);
+                return store.frontendWarning(message, title, 4);
             case 'info':
             default:
-                return store.frontendInfo(message, "Settings", 3);
+                return store.frontendInfo(message, title, 3);
         }
     } else {
         // Fallback if Alpine/store not ready
