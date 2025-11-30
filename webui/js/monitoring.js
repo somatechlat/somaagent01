@@ -41,52 +41,50 @@ class SystemMonitor {
     }
 
     /**
-     * REAL IMPLEMENTATION - Check SomaBrain health directly
+     * Check SomaBrain health via same-origin gateway to avoid CORS and hardcoded host.
+     * Falls back gracefully (no console spam) if the endpoint is unavailable.
      */
     async checkSomabrainHealth() {
-        try {
-            const response = await fetch('http://localhost:9696/health', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            if (response.ok) {
-                const somabrainData = await response.json();
-                
-                // Update somabrain store based on SomaBrain health
-                if (globalThis.Alpine?.store('somabrain')) {
-                    const somabrainStore = globalThis.Alpine.store('somabrain');
-                    
-                    if (somabrainData.ready === true) {
-                        somabrainStore.state = 'normal';
-                        somabrainStore.tooltip = 'SomaBrain online';
-                        somabrainStore.banner = '';
-                    } else {
-                        somabrainStore.state = 'degraded';
-                        somabrainStore.tooltip = 'SomaBrain degraded – limited memory retrieval';
-                        somabrainStore.banner = 'Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.';
-                    }
-                    somabrainStore.lastUpdated = Date.now();
-                }
-                
-                return somabrainData;
-            } else {
-                throw new Error(`SomaBrain health check failed: ${response.status}`);
-            }
-        } catch (error) {
-            console.error('Error checking SomaBrain health:', error);
-            
-            // Update somabrain store to reflect error
+        const updateStore = (state, tooltip, banner) => {
             if (globalThis.Alpine?.store('somabrain')) {
                 const somabrainStore = globalThis.Alpine.store('somabrain');
-                somabrainStore.state = 'down';
-                somabrainStore.tooltip = 'SomaBrain offline – degraded mode';
-                somabrainStore.banner = 'SomaBrain is offline. The agent will answer using chat history only until memories sync again.';
+                somabrainStore.state = state;
+                somabrainStore.tooltip = tooltip;
+                somabrainStore.banner = banner;
                 somabrainStore.lastUpdated = Date.now();
             }
-            
+        };
+
+        try {
+            const response = await fetchApi('/v1/somabrain/health', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                // If the gateway doesn't expose this endpoint, stay silent
+                if (response.status === 404) return null;
+                throw new Error(`SomaBrain health check failed: ${response.status}`);
+            }
+
+            const somabrainData = await response.json();
+            if (somabrainData?.ready === true) {
+                updateStore('normal', 'SomaBrain online', '');
+            } else {
+                updateStore('degraded', 'SomaBrain degraded – limited memory retrieval',
+                    'Somabrain responses are delayed. Retrieval snippets will be limited until connectivity stabilizes.');
+            }
+            return somabrainData;
+        } catch (error) {
+            // Log once per session to avoid console spam
+            if (!this._somabrainErrorLogged) {
+                console.warn('Somabrain health probe skipped/failed:', error?.message || error);
+                this._somabrainErrorLogged = true;
+            }
+            updateStore('down',
+                'SomaBrain offline – degraded mode',
+                'Somabrain is offline. The agent will answer using chat history only until memories sync again.');
             return null;
         }
     }
@@ -144,13 +142,15 @@ class SystemMonitor {
      */
     async updateAllStatus() {
         try {
-            await Promise.all([
+            const tasks = [
                 this.updateHealthStatus(),
-                this.updateDegradationStatus(),
-                this.updateCircuitStatus(),
-                this.updateSystemMetrics(),
                 this.checkSomabrainHealth()
-            ]);
+            ];
+            if (!this._degradationDisabled) tasks.push(this.updateDegradationStatus());
+            if (!this._circuitDisabled) tasks.push(this.updateCircuitStatus());
+            if (!this._metricsDisabled) tasks.push(this.updateSystemMetrics());
+
+            await Promise.all(tasks);
             
             this.lastUpdate = new Date();
             this.errorCount = 0; // Reset error count on success
@@ -250,8 +250,15 @@ class SystemMonitor {
                     ...degradationData,
                     timestamp: new Date().toISOString()
                 };
+                this._degradationDisabled = false;
+            } else if (response.status === 404) {
+                // Endpoint not available – disable polling quietly
+                this._degradationDisabled = true;
             } else {
-                console.error('Degradation status request failed:', response.status);
+                if (!this._degradationErrorNotified) {
+                    console.warn('Degradation status request failed:', response.status);
+                    this._degradationErrorNotified = true;
+                }
                 this.degradationStatus = { 
                     error: 'Failed to fetch degradation status',
                     overall_level: 'unknown',
@@ -259,7 +266,10 @@ class SystemMonitor {
                 };
             }
         } catch (error) {
-            console.error('Error fetching degradation status:', error);
+            if (!this._degradationErrorNotified) {
+                console.warn('Error fetching degradation status:', error);
+                this._degradationErrorNotified = true;
+            }
             this.degradationStatus = { 
                 error: 'Failed to fetch degradation status',
                 overall_level: 'unknown',
@@ -284,7 +294,12 @@ class SystemMonitor {
                     timestamp: new Date().toISOString()
                 };
                 this._circuitErrorNotified = false;
+                this._circuitDisabled = false;
             } else {
+                if (response.status === 404) {
+                    this._circuitDisabled = true;
+                    return;
+                }
                 if (!this._circuitErrorNotified) {
                     console.warn('Circuit status request failed:', response.status);
                     this._circuitErrorNotified = true;
@@ -339,8 +354,16 @@ class SystemMonitor {
                     },
                     timestamp: new Date().toISOString()
                 };
+                this._metricsDisabled = false;
             } else {
-                console.error('System metrics request failed:', response.status);
+                if (response.status === 404) {
+                    this._metricsDisabled = true;
+                    return;
+                }
+                if (!this._metricsErrorNotified) {
+                    console.warn('System metrics request failed:', response.status);
+                    this._metricsErrorNotified = true;
+                }
                 this.systemMetrics = { 
                     error: 'Failed to fetch system metrics',
                     timestamp: new Date().toISOString()
@@ -351,7 +374,10 @@ class SystemMonitor {
                 };
             }
         } catch (error) {
-            console.error('Error fetching system metrics:', error);
+            if (!this._metricsErrorNotified) {
+                console.warn('Error fetching system metrics:', error);
+                this._metricsErrorNotified = true;
+            }
             this.systemMetrics = { 
                 error: 'Failed to fetch system metrics',
                 timestamp: new Date().toISOString()
