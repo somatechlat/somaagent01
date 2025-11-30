@@ -63,16 +63,17 @@ const showToast = function(message, type = 'info') {
     // Use new frontend notification system
     if (window.Alpine && window.Alpine.store && window.Alpine.store('notificationStore')) {
         const store = window.Alpine.store('notificationStore');
+        const title = (globalThis.i18n ? i18n.t('scheduler.title') : 'Scheduler');
         switch (type.toLowerCase()) {
             case 'error':
-                return store.frontendError(message, "Scheduler", 5);
+                return store.frontendError(message, title, 5);
             case 'success':
-                return store.frontendInfo(message, "Scheduler", 3);
+                return store.frontendInfo(message, title, 3);
             case 'warning':
-                return store.frontendWarning(message, "Scheduler", 4);
+                return store.frontendWarning(message, title, 4);
             case 'info':
             default:
-                return store.frontendInfo(message, "Scheduler", 3);
+                return store.frontendInfo(message, title, 3);
         }
     } else {
         // Fallback to global toast function or console
@@ -313,7 +314,8 @@ const fullComponentImplementation = function() {
                 }
             } catch (error) {
                 console.error('Error fetching tasks:', error);
-                showToast('Failed to fetch tasks: ' + error.message, 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.fetchError', 'Failed to fetch tasks: ') + error.message, 'error');
                 // Reset tasks to empty array on error
                 this.tasks = [];
             } finally {
@@ -346,7 +348,8 @@ const fullComponentImplementation = function() {
         showTaskDetail(taskId) {
             const task = this.tasks.find(t => t.uuid === taskId);
             if (!task) {
-                showToast('Task not found', 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.notFound', 'Task not found'), 'error');
                 return;
             }
 
@@ -468,7 +471,8 @@ const fullComponentImplementation = function() {
         async startEditTask(taskId) {
             const task = this.tasks.find(t => t.uuid === taskId);
             if (!task) {
-                showToast('Task not found', 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.notFound', 'Task not found'), 'error');
                 return;
             }
 
@@ -799,7 +803,8 @@ const fullComponentImplementation = function() {
                 const responseData = await response.json();
 
                 // Show success message
-                showToast(this.isCreating ? 'Task created successfully' : 'Task updated successfully', 'success');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(this.isCreating ? t('scheduler.created', 'Task created successfully') : t('scheduler.updated', 'Task updated successfully'), 'success');
 
                 // Immediately update the UI if the response includes the task
                 if (responseData && responseData.task) {
@@ -865,7 +870,8 @@ const fullComponentImplementation = function() {
                 document.querySelector('[x-data="schedulerSettings"]')?.removeAttribute('data-editing-state');
             } catch (error) {
                 console.error('Error saving task:', error);
-                showToast('Failed to save task: ' + error.message, 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.saveError', 'Failed to save task: ') + error.message, 'error');
             }
         },
 
@@ -888,13 +894,15 @@ const fullComponentImplementation = function() {
                     throw new Error(errorData.error || 'Failed to run task');
                 }
 
-                showToast('Task started successfully', 'success');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.startSuccess', 'Task started successfully'), 'success');
 
                 // Refresh task list
                 this.fetchTasks();
             } catch (error) {
                 console.error('Error running task:', error);
-                showToast('Failed to run task: ' + error.message, 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.runError', 'Failed to run task: ') + error.message, 'error');
             }
         },
 
@@ -903,13 +911,15 @@ const fullComponentImplementation = function() {
             try {
                 const task = this.tasks.find(t => t.uuid === taskId);
                 if (!task) {
-                    showToast('Task not found', 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.notFound', 'Task not found'), 'error');
                     return;
                 }
 
                 // Check if task is already in idle state
                 if (task.state === 'idle') {
-                    showToast('Task is already in idle state', 'info');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.alreadyIdle', 'Task is already in idle state'), 'info');
                     return;
                 }
 
@@ -933,14 +943,16 @@ const fullComponentImplementation = function() {
                     throw new Error(errorData.error || 'Failed to reset task state');
                 }
 
-                showToast('Task state reset to idle', 'success');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.resetState', 'Task state reset to idle'), 'success');
 
                 // Refresh task list
                 await this.fetchTasks();
                 this.showLoadingState = false;
             } catch (error) {
                 console.error('Error resetting task state:', error);
-                showToast('Failed to reset task state: ' + error.message, 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.resetError', 'Failed to reset task state: ') + error.message, 'error');
                 this.showLoadingState = false;
             }
         },
@@ -973,7 +985,8 @@ const fullComponentImplementation = function() {
                     throw new Error(errorData.error || 'Failed to delete task');
                 }
 
-                showToast('Task deleted successfully', 'success');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.deleteSuccess', 'Task deleted successfully'), 'success');
 
                 // If we were viewing the detail of the deleted task, close the detail view
                 if (this.selectedTaskForDetail && this.selectedTaskForDetail.uuid === taskId) {
@@ -987,7 +1000,8 @@ const fullComponentImplementation = function() {
                 this.updateTasksUI();
             } catch (error) {
                 console.error('Error deleting task:', error);
-                showToast('Failed to delete task: ' + error.message, 'error');
+        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+        showToast(t('scheduler.deleteError', 'Failed to delete task: ') + error.message, 'error');
             }
         },
 
