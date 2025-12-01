@@ -1,6 +1,7 @@
 import { createStore } from "/static/js/AlpineStore.js";
 import { fetchApi } from "/static/js/api.js";
 import { uploadFileChunked } from "/static/js/uploadsChunked.js";
+import { API } from "/static/config.js";
 
 const model = {
   // State properties
@@ -437,7 +438,7 @@ const model = {
         const form = new FormData();
         form.append("session_id", sessionId || "");
         small.forEach(a => form.append("files", a.file, a.name));
-        const resp = await fetch("/v1/uploads", { method: "POST", body: form, credentials: "same-origin" });
+        const resp = await fetch(`${API.BASE}${API.UPLOADS}`, { method: "POST", body: form, credentials: "same-origin" });
         if (!resp.ok) {
           const txt = await resp.text();
           small.forEach(a => { a.status = "error"; a.error = txt; });
@@ -492,7 +493,7 @@ const model = {
       form.append('session_id', this.sessionId || '');
       form.append('files', attachment.file, attachment.name);
       attachment.status = 'uploading';
-      const resp = await fetch('/v1/uploads', { method: 'POST', body: form, credentials: 'same-origin' });
+      const resp = await fetch(`${API.BASE}${API.UPLOADS}`, { method: 'POST', body: form, credentials: 'same-origin' });
       if (resp.ok) {
         const arr = await resp.json();
         const d = arr.find(x => x.filename === attachment.name);

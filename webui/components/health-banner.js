@@ -3,6 +3,8 @@
  * Displays memory WAL lag and system health alerts
  */
 
+import { API } from "/static/config.js";
+
 class HealthBanner {
     constructor(container) {
         this.container = container;
@@ -75,7 +77,7 @@ class HealthBanner {
     
     async performHealthCheck() {
         try {
-            const response = await fetch('/v1/health');
+            const response = await fetch(`${API.BASE}${API.HEALTH}`);
             const health = await response.json();
             
             this.currentHealth = health;

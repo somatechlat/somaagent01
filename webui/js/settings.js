@@ -1,18 +1,8 @@
 // Settings modal logic for the web UI.
-// Implements a UI‑side fallback so that the Settings modal always contains the
-// required LLM fields even when the backend returns an empty payload.
+// Renders settings based on data returned from the backend.
 // All API paths are derived from the central `API` config object.
 
 import { API } from "./config.js";
-
-/** Helper to display error toast messages. */
-const safeToast = (text, error) => {
-  if (typeof window !== "undefined" && typeof window.toastFetchError === "function") {
-    window.toastFetchError(text, error);
-  } else {
-    console.error(text, error);
-  }
-};
 
 /** Simple i18n helper – falls back to the provided default. */
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
@@ -48,179 +38,6 @@ const settingsModalProxy = {
 };
 
 globalThis.settingsModalProxy = settingsModalProxy;
-
-// Alpine registrations
-document.addEventListener('alpine:init', function () {
-  Alpine.store('root', {
-    // -----------------------------------------------------------------------------
-    // Clean Settings modal implementation (replaces previous corrupted version).
-    // -----------------------------------------------------------------------------
-    import { API } from "./config.js";
-
-    /** Display an error toast – falls back to console.error if UI toast unavailable. */
-    const safeToast = (text, error) => {
-        if (typeof window !== "undefined" && typeof window.toastFetchError === "function") {
-            window.toastFetchError(text, error);
-        } else {
-            console.error(text, error);
-        }
-    };
-
-    /** Simple i18n helper – uses global i18n if present. */
-    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-
-    /** Proxy exposed globally; UI components call `settingsModalProxy.openModal()`. */
-    const settingsModalProxy = {
-        isOpen: false,
-        resolvePromise: null,
-        activeTab: "agent",
-        /** Open the modal and sync with Alpine root store. */
-        openModal() {
-            const store = Alpine.store('root');
-            if (store) store.isOpen = true;
-            this.isOpen = true;
-        },
-        /** Close the modal and resolve any awaiting promise. */
-        closeModal() {
-            const store = Alpine.store('root');
-            if (store) store.isOpen = false;
-            this.isOpen = false;
-            if (this.resolvePromise) {
-                this.resolvePromise({ status: "cancelled" });
-                this.resolvePromise = null;
-            }
-        }
-    };
-
-    globalThis.settingsModalProxy = settingsModalProxy;
-
-    // -----------------------------------------------------------------------------
-    // Alpine registrations – root store and modal component.
-    // -----------------------------------------------------------------------------
-    document.addEventListener('alpine:init', () => {
-        // Root store holds global UI state (open/close, active tab).
-        Alpine.store('root', {
-            activeTab: localStorage.getItem('settingsActiveTab') || 'agent',
-            isOpen: false,
-            toggleSettings() { this.isOpen = !this.isOpen; }
-        });
-
-        // Settings modal component.
-        Alpine.data('settingsModal', () => ({
-            settings: {},
-            filteredSections: [],
-            activeTab: 'agent',
-            isLoading: true,
-
-            async init() {
-                this.activeTab = Alpine.store('root').activeTab || 'agent';
-                this.$watch('$store.root.activeTab', (newTab) => {
-                    if (newTab !== undefined) {
-                        this.activeTab = newTab;
-                        localStorage.setItem('settingsActiveTab', newTab);
-                        this.updateFilteredSections();
-                    }
-                });
-                await this.fetchSettings();
-                this.updateFilteredSections();
-            },
-
-            switchTab(tab) {
-                this.activeTab = tab;
-                const store = Alpine.store('root');
-                if (store) store.activeTab = tab;
-            },
-
-            async fetchSettings() {
-                try {
-                    this.isLoading = true;
-                    const resp = await fetchApi(`${API.BASE}${API.SETTINGS}`);
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        const sections = data?.sections || data?.settings?.sections || data?.data?.sections || [];
-                        const title = data?.title || data?.data?.title || t('settings.title', 'Settings');
-                        const buttons = data?.buttons || data?.settings?.buttons || [
-                            { id: "save", title: t('actions.save', 'Save'), classes: "btn btn-ok" },
-                            { id: "cancel", title: t('actions.cancel', 'Cancel'), type: "secondary", classes: "btn btn-cancel" }
-                        ];
-                        this.settings = { title, buttons, sections };
-                    } else {
-                        console.error(t('settings.fetchFailed', 'Failed to fetch settings'), resp.statusText);
-                    }
-                } catch (e) {
-                    console.error(t('settings.fetchError', 'Error getting settings'), e);
-                } finally {
-                    this.isLoading = false;
-                }
-            },
-
-            updateFilteredSections() {
-                if (!this.settings.sections) { this.filteredSections = []; return; }
-                this.filteredSections = this.settings.sections.filter(s => s.tab === this.activeTab);
-            },
-
-            async handleButton(buttonId) {
-                if (buttonId === 'save') {
-                    const modalEl = document.getElementById('settingsModal');
-                    const modalAD = modalEl ? Alpine.$data(modalEl) : null;
-                    const sections = modalAD?.settings?.sections || [];
-                    try {
-                        const response = await fetchApi(`${API.BASE}${API.SETTINGS}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ sections })
-                        });
-                        if (!response.ok) throw new Error(await response.text());
-                        const data = await response.json();
-                        const updated = data?.sections || data?.settings?.sections || [];
-                        if (modalAD && Array.isArray(updated) && updated.length) {
-                            modalAD.settings.sections = updated;
-                        }
-                        document.dispatchEvent(new CustomEvent('settings-updated', { detail: data }));
-                        if (typeof window.toastFrontendSuccess === 'function') {
-                            window.toastFrontendSuccess(t('settings.saved', 'Settings saved'), t('settings.title', 'Settings'), 3);
-                        }
-                        if (this.resolvePromise) {
-                            this.resolvePromise({ status: 'saved', data });
-                            this.resolvePromise = null;
-                        }
-                    } catch (e) {
-                        safeToast(t('settings.saveError', 'Error saving settings'), e);
-                    }
-                } else if (buttonId === 'cancel') {
-                    this.handleCancel();
-                    return;
-                }
-                // Close UI after any button action.
-                this.isOpen = false;
-                const store = Alpine.store('root');
-                if (store) setTimeout(() => { store.isOpen = false; }, 10);
-            },
-
-            async handleCancel() {
-                if (this.resolvePromise) {
-                    this.resolvePromise({ status: 'cancelled', data: null });
-                    this.resolvePromise = null;
-                }
-                this.isOpen = false;
-                const store = Alpine.store('root');
-                if (store) setTimeout(() => { store.isOpen = false; }, 10);
-            }
-        }));
-    });
-//             console.log(result);  // This will log the result when the modal is closed
-//         });
-//     }
-
-//     return proxy
-// }
-
-
-// document.addEventListener('alpine:init', () => {
-//     Alpine.store('settingsModal', initSettingsModal());
-// });
-
-document.addEventListener('alpine:init', function () {
     // Initialize the root store first to ensure it exists before components try to access it
     Alpine.store('root', {
         activeTab: localStorage.getItem('settingsActiveTab') || 'agent',
@@ -271,15 +88,16 @@ document.addEventListener('alpine:init', function () {
             async fetchSettings() {
                 try {
                     this.isLoading = true;
-                    const response = await fetchApi(`${API.BASE}${API.SETTINGS}`);
+                    // Fetch UI‑specific settings sections (including LLM fields) from the central endpoint.
+                    const response = await fetchApi(`${API.BASE}${API.UI_SETTINGS}`);
                     if (response.ok) {
                         const data = await response.json();
-                        const sections = data?.sections || data?.settings?.sections || data?.data?.sections;
-                        if (sections) {
-                            this.settingsData = { sections };
-                        } else {
-                            console.error(t('settings.invalidFormat', 'Invalid settings data format'));
+                        let sections = data?.sections || data?.settings?.sections || data?.data?.sections;
+                        // Ensure sections is an array; if not, treat as empty.
+                        if (!Array.isArray(sections)) {
+                            sections = [];
                         }
+                        this.settingsData = { sections };
                     } else {
                         console.error(t('settings.fetchFailed', 'Failed to fetch settings:'), response.statusText);
                     }
@@ -339,7 +157,7 @@ document.addEventListener('alpine:init', function () {
                     }
 
                     // Send request
-                    const response = await fetchApi('/api/settings_save', {
+                    const response = await fetchApi(`${API.BASE}${API.SAVE_SETTINGS}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -396,7 +214,7 @@ document.addEventListener('alpine:init', function () {
                     }
 
                     // Send test request
-                    const response = await fetchApi('/api/test_connection', {
+                    const response = await fetchApi(`${API.BASE}${API.TEST_CONNECTION}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

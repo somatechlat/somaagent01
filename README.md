@@ -78,16 +78,6 @@ Errors are emitted as `assistant.error` (or `<role>.error` when tool/system sour
 - Use `src.core.config.env()` (via `cfg`) for environment reads in business logic and `src.core.config.flag()` for feature checks. Avoid `os.getenv` directly except in settings/bootstrap modules.
 - Newly centralized keys (guarded by tests): `EXPORT_JOBS_DIR`, `GATEWAY_EXPORT_REQUIRE_TENANT`, `MEMORY_EXPORT_MAX_ROWS`, `MEMORY_EXPORT_PAGE_SIZE`, `EXPORT_JOBS_MAX_ROWS`, `EXPORT_JOBS_PAGE_SIZE`, `UPLOAD_TMP_DIR`.
 - CI guardrails: `tests/unit/test_no_direct_env_feature_flags.py` prevents direct feature-flag env reads; `tests/unit/test_no_direct_env_centralized_keys.py` blocks raw `os.getenv` for the keys above.
-
-#### Feature Flags
-
-- `SA01_ENABLE_CONTENT_MASKING`: enable masking of sensitive content in streamed errors and persisted events.
-- `SA01_ENABLE_ERROR_CLASSIFIER`: enrich errors with `error_code` and `retriable` hints.
-- `SA01_ENABLE_SEQUENCE` (default true): attach `metadata.sequence` counters to streamed events.
-- `SA01_ENABLE_TOKEN_METRICS` (default true): emit first-token latency and token counters.
-- `SA01_ENABLE_REASONING_STREAM`: include `assistant.thinking.started/final` markers in the stream (non-persisted).
-- `SA01_ENABLE_TOOL_EVENTS`: include `assistant.tool.*` markers when providers stream tool calls.
-
 ### Metrics & Persistence
 
 - Core Gateway metrics (Prometheus): `GATEWAY_METRICS_PORT` (default 8000).
@@ -98,9 +88,6 @@ In addition to Prometheus counters/gauges, the Gateway persists key metrics to P
 - `assistant_first_token_seconds` (per provider/model, with session/persona metadata)
 - Reasoning markers: `reasoning_events{phase=started|final,provider,model}`
 - Tool markers: `tool_events{type=started|delta|final,provider,model}`
- - LLM invoke outcomes: `llm_invoke{stream=true|false,result=ok|error|timeout,provider,model}`
-
-Persisted rows live in `generic_metrics`. Use `services/common/telemetry.py::TelemetryPublisher.emit_generic_metric` for new metrics.
 
 Scrape configuration example snippet:
 ```

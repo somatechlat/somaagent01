@@ -919,18 +919,20 @@ function convertHTML(str) {
   return result;
 }
 
+import { API } from "../config.js";
+
 function mapImgUrl(val) {
   try {
     const raw = String(val).slice("img://".length);
     const id = raw.replace(/^attachment\/?|^att:|^att\//, "");
     // If id looks like UUID, map to attachments endpoint
-    if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return `/v1/attachments/${id}`;
-    // Fallback: do not attempt prior pathing; return as-is to prevent 404 noise
-    return `/v1/attachments/${encodeURIComponent(id)}`;
+    if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return `${API.BASE}${API.ATTACHMENTS}/${id}`;
+    // Fallback: encode safely
+    return `${API.BASE}${API.ATTACHMENTS}/${encodeURIComponent(id)}`;
   } catch { return ""; }
 }
 function convertImgFilePaths(str) {
-  return str.replace(/img:\/\/(\S+)/g, (_m, p1) => `/v1/attachments/${p1}`);
+  return str.replace(/img:\/\/(\S+)/g, (_m, p1) => `${API.BASE}${API.ATTACHMENTS}/${p1}`);
 }
 
 export function convertIcons(str) {

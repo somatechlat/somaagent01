@@ -1,6 +1,7 @@
 // Notifications store: REST + SSE wiring via global stream bus
 import { on, off, emit } from "/static/js/event-bus.js";
 import { openModal } from "/static/js/modals.js";
+import { API } from "/static/config.js";
 
 const state = {
   list: [],
@@ -29,11 +30,10 @@ async function fetchList({ limit = 50, unreadOnly = false } = {}) {
     const params = new URLSearchParams();
     params.set("limit", String(limit));
     if (unreadOnly) params.set("unread_only", "true");
-    const resp = await fetch(`/v1/ui/notifications?${params.toString()}`, { credentials: "include" });
-    if (resp.status === 404) {
-      state.error = "notifications endpoint unavailable";
-      return;
-    }
+    // The backend router for UI notifications lives under /v1/notifications.
+    // Using the wrong prefix (/v1/ui) caused a 404. Adjust to the correct path.
+    // Use centralised API paths
+    const resp = await fetch(`${API.BASE}${API.NOTIFICATIONS}?${params.toString()}`, { credentials: "include" });
     if (!resp.ok) throw new Error(`list failed ${resp.status}`);
     const data = await resp.json();
     state.list = data.notifications || [];
@@ -48,13 +48,12 @@ async function fetchList({ limit = 50, unreadOnly = false } = {}) {
 }
 
 async function create({ type, title, body, severity = "info", ttl_seconds, meta }) {
-  const resp = await fetch("/v1/ui/notifications", {
+  const resp = await fetch(`${API.BASE}${API.NOTIFICATIONS}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type, title, body, severity, ttl_seconds, meta }),
     credentials: "include",
   });
-  if (resp.status === 404) throw new Error("notifications endpoint unavailable");
   if (!resp.ok) throw new Error(`create failed ${resp.status}`);
   const data = await resp.json();
   const item = data.notification;
@@ -67,7 +66,7 @@ async function create({ type, title, body, severity = "info", ttl_seconds, meta 
 }
 
 async function markRead(id) {
-  const resp = await fetch(`/v1/ui/notifications/${encodeURIComponent(id)}/read`, { method: "POST", credentials: "include" });
+  const resp = await fetch(`${API.BASE}${API.NOTIFICATIONS}/${encodeURIComponent(id)}/read`, { method: "POST", credentials: "include" });
   if (!resp.ok) throw new Error(`markRead failed ${resp.status}`);
   const idx = state.list.findIndex(n => n.id === id);
   if (idx >= 0) {
@@ -78,7 +77,7 @@ async function markRead(id) {
 }
 
 async function clearAll() {
-  const resp = await fetch(`/v1/ui/notifications/clear`, { method: "DELETE", credentials: "include" });
+  const resp = await fetch(`${API.BASE}${API.NOTIFICATIONS}/clear`, { method: "DELETE", credentials: "include" });
   if (!resp.ok) throw new Error(`clear failed ${resp.status}`);
   state.list = [];
   recalcUnread();
