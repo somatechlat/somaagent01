@@ -383,16 +383,41 @@ class ChatGenerationResult:
 rate_limiters: dict[str, RateLimiter] = {}
 api_keys_round_robin: dict[str, int] = {}
 
+# Singleton secret manager for API keys
+_secret_manager = None
+
+
+def _get_secret_manager():
+    """Get UnifiedSecretManager singleton."""
+    global _secret_manager
+    if _secret_manager is None:
+        from services.common.unified_secret_manager import get_secret_manager
+        _secret_manager = get_secret_manager()
+    return _secret_manager
+
 
 def get_api_key(service: str) -> str:
-    # get api key for the service
+    """Get API key from Vault (single source of truth)."""
+    # Try Vault first (production)
+    try:
+        key = _get_secret_manager().get_provider_key(service.lower())
+        if key:
+            # Support round-robin for comma-separated keys
+            if "," in key:
+                api_keys = [k.strip() for k in key.split(",") if k.strip()]
+                api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
+                return api_keys[api_keys_round_robin[service] % len(api_keys)]
+            return key
+    except Exception:
+        pass
+    
+    # Fallback to dotenv for backward compatibility during migration
     key = (
         dotenv.get_dotenv_value(f"API_KEY_{service.upper()}")
         or dotenv.get_dotenv_value(f"{service.upper()}_API_KEY")
         or dotenv.get_dotenv_value(f"{service.upper()}_API_TOKEN")
         or "None"
     )
-    # if the key contains a comma, use round-robin
     if "," in key:
         api_keys = [k.strip() for k in key.split(",") if k.strip()]
         api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1

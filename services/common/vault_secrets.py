@@ -138,5 +138,126 @@ def load_kv_secret(
 
 def refresh_cached_secrets() -> None:
     """Clear cached Vault reads (used in tests)."""
-
     load_kv_secret.cache_clear()
+
+
+def save_kv_secret(
+    path: str,
+    key: str,
+    value: str,
+    *,
+    mount_point: str = "secret",
+    url: Optional[str] = None,
+    namespace: Optional[str] = None,
+    token: Optional[str] = None,
+    token_file: Optional[str] = None,
+    verify: Optional[str | bool] = None,
+    logger: Optional[logging.Logger] = None,
+) -> bool:
+    """Save a KV v2 secret to Vault.
+
+    Returns True if successful, False otherwise.
+    """
+    log = logger or LOGGER
+
+    try:
+        hvac_mod = _ensure_hvac()
+    except RuntimeError as exc:
+        log.warning("Vault integration unavailable", extra={"reason": str(exc)})
+        return False
+
+    url = url or cfg.env("VAULT_ADDR")
+    namespace = namespace or cfg.env("VAULT_NAMESPACE")
+    token = _resolve_vault_token(
+        token=token or cfg.env("VAULT_TOKEN"),
+        token_file=token_file or cfg.env("VAULT_TOKEN_FILE"),
+    )
+    if not token:
+        log.error("Vault token missing; cannot authenticate", extra={"path": path})
+        return False
+
+    if verify is None:
+        if cfg.env("VAULT_SKIP_VERIFY", "false").lower() in {"1", "true", "yes", "on"}:
+            verify_value: str | bool = False
+        else:
+            verify_value = cfg.env("VAULT_CA_CERT") or True
+    else:
+        verify_value = _coerce_verify(verify)
+
+    client = hvac_mod.Client(url=url, token=token, namespace=namespace, verify=verify_value)
+
+    try:
+        client.secrets.kv.v2.create_or_update_secret(
+            path=path,
+            secret={key: value},
+            mount_point=mount_point,
+        )
+        log.debug("Vault secret saved", extra={"path": path, "key": key})
+        # Clear cache so next read gets fresh value
+        load_kv_secret.cache_clear()
+        return True
+    except Exception as exc:
+        log.error(
+            "Failed to save secret to Vault",
+            extra={"error": str(exc), "path": path, "key": key, "mount_point": mount_point},
+        )
+        return False
+
+
+def delete_kv_secret(
+    path: str,
+    *,
+    mount_point: str = "secret",
+    url: Optional[str] = None,
+    namespace: Optional[str] = None,
+    token: Optional[str] = None,
+    token_file: Optional[str] = None,
+    verify: Optional[str | bool] = None,
+    logger: Optional[logging.Logger] = None,
+) -> bool:
+    """Delete a KV v2 secret from Vault.
+
+    Returns True if successful, False otherwise.
+    """
+    log = logger or LOGGER
+
+    try:
+        hvac_mod = _ensure_hvac()
+    except RuntimeError as exc:
+        log.warning("Vault integration unavailable", extra={"reason": str(exc)})
+        return False
+
+    url = url or cfg.env("VAULT_ADDR")
+    namespace = namespace or cfg.env("VAULT_NAMESPACE")
+    token = _resolve_vault_token(
+        token=token or cfg.env("VAULT_TOKEN"),
+        token_file=token_file or cfg.env("VAULT_TOKEN_FILE"),
+    )
+    if not token:
+        log.error("Vault token missing; cannot authenticate", extra={"path": path})
+        return False
+
+    if verify is None:
+        if cfg.env("VAULT_SKIP_VERIFY", "false").lower() in {"1", "true", "yes", "on"}:
+            verify_value: str | bool = False
+        else:
+            verify_value = cfg.env("VAULT_CA_CERT") or True
+    else:
+        verify_value = _coerce_verify(verify)
+
+    client = hvac_mod.Client(url=url, token=token, namespace=namespace, verify=verify_value)
+
+    try:
+        client.secrets.kv.v2.delete_metadata_and_all_versions(
+            path=path,
+            mount_point=mount_point,
+        )
+        log.debug("Vault secret deleted", extra={"path": path})
+        load_kv_secret.cache_clear()
+        return True
+    except Exception as exc:
+        log.error(
+            "Failed to delete secret from Vault",
+            extra={"error": str(exc), "path": path, "mount_point": mount_point},
+        )
+        return False

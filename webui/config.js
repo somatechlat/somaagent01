@@ -25,7 +25,6 @@ export const API = {
   ATTACHMENTS: "/attachments",
   HEALTH: "/health",
   SOMABRAIN_HEALTH: "/somabrain/health",
-  // UI‑specific settings endpoint (still under BASE).
-  // Updated to the versioned path to avoid legacy alias endpoints.
-  UI_SETTINGS: "/v1/settings/sections",
+  // UI settings endpoint (relative to BASE, not absolute).
+  UI_SETTINGS: "/settings/sections",
 };
