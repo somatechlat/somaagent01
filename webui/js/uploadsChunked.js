@@ -3,6 +3,8 @@
 // Usage: import { uploadFileChunked } from '/js/uploadsChunked.js';
 // uploadFileChunked(file, sessionId, (info) => { /* progress */ })
 
+import { API } from "/static/config.js";
+
 export async function uploadFileChunked(file, sessionId, onProgress = () => {}, opts = {}) {
   const filename = file.name;
   const size = file.size;
@@ -15,7 +17,7 @@ export async function uploadFileChunked(file, sessionId, onProgress = () => {}, 
   }
 
   // INIT
-  const initResp = await fetch('/v1/uploads/init', {
+  const initResp = await fetch(`${API.BASE}${API.UPLOADS}/init`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
@@ -64,7 +66,7 @@ export async function uploadFileChunked(file, sessionId, onProgress = () => {}, 
     form.append('chunk', blob, filename + '.part');
     form.append('offset', String(offset));
     form.append('session_id', sessionId || '');
-    const resp = await fetch(`/v1/uploads/${encodeURIComponent(uploadId)}/chunk`, { method: 'POST', body: form, credentials: 'same-origin' });
+    const resp = await fetch(`${API.BASE}${API.UPLOADS}/${encodeURIComponent(uploadId)}/chunk`, { method: 'POST', body: form, credentials: 'same-origin' });
     if (!resp.ok) throw new Error(await resp.text() || 'chunk failed');
     const j = await resp.json();
     offset = end;
@@ -73,7 +75,7 @@ export async function uploadFileChunked(file, sessionId, onProgress = () => {}, 
   }
 
   // FINALIZE
-  const finResp = await fetch(`/v1/uploads/${encodeURIComponent(uploadId)}/finalize`, {
+  const finResp = await fetch(`${API.BASE}${API.UPLOADS}/${encodeURIComponent(uploadId)}/finalize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',

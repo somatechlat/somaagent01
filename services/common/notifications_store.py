@@ -38,7 +38,10 @@ class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         from src.core.config import cfg
 
-        raw_dsn = dsn or cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
+        # Retrieve the Postgres DSN via the new configuration facade.
+        # ``cfg.settings().postgres_dsn()`` returns the DSN respecting the
+        # environment variable ``POSTGRES_DSN`` and default values.
+        raw_dsn = dsn or cfg.settings().get_postgres_dsn()
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

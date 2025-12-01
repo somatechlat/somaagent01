@@ -10,30 +10,6 @@ import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "./js
 
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
 
-let apiPaths = new Set();
-let apiSpecPromise = null;
-async function loadApiSpec() {
-  if (apiSpecPromise) return apiSpecPromise;
-  apiSpecPromise = (async () => {
-    try {
-      const resp = await fetch("/openapi.json", { cache: "no-store" });
-      if (!resp.ok) return new Set();
-      const data = await resp.json();
-      const paths = Object.keys(data?.paths || {});
-      apiPaths = new Set(paths);
-      globalThis.SA_API_PATHS = apiPaths;
-      return apiPaths;
-    } catch {
-      apiPaths = new Set();
-      return apiPaths;
-    }
-  })();
-  return apiSpecPromise;
-}
-
-// Kick off API spec load early
-loadApiSpec().catch(() => {});
-
 // Create error boundary for main application
 const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
   // Show critical error UI
@@ -210,6 +186,10 @@ function markSomabrainUnknown(reason) {
 
 function updateSomabrainIndicatorFromMetadata(meta) {
   try {
+    // Ensure required variables exist before proceeding.
+    if (typeof message !== "string") {
+      throw new Error("Message text is missing or not a string");
+    }
     if (!meta) return;
     const raw = meta.somabrain_state || meta.soma_state || meta.brain_state;
     if (!raw) return;
@@ -329,20 +309,29 @@ export const sendMessage = appErrorBoundary.wrapAsync(async function() {
         }
       }
 
-      // Send message to backend chat echo (sync reply) until full session ingress is available
-      response = await api.fetchApi(`/v1/chat/echo?message=${encodeURIComponent(message)}`, {
+      // Enqueue the message via canonical endpoint
+      // Build the request payload expected by the backend chat endpoint.
+      // Required fields: `message` (string) and optional `attachments` (list of IDs).
+      // `session_id` is added only when a context already exists.
+      const payload = {
+        message,
+        attachments: attachmentIds,
+      };
+      if (json?.session_id) {
+        payload.session_id = json.session_id;
+      }
+
+      response = await api.fetchApi(`${API.BASE}${API.SESSION}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         const txt = await response.text();
         throw new Error(txt || t('chat.enqueueFailed', 'Failed to enqueue message'));
       }
       const json = await response.json();
-      const assistantMsg = json?.message || json?.echo || "";
-      if (assistantMsg) {
-        setMessage(generateGUID(), "response", null, assistantMsg, false, null);
-      }
+      if (json?.session_id) setContext(json.session_id);
 
       // Clear attachments only after we attempted to send
       attachmentsStore.clearAttachments();
@@ -601,7 +590,7 @@ function renderEvent(ev) {
 
 async function fetchSessionsAndPopulate() {
   try {
-    const resp = await fetch("/v1/sessions", { credentials: "same-origin" });
+    const resp = await fetch(`${API.BASE}${API.SESSIONS}`, { credentials: "same-origin" });
     if (!resp.ok) return;
     const sessions = await resp.json();
     if (globalThis.Alpine && chatsSection) {
@@ -619,17 +608,10 @@ async function fetchSessionsAndPopulate() {
   }
 }
 
-let sessionsAvailable = null;
-function ensureSessionsAvailable() {
-  if (sessionsAvailable) return sessionsAvailable;
-  sessionsAvailable = loadApiSpec().then((paths) => paths.has("/v1/sessions"));
-  return sessionsAvailable;
-}
-
 async function loadHistory(sessionId) {
   try {
     if (!sessionId) return;
-    const resp = await fetch(`/v1/sessions/${encodeURIComponent(sessionId)}/history`, { credentials: "same-origin" });
+    const resp = await fetch(`${API.BASE}${API.SESSIONS}/${encodeURIComponent(sessionId)}/history`, { credentials: "same-origin" });
     if (!resp.ok) return;
     const data = await resp.json();
     // data may be { events: [ { payload: {...} } ] }
@@ -1021,36 +1003,6 @@ document.addEventListener("DOMContentLoaded", () => {
   
   const isDarkMode = localStorage.getItem("darkMode") !== "false";
   toggleDarkMode(isDarkMode);
-  // Initialize and subscribe SSE notifications store once DOM ready
-  try {
-    loadApiSpec().then((paths) => {
-      if (!paths.has("/v1/ui/notifications")) return;
-      if (!globalThis.Alpine) {
-        document.addEventListener("alpine:init", () => {
-          notificationsSseStore.subscribe();
-          notificationsSseStore.fetchList({ limit: 25 }).catch(()=>{});
-        }, { once: true });
-      } else {
-        notificationsSseStore.subscribe();
-        notificationsSseStore.fetchList({ limit: 25 }).catch(()=>{});
-      }
-      // Expose for debugging
-      globalThis.notificationsSse = notificationsSseStore;
-      // Back-compat toast helpers routed through unified notifications store
-      globalThis.toastFrontendInfo = function(message, title = "Info", display_time = 3, group = "", priority) {
-        try { notificationsSseStore.create({ type: "info", title, body: message, severity: "info", ttl_seconds: display_time }); } catch {}
-      };
-      globalThis.toastFrontendSuccess = function(message, title = "Success", display_time = 3, group = "", priority) {
-        try { notificationsSseStore.create({ type: "success", title, body: message, severity: "success", ttl_seconds: display_time }); } catch {}
-      };
-      globalThis.toastFrontendWarning = function(message, title = "Warning", display_time = 5, group = "", priority) {
-        try { notificationsSseStore.create({ type: "warning", title, body: message, severity: "warning", ttl_seconds: display_time }); } catch {}
-      };
-      globalThis.toastFrontendError = function(message, title = "Error", display_time = 8, group = "", priority) {
-        try { notificationsSseStore.create({ type: "error", title, body: message, severity: "error", ttl_seconds: display_time }); } catch {}
-      };
-    });
-  } catch (e) { console.warn("Failed to init SSE notifications store", e); }
 
   // Bridge SSE notifications to an Alpine store for UI bindings with improved error handling
   const initAlpineStores = () => {
@@ -1384,14 +1336,11 @@ function activateTab(tabName) {
   }
 
   // Refresh sessions list and rebind SSE/history for current context
-  ensureSessionsAvailable().then((ok) => {
-    if (!ok) return;
     fetchSessionsAndPopulate().then(() => {
       if (context) {
         loadHistory(context).then(() => stream.start(context));
       }
     });
-  });
 }
 
 // Add function to initialize active tab and selections from localStorage
@@ -1477,3 +1426,6 @@ function openTaskDetail(taskId) {
 
 // Make the function available globally
 globalThis.openTaskDetail = openTaskDetail;
+
+// Initial session load to bind chat/SSE
+fetchSessionsAndPopulate();

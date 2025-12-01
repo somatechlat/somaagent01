@@ -151,7 +151,7 @@
     <link rel="manifest" href="js/manifest.json">
 
     <!-- Non-module scripts after Alpine.js -->
-    <script type="text/javascript" src="js/settings.js"></script>
+    <script type="module" src="js/settings.js"></script>
     <script type="text/javascript" src="js/file_browser.js"></script>
     <script type="text/javascript" src="js/modal.js"></script>
 </head>
@@ -703,7 +703,7 @@
                                             <div class="field-control">
                                                 <!-- Input field -->
                                                 <template x-if="field.type === 'text'">
-                                                    <input type="text" :class="field.classes" :value="field.value"
+                                                    <input type="text" :id="field.id" :class="field.classes" :value="field.value"
                                                         :readonly="field.readonly === true"
                                                         @input="field.value = $event.target.value">
                                                 </template>
@@ -763,8 +763,11 @@
 
                                                 <!-- Select field -->
                                                 <template x-if="field.type === 'select'">
-                                                    <select :class="field.classes" x-model="field.value"
-                                                        :disabled="field.readonly === true">
+                                                    <select :id="field.id"
+                                                        :class="field.classes"
+                                                        x-model="field.value"
+                                                        :disabled="field.readonly === true"
+                                                        x-bind:data-i18n-key="field.id === 'chat-model-provider' ? 'settings.llm.provider' : ''">
                                                         <template x-for="option in field.options" :key="option.value">
                                                             <option :value="option.value" x-text="option.label"
                                                                 :selected="option.value === field.value"></option>

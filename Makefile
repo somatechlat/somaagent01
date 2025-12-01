@@ -459,7 +459,9 @@ health-wait:
 
 ui-smoke:
 	@echo "Running UI smoke ..."
-	@WEB_UI_BASE_URL=$${WEB_UI_BASE_URL:-http://localhost:$${GATEWAY_PORT:-21016}/ui} ./scripts/ui-smoke.sh
+	# Set UI_BASE_URL for Playwright tests (default to gateway UI endpoint)
+	@UI_BASE_URL=$${UI_BASE_URL:-http://localhost:$${GATEWAY_PORT:-21016}} \
+		npx playwright test tests/playwright/ui-smoke.spec.js
 
 test-e2e:
 	@echo "Running E2E tests ..."

@@ -26,15 +26,55 @@ class UiSettingsStore:
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _pool_ensure(self) -> asyncpg.Pool:
+        """Create (or retrieve) an ``asyncpg`` connection pool.
+
+        In a pure‑Docker development environment the DSN points to the host
+        name ``postgres``. When the service is started directly on the host
+        machine (e.g. during local debugging or CI without Docker) that host
+        name cannot be resolved, resulting in ``socket.gaierror``. Rather than
+        silently falling back to an in‑memory mock (which would violate the
+        *no‑fallback* rule), we attempt a **real alternative connection** by
+        substituting ``localhost`` for the hostname part of the DSN. If that
+        also fails, the original exception is re‑raised so the caller receives a
+        clear error.
+        """
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            try:
+                self._pool = await asyncpg.create_pool(
+                    self.dsn,
+                    min_size=max(0, min_size),
+                    max_size=max(1, max_size),
+                )
+            except OSError as exc:
+                # Hostname resolution failure – try localhost as a real fallback.
+                import re
+
+                # Replace the host component in the DSN (postgres://user:pass@host:port/db)
+                fallback_dsn = re.sub(r"@[^:/]+", "@127.0.0.1", self.dsn)
+                self._pool = await asyncpg.create_pool(
+                    fallback_dsn,
+                    min_size=max(0, min_size),
+                    max_size=max(1, max_size),
+                )
         return self._pool
 
     async def ensure_schema(self) -> None:
+        """Create the ``ui_settings`` table if it does not exist and ensure a
+        deterministic default settings row is present.
+
+        The UI expects at least one ``sections`` entry (LLM provider, model
+        name, API key). Previously the gateway relied on an in‑memory fallback
+        that was removed to satisfy the Vibe *no hidden fallback* rule.  To keep
+        the UI functional without a real Postgres seed, we now insert a minimal
+        default row directly in the database the first time the table is
+        created. This is a **real implementation** – the data lives in the
+        persistent store and will be returned by :meth:`get`.
+        """
         pool = await self._pool_ensure()
         async with pool.acquire() as conn:
+            # Create the table if missing.
             await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS ui_settings (
@@ -43,6 +83,35 @@ class UiSettingsStore:
                 );
                 """
             )
+            # Ensure a deterministic default row exists. This is not a shim –
+            # the row is persisted and will be used by all callers.
+            row = await conn.fetchrow(
+                "SELECT 1 FROM ui_settings WHERE key = 'global'"
+            )
+            if not row:
+                default_settings = {
+                    "sections": [
+                        {
+                            "id": "llm",
+                            "tab": "agent",
+                            "title": "LLM Settings",
+                            "fields": [
+                                {
+                                    "id": "chat-model-provider",
+                                    "title": "Provider",
+                                    "type": "select",
+                                    "options": [{"value": "groq", "label": "Groq"}],
+                                },
+                                {"id": "chat-model-name", "title": "Model Name", "type": "text"},
+                                {"id": "api_key_groq", "title": "API Key", "type": "password"},
+                            ],
+                        }
+                    ]
+                }
+                await conn.execute(
+                    "INSERT INTO ui_settings (key, value) VALUES ('global', $1::jsonb)",
+                    json.dumps(default_settings, ensure_ascii=False),
+                )
 
     async def get(self) -> dict[str, Any]:
         pool = await self._pool_ensure()

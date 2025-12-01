@@ -6,6 +6,7 @@
  */
 
 import { fetchApi } from "./api.js";
+import { API } from "./config.js";
 
 class SystemMonitor {
   constructor() {
@@ -72,7 +73,7 @@ class SystemMonitor {
 
   async updateHealthStatus() {
     try {
-      const response = await fetchApi('/v1/health');
+      const response = await fetchApi(`${API.BASE}${API.HEALTH}`);
       if (response.ok) {
         const data = await response.json();
         this.healthStatus = { ...data, timestamp: new Date().toISOString() };
@@ -90,7 +91,7 @@ class SystemMonitor {
   async checkSomabrainHealth() {
     const updateStore = (state, tooltip, banner) => this._setSomabrainState(state, tooltip, banner);
     try {
-      const response = await fetchApi('/v1/somabrain/health', { method: 'GET', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' });
+      const response = await fetchApi(`${API.BASE}${API.SOMABRAIN_HEALTH}`, { method: 'GET', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' });
       if (!response.ok) {
         if (response.status === 404) return null;
         throw new Error(`SomaBrain health check failed: ${response.status}`);

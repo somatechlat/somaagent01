@@ -57,7 +57,8 @@ def _timeout_seconds() -> float:
 async def _check_postgres() -> Dict[str, Any]:
     from src.core.config import cfg
 
-    dsn = cfg.db_dsn("postgresql://soma:soma@localhost:5432/somaagent01")
+    # Use the new configuration facade to obtain the Postgres DSN.
+    dsn = cfg.settings().postgres_dsn()
     try:
         pool = await asyncpg.create_pool(dsn, min_size=0, max_size=1)
         async with pool.acquire() as conn:

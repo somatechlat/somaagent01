@@ -1,5 +1,6 @@
 import { createStore } from "/static/js/AlpineStore.js";
 import * as Sleep from "/static/js/sleep.js";
+import { API } from "/static/config.js";
 
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
 
@@ -13,9 +14,6 @@ const model = {
   provider: "cloudflared",
 
   init() {
-    if (!globalThis.SA_API_PATHS || !globalThis.SA_API_PATHS.has("/tunnel_proxy")) {
-      return;
-    }
     this.checkTunnelStatus();
   },
 
@@ -161,7 +159,7 @@ const model = {
   async generateLink() {
     // First check if authentication is enabled
     try {
-      const authCheckResponse = await fetchApi("/v1/ui/settings/sections");
+      const authCheckResponse = await fetchApi(`${API.BASE}${API.UI_SETTINGS}`);
       const authDataRaw = await authCheckResponse.json();
       const authData = { settings: { sections: authDataRaw.sections || [] } };
 

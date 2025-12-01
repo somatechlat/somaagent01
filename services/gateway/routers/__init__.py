@@ -30,6 +30,7 @@ from . import (
     attachments,
     memory_exports,
     tool_catalog,
+    notifications,
     auth,
     keys,
     workdir,

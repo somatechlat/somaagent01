@@ -255,14 +255,6 @@ const fullComponentImplementation = function() {
             if (this.isCreating || this.isEditing) {
                 return;
             }
-            if (!globalThis.SA_API_PATHS || globalThis.SA_API_PATHS.size === 0) {
-                this.isLoading = false;
-                return;
-            }
-            if (!globalThis.SA_API_PATHS.has("/scheduler_tasks_list")) {
-                this.isLoading = false;
-                return;
-            }
 
             this.isLoading = true;
             try {
