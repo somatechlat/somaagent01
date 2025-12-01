@@ -1,60 +1,84 @@
-"""UI settings endpoints extracted from gateway monolith (minimal functional)."""
+"""Agent settings endpoints with Vault-based secret management.
+
+Single source of truth:
+- Non-sensitive settings → PostgreSQL via AgentSettingsStore
+- Secrets/API keys → Vault via UnifiedSecretManager
+
+No Redis secrets, no .env files, no fallbacks.
+"""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.ui_settings_store import UiSettingsStore
+from python.helpers.settings import get_default_settings
+from services.common.agent_settings_store import get_agent_settings_store
 
-# Updated to remove redundant '/ui' segment as per new architecture.
 router = APIRouter(prefix="/v1/settings", tags=["settings"])
-STORE = UiSettingsStore()
 
 
-class UiSettingsUpdate(BaseModel):
+class SettingsUpdate(BaseModel):
     data: dict
+
+
+def _get_store():
+    """Get AgentSettingsStore instance."""
+    return get_agent_settings_store()
 
 
 @router.get("")
 async def get_settings() -> dict:
-    """Return UI settings from the persistent store.
+    """Return agent settings with UI schema."""
+    store = _get_store()
+    await store.ensure_schema()
+    
+    settings = await store.get_settings()
+    if not settings:
+        settings = get_default_settings()
+    
+    # Import here to avoid circular imports
+    from python.helpers.settings import convert_out
+    ui_data = convert_out(settings)
+    
+    if not ui_data.get("sections"):
+        raise HTTPException(status_code=500, detail="Settings schema generation failed")
+    return ui_data
 
-    The endpoint now **does not provide any in‑memory fallback**. If the
-    ``UiSettingsStore`` cannot be accessed or the data is malformed, a
-    ``500`` HTTPException is raised so the caller can handle the error
-    explicitly. This complies with the request to remove all legacy fallback
-    logic.
-    """
-    await STORE.ensure_schema()
-    data = await STORE.get()
-    if not isinstance(data, dict) or not data.get("sections"):
-        raise HTTPException(status_code=500, detail="UI settings sections missing")
-    return data
 
-
-# The UI expects the settings schema under the ``/sections`` sub‑path.
-# Adjust the routes to match the ``API.UI_SETTINGS`` constant ("/settings/sections").
 @router.get("/sections")
 async def get_settings_sections() -> dict:
-    """Return only the ``sections`` part of the UI settings.
+    """Return UI settings sections for frontend."""
+    data = await get_settings()
+    return {"sections": data.get("sections", [])}
 
-    No fallback is provided; errors are propagated as ``HTTPException``
-    responses.
-    """
-    await STORE.ensure_schema()
-    data = await STORE.get()
-    if not isinstance(data, dict) or not data.get("sections"):
-        raise HTTPException(status_code=500, detail="UI settings sections missing")
-    return {"sections": data["sections"]}
 
 @router.put("/sections")
-async def put_settings(body: UiSettingsUpdate):
-    """Persist UI settings sections.
+async def put_settings(body: SettingsUpdate):
+    """Save settings from UI."""
+    store = _get_store()
+    await store.ensure_schema()
+    
+    # Import here to avoid circular imports
+    from python.helpers.settings import convert_in
+    settings = convert_in(body.data)
+    
+    await store.set_settings(settings)
+    return {"status": "ok"}
 
-    The original implementation called ``STORE.save`` which does not exist on
-    :class:`UiSettingsStore`. The correct method is ``set``. We also ensure the
-    table exists before writing.
-    """
-    await STORE.ensure_schema()
-    await STORE.set(body.data)
+
+@router.get("/{key}")
+async def get_setting_field(key: str):
+    """Get single settings field."""
+    store = _get_store()
+    await store.ensure_schema()
+    value = await store.get_field(key)
+    return {"key": key, "value": value}
+
+
+@router.put("/{key}")
+async def put_setting_field(key: str, body: dict):
+    """Set single settings field."""
+    store = _get_store()
+    await store.ensure_schema()
+    await store.set_field(key, body.get("value"))
     return {"status": "ok"}

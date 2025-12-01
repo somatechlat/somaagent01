@@ -1,24 +1,22 @@
-# Standard library imports (alphabetical)
+# Standard library imports
 import base64
 import hashlib
 import json
-import os
 import subprocess
-from typing import Any, cast, Literal, TypedDict
+from typing import Any, Literal, TypedDict, cast
 
-# Third‑party imports (alphabetical)
+# Local imports
+from . import files
+from .secrets import SecretsManager
+from .settings_model import SettingsModel as Settings
+
+# Third-party imports
 from python.helpers import defer, git, runtime, whisper
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
-from python.helpers.secrets import SecretsManager
-
-# Local imports (alphabetical)
-from . import dotenv, files
-from .settings_model import SettingsModel as Settings
 
 
-# ``PartialSettings`` kept for compatibility – it behaves like ``Settings``
-# but allows any subset of fields to be provided when constructing the model.
+# ``PartialSettings`` kept for compatibility
 class PartialSettings(Settings):
     pass
 
@@ -67,7 +65,7 @@ class SettingsOutput(TypedDict):
 PASSWORD_PLACEHOLDER = "****PSWD****"
 API_KEY_PLACEHOLDER = "************"
 
-SETTINGS_FILE = files.get_abs_path("tmp/settings.json")
+# File-based SETTINGS_FILE removed - using AgentSettingsStore (PostgreSQL + Vault)
 _settings: Settings | None = None
 
 
@@ -441,6 +439,10 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     # basic auth section
     auth_fields: list[SettingsField] = []
+    
+    # Get credentials from Vault
+    from services.common.unified_secret_manager import get_secret_manager
+    _secrets = get_secret_manager()
 
     auth_fields.append(
         {
@@ -448,7 +450,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "title": "UI Login",
             "description": "Set user name for web UI",
             "type": "text",
-            "value": dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or "",
+            "value": _secrets.get_credential("auth_login") or "",
         }
     )
 
@@ -459,7 +461,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Set user password for web UI",
             "type": "password",
             "value": (
-                PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) else ""
+                PASSWORD_PLACEHOLDER if _secrets.get_credential("auth_password") else ""
             ),
         }
     )
@@ -786,6 +788,10 @@ def convert_out(settings: Settings) -> SettingsOutput:
             }
         )
 
+    # Get RFC password from Vault
+    from services.common.unified_secret_manager import get_secret_manager
+    _rfc_secrets = get_secret_manager()
+    
     dev_fields.append(
         {
             "id": "rfc_password",
@@ -793,7 +799,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "description": "Password for remote function calls. Passwords must match on both instances. RFCs can not be used with empty password.",
             "type": "password",
             "value": (
-                PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD) else ""
+                PASSWORD_PLACEHOLDER if _rfc_secrets.get_credential("rfc_password") else ""
             ),
         }
     )
@@ -1299,9 +1305,29 @@ def convert_in(settings: dict) -> Settings:
 
 
 def get_settings() -> Settings:
+    """Get settings from AgentSettingsStore (PostgreSQL + Vault)."""
     global _settings
     if not _settings:
-        _settings = _read_settings_file()
+        try:
+            import asyncio
+            from services.common.agent_settings_store import get_agent_settings_store
+            
+            store = get_agent_settings_store()
+            
+            async def _load():
+                await store.ensure_schema()
+                return await store.get_settings()
+            
+            try:
+                loop = asyncio.get_running_loop()
+                # Running in async context - use defaults, will be loaded async elsewhere
+                _settings = get_default_settings()
+            except RuntimeError:
+                # No running loop - safe to run sync
+                _settings = asyncio.run(_load())
+        except Exception:
+            _settings = None
+    
     if not _settings:
         _settings = get_default_settings()
     norm = normalize_settings(_settings)
@@ -1309,10 +1335,32 @@ def get_settings() -> Settings:
 
 
 def set_settings(settings: Settings, apply: bool = True):
+    """Save settings to AgentSettingsStore (PostgreSQL + Vault)."""
     global _settings
     previous = _settings
     _settings = normalize_settings(settings)
-    _write_settings_file(_settings)
+    
+    try:
+        import asyncio
+        from services.common.agent_settings_store import get_agent_settings_store
+        
+        store = get_agent_settings_store()
+        
+        async def _save():
+            await store.ensure_schema()
+            await store.set_settings(dict(_settings))
+        
+        try:
+            loop = asyncio.get_running_loop()
+            # Running in async context - schedule task
+            asyncio.create_task(_save())
+        except RuntimeError:
+            # No running loop - safe to run sync
+            asyncio.run(_save())
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to save settings: {exc}")
+    
     if apply:
         _apply_settings(previous)
 
@@ -1374,21 +1422,7 @@ def _adjust_to_version(settings: Settings, default: Settings):
             settings["agent_profile"] = "agent0"
 
 
-def _read_settings_file() -> Settings | None:
-    if os.path.exists(SETTINGS_FILE):
-        content = files.read_file(SETTINGS_FILE)
-        parsed = json.loads(content)
-        return normalize_settings(parsed)
-
-
-def _write_settings_file(settings: Settings):
-    settings = settings.copy()
-    _write_sensitive_settings(settings)
-    _remove_sensitive_settings(settings)
-
-    # write settings
-    content = json.dumps(settings, indent=4)
-    files.write_file(SETTINGS_FILE, content)
+# File-based storage removed - using AgentSettingsStore (PostgreSQL + Vault)
 
 
 def _remove_sensitive_settings(settings: Settings):
@@ -1402,11 +1436,15 @@ def _remove_sensitive_settings(settings: Settings):
 
 
 def _write_sensitive_settings(settings: Settings):
-    # Persist provider API keys into .env using the conventional {PROVIDER}_API_KEY
-    # naming (e.g. OPENROUTER_API_KEY, GROQ_API_KEY). The internal api_keys
-    # dictionary stores entries keyed by provider id (e.g. "openrouter", "groq").
-    # Be tolerant to legacy shapes where keys might already be prefixed with
-    # "api_key_" from older UIs.
+    """Write sensitive settings to Vault via UnifiedSecretManager.
+    
+    Single source of truth - no .env files for secrets.
+    """
+    from services.common.unified_secret_manager import get_secret_manager
+    
+    secrets = get_secret_manager()
+    
+    # Save API keys to Vault
     for key, val in settings["api_keys"].items():
         if not isinstance(key, str):
             continue
@@ -1415,37 +1453,20 @@ def _write_sensitive_settings(settings: Settings):
             provider = provider[len("api_key_"):]
         if not provider:
             continue
-        if not isinstance(val, str) or val.strip() in {"", "None"}:
-            # Skip empty placeholders
+        if not isinstance(val, str) or val.strip() in {"", "None", API_KEY_PLACEHOLDER}:
             continue
-        env_key = f"{provider.upper()}_API_KEY"
-        # One-time migration support: if old "API_KEY_{PROVIDER}" exists and new key is empty, copy it.
-        legacy_key = f"API_KEY_{provider.upper()}"
-        try:
-            cur = dotenv.get_dotenv_value(env_key)
-            legacy = dotenv.get_dotenv_value(legacy_key)
-            if (not cur) and legacy:
-                dotenv.save_dotenv_value(env_key, legacy)
-        except Exception:
-            pass
-        dotenv.save_dotenv_value(env_key, val)
-
-    dotenv.save_dotenv_value(dotenv.KEY_AUTH_LOGIN, settings["auth_login"])
-    if settings["auth_password"]:
-        dotenv.save_dotenv_value(dotenv.KEY_AUTH_PASSWORD, settings["auth_password"])
-    if settings["rfc_password"]:
-        dotenv.save_dotenv_value(dotenv.KEY_RFC_PASSWORD, settings["rfc_password"])
-
-    if settings["root_password"]:
-        dotenv.save_dotenv_value(dotenv.KEY_ROOT_PASSWORD, settings["root_password"])
-    if settings["root_password"]:
+        secrets.set_provider_key(provider, val.strip())
+    
+    # Save credentials to Vault
+    if settings.get("auth_login"):
+        secrets.set_credential("auth_login", settings["auth_login"])
+    if settings.get("auth_password") and settings["auth_password"] != PASSWORD_PLACEHOLDER:
+        secrets.set_credential("auth_password", settings["auth_password"])
+    if settings.get("rfc_password") and settings["rfc_password"] != PASSWORD_PLACEHOLDER:
+        secrets.set_credential("rfc_password", settings["rfc_password"])
+    if settings.get("root_password") and settings["root_password"] != PASSWORD_PLACEHOLDER:
+        secrets.set_credential("root_password", settings["root_password"])
         set_root_password(settings["root_password"])
-
-    # Handle secrets separately - merge with existing preserving comments/order and support deletions
-    secrets_manager = SecretsManager.get_instance()
-    submitted_content = settings["secrets"]
-    secrets_manager.save_secrets_with_merge(submitted_content)
-    secrets_manager.clear_cache()  # Clear cache to reload secrets
 
 
 def get_default_settings() -> Settings:
@@ -1706,6 +1727,7 @@ def _dict_to_env(data_dict):
 
 
 def set_root_password(password: str):
+    """Set root password in Docker container and save to Vault."""
     if not runtime.is_dockerized():
         raise Exception("root password can only be set in dockerized environments")
     _result = subprocess.run(
@@ -1714,7 +1736,9 @@ def set_root_password(password: str):
         capture_output=True,
         check=True,
     )
-    dotenv.save_dotenv_value(dotenv.KEY_ROOT_PASSWORD, password)
+    # Save to Vault
+    from services.common.unified_secret_manager import get_secret_manager
+    get_secret_manager().set_credential("root_password", password)
 
 
 def get_runtime_config(set: Settings):
@@ -1742,9 +1766,13 @@ def get_runtime_config(set: Settings):
 
 
 def create_auth_token() -> str:
+    """Create auth token using credentials from Vault."""
+    from services.common.unified_secret_manager import get_secret_manager
+    _auth_secrets = get_secret_manager()
+    
     runtime_id = runtime.get_persistent_id()
-    username = dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or ""
-    password = dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) or ""
+    username = _auth_secrets.get_credential("auth_login") or ""
+    password = _auth_secrets.get_credential("auth_password") or ""
     # use base64 encoding for a more compact token with alphanumeric chars
     hash_bytes = hashlib.sha256(f"{runtime_id}:{username}:{password}".encode()).digest()
     # encode as base64 and remove any non-alphanumeric chars (like +, /, =)
