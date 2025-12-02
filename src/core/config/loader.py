@@ -42,6 +42,7 @@ from .models import Config
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def _load_yaml_file(path: Path) -> Mapping[str, Any]:
     """Load a YAML configuration file.
 
@@ -81,15 +82,12 @@ def _merge_dicts(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[st
     """
     result: dict[str, Any] = dict(base)
     for key, value in overlay.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _merge_dicts(result[key], value)
         else:
             result[key] = value
     return result
+
 
 # ---------------------------------------------------------------------------
 # Public loader API
@@ -213,6 +211,7 @@ def get_config() -> Config:
     if _cached_config is None:
         _cached_config = load_config()
     return _cached_config
+
 
 # ---------------------------------------------------------------------------
 # Compatibility shim classes – lightweight wrappers required by the public API

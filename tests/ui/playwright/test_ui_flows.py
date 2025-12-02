@@ -189,7 +189,8 @@ async def run_flows(base_url: str) -> dict:
 async def main():
     golden = env.get("GOLDEN_UI_BASE_URL", "http://127.0.0.1:7001") or "http://127.0.0.1:7001"
     local = (
-        env.get("WEB_UI_BASE_URL") or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}"
+        env.get("WEB_UI_BASE_URL")
+        or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}"
     )
 
     out = {"golden": None, "local": None}

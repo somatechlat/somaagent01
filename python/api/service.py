@@ -30,12 +30,12 @@ class FastA2AGatewayService(BaseService):
     async def startup(self) -> None:
         """Initialize FastA2A gateway service."""
         LOGGER.info(f"Starting {self.service_name} service")
-        
+
         try:
             # Import any startup functions if needed
             # The FastA2A app doesn't seem to have explicit startup requirements
             LOGGER.info(f"{self.service_name} service startup completed")
-            
+
         except Exception as exc:
             LOGGER.error(f"Failed to start {self.service_name} service: {exc}")
             raise
@@ -43,32 +43,32 @@ class FastA2AGatewayService(BaseService):
     async def shutdown(self) -> None:
         """Clean up FastA2A gateway service resources."""
         LOGGER.info(f"Shutting down {self.service_name} service")
-        
+
         try:
             # The FastA2A app doesn't seem to have explicit shutdown requirements
             LOGGER.info(f"{self.service_name} service shutdown completed")
-            
+
         except Exception as exc:
             LOGGER.error(f"Error during {self.service_name} service shutdown: {exc}")
 
     def register_routes(self, app: FastAPI) -> None:
         """Register all FastA2A routes with the provided FastAPI app."""
-        
+
         # Try to mount the FastA2A app, but handle import issues gracefully
         try:
             # Import the FastA2A app from the router module
             from .router import app as fasta2a_app
-            
+
             # Mount the entire FastA2A app under /api prefix to avoid conflicts
             app.mount("/api", fasta2a_app)
-            
+
             LOGGER.info(f"Mounted FastA2A app for {self.service_name} service")
             fasta2a_mounted = True
-            
+
         except Exception as exc:
             LOGGER.warning(f"Could not mount FastA2A app due to import issues: {exc}")
             fasta2a_mounted = False
-        
+
         # Add a health check endpoint for the orchestrator
         @app.get("/health")
         async def health_check():
@@ -77,17 +77,30 @@ class FastA2AGatewayService(BaseService):
                 try:
                     # Try to access celery health status
                     from .tasks.orchestrator import celery_health_status
+
                     celery_status = await celery_health_status()
-                    
+
                     if celery_status.get("status") == "healthy":
-                        return {"status": "healthy", "service": self.service_name, "celery": celery_status}
+                        return {
+                            "status": "healthy",
+                            "service": self.service_name,
+                            "celery": celery_status,
+                        }
                     else:
-                        return {"status": "unhealthy", "service": self.service_name, "celery": celery_status}
+                        return {
+                            "status": "unhealthy",
+                            "service": self.service_name,
+                            "celery": celery_status,
+                        }
                 except Exception as e:
                     return {"status": "healthy", "service": self.service_name, "error": str(e)}
             else:
-                return {"status": "healthy", "service": self.service_name, "note": "FastA2A app not mounted due to import issues"}
-        
+                return {
+                    "status": "healthy",
+                    "service": self.service_name,
+                    "note": "FastA2A app not mounted due to import issues",
+                }
+
         # Add a metrics endpoint
         @app.get("/metrics")
         async def metrics():
@@ -101,9 +114,11 @@ class FastA2AGatewayService(BaseService):
     def as_dict(self) -> Dict[str, Any]:
         """Return a serialisable representation of the FastA2A gateway service."""
         base_info = super().as_dict()
-        base_info.update({
-            "port": self.config.fasta2a_gateway_port,
-            "mounted_app": "FastA2A API",
-            "mount_path": "/api",
-        })
+        base_info.update(
+            {
+                "port": self.config.fasta2a_gateway_port,
+                "mounted_app": "FastA2A API",
+                "mount_path": "/api",
+            }
+        )
         return base_info

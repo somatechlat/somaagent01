@@ -17,6 +17,7 @@ try:
     )
 except Exception:  # pragma: no cover - optional dependency
     KNOWLEDGE_AVAILABLE = False
+
     # Define no-op placeholders to avoid NameError at module import-time.
     class CSVLoader:
         def __init__(self, *args, **kwargs):
@@ -32,7 +33,10 @@ except Exception:  # pragma: no cover - optional dependency
 
     class UnstructuredHTMLLoader:
         def __init__(self, *args, **kwargs):
-            raise RuntimeError("langchain_community not installed; UnstructuredHTMLLoader unavailable")
+            raise RuntimeError(
+                "langchain_community not installed; UnstructuredHTMLLoader unavailable"
+            )
+
 
 from python.helpers.log import LogItem
 from python.helpers.print_style import PrintStyle
@@ -74,7 +78,9 @@ def load_knowledge(
     # the UI and other services to start in minimal/dev containers.
     if not KNOWLEDGE_AVAILABLE:
         if log_item:
-            log_item.stream(progress="\nKnowledge loading skipped: langchain_community not installed")
+            log_item.stream(
+                progress="\nKnowledge loading skipped: langchain_community not installed"
+            )
         PrintStyle(font_color="yellow").print(
             "Knowledge loading skipped: langchain_community not installed"
         )

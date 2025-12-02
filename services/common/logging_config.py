@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from services.common import env
+
 _LOGGING_INITIALISED = False
 
 
@@ -84,6 +85,7 @@ def setup_logging(default_level: str | None = None) -> None:
 
     _LOGGING_INITIALISED = True
 
+
 # ---------------------------------------------------------------------------
 # Compatibility helper
 # ---------------------------------------------------------------------------
@@ -101,6 +103,7 @@ def get_logger(name: str = "") -> logging.Logger:
     # Ensure the global logging configuration is initialised exactly once.
     setup_logging()
     return logging.getLogger(name)
+
 
 __all__ = [
     "setup_logging",

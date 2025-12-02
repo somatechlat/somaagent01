@@ -157,6 +157,7 @@ __all__ = ["readiness_summary", "COMPONENTS"]
 # ---------------------------------------------------------------------------
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 
+
 def get_replica_store() -> MemoryReplicaStore:
     """Return a ``MemoryReplicaStore`` instance using the current config.
 
@@ -165,6 +166,7 @@ def get_replica_store() -> MemoryReplicaStore:
     imports and keeps a single source of truth for the store implementation.
     """
     return MemoryReplicaStore()
+
 
 # Export the shim alongside the original symbols.
 __all__.append("get_replica_store")

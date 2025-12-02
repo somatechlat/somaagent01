@@ -259,6 +259,3 @@ async def health_summary():
         "health_percentage": (healthy_count / total_count) * 100,
         "last_check": health["timestamp"],
     }
-
-
-

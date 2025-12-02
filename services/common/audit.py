@@ -1,6 +1,7 @@
 """
 Audit wire-tap publisher for policy/tool/task decisions.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional

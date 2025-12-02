@@ -13,6 +13,7 @@ import httpx
 
 from services.common import env
 
+
 # Base URL – can be overridden via env var for testing / staging.
 def _get_capsule_registry_url() -> str:
     """Return the capsule registry base URL.
@@ -24,6 +25,7 @@ def _get_capsule_registry_url() -> str:
     if not url:
         raise RuntimeError("CAPSULE_REGISTRY_URL must be set for capsule registry access.")
     return url.rstrip("/")
+
 
 BASE_URL = _get_capsule_registry_url()
 

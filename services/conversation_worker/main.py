@@ -27,7 +27,10 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common.memory_write_outbox import MemoryWriteOutbox, ensure_schema as ensure_mw_outbox_schema
+from services.common.memory_write_outbox import (
+    MemoryWriteOutbox,
+    ensure_schema as ensure_mw_outbox_schema,
+)
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
@@ -47,7 +50,9 @@ from services.common.session_repository import (
     PostgresSessionStore,
     RedisSessionCache,
 )
-from services.common.settings_sa01 import SA01Settings
+
+# Legacy settings import removed. Use centralized configuration.
+from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.slm_client import ChatMessage
 from services.common.telemetry import TelemetryPublisher
@@ -74,8 +79,8 @@ from services.tool_executor.tool_registry import ToolRegistry
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
-APP_SETTINGS = SA01Settings.from_env()
-tracer = setup_tracing("conversation-worker", endpoint=APP_SETTINGS.otlp_endpoint)
+APP_SETTINGS = cfg.settings()
+tracer = setup_tracing("conversation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
 
 
 MESSAGE_PROCESSING_COUNTER = Counter(
@@ -124,7 +129,9 @@ def _normalize_usage(raw: Dict[str, Any] | None) -> dict[str, int]:
     return {"input_tokens": max(prompt_val, 0), "output_tokens": max(completion_val, 0)}
 
 
-def _record_llm_success(model: str | None, input_tokens: int, output_tokens: int, elapsed: float) -> None:
+def _record_llm_success(
+    model: str | None, input_tokens: int, output_tokens: int, elapsed: float
+) -> None:
     label = (model or "unknown").strip() or "unknown"
     llm_calls_total.labels(model=label, result="success").inc()
     llm_call_latency_seconds.labels(model=label).observe(max(elapsed, 0.0))
@@ -137,6 +144,7 @@ def _record_llm_success(model: str | None, input_tokens: int, output_tokens: int
 def _record_llm_failure(model: str | None) -> None:
     label = (model or "unknown").strip() or "unknown"
     llm_calls_total.labels(model=label, result="error").inc()
+
 
 _METRICS_SERVER_STARTED = False
 
@@ -310,6 +318,7 @@ class ConversationWorker:
         # the infinite monitor to avoid dangling asyncio tasks that prevent the
         # test process from exiting.
         import sys
+
         if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
             self._health_monitor_task = None
         else:
@@ -493,8 +502,6 @@ class ConversationWorker:
         except Exception:
             return 4096
 
-    
-
     async def _background_recall_context(
         self,
         *,
@@ -662,7 +669,15 @@ class ConversationWorker:
         except Exception:
             return ""
 
-    async def _ingest_attachment(self, *, path: str, session_id: str, persona_id: str | None, tenant: str, metadata: dict[str, Any]) -> None:
+    async def _ingest_attachment(
+        self,
+        *,
+        path: str,
+        session_id: str,
+        persona_id: str | None,
+        tenant: str,
+        metadata: dict[str, Any],
+    ) -> None:
         try:
             text = await self._extract_text_from_path(path)
             if not text:
@@ -702,7 +717,9 @@ class ConversationWorker:
                         )
                     )
             except Exception:
-                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                LOGGER.warning(
+                    "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
+                )
             if not allow_memory:
                 return
             wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
@@ -767,6 +784,7 @@ class ConversationWorker:
             if not s:
                 return None
             import re
+
             # Raw UUID
             if re.fullmatch(r"[0-9a-fA-F-]{36}", s):
                 return s
@@ -812,7 +830,9 @@ class ConversationWorker:
         headers = {"X-Internal-Token": token}
         if tenant:
             headers["X-Tenant-Id"] = str(tenant)
-        async with httpx.AsyncClient(timeout=float(cfg.env("WORKER_FETCH_TIMEOUT", "10"))) as client:
+        async with httpx.AsyncClient(
+            timeout=float(cfg.env("WORKER_FETCH_TIMEOUT", "10"))
+        ) as client:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 404:
                 raise FileNotFoundError("attachment not found")
@@ -839,6 +859,7 @@ class ConversationWorker:
                 try:
                     import fitz  # type: ignore
                     import io as _io
+
                     parts: list[str] = []
                     with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
                         for page in doc:
@@ -851,6 +872,7 @@ class ConversationWorker:
                     from PIL import Image  # type: ignore
                     import pytesseract  # type: ignore
                     import io as _io
+
                     img = Image.open(_io.BytesIO(data))
                     return pytesseract.image_to_string(img)[:200_000]
                 except Exception:
@@ -859,7 +881,15 @@ class ConversationWorker:
         except Exception:
             return ""
 
-    async def _ingest_attachment_by_id(self, *, att_id: str, session_id: str, persona_id: str | None, tenant: str, metadata: dict[str, Any]) -> None:
+    async def _ingest_attachment_by_id(
+        self,
+        *,
+        att_id: str,
+        session_id: str,
+        persona_id: str | None,
+        tenant: str,
+        metadata: dict[str, Any],
+    ) -> None:
         try:
             data, mime, filename = await self._fetch_attachment_bytes(att_id=att_id, tenant=tenant)
             text = await self._extract_text_from_blob(data=data, mime=mime, filename=filename)
@@ -900,7 +930,9 @@ class ConversationWorker:
                         )
                     )
             except Exception:
-                LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                LOGGER.warning(
+                    "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
+                )
             if not allow_memory:
                 return
             wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
@@ -962,13 +994,17 @@ class ConversationWorker:
         buffer: list[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
-        model_label = (model_hint or slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (
+            model_hint or slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
+        ).strip() or "unknown"
         start_time = time.perf_counter()
 
         def _finalize(text_value: str, usage_value: dict[str, int]) -> tuple[str, dict[str, int]]:
             elapsed = time.perf_counter() - start_time
             normalized = _normalize_usage(usage_value)
-            _record_llm_success(model_label, normalized["input_tokens"], normalized["output_tokens"], elapsed)
+            _record_llm_success(
+                model_label, normalized["input_tokens"], normalized["output_tokens"], elapsed
+            )
             return text_value, normalized
 
         # Build overrides but omit empty strings (e.g. base_url="") while allowing 0/0.0
@@ -1048,8 +1084,12 @@ class ConversationWorker:
                             )
                         chunk_usage = chunk.get("usage")
                         if isinstance(chunk_usage, dict):
-                            usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                            usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                            usage["input_tokens"] = int(
+                                chunk_usage.get("prompt_tokens", usage["input_tokens"])
+                            )
+                            usage["output_tokens"] = int(
+                                chunk_usage.get("completion_tokens", usage["output_tokens"])
+                            )
             text = "".join(buffer)
             if not text:
                 # Fallback: call non-streaming invoke once to get a definitive answer
@@ -1079,7 +1119,9 @@ class ConversationWorker:
                     async with httpx.AsyncClient(timeout=30.0) as client2:
                         resp2 = await client2.post(url2, json=body2, headers=headers2)
                         if resp2.is_error:
-                            raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                            raise RuntimeError(
+                                f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}"
+                            )
                         data2 = resp2.json()
                         content2 = data2.get("content", "")
                         usage2 = data2.get("usage", {"input_tokens": 0, "output_tokens": 0})
@@ -1104,7 +1146,9 @@ class ConversationWorker:
         analysis_metadata: Dict[str, Any],
         base_metadata: Dict[str, Any],
     ) -> tuple[str, dict[str, int]]:
-        model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (
+            slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
+        ).strip() or "unknown"
         try:
             return await self._stream_response_via_gateway(
                 session_id=session_id,
@@ -1151,7 +1195,9 @@ class ConversationWorker:
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     resp = await client.post(url, json=body, headers=headers)
                     if resp.is_error:
-                        raise RuntimeError(f"Gateway invoke error {resp.status_code}: {resp.text[:512]}")
+                        raise RuntimeError(
+                            f"Gateway invoke error {resp.status_code}: {resp.text[:512]}"
+                        )
                     data = resp.json()
                     content = data.get("content", "")
                     usage = _normalize_usage(data.get("usage"))
@@ -1166,15 +1212,25 @@ class ConversationWorker:
                         for call in tool_calls:
                             try:
                                 fn = (call or {}).get("function") or {}
-                                tool_name = fn.get("name") or (call.get("name") if isinstance(call, dict) else "")
-                                raw_args = fn.get("arguments") if fn else (call.get("arguments") if isinstance(call, dict) else "")
+                                tool_name = fn.get("name") or (
+                                    call.get("name") if isinstance(call, dict) else ""
+                                )
+                                raw_args = (
+                                    fn.get("arguments")
+                                    if fn
+                                    else (call.get("arguments") if isinstance(call, dict) else "")
+                                )
                             except Exception:
                                 tool_name = ""
                                 raw_args = ""
                             if not tool_name:
                                 continue
                             try:
-                                args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+                                args = (
+                                    json.loads(raw_args)
+                                    if isinstance(raw_args, str)
+                                    else (raw_args or {})
+                                )
                             except Exception:
                                 args = {"_raw": raw_args}
 
@@ -1202,7 +1258,9 @@ class ConversationWorker:
                                     tenant=metadata.get("tenant"),
                                 )
                             except Exception:
-                                LOGGER.debug("Failed to publish tool request (non-stream)", exc_info=True)
+                                LOGGER.debug(
+                                    "Failed to publish tool request (non-stream)", exc_info=True
+                                )
                                 continue
 
                             result_event = await self._wait_for_tool_result(
@@ -1213,7 +1271,11 @@ class ConversationWorker:
                             if result_event:
                                 payload = result_event.get("payload")
                                 try:
-                                    tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                                    tool_text = (
+                                        payload
+                                        if isinstance(payload, str)
+                                        else json.dumps(payload, ensure_ascii=False)
+                                    )
                                 except Exception:
                                     tool_text = str(payload)
                                 messages.append(
@@ -1241,7 +1303,9 @@ class ConversationWorker:
                         second_start = time.perf_counter()
                         resp2 = await client.post(url, json=body2, headers=headers)
                         if resp2.is_error:
-                            raise RuntimeError(f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}")
+                            raise RuntimeError(
+                                f"Gateway invoke error {resp2.status_code}: {resp2.text[:512]}"
+                            )
                         data2 = resp2.json()
                         content2 = data2.get("content", "")
                         usage2 = _normalize_usage(data2.get("usage"))
@@ -1383,7 +1447,9 @@ class ConversationWorker:
         tc_args_acc: dict[int, dict[str, Any]] = {}
         tc_name_acc: dict[int, str] = {}
 
-        model_label = (slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")).strip() or "unknown"
+        model_label = (
+            slm_kwargs.get("model") or cfg.env("SLM_MODEL", "unknown")
+        ).strip() or "unknown"
         start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -1442,7 +1508,7 @@ class ConversationWorker:
                                     idx = int(item.get("index", 0))
                                 except Exception:
                                     idx = 0
-                                func = (item.get("function") or {})
+                                func = item.get("function") or {}
                                 name_part = func.get("name")
                                 if name_part:
                                     tc_name_acc[idx] = name_part
@@ -1452,8 +1518,12 @@ class ConversationWorker:
                                     tc_args_acc.setdefault(idx, {})["_raw"] = prev + args_part
                         chunk_usage = chunk.get("usage")
                         if isinstance(chunk_usage, dict):
-                            usage["input_tokens"] = int(chunk_usage.get("prompt_tokens", usage["input_tokens"]))
-                            usage["output_tokens"] = int(chunk_usage.get("completion_tokens", usage["output_tokens"]))
+                            usage["input_tokens"] = int(
+                                chunk_usage.get("prompt_tokens", usage["input_tokens"])
+                            )
+                            usage["output_tokens"] = int(
+                                chunk_usage.get("completion_tokens", usage["output_tokens"])
+                            )
                         if ch0.get("finish_reason") == "tool_calls":
                             break
         except Exception:
@@ -1470,7 +1540,11 @@ class ConversationWorker:
                 time.perf_counter() - start_time,
             )
             # Compose final tool_calls list
-            max_index = max(list(tc_name_acc.keys()) + list(tc_args_acc.keys())) if (tc_name_acc or tc_args_acc) else -1
+            max_index = (
+                max(list(tc_name_acc.keys()) + list(tc_args_acc.keys()))
+                if (tc_name_acc or tc_args_acc)
+                else -1
+            )
             for i in range(max_index + 1):
                 name = tc_name_acc.get(i) or ""
                 raw_args = (tc_args_acc.get(i) or {}).get("_raw", "")
@@ -1513,13 +1587,19 @@ class ConversationWorker:
                     continue
 
                 result_event = await self._wait_for_tool_result(
-                    session_id=session_id, request_id=req_id, timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20"))
+                    session_id=session_id,
+                    request_id=req_id,
+                    timeout_seconds=float(cfg.env("TOOL_RESULT_TIMEOUT", "20")),
                 )
                 # Append a summarised tool result back into the message context
                 if result_event:
                     payload = result_event.get("payload")
                     try:
-                        tool_text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+                        tool_text = (
+                            payload
+                            if isinstance(payload, str)
+                            else json.dumps(payload, ensure_ascii=False)
+                        )
                     except Exception:
                         tool_text = str(payload)
                     messages.append(
@@ -1572,10 +1652,12 @@ class ConversationWorker:
         overrides: Dict[str, Any] = {}
         if profile:
             # Only include base_url when non-empty to avoid sending an empty string
-            overrides.update({
-                "model": profile.model,
-                "temperature": profile.temperature,
-            })
+            overrides.update(
+                {
+                    "model": profile.model,
+                    "temperature": profile.temperature,
+                }
+            )
             if isinstance(profile.base_url, str) and profile.base_url.strip():
                 overrides["base_url"] = profile.base_url
             if isinstance(profile.kwargs, dict):
@@ -1602,7 +1684,9 @@ class ConversationWorker:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.is_error:
-                raise RuntimeError(f"Gateway escalation invoke error {resp.status_code}: {resp.text[:512]}")
+                raise RuntimeError(
+                    f"Gateway escalation invoke error {resp.status_code}: {resp.text[:512]}"
+                )
             data = resp.json()
         latency = time.time() - start_time
         text = data.get("content", "")
@@ -1632,7 +1716,7 @@ class ConversationWorker:
                 "message": "Conversation worker online",
             },
         )
-        
+
         LOGGER.info(
             "Starting consumer",
             extra={
@@ -1664,7 +1748,7 @@ class ConversationWorker:
         except Exception as exc:
             LOGGER.error("conversation_event schema invalid", extra={"error": str(exc)})
             return
-        
+
         # Extract tenant at the top level to ensure it's available throughout _handle_event
         try:
             tenant = (event.get("metadata") or {}).get("tenant", "default")
@@ -1718,7 +1802,9 @@ class ConversationWorker:
                     tokens_received_total.inc(count_tokens(raw_message))
                 except Exception:
                     LOGGER.debug("Token counting failed for inbound message", exc_info=True)
-            analysis = self.preprocessor.analyze(raw_message if isinstance(raw_message, str) else str(raw_message))
+            analysis = self.preprocessor.analyze(
+                raw_message if isinstance(raw_message, str) else str(raw_message)
+            )
             analysis_dict = analysis.to_dict()
             enriched_metadata = dict(event.get("metadata", {}))
             enriched_metadata["analysis"] = analysis_dict
@@ -1800,7 +1886,8 @@ class ConversationWorker:
                     "metadata": {
                         **dict(enriched_metadata),
                         "agent_profile_id": enriched_metadata.get("agent_profile_id"),
-                        "universe_id": enriched_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                        "universe_id": enriched_metadata.get("universe_id")
+                        or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -1822,7 +1909,10 @@ class ConversationWorker:
                             )
                         )
                 except Exception:
-                    LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                    LOGGER.warning(
+                        "OPA memory.write check failed; denying by fail-closed policy",
+                        exc_info=True,
+                    )
 
                 if allow_memory:
                     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
@@ -1840,7 +1930,9 @@ class ConversationWorker:
                                 dedupe_key=str(payload.get("id")),
                             )
                         except Exception:
-                            LOGGER.debug("Failed to enqueue memory write for retry (user)", exc_info=True)
+                            LOGGER.debug(
+                                "Failed to enqueue memory write for retry (user)", exc_info=True
+                            )
                         result = None
                         allow_memory = False
                     if allow_memory:
@@ -1853,7 +1945,8 @@ class ConversationWorker:
                                 "tenant": tenant,
                                 "payload": payload,
                                 "result": {
-                                    "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                                    "coord": (result or {}).get("coordinate")
+                                    or (result or {}).get("coord"),
                                     "trace_id": (result or {}).get("trace_id"),
                                     "request_id": (result or {}).get("request_id"),
                                 },
@@ -1892,9 +1985,15 @@ class ConversationWorker:
                                                 "attachment_id": att_id,
                                                 "session_id": session_id,
                                                 "persona_id": event.get("persona_id"),
-                                                "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                                "metadata": {
+                                                    **dict(enriched_metadata or {}),
+                                                    "source": "ingest",
+                                                },
                                             },
-                                            "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                            "metadata": {
+                                                "tenant": tenant,
+                                                **dict(enriched_metadata or {}),
+                                            },
                                         }
                                         topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
                                         await self.publisher.publish(
@@ -1905,7 +2004,9 @@ class ConversationWorker:
                                             tenant=tenant,
                                         )
                                     except Exception:
-                                        LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                                        LOGGER.debug(
+                                            "Failed to enqueue document_ingest tool", exc_info=True
+                                        )
                                 else:
                                     asyncio.create_task(
                                         self._ingest_attachment_by_id(
@@ -1935,9 +2036,15 @@ class ConversationWorker:
                                                 "path": fullpath,
                                                 "session_id": session_id,
                                                 "persona_id": event.get("persona_id"),
-                                                "metadata": {**dict(enriched_metadata or {}), "source": "ingest"},
+                                                "metadata": {
+                                                    **dict(enriched_metadata or {}),
+                                                    "source": "ingest",
+                                                },
                                             },
-                                            "metadata": {"tenant": tenant, **dict(enriched_metadata or {})},
+                                            "metadata": {
+                                                "tenant": tenant,
+                                                **dict(enriched_metadata or {}),
+                                            },
                                         }
                                         topic = cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests")
                                         await self.publisher.publish(
@@ -1948,7 +2055,9 @@ class ConversationWorker:
                                             tenant=tenant,
                                         )
                                     except Exception:
-                                        LOGGER.debug("Failed to enqueue document_ingest tool", exc_info=True)
+                                        LOGGER.debug(
+                                            "Failed to enqueue document_ingest tool", exc_info=True
+                                        )
                                 else:
                                     asyncio.create_task(
                                         self._ingest_attachment(
@@ -2000,14 +2109,12 @@ class ConversationWorker:
 
         history = await self.store.list_events(session_id, limit=20)
         history_messages = self._history_events_to_messages(history)
-        
+
         # Get analysis data from metadata or provide defaults to prevent NameError
-        analysis_dict = event.get("metadata", {}).get("analysis", {
-            "intent": "general",
-            "sentiment": "neutral", 
-            "tags": []
-        })
-        
+        analysis_dict = event.get("metadata", {}).get(
+            "analysis", {"intent": "general", "sentiment": "neutral", "tags": []}
+        )
+
         priors = await self._fetch_planner_priors(
             tenant_id=event.get("tenant") or session_metadata.get("tenant"),
             persona_id=persona_id,
@@ -2016,7 +2123,7 @@ class ConversationWorker:
         )
         if priors:
             event.setdefault("metadata", {})["planner_priors"] = priors
-        
+
         summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict.get("tags") else "none"
         analysis_prompt = ChatMessage(
             role="system",
@@ -2053,13 +2160,17 @@ class ConversationWorker:
                 "history": history_messages,
             }
             max_tokens = self._context_builder_max_tokens()
-            built_context = await self.context_builder.build_for_turn(turn_envelope, max_prompt_tokens=max_tokens)
-            messages = [ChatMessage(role=msg.get("role", "user"), content=str(msg.get("content", ""))) for msg in built_context.messages]
+            built_context = await self.context_builder.build_for_turn(
+                turn_envelope, max_prompt_tokens=max_tokens
+            )
+            messages = [
+                ChatMessage(role=msg.get("role", "user"), content=str(msg.get("content", "")))
+                for msg in built_context.messages
+            ]
             if priors_prompt:
                 messages = priors_prompt + messages
             session_metadata["somabrain_state"] = (
-                built_context.debug.get("somabrain_state")
-                or self._somabrain_health_state().value
+                built_context.debug.get("somabrain_state") or self._somabrain_health_state().value
             )
             session_metadata["somabrain_reason"] = (
                 built_context.debug.get("somabrain_reason")
@@ -2073,7 +2184,7 @@ class ConversationWorker:
             if priors_prompt:
                 messages = priors_prompt + messages
             # Initialize session_metadata if not already defined
-            if 'session_metadata' not in locals():
+            if "session_metadata" not in locals():
                 session_metadata = {}
             session_metadata.setdefault("somabrain_state", self._somabrain_health_state().value)
             session_metadata.setdefault(
@@ -2094,7 +2205,9 @@ class ConversationWorker:
                 # Be defensive: only merge kwargs when it's a dict
                 if isinstance(model_profile.kwargs, dict) and model_profile.kwargs:
                     slm_kwargs.update(model_profile.kwargs)
-                elif model_profile.kwargs is not None and not isinstance(model_profile.kwargs, dict):
+                elif model_profile.kwargs is not None and not isinstance(
+                    model_profile.kwargs, dict
+                ):
                     try:
                         LOGGER.warning(
                             "Ignoring non-dict model_profile.kwargs",
@@ -2337,11 +2450,15 @@ class ConversationWorker:
                             if not resp_ns.is_error:
                                 data_ns = resp_ns.json()
                                 fallback_text = data_ns.get("content", "")
-                                usage = data_ns.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                                usage = data_ns.get(
+                                    "usage", {"input_tokens": 0, "output_tokens": 0}
+                                )
                                 if fallback_text:
                                     response_text = fallback_text
                                 else:
-                                    response_text = "I encountered an error while generating a reply."
+                                    response_text = (
+                                        "I encountered an error while generating a reply."
+                                    )
                                 _record_llm_success(
                                     data_ns.get("model") or model_used,
                                     usage.get("input_tokens", 0),
@@ -2429,7 +2546,9 @@ class ConversationWorker:
             # Refresh somabrain markers right before publishing
             if self._somabrain_health_state() != SomabrainHealthState.NORMAL:
                 session_metadata["somabrain_state"] = self._somabrain_health_state().value
-                session_metadata["somabrain_reason"] = self._last_degraded_reason or session_metadata["somabrain_state"]
+                session_metadata["somabrain_reason"] = (
+                    self._last_degraded_reason or session_metadata["somabrain_state"]
+                )
 
             response_metadata = _compose_outbound_metadata(
                 session_metadata,
@@ -2491,7 +2610,8 @@ class ConversationWorker:
                     "metadata": {
                         **dict(response_metadata),
                         "agent_profile_id": response_metadata.get("agent_profile_id"),
-                        "universe_id": response_metadata.get("universe_id") or cfg.env("SOMA_NAMESPACE"),
+                        "universe_id": response_metadata.get("universe_id")
+                        or cfg.env("SOMA_NAMESPACE"),
                     },
                 }
                 payload["idempotency_key"] = generate_for_memory_payload(payload)
@@ -2513,7 +2633,10 @@ class ConversationWorker:
                             )
                         )
                 except Exception:
-                    LOGGER.warning("OPA memory.write check failed; denying by fail-closed policy", exc_info=True)
+                    LOGGER.warning(
+                        "OPA memory.write check failed; denying by fail-closed policy",
+                        exc_info=True,
+                    )
                 if allow_memory:
                     wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
                     try:
@@ -2530,7 +2653,10 @@ class ConversationWorker:
                                 dedupe_key=str(payload.get("id")),
                             )
                         except Exception:
-                            LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
+                            LOGGER.debug(
+                                "Failed to enqueue memory write for retry (assistant)",
+                                exc_info=True,
+                            )
                         allow_memory = False
                         result = None
                     try:
@@ -2542,7 +2668,8 @@ class ConversationWorker:
                             "tenant": tenant,
                             "payload": payload,
                             "result": {
-                                "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                                "coord": (result or {}).get("coordinate")
+                                or (result or {}).get("coord"),
                                 "trace_id": (result or {}).get("trace_id"),
                                 "request_id": (result or {}).get("request_id"),
                             },
@@ -2577,7 +2704,9 @@ class ConversationWorker:
                         dedupe_key=str(payload.get("id")) if payload.get("id") else None,
                     )
                 except Exception:
-                    LOGGER.debug("Failed to enqueue memory write for retry (assistant)", exc_info=True)
+                    LOGGER.debug(
+                        "Failed to enqueue memory write for retry (assistant)", exc_info=True
+                    )
             except Exception:
                 LOGGER.debug("SomaBrain remember (assistant) unexpected error", exc_info=True)
             record_metrics(result_label, path)
@@ -2609,7 +2738,7 @@ class ConversationWorker:
         try:
             # Get current adaptation state to inform feedback
             adaptation_state = await self.soma.adaptation_state(metadata.get("tenant", "default"))
-            
+
             feedback_payload = {
                 "session_id": session_id,
                 "query": query,
@@ -2625,10 +2754,10 @@ class ConversationWorker:
                     "neuromodulators": metadata.get("neuromodulators", {}),
                     "interaction_patterns": metadata.get("interaction_patterns", []),
                     "timestamp": time.time(),
-                    "adaptation_state": adaptation_state
-                }
+                    "adaptation_state": adaptation_state,
+                },
             }
-            
+
             result = await self.soma.context_feedback(feedback_payload)
             if result.get("accepted"):
                 LOGGER.info(
@@ -2636,8 +2765,10 @@ class ConversationWorker:
                     extra={
                         "session_id": session_id,
                         "utility": utility_score,
-                        "adaptation_weights": len(adaptation_state.get("weights", {})) if adaptation_state else 0
-                    }
+                        "adaptation_weights": (
+                            len(adaptation_state.get("weights", {})) if adaptation_state else 0
+                        ),
+                    },
                 )
                 return True
             else:
@@ -2647,41 +2778,43 @@ class ConversationWorker:
             LOGGER.error(f"Failed to submit enhanced feedback: {e}")
             return False
 
-    async def get_adaptive_persona_config(self, persona_id: str, tenant: str = "default") -> Dict[str, Any]:
+    async def get_adaptive_persona_config(
+        self, persona_id: str, tenant: str = "default"
+    ) -> Dict[str, Any]:
         """Get adaptive persona configuration based on learning state."""
         try:
             # Get base persona
             persona = await self.soma.get_persona(persona_id)
             if not persona:
                 return {}
-            
+
             # Get adaptation state
             adaptation_state = await self.soma.adaptation_state(tenant)
-            
+
             # Apply learned adaptations to persona
             adaptive_config = dict(persona)
-            
+
             if adaptation_state:
                 weights = adaptation_state.get("weights", {})
-                
+
                 # Adjust behavior based on learning weights
                 if weights.get("creativity_boost", 0) > 0.7:
                     adaptive_config["properties"]["creativity_level"] = "high"
                 elif weights.get("creativity_boost", 0) < 0.3:
                     adaptive_config["properties"]["creativity_level"] = "low"
-                
+
                 if weights.get("empathy_boost", 0) > 0.7:
                     adaptive_config["properties"]["empathy_level"] = "high"
                 elif weights.get("empathy_boost", 0) < 0.3:
                     adaptive_config["properties"]["empathy_level"] = "low"
-                
+
                 if weights.get("focus_factor", 0.5) > 0.7:
                     adaptive_config["properties"]["focus_level"] = "high"
                 elif weights.get("focus_factor", 0.5) < 0.3:
                     adaptive_config["properties"]["focus_level"] = "low"
-            
+
             return adaptive_config
-            
+
         except SomaClientError as e:
             LOGGER.error(f"Failed to get adaptive persona config: {e}")
             return {}
@@ -2708,9 +2841,9 @@ class ConversationWorker:
                 "session_id": session_id,
                 "persona_id": persona_id,
                 "tenant": tenant,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
-            
+
             # Store in SomaBrain
             try:
                 memory_result = await self.soma.remember(tool_memory)
@@ -2718,12 +2851,12 @@ class ConversationWorker:
                 self._enter_somabrain_degraded("remember_failure")
                 return False
             coordinate = memory_result.get("coordinate")
-            
+
             if coordinate:
                 # Create semantic links for tool usage patterns
                 tool_entity = f"tool_{tool_name}_{session_id}"
                 session_entity = f"session_{session_id}"
-                
+
                 # Link tool to session
                 link_payload = {
                     "from_key": session_entity,
@@ -2734,27 +2867,27 @@ class ConversationWorker:
                     "metadata": {
                         "tool_name": tool_name,
                         "success": success,
-                        "timestamp": time.time()
-                    }
+                        "timestamp": time.time(),
+                    },
                 }
                 await self.soma.link(link_payload)
-                
+
                 # Link similar tools based on success patterns
                 if success:
                     await self._link_similar_successful_tools(tool_name, coordinate, tenant)
-                
+
                 LOGGER.info(
                     "Tracked semantic tool usage",
                     extra={
                         "session_id": session_id,
                         "tool_name": tool_name,
                         "success": success,
-                        "coordinate": coordinate[:3] + "..."
-                    }
+                        "coordinate": coordinate[:3] + "...",
+                    },
                 )
                 return True
             return False
-            
+
         except SomaClientError as e:
             LOGGER.error(f"Failed to track semantic tool usage: {e}")
             return False
@@ -2769,7 +2902,7 @@ class ConversationWorker:
         try:
             # Find similar tools based on name patterns or categories
             similar_tools = await self._find_similar_tools(tool_name)
-            
+
             for similar_tool in similar_tools:
                 # Create link for learning transfer
                 link_payload = {
@@ -2781,33 +2914,33 @@ class ConversationWorker:
                     "metadata": {
                         "original_tool": tool_name,
                         "similar_tool": similar_tool,
-                        "transfer_type": "success_pattern"
-                    }
+                        "transfer_type": "success_pattern",
+                    },
                 }
                 await self.soma.link(link_payload)
-                
+
         except Exception as e:
             LOGGER.debug(f"Failed to link similar tools: {e}")
 
     async def _find_similar_tools(self, tool_name: str) -> List[str]:
         """Find tools similar to the given tool name."""
         similar_tools = []
-        
+
         # Simple pattern matching for tool similarity
         tool_categories = {
             "search": ["find", "search", "lookup", "query"],
             "create": ["make", "create", "build", "generate"],
             "modify": ["update", "change", "edit", "modify"],
             "analyze": ["examine", "analyze", "inspect", "review"],
-            "communicate": ["send", "notify", "message", "communicate"]
+            "communicate": ["send", "notify", "message", "communicate"],
         }
-        
+
         tool_lower = tool_name.lower()
         for category, patterns in tool_categories.items():
             if any(pattern in tool_lower for pattern in patterns):
                 similar_tools.extend(patterns)
                 break
-                
+
         return similar_tools
 
     async def get_learning_insights(
@@ -2821,54 +2954,59 @@ class ConversationWorker:
         try:
             # Get adaptation state
             adaptation_state = await self.soma.adaptation_state(tenant)
-            
+
             # Get semantic graph insights
             insights = {
                 "adaptation_state": adaptation_state,
                 "learning_recommendations": [],
                 "performance_metrics": {},
-                "behavioral_patterns": {}
+                "behavioral_patterns": {},
             }
-            
+
             if adaptation_state:
                 weights = adaptation_state.get("weights", {})
-                
+
                 # Generate learning recommendations
                 if weights.get("creativity_boost", 0) < 0.3:
-                    insights["learning_recommendations"].append({
-                        "type": "creativity_enhancement",
-                        "priority": "medium",
-                        "suggestion": "Introduce more diverse problem-solving approaches"
-                    })
-                
+                    insights["learning_recommendations"].append(
+                        {
+                            "type": "creativity_enhancement",
+                            "priority": "medium",
+                            "suggestion": "Introduce more diverse problem-solving approaches",
+                        }
+                    )
+
                 if weights.get("empathy_boost", 0) < 0.3:
-                    insights["learning_recommendations"].append({
-                        "type": "empathy_development",
-                        "priority": "medium",
-                        "suggestion": "Focus on understanding user perspectives more deeply"
-                    })
-                
+                    insights["learning_recommendations"].append(
+                        {
+                            "type": "empathy_development",
+                            "priority": "medium",
+                            "suggestion": "Focus on understanding user perspectives more deeply",
+                        }
+                    )
+
                 if weights.get("focus_factor", 0.5) < 0.3:
-                    insights["learning_recommendations"].append({
-                        "type": "focus_improvement",
-                        "priority": "high",
-                        "suggestion": "Reduce distractions and improve task concentration"
-                    })
-                
+                    insights["learning_recommendations"].append(
+                        {
+                            "type": "focus_improvement",
+                            "priority": "high",
+                            "suggestion": "Reduce distractions and improve task concentration",
+                        }
+                    )
+
                 # Calculate performance metrics
                 insights["performance_metrics"] = {
-                    "adaptation_rate": len([w for w in weights.values() if w > 0.7]) / max(1, len(weights)),
+                    "adaptation_rate": len([w for w in weights.values() if w > 0.7])
+                    / max(1, len(weights)),
                     "learning_velocity": weights.get("learning_velocity", 0.5),
-                    "stability_score": weights.get("stability", 0.5)
+                    "stability_score": weights.get("stability", 0.5),
                 }
-            
+
             return insights
-            
+
         except SomaClientError as e:
             LOGGER.error(f"Failed to get learning insights: {e}")
             return {}
-
-
 
 
 async def main() -> None:

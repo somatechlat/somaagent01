@@ -9,6 +9,7 @@ import httpx
 
 from src.core.config import cfg
 
+
 @dataclass
 class RouteDecision:
     model: str
@@ -45,6 +46,7 @@ class RouterClient:
         if self._client:
             await self._client.aclose()
 
+
 # ---------------------------------------------------------------------------
 # Helper / factory function
 # ---------------------------------------------------------------------------
@@ -58,6 +60,7 @@ class RouterClient:
 
 _router_client: RouterClient | None = None
 
+
 def get_router_client() -> RouterClient:
     """Return a shared :class:`RouterClient` instance.
 
@@ -69,6 +72,7 @@ def get_router_client() -> RouterClient:
     if _router_client is None:
         _router_client = RouterClient()
     return _router_client
+
 
 __all__ = [
     "RouterClient",

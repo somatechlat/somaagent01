@@ -7,7 +7,11 @@ from typing import List, Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache, ensure_schema as ensure_session_schema
+from services.common.session_repository import (
+    PostgresSessionStore,
+    RedisSessionCache,
+    ensure_schema as ensure_session_schema,
+)
 from services.common.admin_settings import ADMIN_SETTINGS
 
 router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
@@ -29,7 +33,14 @@ async def _session_store() -> PostgresSessionStore:
 async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> List[SessionSummary]:
     store = await _session_store()
     rows = await store.list(limit=limit)
-    return [SessionSummary(session_id=r.session_id, persona_id=getattr(r, "persona_id", None), tenant=getattr(r, "tenant", None)) for r in rows]
+    return [
+        SessionSummary(
+            session_id=r.session_id,
+            persona_id=getattr(r, "persona_id", None),
+            tenant=getattr(r, "tenant", None),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/{session_id}/history")

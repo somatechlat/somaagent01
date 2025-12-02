@@ -29,11 +29,9 @@ EXCLUDE_DIRS = {"vendor", "node_modules", "dist", "build"}
 EXCLUDE_PATTERNS = [re.compile(r"\.min\.")]
 
 # HTML attribute patterns (placeholder, title, alt, aria‑label, label)
-HTML_ATTR_PATTERNS = [
-    re.compile(r'(placeholder|title|alt|aria-label|label)\s*=\s*"([^\"]{2,})"')
-]
+HTML_ATTR_PATTERNS = [re.compile(r'(placeholder|title|alt|aria-label|label)\s*=\s*"([^\"]{2,})"')]
 
-HTML_TEXT_PATTERN = re.compile(r'>\s*([^<]{2,})\s*<')
+HTML_TEXT_PATTERN = re.compile(r">\s*([^<]{2,})\s*<")
 
 # Simple UI‑related JS patterns – extend as needed
 JS_UI_PATTERNS = [
@@ -53,10 +51,12 @@ PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("js_ui_setTitle", JS_UI_PATTERNS[1]),
 ]
 
+
 def slugify(text: str) -> str:
     """Deterministic i18n key from *text* (mirrors original extractor)."""
     slug = re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
     return f"ui_{slug}" if not slug.startswith("ui_") else slug
+
 
 def load_i18n(lang: str) -> Dict[str, str]:
     path = ROOT / "i18n" / f"{lang}.json"
@@ -67,16 +67,21 @@ def load_i18n(lang: str) -> Dict[str, str]:
             pass
     return {}
 
+
 def save_i18n(lang: str, data: Dict[str, str]) -> None:
     path = ROOT / "i18n" / f"{lang}.json"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
 
 def should_skip(file_path: pathlib.Path) -> bool:
     if any(part in EXCLUDE_DIRS for part in file_path.parts):
         return True
     return any(p.search(file_path.name) for p in EXCLUDE_PATTERNS)
 
-def replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) -> Tuple[str, bool, int]:
+
+def replace_in_content(
+    content: str, en: Dict[str, str], es: Dict[str, str]
+) -> Tuple[str, bool, int]:
     new = content
     offset = 0
     added = 0
@@ -88,7 +93,7 @@ def replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) -> 
                 continue
             # Skip if already inside an i18n.t() call
             start, end = m.span(1)
-            look = content[max(0, start - 8):start]
+            look = content[max(0, start - 8) : start]
             if "i18n.t('" in look or 'i18n.t("' in look:
                 continue
             key = slugify(raw)
@@ -105,12 +110,16 @@ def replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) -> 
             modified = True
     return new, modified, added
 
-def process_file(path: pathlib.Path, en: Dict[str, str], es: Dict[str, str], dry: bool) -> Tuple[bool, int]:
+
+def process_file(
+    path: pathlib.Path, en: Dict[str, str], es: Dict[str, str], dry: bool
+) -> Tuple[bool, int]:
     original = path.read_text(encoding="utf-8")
     new, changed, added = replace_in_content(original, en, es)
     if changed and not dry:
         path.write_text(new, encoding="utf-8")
     return changed, added
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -125,7 +134,7 @@ def main() -> None:
     for file_path in ROOT.rglob("*.*"):
         if should_skip(file_path):
             continue
-        if file_path.suffix.lstrip('.').lower() not in TARGET_EXTS:
+        if file_path.suffix.lstrip(".").lower() not in TARGET_EXTS:
             continue
         changed, added = process_file(file_path, en, es, args.dry_run)
         if changed:
@@ -141,6 +150,7 @@ def main() -> None:
             print("   -", f)
     else:
         print(f"✅ Modified {len(modified_files)} files, added {total_added} new i18n keys.")
+
 
 if __name__ == "__main__":
     main()

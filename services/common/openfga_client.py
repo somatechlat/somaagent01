@@ -43,7 +43,9 @@ class OpenFGAClient:
         cache_ttl: float = 2.0,
         fail_open: bool = True,
     ) -> None:
-        self.base_url = base_url or env.get("OPENFGA_API_URL", "http://openfga:8080") or "http://openfga:8080"
+        self.base_url = (
+            base_url or env.get("OPENFGA_API_URL", "http://openfga:8080") or "http://openfga:8080"
+        )
         self.store_id = store_id or env.get("OPENFGA_STORE_ID")
         if not self.store_id:
             raise ValueError("OPENFGA_STORE_ID must be configured for OpenFGAClient")

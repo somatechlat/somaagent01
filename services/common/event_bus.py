@@ -75,7 +75,9 @@ class KafkaEventBus:
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
 
-    async def publish(self, topic: str, payload: Any, headers: dict[str, Any] | None = None) -> None:
+    async def publish(
+        self, topic: str, payload: Any, headers: dict[str, Any] | None = None
+    ) -> None:
         """Publish a payload to a Kafka topic.
 
         ``headers`` is a mapping of header name → value that will be converted

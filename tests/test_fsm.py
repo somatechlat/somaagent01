@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+
 # No external mocks are used – we rely on a lightweight subclass that
 # overrides the heavyweight asynchronous methods with real no‑op implementations.
 
@@ -86,7 +87,9 @@ class TestAgentFSM(unittest.IsolatedAsyncioTestCase):
 
         # Verify the gauge: IDLE should be 0, PLANNING should be 1.
         idle_val = Agent.fsm_state_gauge.labels(state=Agent.AgentState.IDLE.value)._value.get()
-        planning_val = Agent.fsm_state_gauge.labels(state=Agent.AgentState.PLANNING.value)._value.get()
+        planning_val = Agent.fsm_state_gauge.labels(
+            state=Agent.AgentState.PLANNING.value
+        )._value.get()
         self.assertEqual(idle_val, 0)
         self.assertEqual(planning_val, 1)
 

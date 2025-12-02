@@ -19,7 +19,7 @@ async def main():
     """Main entry point for the conversation worker service."""
     config = CentralizedConfig()
     service = ConversationWorkerService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

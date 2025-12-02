@@ -19,7 +19,7 @@ async def main():
     """Main entry point for the memory sync service."""
     config = CentralizedConfig()
     service = MemorySyncService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

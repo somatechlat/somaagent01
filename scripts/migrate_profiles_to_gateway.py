@@ -19,7 +19,9 @@ import requests
 
 from services.common import env
 
-GATEWAY_BASE = env.get("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016") or "http://127.0.0.1:21016"
+GATEWAY_BASE = (
+    env.get("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016") or "http://127.0.0.1:21016"
+)
 UI_SETTINGS = f"{GATEWAY_BASE}/v1/settings"
 MODEL_PROFILES = f"{GATEWAY_BASE}/v1/model-profiles"
 

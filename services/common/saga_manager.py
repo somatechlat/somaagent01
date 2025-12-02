@@ -1,6 +1,7 @@
 """
 Simple Saga manager with Postgres-backed state table.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -151,6 +152,7 @@ class SagaManager:
 
     async def fail(self, saga_id: str, reason: str) -> None:
         await self.update(saga_id, step="failed", status=f"failed:{reason}", data={})
+
 
 # Optional in-memory compensation registry (process local)
 _compensations: dict[str, Any] = {}

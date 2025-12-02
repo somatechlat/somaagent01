@@ -207,9 +207,7 @@ class MemoryReplicaStore:
             conditions.append(f"session_id = ${len(params)}")
         if universe:
             params.append(universe)
-            conditions.append(
-                f"(payload->'metadata'->>'universe_id') = ${len(params)}"
-            )
+            conditions.append(f"(payload->'metadata'->>'universe_id') = ${len(params)}")
         if namespace:
             params.append(namespace)
             conditions.append(

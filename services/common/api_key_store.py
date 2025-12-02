@@ -43,6 +43,7 @@ class ApiKeyResponse:
 
     Mirrors the fields used in the original monolith's response model.
     """
+
     id: str
     name: str
     permissions: list[str] | None = None
@@ -195,12 +196,16 @@ class RedisApiKeyStore(ApiKeyStore):
         raw_url = url or cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL")
         # Expand env placeholders so URLs like redis://localhost:${REDIS_PORT}/0 work in local .env
         self.url = os.path.expandvars(raw_url)
-        self._client: Optional[redis.Redis] = redis.from_url(self.url, decode_responses=True) if raw_url else None
+        self._client: Optional[redis.Redis] = (
+            redis.from_url(self.url, decode_responses=True) if raw_url else None
+        )
         self._namespace = "gateway:api_keys"
 
     async def create_key(self, label: str, *, created_by: str | None = None) -> ApiKeySecret:
         if not self._client:
-            raise RuntimeError("RedisApiKeyStore requires SA01_REDIS_URL/REDIS_URL or an explicit url.")
+            raise RuntimeError(
+                "RedisApiKeyStore requires SA01_REDIS_URL/REDIS_URL or an explicit url."
+            )
         key_id, api_key, prefix = _generate_api_key()
         record = {
             "key_id": key_id,

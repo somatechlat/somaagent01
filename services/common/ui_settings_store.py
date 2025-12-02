@@ -85,9 +85,7 @@ class UiSettingsStore:
             )
             # Ensure a deterministic default row exists. This is not a shim –
             # the row is persisted and will be used by all callers.
-            row = await conn.fetchrow(
-                "SELECT 1 FROM ui_settings WHERE key = 'global'"
-            )
+            row = await conn.fetchrow("SELECT 1 FROM ui_settings WHERE key = 'global'")
             if not row:
                 default_settings = {
                     "sections": [

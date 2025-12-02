@@ -27,4 +27,8 @@ async def run_task(req: TaskRequest) -> dict:
 @router.get("/runs/{task_id}")
 async def get_status(task_id: str) -> dict:
     result = AsyncResult(task_id, app=celery_app)
-    return {"task_id": task_id, "status": result.status, "result": result.result if result.successful() else None}
+    return {
+        "task_id": task_id,
+        "status": result.status,
+        "result": result.result if result.successful() else None,
+    }

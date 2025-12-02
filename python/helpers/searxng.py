@@ -3,6 +3,7 @@ import os
 
 from python.helpers import runtime
 
+
 def _get_searxng_url() -> str:
     url = os.getenv("SEARXNG_URL")
     if not url:

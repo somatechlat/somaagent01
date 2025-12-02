@@ -266,23 +266,6 @@ async def health_endpoint():
             services=services,
             version="1.0.0-fasta2a",
         )
-
-    # Alias for compatibility with gateway aggregated health checks.
-    # The gateway expects the FastA2A service to expose its health check at
-    # ``/v1/health``. The original implementation only provided ``/health``.
-    # Adding this endpoint ensures that ``http://localhost:8011/v1/health``
-    # returns the same health information as ``/health`` without duplicating
-    # logic.
-    @router.get("/v1/health", response_model=HealthResponse, include_in_schema=False)
-    async def health_v1_endpoint():
-        """Compatibility wrapper for the FastA2A health endpoint.
-
-        Returns the same payload as :func:`health_endpoint`. The ``include_in_schema``
-        flag hides this route from the OpenAPI docs to avoid duplication.
-        """
-        # Reuse the existing health logic to avoid inconsistencies.
-        return await health_endpoint()
-
     except Exception as e:
         # REAL IMPLEMENTATION - Track health check failure
         system_health_gauge.labels(service="fastapi", component="api").set(0)
@@ -293,6 +276,22 @@ async def health_endpoint():
             services={"error": str(e)},
             version="1.0.0-fasta2a",
         )
+
+# Alias for compatibility with gateway aggregated health checks.
+# The gateway expects the FastA2A service to expose its health check at
+# ``/v1/health``. The original implementation only provided ``/health``.
+# Adding this endpoint ensures that ``http://localhost:8011/v1/health``
+# returns the same health information as ``/health`` without duplicating
+# logic.
+@router.get("/v1/health", response_model=HealthResponse, include_in_schema=False)
+async def health_v1_endpoint():
+    """Compatibility wrapper for the FastA2A health endpoint.
+
+    Returns the same payload as :func:`health_endpoint`. The ``include_in_schema``
+    flag hides this route from the OpenAPI docs to avoid duplication.
+    """
+    # Reuse the existing health logic to avoid inconsistencies.
+    return await health_endpoint()
 
 @router.get("/metrics")
 async def metrics_endpoint():

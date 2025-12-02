@@ -9,6 +9,7 @@ import yaml
 
 from src.core.config import cfg
 
+
 @dataclass
 class TenantSettings:
     fail_open: bool = True

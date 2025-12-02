@@ -27,13 +27,18 @@ class DLQMessage:
     error: str | None
     created_at: datetime
 
+
 # Backwards‑compatible alias used by the gateway router.
 DLQItem = DLQMessage
 
 
 class DLQStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01") or "postgresql://soma:soma@localhost:5432/somaagent01"
+        raw_dsn = (
+            dsn
+            or env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+            or "postgresql://soma:soma@localhost:5432/somaagent01"
+        )
         self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
@@ -41,7 +46,9 @@ class DLQStore:
         if self._pool is None:
             min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:

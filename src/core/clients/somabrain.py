@@ -11,8 +11,10 @@ from __future__ import annotations
 
 from python.integrations.soma_client import SomaClient, SomaClientError, SomaMemoryRecord
 
+
 class SomaBrainClient(SomaClient):
     """Compatibility alias – retains the historic ``SomaBrainClient`` name."""
+
 
 __all__ = ["SomaClient", "SomaClientError", "SomaMemoryRecord", "SomaBrainClient"]
 
@@ -321,7 +323,9 @@ class SomaClient:
                 return None
 
             # Retry on 5xx and 429 (Too Many Requests); honor Retry-After if present
-            if (response.status_code >= 500 or response.status_code == 429) and attempt < self._max_retries:
+            if (
+                response.status_code >= 500 or response.status_code == 429
+            ) and attempt < self._max_retries:
                 attempt += 1
                 # Baseline exponential backoff with jitter
                 backoff = (self._retry_base_ms * (2 ** (attempt - 1))) / 1000.0
@@ -340,7 +344,7 @@ class SomaClient:
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:
-                                delta = (ts.timestamp() - _time.time())
+                                delta = ts.timestamp() - _time.time()
                                 ra_s = max(0.0, float(delta))
                             else:
                                 ra_s = 0.0
@@ -426,11 +430,7 @@ class SomaClient:
         )
 
         # Determine the logical universe. Prefer explicit arg, then metadata.universe_id, then client default.
-        derived_universe = (
-            universe
-            or metadata_dict.get("universe_id")
-            or self.universe
-        )
+        derived_universe = universe or metadata_dict.get("universe_id") or self.universe
 
         body: Dict[str, Any] = {
             "value": payload_dict,
@@ -607,7 +607,9 @@ class SomaClient:
         etag: Optional[str] = None,
     ) -> Any:
         headers = {"If-Match": etag} if etag else None
-        return await self._request("PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers)
+        return await self._request(
+            "PUT", f"/persona/{persona_id}", json=dict(payload), headers=headers
+        )
 
     async def get_persona(self, persona_id: str) -> Mapping[str, Any]:
         return await self._request("GET", f"/persona/{persona_id}")

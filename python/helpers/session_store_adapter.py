@@ -4,6 +4,7 @@ Session persistence helpers replacing legacy file-based persist_chat module.
 Provides thin, real implementations backed by PostgresSessionStore and, where
 needed, AttachmentsStore. All functions are async and production-safe.
 """
+
 from __future__ import annotations
 
 import asyncio

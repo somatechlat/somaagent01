@@ -168,6 +168,7 @@ def _require_admin_scope(auth: dict[str, Any]) -> None:
     """
     return None
 
+
 __all__ = [
     "authorize",
     "require_policy",

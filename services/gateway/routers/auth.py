@@ -11,7 +11,9 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 @router.get("/login")
 async def login() -> JSONResponse:
     # In real deployments, redirect to identity provider; here we return a stub token.
-    return JSONResponse({"status": "ok", "message": "login placeholder; integrate IdP"}, status_code=200)
+    return JSONResponse(
+        {"status": "ok", "message": "login placeholder; integrate IdP"}, status_code=200
+    )
 
 
 @router.get("/callback")

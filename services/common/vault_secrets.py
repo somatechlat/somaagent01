@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.core.config import cfg
+
 LOGGER = logging.getLogger(__name__)
 
 try:

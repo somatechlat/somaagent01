@@ -3,6 +3,7 @@
 These are intentionally lightweight async helpers with timeouts used by the
 gateway `/healthz` aggregator and other services that need quick probes.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -27,13 +28,19 @@ async def http_ping(url: str, timeout: float = 1.5) -> Dict[str, Any]:
             return {"status": "ok", "code": resp.status_code}
     except httpx.HTTPStatusError as exc:
         LOGGER.debug("HTTP ping returned non-2xx", extra={"url": url, "error": str(exc)})
-        return {"status": "degraded", "code": getattr(exc.response, "status_code", None), "detail": str(exc)}
+        return {
+            "status": "degraded",
+            "code": getattr(exc.response, "status_code", None),
+            "detail": str(exc),
+        }
     except Exception as exc:
         LOGGER.debug("HTTP ping failed", extra={"url": url, "error": str(exc)})
         return {"status": "down", "code": None, "detail": str(exc)}
 
 
-async def grpc_ping(target: str, stub_factory: Optional[Any] = None, timeout: float = 1.5) -> Dict[str, Any]:
+async def grpc_ping(
+    target: str, stub_factory: Optional[Any] = None, timeout: float = 1.5
+) -> Dict[str, Any]:
     """Ping a gRPC target.
 
     - `target` is a host:port string the channel should connect to.
@@ -67,7 +74,10 @@ async def grpc_ping(target: str, stub_factory: Optional[Any] = None, timeout: fl
                     await asyncio.wait_for(channel.channel_ready(), timeout=timeout)
                     return {"status": "ok"}
                 except asyncio.TimeoutError:
-                    return {"status": "degraded", "detail": "channel not ready and no RPC available"}
+                    return {
+                        "status": "degraded",
+                        "detail": "channel not ready and no RPC available",
+                    }
 
             try:
                 # Call the RPC - expect it to be short and side-effect free
@@ -80,5 +90,7 @@ async def grpc_ping(target: str, stub_factory: Optional[Any] = None, timeout: fl
                 return {"status": "down", "detail": str(exc)}
 
     except Exception as exc:
-        LOGGER.debug("gRPC ping channel failed to open", extra={"target": target, "error": str(exc)})
+        LOGGER.debug(
+            "gRPC ping channel failed to open", extra={"target": target, "error": str(exc)}
+        )
         return {"status": "down", "detail": str(exc)}

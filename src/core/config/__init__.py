@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
+
 def _load_file_config() -> Dict[str, Any]:
     """Placeholder for future file‑based configuration loading.
 
@@ -114,7 +115,9 @@ def gateway_port() -> int:
 def soma_base_url() -> str:
     url = env("SOMA_BASE_URL") or env("SA01_SOMA_BASE_URL") or env("SA01_SOMABRAIN_URL")
     if not url:
-        raise RuntimeError("SOMA_BASE_URL (or SA01_SOMA_BASE_URL/SA01_SOMABRAIN_URL) must be set explicitly.")
+        raise RuntimeError(
+            "SOMA_BASE_URL (or SA01_SOMA_BASE_URL/SA01_SOMABRAIN_URL) must be set explicitly."
+        )
     return str(url).rstrip("/")
 
 
@@ -237,7 +240,7 @@ __all__ = [
 # Single source of truth for all configuration
 # This eliminates 5 duplicate configuration systems:
 # - services/common/settings_sa01.py
-# - services/common/admin_settings.py  
+# - services/common/admin_settings.py
 # - services/common/runtime_config.py
 # - services/common/registry.py
 # - services/common/settings_registry.py

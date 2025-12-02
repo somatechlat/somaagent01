@@ -82,7 +82,9 @@ class MemorySyncWorker:
         # Prefer admin-wide metrics configuration; fallback to default if not set
         metrics_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9471))
         start_http_server(metrics_port)
-        LOGGER.info("memory_sync started", extra={"batch": self.batch_size, "interval": self.interval})
+        LOGGER.info(
+            "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}
+        )
         while not self._stopping.is_set():
             pending = await self.store.count_pending()
             BACKLOG.set(pending)

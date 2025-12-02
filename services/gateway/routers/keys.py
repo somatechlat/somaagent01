@@ -1,4 +1,5 @@
 """API key management endpoints extracted from gateway monolith."""
+
 from __future__ import annotations
 
 import uuid
@@ -28,7 +29,9 @@ class ApiKeyCreateResponse(BaseModel):
 async def create_api_key(body: ApiKeyCreateRequest) -> ApiKeyCreateResponse:
     token = uuid.uuid4().hex
     key = await STORE.create(name=body.name, token=token, permissions=body.permissions or [])
-    return ApiKeyCreateResponse(key_id=key.id, token=token, name=key.name, permissions=key.permissions)
+    return ApiKeyCreateResponse(
+        key_id=key.id, token=token, name=key.name, permissions=key.permissions
+    )
 
 
 @router.get("", response_model=list[ApiKeyResponse])

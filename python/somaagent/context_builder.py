@@ -22,8 +22,7 @@ class SomabrainHealthState(str, Enum):
 
 
 class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
-    def redact(self, text: str) -> str:
-        ...
+    def redact(self, text: str) -> str: ...
 
 
 class _NoopRedactor:
@@ -87,7 +86,9 @@ class ContextBuilder:
                 snippet_tokens = self._count_snippet_tokens(snippets)
                 self.metrics.inc_snippets(stage="final", count=len(snippets))
             else:
-                LOGGER.debug("Somabrain DOWN – skipping retrieval", extra={"session": turn.get("session_id")})
+                LOGGER.debug(
+                    "Somabrain DOWN – skipping retrieval", extra={"session": turn.get("session_id")}
+                )
 
             with self.metrics.time_tokenisation():
                 system_tokens = self.count_tokens(system_prompt)
@@ -100,10 +101,14 @@ class ContextBuilder:
                     snippet_tokens,
                     max_prompt_tokens - (system_tokens + user_tokens),
                 )
-                budget_for_history = max(0, max_prompt_tokens - (system_tokens + user_tokens + snippet_tokens))
+                budget_for_history = max(
+                    0, max_prompt_tokens - (system_tokens + user_tokens + snippet_tokens)
+                )
 
             trimmed_history = self._trim_history(history, budget_for_history)
-            history_tokens = sum(self.count_tokens(msg.get("content", "")) for msg in trimmed_history)
+            history_tokens = sum(
+                self.count_tokens(msg.get("content", "")) for msg in trimmed_history
+            )
 
             if len(history) > len(trimmed_history):
                 await self._store_summary(
@@ -115,7 +120,11 @@ class ContextBuilder:
             self.metrics.record_tokens(
                 before_budget=sum(self.count_tokens(m.get("content", "")) for m in history),
                 after_budget=history_tokens,
-                after_redaction=self.count_tokens("\n".join(s["text"] for s in snippets)) if snippets else history_tokens,
+                after_redaction=(
+                    self.count_tokens("\n".join(s["text"] for s in snippets))
+                    if snippets
+                    else history_tokens
+                ),
                 prompt_tokens=system_tokens + user_tokens + snippet_tokens + history_tokens,
             )
             self.metrics.inc_prompt()
@@ -190,7 +199,9 @@ class ContextBuilder:
             with self.metrics.time_retrieval(state=state.value):
                 resp = await self.somabrain.context_evaluate(payload)
         except SomaClientError as exc:
-            LOGGER.info("Somabrain context_evaluate failed", exc_info=True, extra={"state": state.value})
+            LOGGER.info(
+                "Somabrain context_evaluate failed", exc_info=True, extra={"state": state.value}
+            )
             if state == SomabrainHealthState.NORMAL:
                 self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
             LOGGER.debug("SomaBrain error detail", extra={"error": str(exc)})
@@ -229,12 +240,16 @@ class ContextBuilder:
             return value
         return ""
 
-    def _rank_and_clip_snippets(self, snippets: List[Dict[str, Any]], state: SomabrainHealthState) -> List[Dict[str, Any]]:
+    def _rank_and_clip_snippets(
+        self, snippets: List[Dict[str, Any]], state: SomabrainHealthState
+    ) -> List[Dict[str, Any]]:
         if not snippets:
             return []
         with self.metrics.time_ranking():
             ranked = sorted(snippets, key=lambda s: self._safe_float(s.get("score")), reverse=True)
-            limit = self.DEFAULT_TOP_K if state == SomabrainHealthState.NORMAL else self.DEGRADED_TOP_K
+            limit = (
+                self.DEFAULT_TOP_K if state == SomabrainHealthState.NORMAL else self.DEGRADED_TOP_K
+            )
             return ranked[:limit]
 
     def _apply_salience(self, snippets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
