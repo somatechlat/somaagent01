@@ -14,8 +14,8 @@ from fastapi import APIRouter
 # signatures and injected dependencies.
 from services.gateway.main import (
     enqueue_message,
-    upload_files,
     enqueue_quick_action,
+    upload_files,
 )
 
 router = APIRouter()

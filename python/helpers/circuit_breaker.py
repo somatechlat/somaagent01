@@ -13,6 +13,7 @@ import time
 from typing import Any, Callable, TypeVar
 
 from prometheus_client import Counter, start_http_server
+
 from services.common import env
 
 T = TypeVar("T")

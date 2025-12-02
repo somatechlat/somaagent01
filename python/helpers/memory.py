@@ -41,7 +41,9 @@ try:
         # Newer LC: cache class moved under embeddings.cache
         from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
     except Exception:
-        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings  # type: ignore
+        from langchain.embeddings import (
+            CacheBackedEmbeddings as LC_CacheBackedEmbeddings,  # type: ignore
+        )
     from langchain.storage import InMemoryByteStore, LocalFileStore
     from langchain_community.docstore.in_memory import InMemoryDocstore
     from langchain_community.vectorstores import FAISS
@@ -352,7 +354,6 @@ class Memory:
             )
 
             # insert docs if reindexing
-            from simpleeval import simple_eval
 
         return db, created
 

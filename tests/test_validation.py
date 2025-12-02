@@ -7,8 +7,8 @@ clear ``ValueError`` for invalid data.
 
 import pytest
 
+from python.tasks.schemas import A2A_CHAT_ARGS_SCHEMA, DELEGATE_PAYLOAD_SCHEMA
 from python.tasks.validation import validate_payload
-from python.tasks.schemas import DELEGATE_PAYLOAD_SCHEMA, A2A_CHAT_ARGS_SCHEMA
 
 
 def test_validate_delegate_payload_success():

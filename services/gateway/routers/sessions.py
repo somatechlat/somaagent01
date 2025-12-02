@@ -13,8 +13,8 @@ from typing import Any, AsyncGenerator, Optional
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
-from services.common.session_repository import PostgresSessionStore, ensure_schema
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.session_repository import ensure_schema, PostgresSessionStore
 
 router = APIRouter(prefix="/v1/session", tags=["sessions"])
 

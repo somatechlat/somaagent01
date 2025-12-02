@@ -16,8 +16,9 @@ router without starting the monitor automatically.
 
 from __future__ import annotations
 
+from typing import Callable, Dict, List, Optional
+
 from fastapi import APIRouter
-from typing import Dict, List, Callable, Optional
 
 
 class UnifiedHealthRouter:

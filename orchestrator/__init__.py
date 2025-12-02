@@ -15,11 +15,11 @@ The package follows the VIBE CODING RULES – no placeholders, real
 implementations only, and full type‑checked configuration.
 """
 
-from .main import run_orchestrator, main, app
-from .orchestrator import SomaOrchestrator
-from .service_registry import ServiceRegistry, ServiceDefinition
-from .health_monitor import UnifiedHealthMonitor
 from .config import CentralizedConfig, load_config
+from .health_monitor import UnifiedHealthMonitor
+from .main import app, main, run_orchestrator
+from .orchestrator import SomaOrchestrator
+from .service_registry import ServiceDefinition, ServiceRegistry
 
 __all__ = [
     "run_orchestrator",

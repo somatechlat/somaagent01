@@ -12,7 +12,6 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, List, Optional
-import uuid
 
 import redis.asyncio as redis
 

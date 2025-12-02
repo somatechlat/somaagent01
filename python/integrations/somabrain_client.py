@@ -14,14 +14,14 @@ from typing import Any, Dict, List
 
 import httpx
 
-# Updated to use centralized configuration instead of direct environment access.
-from src.core.config import cfg
-
 from python.integrations.soma_client import (
     SomaClient,
     SomaClientError,
     SomaMemoryRecord,
 )
+
+# Updated to use centralized configuration instead of direct environment access.
+from src.core.config import cfg
 
 
 class SomaBrainClient(SomaClient):

@@ -1,7 +1,7 @@
 """SomaAgent SDK modules."""
 
 from .capsule import download_capsule, install_capsule, list_capsules
-from .context_builder import ContextBuilder, BuiltContext, SomabrainHealthState
+from .context_builder import BuiltContext, ContextBuilder, SomabrainHealthState
 
 __all__ = [
     "list_capsules",

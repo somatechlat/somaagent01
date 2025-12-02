@@ -8,7 +8,6 @@ from typing import Any, Dict
 
 import jsonschema
 
-
 SCHEMAS: Dict[str, Dict[str, Any]] = {
     "conversation_event": {
         "type": "object",

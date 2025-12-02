@@ -13,14 +13,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import time
 from contextlib import suppress
 from typing import Optional
-import time
-
-from aiokafka.errors import KafkaError
-from prometheus_client import Counter, Gauge, start_http_server
 
 import httpx
+from aiokafka.errors import KafkaError
+from prometheus_client import Counter, Gauge, start_http_server
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.outbox_repository import (

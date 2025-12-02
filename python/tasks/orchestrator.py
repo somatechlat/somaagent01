@@ -7,20 +7,20 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
+from python.observability.event_publisher import publish_event
 from python.observability.metrics import (
-    fast_a2a_requests_total,
     fast_a2a_errors_total,
+    fast_a2a_requests_total,
     increment_counter,
     set_health_status,
 )
-from python.observability.event_publisher import publish_event
 from python.tasks.a2a_chat_task import (
     a2a_chat_task,
-    get_task_result,
-    get_conversation_history,
     check_celery_health,
+    get_conversation_history,
+    get_task_result,
 )
 
 

@@ -17,11 +17,14 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List, Optional
 
+import httpx
 from prometheus_client import Counter, Histogram
 
-from src.core.config import cfg
-import httpx
 from python.integrations.somabrain_client import SomaClientError
+from src.core.config import cfg
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 LEARNING_REQUESTS_TOTAL = Counter(
     "learning_requests_total",

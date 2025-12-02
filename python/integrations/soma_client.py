@@ -450,7 +450,8 @@ class SomaClient:
                     except ValueError:
                         # Fallback: parse HTTP-date to seconds delta (simple/lenient)
                         try:
-                            import email.utils as _eutils, time as _time
+                            import email.utils as _eutils
+                            import time as _time
 
                             ts = _eutils.parsedate_to_datetime(ra)
                             if ts is not None:

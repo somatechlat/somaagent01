@@ -13,20 +13,19 @@ from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
+from services.common.tracing import setup_tracing
+
+# Legacy settings import removed. Use centralized configuration.
+from src.core.config import cfg
 from src.core.domain.memory.replica_store import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )
-
-# Legacy settings import removed. Use centralized configuration.
-from src.core.config import cfg
-from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.tracing import setup_tracing
-from src.core.config import cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)

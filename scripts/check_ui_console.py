@@ -23,7 +23,7 @@ import asyncio
 from pathlib import Path
 from typing import List
 
-from playwright.async_api import async_playwright, Page, ConsoleMessage
+from playwright.async_api import async_playwright, ConsoleMessage, Page
 
 
 async def capture_console(url: str) -> List[ConsoleMessage]:

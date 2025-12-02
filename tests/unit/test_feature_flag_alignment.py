@@ -1,11 +1,10 @@
-import os
 from typing import Dict
 
 import pytest
 from fastapi.testclient import TestClient
 
-from src.core.config import cfg
 from services.common.tenant_flags import set_flag_fetcher
+from src.core.config import cfg
 
 
 @pytest.mark.asyncio

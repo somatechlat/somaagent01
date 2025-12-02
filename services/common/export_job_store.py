@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import json
 import os
-from services.common.admin_settings import ADMIN_SETTINGS
 from dataclasses import dataclass
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional
 
 import asyncpg
+
+from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
 
 

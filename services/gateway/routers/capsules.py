@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from typing import List
 
-from services.common.capsule_store import CapsuleStore, CapsuleRecord
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from services.common.capsule_store import CapsuleRecord, CapsuleStore
 
 router = APIRouter(prefix="/v1/capsules", tags=["capsules"])
 STORE = CapsuleStore()

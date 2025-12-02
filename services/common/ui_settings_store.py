@@ -11,10 +11,10 @@ import json
 import os
 from typing import Any, Optional
 
+import asyncpg
+
 from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
-
-import asyncpg
 
 
 class UiSettingsStore:

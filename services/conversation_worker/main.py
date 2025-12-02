@@ -11,55 +11,21 @@ class – and does not duplicate any business logic.
 
 from __future__ import annotations
 
-# Re‑export the new service implementation under the legacy name.
-from .service import ConversationWorkerService as ConversationWorker
-
 import asyncio
+import json
 import logging
+import mimetypes
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List
-import json
-import asyncpg
 
+import asyncpg
+import httpx
 from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-from services.common.memory_write_outbox import (
-    MemoryWriteOutbox,
-    ensure_schema as ensure_mw_outbox_schema,
-)
-from services.common.budget_manager import BudgetManager
-from services.common.dlq import DeadLetterQueue
-from services.common.escalation import EscalationDecision, should_escalate
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
-from services.common.model_costs import estimate_escalation_cost
-from services.common.model_profiles import ModelProfileStore
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
-from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.publisher import DurablePublisher
-from services.common.schema_validator import validate as validate_schema
-from services.common.idempotency import generate_for_memory_payload
-from services.common.router_client import RouterClient
-from services.common.schema_validator import validate_event
-from services.common.session_repository import (
-    ensure_schema,
-    PostgresSessionStore,
-    RedisSessionCache,
-)
-
-# Legacy settings import removed. Use centralized configuration.
-from src.core.config import cfg
-from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.slm_client import ChatMessage
-from services.common.telemetry import TelemetryPublisher
-from services.common.telemetry_store import TelemetryStore
-from services.common.tenant_config import TenantConfig
-from services.common.tracing import setup_tracing
-from src.core.config import cfg
 from observability.metrics import (
     ContextBuilderMetrics,
     llm_call_latency_seconds,
@@ -70,12 +36,44 @@ from observability.metrics import (
     tokens_received_total,
 )
 from python.helpers.tokens import count_tokens
+from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-import httpx
+from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.budget_manager import BudgetManager
+from services.common.dlq import DeadLetterQueue
+from services.common.escalation import EscalationDecision, should_escalate
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.idempotency import generate_for_memory_payload
+from services.common.logging_config import setup_logging
+from services.common.memory_write_outbox import (
+    ensure_schema as ensure_mw_outbox_schema,
+    MemoryWriteOutbox,
+)
+from services.common.model_costs import estimate_escalation_cost
+from services.common.model_profiles import ModelProfileStore
+from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
+from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common.publisher import DurablePublisher
+from services.common.router_client import RouterClient
+from services.common.schema_validator import validate as validate_schema, validate_event
+from services.common.session_repository import (
+    ensure_schema,
+    PostgresSessionStore,
+    RedisSessionCache,
+)
+from services.common.slm_client import ChatMessage
+from services.common.telemetry import TelemetryPublisher
+from services.common.telemetry_store import TelemetryStore
+from services.common.tenant_config import TenantConfig
+from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
-import mimetypes
-from pathlib import Path
 from services.tool_executor.tool_registry import ToolRegistry
+
+# Legacy settings import removed. Use centralized configuration.
+from src.core.config import cfg
+
+# Re‑export the new service implementation under the legacy name.
+from .service import ConversationWorkerService as ConversationWorker
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -657,8 +655,8 @@ class ConversationWorker:
             # Images via pytesseract if available
             if mime.startswith("image/"):
                 try:
-                    from PIL import Image  # type: ignore
                     import pytesseract  # type: ignore
+                    from PIL import Image  # type: ignore
 
                     img = Image.open(str(p))
                     return pytesseract.image_to_string(img)[:200_000]
@@ -857,8 +855,9 @@ class ConversationWorker:
                     return data.decode("latin-1", errors="ignore")[:200_000]
             if mime == "application/pdf" or (filename or "").lower().endswith(".pdf"):
                 try:
-                    import fitz  # type: ignore
                     import io as _io
+
+                    import fitz  # type: ignore
 
                     parts: list[str] = []
                     with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
@@ -869,9 +868,10 @@ class ConversationWorker:
                     return ""
             if (mime or "").startswith("image/"):
                 try:
-                    from PIL import Image  # type: ignore
-                    import pytesseract  # type: ignore
                     import io as _io
+
+                    import pytesseract  # type: ignore
+                    from PIL import Image  # type: ignore
 
                     img = Image.open(_io.BytesIO(data))
                     return pytesseract.image_to_string(img)[:200_000]

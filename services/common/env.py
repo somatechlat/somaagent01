@@ -12,7 +12,6 @@ import os
 import re
 from typing import Optional
 
-
 _VAR_PATTERN = re.compile(r"\$(\w+)|\${(\w+)}")
 
 

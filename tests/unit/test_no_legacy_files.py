@@ -8,7 +8,6 @@ ALLOWED_IMPORTS = {
     "services/gateway/main.py",
     "integrations/repositories.py",
     # Duplicate entry retained for clarity
-    "services/common/settings_registry.py",
     # Test files that deliberately import the legacy store for audit purposes
     "tests/agent/llm/test_llm_audit.py",
     "tests/unit/test_no_direct_getenv.py",

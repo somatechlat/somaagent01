@@ -7,13 +7,9 @@ All configuration flows through deterministic resolution via Somabrain APIs.
 
 from __future__ import annotations
 
-import json
 import os
-from typing import Any, Optional
 from dataclasses import dataclass
-from pathlib import Path
-
-from observability.metrics import metrics_collector
+from typing import Optional
 
 
 def _load_sa01_settings():

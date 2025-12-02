@@ -1,6 +1,6 @@
 from agent import AgentContextType, LoopData
-from python.helpers.session_store_adapter import save_context
 from python.helpers.extension import Extension
+from python.helpers.session_store_adapter import save_context
 
 
 class SaveChat(Extension):

@@ -10,16 +10,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime
-from typing import Any, List
+from typing import List
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse
 
 # Import the data‑store abstractions from the original gateway.
 from services.common.postgres_session_store import (
-    PostgresSessionStore,
     get_session_store,
+    PostgresSessionStore,
 )
 
 # Re‑use the Pydantic model defined in the monolith for compatibility.

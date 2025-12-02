@@ -23,15 +23,16 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .base_service import BaseSomaService
-from src.core.domain.memory.replica_store import (
-    MemoryReplicaStore,
-    ensure_schema as ensure_replica_schema,
-)
 from services.common.memory_write_outbox import (
-    MemoryWriteOutbox,
     ensure_schema as ensure_outbox_schema,
+    MemoryWriteOutbox,
 )
+from src.core.domain.memory.replica_store import (
+    ensure_schema as ensure_replica_schema,
+    MemoryReplicaStore,
+)
+
+from .base_service import BaseSomaService
 
 LOGGER = logging.getLogger(__name__)
 

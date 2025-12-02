@@ -5,9 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.tool_executor.tool_registry import ToolRegistry  # type: ignore
-from services.common.tool_catalog import ToolCatalogStore
 from services.common.logging_config import get_logger
+from services.common.tool_catalog import ToolCatalogStore
+from services.tool_executor.tool_registry import ToolRegistry  # type: ignore
 
 router = APIRouter(prefix="/v1", tags=["tools"])
 

@@ -6,11 +6,10 @@ insert, fetch, and TTL purge helpers.
 
 from __future__ import annotations
 
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Any, AsyncIterator
+from typing import Optional
 
 import asyncpg
 

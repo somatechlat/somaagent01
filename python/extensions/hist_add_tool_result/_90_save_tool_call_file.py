@@ -1,7 +1,7 @@
 from typing import Any
 
-from python.helpers.session_store_adapter import record_tool_result
 from python.helpers.extension import Extension
+from python.helpers.session_store_adapter import record_tool_result
 
 LEN_MIN = 500
 

@@ -1,6 +1,6 @@
+import base64
 import os
 import re
-import base64
 from typing import Any
 
 from dotenv import load_dotenv as _load_dotenv

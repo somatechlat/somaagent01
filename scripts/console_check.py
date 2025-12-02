@@ -3,8 +3,9 @@
 Usage: python3 scripts/console_check.py [BASE_URL]
 If BASE_URL is omitted, defaults to http://localhost:21016
 """
-import sys
 import asyncio
+import sys
+
 from playwright.async_api import async_playwright
 
 

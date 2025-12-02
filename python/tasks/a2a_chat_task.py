@@ -4,29 +4,30 @@ REAL IMPLEMENTATION - No placeholders, actual asynchronous agent communication.
 """
 
 from __future__ import annotations
+
 import asyncio
 import json
 import time
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
+
 from celery import shared_task, Task
-from celery.result import AsyncResult
 from redis import Redis
 from redis.exceptions import RedisError
 
 from python.helpers.fasta2a_client import connect_to_agent, is_client_available
-from python.tasks.validation import validate_payload
-from python.tasks.schemas import A2A_CHAT_ARGS_SCHEMA
+from python.observability.event_publisher import publish_event
 from python.observability.metrics import (
-    fast_a2a_requests_total,
-    fast_a2a_latency_seconds,
     fast_a2a_errors_total,
-    somabrain_memory_operations_total,
+    fast_a2a_latency_seconds,
+    fast_a2a_requests_total,
     increment_counter,
     set_health_status,
+    somabrain_memory_operations_total,
 )
-from python.observability.event_publisher import publish_event
 from python.tasks.config import create_redis_client
+from python.tasks.schemas import A2A_CHAT_ARGS_SCHEMA
+from python.tasks.validation import validate_payload
 
 # REAL IMPLEMENTATION - Redis connection
 redis_client: Redis = create_redis_client()

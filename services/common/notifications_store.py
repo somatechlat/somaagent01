@@ -36,8 +36,8 @@ SEVERITIES = {"info", "success", "warning", "error"}
 
 class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from src.core.config import cfg
         from services.common.admin_settings import ADMIN_SETTINGS
+        from src.core.config import cfg
 
         self._cfg = cfg
 

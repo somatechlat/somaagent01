@@ -21,8 +21,8 @@ from aiokafka.errors import KafkaError
 from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus
+from services.common.messaging_utils import build_headers
 from services.common.outbox_repository import OutboxStore
-from services.common.messaging_utils import build_headers, correlation_id
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)

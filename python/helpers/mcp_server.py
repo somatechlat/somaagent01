@@ -16,8 +16,8 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from agent import AgentContext, AgentContextType, UserMessage
 from initialize import initialize_agent
 from python.helpers import settings
-from python.helpers.session_store_adapter import delete_context
 from python.helpers.print_style import PrintStyle
+from python.helpers.session_store_adapter import delete_context
 
 _PRINTER = PrintStyle(italic=True, font_color="green", padding=False)
 

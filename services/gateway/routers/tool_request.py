@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from services.common.publisher import DurablePublisher
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.memory_write_outbox import MemoryWriteOutbox
+from services.common.publisher import DurablePublisher
 
 router = APIRouter(prefix="/v1/tool", tags=["tools"])
 

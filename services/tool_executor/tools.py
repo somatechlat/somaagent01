@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 import httpx
-import mimetypes
 
 from src.core.config import cfg
 
@@ -20,8 +19,8 @@ try:
 except Exception:  # pragma: no cover
     fitz = None  # type: ignore
 try:
-    from PIL import Image  # type: ignore
     import pytesseract  # type: ignore
+    from PIL import Image  # type: ignore
 except Exception:  # pragma: no cover
     Image = None  # type: ignore
     pytesseract = None  # type: ignore

@@ -8,22 +8,18 @@ No placeholders.
 
 from __future__ import annotations
 
-import time
 import logging
-from typing import Any, Dict
+import time
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 # Project imports – verified against the existing code base
-from python.helpers.settings import set_settings
-from src.core.config import cfg
 from services.common.audit_store import get_audit_store
-from services.common.event_bus import iterate_topic, KafkaEventBus, KafkaSettings
 
 # Local imports from the original gateway (now referenced via the router)
 # The original file defines these helpers; we import them to keep behaviour identical.
-from . import _gateway_slm_client, _detect_provider_from_base, _normalize_llm_base_url
+from . import _detect_provider_from_base, _gateway_slm_client
 from .models import ChatMessage, ChatPayload  # These Pydantic models already exist in the monolith.
 
 LOGGER = logging.getLogger(__name__)

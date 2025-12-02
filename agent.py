@@ -6,15 +6,15 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-
-# Prometheus client for custom metrics (FSM transitions)
-from prometheus_client import Counter, Gauge
 from typing import Any, Awaitable, Callable, Coroutine, Dict
 
 # Third‑party imports (sorted alphabetically)
 import nest_asyncio
 from langchain_core.messages import BaseMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
+
+# Prometheus client for custom metrics (FSM transitions)
+from prometheus_client import Counter, Gauge
 
 # Apply nest_asyncio patch immediately after import
 nest_asyncio.apply()
@@ -2575,7 +2575,7 @@ class Agent:
             )
             self.data["neuromodulators"] = neuromod_payload
             PrintStyle(font_color="green", padding=False).print(
-                f"Set neuromodulator state in SomaBrain"
+                "Set neuromodulator state in SomaBrain"
             )
             return True
         except SomaClientError as e:

@@ -3,17 +3,17 @@ import base64
 import hashlib
 import json
 import subprocess
-from typing import Any, Literal, TypedDict, cast
-
-# Local imports
-from . import files
-from .secrets import SecretsManager
-from .settings_model import SettingsModel as Settings
+from typing import Any, cast, Literal, TypedDict
 
 # Third-party imports
 from python.helpers import defer, git, runtime, whisper
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
+
+# Local imports
+from . import files
+from .secrets import SecretsManager
+from .settings_model import SettingsModel as Settings
 
 
 # ``PartialSettings`` kept for compatibility
@@ -1308,6 +1308,7 @@ def get_settings() -> Settings:
     if not _settings:
         try:
             import asyncio
+
             from services.common.agent_settings_store import get_agent_settings_store
 
             store = get_agent_settings_store()
@@ -1340,6 +1341,7 @@ def set_settings(settings: Settings, apply: bool = True):
 
     try:
         import asyncio
+
         from services.common.agent_settings_store import get_agent_settings_store
 
         store = get_agent_settings_store()
