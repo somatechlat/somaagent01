@@ -105,6 +105,13 @@ class ContextBuilder:
             trimmed_history = self._trim_history(history, budget_for_history)
             history_tokens = sum(self.count_tokens(msg.get("content", "")) for msg in trimmed_history)
 
+            if len(history) > len(trimmed_history):
+                await self._store_summary(
+                    turn=turn,
+                    original_history=history,
+                    trimmed_history=trimmed_history,
+                )
+
             self.metrics.record_tokens(
                 before_budget=sum(self.count_tokens(m.get("content", "")) for m in history),
                 after_budget=history_tokens,
@@ -325,3 +332,60 @@ class ContextBuilder:
             text = snippet.get("text", "")
             parts.append(f"[{idx}] ({label})\n{text}")
         return "Relevant memory:\n" + "\n\n".join(parts)
+
+    async def _store_summary(
+        self,
+        *,
+        turn: Dict[str, Any],
+        original_history: List[Dict[str, Any]],
+        trimmed_history: List[Dict[str, Any]],
+    ) -> None:
+        """Create and store an extractive session summary in SomaBrain."""
+        try:
+            summary_text = self._build_summary(original_history, trimmed_history)
+            if not summary_text:
+                return
+            payload = {
+                "tenant_id": turn.get("tenant_id"),
+                "memories": [
+                    {
+                        "type": "session_summary",
+                        "text": summary_text,
+                        "session_id": turn.get("session_id"),
+                        "persona_id": turn.get("persona_id"),
+                        "tags": ["session_summary", "auto", "context_builder"],
+                        "metadata": {
+                            "trimmed_from": len(original_history),
+                            "trimmed_to": len(trimmed_history),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    }
+                ],
+            }
+            await self.somabrain.remember_batch(payload)
+            self.metrics.inc_snippets(stage="summary", count=1)
+        except SomaClientError:
+            LOGGER.info("Failed to store session summary (SomaBrain error)", exc_info=True)
+        except Exception:
+            LOGGER.exception("Unexpected failure while storing session summary")
+
+    def _build_summary(
+        self,
+        original_history: List[Dict[str, Any]],
+        trimmed_history: List[Dict[str, Any]],
+    ) -> str:
+        """Extractive summary built from pruned messages, capped to 1024 chars."""
+        removed_count = len(original_history) - len(trimmed_history)
+        if removed_count <= 0:
+            return ""
+        removed = original_history[:removed_count]
+        parts: List[str] = []
+        for msg in removed:
+            role = msg.get("role", "user")
+            content = (msg.get("content") or "").strip()
+            if not content:
+                continue
+            parts.append(f"{role}: {content}")
+            if len(" | ".join(parts)) > 1024:
+                break
+        return " | ".join(parts)[:1024]

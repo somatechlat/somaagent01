@@ -17,17 +17,13 @@ from services.common import env
 def _get_capsule_registry_url() -> str:
     """Return the capsule registry base URL.
 
-    In production the ``CAPSULE_REGISTRY_URL`` environment variable must be
-    set.  For unit‑test environments it may be missing, which caused import
-    errors.  We therefore provide a harmless default (``http://localhost:8000``)
-    when the variable is absent.  Tests that need to hit a real registry mock
-    the HTTP client, so this fallback is never used in practice.
+    In production the ``CAPSULE_REGISTRY_URL`` environment variable must be set.
+    No localhost fallback is provided to comply with VIBE "no hardcoded defaults".
     """
     url = env.get("CAPSULE_REGISTRY_URL")
     if not url:
-        # Default placeholder for test environments.
-        return "http://localhost:8000"
-    return url
+        raise RuntimeError("CAPSULE_REGISTRY_URL must be set for capsule registry access.")
+    return url.rstrip("/")
 
 BASE_URL = _get_capsule_registry_url()
 

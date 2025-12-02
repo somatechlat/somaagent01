@@ -7,12 +7,13 @@ from pydantic import BaseModel
 
 from agent import Agent, InterventionException
 from python.extensions.message_loop_start._10_iteration_no import get_iter_no
-from python.helpers import defer, files, persist_chat, strings
+from python.helpers import defer, files, strings
 from python.helpers.browser_use import browser_use  # type: ignore[attr-defined]
 from python.helpers.dirty_json import DirtyJson
 from python.helpers.playwright import ensure_playwright_binary
 from python.helpers.print_style import PrintStyle
 from python.helpers.secrets import SecretsManager
+from python.helpers.session_store_adapter import save_screenshot_attachment
 from python.helpers.tool import Response, Tool
 
 
@@ -368,15 +369,15 @@ class BrowserAgent(Tool):
                     # Build short activity log
                     result["log"] = get_use_agent_log(ua)
 
-                    path = files.get_abs_path(
-                        persist_chat.get_chat_folder_path(agent.context.id),
-                        "browser",
-                        "screenshots",
-                        f"{self.guid}.png",
+                    content = await page.screenshot(full_page=False, timeout=3000)
+                    attachment_id = await save_screenshot_attachment(
+                        agent.context.id,
+                        persona_id=None,
+                        content=content,
+                        filename=f"{self.guid}.png",
+                        tenant=None,
                     )
-                    files.make_dirs(path)
-                    await page.screenshot(path=path, full_page=False, timeout=3000)
-                    result["screenshot"] = f"img://{path}&t={str(time.time())}"
+                    result["screenshot"] = f"img://{attachment_id}"
 
                 if self.state and self.state.task and not self.state.task.is_ready():
                     await self.state.task.execute_inside(_get_update)

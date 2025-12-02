@@ -148,8 +148,9 @@ def load_config() -> Config:
             "socket_timeout": 5,
         },
         "external": {
-            "somabrain_base_url": "http://localhost:9696",
-            "opa_url": "http://localhost:8181",
+            # No hardcoded soma/opa defaults; must be set via env or config file.
+            "somabrain_base_url": None,
+            "opa_url": None,
             "otlp_endpoint": None,
         },
         "auth": {

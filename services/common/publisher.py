@@ -22,6 +22,7 @@ from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus
 from services.common.outbox_repository import OutboxStore
+from services.common.messaging_utils import build_headers, correlation_id
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class DurablePublisher:
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
         fallback: bool = True,
+        correlation: Optional[str] = None,
     ) -> dict[str, Any]:
         """Try Kafka first, then fallback to Outbox if enabled.
 
@@ -63,14 +65,15 @@ class DurablePublisher:
             timeout_s = 2.0
         try:
             # Build standard event headers expected by downstream consumers and tests
-            # Build a deterministic header map – ensure every key is present (empty string if missing)
-            hdrs: dict[str, Any] = {}
-            hdrs["tenant_id"] = tenant or (payload.get("metadata") or {}).get("tenant") or ""
-            hdrs["session_id"] = session_id or payload.get("session_id") or ""
-            hdrs["persona_id"] = payload.get("persona_id") or ""
-            hdrs["event_type"] = payload.get("type") or ""
-            hdrs["event_id"] = payload.get("event_id") or ""
-            hdrs["schema"] = payload.get("version") or payload.get("schema") or ""
+            hdrs = build_headers(
+                tenant=tenant or (payload.get("metadata") or {}).get("tenant"),
+                session_id=session_id or payload.get("session_id"),
+                persona_id=payload.get("persona_id"),
+                event_type=payload.get("type"),
+                event_id=payload.get("event_id"),
+                schema=payload.get("version") or payload.get("schema"),
+                correlation=correlation or payload.get("correlation_id"),
+            )
             await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
@@ -81,13 +84,15 @@ class DurablePublisher:
             # Fallback to outbox – ensure the same header mapping used for Kafka
             # is persisted so downstream consumers can rely on it.
             # Build the same hdr dict as above (but keep original keys as str).
-            outbox_hdrs: dict[str, Any] = {}
-            outbox_hdrs["tenant_id"] = tenant or (payload.get("metadata") or {}).get("tenant")
-            outbox_hdrs["session_id"] = session_id or payload.get("session_id")
-            outbox_hdrs["persona_id"] = payload.get("persona_id")
-            outbox_hdrs["event_type"] = payload.get("type")
-            outbox_hdrs["event_id"] = payload.get("event_id")
-            outbox_hdrs["schema"] = payload.get("version") or payload.get("schema")
+            outbox_hdrs = build_headers(
+                tenant=tenant or (payload.get("metadata") or {}).get("tenant"),
+                session_id=session_id or payload.get("session_id"),
+                persona_id=payload.get("persona_id"),
+                event_type=payload.get("type"),
+                event_id=payload.get("event_id"),
+                schema=payload.get("version") or payload.get("schema"),
+                correlation=correlation or payload.get("correlation_id"),
+            )
             msg_id = await self.outbox.enqueue(
                 topic=topic,
                 payload=payload,

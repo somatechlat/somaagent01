@@ -192,13 +192,15 @@ class RedisApiKeyStore(ApiKeyStore):
     """Redis-backed key store suitable for production deployments."""
 
     def __init__(self, url: str | None = None) -> None:
-        raw_url = url or "redis://localhost:6379/0"
+        raw_url = url or cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL")
         # Expand env placeholders so URLs like redis://localhost:${REDIS_PORT}/0 work in local .env
         self.url = os.path.expandvars(raw_url)
-        self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
+        self._client: Optional[redis.Redis] = redis.from_url(self.url, decode_responses=True) if raw_url else None
         self._namespace = "gateway:api_keys"
 
     async def create_key(self, label: str, *, created_by: str | None = None) -> ApiKeySecret:
+        if not self._client:
+            raise RuntimeError("RedisApiKeyStore requires SA01_REDIS_URL/REDIS_URL or an explicit url.")
         key_id, api_key, prefix = _generate_api_key()
         record = {
             "key_id": key_id,
@@ -215,10 +217,14 @@ class RedisApiKeyStore(ApiKeyStore):
         return ApiKeySecret(secret=api_key, **{k: record[k] for k in record if k != "hash"})
 
     async def list_keys(self) -> List[ApiKeyMetadata]:
+        if not self._client:
+            return []
         raw = await self._client.hvals(self._namespace)
         return [_metadata_from_record(json.loads(item)) for item in raw]
 
     async def revoke_key(self, key_id: str) -> None:
+        if not self._client:
+            return
         record = await self._client.hget(self._namespace, key_id)
         if not record:
             return

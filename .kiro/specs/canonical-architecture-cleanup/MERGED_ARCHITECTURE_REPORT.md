@@ -559,4 +559,18 @@ UI (settings.js)
 
 ---
 
+## 12. Dynamic Task Registry & SomaBrain Integration (New)
+
+- **Problem:** Tasks are statically defined; LLM-driven workflows cannot add tasks at runtime; feedback to SomaBrain is ad-hoc.
+- **Design:** Postgres `task_registry` table with Redis cache, signed artifact/hash verification, OPA-gated `/v1/tasks/register` + reload signal; dynamic `app.register_task()` at worker start/reload; per-task JSON Schema, rate limits, dedupe; audit events.
+- **SomaBrain:** Standardized `task_feedback` payload (task_name, session_id, persona_id, success, latency_ms, error_type, score/tags) sent after task execution; queued for retry when SomaBrain is DOWN; tag memories for recall; use SomaBrain priors when planning tasks.
+- **Observability:** Metrics wrappers for dynamic tasks with tenant/persona labels; Flower must display them; UI should reflect SomaBrain status for these workflows.
+
+## 13. SomaBrain-First Context & Auto-Summary (New)
+
+- **Recall-first:** Context builder calls SomaBrain on every turn; degradation mode reduces k; DOWN queues retries and marks status.
+- **Auto summaries:** Summaries of history/snippets stored back into SomaBrain with tags (tenant/persona/session/task) and reused to lower token cost and improve salience.
+- **Planning priors:** Planner/tool chooser fetches prior task/tool patterns from SomaBrain and injects into prompts.
+- **Policy enrichment:** OPA inputs include SomaBrain risk/sensitivity signals; decisions fail closed on errors.
+- **Tagging:** Session events carry SomaBrain coordinates for deep-link recall.
 **END OF MERGED ARCHITECTURE REPORT**

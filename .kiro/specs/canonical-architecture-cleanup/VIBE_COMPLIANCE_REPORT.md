@@ -354,6 +354,22 @@ Week 4: 90% → 100% (Observability)
 
 ---
 
+## 🔄 NEW GAP: Dynamic Task Registry + SomaBrain Feedback
+
+- Tasks are static; runtime LLM-generated workflows cannot register tasks.
+- Required: Postgres-backed `task_registry` + Redis cache, signed artifact/hash verification, OPA-gated `/v1/tasks/register` + reload control, JSON Schema validation, per-task rate limits/dedupe, and audit events.
+- After each task, send structured `task_feedback` (task_name, session_id, persona_id, success, latency_ms, error_type, score/tags) to SomaBrain; enqueue for retry when SomaBrain is DOWN; tag memories for recall.
+- Use SomaBrain priors when planning tasks; surface dynamic tasks in metrics/Flower with tenant/persona labels; status visible in UI.
+
+---
+
+## 🧠 SomaBrain-First Context & Auto-Summary (NEW FOCUS)
+
+- Context builds must recall from SomaBrain first; degradation mode reduces k; DOWN queues retry.
+- Auto-summarize long histories + snippets into SomaBrain “session summaries” with tenant/persona/session/task tags; reuse to cut tokens and boost salience.
+- Planner/tool chooser must fetch prior task/tool patterns from SomaBrain and inject into prompts.
+- Include SomaBrain coordinates/tags in session events; enrich OPA inputs with SomaBrain risk/sensitivity; fail-closed on errors.
+
 ## 🎯 ACCEPTANCE CRITERIA (from Guide §14)
 
 | Criterion | Current | Target |
@@ -527,4 +543,3 @@ CREATE TABLE tenant_tool_flags (
 ---
 
 **END OF VIBE COMPLIANCE REPORT**
-

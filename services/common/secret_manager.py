@@ -78,8 +78,9 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
-        redis_url = cfg.env("SA01_REDIS_URL", cfg.env("REDIS_URL", "redis://localhost:6379/0"))
-        self._redis = redis.from_url(redis_url, decode_responses=True)
+        redis_url = cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL")
+        # Redis is an optional cache; Vault is the source of truth.
+        self._redis = redis.from_url(redis_url, decode_responses=True) if redis_url else None
         # Defer Fernet creation until first use. This allows the manager to be
         # instantiated in test environments where the encryption key may be
         # intentionally omitted.

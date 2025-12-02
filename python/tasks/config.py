@@ -25,14 +25,25 @@ class CelerySettings:
     task_soft_time_limit: int
     worker_prefetch_multiplier: int
 
-    def queue_definition(self) -> Dict[str, Dict[str, str]]:
-        """Return Celery task_queues definition."""
-        return {
-            self.default_queue: {
-                "exchange": self.default_queue,
-                "routing_key": self.default_queue,
-            }
+    def queue_definitions(self) -> Dict[str, Dict[str, str]]:
+        """Return Celery task_queues definition for all canonical queues."""
+        queues = [
+            "delegation",
+            "browser",
+            "code",
+            "heavy",
+            "fast_a2a",
+            "dlq",
+        ]
+        definitions = {}
+        for q in queues:
+            definitions[q] = {"exchange": q, "routing_key": q}
+        # keep default queue mapping
+        definitions[self.default_queue] = {
+            "exchange": self.default_queue,
+            "routing_key": self.default_queue,
         }
+        return definitions
 
 
 @dataclass(frozen=True)
@@ -119,5 +130,19 @@ def celery_conf_overrides() -> Dict[str, Any]:
         "result_compression": "gzip",
         "result_expires": 3600,
         "task_default_queue": settings.default_queue,
-        "task_queues": settings.queue_definition(),
+        "task_queues": settings.queue_definitions(),
+        "task_routes": {
+            "python.tasks.core_tasks.delegate": {"queue": "delegation"},
+            "python.tasks.core_tasks.build_context": {"queue": "heavy"},
+            "python.tasks.core_tasks.evaluate_policy": {"queue": "delegation"},
+            "python.tasks.core_tasks.store_interaction": {"queue": "fast_a2a"},
+            "python.tasks.core_tasks.feedback_loop": {"queue": "fast_a2a"},
+            "python.tasks.core_tasks.rebuild_index": {"queue": "heavy"},
+            "python.tasks.core_tasks.publish_metrics": {"queue": "fast_a2a"},
+            "python.tasks.core_tasks.cleanup_sessions": {"queue": "heavy"},
+            "a2a_chat": {"queue": "fast_a2a"},
+            "python.tasks.core_tasks.dead_letter": {"queue": "dlq"},
+        },
+        "broker_transport_options": {"visibility_timeout": 7200},
+        "task_reject_on_worker_lost": True,
     }

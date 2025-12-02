@@ -112,7 +112,10 @@ def gateway_port() -> int:
 
 
 def soma_base_url() -> str:
-    return str(env("SOMA_BASE_URL", "http://localhost:9696"))
+    url = env("SOMA_BASE_URL") or env("SA01_SOMA_BASE_URL") or env("SA01_SOMABRAIN_URL")
+    if not url:
+        raise RuntimeError("SOMA_BASE_URL (or SA01_SOMA_BASE_URL/SA01_SOMABRAIN_URL) must be set explicitly.")
+    return str(url).rstrip("/")
 
 
 def postgres_dsn() -> str:

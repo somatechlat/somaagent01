@@ -50,6 +50,11 @@ TOOL_REQUEST_COUNTER = Counter(
     "Total tool execution requests processed",
     labelnames=("tool", "outcome"),
 )
+TOOL_FEEDBACK_TOTAL = Counter(
+    "tool_executor_feedback_total",
+    "Tool feedback delivery outcomes",
+    labelnames=("status",),
+)
 POLICY_DECISIONS = Counter(
     "tool_executor_policy_decisions_total",
     "Policy evaluation outcomes for tool executions",
@@ -572,6 +577,37 @@ class ToolExecutor:
             latency_seconds=execution_time,
             metadata=tenant_meta,
         )
+
+        await self._send_tool_feedback(result_event)
+
+    async def _send_tool_feedback(self, result_event: dict[str, Any]) -> None:
+        """Send tool execution feedback to SomaBrain; fallback to DLQ on failure."""
+        feedback = {
+            "task_name": result_event.get("tool_name"),
+            "tenant_id": (result_event.get("metadata") or {}).get("tenant"),
+            "persona_id": result_event.get("persona_id"),
+            "session_id": result_event.get("session_id"),
+            "success": result_event.get("status") == "success",
+            "latency_ms": int((result_event.get("execution_time") or 0) * 1000),
+            "error_type": None if result_event.get("status") == "success" else result_event.get("status"),
+            "tags": ["tool_executor"],
+        }
+        try:
+            await self.soma.context_feedback(feedback)
+            TOOL_FEEDBACK_TOTAL.labels("delivered").inc()
+        except Exception as exc:
+            try:
+                await self.publisher.publish(
+                    cfg.env("TASK_FEEDBACK_TOPIC", "task.feedback.dlq"),
+                    {"payload": feedback, "error": str(exc)},
+                    dedupe_key=str(result_event.get("event_id")),
+                    session_id=str(result_event.get("session_id")),
+                    tenant=feedback.get("tenant_id"),
+                )
+                TOOL_FEEDBACK_TOTAL.labels("queued_dlq").inc()
+            except Exception:
+                LOGGER.debug("Failed to enqueue tool feedback DLQ", exc_info=True)
+                TOOL_FEEDBACK_TOTAL.labels("failed").inc()
 
         if status == "success":
             await self._capture_memory(result_event, payload, tenant)

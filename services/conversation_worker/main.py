@@ -38,6 +38,7 @@ from services.common.model_profiles import ModelProfileStore
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
+from services.common.schema_validator import validate as validate_schema
 from services.common.idempotency import generate_for_memory_payload
 from services.common.router_client import RouterClient
 from services.common.schema_validator import validate_event
@@ -425,6 +426,30 @@ class ConversationWorker:
     def _mark_somabrain_degraded(self, duration: float) -> None:
         self._somabrain_degraded_until = max(self._somabrain_degraded_until, time.time() + duration)
 
+    async def _fetch_planner_priors(
+        self,
+        *,
+        tenant_id: Optional[str],
+        persona_id: Optional[str],
+        session_id: Optional[str],
+        analysis: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Retrieve recent successful tasks/tools from SomaBrain to bias planner."""
+        payload = {
+            "tenant_id": tenant_id,
+            "persona_id": persona_id,
+            "session_id": session_id,
+            "intent": analysis.get("intent"),
+            "tags": analysis.get("tags") or [],
+        }
+        try:
+            resp = await self.soma.plan_suggest(payload)
+            priors = resp.get("priors") or resp.get("suggestions") or []
+            return priors if isinstance(priors, list) else []
+        except Exception:
+            LOGGER.debug("planner priors fetch failed", exc_info=True)
+            return []
+
     def _history_events_to_messages(self, events: list[dict[str, Any]]) -> list[dict[str, str]]:
         messages: list[dict[str, str]] = []
         for entry in events:
@@ -446,6 +471,7 @@ class ConversationWorker:
         history: list[dict[str, Any]],
         event: dict[str, Any],
         analysis_prompt: ChatMessage,
+        priors_prompt: list[ChatMessage] | None = None,
     ) -> list[ChatMessage]:
         messages: list[ChatMessage] = []
         for item in reversed(history):
@@ -456,6 +482,9 @@ class ConversationWorker:
         if not messages or messages[-1].role != "user":
             messages.append(ChatMessage(role="user", content=event.get("message", "")))
         messages.insert(0, analysis_prompt)
+        if priors_prompt:
+            for msg in reversed(priors_prompt):
+                messages.insert(0, msg)
         return messages
 
     def _context_builder_max_tokens(self) -> int:
@@ -1630,6 +1659,11 @@ class ConversationWorker:
             MESSAGE_LATENCY.labels(label).observe(duration)
 
         session_id = event.get("session_id")
+        try:
+            validate_schema(event, "conversation_event")
+        except Exception as exc:
+            LOGGER.error("conversation_event schema invalid", extra={"error": str(exc)})
+            return
         
         # Extract tenant at the top level to ensure it's available throughout _handle_event
         try:
@@ -1974,6 +2008,15 @@ class ConversationWorker:
             "tags": []
         })
         
+        priors = await self._fetch_planner_priors(
+            tenant_id=event.get("tenant") or session_metadata.get("tenant"),
+            persona_id=persona_id,
+            session_id=session_id,
+            analysis=analysis_dict,
+        )
+        if priors:
+            event.setdefault("metadata", {})["planner_priors"] = priors
+        
         summary_tags = ", ".join(analysis_dict["tags"]) if analysis_dict.get("tags") else "none"
         analysis_prompt = ChatMessage(
             role="system",
@@ -1986,6 +2029,18 @@ class ConversationWorker:
                 tags=summary_tags,
             ),
         )
+        priors_prompt: list[ChatMessage] = []
+        if priors:
+            formatted = "; ".join(
+                f"{p.get('name','?')}: {p.get('description','')}" for p in priors[:3]
+            )
+            priors_prompt.append(
+                ChatMessage(
+                    role="system",
+                    name="planner_priors",
+                    content=f"Recent successful tasks/tools for similar intent: {formatted}. Prefer these when deciding actions.",
+                )
+            )
 
         try:
             # Initialize session_metadata for context builder path
@@ -2000,6 +2055,8 @@ class ConversationWorker:
             max_tokens = self._context_builder_max_tokens()
             built_context = await self.context_builder.build_for_turn(turn_envelope, max_prompt_tokens=max_tokens)
             messages = [ChatMessage(role=msg.get("role", "user"), content=str(msg.get("content", ""))) for msg in built_context.messages]
+            if priors_prompt:
+                messages = priors_prompt + messages
             session_metadata["somabrain_state"] = (
                 built_context.debug.get("somabrain_state")
                 or self._somabrain_health_state().value
@@ -2013,6 +2070,8 @@ class ConversationWorker:
             LOGGER.exception("Context builder failed; falling back to legacy prompt assembly")
             self._enter_somabrain_degraded("context_builder_failure")
             messages = self._legacy_prompt_messages(history, event, analysis_prompt)
+            if priors_prompt:
+                messages = priors_prompt + messages
             # Initialize session_metadata if not already defined
             if 'session_metadata' not in locals():
                 session_metadata = {}
@@ -2389,7 +2448,7 @@ class ConversationWorker:
                 "version": "sa01-v1",
                 "type": "assistant.final",
             }
-
+            validate_schema(response_event, "assistant_event")
             validate_event(response_event, "conversation_event")
 
             await self.store.append_event(session_id, {"type": "assistant", **response_event})
@@ -2399,6 +2458,13 @@ class ConversationWorker:
                 dedupe_key=response_event.get("event_id"),
                 session_id=session_id,
                 tenant=(response_event.get("metadata") or {}).get("tenant"),
+                headers=build_headers(
+                    tenant=(response_event.get("metadata") or {}).get("tenant"),
+                    session_id=session_id,
+                    persona_id=response_event.get("persona_id"),
+                    event_type=response_event.get("type"),
+                    event_id=response_event.get("event_id"),
+                ),
             )
             try:
                 LOGGER.info(

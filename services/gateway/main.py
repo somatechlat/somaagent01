@@ -57,8 +57,8 @@ async def health() -> dict:
 async def aggregated_health() -> dict:
     """Aggregate health of core services (gateway and FastA2A gateway)."""
     services = {
-        "gateway": "http://localhost:8010/health",
-        "fasta2a_gateway": "http://localhost:8011/health",
+        "gateway": cfg.env("GATEWAY_HEALTH_URL"),
+        "fasta2a_gateway": cfg.env("FASTA2A_HEALTH_URL"),
     }
     results: dict[str, dict] = {}
     async with httpx.AsyncClient() as client:
