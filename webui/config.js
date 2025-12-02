@@ -18,8 +18,6 @@ export const API = {
   SESSIONS: "/sessions",
   UPLOADS: "/uploads",
   SETTINGS: "/settings",
-  // Endpoint for persisting settings changes.
-  SAVE_SETTINGS: "/settings_save",
   // Endpoint to test LLM connection credentials (used by Settings modal).
   TEST_CONNECTION: "/test_connection",
   ATTACHMENTS: "/attachments",

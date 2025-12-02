@@ -35,7 +35,7 @@ from initialize import initialize_agent
 from python.helpers.defer import DeferredTask
 from python.helpers.files import get_abs_path, make_dirs, read_file, write_file
 from python.helpers.localization import Localization
-from python.helpers.persist_chat import save_tmp_chat
+from python.helpers.session_store_adapter import save_context
 from python.helpers.print_style import PrintStyle
 
 SCHEDULER_FOLDER = "tmp/scheduler"
@@ -788,7 +788,7 @@ class TaskScheduler:
         # context.name = task.name
 
         # Save the context
-        save_tmp_chat(context)
+        await save_context(context, reason="scheduler:new_context")
         return context
 
     async def _get_chat_context(
@@ -801,7 +801,7 @@ class TaskScheduler:
             self._printer.print(
                 f"Scheduler Task {task.name} loaded from task {task.uuid}, context ok"
             )
-            save_tmp_chat(context)
+            await save_context(context, reason="scheduler:reload")
             return context
         else:
             self._printer.print(
@@ -816,7 +816,7 @@ class TaskScheduler:
             raise ValueError(
                 f"Context ID mismatch for task {task.name}: context {context.id} != task {task.context_id}"
             )
-        save_tmp_chat(context)
+        await save_context(context, reason="scheduler:checkpoint")
 
     async def _run_task(
         self,

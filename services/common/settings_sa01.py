@@ -28,11 +28,11 @@ class SA01Settings(BaseServiceSettings):
 	# Extra service-wide fields consumed by various services
 	metrics_port: int = 9400
 	metrics_host: str = "0.0.0.0"
-	opa_url: str = "http://localhost:8181"
+	opa_url: str | None = None
 	# Base URL for the public gateway – used by other services to construct
 	# absolute URLs (e.g., health checks, OpenAPI docs). Defaults to the dev
 	# FastAPI bind address.
-	soma_base_url: str = "http://localhost:8010"
+	soma_base_url: str | None = None
 	# The public gateway port – required by the registry and various services.
 	# Default matches the FastAPI app's bind port in development.
 	gateway_port: int = 8010
@@ -77,7 +77,7 @@ class SA01Settings(BaseServiceSettings):
 				"metrics_host": env.get("SOMA_METRICS_HOST", "0.0.0.0"),
 				"opa_url": env.get("SA01_POLICY_URL", "http://opa:8181"),
 				"gateway_port": env.get_int("SOMA_GATEWAY_PORT", 8010),
-				"soma_base_url": env.get("SA01_SOMA_BASE_URL", env.get("SOMA_BASE_URL", "http://localhost:8010")),
+				"soma_base_url": env.get("SA01_SOMA_BASE_URL", env.get("SOMA_BASE_URL")),
 			}
 		return {
 			"DEV": _shared_defaults("DEV"),

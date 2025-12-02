@@ -1,5 +1,5 @@
 from agent import AgentContextType, LoopData
-from python.helpers import persist_chat
+from python.helpers.session_store_adapter import save_context
 from python.helpers.extension import Extension
 
 
@@ -9,4 +9,4 @@ class SaveChat(Extension):
         if self.agent.context.type == AgentContextType.BACKGROUND:
             return
 
-        persist_chat.save_tmp_chat(self.agent.context)
+        await save_context(self.agent.context, reason="loop_end")

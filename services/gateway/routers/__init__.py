@@ -52,6 +52,7 @@ from . import (
     tools,
     uploads,
     runtime_config,
+    tasks,
 )
 
 def build_router() -> APIRouter:
@@ -96,6 +97,7 @@ def build_router() -> APIRouter:
         tools.router,
         uploads.router,
         runtime_config.router,
+        tasks.router,
     ):
         router.include_router(sub)
     return router

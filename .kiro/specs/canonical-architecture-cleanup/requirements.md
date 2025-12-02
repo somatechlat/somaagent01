@@ -1096,6 +1096,23 @@ CREATE TABLE tenant_tool_flags (
 | Message/Conversation | 20% | 100% |
 | **Overall** | **~45%** | **100%** |
 
+## New Requirements – Constitution-Centric Prompting (Added Dec 2, 2025)
+
+### Requirement 67: Constitution-Sourced Base System Prompt
+- Base system prompt SHALL be fetched from the signed Constitution artifact (via SomaBrain/constitution service), verified (signature/hash), cached only in memory, and included in every turn. No filesystem or baked-in defaults. Fail-closed (503) if verification or fetch fails. Emit `constitution_version` in metadata/feedback.
+
+### Requirement 68: Persona Overlay Bound to Constitution
+- Persona prompt fragments SHALL layer on top of the Constitution without overriding its rules. Persona data is per-tenant/agent, versioned, OPA-checked on updates, and tagged in feedback (`persona_version`). Tool preferences in persona MUST respect Constitution allow/deny + OPA.
+
+### Requirement 69: Live In-Memory Prompt Composition
+- Prompt composition SHALL be live per request: Constitution base + persona + planner priors + health/safety banners. Providers use short TTL memory caches; cache invalidated on Constitution/persona reload. No disk writes.
+
+### Requirement 70: Planner Priors from SomaBrain
+- For each turn, the system SHALL call SomaBrain `plan_suggest` with tenant/persona/session/intent/tags to fetch priors on successful tasks/tools. Priors are injected into the system prompt; on miss/failure, proceed without priors and record `planner_priors_miss` metric.
+
+### Requirement 71: Constitution-Tied Tool Exposure
+- Tools shown to the LLM SHALL be filtered by Constitution allow/deny plus OPA. Denied tools SHALL never appear in prompts even if enabled elsewhere. Tool prompts carry `constitution_version` and tenant/persona scope.
+
 1. WHEN health checks are performed THEN the System SHALL execute PostgreSQL, Redis, Kafka, SomaBrain checks in parallel
 2. WHEN PostgreSQL latency exceeds 1000ms THEN the System SHALL mark service as degraded
 3. WHEN circuit breaker is open THEN the System SHALL mark SomaBrain as failed without additional requests
@@ -2019,3 +2036,226 @@ Based on the Agent Zero feature blueprint, SomaAgent01 needs advanced reinforcem
 | RedisSessionCache | `services/common/session_repository.py` | ✅ EXISTS |
 | ContextBuilder | `python/somaagent/context_builder.py` | ✅ EXISTS |
 | SomaBrainClient | `python/integrations/somabrain_client.py` | ✅ EXISTS |
+
+
+---
+
+## Prompt Repository Migration (FILE → PostgreSQL)
+
+### Current State Analysis
+
+The current system loads prompts from **FILES**:
+```python
+# agent.py - CURRENT (FILE-BASED - VIOLATION)
+def parse_prompt(self, _prompt_file: str, **kwargs):
+    dirs = [files.get_abs_path("prompts")]
+    prompt = files.parse_file(_prompt_file, _directories=dirs, **kwargs)
+    return prompt
+```
+
+This violates VIBE rules:
+- ❌ File-based storage
+- ❌ No versioning
+- ❌ No tenant isolation
+- ❌ No audit trail
+- ❌ Requires restart for changes
+
+### Requirement 69: PostgreSQL Prompt Repository
+
+**User Story:** As a system maintainer, I want prompts stored in PostgreSQL, so that they are versioned, tenant-isolated, and changeable without restart.
+
+#### Acceptance Criteria
+
+1. WHEN a prompt is stored THEN the System SHALL use `prompt_repository` PostgreSQL table
+2. WHEN a prompt is retrieved THEN the System SHALL use `PromptRepository.get(name, tenant_id)`
+3. WHEN a prompt is updated THEN the System SHALL create new version, not overwrite
+4. WHEN prompt history is needed THEN the System SHALL return all versions with timestamps
+5. WHEN prompts are migrated THEN the System SHALL import all `prompts/*.md` files to PostgreSQL
+
+### Requirement 70: Prompt Repository Schema
+
+**User Story:** As a system maintainer, I want a proper schema for prompts, so that they are structured and queryable.
+
+#### Acceptance Criteria
+
+1. WHEN `prompt_repository` table is created THEN the System SHALL include: id, name, content, tenant_id, version, created_at, created_by
+2. WHEN prompt is tenant-specific THEN the System SHALL store with tenant_id
+3. WHEN prompt is global THEN the System SHALL store with tenant_id = NULL
+4. WHEN prompt is retrieved THEN the System SHALL check tenant-specific first, then global fallback
+5. WHEN prompt schema is defined THEN the System SHALL include JSONB metadata field
+
+### Requirement 71: Prompt Repository API
+
+**User Story:** As a system maintainer, I want a PromptRepository class, so that prompts are accessed uniformly.
+
+#### Acceptance Criteria
+
+1. WHEN `PromptRepository.get(name)` is called THEN the System SHALL return latest version
+2. WHEN `PromptRepository.get(name, version=N)` is called THEN the System SHALL return specific version
+3. WHEN `PromptRepository.set(name, content)` is called THEN the System SHALL create new version
+4. WHEN `PromptRepository.list()` is called THEN the System SHALL return all prompt names
+5. WHEN `PromptRepository.history(name)` is called THEN the System SHALL return all versions
+
+### Requirement 72: Agent Prompt Loading Migration
+
+**User Story:** As a system maintainer, I want agent.py to load prompts from PostgreSQL, so that file-based loading is eliminated.
+
+#### Acceptance Criteria
+
+1. WHEN `agent.parse_prompt()` is called THEN the System SHALL use `PromptRepository.get()`
+2. WHEN `agent.read_prompt()` is called THEN the System SHALL use `PromptRepository.get()`
+3. WHEN prompt is not in PostgreSQL THEN the System SHALL NOT fall back to files (fail explicitly)
+4. WHEN prompt is loaded THEN the System SHALL cache in Redis for performance
+5. WHEN prompt cache expires THEN the System SHALL reload from PostgreSQL
+
+### Requirement 73: Tool Prompt Repository Integration
+
+**User Story:** As a system maintainer, I want tool prompts stored in PostgreSQL, so that agent-created tools have persistent prompts.
+
+#### Acceptance Criteria
+
+1. WHEN agent creates a tool THEN the System SHALL store prompt in `prompt_repository` with name `agent.system.tool.{tool_name}.md`
+2. WHEN tool prompt is generated THEN the System SHALL use `PromptRepository.set()`
+3. WHEN tool is disabled THEN the System SHALL mark prompt as inactive (not delete)
+4. WHEN tool prompt is updated THEN the System SHALL create new version
+5. WHEN tool prompts are listed THEN the System SHALL filter by `agent.system.tool.*` pattern
+
+### Requirement 74: Prompt Template Variables
+
+**User Story:** As a system maintainer, I want prompt templates to support variables, so that dynamic content is injected.
+
+#### Acceptance Criteria
+
+1. WHEN prompt contains `{{variable}}` THEN the System SHALL replace with provided value
+2. WHEN prompt contains `{{tools}}` THEN the System SHALL inject enabled tool list
+3. WHEN prompt contains `{{memories}}` THEN the System SHALL inject relevant memories
+4. WHEN prompt contains `{{datetime}}` THEN the System SHALL inject current datetime
+5. WHEN variable is missing THEN the System SHALL raise `PromptVariableError`
+
+### Requirement 75: Prompt Migration Script
+
+**User Story:** As a system maintainer, I want a migration script, so that existing file prompts are imported to PostgreSQL.
+
+#### Acceptance Criteria
+
+1. WHEN migration runs THEN the System SHALL scan `prompts/*.md` files
+2. WHEN file is found THEN the System SHALL insert into `prompt_repository` with version=1
+3. WHEN migration completes THEN the System SHALL log count of migrated prompts
+4. WHEN migration is re-run THEN the System SHALL skip existing prompts (idempotent)
+5. WHEN migration fails THEN the System SHALL rollback and report errors
+
+---
+
+## Centralized Architecture Requirements
+
+### Requirement 76: Single Source of Truth for All Configuration
+
+**User Story:** As a system maintainer, I want ALL configuration in PostgreSQL, so that there is a single source of truth.
+
+#### Acceptance Criteria
+
+1. WHEN prompts are needed THEN the System SHALL use `PromptRepository` (PostgreSQL)
+2. WHEN tools are needed THEN the System SHALL use `ToolCatalogStore` (PostgreSQL)
+3. WHEN settings are needed THEN the System SHALL use `AgentSettingsStore` (PostgreSQL)
+4. WHEN secrets are needed THEN the System SHALL use `UnifiedSecretManager` (Vault)
+5. WHEN ANY file-based config is detected THEN the System SHALL log deprecation warning
+
+### Requirement 77: No File-Based Storage Rule
+
+**User Story:** As a system maintainer, I want NO file-based storage for runtime data, so that the system is stateless and scalable.
+
+#### Acceptance Criteria
+
+1. WHEN prompts are stored THEN the System SHALL NOT use filesystem
+2. WHEN tools are stored THEN the System SHALL NOT use filesystem
+3. WHEN sessions are stored THEN the System SHALL NOT use filesystem
+4. WHEN attachments are stored THEN the System SHALL NOT use filesystem
+5. WHEN ANY file write is attempted for runtime data THEN the System SHALL raise `FileStorageViolationError`
+
+---
+
+## Requirements Summary (FINAL)
+
+**Total Requirements: 77**
+
+| Category | Requirements | Count |
+|----------|--------------|-------|
+| persist_chat Cleanup | 1-2 | 2 |
+| Celery Architecture | 3-6, 20-27 | 12 |
+| Settings Consolidation | 8-10 | 3 |
+| UI-Backend Alignment | 13-14 | 2 |
+| File Upload | 17-19 | 3 |
+| Tool Architecture | 28-37 | 10 |
+| Merged Architecture | 38-45 | 8 |
+| Degradation Mode | 46-49 | 4 |
+| Context Builder | 50-51 | 2 |
+| Message & Conversation | 52-59 | 8 |
+| Enhanced Tool Registry | 60 | 1 |
+| Agent Self-Tool-Management | 61-68 | 8 |
+| **Prompt Repository (NEW)** | **69-75** | **7** |
+| **Centralized Architecture** | **76-77** | **2** |
+| Other | 7, 11-12, 15-16 | 5 |
+
+### Centralized Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 SOMAAGENT01 CENTRALIZED ARCHITECTURE            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │   Agent     │  │   Gateway   │  │   Worker    │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+│         │                │                │                      │
+│         └────────────────┼────────────────┘                      │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                    CANONICAL STORES                        │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │                                                            │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐                 │  │
+│  │  │ PromptRepository│  │ ToolCatalogStore│                 │  │
+│  │  │   (PostgreSQL)  │  │   (PostgreSQL)  │                 │  │
+│  │  └─────────────────┘  └─────────────────┘                 │  │
+│  │                                                            │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐                 │  │
+│  │  │AgentSettingsStore│ │PostgresSessionStore│              │  │
+│  │  │   (PostgreSQL)  │  │   (PostgreSQL)  │                 │  │
+│  │  └─────────────────┘  └─────────────────┘                 │  │
+│  │                                                            │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐                 │  │
+│  │  │UnifiedSecretMgr │  │  RedisCache     │                 │  │
+│  │  │    (Vault)      │  │   (Redis)       │                 │  │
+│  │  └─────────────────┘  └─────────────────┘                 │  │
+│  │                                                            │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ❌ NO FILE STORAGE FOR:                                        │
+│     - Prompts (use PromptRepository)                            │
+│     - Tools (use ToolCatalogStore)                              │
+│     - Sessions (use PostgresSessionStore)                       │
+│     - Settings (use AgentSettingsStore)                         │
+│     - Secrets (use UnifiedSecretManager)                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Additional Requirements – Dynamic Task Registry & SomaBrain Feedback (NEW)
+
+- **Registry Creation:** The system SHALL create a Postgres-backed `task_registry` with fields `{name, module_path, callable, queue, limits, schema, enabled, tenant_scope, artifact_hash, created_by, created_at}` and Redis cache for fast lookup.
+- **Dynamic Load/Reload:** Celery workers SHALL load tasks from the registry at start and on a reload signal (Redis pub/sub or Celery control), registering tasks via `app.register_task()`; tasks outside the registry SHALL NOT be accepted.
+- **Policy Enforcement:** All registry operations and executions SHALL be gated by OPA actions `task.view`, `task.execute`, `task.enable`; denials SHALL fail closed and be audited.
+- **Schema & Safety:** Each task SHALL include JSON Schema for args, per-task rate limits, and Redis SETNX dedupe; artifact hashes SHALL be verified before load; only signed artifacts from a trusted plugins path/object store SHALL be allowed.
+- **Feedback to SomaBrain:** After each task execution, the system SHALL send a standardized `task_feedback` payload `{task_name, session_id, persona_id, success, latency_ms, error_type, score, tags}` to SomaBrain; if SomaBrain is DOWN, feedback SHALL be queued (outbox/DLQ) for retry.
+- **Planning Priors:** When planning tasks, the system SHALL fetch prior task patterns/memories from SomaBrain and expose them to the planner/LLM; task memories SHALL be tagged by tenant/persona/task for recall.
+- **Observability:** Dynamic tasks SHALL emit Prometheus metrics (counters/histograms with tenant/persona labels) and appear in Flower; audit events SHALL be published for register/execute/deny paths.
+
+## Additional Requirements – SomaBrain-First Context & Auto-Summary (NEW)
+
+- **Recall First:** ContextBuilder SHALL attempt SomaBrain recall on every build; on DEGRADE use reduced k; on DOWN skip recall and queue retry.
+- **Auto Summary:** The system SHALL summarize long histories and retrieved snippets into concise “session summaries,” store them in SomaBrain with tags `{tenant, persona, session, task}`, and reuse them to reduce token load.
+- **Tagging:** All stored events/summaries SHALL include SomaBrain coordinates and tags (tenant, persona, task/tool) in session events for later deep-link recall.
+- **Planning Priors:** Before generating plans/tool choices, the system SHALL fetch prior task/tool patterns from SomaBrain and inject them into planner prompts.
+- **Feedback Standardization:** Tool executions SHALL send `tool_feedback` (same fields as task_feedback) to SomaBrain; failures SHALL enqueue for retry.
+- **Policy Enrichment:** Policy inputs SHALL include SomaBrain risk/sensitivity signals when available; policy decisions SHALL fail closed on errors.

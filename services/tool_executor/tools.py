@@ -231,7 +231,9 @@ class CanvasAppendTool(BaseTool):
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
 
-        canvas_url = cfg.env("CANVAS_SERVICE_URL", "http://localhost:8014")
+        canvas_url = cfg.env("CANVAS_SERVICE_URL")
+        if not canvas_url:
+            raise RuntimeError("CANVAS_SERVICE_URL must be set for canvas tool execution.")
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
             "session_id": session_id,

@@ -338,6 +338,21 @@ class SomaBrainClient:
         pass
 ```
 
+## Constitution-Centric Prompt Builder (New)
+
+- **ConstitutionPromptProvider**: Fetches signed Constitution from SomaBrain/constitution service; verifies signature/hash; caches in memory with short TTL; exposes reload hook; fail-closed on invalid/missing artifact. Exposes `constitution_version`.
+- **PersonaProvider**: Loads per-tenant/agent persona prompt fragments + tool preferences; OPA-guarded updates; versioned; cached in memory.
+- **PromptBuilder**: Per-request composition (RAM only): Constitution base → persona overlay → planner priors (from SomaBrain `plan_suggest`) → health/safety banners → analysis glue. Injects `constitution_version` & `persona_version` into metadata/feedback. No filesystem reads or baked-in defaults. Cache invalidates on Constitution/persona reload.
+- **Tool Exposure**: Tools presented to LLM are filtered by Constitution allow/deny + OPA; tool prompts tagged with constitution/persona scope.
+- **Failure Mode**: If Constitution verification/fetch fails, return 503/`constitution_unavailable`; no fallback prompt.
+
+## Planner Priors Integration (New)
+
+- Conversation worker requests priors via SomaBrain `plan_suggest` using tenant/persona/session/intent/tags.
+- Priors injected as a concise system block; prompt assembly continues without priors on miss; metric `planner_priors_miss`.
+- Events/feedback tagged with priors metadata for recall/learning.
+
+
 ### 6. File Upload System (`services/gateway/routers/uploads_full.py`)
 
 TUS protocol implementation with antivirus scanning.
@@ -719,3 +734,37 @@ tests/
     ├── test_celery_tasks.py
     └── test_a2a_contract.py
 ```
+
+## Dynamic Task Registry & Runtime APIs (Added Dec 2, 2025)
+
+### Purpose
+Enable LLM/delegate-created tasks to be registered, listed, reloaded, and executed at runtime with full governance, observability, and VIBE compliance.
+
+### Data Model
+- PostgreSQL tables `task_registry` and `task_artifacts` (hash, signed_blob, schema, queue, rate_limit, dedupe_key_ttl, tenant_scope, persona_scope, soma_tags, enabled, created_by, created_at).
+- Redis cache (`task_registry:{name}`) for hot lookup; invalidated on write/reload.
+
+### Control Plane APIs
+- `POST /v1/tasks/register` — validate JSON Schema, verify artifact hash/signature, persist, publish reload signal.
+- `GET /v1/tasks` — list filtered by tenant/persona, include schema/queue/rate limits/enabled.
+- `POST /v1/tasks/reload` — triggers Celery control/Redis pubsub to reload registry into workers.
+- All endpoints gated by OPA actions `task.view`, `task.register`, `task.reload`; audit events on allow/deny.
+
+### Worker Load Path
+1. Worker boot → preload static tasks → load registry rows → import callable via safe loader → register with `app.tasks.register()`.
+2. Reload signal → invalidate Redis cache → repeat import/register only for changed rows.
+3. Execution wrapper enforces dedupe (Redis SETNX), per-row rate limit, OPA `task.run`, Prometheus counters/histograms, and SomaBrain feedback emission.
+
+### Observability
+- Prometheus: `task_registry_entries`, `task_registry_reload_total`, `task_exec_duration_seconds{task,tenant,persona}`, `task_exec_total{status}`.
+- Flower: dynamic tasks appear with queue/route metadata (verified via loader hook).
+- Audit: register/reload/deny events routed to outbox → Kafka → SIEM.
+
+### Failure Modes
+- Import failure → mark row `disabled=true`, emit audit + metric, continue boot.
+- OPA unreachable → fail closed.
+- SomaBrain unreachable for feedback → outbox retry, DLQ after N attempts.
+
+### Interfaces to SomaBrain
+- On successful/failed execution send `task_feedback` (task_name, session_id, persona_id, tenant_id, success, latency_ms, error_type, score, tags).
+- Planner uses SomaBrain priors (`/recall` tagged memories) to bias tool/task selection.

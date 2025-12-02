@@ -333,6 +333,33 @@ services:
       retries: 5
       start_period: 20s
 
+  flower:
+    image: mher/flower:2.0.1
+    container_name: somaAgent01_flower
+    profiles: ["dev", "core"]
+    command:
+      - flower
+      - --app=python.tasks.celery_app
+      - --broker=${SA01_REDIS_URL:-redis://redis:6379/0}
+      - --address=0.0.0.0
+      - --port=5555
+      - --persistent=True
+      - --db=/data/flower.db
+      - --auto-refresh=True
+      - --max_tasks=10000
+      - --state-save-interval=10
+      - --url_prefix=/flower
+    environment:
+      - FLOWER_PORT=5555
+    ports:
+      - "${FLOWER_PORT:-20010}:5555"
+    volumes:
+      - flower_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   # FastA2A Services for enhanced agent-to-agent communication
   fasta2a-gateway:
     <<: *agent-service
@@ -445,6 +472,7 @@ volumes:
   # -----------------------------------------------------------------
   prometheus-data:
   grafana-data:
+
 
 # -----------------------------------------------------------------
 # Celery Beat service (schedules periodic tasks)

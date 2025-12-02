@@ -660,7 +660,7 @@ Services ──► SomaBrainClient ──► cfg.get_somabrain_url() ──► H
 
 | UI Endpoint (webui/config.js) | Backend Endpoint | Status |
 |-------------------------------|------------------|--------|
-| `POST /v1/settings_save` | **DOES NOT EXIST** | ❌ VIOLATION |
+| `POST /v1/settings_save` | **DOES NOT EXIST** | ✅ Removed – use `/v1/settings/sections` |
 | `POST /v1/test_connection` | **DOES NOT EXIST** | ❌ VIOLATION |
 | `GET /v1/settings/sections` | `GET /v1/settings/sections` | ✅ OK |
 
@@ -674,7 +674,7 @@ Services ──► SomaBrainClient ──► cfg.get_somabrain_url() ──► H
 
 | File | Current | Required |
 |------|---------|----------|
-| `webui/config.js` | `SAVE_SETTINGS: "/settings_save"` | `SAVE_SETTINGS: "/settings/sections"` |
+| `webui/config.js` | `SAVE_SETTINGS: "/settings_save"` | `SAVE_SETTINGS` removed; UI uses `/settings/sections` |
 | `webui/js/settings.js` | `method: 'POST'` | `method: 'PUT'` |
 | `services/gateway/routers/ui_settings.py` | Missing test endpoint | Add `POST /v1/settings/test` |
 

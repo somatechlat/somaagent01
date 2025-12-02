@@ -14,9 +14,18 @@ def mask_value(value: str) -> str:
 def generate_diff(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
     """Return masked diff {"old": ..., "new": ..., "changes": ...}"""
     diff = {"old": {}, "new": {}, "changes": []}
-    for key, new_val in new.items():
+
+    def _secret(k: str) -> bool:
+        return any(re.search(pat, k) for pat in MASK_PATTERNS)
+
+    all_keys = set(old.keys()) | set(new.keys())
+    for key in sorted(all_keys):
         old_val = old.get(key)
-        masked_old = mask_value(str(old_val)) if any(p in key.lower() for p in MASK_PATTERNS) else old_val
-        masked_new = mask_value(str(new_val)) if any(p in key.lower() for p in MASK_PATTERNS) else new_val
+        new_val = new.get(key)
+        masked_old = mask_value(str(old_val)) if _secret(key) else old_val
+        masked_new = mask_value(str(new_val)) if _secret(key) else new_val
         if str(masked_old) != str(masked_new):
-            diff[
+            diff["old"][key] = masked_old
+            diff["new"][key] = masked_new
+            diff["changes"].append(key)
+    return diff

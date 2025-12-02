@@ -158,13 +158,13 @@ document.addEventListener('alpine:init', function() {
                         }
                     }
 
-                    // Send request
-                    const response = await fetchApi(`${API.BASE}${API.SAVE_SETTINGS}`, {
-                        method: 'POST',
+                    // Send request (PUT /settings/sections)
+                    const response = await fetchApi(`${API.BASE}${API.UI_SETTINGS}`, {
+                        method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(formData)
+                        body: JSON.stringify({ data: formData })
                     });
 
                     if (response.ok) {

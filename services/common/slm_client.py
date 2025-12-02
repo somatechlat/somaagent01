@@ -34,7 +34,9 @@ class SLMClient:
             service_url: URL for the SLM service
             api_key: API key for authentication
         """
-        self.service_url = service_url or "http://localhost:8080"
+        if not service_url:
+            raise RuntimeError("SLM client requires service_url to be configured (no localhost default).")
+        self.service_url = service_url
         self.api_key = api_key
         self._initialized = True
     

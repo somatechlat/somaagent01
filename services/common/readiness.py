@@ -98,7 +98,8 @@ async def _check_redis() -> Dict[str, Any]:
     try:
         from src.core.config import cfg
 
-        cache = RedisSessionCache(url=cfg.settings().redis_url or "redis://localhost:6379/0")
+        cache_url = cfg.settings().redis_url
+        cache = RedisSessionCache(url=cache_url) if cache_url else None
         await cache.ping()
         return {"status": "healthy", "message": "Redis PING ok"}
     except Exception as exc:  # pragma: no cover

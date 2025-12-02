@@ -66,6 +66,40 @@ async def put_settings(body: SettingsUpdate):
     return {"status": "ok"}
 
 
+class TestConnectionRequest(BaseModel):
+    service: str
+    api_key: str
+    base_url: str | None = None
+    model: str | None = None
+
+
+@router.post("/test_connection")
+async def test_connection(body: TestConnectionRequest):
+    """
+    Validate connectivity to the configured LLM provider using provided credentials.
+    Executes a minimal chat completion with strict timeout; returns success flag.
+    """
+    import litellm
+
+    model = body.model or {
+        "openai": "gpt-3.5-turbo-0125",
+        "anthropic": "claude-3-haiku-20240307",
+        "google": "gemini-pro",
+    }.get(body.service.lower(), body.model or "gpt-3.5-turbo")
+
+    try:
+        _ = await litellm.acompletion(
+            model=model,
+            messages=[{"role": "user", "content": "ping"}],
+            api_key=body.api_key,
+            api_base=body.base_url,
+            timeout=5,
+        )
+        return {"success": True}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
 @router.get("/{key}")
 async def get_setting_field(key: str):
     """Get single settings field."""

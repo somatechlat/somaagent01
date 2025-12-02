@@ -150,7 +150,10 @@ class OutboxSyncWorker:
         - degraded: HTTP 200 but body not clearly ok
         - down: request error/timeout/non-200
         """
-        base = cfg.env("SOMA_BASE_URL", "http://localhost:9696").rstrip("/")
+        base = cfg.env("SOMA_BASE_URL")
+        if not base:
+            raise RuntimeError("SOMA_BASE_URL must be set for outbox_sync")
+        base = base.rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)
         try:

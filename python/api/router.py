@@ -22,6 +22,7 @@ from python.observability.metrics import (
     increment_counter,
     set_health_status,
 )
+from src.core.config import cfg
 from python.tasks.orchestrator import (
     enqueue_chat_request,
     fetch_task_status,
@@ -54,7 +55,7 @@ router = APIRouter(prefix="/api/v1")
 # REAL IMPLEMENTATION - Pydantic models
 class ChatRequest(BaseModel):
     """REAL IMPLEMENTATION - Chat request model."""
-    agent_url: str = Field(..., description="Remote FastA2A base URL", example="http://localhost:8080")
+    agent_url: str = Field(..., description="Remote FastA2A base URL", example="https://agent.example.com")
     message: str = Field(..., description="Message to send", example="Hello, how are you?")
     attachments: Optional[List[str]] = Field(default=None, description="List of file attachments")
     reset: bool = Field(default=False, description="Reset conversation")
@@ -354,8 +355,8 @@ async def aggregated_health():
     adding their health‑check URLs to the ``services`` dictionary.
     """
     services = {
-        "gateway": "http://localhost:8010/v1/health",
-        "fasta2a_gateway": "http://localhost:8011/v1/health",
+        "gateway": cfg.env("GATEWAY_HEALTH_URL"),
+        "fasta2a_gateway": cfg.env("FASTA2A_HEALTH_URL"),
     }
     results = {}
     async with httpx.AsyncClient() as client:

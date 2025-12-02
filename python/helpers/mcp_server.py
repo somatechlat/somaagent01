@@ -16,7 +16,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from agent import AgentContext, AgentContextType, UserMessage
 from initialize import initialize_agent
 from python.helpers import settings
-from python.helpers.persist_chat import remove_chat
+from python.helpers.session_store_adapter import delete_context
 from python.helpers.print_style import PrintStyle
 
 _PRINTER = PrintStyle(italic=True, font_color="green", padding=False)
@@ -140,7 +140,7 @@ async def send_message(
         if not persistent_chat:
             context.reset()
             AgentContext.remove(context.id)
-            remove_chat(context.id)
+            await delete_context(context.id)
         return ToolResponse(response=response, chat_id=context.id if persistent_chat else "")
     except Exception as e:
         return ToolError(error=str(e), chat_id=context.id if persistent_chat else "")
@@ -199,7 +199,7 @@ async def finish_chat(
     else:
         context.reset()
         AgentContext.remove(context.id)
-        remove_chat(context.id)
+        await delete_context(context.id)
         return ToolResponse(response="Chat finished", chat_id=chat_id)
 
 
