@@ -117,15 +117,6 @@ def initialize_agent():
     return config
 
 
-def initialize_chats():
-    from python.helpers import persist_chat
-
-    async def initialize_chats_async():
-        persist_chat.load_tmp_chats()
-
-    return defer.DeferredTask().start_task(initialize_chats_async)
-
-
 def initialize_mcp():
     set = settings.get_settings()
 
