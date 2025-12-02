@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from celery.result import AsyncResult
 
-from services.celery_worker import celery_app
+from python.tasks.celery_app import app as celery_app
 
 router = APIRouter(prefix="/v1/celery", tags=["celery"])
 
