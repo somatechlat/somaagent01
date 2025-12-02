@@ -11,12 +11,12 @@ VIBE CODING RULES COMPLIANT:
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, TypeVar
 
-from .models import Config
 from .loader import ConfigLoader, get_config_loader
+from .models import Config
 
 T = TypeVar("T")
 

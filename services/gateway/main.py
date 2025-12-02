@@ -9,14 +9,6 @@ duplicates).
 from __future__ import annotations
 
 import os
-import time
-import uvicorn
-import httpx
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-
-from services.gateway.routers import build_router
 
 # ---------------------------------------------------------------------------
 # Configuration for static UI serving
@@ -26,6 +18,15 @@ from services.gateway.routers import build_router
 # the compose file). During local development the files are located relative to
 # this source tree. We therefore resolve the correct absolute path at runtime:
 import pathlib
+import time
+
+import httpx
+import uvicorn
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from services.gateway.routers import build_router
 
 webui_path = pathlib.Path(__file__).resolve().parents[2] / "webui"
 webui_path = str(webui_path)
@@ -38,8 +39,9 @@ app = FastAPI(title="SomaAgent Gateway")
 @app.on_event("startup")
 async def _ensure_settings_schema() -> None:
     """Ensure the agent_settings table exists at startup."""
-    from services.common.agent_settings_store import get_agent_settings_store
     import logging
+
+    from services.common.agent_settings_store import get_agent_settings_store
 
     store = get_agent_settings_store()
     try:
@@ -104,7 +106,6 @@ app.include_router(build_router())
 # ``/settings/sections``. To avoid changing the frontend, expose thin alias
 # endpoints that redirect to the new ``/v1`` routes.
 # ---------------------------------------------------------------------------
-from fastapi.responses import RedirectResponse
 
 
 # Legacy endpoints removed - use /v1/settings instead via ui_settings router
@@ -112,13 +113,14 @@ from fastapi.responses import RedirectResponse
 # ---------------------------------------------------------------------------
 # Dependency providers expected by the test suite and legacy routers
 # ---------------------------------------------------------------------------
-from src.core.config import cfg
+import asyncio as _asyncio
+
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.outbox_repository import OutboxStore, ensure_outbox_schema
+from services.common.outbox_repository import ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.session_repository import RedisSessionCache
-import asyncio as _asyncio
+from src.core.config import cfg
 
 
 def get_bus() -> KafkaEventBus:

@@ -3,20 +3,19 @@ Event Publisher for SomaAgent01 with FastA2A integration.
 REAL IMPLEMENTATION - No placeholders, actual event publishing to SomaBrain.
 """
 
-import json
-import time
 import asyncio
 import threading
-from typing import List, Dict, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
+
 import httpx
-from prometheus_client import Counter, Histogram
 
 from .metrics import (
-    event_published_total,
-    event_publish_latency_seconds,
     event_publish_errors_total,
-    MetricsTimer,
+    event_publish_latency_seconds,
+    event_published_total,
     increment_counter,
+    MetricsTimer,
     set_health_status,
 )
 

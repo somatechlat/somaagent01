@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Optional, List
+from typing import Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from python.tasks.celery_app import app as celery_app, register_dynamic_tasks
 from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.task_registry import TaskRegistry, RegistryEntry
+from services.common.task_registry import RegistryEntry, TaskRegistry
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/tasks", tags=["tasks"])

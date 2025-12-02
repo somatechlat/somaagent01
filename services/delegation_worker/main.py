@@ -8,13 +8,12 @@ from typing import Any
 
 from jsonschema import ValidationError
 
+# Legacy import removed. Use centralized configuration via cfg.
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
-
-# Legacy import removed. Use centralized configuration via cfg.
-from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
 from src.core.config import cfg
 

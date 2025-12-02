@@ -4,19 +4,14 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from services.common.admin_settings import ADMIN_SETTINGS
-from services.common.session_repository import PostgresSessionStore, RedisSessionCache
-from services.common.memory_write_outbox import MemoryWriteOutbox
-from services.common.readiness import get_replica_store
-from services.common.authorization import authorize_request, _require_admin_scope
+from services.common.authorization import _require_admin_scope, authorize_request
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common import degradation_monitor
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])

@@ -16,6 +16,7 @@ import sys
 from typing import Optional
 
 from kafka.admin import KafkaAdminClient, NewPartitions
+
 from services.common import env
 
 

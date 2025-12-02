@@ -25,12 +25,10 @@ from typing import Any, Dict
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
-from .orchestrator import SomaOrchestrator
 from .config import load_config
-from .health_monitor import UnifiedHealthMonitor
 from .gateway_service import GatewayService
+from .orchestrator import SomaOrchestrator
 from .unified_memory_service import UnifiedMemoryService
-from .base_service import BaseSomaService
 
 LOGGER = logging.getLogger(__name__)
 

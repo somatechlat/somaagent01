@@ -2,8 +2,8 @@ import asyncio
 
 from agent import LoopData
 from python.helpers import tokens
-from python.helpers.session_store_adapter import save_context
 from python.helpers.extension import Extension
+from python.helpers.session_store_adapter import save_context
 
 
 class RenameChat(Extension):

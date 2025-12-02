@@ -16,17 +16,13 @@ still exercising the FSM logic.
 
 from __future__ import annotations
 
-import asyncio
 import unittest
-
-# No external mocks are used – we rely on a lightweight subclass that
-# overrides the heavyweight asynchronous methods with real no‑op implementations.
-
-from python.helpers.log import Log
 
 from agent import Agent, AgentConfig
 from models import ModelConfig, ModelType
-from prometheus_client import Counter, Gauge
+
+# No external mocks are used – we rely on a lightweight subclass that
+# overrides the heavyweight asynchronous methods with real no‑op implementations.
 
 
 def _dummy_model_config() -> ModelConfig:

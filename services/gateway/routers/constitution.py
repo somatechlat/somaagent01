@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from services.common.authorization import authorize_request, _require_admin_scope
 from python.integrations.somabrain_client import SomaBrainClient
+from services.common.authorization import _require_admin_scope, authorize_request
 
 router = APIRouter(prefix="/constitution", tags=["constitution"])
 

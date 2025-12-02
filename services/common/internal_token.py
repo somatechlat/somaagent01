@@ -17,14 +17,14 @@ _manager = SecretManager()
 
 async def set_token(token: str) -> None:
     """Persist the internal JWT or opaque token used for service‑to‑service auth."""
-    await manager.set_internal_token(token)
+    await _manager.set_internal_token(token)
 
 
 async def get_token() -> Optional[str]:
     """Retrieve the stored internal token, or ``None`` if it has not been set."""
-    return await manager.get_internal_token()
+    return await _manager.get_internal_token()
 
 
 async def has_token() -> bool:
     """Convenient boolean check for the presence of a stored token."""
-    return await manager.has_internal_token()
+    return await _manager.has_internal_token()

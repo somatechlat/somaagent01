@@ -1,6 +1,4 @@
-import os
 import pathlib
-
 
 ALLOWED = {
     # bootstrap/settings and facade

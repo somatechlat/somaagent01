@@ -1,6 +1,7 @@
 """M3: Central secrets adapter for settings encryption & rotation"""
 
 import base64
+
 from cryptography.fernet import Fernet
 
 from services.common import env

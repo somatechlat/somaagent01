@@ -6,14 +6,11 @@ and passes for correct payloads, satisfying VIBE security requirements.
 
 import pytest
 
-from python.tasks import core_tasks
 from python.tasks.schemas import (
-    DELEGATE_PAYLOAD_SCHEMA,
-    STORE_INTERACTION_PAYLOAD_SCHEMA,
-    FEEDBACK_LOOP_PAYLOAD_SCHEMA,
     CLEANUP_SESSIONS_ARGS_SCHEMA,
-    REBUILD_INDEX_ARGS_SCHEMA,
+    DELEGATE_PAYLOAD_SCHEMA,
     EVALUATE_POLICY_ARGS_SCHEMA,
+    REBUILD_INDEX_ARGS_SCHEMA,
 )
 from python.tasks.validation import validate_payload
 

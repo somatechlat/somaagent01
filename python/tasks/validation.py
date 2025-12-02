@@ -9,10 +9,9 @@ production‑ready.
 
 from __future__ import annotations
 
-import json
 from typing import Any, Mapping
 
-from jsonschema import Draft7Validator, ValidationError
+from jsonschema import Draft7Validator
 
 __all__ = ["validate_payload"]
 
@@ -30,7 +29,7 @@ def _load_schema(schema: Mapping[str, Any]) -> Draft7Validator:
     validator = getattr(schema, "_validator", None)  # type: ignore[attr-defined]
     if validator is None:
         validator = Draft7Validator(schema)
-        setattr(schema, "_validator", validator)  # type: ignore[attr-defined]
+        schema._validator = validator  # type: ignore[attr-defined]
     return validator
 
 

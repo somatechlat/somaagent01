@@ -4,14 +4,13 @@ Dynamic task/tool registry with OPA gating, hash verification, and Redis cache.
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import inspect
 import json
 import logging
-import hashlib
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Optional, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import asyncpg
 import redis.asyncio as redis

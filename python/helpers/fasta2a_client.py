@@ -1,14 +1,14 @@
-import uuid
 import time
+import uuid
 from typing import Any, Dict, List, Optional
 
 from python.helpers.print_style import PrintStyle
 from python.observability.metrics import (
-    fast_a2a_requests_total,
-    fast_a2a_latency_seconds,
     fast_a2a_errors_total,
-    MetricsTimer,
+    fast_a2a_latency_seconds,
+    fast_a2a_requests_total,
     increment_counter,
+    MetricsTimer,
     set_health_status,
 )
 from services.common import env

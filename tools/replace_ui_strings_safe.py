@@ -16,7 +16,10 @@ any files.  When you are satisfied, run without the flag to apply the changes.
 
 from __future__ import annotations
 
-import argparse, json, pathlib, re, sys
+import argparse
+import json
+import pathlib
+import re
 from typing import Dict, List, Tuple
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "webui"

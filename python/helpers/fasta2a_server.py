@@ -16,10 +16,10 @@ from starlette.requests import Request
 from agent import AgentContext, AgentContextType, UserMessage
 from initialize import initialize_agent
 from python.helpers import settings
-from python.helpers.session_store_adapter import delete_context
 
 # Local imports
 from python.helpers.print_style import PrintStyle
+from python.helpers.session_store_adapter import delete_context
 
 FASTA2A_AVAILABLE = True
 

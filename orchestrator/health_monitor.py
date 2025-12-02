@@ -7,8 +7,9 @@ function mounts a ``/v1/health`` endpoint on a FastAPI app.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
 from typing import Dict, List
+
+from fastapi import APIRouter
 
 router = APIRouter()
 

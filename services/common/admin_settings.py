@@ -26,7 +26,6 @@ configuration object.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from src.core.config import cfg
 

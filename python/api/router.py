@@ -3,33 +3,35 @@ FastAPI router for SomaAgent01 with FastA2A integration.
 REAL IMPLEMENTATION - No placeholders, actual HTTP endpoints for task management.
 """
 
-from fastapi import FastAPI, APIRouter, BackgroundTasks, HTTPException, Depends, status
-from fastapi.responses import FileResponse
 import os
-from fastapi.staticfiles import StaticFiles
-import httpx
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
 import time
+from typing import Any, Dict, List, Optional
+
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field, validator
 
 from python.observability.metrics import (
-    fast_a2a_latency_seconds,
-    system_health_gauge,
-    fast_a2a_requests_total,
     fast_a2a_errors_total,
+    fast_a2a_latency_seconds,
+    fast_a2a_requests_total,
     increment_counter,
     set_health_status,
+    system_health_gauge,
 )
-from src.core.config import cfg
 from python.tasks.orchestrator import (
-    enqueue_chat_request,
-    fetch_task_status,
-    fetch_conversation_history,
     celery_health_status,
     ChatQueueError,
+    enqueue_chat_request,
+    fetch_conversation_history,
+    fetch_task_status,
 )
+from services.common.policy_client import PolicyClient
+from services.common.ui_settings_store import UiSettingsStore
+from src.core.config import cfg
 
 # REAL IMPLEMENTATION - FastAPI app configuration
 app = FastAPI(
@@ -293,6 +295,79 @@ async def health_v1_endpoint():
     # Reuse the existing health logic to avoid inconsistencies.
     return await health_endpoint()
 
+# -----------------------------------------------------------------
+# UI Settings Endpoints (new per VIBE compliance)
+# -----------------------------------------------------------------
+
+@router.post("/v1/settings_save", response_model=HealthResponse)
+async def save_ui_settings(settings: dict = Body(...)) -> HealthResponse:
+    """Save UI configuration supplied by the front‑end.
+
+    The payload is stored in the canonical ``UiSettingsStore`` which persists
+    a single JSONB document in Postgres.  The endpoint returns a minimal health
+    response so the front‑end can confirm success.
+    """
+    store = UiSettingsStore()
+    await store.ensure_schema()
+    await store.set(settings)
+    return HealthResponse(
+        status="healthy",
+        timestamp=time.time(),
+        services={"ui_settings": "saved"},
+        version="1.0.0-fasta2a",
+    )
+
+
+@router.post("/v1/test_connection", response_model=HealthResponse)
+async def test_connection() -> HealthResponse:
+    """Perform a lightweight health‑check of core infrastructure services.
+
+    Checks Redis, Postgres (via UiSettingsStore), and OPA availability. Any
+    failure is reported as ``unhealthy`` with an error description; a fully
+    healthy stack returns ``healthy``.
+    """
+    # Redis health (via cfg)
+    redis_ok = False
+    try:
+        # Simple ping using the Redis URL from the canonical config
+        import redis
+
+        r = redis.from_url(cfg.redis_url)
+        redis_ok = r.ping()
+    except Exception:
+        redis_ok = False
+
+    # Postgres health via UiSettingsStore schema check
+    pg_ok = False
+    try:
+        store = UiSettingsStore()
+        await store.ensure_schema()
+        pg_ok = True
+    except Exception:
+        pg_ok = False
+
+    # OPA health via PolicyClient (if configured)
+    opa_ok = False
+    try:
+        policy_client = PolicyClient()
+        await policy_client.check_health()
+        opa_ok = True
+    except Exception:
+        opa_ok = False
+
+    overall = "healthy" if redis_ok and pg_ok and opa_ok else "unhealthy"
+    services = {
+        "redis": "healthy" if redis_ok else "unhealthy",
+        "postgres": "healthy" if pg_ok else "unhealthy",
+        "opa": "healthy" if opa_ok else "unhealthy",
+    }
+    return HealthResponse(
+        status=overall,
+        timestamp=time.time(),
+        services=services,
+        version="1.0.0-fasta2a",
+    )
+
 @router.get("/metrics")
 async def metrics_endpoint():
     """
@@ -300,7 +375,7 @@ async def metrics_endpoint():
     Returns metrics in Prometheus format.
     """
     try:
-        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
         
         # REAL IMPLEMENTATION - Generate metrics
         metrics_data = generate_latest()

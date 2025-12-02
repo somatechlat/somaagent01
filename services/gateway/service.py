@@ -6,20 +6,21 @@ It provides the same HTTP API as the original standalone gateway.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, Dict
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
 from orchestrator.base_service import BaseService
 from orchestrator.config import CentralizedConfig
 
 # Import the new chat router (absolute import from the src package)
-from src.gateway.routers import chat as chat_router
-from src.gateway.routers import session as session_router
-from src.gateway.routers import sse as sse_router
-from src.gateway.routers import message as message_router
+from src.gateway.routers import (
+    chat as chat_router,
+    message as message_router,
+    session as session_router,
+    sse as sse_router,
+)
 
 # LOGGER configuration
 LOGGER = logging.getLogger(__name__)

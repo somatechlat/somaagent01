@@ -14,7 +14,6 @@ from prometheus_client import (
     Gauge as _BaseGauge,
     Histogram as _BaseHistogram,
     Info,
-    start_http_server,
     REGISTRY,
 )
 

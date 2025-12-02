@@ -9,11 +9,9 @@ import asyncio
 import logging
 from typing import Any, Callable
 
-from celery import Celery
-from celery import signals
+from celery import Celery, signals
 
-from python.tasks.config import get_celery_settings, celery_conf_overrides
-from python.tasks.config import create_redis_client
+from python.tasks.config import celery_conf_overrides, create_redis_client, get_celery_settings
 from services.common.task_registry import TaskRegistry
 
 LOGGER = logging.getLogger(__name__)
@@ -24,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 # Expose a /metrics HTTP endpoint on each Celery worker for observability.
 # The port can be overridden via the SA01_WORKER_METRICS_PORT env variable.
 from prometheus_client import start_http_server
+
 from src.core.config import cfg
 
 

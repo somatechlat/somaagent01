@@ -5,9 +5,11 @@ This allows the orchestrator to start the FastA2A gateway service as a subproces
 
 import asyncio
 import logging
+
 import uvicorn
 
 from orchestrator.config import CentralizedConfig
+
 from .service import FastA2AGatewayService
 
 # Configure logging

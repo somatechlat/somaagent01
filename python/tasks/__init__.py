@@ -2,14 +2,14 @@
 
 from .a2a_chat_task import a2a_chat_task
 from .core_tasks import (
-    delegate,
     build_context,
-    evaluate_policy,
-    store_interaction,
-    feedback_loop,
-    rebuild_index,
-    publish_metrics,
     cleanup_sessions,
+    delegate,
+    evaluate_policy,
+    feedback_loop,
+    publish_metrics,
+    rebuild_index,
+    store_interaction,
 )
 
 __all__ = [

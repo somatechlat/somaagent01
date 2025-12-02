@@ -7,15 +7,16 @@ bundle in `services/gateway/routers/__init__.py`.
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from services.common import degradation_monitor
+from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
-from services.common.admin_settings import ADMIN_SETTINGS
-import logging
-from services.common import degradation_monitor
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1", tags=["health"])

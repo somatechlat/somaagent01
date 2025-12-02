@@ -14,12 +14,13 @@ import logging
 import uuid
 from typing import AsyncIterator
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+
+from services.common.event_bus import iterate_topic, KafkaSettings
 
 # Re‑use the configuration helper from the monolith.
 from src.core.config import cfg
-from services.common.event_bus import iterate_topic, KafkaSettings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def _sse_disabled() -> bool:
     The original gateway consulted the `SA01_SSE_ENABLED` env var. We retain the
     same logic so existing deployments behave identically.
     """
-    return not cfg.env("SA01_SSE_ENABLED", "true").lower() in {"true", "1", "yes"}
+    return cfg.env("SA01_SSE_ENABLED", "true").lower() not in {"true", "1", "yes"}
 
 
 @router.get("/v1/session/{session_id}/events")

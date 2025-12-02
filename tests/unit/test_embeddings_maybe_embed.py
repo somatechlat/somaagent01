@@ -1,7 +1,7 @@
 import pytest
 
-from src.core.config import cfg
 from services.common.embeddings import maybe_embed
+from src.core.config import cfg
 
 pytestmark = pytest.mark.asyncio
 

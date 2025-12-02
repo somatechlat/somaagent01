@@ -11,9 +11,9 @@ The script is deliberately lightweight – it only uses the Python standard
 library, so no extra dependencies are required.
 """
 
+import json
 import pathlib
 import re
-import json
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "webui"

@@ -14,8 +14,8 @@ Running the script is safe – it only adds new keys; existing keys are left
 unchanged. After execution you should commit the updated JSON files.
 """
 
-import pathlib
 import json
+import pathlib
 import re
 import sys
 

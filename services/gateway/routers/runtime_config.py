@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from src.core.config import cfg
-from services.common.ui_settings_store import UiSettingsStore
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.attachments_store import AttachmentsStore
+from services.common.ui_settings_store import UiSettingsStore
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1", tags=["runtime-config"])
 

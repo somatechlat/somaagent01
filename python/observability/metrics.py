@@ -3,33 +3,33 @@ Comprehensive Prometheus metrics for SomaAgent01 with FastA2A integration.
 REAL IMPLEMENTATION - No placeholders, actual working metrics.
 """
 
-import time
 import threading
+import time
 
 from prometheus_client import Counter, Gauge, Histogram, Info
+
 from observability.metrics import (
-    ContextBuilderMetrics,
-    tokens_received_total as _tokens_received_total,
-    context_tokens_before_budget,
     context_tokens_after_budget,
     context_tokens_after_redaction,
-    thinking_tokenisation_seconds as _thinking_tokenisation_seconds,
-    thinking_policy_seconds as _thinking_policy_seconds,
-    thinking_retrieval_seconds as _thinking_retrieval_seconds,
-    thinking_salience_seconds as _thinking_salience_seconds,
-    thinking_ranking_seconds as _thinking_ranking_seconds,
-    thinking_redaction_seconds as _thinking_redaction_seconds,
-    thinking_prompt_seconds as _thinking_prompt_seconds,
-    thinking_total_seconds as _thinking_total_seconds,
-    event_published_total as _event_published_total,
-    event_publish_latency_seconds as _event_publish_latency_seconds,
+    context_tokens_before_budget,
     event_publish_failure_total,
-    somabrain_requests_total as _somabrain_requests_total,
-    somabrain_latency_seconds as _somabrain_latency_seconds,
+    event_publish_latency_seconds as _event_publish_latency_seconds,
+    event_published_total as _event_published_total,
     somabrain_errors_total as _somabrain_errors_total,
+    somabrain_latency_seconds as _somabrain_latency_seconds,
     somabrain_memory_operations_total as _somabrain_memory_operations_total,
+    somabrain_requests_total as _somabrain_requests_total,
     system_health_gauge as _system_health_gauge,
     system_uptime_seconds as _system_uptime_seconds,
+    thinking_policy_seconds as _thinking_policy_seconds,
+    thinking_prompt_seconds as _thinking_prompt_seconds,
+    thinking_ranking_seconds as _thinking_ranking_seconds,
+    thinking_redaction_seconds as _thinking_redaction_seconds,
+    thinking_retrieval_seconds as _thinking_retrieval_seconds,
+    thinking_salience_seconds as _thinking_salience_seconds,
+    thinking_tokenisation_seconds as _thinking_tokenisation_seconds,
+    thinking_total_seconds as _thinking_total_seconds,
+    tokens_received_total as _tokens_received_total,
 )
 
 # Re-export canonical metrics for compatibility with legacy imports
@@ -383,8 +383,8 @@ class ProductionMetrics:
 
     def _initialize_production_metrics(self):
         """Initialize production metrics with default values."""
+
         import psutil
-        import os
 
         # Set initial resource metrics
         try:

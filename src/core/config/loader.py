@@ -34,7 +34,6 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import yaml  # type: ignore
-from pydantic import ValidationError
 
 from .models import Config
 
@@ -218,7 +217,7 @@ def get_config() -> Config:
 # ---------------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Dict, Union, Optional
+from typing import Optional, Union
 
 
 @dataclass

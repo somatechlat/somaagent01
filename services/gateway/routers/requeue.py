@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.requeue_store import RequeueStore
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.requeue_store import RequeueStore
 
 router = APIRouter(prefix="/v1/requeue", tags=["requeue"])
 STORE = RequeueStore(dsn=ADMIN_SETTINGS.postgres_dsn)

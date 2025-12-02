@@ -14,10 +14,9 @@ from typing import Any, Optional
 
 import asyncpg
 
-from src.core.config import cfg
-
-from services.common.settings_base import BaseServiceSettings
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.settings_base import BaseServiceSettings
+from src.core.config import cfg
 
 
 @dataclass

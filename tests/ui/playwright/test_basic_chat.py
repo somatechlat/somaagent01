@@ -1,6 +1,5 @@
 """Playwright smoke test: send a chat message via the real UI and verify an AI reply."""
 
-import asyncio
 import time
 
 import pytest

@@ -5,10 +5,7 @@ and ``BaseTask.get_next_run`` behave as expected and that the Prometheus metrics
 are updated without raising errors.
 """
 
-import time
-from datetime import datetime, timezone, timedelta
-
-import pytest
+from datetime import datetime, timedelta, timezone
 
 from python.helpers.task_scheduler import BaseTask, TaskState
 

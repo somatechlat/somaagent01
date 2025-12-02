@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
-from services.common.dlq_store import DLQStore, DLQItem
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.dlq_store import DLQItem, DLQStore
 
 router = APIRouter(prefix="/v1/admin/dlq", tags=["admin"])
 STORE = DLQStore(dsn=ADMIN_SETTINGS.postgres_dsn)

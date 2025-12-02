@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.model_profiles import ModelProfileStore, ModelProfile
+from services.common.model_profiles import ModelProfile, ModelProfileStore
 
 router = APIRouter(prefix="/v1", tags=["profiles"])
 STORE = ModelProfileStore()

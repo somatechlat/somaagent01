@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.api_key_store import ApiKeyStore, ApiKeyResponse
 from services.common.admin_settings import ADMIN_SETTINGS
+from services.common.api_key_store import ApiKeyResponse, ApiKeyStore
 
 router = APIRouter(prefix="/v1/keys", tags=["auth"])
 STORE = ApiKeyStore(ADMIN_SETTINGS.postgres_dsn)

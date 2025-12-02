@@ -6,8 +6,8 @@ import os
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/v1/workdir", tags=["workdir"])
 

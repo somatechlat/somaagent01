@@ -13,9 +13,9 @@ from __future__ import annotations
 
 # Re‑export the canonical implementation.
 from src.core.domain.memory.replica_store import (
+    ensure_schema,
     MemoryReplicaRow,
     MemoryReplicaStore,
-    ensure_schema,
     MIGRATION_SQL,
 )
 
