@@ -243,12 +243,18 @@ const recoveryStrategies = {
 
 // Main error handling function
 export async function handleError(error, context = {}) {
+  // Guard against null/undefined errors
+  if (!error) {
+    console.warn('handleError called with null/undefined error');
+    return;
+  }
+  
   const errorId = generateErrorId();
   const timestamp = Date.now();
   
   // Normalize error
   const normalizedError = {
-    message: error.message || error.toString() || 'Unknown error',
+    message: error.message || (typeof error.toString === 'function' ? error.toString() : 'Unknown error'),
     stack: error.stack,
     status: error.status || error.statusCode,
     name: error.name,

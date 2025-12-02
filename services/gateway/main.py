@@ -34,41 +34,16 @@ app = FastAPI(title="SomaAgent Gateway")
 # Ensure UI settings table exists at startup so the UI can fetch settings without
 # encountering a missing‑table error. This runs once when the FastAPI app starts.
 @app.on_event("startup")
-async def _ensure_ui_settings_schema() -> None:
-    """Ensure the ``ui_settings`` table exists and contains the required default
-    sections.
-
-    The previous implementation silently fell back to hard‑coded default
-    sections when the database was unavailable. That introduced a shim and broke
-    the Vibe rule *no fallbacks*. Instead we now:
-
-    1. Ensure the schema exists.
-    2. Retrieve the current settings.
-    3. If the ``sections`` key is missing or empty, persist a minimal default
-       configuration directly in the store.
-    4. Log any unexpected errors but do not mask them with dummy data.
-    """
-    from services.common.ui_settings_store import UiSettingsStore
+async def _ensure_settings_schema() -> None:
+    """Ensure the agent_settings table exists at startup."""
+    from services.common.agent_settings_store import get_agent_settings_store
     import logging
 
-    store = UiSettingsStore()
+    store = get_agent_settings_store()
     try:
         await store.ensure_schema()
-        data = await store.get()
-        if not isinstance(data, dict) or not data.get("sections"):
-            default_sections = [{
-                "id": "llm",
-                "tab": "agent",
-                "title": "LLM Settings",
-                "fields": [
-                    {"id": "chat-model-provider", "title": "Provider", "type": "select", "options": [{"value": "groq", "label": "Groq"}]},
-                    {"id": "chat-model-name", "title": "Model Name", "type": "text"},
-                    {"id": "api_key_groq", "title": "API Key", "type": "password"},
-                ],
-            }]
-            await store.set({"sections": default_sections})
-    except Exception as exc:  # pragma: no cover – log but do not crash the app
-        logging.getLogger(__name__).error("Failed to ensure ui_settings schema or seed defaults: %s", exc)
+    except Exception as exc:
+        logging.getLogger(__name__).error("Failed to ensure agent_settings schema: %s", exc)
 
 # ---------------------------------------------------------------------------
 # Basic health endpoints for the gateway service
@@ -124,53 +99,7 @@ app.include_router(build_router())
 from fastapi.responses import RedirectResponse
 
 
-# Legacy endpoints expected by the frontend (e.g., ``/settings`` and
-# ``/settings/sections``). Rather than redirect – which some browsers/clients may
-# not follow for JSON APIs – we provide the same JSON payload directly. This
-# mirrors the logic in ``services.gateway.routers.ui_settings``.
-from services.common.ui_settings_store import UiSettingsStore
-
-_legacy_store = UiSettingsStore()
-
-
-@app.get("/settings")
-async def legacy_settings_root() -> dict:
-    """Return the root UI settings JSON (compatible with ``/v1/settings``)."""
-    try:
-        await _legacy_store.ensure_schema()
-        data = await _legacy_store.get()
-        if not isinstance(data, dict) or not data.get("sections"):
-            default_sections = [{
-                "id": "llm",
-                "tab": "agent",
-                "title": "LLM Settings",
-                "fields": [
-                    {"id": "chat-model-provider", "title": "Provider", "type": "select", "options": [{"value": "groq", "label": "Groq"}]},
-                    {"id": "chat-model-name", "title": "Model Name", "type": "text"},
-                    {"id": "api_key_groq", "title": "API Key", "type": "password"},
-                ],
-            }]
-            return {"sections": default_sections}
-        return data
-    except Exception:
-        default_sections = [{
-            "id": "llm",
-            "tab": "agent",
-            "title": "LLM Settings",
-            "fields": [
-                {"id": "chat-model-provider", "title": "Provider", "type": "select", "options": [{"value": "groq", "label": "Groq"}]},
-                {"id": "chat-model-name", "title": "Model Name", "type": "text"},
-                {"id": "api_key_groq", "title": "API Key", "type": "password"},
-            ],
-        }]
-        return {"sections": default_sections}
-
-
-@app.get("/settings/sections")
-async def legacy_settings_sections() -> dict:
-    """Return UI settings sections JSON (compatible with ``/v1/settings/sections``)."""
-    # Reuse the same logic as the root endpoint; the UI only needs the ``sections`` key.
-    return await legacy_settings_root()
+# Legacy endpoints removed - use /v1/settings instead via ui_settings router
 
 # ---------------------------------------------------------------------------
 # Dependency providers expected by the test suite and legacy routers

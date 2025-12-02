@@ -74,6 +74,7 @@ def build_router() -> APIRouter:
         attachments.router,
         memory_exports.router,
         tool_catalog.router,
+        notifications.router,
         auth.router,
         keys.router,
         workdir.router,
