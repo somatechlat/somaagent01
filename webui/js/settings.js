@@ -38,6 +38,8 @@ const settingsModalProxy = {
 };
 
 globalThis.settingsModalProxy = settingsModalProxy;
+
+document.addEventListener('alpine:init', function() {
     // Initialize the root store first to ensure it exists before components try to access it
     Alpine.store('root', {
         activeTab: localStorage.getItem('settingsActiveTab') || 'agent',

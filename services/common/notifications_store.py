@@ -37,18 +37,18 @@ SEVERITIES = {"info", "success", "warning", "error"}
 class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         from src.core.config import cfg
+        from services.common.admin_settings import ADMIN_SETTINGS
+        self._cfg = cfg
 
-        # Retrieve the Postgres DSN via the new configuration facade.
-        # ``cfg.settings().postgres_dsn()`` returns the DSN respecting the
-        # environment variable ``POSTGRES_DSN`` and default values.
-        raw_dsn = dsn or cfg.settings().get_postgres_dsn()
+        # Use admin-wide Postgres DSN for consistency with other stores
+        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _pool_ensure(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1"))
-            max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2"))
+            min_size = int(self._cfg.env("PG_POOL_MIN_SIZE", "1"))
+            max_size = int(self._cfg.env("PG_POOL_MAX_SIZE", "2"))
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )
