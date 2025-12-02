@@ -7,7 +7,10 @@ def test_normalize_strips_whitespace_and_trailing_slash():
 
 
 def test_normalize_removes_chat_completions_path():
-    assert _normalize_llm_base_url("https://api.example.com/v1/chat/completions") == "https://api.example.com"
+    assert (
+        _normalize_llm_base_url("https://api.example.com/v1/chat/completions")
+        == "https://api.example.com"
+    )
 
 
 def test_normalize_keeps_http_in_dev():

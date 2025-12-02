@@ -26,10 +26,12 @@ from services.gateway.routers import build_router
 # the compose file). During local development the files are located relative to
 # this source tree. We therefore resolve the correct absolute path at runtime:
 import pathlib
+
 webui_path = pathlib.Path(__file__).resolve().parents[2] / "webui"
 webui_path = str(webui_path)
 
 app = FastAPI(title="SomaAgent Gateway")
+
 
 # Ensure UI settings table exists at startup so the UI can fetch settings without
 # encountering a missing‑table error. This runs once when the FastAPI app starts.
@@ -45,6 +47,7 @@ async def _ensure_settings_schema() -> None:
     except Exception as exc:
         logging.getLogger(__name__).error("Failed to ensure agent_settings schema: %s", exc)
 
+
 # ---------------------------------------------------------------------------
 # Basic health endpoints for the gateway service
 # ---------------------------------------------------------------------------
@@ -52,6 +55,7 @@ async def _ensure_settings_schema() -> None:
 async def health() -> dict:
     """Return a simple health check for the gateway process."""
     return {"status": "healthy", "timestamp": time.time()}
+
 
 @app.get("/healths", tags=["monitoring"])
 async def aggregated_health() -> dict:
@@ -71,8 +75,11 @@ async def aggregated_health() -> dict:
                 }
             except Exception as exc:
                 results[name] = {"status": "unhealthy", "error": str(exc)}
-    overall = "healthy" if all(r.get("status") == "healthy" for r in results.values()) else "unhealthy"
+    overall = (
+        "healthy" if all(r.get("status") == "healthy" for r in results.values()) else "unhealthy"
+    )
     return {"overall": overall, "components": results}
+
 
 # ---------------------------------------------------------------------------
 # UI root endpoint and static file mount
@@ -81,6 +88,7 @@ async def aggregated_health() -> dict:
 def serve_root() -> FileResponse:
     """Serve the UI ``index.html`` from the mounted ``webui`` directory."""
     return FileResponse(os.path.join(webui_path, "index.html"))
+
 
 # Serve static assets (JS, CSS, images, etc.) under ``/static``. The ``html`` flag
 # is disabled to avoid intercepting HTML requests that should be handled by the
@@ -140,6 +148,7 @@ def get_publisher() -> DurablePublisher:
     outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
     # Ensure outbox schema – run in background if an event loop is active.
     try:
+
         async def _ensure():
             await ensure_outbox_schema(outbox)
 

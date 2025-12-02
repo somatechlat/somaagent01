@@ -4,6 +4,7 @@ Canonical Celery tasks for SomaAgent01 (delegate, context, policy, storage, main
 All tasks are production-grade: policy-checked, idempotent via Redis, and persist
 events into PostgresSessionStore. Metrics are emitted via Prometheus counters/histograms.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,7 +20,10 @@ from redis import Redis
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.session_repository import PostgresSessionStore, ensure_schema as ensure_session_schema
+from services.common.session_repository import (
+    PostgresSessionStore,
+    ensure_schema as ensure_session_schema,
+)
 from services.common.publisher import DurablePublisher
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers, idempotency_key
@@ -33,6 +37,44 @@ from src.core.config import cfg
 from python.tasks.config import create_redis_client
 
 LOGGER = logging.getLogger(__name__)
+
+# Validation utilities for task payloads (VIBE security)
+from python.tasks.validation import validate_payload
+from python.tasks.schemas import (
+    DELEGATE_PAYLOAD_SCHEMA,
+    STORE_INTERACTION_PAYLOAD_SCHEMA,
+    FEEDBACK_LOOP_PAYLOAD_SCHEMA,
+    CLEANUP_SESSIONS_ARGS_SCHEMA,
+    REBUILD_INDEX_ARGS_SCHEMA,
+    EVALUATE_POLICY_ARGS_SCHEMA,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helper: enforce OPA policy for core tasks
+# ---------------------------------------------------------------------------
+def _enforce_policy(task_name: str, tenant_id: str, action: str, resource: dict[str, Any]) -> None:
+    """Raise PermissionError if the OPA policy denies the requested action.
+
+    All mutable core tasks should be guarded by a policy check.  The ``PolicyClient``
+    evaluates a ``PolicyRequest`` and returns a boolean indicating permission.
+    If the result is falsy we raise a ``PermissionError`` which will be captured
+    by ``SafeTask`` and routed to the DLQ.
+    """
+    allowed = _run(
+        policy_client.evaluate(
+            PolicyRequest(
+                tenant=tenant_id,
+                persona_id=resource.get("persona_id"),
+                action=action,
+                resource=str(resource.get("name") or resource),
+                context=resource,
+            )
+        )
+    )
+    if not allowed:
+        raise PermissionError(f"{task_name} denied by policy for action {action}")
+
 
 # ---------------------------------------------------------------------------
 # Shared resources
@@ -160,10 +202,18 @@ def _send_feedback_sync(
                 task_feedback_total.labels("queued_dlq").inc()
             except Exception:
                 # last resort: log only to avoid silent loss
-                LOGGER.error("Failed to enqueue task_feedback to DLQ", exc_info=True, extra={"task": task_name})
+                LOGGER.error(
+                    "Failed to enqueue task_feedback to DLQ",
+                    exc_info=True,
+                    extra={"task": task_name},
+                )
                 task_feedback_total.labels("failed").inc()
         else:
-            LOGGER.error("task_feedback delivery failed and no publisher configured", exc_info=True, extra={"task": task_name})
+            LOGGER.error(
+                "task_feedback delivery failed and no publisher configured",
+                exc_info=True,
+                extra={"task": task_name},
+            )
             task_feedback_total.labels("failed").inc()
 
 
@@ -242,9 +292,23 @@ class SafeTask(Task):
 # Tasks
 # ---------------------------------------------------------------------------
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.delegate", max_retries=3, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=45, time_limit=60, rate_limit="60/m")
+
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.delegate",
+    max_retries=3,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=45,
+    time_limit=60,
+    rate_limit="60/m",
+)
 def delegate(self, payload: dict[str, Any], tenant_id: str, request_id: str) -> dict[str, Any]:
     """Authorize and record a delegation request."""
+    # Validate the payload against the declared schema before any processing.
+    validate_payload(DELEGATE_PAYLOAD_SCHEMA, payload)
     _run(_ensure_saga_schema())
     saga_id = _run(
         saga_manager.start(
@@ -311,11 +375,25 @@ def delegate(self, payload: dict[str, Any], tenant_id: str, request_id: str) -> 
                 tenant=tenant_id,
             )
         )
-    _run(saga_manager.update(saga_id, step="recorded", status="accepted", data={"event_id": event_id}))
+    _run(
+        saga_manager.update(
+            saga_id, step="recorded", status="accepted", data={"event_id": event_id}
+        )
+    )
     return {"status": "accepted", "event_id": event_id, "saga_id": saga_id}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.build_context", max_retries=2, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=30, time_limit=45)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.build_context",
+    max_retries=2,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=30,
+    time_limit=45,
+)
 def build_context(self, tenant_id: str, session_id: str) -> dict[str, Any]:
     """Record a context build trigger for the session (downstream builder consumes)."""
     event_id = str(uuid.uuid4())
@@ -330,9 +408,24 @@ def build_context(self, tenant_id: str, session_id: str) -> dict[str, Any]:
     return {"status": "queued", "event_id": event_id}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.evaluate_policy", max_retries=2, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=20, time_limit=30)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.evaluate_policy",
+    max_retries=2,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=20,
+    time_limit=30,
+)
 def evaluate_policy(self, tenant_id: str, action: str, resource: dict[str, Any]) -> dict[str, Any]:
     """Evaluate an OPA policy decision and record it."""
+    # Validate arguments against schema (VIBE security)
+    validate_payload(
+        EVALUATE_POLICY_ARGS_SCHEMA,
+        {"tenant_id": tenant_id, "action": action, "resource": resource},
+    )
     decision = _run(
         policy_client.evaluate(
             PolicyRequest(
@@ -358,7 +451,14 @@ def evaluate_policy(self, tenant_id: str, action: str, resource: dict[str, Any])
     _append_event_sync(event["session_id"], event)
     saga_id = resource.get("saga_id")
     if saga_id:
-        _run(saga_manager.update(saga_id, step="policy_decision", status="allowed" if decision else "denied", data={"action": action, "resource": resource}))
+        _run(
+            saga_manager.update(
+                saga_id,
+                step="policy_decision",
+                status="allowed" if decision else "denied",
+                data={"action": action, "resource": resource},
+            )
+        )
         if not decision:
             _run(run_compensation("delegate", saga_id, {"reason": "policy_denied"}))
     if publisher:
@@ -382,9 +482,35 @@ def evaluate_policy(self, tenant_id: str, action: str, resource: dict[str, Any])
     return {"allowed": decision, "event_id": event_id}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.store_interaction", max_retries=2, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=30, time_limit=45)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.store_interaction",
+    max_retries=2,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=30,
+    time_limit=45,
+)
 def store_interaction(self, session_id: str, interaction: dict[str, Any]) -> dict[str, Any]:
     """Persist a conversation interaction into the session timeline."""
+    # Validate payload against schema (VIBE security)
+    validate_payload(
+        STORE_INTERACTION_PAYLOAD_SCHEMA,
+        {"session_id": session_id, "interaction": interaction},
+    )
+    # Enforce policy – only allow storing interactions if permitted
+    _enforce_policy(
+        task_name="store_interaction",
+        tenant_id=interaction.get("tenant_id", "unknown"),
+        action="store_interaction",
+        resource={
+            "name": "store_interaction",
+            "session_id": session_id,
+            "tenant": interaction.get("tenant_id"),
+        },
+    )
     event_id = str(uuid.uuid4())
     interaction = dict(interaction or {})
     interaction.setdefault("event_id", event_id)
@@ -394,9 +520,35 @@ def store_interaction(self, session_id: str, interaction: dict[str, Any]) -> dic
     return {"stored": True, "event_id": event_id}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.feedback_loop", max_retries=2, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=30, time_limit=45)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.feedback_loop",
+    max_retries=2,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=30,
+    time_limit=45,
+)
 def feedback_loop(self, session_id: str, feedback: dict[str, Any]) -> dict[str, Any]:
     """Persist feedback for later analysis and model learning."""
+    # Validate payload against schema (VIBE security)
+    validate_payload(
+        FEEDBACK_LOOP_PAYLOAD_SCHEMA,
+        {"session_id": session_id, "feedback": feedback},
+    )
+    # Enforce policy – only allow storing feedback if permitted
+    _enforce_policy(
+        task_name="feedback_loop",
+        tenant_id=feedback.get("tenant_id", "unknown"),
+        action="feedback_loop",
+        resource={
+            "name": "feedback_loop",
+            "session_id": session_id,
+            "tenant": feedback.get("tenant_id"),
+        },
+    )
     event_id = str(uuid.uuid4())
     payload = {
         "type": "feedback",
@@ -409,9 +561,31 @@ def feedback_loop(self, session_id: str, feedback: dict[str, Any]) -> dict[str, 
     return {"stored": True, "event_id": event_id}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.rebuild_index", max_retries=1, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=60, time_limit=90)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.rebuild_index",
+    max_retries=1,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=60,
+    time_limit=90,
+)
 def rebuild_index(self, tenant_id: str) -> dict[str, Any]:
     """Log an index rebuild request for the tenant (consumed by search pipeline)."""
+    # Validate arguments against schema (VIBE security)
+    validate_payload(
+        REBUILD_INDEX_ARGS_SCHEMA,
+        {"tenant_id": tenant_id},
+    )
+    # Enforce policy for rebuild_index operation
+    _enforce_policy(
+        task_name="rebuild_index",
+        tenant_id=tenant_id,
+        action="rebuild_index",
+        resource={"name": "rebuild_index", "tenant": tenant_id},
+    )
     event_id = str(uuid.uuid4())
     session_id = f"rebuild-{tenant_id}"
     payload = {
@@ -425,16 +599,55 @@ def rebuild_index(self, tenant_id: str) -> dict[str, Any]:
     return {"queued": True, "event_id": event_id}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.publish_metrics", max_retries=1, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=15, time_limit=20)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.publish_metrics",
+    max_retries=1,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=15,
+    time_limit=20,
+)
 def publish_metrics(self) -> dict[str, Any]:
     """Lightweight heartbeat to keep metrics series active."""
+    # Publishing metrics is an internal operation; enforce a permissive policy
+    _enforce_policy(
+        task_name="publish_metrics",
+        tenant_id="system",
+        action="publish_metrics",
+        resource={"name": "publish_metrics"},
+    )
     task_invocations_total.labels("publish_metrics", "tick").inc()
     return {"status": "ok", "timestamp": time.time()}
 
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.cleanup_sessions", max_retries=1, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, soft_time_limit=90, time_limit=120)
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.cleanup_sessions",
+    max_retries=1,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    soft_time_limit=90,
+    time_limit=120,
+)
 def cleanup_sessions(self, max_age_hours: int = 24) -> dict[str, Any]:
     """Purge old session events/envelopes beyond age threshold."""
+    # Validate arguments against schema (VIBE security)
+    validate_payload(
+        CLEANUP_SESSIONS_ARGS_SCHEMA,
+        {"max_age_hours": max_age_hours},
+    )
+    # Enforce a permissive system‑level policy for cleanup operations
+    _enforce_policy(
+        task_name="cleanup_sessions",
+        tenant_id="system",
+        action="cleanup_sessions",
+        resource={"name": "cleanup_sessions", "max_age_hours": max_age_hours},
+    )
     store = _run(_get_store())
     cutoff_hours = max(max_age_hours, 1)
     sql_events = """
@@ -445,6 +658,7 @@ def cleanup_sessions(self, max_age_hours: int = 24) -> dict[str, Any]:
         DELETE FROM session_envelopes
         WHERE updated_at < (NOW() - ($1 || ' hours')::interval)
     """
+
     async def _purge():
         pool = await store._ensure_pool()  # type: ignore[attr-defined]
         async with pool.acquire() as conn:
@@ -452,6 +666,7 @@ def cleanup_sessions(self, max_age_hours: int = 24) -> dict[str, Any]:
                 ev_res = await conn.execute(sql_events, cutoff_hours)
                 env_res = await conn.execute(sql_envelopes, cutoff_hours)
                 return ev_res, env_res
+
     ev_res, env_res = _run(_purge())
     return {"events": ev_res, "envelopes": env_res}
 
@@ -502,8 +717,17 @@ async def _delegate_compensation(saga_id: str, context: dict[str, Any]) -> None:
 # Register compensation on import
 register_compensation("delegate", _delegate_compensation)
 
-@shared_task(bind=True, base=SafeTask, name="python.tasks.core_tasks.dead_letter", max_retries=0, rate_limit="120/m")
-def dead_letter(self, task_name: str, args: Any, kwargs: dict[str, Any], error: str) -> dict[str, Any]:
+
+@shared_task(
+    bind=True,
+    base=SafeTask,
+    name="python.tasks.core_tasks.dead_letter",
+    max_retries=0,
+    rate_limit="120/m",
+)
+def dead_letter(
+    self, task_name: str, args: Any, kwargs: dict[str, Any], error: str
+) -> dict[str, Any]:
     """Capture failed task payloads for inspection on DLQ."""
     event_id = str(uuid.uuid4())
     payload = {

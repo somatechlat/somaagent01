@@ -1,6 +1,7 @@
 """
 Messaging utilities for consistent headers, correlation, and idempotency keys.
 """
+
 from __future__ import annotations
 
 import hashlib

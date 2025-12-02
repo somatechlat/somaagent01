@@ -26,6 +26,7 @@ def _load_sa01_settings():
 @dataclass(slots=True, frozen=True)
 class RegistryConfig:
     """Immutable configuration snapshot."""
+
     deployment_mode: str
     gateway_port: int
     soma_base_url: str
@@ -37,20 +38,20 @@ class RegistryConfig:
 
 class FeatureRegistry:
     """Canonical configuration registry with zero legacy patterns.
-    
+
     Provides deterministic configuration resolution without:
     - Environment variable access
     - Fallback logic
     - Incomplete implementations
     - Development code
     """
-    
+
     def __init__(self) -> None:
         self._settings_cls = _load_sa01_settings()
         self._settings = self._settings_cls.from_env()
         self._env_cache = self._snapshot_environment()
         self._config = self._build_canonical_config()
-        
+
     def _build_canonical_config(self) -> RegistryConfig:
         """Build immutable canonical configuration."""
         return RegistryConfig(
@@ -60,9 +61,9 @@ class FeatureRegistry:
             postgres_dsn=self._settings.postgres_dsn,
             redis_url=self._settings.redis_url,
             kafka_bootstrap_servers=self._settings.kafka_bootstrap_servers,
-            opa_url=self._settings.opa_url
+            opa_url=self._settings.opa_url,
         )
-    
+
     def _snapshot_environment(self) -> dict[str, str]:
         """Capture environment variables once so downstream code stays deterministic."""
         return {key: value for key, value in os.environ.items()}
@@ -73,37 +74,37 @@ class FeatureRegistry:
         if raw in {"DEV", "LOCAL"}:
             return "LOCAL"
         return "PROD"
-    
+
     # Canonical accessors - no legacy patterns
-    
+
     def deployment_mode(self) -> str:
         """Return canonical deployment mode."""
         return self._config.deployment_mode
-    
+
     def gateway_port(self) -> int:
         """Return canonical gateway port."""
         return self._config.gateway_port
-    
+
     def soma_base_url(self) -> str:
         """Return canonical Somabrain base URL."""
         return self._config.soma_base_url
-    
+
     def postgres_dsn(self) -> str:
         """Return canonical Postgres DSN."""
         return self._config.postgres_dsn
-    
+
     def redis_url(self) -> str:
         """Return canonical Redis URL."""
         return self._config.redis_url
-    
+
     def kafka_bootstrap_servers(self) -> str:
         """Return canonical Kafka bootstrap servers."""
         return self._config.kafka_bootstrap_servers
-    
+
     def opa_url(self) -> str:
         """Return canonical OPA URL."""
         return self._config.opa_url
-    
+
     def flag(self, key: str, tenant: Optional[str] = None) -> bool:
         """Resolve a feature flag.
 
@@ -148,38 +149,47 @@ class FeatureRegistry:
 # Singleton canonical instance
 _registry = FeatureRegistry()
 
+
 # Public API - no legacy patterns
 def registry() -> FeatureRegistry:
     """Return canonical registry singleton."""
     return _registry
 
+
 def deployment_mode() -> str:
     """Return canonical deployment mode."""
     return _registry.deployment_mode()
+
 
 def gateway_port() -> int:
     """Return canonical gateway port."""
     return _registry.gateway_port()
 
+
 def soma_base_url() -> str:
     """Return canonical Somabrain base URL."""
     return _registry.soma_base_url()
+
 
 def postgres_dsn() -> str:
     """Return canonical Postgres DSN."""
     return _registry.postgres_dsn()
 
+
 def redis_url() -> str:
     """Return canonical Redis URL."""
     return _registry.redis_url()
+
 
 def kafka_bootstrap_servers() -> str:
     """Return canonical Kafka bootstrap servers."""
     return _registry.kafka_bootstrap_servers()
 
+
 def opa_url() -> str:
     """Return canonical OPA URL."""
     return _registry.opa_url()
+
 
 def flag(key: str, tenant: Optional[str] = None) -> bool:
     """Return canonical feature flag state."""

@@ -1,4 +1,5 @@
 """Memory export/admin endpoints extracted from gateway monolith."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,7 +8,11 @@ from pydantic import BaseModel
 
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.readiness import get_replica_store
-from services.common.export_job_store import ExportJobStore, ensure_schema as ensure_export_jobs_schema, ExportJobStatus
+from services.common.export_job_store import (
+    ExportJobStore,
+    ensure_schema as ensure_export_jobs_schema,
+    ExportJobStatus,
+)
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 
@@ -27,8 +32,10 @@ async def export_memory(tenant: str | None = None, namespace: str | None = None)
 
     async def _stream():
         import json
+
         for r in rows:
             yield json.dumps(r.model_dump()) + "\n"
+
     return StreamingResponse(_stream(), media_type="application/x-ndjson")
 
 

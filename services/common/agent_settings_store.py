@@ -6,6 +6,7 @@ Single source of truth:
 
 No Redis secrets, no .env files, no fallbacks.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,6 +45,7 @@ class AgentSettingsStore:
                 )
             except OSError:
                 import re
+
                 fallback_dsn = re.sub(r"@[^:/]+", "@127.0.0.1", self.dsn)
                 self._pool = await asyncpg.create_pool(
                     fallback_dsn,
@@ -56,7 +58,8 @@ class AgentSettingsStore:
         """Create agent_settings table if not exists."""
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS agent_settings (
                     id SERIAL PRIMARY KEY,
                     key TEXT UNIQUE NOT NULL,
@@ -65,15 +68,14 @@ class AgentSettingsStore:
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 );
                 CREATE INDEX IF NOT EXISTS idx_agent_settings_key ON agent_settings(key);
-            """)
+            """
+            )
 
     async def get_settings(self) -> Dict[str, Any]:
         """Get all agent settings (PostgreSQL + Vault secrets)."""
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT value FROM agent_settings WHERE key = 'global'"
-            )
+            row = await conn.fetchrow("SELECT value FROM agent_settings WHERE key = 'global'")
             settings = dict(row["value"]) if row and isinstance(row["value"], dict) else {}
 
         # Load API keys from Vault
@@ -106,11 +108,14 @@ class AgentSettingsStore:
         # Save to PostgreSQL
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 INSERT INTO agent_settings (key, value, updated_at)
                 VALUES ('global', $1::jsonb, NOW())
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
-            """, json.dumps(settings_copy, ensure_ascii=False))
+            """,
+                json.dumps(settings_copy, ensure_ascii=False),
+            )
 
         LOGGER.info("Agent settings saved", extra={"keys": list(settings_copy.keys())})
 
@@ -145,7 +150,14 @@ class AgentSettingsStore:
 
     def _remove_sensitive_fields(self, settings: Dict[str, Any]) -> None:
         """Remove sensitive fields before PostgreSQL storage."""
-        for field in ["api_keys", "auth_login", "auth_password", "rfc_password", "root_password", "secrets"]:
+        for field in [
+            "api_keys",
+            "auth_login",
+            "auth_password",
+            "rfc_password",
+            "root_password",
+            "secrets",
+        ]:
             settings.pop(field, None)
 
 

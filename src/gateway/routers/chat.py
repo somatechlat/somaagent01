@@ -58,7 +58,9 @@ async def chat_completion(request: Request, payload: ChatPayload) -> JSONRespons
     provider = _detect_provider_from_base(base_url)
     secret = await get_audit_store().secret_manager.get_provider_key(provider)
     if not secret:
-        raise HTTPException(status_code=404, detail=f"credentials not found for provider: {provider}")
+        raise HTTPException(
+            status_code=404, detail=f"credentials not found for provider: {provider}"
+        )
 
     # -----------------------------------------------------------------
     # 3️⃣ Prepare messages for the SLM client

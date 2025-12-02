@@ -86,9 +86,9 @@ PATTERNS: List[Tuple[str, re.Pattern]] = [
     # JavaScript / TypeScript – single‑quoted strings.
     ("js_single", re.compile(r"'([^\\']{2,})'")),
     # JavaScript / TypeScript – template literals (backticks).
-    ("js_template", re.compile(r'`([^`]{2,})`')),
+    ("js_template", re.compile(r"`([^`]{2,})`")),
     # HTML – text between tags, ignoring whitespace‑only nodes.
-    ("html_text", re.compile(r'>\s*([^<]{2,})\s*<')),
+    ("html_text", re.compile(r">\s*([^<]{2,})\s*<")),
     # HTML – common UI attribute values (placeholder, title, alt, aria-label, label).
     ("html_attr", re.compile(r'(?:placeholder|title|alt|aria-label|label)="([^\"]{2,})"')),
 ]
@@ -99,6 +99,7 @@ TARGET_EXTS = {"html", "js", "vue", "ts"}
 # vendor libraries, generated/minified assets, and any hidden files.
 EXCLUDE_DIRS = {"vendor", "node_modules", "dist", "build"}
 EXCLUDE_PATTERNS = [re.compile(r"\.min\.")]
+
 
 # ---------------------------------------------------------------------------
 # Helper functions
@@ -117,10 +118,12 @@ def _load_i18n_dict(lang: str) -> Dict[str, str]:
             print(f"[WARN] Failed to parse {path}: {exc}", file=sys.stderr)
     return {}
 
+
 def _save_i18n_dict(lang: str, data: Dict[str, str]) -> None:
     """Write ``data`` back to ``webui/i18n/<lang>.json`` with pretty formatting."""
     path = ROOT / "i18n" / f"{lang}.json"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
 
 def _slugify(text: str) -> str:
     """Create a deterministic i18n key from *text*.
@@ -135,7 +138,10 @@ def _slugify(text: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
     return f"ui_{slug}" if not slug.startswith("ui_") else slug
 
-def _replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) -> Tuple[str, bool, int]:
+
+def _replace_in_content(
+    content: str, en: Dict[str, str], es: Dict[str, str]
+) -> Tuple[str, bool, int]:
     """Return a new version of *content* with literals replaced.
 
     The return tuple is ``(new_content, modified, added_keys)``.
@@ -167,6 +173,7 @@ def _replace_in_content(content: str, en: Dict[str, str], es: Dict[str, str]) ->
             modified = True
     return new_content, modified, added
 
+
 def _process_file(path: pathlib.Path, en: Dict[str, str], es: Dict[str, str]) -> Tuple[bool, int]:
     """Read *path*, replace literals, write back if changed.
 
@@ -177,6 +184,7 @@ def _process_file(path: pathlib.Path, en: Dict[str, str], es: Dict[str, str]) ->
     if modified:
         path.write_text(new_content, encoding="utf-8")
     return modified, added
+
 
 # ---------------------------------------------------------------------------
 # Main entry point
@@ -195,7 +203,7 @@ def main() -> None:
         # Skip files matching any exclude pattern (e.g., *.min.js)
         if any(p.search(file_path.name) for p in EXCLUDE_PATTERNS):
             continue
-        if file_path.suffix.lstrip('.').lower() not in TARGET_EXTS:
+        if file_path.suffix.lstrip(".").lower() not in TARGET_EXTS:
             continue
         was_modified, added = _process_file(file_path, en_dict, es_dict)
         if was_modified:
@@ -208,6 +216,7 @@ def main() -> None:
     print(f"✅ Modified {len(modified_files)} files, added {total_new_keys} new i18n keys.")
     for f in modified_files:
         print(f"   - {f}")
+
 
 if __name__ == "__main__":
     main()

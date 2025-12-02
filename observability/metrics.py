@@ -9,7 +9,14 @@ from functools import wraps
 from typing import Any, Callable, Dict
 
 # Import the original Prometheus collector classes under private aliases.
-from prometheus_client import Counter as _BaseCounter, Gauge as _BaseGauge, Histogram as _BaseHistogram, Info, start_http_server, REGISTRY
+from prometheus_client import (
+    Counter as _BaseCounter,
+    Gauge as _BaseGauge,
+    Histogram as _BaseHistogram,
+    Info,
+    start_http_server,
+    REGISTRY,
+)
 
 # ---------------------------------------------------------------------------
 # Compatibility wrappers for Prometheus collectors.
@@ -19,6 +26,7 @@ from prometheus_client import Counter as _BaseCounter, Gauge as _BaseGauge, Hist
 # imported multiple times (e.g., during test collection).
 # ---------------------------------------------------------------------------
 _metric_cache: dict[str, object] = {}
+
 
 def _ensure_metric(metric_cls, name: str, *args, **kwargs):
     """Return an existing collector or create a new one.
@@ -33,14 +41,18 @@ def _ensure_metric(metric_cls, name: str, *args, **kwargs):
     _metric_cache[name] = metric
     return metric
 
+
 def Counter(name: str, *args, **kwargs):  # type: ignore
     return _ensure_metric(_BaseCounter, name, *args, **kwargs)
+
 
 def Gauge(name: str, *args, **kwargs):  # type: ignore
     return _ensure_metric(_BaseGauge, name, *args, **kwargs)
 
+
 def Histogram(name: str, *args, **kwargs):  # type: ignore
     return _ensure_metric(_BaseHistogram, name, *args, **kwargs)
+
 
 # Registry for canonical backend metrics (reuse default so every service exports consistently)
 registry = REGISTRY
@@ -633,6 +645,7 @@ def get_metrics_snapshot() -> Dict[str, Any]:
         "raw_metrics": generate_latest(registry).decode("utf-8"),
     }
 
+
 # ---------------------------------------------------------------------------
 # Minimal MetricsCollector implementation
 # ---------------------------------------------------------------------------
@@ -685,8 +698,10 @@ class MetricsCollector:
     def __repr__(self) -> str:  # pragma: no cover
         return f"<MetricsCollector initialized={self._initialized}>"
 
+
 # Export a singleton instance used throughout the codebase.
 metrics_collector = MetricsCollector()
+
 
 # ---------------------------------------------------------------------------
 # ContextBuilderMetrics placeholder (used by the FastA2A integration).
@@ -726,4 +741,3 @@ class ContextBuilderMetrics:
             tokens_after_redaction_gauge.inc()
         except Exception:
             pass
-

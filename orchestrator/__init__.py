@@ -5,6 +5,7 @@ memory services, etc.) in a deterministic order, provides a single health
 endpoint, and ensures graceful shutdown.  It replaces the previous ad‑hoc
 service‑specific entry points.
 """
+
 """Orchestrator package for SomaAgent01.
 
 Provides a single entry point that coordinates the lifecycle of all
@@ -22,12 +23,12 @@ from .config import CentralizedConfig, load_config
 
 __all__ = [
     "run_orchestrator",
-    "main", 
+    "main",
     "app",
     "SomaOrchestrator",
-    "ServiceRegistry", 
+    "ServiceRegistry",
     "ServiceDefinition",
     "UnifiedHealthMonitor",
     "CentralizedConfig",
-    "load_config"
+    "load_config",
 ]

@@ -1,6 +1,7 @@
 """
 Dynamic task/tool registry with OPA gating, hash verification, and Redis cache.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -48,7 +49,9 @@ class TaskRegistry:
             raise RuntimeError("POSTGRES_DSN must be set for TaskRegistry")
         self.redis_url = cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL")
         if not self.redis_url:
-            raise RuntimeError("SA01_REDIS_URL (or REDIS_URL) must be set for TaskRegistry cache/reload.")
+            raise RuntimeError(
+                "SA01_REDIS_URL (or REDIS_URL) must be set for TaskRegistry cache/reload."
+            )
         self.cache_key = "task_registry:all"
         self._pool: Optional[asyncpg.Pool] = None
         self._redis: Optional[redis.Redis] = None
@@ -200,7 +203,11 @@ class TaskRegistry:
         return entries
 
     async def allowed_for(
-        self, entry: RegistryEntry, tenant: str, persona: Optional[str], action: str = "task.execute"
+        self,
+        entry: RegistryEntry,
+        tenant: str,
+        persona: Optional[str],
+        action: str = "task.execute",
     ) -> bool:
         # Scope check
         if entry.tenant_scope and tenant not in entry.tenant_scope:
@@ -235,7 +242,9 @@ class TaskRegistry:
                     f"Artifact hash mismatch for {entry.name}: expected {entry.artifact_hash}, got {digest}"
                 )
         except Exception as exc:
-            LOGGER.error("Artifact verification failed", extra={"task": entry.name, "error": str(exc)})
+            LOGGER.error(
+                "Artifact verification failed", extra={"task": entry.name, "error": str(exc)}
+            )
             raise
 
     def _sha256(self, path: str) -> str:

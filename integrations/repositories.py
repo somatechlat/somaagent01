@@ -24,7 +24,7 @@ from services.common.ui_settings_store import UiSettingsStore
 
 class RepositoryManager:
     """Singleton manager for all repository instances."""
-    
+
     def __init__(self) -> None:
         self._attachments_store: Optional[AttachmentsStore] = None
         self._audit_store: Optional[_AuditStore] = None

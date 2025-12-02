@@ -62,7 +62,9 @@ class ExportJobStore:
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            self._pool = await asyncpg.create_pool(self.dsn, min_size=max(0, min_size), max_size=max(1, max_size))
+            self._pool = await asyncpg.create_pool(
+                self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
+            )
         return self._pool
 
     async def close(self) -> None:
@@ -87,7 +89,9 @@ class ExportJobStore:
     # ---------------------------------------------------------------------
     # Legacy helper methods expected by ``services.gateway.routers.memory_exports``
     # ---------------------------------------------------------------------
-    async def create_job(self, tenant: Optional[str], namespace: Optional[str], limit: Optional[int]) -> ExportJob:
+    async def create_job(
+        self, tenant: Optional[str], namespace: Optional[str], limit: Optional[int]
+    ) -> ExportJob:
         """Create a new export job and return the full ``ExportJob`` record.
 
         The original monolith exposed a ``create_job`` method that accepted the
@@ -99,17 +103,21 @@ class ExportJobStore:
         params = {"namespace": namespace, "limit": limit}
         job_id = await self.create(params=params, tenant=tenant)
         job = await self.get(job_id)
-        return job if job is not None else ExportJob(
-            id=job_id,
-            status="queued",
-            params=params,
-            tenant=tenant,
-            file_path=None,
-            row_count=None,
-            byte_size=None,
-            error=None,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+        return (
+            job
+            if job is not None
+            else ExportJob(
+                id=job_id,
+                status="queued",
+                params=params,
+                tenant=tenant,
+                file_path=None,
+                row_count=None,
+                byte_size=None,
+                error=None,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
         )
 
     async def get_job(self, job_id: int) -> Optional[ExportJob]:
@@ -176,7 +184,9 @@ class ExportJobStore:
                 job_id,
             )
 
-    async def mark_complete(self, job_id: int, *, file_path: str, rows: int, byte_size: int) -> None:
+    async def mark_complete(
+        self, job_id: int, *, file_path: str, rows: int, byte_size: int
+    ) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(

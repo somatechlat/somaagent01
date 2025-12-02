@@ -38,6 +38,7 @@ class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         from src.core.config import cfg
         from services.common.admin_settings import ADMIN_SETTINGS
+
         self._cfg = cfg
 
         # Use admin-wide Postgres DSN for consistency with other stores

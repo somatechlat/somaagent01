@@ -19,7 +19,7 @@ async def main():
     """Main entry point for the memory replicator service."""
     config = CentralizedConfig()
     service = MemoryReplicatorService(config)
-    
+
     # Start the service using uvicorn
     await uvicorn.run(
         service.app,

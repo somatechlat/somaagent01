@@ -27,6 +27,7 @@ def clear_env(monkeypatch: pytest.MonkeyPatch):
     # Force a reload after the test finishes.
     yield
     from src.core.config import reload_config
+
     reload_config()
 
 
@@ -41,6 +42,7 @@ def test_loader_reads_sa01_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "TEST")
     # Reload the cached configuration so the new env var is taken into account.
     from src.core.config import reload_config
+
     cfg = reload_config()
 
     assert cfg.service.deployment_mode == "TEST"

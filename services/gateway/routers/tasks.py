@@ -91,7 +91,9 @@ async def register_task(req: TaskRegistration, tenant_id: Optional[str] = None) 
 
 
 @router.get("")
-async def list_tasks(tenant_id: Optional[str] = None, persona_id: Optional[str] = None) -> list[dict]:
+async def list_tasks(
+    tenant_id: Optional[str] = None, persona_id: Optional[str] = None
+) -> list[dict]:
     entries = await registry.load_all(force_refresh=False)
     visible: list[RegistryEntry] = []
     for e in entries:

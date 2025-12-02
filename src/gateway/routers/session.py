@@ -71,6 +71,7 @@ async def list_sessions_endpoint(
         if isinstance(md, str):
             try:
                 from json import loads as _loads
+
                 parsed = _loads(md)
                 md = parsed if isinstance(parsed, dict) else {}
             except Exception:
@@ -82,6 +83,7 @@ async def list_sessions_endpoint(
         if isinstance(an, str):
             try:
                 from json import loads as _loads
+
                 parsed = _loads(an)
                 an = parsed if isinstance(parsed, dict) else {}
             except Exception:

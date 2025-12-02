@@ -44,10 +44,14 @@ class GatewayStream(ApiHandler):
         primary = f"{base}/v1/session/{session_id}/events"
         host_alias = env.get("SOMA_CONTAINER_HOST_ALIAS")
         gw_port = env.get("GATEWAY_PORT")
-        fallback = f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events" if host_alias and gw_port else None
+        fallback = (
+            f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events"
+            if host_alias and gw_port
+            else None
+        )
 
         headers = {}
-        if (bearer := env.get("UI_GATEWAY_BEARER")):
+        if bearer := env.get("UI_GATEWAY_BEARER"):
             headers["Authorization"] = f"Bearer {bearer}"
 
         def stream_from(url: str) -> Iterator[bytes]:

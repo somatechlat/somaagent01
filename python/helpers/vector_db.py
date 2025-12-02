@@ -4,6 +4,7 @@ from typing import Any, List, Sequence
 # Optional FAISS import: tolerate absence in minimal/dev images
 try:  # pragma: no cover - environment dependent
     import faiss  # type: ignore
+
     _FAISS_AVAILABLE = True
 except Exception:  # pragma: no cover
     faiss = None  # type: ignore
@@ -24,6 +25,7 @@ try:
     from langchain_community.vectorstores import FAISS  # type: ignore
     from langchain_community.vectorstores.utils import DistanceStrategy  # type: ignore
     from langchain_core.documents import Document  # type: ignore
+
     _LC_AVAILABLE = True
 except Exception:  # pragma: no cover
     InMemoryByteStore = None  # type: ignore

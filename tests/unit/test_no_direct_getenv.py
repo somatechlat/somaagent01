@@ -69,4 +69,3 @@ def test_no_direct_getenv_outside_allowed():
         if "os.getenv(" in text or "os.environ[" in text:
             offenders.append(rel)
     assert not offenders, f"Direct getenv usage in: {', '.join(sorted(set(offenders)))}"
-

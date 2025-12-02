@@ -24,7 +24,9 @@ from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
-from services.common.settings_sa01 import SA01Settings
+
+# Legacy settings import removed. Use centralized configuration.
+from src.core.config import cfg
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.tracing import setup_tracing
@@ -33,8 +35,8 @@ from src.core.config import cfg
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-APP_SETTINGS = SA01Settings.from_env()
-setup_tracing("delegation-gateway", endpoint=APP_SETTINGS.otlp_endpoint)
+APP_SETTINGS = cfg.settings()
+setup_tracing("delegation-gateway", endpoint=APP_SETTINGS.external.otlp_endpoint)
 
 app = FastAPI(title="SomaAgent 01 Delegation Gateway")
 

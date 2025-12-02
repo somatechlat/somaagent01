@@ -1,4 +1,5 @@
 """Workdir file operations extracted from gateway monolith (minimal functional set)."""
+
 from __future__ import annotations
 
 import os

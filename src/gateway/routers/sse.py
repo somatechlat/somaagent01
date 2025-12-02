@@ -57,9 +57,9 @@ async def sse_session_events(session_id: str) -> StreamingResponse:
                 topic=topic, group_id=group_id, settings=KafkaSettings.from_env()
             ):
                 try:
-                    sid = payload.get("session_id") or (
-                        payload.get("payload") or {}
-                    ).get("session_id")
+                    sid = payload.get("session_id") or (payload.get("payload") or {}).get(
+                        "session_id"
+                    )
                     if sid != session_id:
                         continue
                     data = json.dumps(payload, ensure_ascii=False)

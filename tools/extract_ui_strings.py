@@ -23,8 +23,9 @@ PATTERNS = [
     # JavaScript: double‑quoted strings that are at least 2 characters long.
     ("js", re.compile(r'"([^\\"]{2,})"')),
     # HTML: text between tags, ignoring whitespace‑only nodes.
-    ("html", re.compile(r'>\s*([^<]{2,})\s*<')),
+    ("html", re.compile(r">\s*([^<]{2,})\s*<")),
 ]
+
 
 def collect_strings() -> list[str]:
     """Walk the webui folder and collect unique UI strings.
@@ -34,7 +35,7 @@ def collect_strings() -> list[str]:
     strings: set[str] = set()
     for file_path in ROOT.rglob("*.*"):
         # Determine file type by extension.
-        ext = file_path.suffix.lstrip('.').lower()
+        ext = file_path.suffix.lstrip(".").lower()
         for typ, pattern in PATTERNS:
             if ext != typ:
                 continue
@@ -50,6 +51,7 @@ def collect_strings() -> list[str]:
                     continue
                 strings.add(s)
     return sorted(strings)
+
 
 def main() -> None:
     strings = collect_strings()
@@ -74,6 +76,7 @@ def main() -> None:
     en_path = i18n_dir / "en.json"
     en_path.write_text(json.dumps(en_dict, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Extracted {len(en_dict)} strings → {en_path}")
+
 
 if __name__ == "__main__":
     main()

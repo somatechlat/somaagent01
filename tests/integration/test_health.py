@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 # Import the FastAPI app defined in the gateway service.
 from services.gateway.main import app
 
+
 @pytest.mark.integration
 def test_health_endpoint() -> None:
     """Ensure the health endpoint returns a successful payload."""

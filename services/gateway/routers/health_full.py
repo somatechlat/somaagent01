@@ -29,7 +29,9 @@ def _kafka_settings() -> KafkaSettings:
 
 @router.get("/health")
 async def health_check(
-    store: PostgresSessionStore = Depends(lambda: PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)),
+    store: PostgresSessionStore = Depends(
+        lambda: PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    ),
     cache: RedisSessionCache = Depends(lambda: RedisSessionCache(ADMIN_SETTINGS.redis_url)),
 ) -> JSONResponse:
     # A map of component health results. Each entry will contain a ``status``

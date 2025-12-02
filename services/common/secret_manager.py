@@ -29,6 +29,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from src.core.config import cfg
 
+
 # ---------------------------------------------------------------------------
 # Helper – validate / normalise the Fernet key supplied via env
 # ---------------------------------------------------------------------------

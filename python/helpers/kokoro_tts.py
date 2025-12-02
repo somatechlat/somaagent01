@@ -8,6 +8,7 @@ from typing import List
 
 try:
     import soundfile as sf
+
     _SOUNDFILE_AVAILABLE = True
 except Exception:  # pragma: no cover - optional dependency may be missing in images
     sf = None
@@ -162,14 +163,17 @@ async def _synthesize_sentences(sentences: list[str]):
                 wrote = True
             except Exception as se:
                 # Fallback to pure-Python writer if soundfile misbehaves in this environment
-                PrintStyle.warn(f"soundfile write failed ({type(se).__name__}): {se}; falling back to wave module")
+                PrintStyle.warn(
+                    f"soundfile write failed ({type(se).__name__}): {se}; falling back to wave module"
+                )
                 buffer = io.BytesIO()
         if not wrote:
             import wave
+
             # Convert float32 [-1,1] to int16 PCM
             pcm = np.clip(arr, -1.0, 1.0)
             pcm = (pcm * 32767.0).astype(np.int16, copy=False)
-            with wave.open(buffer, 'wb') as wf:
+            with wave.open(buffer, "wb") as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)  # 16-bit
                 wf.setframerate(24000)

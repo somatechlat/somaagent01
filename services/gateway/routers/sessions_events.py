@@ -32,7 +32,9 @@ async def session_events(session_id: str, limit: int = Query(200, ge=1, le=500))
 
 
 @router.get("/{session_id}/context-window")
-async def session_context_window(session_id: str, window: int = Query(20, ge=1, le=200)) -> dict[str, Any]:
+async def session_context_window(
+    session_id: str, window: int = Query(20, ge=1, le=200)
+) -> dict[str, Any]:
     store = await _store()
     events = await store.list_events(session_id=session_id, limit=window)
     if events is None:

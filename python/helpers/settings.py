@@ -439,9 +439,10 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     # basic auth section
     auth_fields: list[SettingsField] = []
-    
+
     # Get credentials from Vault
     from services.common.unified_secret_manager import get_secret_manager
+
     _secrets = get_secret_manager()
 
     auth_fields.append(
@@ -460,9 +461,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             "title": "UI Password",
             "description": "Set user password for web UI",
             "type": "password",
-            "value": (
-                PASSWORD_PLACEHOLDER if _secrets.get_credential("auth_password") else ""
-            ),
+            "value": (PASSWORD_PLACEHOLDER if _secrets.get_credential("auth_password") else ""),
         }
     )
 
@@ -790,17 +789,16 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     # Get RFC password from Vault
     from services.common.unified_secret_manager import get_secret_manager
+
     _rfc_secrets = get_secret_manager()
-    
+
     dev_fields.append(
         {
             "id": "rfc_password",
             "title": "RFC Password",
             "description": "Password for remote function calls. Passwords must match on both instances. RFCs can not be used with empty password.",
             "type": "password",
-            "value": (
-                PASSWORD_PLACEHOLDER if _rfc_secrets.get_credential("rfc_password") else ""
-            ),
+            "value": (PASSWORD_PLACEHOLDER if _rfc_secrets.get_credential("rfc_password") else ""),
         }
     )
 
@@ -1311,13 +1309,13 @@ def get_settings() -> Settings:
         try:
             import asyncio
             from services.common.agent_settings_store import get_agent_settings_store
-            
+
             store = get_agent_settings_store()
-            
+
             async def _load():
                 await store.ensure_schema()
                 return await store.get_settings()
-            
+
             try:
                 loop = asyncio.get_running_loop()
                 # Running in async context - use defaults, will be loaded async elsewhere
@@ -1327,7 +1325,7 @@ def get_settings() -> Settings:
                 _settings = asyncio.run(_load())
         except Exception:
             _settings = None
-    
+
     if not _settings:
         _settings = get_default_settings()
     norm = normalize_settings(_settings)
@@ -1339,17 +1337,17 @@ def set_settings(settings: Settings, apply: bool = True):
     global _settings
     previous = _settings
     _settings = normalize_settings(settings)
-    
+
     try:
         import asyncio
         from services.common.agent_settings_store import get_agent_settings_store
-        
+
         store = get_agent_settings_store()
-        
+
         async def _save():
             await store.ensure_schema()
             await store.set_settings(dict(_settings))
-        
+
         try:
             loop = asyncio.get_running_loop()
             # Running in async context - schedule task
@@ -1359,8 +1357,9 @@ def set_settings(settings: Settings, apply: bool = True):
             asyncio.run(_save())
     except Exception as exc:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to save settings: {exc}")
-    
+
     if apply:
         _apply_settings(previous)
 
@@ -1384,7 +1383,9 @@ def normalize_settings(settings: Settings) -> Settings:
             copy = {}
 
     default_model = get_default_settings()
-    default = default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
+    default = (
+        default_model.model_dump() if hasattr(default_model, "model_dump") else dict(default_model)
+    )
 
     # adjust settings values to match current version if needed
     if "version" not in copy or copy["version"] != default["version"]:
@@ -1437,26 +1438,26 @@ def _remove_sensitive_settings(settings: Settings):
 
 def _write_sensitive_settings(settings: Settings):
     """Write sensitive settings to Vault via UnifiedSecretManager.
-    
+
     Single source of truth - no .env files for secrets.
     """
     from services.common.unified_secret_manager import get_secret_manager
-    
+
     secrets = get_secret_manager()
-    
+
     # Save API keys to Vault
     for key, val in settings["api_keys"].items():
         if not isinstance(key, str):
             continue
         provider = key.strip()
         if provider.startswith("api_key_"):
-            provider = provider[len("api_key_"):]
+            provider = provider[len("api_key_") :]
         if not provider:
             continue
         if not isinstance(val, str) or val.strip() in {"", "None", API_KEY_PLACEHOLDER}:
             continue
         secrets.set_provider_key(provider, val.strip())
-    
+
     # Save credentials to Vault
     if settings.get("auth_login"):
         secrets.set_credential("auth_login", settings["auth_login"])
@@ -1738,6 +1739,7 @@ def set_root_password(password: str):
     )
     # Save to Vault
     from services.common.unified_secret_manager import get_secret_manager
+
     get_secret_manager().set_credential("root_password", password)
 
 
@@ -1768,8 +1770,9 @@ def get_runtime_config(set: Settings):
 def create_auth_token() -> str:
     """Create auth token using credentials from Vault."""
     from services.common.unified_secret_manager import get_secret_manager
+
     _auth_secrets = get_secret_manager()
-    
+
     runtime_id = runtime.get_persistent_id()
     username = _auth_secrets.get_credential("auth_login") or ""
     password = _auth_secrets.get_credential("auth_password") or ""

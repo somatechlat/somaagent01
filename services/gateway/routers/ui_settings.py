@@ -6,6 +6,7 @@ Single source of truth:
 
 No Redis secrets, no .env files, no fallbacks.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -31,15 +32,16 @@ async def get_settings() -> dict:
     """Return agent settings with UI schema."""
     store = _get_store()
     await store.ensure_schema()
-    
+
     settings = await store.get_settings()
     if not settings:
         settings = get_default_settings()
-    
+
     # Import here to avoid circular imports
     from python.helpers.settings import convert_out
+
     ui_data = convert_out(settings)
-    
+
     if not ui_data.get("sections"):
         raise HTTPException(status_code=500, detail="Settings schema generation failed")
     return ui_data
@@ -57,11 +59,12 @@ async def put_settings(body: SettingsUpdate):
     """Save settings from UI."""
     store = _get_store()
     await store.ensure_schema()
-    
+
     # Import here to avoid circular imports
     from python.helpers.settings import convert_in
+
     settings = convert_in(body.data)
-    
+
     await store.set_settings(settings)
     return {"status": "ok"}
 

@@ -6,6 +6,7 @@ Single source of truth for all secrets:
 
 No Redis, no .env files, no fallbacks for secrets.
 """
+
 from __future__ import annotations
 
 import logging

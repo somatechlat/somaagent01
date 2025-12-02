@@ -29,7 +29,15 @@ async def test_get_features_endpoint_minimal_surface(monkeypatch):
 
     # Validate minimal schema for each entry
     for item in features:
-        assert set(item.keys()) >= {"key", "state", "enabled", "profile_default", "dependencies", "stability", "tags"}
+        assert set(item.keys()) >= {
+            "key",
+            "state",
+            "enabled",
+            "profile_default",
+            "dependencies",
+            "stability",
+            "tags",
+        }
         assert item["state"] in {"on", "degraded", "disabled"}
         assert isinstance(item["enabled"], bool)
         assert isinstance(item["profile_default"], bool)

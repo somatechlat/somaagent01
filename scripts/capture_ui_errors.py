@@ -76,9 +76,7 @@ async def _run() -> int:
             # ``request.failure()`` returns a dict with ``errorText``.
             failure_info = await request.failure()
             error_text = failure_info.get("errorText") if failure_info else "unknown"
-            entry = (
-                f"{_timestamp()} REQUESTFAILED {request.method} {request.url} – {error_text}\n"
-            )
+            entry = f"{_timestamp()} REQUESTFAILED {request.method} {request.url} – {error_text}\n"
             with open(LOG_PATH, "a", encoding="utf-8") as f:
                 f.write(entry)
             had_errors = True

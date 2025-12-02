@@ -23,13 +23,16 @@ import sys
 # Importing pytest here forces its module to load before any test files are
 # evaluated, allowing us to safely add the missing attribute.
 import pytest
+
 # Provide a minimal ``Request`` type for the test suite. If the internal
 # ``FixtureRequest`` class is importable we use it; otherwise we fall back to a
 # simple placeholder.
 try:
     from _pytest.fixtures import FixtureRequest  # type: ignore
+
     _req_type = FixtureRequest
 except Exception:
+
     class _PlaceholderRequest:  # pragma: no cover
         pass
 

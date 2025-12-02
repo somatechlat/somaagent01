@@ -55,6 +55,7 @@ from . import (
     tasks,
 )
 
+
 def build_router() -> APIRouter:
     router = APIRouter()
     for sub in (

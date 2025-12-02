@@ -19,11 +19,8 @@ from typing import Optional
 import httpx
 
 from services.common.registry import registry
-BASE = (
-    sys.argv[1]
-    if len(sys.argv) > 1
-    else registry().soma_base_url().rstrip('/')
-)
+
+BASE = sys.argv[1] if len(sys.argv) > 1 else registry().soma_base_url().rstrip("/")
 
 
 async def main() -> int:

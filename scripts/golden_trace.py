@@ -24,7 +24,8 @@ from typing import Any, Dict, List
 import httpx
 
 from services.common.registry import registry
-GATEWAY_BASE = registry().soma_base_url().rstrip('/')
+
+GATEWAY_BASE = registry().soma_base_url().rstrip("/")
 
 
 def _hash(text: str) -> str:

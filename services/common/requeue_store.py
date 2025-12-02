@@ -58,7 +58,9 @@ class RequeueStore:
         - policy_requeue_prefix (str)
         """
         url = getattr(settings, "redis_url", None) or ADMIN_SETTINGS.redis_url
-        prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env("POLICY_REQUEUE_PREFIX")
+        prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env(
+            "POLICY_REQUEUE_PREFIX"
+        )
         return cls(url=url, prefix=prefix)
 
     async def add(self, identifier: str, event: dict[str, Any]) -> None:

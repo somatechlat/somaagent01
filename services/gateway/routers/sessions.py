@@ -37,10 +37,10 @@ async def _sse_event_generator(
     """Generate SSE events for a session by polling PostgreSQL."""
     last_event_id: Optional[int] = None
     last_keepalive = asyncio.get_event_loop().time()
-    
+
     # Send initial keepalive
     yield f"data: {json.dumps({'type': 'system.keepalive', 'session_id': session_id})}\n\n"
-    
+
     while True:
         try:
             # Poll for new events
@@ -49,7 +49,7 @@ async def _sse_event_generator(
                 after_id=last_event_id,
                 limit=50,
             )
-            
+
             # Send new events
             for event in events:
                 event_id = event.get("id")
@@ -57,16 +57,16 @@ async def _sse_event_generator(
                     last_event_id = event_id
                 payload = event.get("payload", event)
                 yield f"data: {json.dumps(payload)}\n\n"
-            
+
             # Send keepalive if no events and interval passed
             now = asyncio.get_event_loop().time()
             if now - last_keepalive >= SSE_KEEPALIVE_INTERVAL:
                 yield f"data: {json.dumps({'type': 'system.keepalive', 'session_id': session_id})}\n\n"
                 last_keepalive = now
-            
+
             # Wait before next poll
             await asyncio.sleep(SSE_POLL_INTERVAL)
-            
+
         except asyncio.CancelledError:
             break
         except Exception:
@@ -82,14 +82,14 @@ async def session_events_sse(
     limit: int = Query(100, ge=1, le=500),
 ) -> Any:
     """Session events endpoint with optional SSE streaming.
-    
+
     Args:
         session_id: The session identifier
         stream: If true, return SSE stream; otherwise return JSON
         limit: Maximum events to return (JSON mode only)
     """
     store = await _get_store()
-    
+
     if stream:
         return StreamingResponse(
             _sse_event_generator(session_id, store),
@@ -100,7 +100,7 @@ async def session_events_sse(
                 "X-Accel-Buffering": "no",
             },
         )
-    
+
     # Non-streaming: return events as JSON
     events = await store.list_events(session_id=session_id, limit=limit)
     return {"session_id": session_id, "events": events or []}

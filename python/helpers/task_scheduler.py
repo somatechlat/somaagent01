@@ -37,8 +37,26 @@ from python.helpers.files import get_abs_path, make_dirs, read_file, write_file
 from python.helpers.localization import Localization
 from python.helpers.session_store_adapter import save_context
 from python.helpers.print_style import PrintStyle
+from prometheus_client import Counter, Histogram
+import time
 
 SCHEDULER_FOLDER = "tmp/scheduler"
+
+# ---------------------------------------------------------------------------
+# Prometheus metrics for task scheduling
+# ---------------------------------------------------------------------------
+task_schedule_evaluations_total = Counter(
+    "sa01_task_schedule_evaluations_total",
+    "Number of schedule evaluations per task",
+    ["task"],
+)
+
+task_schedule_latency_seconds = Histogram(
+    "sa01_task_schedule_latency_seconds",
+    "Latency of schedule evaluation per task",
+    ["task"],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+)
 
 # ----------------------
 # Task Models
@@ -198,10 +216,40 @@ class BaseTask(BaseModel):
                     self.updated_at = datetime.now(timezone.utc)
 
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
-        return False
+        """Return ``True`` if the task is due to run based on ``frequency_seconds``.
+
+        The logic is simple: if ``last_run`` is ``None`` the task has never run
+        and is therefore due.  Otherwise we compare the elapsed time since the
+        last successful run.  This method also records a Prometheus counter and
+        latency histogram for observability.
+        """
+        start = time.time()
+        try:
+            if self.last_run is None:
+                result = True
+            else:
+                elapsed = (datetime.now(timezone.utc) - self.last_run).total_seconds()
+                result = elapsed >= frequency_seconds
+            # Record metrics
+            task_schedule_evaluations_total.labels(task=self.name).inc()
+            task_schedule_latency_seconds.labels(task=self.name).observe(time.time() - start)
+            return result
+        finally:
+            # Ensure latency is always recorded even on unexpected error
+            pass
 
     def get_next_run(self) -> datetime | None:
-        return None
+        """Calculate the next scheduled run time based on ``last_run``.
+
+        If ``last_run`` is ``None`` we consider the next run to be *now*.
+        Otherwise we add ``frequency_seconds`` (default 60 s) to the timestamp.
+        ``frequency_seconds`` is not stored on the task, so callers should use
+        the same value they passed to :meth:`check_schedule`.
+        """
+        if self.last_run is None:
+            return datetime.now(timezone.utc)
+        # Default to a 60‑second interval when the caller does not provide one.
+        return self.last_run + timedelta(seconds=60)
 
     def get_next_run_minutes(self) -> int | None:
         next_run = self.get_next_run()

@@ -180,6 +180,7 @@ class ProtectedKafkaClient:
 
 class CircuitState:
     """Circuit breaker state enumeration."""
+
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -187,9 +188,16 @@ class CircuitState:
 
 class CircuitBreaker:
     """Circuit breaker wrapper for compatibility."""
-    
-    def __init__(self, name: str = None, failure_threshold: int = 5, recovery_timeout: int = 60, 
-                 fail_max: int = None, reset_timeout: int = None, expected_exception: type = Exception):
+
+    def __init__(
+        self,
+        name: str = None,
+        failure_threshold: int = 5,
+        recovery_timeout: int = 60,
+        fail_max: int = None,
+        reset_timeout: int = None,
+        expected_exception: type = Exception,
+    ):
         # Handle both parameter naming conventions
         self.name = name or "default"
         self.fail_max = fail_max or failure_threshold
@@ -198,25 +206,25 @@ class CircuitBreaker:
         self._fail_counter = 0
         self._state = CircuitState.CLOSED
         self._last_failure_time = None
-        
+
     @property
     def current_state(self):
         """Get current circuit breaker state."""
         return self._state
-        
+
     def record_failure(self):
         """Record a failure and potentially open the circuit."""
         self._fail_counter += 1
         self._last_failure_time = time.time()
         if self._fail_counter >= self.fail_max:
             self._state = CircuitState.OPEN
-            
+
     def record_success(self):
         """Record a success and potentially close the circuit."""
         self._fail_counter = 0
         if self._state == CircuitState.OPEN:
             self._state = CircuitState.CLOSED
-            
+
     def can_execute(self) -> bool:
         """Check if the circuit breaker allows execution."""
         if self._state == CircuitState.CLOSED:
@@ -233,24 +241,24 @@ class CircuitBreaker:
 
 class CircuitBreakerRegistry:
     """Registry for managing circuit breakers."""
-    
+
     def __init__(self):
         self._breakers = circuit_breakers
-    
+
     def get_breaker(self, name: str):
         """Get a circuit breaker by name."""
         return self._breakers.get(name)
-    
+
     def get_all_breakers(self):
         """Get all circuit breakers."""
         return self._breakers
-    
+
     def get_breaker_status(self, name: str) -> Dict[str, Any]:
         """Get status of a specific circuit breaker."""
         breaker = self.get_breaker(name)
         if not breaker:
             return {"error": f"Circuit breaker '{name}' not found"}
-        
+
         return {
             "name": name,
             "state": breaker.breaker.current_state.name,
@@ -258,20 +266,20 @@ class CircuitBreakerRegistry:
             "fail_max": breaker.breaker._fail_max,
             "reset_timeout": breaker.breaker._reset_timeout,
         }
-    
+
     def get_all_statuses(self) -> Dict[str, Any]:
         """Get status of all circuit breakers."""
         statuses = {}
         for name, breaker in self._breakers.items():
             statuses[name] = self.get_breaker_status(name)
         return {"circuit_breakers": statuses}
-    
+
     # Static methods for compatibility with circuit_endpoints.py
     @staticmethod
     def list_circuits():
         """List all circuit breaker names."""
         return list(circuit_breakers.keys())
-    
+
     @staticmethod
     def get_circuit(name: str):
         """Get a circuit breaker by name for compatibility."""
@@ -284,50 +292,52 @@ class CircuitBreakerRegistry:
 
 class CircuitBreakerWrapper:
     """Wrapper to make ResilientService compatible with circuit_endpoints expectations."""
-    
+
     def __init__(self, resilient_service):
         self.service = resilient_service
         self.breaker = resilient_service.breaker
-        
+
     @property
     def state(self):
         """Get circuit breaker state."""
         # Return an object with a value attribute for compatibility
         state_name = self.breaker.current_state.name
+
         class StateWrapper:
             def __init__(self, name):
                 self.value = name.upper() if name else "CLOSED"
+
         return StateWrapper(state_name)
-    
+
     @property
     def failure_count(self):
         """Get failure count."""
-        return getattr(self.breaker, '_fail_counter', 0)
-    
+        return getattr(self.breaker, "_fail_counter", 0)
+
     @property
     def last_failure_time(self):
         """Get last failure time."""
-        return getattr(self.breaker, '_last_failure_time', None)
-    
+        return getattr(self.breaker, "_last_failure_time", None)
+
     @property
     def success_count(self):
         """Get success count."""
         return 0  # Not tracked in pybreaker
-    
+
     @property
     def failure_threshold(self):
         """Get failure threshold."""
-        return getattr(self.breaker, '_fail_max', 5)
-    
+        return getattr(self.breaker, "_fail_max", 5)
+
     @property
     def recovery_timeout(self):
         """Get recovery timeout."""
-        return getattr(self.breaker, '_reset_timeout', 60)
-    
+        return getattr(self.breaker, "_reset_timeout", 60)
+
     @property
     def last_state_change(self):
         """Get last state change time."""
-        return getattr(self.breaker, '_last_failure_time', None)
+        return getattr(self.breaker, "_last_failure_time", None)
 
 
 # Global registry instance

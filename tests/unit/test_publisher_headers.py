@@ -77,7 +77,6 @@ async def test_durable_publisher_header_injection_success(monkeypatch):
     if "trace_id" in hdr_map:
         assert len(hdr_map["trace_id"]) == 32
 
-
     from services.common.publisher import DurablePublisher
 
     class FailingBus:

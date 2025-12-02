@@ -105,4 +105,3 @@ def ttl_from_env(key: str, default: int) -> int:
         return int(cfg.env(key, str(default)) or default)
     except Exception:
         return default
-
