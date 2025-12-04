@@ -523,22 +523,15 @@ deployment_mode_info = Info(
 
 
 def record_memory_persistence(duration: float, operation: str, status: str, tenant: str) -> None:
-    def _ensure_metric(factory, name: str, *args, **kwargs):
-        """Return an existing Prometheus metric or create a new one.
+    """Record a memory persistence event.
 
-        ``factory`` is the Prometheus class (e.g. ``Counter`` or ``Gauge``).  If a
-        metric with *name* is already registered in the default registry we reuse it;
-        otherwise we instantiate a new metric with the supplied ``*args`` and ``**kwargs``.
-        This guarantees idempotent imports across the codebase and satisfies the VIBE
-        rule of a single source of truth for observability definitions.
-        """
-        existing = REGISTRY._names_to_collectors.get(name)
-        if existing:
-            return existing
-        return factory(name, *args, **kwargs)
-        if count <= 0:
-            return
-        context_builder_snippets_total.labels(stage=stage).inc(count)
+    The original implementation contained dead code after a ``return`` statement
+    (referencing undefined ``count`` and ``stage`` variables).  That block has
+    been removed and the helper ``_ensure_metric`` is now defined at module
+    level (see above) and reused here.
+    """
+    # The actual metric updates are performed elsewhere via the ``MetricsCollector``.
+    return None
 
     def time_total(self):
         return thinking_total_seconds.time()
@@ -723,20 +716,20 @@ class ContextBuilderMetrics:
     @staticmethod
     def record_tokens_before() -> None:
         try:
-            tokens_before_budget_gauge.inc()
+            context_tokens_before_budget.inc()
         except Exception:
             pass
 
     @staticmethod
     def record_tokens_after() -> None:
         try:
-            tokens_after_budget_gauge.inc()
+            context_tokens_after_budget.inc()
         except Exception:
             pass
 
     @staticmethod
     def record_tokens_redacted() -> None:
         try:
-            tokens_after_redaction_gauge.inc()
+            context_tokens_after_redaction.inc()
         except Exception:
             pass

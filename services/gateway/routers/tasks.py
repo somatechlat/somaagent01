@@ -21,7 +21,8 @@ policy = PolicyClient(base_url=cfg.env("OPA_URL"))
 
 class TaskRegistration(BaseModel):
     name: str = Field(..., description="Fully qualified task name")
-    kind: str = Field("task", regex="^(task|tool)$")
+    # ``regex`` was removed in Pydantic v2; use ``pattern`` for validation.
+    kind: str = Field("task", pattern="^(task|tool)$")
     module_path: str
     callable_name: str = Field(..., alias="callable")
     queue: str = "fast_a2a"

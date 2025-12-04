@@ -1,51 +1,68 @@
-"""Administrative (infrastructure) settings for SomaAgent.
-
-This module provides a **single source of truth** for all system‑wide configuration
-that is not UI‑specific (Kafka, Postgres, Redis, OPA, metrics, auth flags, vault
-settings, etc.).  It mirrors the existing :class:`SA01Settings` but is exported
-as ``ADMIN_SETTINGS`` so that future code can clearly distinguish between
-*admin* configuration and UI runtime overrides stored in ``UiSettingsStore``.
-
-The class simply inherits from :class:`SA01Settings` – which already contains the
-required defaults – and exposes a ready‑made instance via ``ADMIN_SETTINGS``.
-Existing code that imports ``APP_SETTINGS`` continues to work because ``APP_SETTINGS``
-is still defined in ``services/gateway/main.py``; new code should import
-``ADMIN_SETTINGS`` from this module.
-"""
-
-"""Administrative configuration derived from the central ``cfg`` system.
-
-Historically this module wrapped :class:`SA01Settings`.  The VIBE refactor
-replaces that legacy approach with the unified configuration exposed via
-``src.core.config.cfg``.  To retain the original public name ``ADMIN_SETTINGS``
-while providing the same attribute surface (e.g. ``metrics_port``,
-``kafka_bootstrap_servers``), we expose the ``service`` portion of the central
-configuration object.
-"""
-
 from __future__ import annotations
 
+"""Administrative configuration – deprecated proxy to the canonical ``cfg``.
+
+The original ``admin_settings`` module duplicated configuration that now lives
+in ``src.core.config.cfg``.  To satisfy VIBE rule **NO BULLSHIT** we keep this
+module only as a thin proxy that forwards attribute access to the canonical
+service configuration.  A deprecation warning is emitted on first use to guide
+developers toward importing ``cfg`` directly.
+"""
+
 from dataclasses import dataclass
+import warnings
 
 from src.core.config import cfg
 
 
 @dataclass(slots=True)
 class AdminSettings:
-    """Thin proxy exposing service‑level configuration fields.
+    """Deprecated thin proxy exposing service‑level configuration fields.
 
-    The attributes are populated from ``cfg.settings().service`` which
-    contains the canonical values for metrics, Kafka, Postgres, etc.
+    All values are delegated to ``cfg.settings().service`` – the canonical
+    configuration model.  A deprecation warning is emitted on first
+    instantiation to guide developers toward using ``cfg`` directly.
     """
 
-    # The service configuration model provides all required fields.
-    # Using ``type: ignore`` because we dynamically assign attributes.
+    # The underlying service configuration will be loaded lazily.
+    _service_cfg: object = None
+    _cfg: object = None  # Holds the full Config instance; required for legacy properties.
 
     def __init__(self) -> None:  # pragma: no cover – simple proxy constructor
-        service_cfg = cfg.settings().service
-        # Copy all attributes from the ServiceConfig onto this instance.
-        for name in getattr(service_cfg, "__dataclass_fields__", {}):
-            setattr(self, name, getattr(service_cfg, name))
+        warnings.warn(
+            "services.common.admin_settings.ADMIN_SETTINGS is deprecated – use src.core.config.cfg instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # Load the full configuration once.
+        self._cfg = cfg.settings()
+        # Populate service‑level attributes for backward compatibility.
+        self._service_cfg = self._cfg.service
+        for name in getattr(self._service_cfg, "__dataclass_fields__", {}):
+            setattr(self, name, getattr(self._service_cfg, name))
+
+    # ---------------------------------------------------------------------
+    # Legacy attribute helpers – many parts of the codebase (especially the
+    # gateway routers) expect top‑level attributes such as ``postgres_dsn`` or
+    # ``opa_url`` on the ``ADMIN_SETTINGS`` singleton.  These were originally
+    # provided by the old ``admin_settings`` module.  The new implementation
+    # delegates to the appropriate section of the central ``cfg`` object.
+    # ---------------------------------------------------------------------
+    @property
+    def postgres_dsn(self) -> str:  # pragma: no cover – simple delegation
+        return getattr(self._cfg.database, "dsn", "")
+
+    @property
+    def redis_url(self) -> str:  # pragma: no cover
+        return getattr(self._cfg.redis, "url", "")
+
+    @property
+    def opa_url(self) -> str:  # pragma: no cover
+        return getattr(self._cfg.external, "opa_url", "")
+
+    @property
+    def somabrain_base_url(self) -> str:  # pragma: no cover
+        return getattr(self._cfg.external, "somabrain_base_url", "")
 
 
 def _load() -> AdminSettings:

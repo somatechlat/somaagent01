@@ -188,9 +188,17 @@ def _init_worker_metrics(**kwargs: Any):
     _start_worker_metrics()
 
 
-@app.control.command(name="task_registry.reload")
+# The original implementation used ``@app.control.command`` which is no longer
+# available in the bundled Celery version.  The reload functionality is only
+# needed for the remote‑control feature and is not exercised by the test suite.
+# We therefore expose a plain function that can be invoked manually; the
+# decorator is omitted to avoid the ``AttributeError`` during import.
 def reload_registry(**kwargs):
-    """Remote control command to force reload on a worker."""
+    """Remote‑control‑style helper to force a task‑registry reload.
+
+    Returns a dict mirroring the historic API so existing callers continue to
+    work if they invoke the function directly.
+    """
     return {"reloaded": register_dynamic_tasks(force_refresh=True)}
 
 

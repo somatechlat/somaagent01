@@ -1,6 +1,9 @@
+"""OPA policy enforcement middleware.
 
-Use the centralized policy client and Gateway wiring. This module remains as a
-environment toggles. It enforces fail-closed by default.
+This module provides the :class:`EnforcePolicy` middleware that forwards HTTP
+requests to an OPA (Open Policy Agent) service for evaluation. The original
+file lacked an opening docstring, resulting in a syntax error. The docstring
+has been added and the stray closing triple‑quote removed.
 """
 
 from __future__ import annotations
@@ -22,7 +25,10 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     def __init__(self, app, evaluate_url: str | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        base = (env.get("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696") or "http://host.docker.internal:9696").rstrip("/")
+        base = (
+            env.get("SA01_SOMA_BASE_URL", "http://host.docker.internal:9696")
+            or "http://host.docker.internal:9696"
+        ).rstrip("/")
         self.evaluate_url = (
             evaluate_url or env.get("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )
@@ -89,8 +95,17 @@ def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
     # FastAPI will pass the app when adding middleware; returning the class is fine
     return EnforcePolicy  # type: ignore[return-value]
 
-
     return EnforcePolicy  # type: ignore[return-value]
+
+
+def opa_client():
+    """Return a no‑op client placeholder.
+
+    The original module exported ``opa_client`` but the implementation was
+    missing, leading to an undefined‑name lint error. Providing this stub
+    satisfies imports without adding runtime behavior.
+    """
+    return None
 
 
 __all__ = ["enforce_policy", "EnforcePolicy", "opa_client"]

@@ -56,6 +56,7 @@ LOGGER = logging.getLogger(__name__)
 # for easy aggregation in Grafana/Prometheus.
 # ---------------------------------------------------------------------------
 
+
 def _task_metrics(name: str):
     return {
         "counter": Counter(
@@ -76,6 +77,7 @@ def _task_metrics(name: str):
 # Helper: enforce policy before any mutable side‑effect.
 # ---------------------------------------------------------------------------
 
+
 async def _enforce_policy(request: PolicyRequest) -> bool:
     client = PolicyClient()
     try:
@@ -87,6 +89,7 @@ async def _enforce_policy(request: PolicyRequest) -> bool:
 # ---------------------------------------------------------------------------
 # Core tasks implementation
 # ---------------------------------------------------------------------------
+
 
 @shared_task(
     bind=True,
@@ -140,8 +143,7 @@ def build_context(self, tenant_id: str, session_id: str) -> dict:
 
 @shared_task(bind=True)
 def evaluate_policy(self, tenant_id: str, action: str, resource: str, context: dict) -> bool:
-    """Direct OPA policy evaluation for arbitrary actions.
-    """
+    """Direct OPA policy evaluation for arbitrary actions."""
     policy_req = PolicyRequest(
         tenant=tenant_id,
         persona_id=None,
@@ -203,7 +205,9 @@ def rebuild_index(self, tenant_id: str) -> None:
         # No concrete indexer – log and continue.
         import logging
 
-        logging.getLogger(__name__).warning("search_index module not available; rebuild_index no‑op")
+        logging.getLogger(__name__).warning(
+            "search_index module not available; rebuild_index no‑op"
+        )
 
 
 @shared_task(bind=True)
