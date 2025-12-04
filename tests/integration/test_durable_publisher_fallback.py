@@ -15,6 +15,14 @@ class FailingBus:
 
 
 @pytest.mark.asyncio
+async def test_durable_publisher_fallback():
+    """Validate that a failing Kafka bus enqueues the message.
+
+    The test spins up a temporary Postgres container, creates an outbox store,
+    and uses a ``FailingBus`` that raises ``KafkaError`` on publish. The
+    ``DurablePublisher`` should record the message as enqueued but not marked
+    as published.
+    """
     # Spin up a real Postgres with Testcontainers
     with PostgresContainer("postgres:16-alpine") as pg:
         dsn = pg.get_connection_url()  # e.g. postgresql://test:test@0.0.0.0:5432/test

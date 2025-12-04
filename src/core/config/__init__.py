@@ -84,6 +84,26 @@ def env(name: str, default: Any = None) -> Any:
     if hasattr(cfg_obj, name.lower()):
         return getattr(cfg_obj, name.lower())
 
+    # ---------------------------------------------------------------------
+    # Legacy environment variable mappings – the older codebase expects flat
+    # names like ``POSTGRES_DSN`` or ``OPA_URL`` to resolve to nested config
+    # fields.  We provide explicit fallbacks so that ``services.common``
+    # components (e.g., ``TaskRegistry``) continue to work without requiring
+    # env var renaming.
+    # ---------------------------------------------------------------------
+    legacy_map = {
+        "POSTGRES_DSN": lambda: getattr(cfg_obj.database, "dsn", None),
+        "SA01_REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
+        "REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
+        "OPA_URL": lambda: getattr(cfg_obj.external, "opa_url", None),
+        "SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
+        "SA01_SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
+    }
+    if name in legacy_map:
+        val = legacy_map[name]()
+        if val is not None:
+            return val
+
     # Fallback to the caller supplied default.
     return default
 
@@ -144,6 +164,41 @@ class _CfgFacade:
 
     def settings(self):
         return settings()
+
+    # -----------------------------------------------------------------
+    # Compatibility helpers – many legacy modules expect these methods on the
+    # ``cfg`` singleton.  They delegate to the newer ``src.core.config``
+    # functions or to the underlying ``Config`` model fields.
+    # -----------------------------------------------------------------
+    def flag(self, key: str, tenant: Any = None) -> bool:  # pragma: no cover
+        """Legacy flag helper – mirrors the historic ``runtime_config.flag``.
+
+        It simply checks the ``SA01_ENABLE_<KEY>`` environment variable via the
+        ``env`` helper.
+        """
+        return env(f"SA01_ENABLE_{key.upper()}", default="false") in {"true", "1", "yes", "on"}
+
+    def get_somabrain_url(self) -> str:  # pragma: no cover
+        """Return the SomaBrain base URL – compatibility shim.
+        """
+        return soma_base_url()
+
+    def get_opa_url(self) -> str:  # pragma: no cover
+        """Return the OPA service URL – compatibility shim.
+        """
+        return opa_url()
+
+    # -----------------------------------------------------------------
+    # Dynamic attribute delegation – many legacy callers access configuration
+    # values directly on the ``cfg`` singleton (e.g. ``cfg.metrics_port`` or
+    # ``cfg.auth_required``).  The new configuration model nests these under
+    # ``service`` and ``auth``.  ``__getattr__`` forwards unknown attribute
+    # accesses to the underlying ``Config`` instance returned by ``settings``.
+    # This maintains backward compatibility without introducing hidden magic
+    # because the forwarding is explicit and typed.
+    # -----------------------------------------------------------------
+    def __getattr__(self, name: str):  # pragma: no cover – exercised via legacy paths
+        return getattr(self.settings(), name)
 
 
 cfg = _CfgFacade()

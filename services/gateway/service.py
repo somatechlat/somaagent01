@@ -20,6 +20,8 @@ from src.gateway.routers import (
     message as message_router,
     session as session_router,
     sse as sse_router,
+    uploads as uploads_router,
+    voice as voice_router,
 )
 
 # LOGGER configuration
@@ -102,6 +104,9 @@ class GatewayService(BaseService):
         app.include_router(session_router.router)
         app.include_router(sse_router.router)
         app.include_router(message_router.router)
+        app.include_router(uploads_router.router)
+        # Mount the new voice router – provides /v1/voice endpoints.
+        app.include_router(voice_router.router)
 
         # Add a health check endpoint for the orchestrator
         @app.get("/health")

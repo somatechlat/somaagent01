@@ -47,4 +47,6 @@ def load_config() -> _Config:
 
 
 # Export the legacy names expected by existing imports.
-__all__ = ["CentralizedConfig", "load_config", "_cfg as cfg"]
+# Export the public symbols expected by legacy imports.
+# ``cfg`` is the singleton configuration instance defined above.
+__all__ = ["CentralizedConfig", "load_config", "cfg"]
