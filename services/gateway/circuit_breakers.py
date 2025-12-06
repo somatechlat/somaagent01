@@ -177,6 +177,17 @@ class ProtectedKafkaClient:
         bus = KafkaEventBus()
         await bus.send(topic, message)
 
+    def open(self):
+        """Force open the circuit breaker for testing."""
+        self.breaker.breaker._state = CircuitState.OPEN
+        self.breaker.breaker._fail_counter = self.breaker.breaker._fail_max
+        self.breaker.breaker._last_failure_time = time.time()
+
+    def close(self):
+        """Force close the circuit breaker for testing."""
+        self.breaker.breaker._state = CircuitState.CLOSED
+        self.breaker.breaker._fail_counter = 0
+
 
 class CircuitState:
     """Circuit breaker state enumeration."""

@@ -16,7 +16,6 @@ from typing import Any, Optional
 import asyncpg
 
 from src.core.config import cfg
-from services.common.admin_settings import ADMIN_SETTINGS
 
 
 @dataclass(slots=True)
@@ -37,9 +36,8 @@ class MemoryWriteItem:
 
 class MemoryWriteOutbox:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Prefer admin-wide Postgres DSN when not explicitly provided.
-        # Use the admin-wide Postgres DSN; it already resolves environment variables.
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
+        # Prefer central configuration Postgres DSN when not explicitly provided.
+        raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

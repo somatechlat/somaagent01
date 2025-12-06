@@ -16,7 +16,6 @@ from typing import Any, Dict, Optional
 
 import asyncpg
 
-from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.unified_secret_manager import get_secret_manager
 from src.core.config import cfg
 
@@ -27,7 +26,8 @@ class AgentSettingsStore:
     """PostgreSQL store for agent settings with Vault secrets."""
 
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
+        # Use the central configuration DSN unless an explicit override is provided.
+        raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
         self._secrets = get_secret_manager()

@@ -5,11 +5,12 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use central cfg singleton.
+from src.core.config import cfg
 from services.common.requeue_store import RequeueStore
 
 router = APIRouter(prefix="/v1/requeue", tags=["requeue"])
-STORE = RequeueStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+STORE = RequeueStore(dsn=cfg.settings().database.dsn)
 
 
 class RequeueItem(BaseModel):

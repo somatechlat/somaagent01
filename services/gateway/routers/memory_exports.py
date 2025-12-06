@@ -7,7 +7,8 @@ from pathlib import Path
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use the central cfg singleton.
+from src.core.config import cfg
 from services.common.export_job_store import (
     ensure_schema as ensure_export_jobs_schema,
     ExportJobStore,
@@ -39,7 +40,7 @@ async def export_memory(tenant: str | None = None, namespace: str | None = None)
 
 @router.post("/export/jobs", summary="Create async export job")
 async def create_export_job(body: ExportJobCreate):
-    store = ExportJobStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    store = ExportJobStore(dsn=cfg.settings().database.dsn)
     await ensure_export_jobs_schema(store)
     job = await store.create_job(body.tenant, body.namespace, body.limit)
     return {"job_id": job.id, "status": job.status}
@@ -47,7 +48,7 @@ async def create_export_job(body: ExportJobCreate):
 
 @router.get("/export/jobs/{job_id}", response_model=dict, summary="Get export job status")
 async def get_export_job(job_id: int):
-    store = ExportJobStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    store = ExportJobStore(dsn=cfg.settings().database.dsn)
     job = await store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job_not_found")
@@ -56,7 +57,7 @@ async def get_export_job(job_id: int):
 
 @router.get("/export/jobs/{job_id}/download", summary="Download export result")
 async def download_export(job_id: int):
-    store = ExportJobStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    store = ExportJobStore(dsn=cfg.settings().database.dsn)
     job = await store.get_job(job_id)
     if not job or not job.result_path:
         raise HTTPException(status_code=404, detail="no_result")

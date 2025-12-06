@@ -9,7 +9,8 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use the central cfg singleton.
+from src.core.config import cfg
 from services.common.attachments_store import AttachmentsStore
 from services.common.authorization import authorize_request
 from services.common.event_bus import KafkaEventBus, KafkaSettings
@@ -24,21 +25,21 @@ LOGGER = get_logger(__name__)
 
 
 def _attachments_store() -> AttachmentsStore:
-    return AttachmentsStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    return AttachmentsStore(dsn=cfg.settings().database.dsn)
 
 
 def _publisher() -> DurablePublisher:
     # Minimal stub; in monolith this used specific publisher wiring.
     bus = KafkaEventBus(KafkaSettings.from_env())
-    return DurablePublisher(bus=bus, outbox=MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn))
+    return DurablePublisher(bus=bus, outbox=MemoryWriteOutbox(dsn=cfg.settings().database.dsn))
 
 
 def _session_store() -> PostgresSessionStore:
-    return PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    return PostgresSessionStore(cfg.settings().database.dsn)
 
 
 def _session_cache() -> RedisSessionCache:
-    return RedisSessionCache(ADMIN_SETTINGS.redis_url)
+    return RedisSessionCache(cfg.settings().redis.url)
 
 
 @router.post("")

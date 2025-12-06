@@ -13,7 +13,8 @@ from typing import Any, AsyncGenerator, Optional
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings replaced – use central cfg singleton.
+from src.core.config import cfg
 from services.common.session_repository import ensure_schema, PostgresSessionStore
 
 router = APIRouter(prefix="/v1/session", tags=["sessions"])
@@ -25,7 +26,7 @@ SSE_KEEPALIVE_INTERVAL = 10.0
 
 async def _get_store() -> PostgresSessionStore:
     """Get initialized session store."""
-    store = PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    store = PostgresSessionStore(cfg.settings().database.dsn)
     await ensure_schema(store)
     return store
 

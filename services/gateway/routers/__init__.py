@@ -53,6 +53,7 @@ from . import (
     uploads_full,
     websocket,
     workdir,
+    features,
 )
 
 
@@ -80,6 +81,7 @@ def build_router() -> APIRouter:
         auth.router,
         keys.router,
         workdir.router,
+        features.router,
         tool_request.router,
         ui_settings.router,
         llm.router,

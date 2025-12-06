@@ -16,7 +16,7 @@ import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
 
 from services.common import env
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -81,9 +81,9 @@ class SessionCache(ABC):
 
 class RedisSessionCache(SessionCache):
     def __init__(self, url: Optional[str] = None, *, default_ttl: Optional[int] = None) -> None:
-        # Resolve Redis URL using ADMIN_SETTINGS unless an explicit URL is provided.
-        raw_url = url or ADMIN_SETTINGS.redis_url
-        self.url = env.expand(raw_url)
+        # Resolve Redis URL using central configuration unless an explicit URL is provided.
+        # ``cfg.settings().redis.url`` already expands any environment variables.
+        self.url = url or cfg.settings().redis.url
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
         if ttl is None:
@@ -173,12 +173,9 @@ class SessionEnvelope:
 
 class PostgresSessionStore(SessionStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = (
-            dsn
-            or env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
-            or "postgresql://soma:soma@localhost:5432/somaagent01"
-        )
-        self.dsn = env.expand(raw_dsn)
+        # Use the canonical configuration source for the Postgres DSN.
+        # ``cfg.settings().database.dsn`` provides the validated DSN; an explicit ``dsn`` argument can still override it.
+        self.dsn = dsn or cfg.settings().database.dsn
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:

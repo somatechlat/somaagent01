@@ -19,7 +19,7 @@ from prometheus_client import (
 from pydantic import BaseModel
 from starlette.responses import Response
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy configuration shim removed – use the central cfg façade.
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
@@ -63,12 +63,12 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    port = int(cfg.env("DELEGATION_METRICS_PORT", str(ADMIN_SETTINGS.metrics_port)))
+    port = int(cfg.env("DELEGATION_METRICS_PORT", str(cfg.settings().service.metrics_port)))
     if port <= 0:
         LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
-    host = cfg.env("DELEGATION_METRICS_HOST", ADMIN_SETTINGS.metrics_host)
+    host = cfg.env("DELEGATION_METRICS_HOST", cfg.settings().service.metrics_host)
     start_http_server(port, addr=host)
     LOGGER.info(
         "Delegation gateway metrics server started",
@@ -79,7 +79,7 @@ def ensure_metrics_server() -> None:
 
 def get_bus() -> KafkaEventBus:
     kafka_settings = KafkaSettings(
-        bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
+        bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
         sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
@@ -92,7 +92,7 @@ def get_publisher() -> DurablePublisher:
     # Shared durable publisher; construct lazily for DI, ensure outbox schema
     # on first use to avoid race at startup.
     bus = get_bus()
-    outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    outbox = OutboxStore(dsn=cfg.settings().database.dsn)
     # best-effort ensure schema
     try:
         import asyncio as _asyncio
@@ -112,7 +112,7 @@ def get_publisher() -> DurablePublisher:
 
 
 def get_store() -> DelegationStore:
-    return DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    return DelegationStore(dsn=cfg.settings().database.dsn)
 
 
 class DelegationRequest(BaseModel):
@@ -130,7 +130,7 @@ class DelegationCallback(BaseModel):
 @app.on_event("startup")
 async def startup_event() -> None:
     ensure_metrics_server()
-    store = DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    store = DelegationStore(dsn=cfg.settings().database.dsn)
     await store.ensure_schema()
 
 

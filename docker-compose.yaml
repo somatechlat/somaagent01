@@ -168,18 +168,7 @@ services:
   # services). Exposes a web UI on port 5555 and connects to the same
   # Redis broker used by the workers.
   # ---------------------------------------------------------------
-  flower:
-    image: mher/flower:2.0.1
-    container_name: somaAgent01_flower
-    profiles: ["core", "dev"]
-    environment:
-      - CELERY_BROKER_URL=${SA01_REDIS_URL:-redis://redis:6379/0}
-      - FLOWER_PORT=5555
-    ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-    restart: unless-stopped
+  # Removed duplicate flower service; the canonical definition is kept later in the file.
 
   postgres:
     image: postgres:16-alpine

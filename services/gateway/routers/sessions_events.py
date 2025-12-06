@@ -6,7 +6,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use central cfg singleton.
+from src.core.config import cfg
 from services.common.session_repository import (
     ensure_schema as ensure_session_schema,
     PostgresSessionStore,
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
 
 
 async def _store() -> PostgresSessionStore:
-    store = PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    store = PostgresSessionStore(cfg.settings().database.dsn)
     await ensure_session_schema(store)
     return store
 

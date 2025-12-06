@@ -8,7 +8,7 @@ from typing import Optional
 import redis.asyncio as redis
 
 from services.common import env
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.tenant_config import TenantConfig
 
 
@@ -23,8 +23,8 @@ class BudgetManager:
     def __init__(
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
-        # Use centralized admin settings for Redis URL, falling back to provided URL if given.
-        raw_url = url or ADMIN_SETTINGS.redis_url
+        # Use centralized configuration for Redis URL, falling back to provided URL if given.
+        raw_url = url or cfg.settings().redis.url
         self.url = env.expand(raw_url)
         self.prefix = env.get("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
         self.limit = env.get_int("BUDGET_LIMIT_TOKENS", 0)  # 0 = unlimited

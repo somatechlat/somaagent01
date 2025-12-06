@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from src.core.config import cfg
 from pathlib import Path
 from typing import List
 
@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/v1/workdir", tags=["workdir"])
 
-WORKDIR = Path(os.getenv("WORKDIR", "./tmp"))
+WORKDIR = Path(cfg.env("WORKDIR", "./tmp"))
 WORKDIR.mkdir(parents=True, exist_ok=True)
 
 

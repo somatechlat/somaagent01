@@ -13,10 +13,39 @@ from typing import Optional
 
 
 def _load_sa01_settings():
-    # Lazy import to avoid circular dependency during module import time.
-    from services.common.settings_sa01 import SA01Settings
+    """Load configuration via the new central ``cfg`` façade.
 
-    return SA01Settings
+    The original implementation lazily imported ``SA01Settings`` – a legacy
+    proxy that forwards attribute access to ``src.core.config.cfg``.  To fully
+    eliminate the legacy indirection we now load the canonical configuration
+    directly from ``cfg`` and expose an object with the same public attributes
+    used by the existing code (e.g., ``gateway_port``, ``postgres_dsn``).
+
+    This function returns a lightweight ``SimpleNamespace``‑like object that
+    mirrors the subset of fields required by ``FeatureRegistry``.  It keeps the
+    constructor signature unchanged, preserving compatibility with any code
+    that expects a callable returning a class.
+    """
+    from types import SimpleNamespace
+    from src.core.config import cfg
+
+    # Extract the service‑level configuration from the central ``cfg`` object.
+    service_cfg = cfg.settings().service
+
+    # Build a simple namespace containing the attributes accessed by the
+    # registry.  Additional attributes can be added here without breaking the
+    # public contract.
+    return SimpleNamespace(
+        deployment_mode=service_cfg.deployment_mode,
+        gateway_port=service_cfg.gateway_port,
+        soma_base_url=service_cfg.soma_base_url,
+        postgres_dsn=service_cfg.postgres_dsn,
+        redis_url=service_cfg.redis_url,
+        kafka_bootstrap_servers=service_cfg.kafka_bootstrap_servers,
+        opa_url=service_cfg.opa_url,
+        # Preserve any legacy ``feature_flags`` dict if present for flag()
+        feature_flags=getattr(service_cfg, "feature_flags", {}),
+    )
 
 
 @dataclass(slots=True, frozen=True)
@@ -43,8 +72,12 @@ class FeatureRegistry:
     """
 
     def __init__(self) -> None:
+        # Load the configuration namespace directly; the legacy ``from_env``
+        # factory is no longer applicable because ``_load_sa01_settings`` now
+        # returns a ready‑to‑use ``SimpleNamespace`` populated from the
+        # canonical ``cfg`` façade.
         self._settings_cls = _load_sa01_settings()
-        self._settings = self._settings_cls.from_env()
+        self._settings = self._settings_cls
         self._env_cache = self._snapshot_environment()
         self._config = self._build_canonical_config()
 

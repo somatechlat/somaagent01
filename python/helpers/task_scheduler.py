@@ -255,7 +255,8 @@ class BaseTask(BaseModel):
         next_run = self.get_next_run()
         if next_run is None:
             return None
-        return int((next_run - datetime.now(timezone.utc)).total_seconds() / 60)
+        minutes = int((next_run - datetime.now(timezone.utc)).total_seconds() / 60)
+        return max(0, minutes)  # Ensure non-negative value
 
     async def on_run(self):
         pass

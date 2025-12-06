@@ -12,7 +12,7 @@ from typing import Any, Optional
 import asyncpg
 
 from services.common import env
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 
 
 @dataclass(slots=True)
@@ -28,7 +28,7 @@ class SagaState:
 
 class SagaManager:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn or env.get("POSTGRES_DSN")
+        raw_dsn = dsn or cfg.settings().database.dsn or env.get("POSTGRES_DSN")
         self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

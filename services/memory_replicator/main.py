@@ -13,7 +13,7 @@ from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
@@ -58,8 +58,8 @@ def ensure_metrics_server(settings: object) -> None:
     if _METRICS_STARTED:
         return
     # Prefer admin-wide metrics configuration; fall back to provided defaults.
-    default_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9403))
-    default_host = str(getattr(ADMIN_SETTINGS, "metrics_host", "0.0.0.0"))
+    default_port = int(getattr(cfg.settings().service, "metrics_port", 9403))
+    default_host = str(getattr(cfg.settings().service, "metrics_host", "0.0.0.0"))
     port = int(cfg.env("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
         start_http_server(port, addr=cfg.env("REPLICATOR_METRICS_HOST", default_host))
@@ -72,9 +72,7 @@ def ensure_metrics_server(settings: object) -> None:
 def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
-        bootstrap_servers=cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", ADMIN_SETTINGS.kafka_bootstrap_servers
-        ),
+        bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
         security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
         sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
@@ -90,8 +88,8 @@ class MemoryReplicator:
         self.wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
         self.group_id = cfg.env("MEMORY_REPLICATOR_GROUP", "memory-replicator")
         # Use centralized admin settings for Postgres DSN.
-        self.replica = MemoryReplicaStore(dsn=ADMIN_SETTINGS.postgres_dsn)
-        self.dlq_store = DLQStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.replica = MemoryReplicaStore(dsn=cfg.settings().database.dsn)
+        self.dlq_store = DLQStore(dsn=cfg.settings().database.dsn)
         self.dlq = DeadLetterQueue(source_topic=self.wal_topic)
 
     async def start(self) -> None:

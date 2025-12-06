@@ -8,14 +8,14 @@ from typing import Any, Optional
 import asyncpg
 
 from services.common import env
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.settings_base import BaseServiceSettings
 
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any env overrides.
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
+        raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = env.expand(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

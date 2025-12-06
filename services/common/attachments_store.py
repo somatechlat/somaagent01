@@ -14,7 +14,7 @@ from typing import Optional
 import asyncpg
 
 from services.common import env
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 
 
 @dataclass(slots=True)
@@ -35,14 +35,9 @@ class Attachment:
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use centralized admin settings for Postgres DSN when not explicitly provided.
-        default_dsn = getattr(
-            ADMIN_SETTINGS,
-            "postgres_dsn",
-            env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
-            or "postgresql://soma:soma@localhost:5432/somaagent01",
-        )
-        raw_dsn = dsn or default_dsn
-        self.dsn = env.expand(raw_dsn)
+        # Use the central configuration for Postgres DSN via cfg.settings().database.dsn.
+        default_dsn = dsn or self._cfg.settings().database.dsn
+        self.dsn = env.expand(default_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
