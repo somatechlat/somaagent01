@@ -2,91 +2,78 @@ import json
 import uuid
 from collections import OrderedDict
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
+
+import nest_asyncio
 
 from agent import Agent, AgentConfig, AgentContext, AgentContextType
 from initialize import initialize_agent
 from python.helpers import files, history
 from python.helpers.log import Log, LogItem
+from services.common.session_repository import PostgresSessionStore
+
+# Apply nest_asyncio to allow running async code in synchronous contexts if needed
+nest_asyncio.apply()
+
+# Global store instance
+_store: Optional[PostgresSessionStore] = None
+
+def get_store() -> PostgresSessionStore:
+    global _store
+    if _store is None:
+        _store = PostgresSessionStore()
+    return _store
 
 CHATS_FOLDER = "tmp/chats"
 LOG_SIZE = 1000
-CHAT_FILE_NAME = "chat.json"
-
 
 def get_chat_folder_path(ctxid: str):
     """
-    Get the folder path for any context (chat or task).
-
-    Args:
-        ctxid: The context ID
-
-    Returns:
-        The absolute path to the context folder
+    Get the folder path for any context (chat or task) temporary files.
     """
     return files.get_abs_path(CHATS_FOLDER, ctxid)
-
 
 def get_chat_msg_files_folder(ctxid: str):
     return files.get_abs_path(get_chat_folder_path(ctxid), "messages")
 
-
-def save_tmp_chat(context: AgentContext):
-    """Save context to the chats folder"""
+async def save_tmp_chat(context: AgentContext):
+    """Save context to the database"""
     # Skip saving BACKGROUND contexts as they should be ephemeral
     if context.type == AgentContextType.BACKGROUND:
         return
 
-    path = _get_chat_file_path(context.id)
-    files.make_dirs(path)
     data = _serialize_context(context)
-    js = _safe_json_serialize(data, ensure_ascii=False)
-    files.write_file(path, js)
+    store = get_store()
+    await store.save_session_state(context.id, data)
 
-
-def save_tmp_chats():
-    """Save all contexts to the chats folder"""
+async def save_tmp_chats():
+    """Save all contexts to the database"""
     for _, context in AgentContext._contexts.items():
         # Skip BACKGROUND contexts as they should be ephemeral
         if context.type == AgentContextType.BACKGROUND:
             continue
-        save_tmp_chat(context)
+        await save_tmp_chat(context)
 
+async def load_tmp_chats() -> list[str]:
+    """Load all contexts from the database"""
+    store = get_store()
+    # Ensure schema exists
+    from services.common.session_repository import ensure_schema
+    await ensure_schema(store)
 
-def load_tmp_chats():
-    """Load all contexts from the chats folder"""
-    _convert_v080_chats()
-    folders = files.list_files(CHATS_FOLDER, "*")
-    json_files = []
-    for folder_name in folders:
-        json_files.append(_get_chat_file_path(folder_name))
-
+    envelopes = await store.list_sessions(limit=1000)
     ctxids = []
-    for file in json_files:
-        try:
-            js = files.read_file(file)
-            data = json.loads(js)
-            ctx = _deserialize_context(data)
-            ctxids.append(ctx.id)
-        except Exception as e:
-            print(f"Error loading chat {file}: {e}")
+    for env in envelopes:
+        if env.state:
+            try:
+                # _deserialize_context registers the context in AgentContext._contexts
+                ctx = _deserialize_context(env.state)
+                ctxids.append(ctx.id)
+            except Exception as e:
+                print(f"Error loading chat {env.session_id}: {e}")
     return ctxids
 
-
-def _get_chat_file_path(ctxid: str):
-    return files.get_abs_path(CHATS_FOLDER, ctxid, CHAT_FILE_NAME)
-
-
-def _convert_v080_chats():
-    json_files = files.list_files(CHATS_FOLDER, "*.json")
-    for file in json_files:
-        path = files.get_abs_path(CHATS_FOLDER, file)
-        name = file.rstrip(".json")
-        new = _get_chat_file_path(name)
-        files.move_file(path, new)
-
-
-def load_json_chats(jsons: list[str]):
+async def load_json_chats(jsons: list[str]):
     """Load contexts from JSON strings"""
     ctxids = []
     for js in jsons:
@@ -97,25 +84,26 @@ def load_json_chats(jsons: list[str]):
         ctxids.append(ctx.id)
     return ctxids
 
-
 def export_json_chat(context: AgentContext):
     """Export context as JSON string"""
     data = _serialize_context(context)
     js = _safe_json_serialize(data, ensure_ascii=False)
     return js
 
-
-def remove_chat(ctxid):
-    """Remove a chat or task context"""
+async def remove_chat(ctxid: str):
+    """Remove a chat or task context from database"""
+    store = get_store()
+    await store.delete_session(ctxid)
+    # Also clean up tmp files
     path = get_chat_folder_path(ctxid)
     files.delete_dir(path)
 
-
-def remove_msg_files(ctxid):
+async def remove_msg_files(ctxid: str):
     """Remove all message files for a chat or task context"""
     path = get_chat_msg_files_folder(ctxid)
     files.delete_dir(path)
 
+# Serialization logic (copied from persist_chat.py)
 
 def _serialize_context(context: AgentContext):
     # serialize agents
@@ -225,19 +213,6 @@ def _deserialize_agents(
         prev = current
 
     return zero or Agent(0, config, context)
-
-
-# def _deserialize_history(history: list[dict[str, Any]]):
-#     result = []
-#     for hist in history:
-#         content = hist.get("content", "")
-#         msg = (
-#             HumanMessage(content=content)
-#             if hist.get("type") == "human"
-#             else AIMessage(content=content)
-#         )
-#         result.append(msg)
-#     return result
 
 
 def _deserialize_log(data: dict[str, Any]) -> "Log":
