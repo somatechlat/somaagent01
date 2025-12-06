@@ -25,11 +25,18 @@ try:
 except ValueError:  # reuse existing collector if re-imported under tests
     AUTH_DECISIONS = REGISTRY._names_to_collectors.get("auth_decisions_total")  # type: ignore[attr-defined]
 
+# NOTE: ``observability.metrics`` already registers a histogram named
+# ``auth_duration_seconds`` with a ``source`` label.  Creating another
+# histogram with a different label set raises a ``ValueError`` and the fallback
+# collector would have mismatched label names, causing runtime errors when we
+# call ``labels(action=…)``.  To stay compatible with the existing metric we
+# reuse the already‑registered collector and label it with ``source`` – the
+# semantics are equivalent for the tests.
 try:
     AUTH_DURATION = Histogram(
         "auth_duration_seconds",
         "Latency of selective authorization decisions",
-        labelnames=("action",),
+        labelnames=("source",),
     )
 except ValueError:
     AUTH_DURATION = REGISTRY._names_to_collectors.get("auth_duration_seconds")  # type: ignore[attr-defined]
@@ -67,7 +74,7 @@ async def authorize(
     if not cfg.settings().auth_required:
         # Record a successful (allowed) decision for observability.
         AUTH_DECISIONS.labels(action=action, result="allow").inc()
-        AUTH_DURATION.labels(action=action).observe(max(0.0, time.perf_counter() - start))
+        AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
         return {"tenant": tenant, "persona_id": persona, "action": action, "resource": resource}
 
     # Hard delete of test bypass: always evaluate real policy when auth is required.
@@ -108,7 +115,7 @@ async def authorize(
                 "mode": "live",
             },
         )
-    AUTH_DURATION.labels(action=action).observe(max(0.0, time.perf_counter() - start))
+    AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
     if not allowed:
         logging.getLogger("authz").info(
             "authz denial",

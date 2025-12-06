@@ -68,12 +68,16 @@ class OpenAIEmbeddings(EmbeddingsProvider):
                         vecs.append([float(x) for x in v])
                 EMBED_REQUESTS.labels(provider, "ok").inc()
                 return vecs
+            except RuntimeError:
+                # Re-raise RuntimeError specifically for missing API key
+                EMBED_REQUESTS.labels(provider, "error").inc()
+                raise
             except Exception:
                 EMBED_REQUESTS.labels(provider, "error").inc()
                 raise
 
 
-async def maybe_embed(text: str) -> list[float] | None:
+async def maybe_embed(text: str) -> list[float] | list | None:
     """Optionally compute an embedding for a single text.
 
     Behavior:
@@ -109,8 +113,8 @@ async def maybe_embed(text: str) -> list[float] | None:
         import hashlib
 
         h = hashlib.sha256(clipped.encode("utf-8")).digest()
-        # Map bytes to floats [0,1)
-        vec = [round(b / 255.0, 6) for b in h[:32]]
+        # Map bytes to floats [0,1) - ensure proper list of floats
+        vec = [float(round(b / 255.0, 6)) for b in h[:32]]
         cache.store(clipped, vec)
         EMBED_REQUESTS.labels("test", "ok").inc()
         return vec

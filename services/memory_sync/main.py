@@ -15,7 +15,7 @@ from typing import Any, Mapping, Sequence
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.soma_client import SomaClient, SomaClientError
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy ADMIN_SETTINGS shim removed – use central cfg.
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_schema,
@@ -57,11 +57,11 @@ def _env_int(name: str, default: int) -> int:
 class MemorySyncWorker:
     def __init__(self) -> None:
         # Use centralized admin settings for Postgres DSN
-        self.store = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.store = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         self.bus = KafkaEventBus(_kafka_settings())
         # Durable publisher requires an OutboxStore for reliability
         # Use centralized admin settings for Postgres DSN
-        self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.outbox = OutboxStore(dsn=cfg.settings().database.dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
         self.soma = SomaClient.get()
         self.batch_size = _env_int("MEMORY_SYNC_BATCH_SIZE", 100)
@@ -78,7 +78,7 @@ class MemorySyncWorker:
         except Exception:
             LOGGER.debug("Outbox schema ensure failed in memory_sync", exc_info=True)
         # Prefer admin-wide metrics configuration; fallback to default if not set
-        metrics_port = int(getattr(ADMIN_SETTINGS, "metrics_port", 9471))
+        metrics_port = int(getattr(cfg.settings().service, "metrics_port", 9471))
         start_http_server(metrics_port)
         LOGGER.info(
             "memory_sync started", extra={"batch": self.batch_size, "interval": self.interval}

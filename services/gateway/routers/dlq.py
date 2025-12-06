@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use the central cfg singleton.
+from src.core.config import cfg
 from services.common.dlq_store import DLQItem, DLQStore
 
 router = APIRouter(prefix="/v1/admin/dlq", tags=["admin"])
-STORE = DLQStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+STORE = DLQStore(dsn=cfg.settings().database.dsn)
 
 
 @router.get("/{topic}", response_model=list[DLQItem])

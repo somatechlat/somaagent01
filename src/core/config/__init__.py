@@ -119,6 +119,14 @@ def settings():
 # Convenience getters mirroring legacy runtime_config API (to ease migration).
 # -----------------------------------------------------------------------------
 def flag(key: str, tenant: Any = None) -> bool:
+    # First check the feature_flags dictionary in the config
+    from .registry import get_config
+    
+    config = get_config()
+    if key.lower() in config.feature_flags:
+        return config.feature_flags[key.lower()]
+    
+    # Fall back to environment variable for backward compatibility
     env_key = f"SA01_ENABLE_{key.upper()}"
     val = env(env_key, default="false")
     return str(val).lower() in {"true", "1", "yes", "on"}
@@ -165,6 +173,31 @@ class _CfgFacade:
     def settings(self):
         return settings()
 
+    # Legacy compatibility attributes required by tests
+    @property
+    def _STATE(self):
+        """Legacy _STATE attribute required by tests."""
+        from .registry import get_config
+        
+        class StateWrapper:
+            def __init__(self, config):
+                self.settings = config
+                
+            def __getattr__(self, name):
+                return getattr(self.settings, name)
+        
+        return StateWrapper(get_config())
+
+    @property
+    def postgres_dsn(self):
+        """Legacy postgres_dsn attribute required by tests."""
+        return postgres_dsn()
+
+    @property
+    def redis_url(self):
+        """Legacy redis_url attribute required by tests."""
+        return redis_url()
+
     # -----------------------------------------------------------------
     # Compatibility helpers – many legacy modules expect these methods on the
     # ``cfg`` singleton.  They delegate to the newer ``src.core.config``
@@ -173,10 +206,17 @@ class _CfgFacade:
     def flag(self, key: str, tenant: Any = None) -> bool:  # pragma: no cover
         """Legacy flag helper – mirrors the historic ``runtime_config.flag``.
 
-        It simply checks the ``SA01_ENABLE_<KEY>`` environment variable via the
-        ``env`` helper.
+        It checks the feature_flags dictionary in the config first, then falls back
+        to the ``SA01_ENABLE_<KEY>`` environment variable via the ``env`` helper.
         """
-        return env(f"SA01_ENABLE_{key.upper()}", default="false") in {"true", "1", "yes", "on"}
+        # First check the feature_flags dictionary in the config
+        config = self.settings()
+        if key.lower() in config.feature_flags:
+            return config.feature_flags[key.lower()]
+        
+        # Fall back to environment variable for backward compatibility
+        val = env(f"SA01_ENABLE_{key.upper()}", default="false")
+        return str(val).lower() in {"true", "1", "yes", "on"}
 
     def get_somabrain_url(self) -> str:  # pragma: no cover
         """Return the SomaBrain base URL – compatibility shim.
@@ -211,6 +251,10 @@ VIBE CODING RULES COMPLIANT:
 - NO LEGACY: Modern patterns only
 - NO BACKUPS: No duplicate configuration systems
 """
+
+# Legacy compatibility attributes required by tests
+JWKS_CACHE = {}
+APP_SETTINGS = {}
 
 from .loader import (
     ConfigLoader,

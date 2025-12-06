@@ -31,7 +31,8 @@ from prometheus_client import Counter, Histogram
 # Import configuration and utilities
 from src.core.config import cfg
 from redis import Redis
-from services.common.admin_settings import ADMIN_SETTINGS
+# Use central configuration via cfg instead of legacy ADMIN_SETTINGS.
+from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers, idempotency_key
 from services.common.publisher import DurablePublisher
@@ -261,7 +262,7 @@ redis_client: Redis = create_redis_client()
 _store: Optional[PostgresSessionStore] = None
 _schema_ready = False
 _schema_lock = asyncio.Lock()
-policy_client = PolicyClient(base_url=ADMIN_SETTINGS.opa_url)
+policy_client = PolicyClient(base_url=cfg.settings().external.opa_url)
 # Audit publisher (Kafka + outbox)
 bus = KafkaEventBus(
     settings={
@@ -276,11 +277,11 @@ _outbox = None
 try:
     from services.common.outbox_repository import OutboxStore
 
-    _outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+    _outbox = OutboxStore(dsn=cfg.settings().database.dsn)
 except Exception:
     _outbox = None
 publisher = DurablePublisher(bus=bus, outbox=_outbox) if _outbox else None
-saga_manager = SagaManager(dsn=ADMIN_SETTINGS.postgres_dsn)
+saga_manager = SagaManager(dsn=cfg.settings().database.dsn)
 _saga_schema_ready = False
 _saga_lock = asyncio.Lock()
 
@@ -288,7 +289,7 @@ _saga_lock = asyncio.Lock()
 async def _get_store() -> PostgresSessionStore:
     global _store, _schema_ready
     if _store is None:
-        _store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        _store = PostgresSessionStore(dsn=cfg.settings().database.dsn)
     if not _schema_ready:
         async with _schema_lock:
             if not _schema_ready:

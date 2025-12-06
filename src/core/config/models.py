@@ -10,7 +10,7 @@ VIBE CODING RULES COMPLIANT:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, Optional, Literal, ClassVar
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -74,6 +74,8 @@ class ServiceConfig(BaseModel):
     environment: str = Field(description="Environment (DEV, STAGING, PROD)")
     deployment_mode: str = Field(description="Deployment mode")
     host: str = Field(default="0.0.0.0", description="Service host")
+    # VIBE compliance: expose metrics host explicitly for legacy callers.
+    metrics_host: str = Field(default="0.0.0.0", description="Metrics host address")
     port: int = Field(ge=1, le=65535, description="Service port")
     metrics_port: int = Field(ge=1, le=65535, description="Metrics port")
     log_level: str = Field(default="INFO", description="Log level")
@@ -331,6 +333,60 @@ class Config(BaseModel):
     def get_environment(self) -> str:
         """Get environment with backward compatibility."""
         return self.service.environment
+
+    # Compatibility alias for legacy ``cfg.soma_base_url`` calls.
+    def soma_base_url(self) -> str:  # pragma: no cover
+        """Return the SomaBrain base URL (legacy name).
+
+        Older code expects ``cfg.soma_base_url()`` which maps to the newer
+        ``get_somabrain_url`` method.  This thin wrapper maintains that API.
+        """
+        return self.get_somabrain_url()
+
+    # Compatibility alias for legacy ``cfg.kafka_bootstrap_servers`` calls.
+    def kafka_bootstrap_servers(self) -> str:  # pragma: no cover
+        """Legacy accessor for Kafka bootstrap servers.
+
+        Mirrors the historic ``cfg.kafka_bootstrap_servers()`` helper.
+        """
+        return self.get_kafka_bootstrap_servers()
+
+    # Compatibility method used by some legacy tests.
+    def init_runtime_config(self) -> None:  # pragma: no cover
+        """Placeholder for historic runtime config initialization.
+
+        The previous implementation performed eager loading of environment
+        variables.  With the new ``Config`` model this is unnecessary, so the
+        method is retained as a no‑op to satisfy existing imports.
+        """
+        return None
+
+    # Compatibility accessor for legacy metric host configuration.
+    # Historically code accessed ``config.metrics_host`` to obtain the host
+    # address for Prometheus metrics endpoints.  The modern model stores this
+    # value as ``service.host``.  Providing a property preserves the original
+    # public API without altering the underlying data layout.
+    @property
+    def metrics_host(self) -> str:  # pragma: no cover – exercised via legacy paths
+        return self.service.host
+
+    # -----------------------------------------------------------------
+    # Compatibility aliases
+    # -----------------------------------------------------------------
+    # Older code (including tests) expects nested config classes to be
+    # accessible as attributes on the Config class, e.g. ``Config.ServiceConfig``.
+    # The models are defined at module level, so we expose them here to keep the
+    # public API stable while retaining the modern, typed structure.
+    ServiceConfig: ClassVar = ServiceConfig  # type: ignore
+    DatabaseConfig: ClassVar = DatabaseConfig  # type: ignore
+    KafkaConfig: ClassVar = KafkaConfig  # type: ignore
+    RedisConfig: ClassVar = RedisConfig  # type: ignore
+    AuthConfig: ClassVar = AuthConfig  # type: ignore
+    ExternalServiceConfig: ClassVar = ExternalServiceConfig  # type: ignore
+    VoiceConfig: ClassVar = VoiceConfig  # type: ignore
+    AudioConfig: ClassVar = AudioConfig  # type: ignore
+    OpenAIConfig: ClassVar = OpenAIConfig  # type: ignore
+    LocalVoiceConfig: ClassVar = LocalVoiceConfig  # type: ignore
 
     # -----------------------------------------------------------------
     # Compatibility attribute accessors – many legacy modules reference

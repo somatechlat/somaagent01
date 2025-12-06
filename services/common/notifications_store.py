@@ -36,13 +36,13 @@ SEVERITIES = {"info", "success", "warning", "error"}
 
 class NotificationsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        from services.common.admin_settings import ADMIN_SETTINGS
         from src.core.config import cfg
 
         self._cfg = cfg
 
-        # Use admin-wide Postgres DSN for consistency with other stores
-        raw_dsn = dsn or ADMIN_SETTINGS.postgres_dsn
+        # Use the central configuration for Postgres DSN via cfg settings.
+        # Fallback to the provided dsn argument if given.
+        raw_dsn = dsn or self._cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

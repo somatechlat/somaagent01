@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use the central cfg singleton.
+from src.core.config import cfg
 from services.common.session_repository import (
     ensure_schema as ensure_session_schema,
     PostgresSessionStore,
@@ -15,12 +16,12 @@ router = APIRouter(prefix="/v1/chat", tags=["chat"])
 
 
 def _session_store() -> PostgresSessionStore:
-    store = PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+    store = PostgresSessionStore(cfg.settings().database.dsn)
     return store
 
 
 def _session_cache() -> RedisSessionCache:
-    cache = RedisSessionCache(ADMIN_SETTINGS.redis_url)
+    cache = RedisSessionCache(cfg.settings().redis.url)
     return cache
 
 

@@ -7,11 +7,12 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use the central cfg singleton.
+from src.core.config import cfg
 from services.common.api_key_store import ApiKeyResponse, ApiKeyStore
 
 router = APIRouter(prefix="/v1/keys", tags=["auth"])
-STORE = ApiKeyStore(ADMIN_SETTINGS.postgres_dsn)
+STORE = ApiKeyStore(cfg.settings().database.dsn)
 
 
 class ApiKeyCreateRequest(BaseModel):

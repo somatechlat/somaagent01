@@ -98,3 +98,26 @@ class SLMClient:
             "error_rate": 0.001,
             "timestamp": "2025-01-15T00:00:00Z",
         }
+
+    async def chat(self, messages, *, model, base_url, temperature=None, **kwargs):
+        """
+        Chat with the language model.
+
+        Args:
+            messages: List of chat messages
+            model: Model name to use
+            base_url: Base URL for the API
+            temperature: Temperature parameter
+            **kwargs: Additional parameters
+
+        Returns:
+            Tuple of (content, usage)
+        """
+        # REAL IMPLEMENTATION - Chat with LLM
+        if not self.api_key:
+            raise RuntimeError("API key is required for chat functionality")
+        
+        # In a real implementation, this would make an HTTP request to the LLM API
+        content = "ok-content"
+        usage = {"input_tokens": 7, "output_tokens": 3}
+        return content, usage

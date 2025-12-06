@@ -38,7 +38,7 @@ from observability.metrics import (
 from python.helpers.tokens import count_tokens
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy ADMIN_SETTINGS shim removed – use the central cfg façade.
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
@@ -241,7 +241,7 @@ class ConversationPreprocessor:
 class ConversationWorker:
     def __init__(self) -> None:
         ensure_metrics_server()
-        bootstrap_servers = ADMIN_SETTINGS.kafka_bootstrap_servers
+        bootstrap_servers = cfg.settings().kafka.bootstrap_servers
         self.kafka_settings = KafkaSettings(
             bootstrap_servers=bootstrap_servers,
             security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -255,12 +255,12 @@ class ConversationWorker:
             "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
         }
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.outbox = OutboxStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.outbox = OutboxStore(dsn=cfg.settings().database.dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
-        redis_url = ADMIN_SETTINGS.redis_url
+        redis_url = cfg.settings().redis.url
         self.dlq = DeadLetterQueue(self.settings["inbound"], bus=self.bus)
         self.cache = RedisSessionCache(url=redis_url)
-        self.store = PostgresSessionStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.store = PostgresSessionStore(dsn=cfg.settings().database.dsn)
         # LLM calls are centralized via Gateway /v1/llm/invoke endpoints (no direct provider calls here)
         self._gateway_base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
         self._internal_token = cfg.env("GATEWAY_INTERNAL_TOKEN")
@@ -271,7 +271,7 @@ class ConversationWorker:
         )
         self.tenant_config = TenantConfig(path=tenant_config_path)
         self.budgets = BudgetManager(url=redis_url, tenant_config=self.tenant_config)
-        policy_base = ADMIN_SETTINGS.opa_url
+        policy_base = cfg.settings().external.opa_url
         self.policy_client = PolicyClient(base_url=policy_base, tenant_config=self.tenant_config)
         self.policy_enforcer = ConversationPolicyEnforcer(self.policy_client)
         telemetry_store = TelemetryStore.from_settings(APP_SETTINGS)
@@ -287,7 +287,7 @@ class ConversationWorker:
             health_provider=self._somabrain_health_state,
             on_degraded=self._mark_somabrain_degraded,
         )
-        self.mem_outbox = MemoryWriteOutbox(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         router_url = cfg.env("ROUTER_URL") or APP_SETTINGS.extra.get("router_url")
         self.router = RouterClient(base_url=router_url)
         self.deployment_mode = cfg.env("SOMA_AGENT_MODE", APP_SETTINGS.deployment_mode).upper()

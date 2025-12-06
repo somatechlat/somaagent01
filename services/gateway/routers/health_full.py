@@ -14,7 +14,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from services.common import degradation_monitor
-from services.common.admin_settings import ADMIN_SETTINGS
+# Legacy admin settings removed – use the central cfg singleton.
+from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 from src.core.config import cfg
@@ -31,9 +32,9 @@ def _kafka_settings() -> KafkaSettings:
 @router.get("/health")
 async def health_check(
     store: PostgresSessionStore = Depends(
-        lambda: PostgresSessionStore(ADMIN_SETTINGS.postgres_dsn)
+        lambda: PostgresSessionStore(cfg.settings().database.dsn)
     ),
-    cache: RedisSessionCache = Depends(lambda: RedisSessionCache(ADMIN_SETTINGS.redis_url)),
+    cache: RedisSessionCache = Depends(lambda: RedisSessionCache(cfg.settings().redis.url)),
 ) -> JSONResponse:
     # A map of component health results. Each entry will contain a ``status``
     # field ("ok", "down", "degraded") and optionally a ``detail`` string.

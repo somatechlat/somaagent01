@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from services.common.admin_settings import ADMIN_SETTINGS
 from services.common.attachments_store import AttachmentsStore
 from services.common.ui_settings_store import UiSettingsStore
 from src.core.config import cfg
@@ -15,9 +14,17 @@ _ATTACHMENTS_STORE: AttachmentsStore | None = None
 
 
 def _get_attachments_store() -> AttachmentsStore:
+    """Lazily create a singleton :class:`AttachmentsStore`.
+
+    The historic implementation used ``ADMIN_SETTINGS.postgres_dsn`` which
+    proxied to the legacy configuration object.  We now obtain the DSN
+    directly from the canonical configuration singleton ``cfg``.
+    """
     global _ATTACHMENTS_STORE
     if _ATTACHMENTS_STORE is None:
-        _ATTACHMENTS_STORE = AttachmentsStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        # ``cfg.settings()`` returns the full ``Config`` model; the PostgreSQL
+        # DSN lives under ``database.dsn``.
+        _ATTACHMENTS_STORE = AttachmentsStore(dsn=cfg.settings().database.dsn)
     return _ATTACHMENTS_STORE
 
 

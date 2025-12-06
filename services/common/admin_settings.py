@@ -64,6 +64,33 @@ class AdminSettings:
     def somabrain_base_url(self) -> str:  # pragma: no cover
         return getattr(self._cfg.external, "somabrain_base_url", "")
 
+    # -----------------------------------------------------------------
+    # Dynamic attribute fallback – many legacy modules access a variety of
+    # configuration values directly on ``ADMIN_SETTINGS`` (e.g.
+    # ``metrics_port``, ``metrics_host``, ``kafka_bootstrap_servers``,
+    # ``deployment_mode``).  Rather than enumerating each one, we forward any
+    # unknown attribute lookup to the underlying ``Config`` instance.  This
+    # maintains backward compatibility with the original monolithic settings
+    # object while keeping the implementation simple.
+    # -----------------------------------------------------------------
+    def __getattr__(self, name: str) -> Any:  # pragma: no cover
+        # Prefer top‑level Config attributes (service, database, etc.).
+        if hasattr(self._cfg, name):
+            return getattr(self._cfg, name)
+        # Fall back to the nested ``service`` model for common service fields.
+        if hasattr(self._cfg.service, name):
+            return getattr(self._cfg.service, name)
+        # Kafka bootstrap servers are accessed via ``kafka``.
+        if name == "kafka_bootstrap_servers":
+            return getattr(self._cfg.kafka, "bootstrap_servers", "")
+        # Metrics host/port were historically exposed on the service config.
+        if name in {"metrics_host", "metrics_port"}:
+            return getattr(self._cfg.service, name, "")
+        # Auth flag.
+        if name == "auth_required":
+            return getattr(self._cfg.auth, "auth_required", False)
+        raise AttributeError(f"{self.__class__.__name__!s} has no attribute {name!r}")
+
 
 def _load() -> AdminSettings:
     """Factory returning a singleton admin configuration instance."""

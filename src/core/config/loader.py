@@ -171,11 +171,21 @@ def load_config() -> Config:
     # Use the Pydantic v2 API – ``model_validate`` replaces the deprecated ``parse_obj``.
     cfg = Config.model_validate(default_cfg_dict)
 
-    # 2️⃣ Plain environment variables (no prefix) – we collect them into a dict.
+    # 2️⃣ Process environment variables
     plain_env: dict[str, Any] = {}
+    feature_flags: dict[str, bool] = {}
+    
     for key, value in os.environ.items():
-        if not key.startswith("SA01_"):
+        if key.startswith("SA01_ENABLE_"):
+            # Extract feature flag name and convert to boolean
+            flag_name = key[len("SA01_ENABLE_"):].lower()
+            feature_flags[flag_name] = str(value).lower() in {"true", "1", "yes", "on"}
+        elif not key.startswith("SA01_"):
             plain_env[key] = value
+    
+    # Add feature flags to the configuration
+    if feature_flags:
+        plain_env["feature_flags"] = feature_flags
 
     # 3️⃣ File‑based configuration – try YAML first, then JSON.
     repo_root = Path(__file__).resolve().parents[3]

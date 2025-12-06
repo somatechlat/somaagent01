@@ -320,23 +320,10 @@ async def health_v1_endpoint():
 # -----------------------------------------------------------------
 
 
-@router.post("/v1/settings_save", response_model=HealthResponse)
-async def save_ui_settings(settings: dict = Body(...)) -> HealthResponse:
-    """Save UI configuration supplied by the front‑end.
-
-    The payload is stored in the canonical ``UiSettingsStore`` which persists
-    a single JSONB document in Postgres.  The endpoint returns a minimal health
-    response so the front‑end can confirm success.
-    """
-    store = UiSettingsStore()
-    await store.ensure_schema()
-    await store.set(settings)
-    return HealthResponse(
-        status="healthy",
-        timestamp=time.time(),
-        services={"ui_settings": "saved"},
-        version="1.0.0-fasta2a",
-    )
+# NOTE: The legacy ``/v1/settings_save`` endpoint has been removed per VIBE
+# compliance. UI settings are now persisted via the ``/v1/settings/sections``
+# (PUT) endpoint defined elsewhere. Keeping this route would re‑introduce a
+# duplicate API and violate the “single source of truth” rule.
 
 
 @router.post("/v1/test_connection", response_model=HealthResponse)
@@ -392,21 +379,27 @@ async def test_connection() -> HealthResponse:
 
 @router.get("/metrics")
 async def metrics_endpoint():
-    """
-    REAL IMPLEMENTATION - Prometheus metrics endpoint.
-    Returns metrics in Prometheus format.
+    """Expose Prometheus metrics.
+
+    The endpoint must return plain‑text Prometheus exposition format with the
+    ``text/plain`` ``CONTENT_TYPE_LATEST`` MIME type.  Previously the response
+    was wrapped in a ``JSONResponse`` which broke compatibility with Prometheus
+    scrapers and caused the validation step in the VIBE compliance checklist
+    to fail.  This implementation returns the raw byte payload directly via a
+    ``Response`` object, preserving the exact format expected by Prometheus.
     """
     try:
         from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-        # REAL IMPLEMENTATION - Generate metrics
+        # Generate the latest metrics snapshot.
         metrics_data = generate_latest()
 
-        return JSONResponse(
-            content={"metrics": metrics_data.decode("utf-8")}, media_type=CONTENT_TYPE_LATEST
-        )
+        # ``Response`` streams the raw bytes and sets the correct content type.
+        from fastapi import Response
 
+        return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
     except Exception as e:
+        # Preserve VIBE error handling semantics.
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate metrics: {str(e)}",

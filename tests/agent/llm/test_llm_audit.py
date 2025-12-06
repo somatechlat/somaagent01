@@ -15,6 +15,10 @@ class _FakeCreds:
         # Always return the same secret for simplicity
         return self._secret
 
+    async def get_provider_key(self, provider: str):
+        # Always return the same secret for simplicity
+        return self._secret
+
 
 class _FakeSLMClient:
     def __init__(self):
@@ -39,10 +43,10 @@ async def test_llm_invoke_audit_success(monkeypatch):
     monkeypatch.setenv("SA01_AUTH_INTERNAL_TOKEN", "itok")
 
     # Fake creds store and SLM client factory (patch module-level functions)
-    from services import gateway as gw_pkg  # type: ignore
+    from services.gateway import main as gw_main  # type: ignore
 
-    monkeypatch.setattr(gw_pkg.main, "get_llm_credentials_store", lambda: _FakeCreds())
-    monkeypatch.setattr(gw_pkg.main, "_gateway_slm_client", lambda: _FakeSLMClient())
+    monkeypatch.setattr(gw_main, "get_llm_credentials_store", lambda: _FakeCreds())
+    monkeypatch.setattr(gw_main, "_gateway_slm_client", lambda: _FakeSLMClient())
 
     # Import the FastAPI app now that env vars are configured
     from services.gateway.main import app as gateway_app

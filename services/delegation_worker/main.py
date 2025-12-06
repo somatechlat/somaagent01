@@ -9,7 +9,7 @@ from typing import Any
 from jsonschema import ValidationError
 
 # Legacy import removed. Use centralized configuration via cfg.
-from services.common.admin_settings import ADMIN_SETTINGS
+from src.core.config import cfg
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
@@ -32,14 +32,14 @@ class DelegationWorker:
         self.group = cfg.env("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(
             KafkaSettings(
-                bootstrap_servers=ADMIN_SETTINGS.kafka_bootstrap_servers,
+                bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
                 security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
                 sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
                 sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
             )
         )
-        self.store = DelegationStore(dsn=ADMIN_SETTINGS.postgres_dsn)
+        self.store = DelegationStore(dsn=cfg.settings().database.dsn)
 
     async def start(self) -> None:
         await self.store.ensure_schema()

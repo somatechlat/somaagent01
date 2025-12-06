@@ -8,7 +8,6 @@ from typing import Any, Optional
 
 import redis.asyncio as redis
 
-from services.common.admin_settings import ADMIN_SETTINGS
 from src.core.config import cfg
 
 
@@ -29,7 +28,7 @@ class RequeueStore:
         ``dsn`` keyword and treat it as an alias for ``url`` when provided.
         """
         # Prefer explicit ``dsn`` if supplied, otherwise fall back to ``url``.
-        raw_url = dsn or url or ADMIN_SETTINGS.redis_url
+        raw_url = dsn or url or cfg.settings().redis.url
         self.url = os.path.expandvars(raw_url)
         self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
@@ -57,7 +56,7 @@ class RequeueStore:
         - redis_url (str)
         - policy_requeue_prefix (str)
         """
-        url = getattr(settings, "redis_url", None) or ADMIN_SETTINGS.redis_url
+        url = getattr(settings, "redis_url", None) or cfg.settings().redis.url
         prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env(
             "POLICY_REQUEUE_PREFIX"
         )

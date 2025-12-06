@@ -733,3 +733,46 @@ class ContextBuilderMetrics:
             context_tokens_after_redaction.inc()
         except Exception:
             pass
+
+    def time_total(self):
+        """Return timer context for total context building time."""
+        return thinking_total_seconds.time()
+
+    def time_tokenisation(self):
+        """Return timer context for tokenization time."""
+        return thinking_tokenisation_seconds.time()
+
+    def time_retrieval(self, *, state: str):
+        """Return timer context for retrieval time with state label."""
+        return thinking_retrieval_seconds.labels(state=state).time()
+
+    def time_salience(self):
+        """Return timer context for salience scoring time."""
+        return thinking_salience_seconds.time()
+
+    def time_ranking(self):
+        """Return timer context for ranking time."""
+        return thinking_ranking_seconds.time()
+
+    def time_redaction(self):
+        """Return timer context for redaction time."""
+        return thinking_redaction_seconds.time()
+
+    def time_prompt(self):
+        """Return timer context for prompt rendering time."""
+        return thinking_prompt_seconds.time()
+
+    def inc_prompt(self):
+        """Increment prompt counter."""
+        context_builder_prompt_total.inc()
+
+    def inc_snippets(self, *, stage: str, count: int = 1):
+        """Increment snippet counter for given stage."""
+        context_builder_snippets_total.labels(stage=stage).inc(count)
+
+    def record_tokens(self, *, before_budget: float, after_budget: float, after_redaction: float, prompt_tokens: float):
+        """Record token metrics at various stages."""
+        context_tokens_before_budget.set(before_budget)
+        context_tokens_after_budget.set(after_budget)
+        context_tokens_after_redaction.set(after_redaction)
+        context_prompt_tokens.set(prompt_tokens)
