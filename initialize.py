@@ -118,10 +118,10 @@ def initialize_agent():
 
 
 def initialize_chats():
-    from python.helpers import persist_chat
+    from python.helpers import db_session
 
     async def initialize_chats_async():
-        persist_chat.load_tmp_chats()
+        await db_session.load_tmp_chats()
 
     return defer.DeferredTask().start_task(initialize_chats_async)
 

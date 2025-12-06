@@ -1,7 +1,7 @@
 import asyncio
 
 from agent import LoopData
-from python.helpers import persist_chat, tokens
+from python.helpers import db_session, tokens
 from python.helpers.extension import Extension
 
 
@@ -33,6 +33,6 @@ class RenameChat(Extension):
                     new_name = new_name[:40] + "..."
                 # apply to context and save
                 self.agent.context.name = new_name
-                persist_chat.save_tmp_chat(self.agent.context)
+                await db_session.save_tmp_chat(self.agent.context)
         except Exception:
             pass  # non-critical

@@ -16,7 +16,7 @@ from starlette.requests import Request
 from agent import AgentContext, AgentContextType, UserMessage
 from initialize import initialize_agent
 from python.helpers import settings
-from python.helpers.persist_chat import remove_chat
+from python.helpers.db_session import remove_chat
 
 # Local imports
 from python.helpers.print_style import PrintStyle
@@ -77,7 +77,7 @@ class AgentZeroWorker(Worker):  # type: ignore[misc]
             # Clean up context like non-persistent MCP chats
             context.reset()
             AgentContext.remove(context.id)
-            remove_chat(context.id)
+            await remove_chat(context.id)
 
             _PRINTER.print(f"[A2A] Completed task {task_id} and cleaned up context")
 
@@ -89,7 +89,7 @@ class AgentZeroWorker(Worker):  # type: ignore[misc]
             if context:
                 context.reset()
                 AgentContext.remove(context.id)
-                remove_chat(context.id)
+                await remove_chat(context.id)
                 _PRINTER.print(f"[A2A] Cleaned up failed context {context.id}")
 
     async def cancel_task(self, params: Any) -> None:  # params: TaskIdParams

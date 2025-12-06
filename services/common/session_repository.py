@@ -166,6 +166,7 @@ class SessionEnvelope:
     scope: Optional[str]
     metadata: dict[str, Any]
     analysis: dict[str, Any]
+    state: dict[str, Any]
     created_at: datetime
     updated_at: datetime
 
@@ -231,6 +232,7 @@ class PostgresSessionStore(SessionStore):
             "scope": metadata.get("scope"),
             "metadata": metadata,
             "analysis": analysis,
+            "state": {},  # State is usually updated explicitly via save_session_state
         }
 
         return payload
@@ -420,6 +422,7 @@ class PostgresSessionStore(SessionStore):
                            scope,
                            metadata,
                            analysis,
+                           state,
                            created_at,
                            updated_at
                     FROM session_envelopes
@@ -441,6 +444,7 @@ class PostgresSessionStore(SessionStore):
                            scope,
                            metadata,
                            analysis,
+                           state,
                            created_at,
                            updated_at
                     FROM session_envelopes
@@ -460,8 +464,9 @@ class PostgresSessionStore(SessionStore):
                     subject=row["subject"],
                     issuer=row["issuer"],
                     scope=row["scope"],
-                    metadata=row["metadata"],
-                    analysis=row["analysis"],
+                    metadata=json.loads(row["metadata"]),
+                    analysis=json.loads(row["analysis"]),
+                    state=json.loads(row["state"]),
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
                 )
@@ -484,6 +489,7 @@ class PostgresSessionStore(SessionStore):
     ) -> None:
         metadata_json = json.dumps(payload.get("metadata", {}), ensure_ascii=False)
         analysis_json = json.dumps(payload.get("analysis", {}), ensure_ascii=False)
+        state_json = json.dumps(payload.get("state", {}), ensure_ascii=False)
         start = perf_counter()
         try:
             await conn.execute(
@@ -497,6 +503,7 @@ class PostgresSessionStore(SessionStore):
                     scope,
                     metadata,
                     analysis,
+                    state,
                     created_at,
                     updated_at
                 )
@@ -509,8 +516,9 @@ class PostgresSessionStore(SessionStore):
                     $6,
                     $7::jsonb,
                     $8::jsonb,
-                    COALESCE($9, NOW()),
-                    COALESCE($10, NOW())
+                    $9::jsonb,
+                    COALESCE($10, NOW()),
+                    COALESCE($11, NOW())
                 )
                 ON CONFLICT (session_id) DO UPDATE SET
                     persona_id = COALESCE(EXCLUDED.persona_id, session_envelopes.persona_id),
@@ -523,6 +531,10 @@ class PostgresSessionStore(SessionStore):
                         WHEN EXCLUDED.analysis = '{}'::jsonb THEN session_envelopes.analysis
                         ELSE EXCLUDED.analysis
                     END,
+                    state = CASE
+                        WHEN EXCLUDED.state = '{}'::jsonb THEN session_envelopes.state
+                        ELSE EXCLUDED.state
+                    END,
                     updated_at = NOW()
                 """,
                 payload["session_id"],
@@ -533,6 +545,7 @@ class PostgresSessionStore(SessionStore):
                 payload.get("scope"),
                 metadata_json,
                 analysis_json,
+                state_json,
                 created_at,
                 updated_at,
             )
@@ -559,6 +572,7 @@ class PostgresSessionStore(SessionStore):
                            scope,
                            metadata,
                            analysis,
+                           state,
                            created_at,
                            updated_at
                     FROM session_envelopes
@@ -585,11 +599,25 @@ class PostgresSessionStore(SessionStore):
             subject=row["subject"],
             issuer=row["issuer"],
             scope=row["scope"],
-            metadata=row["metadata"],
-            analysis=row["analysis"],
+            metadata=json.loads(row["metadata"]),
+            analysis=json.loads(row["analysis"]),
+            state=json.loads(row["state"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
+
+    async def save_session_state(self, session_id: str, state: dict[str, Any]) -> None:
+        """Save the full session state (context) to the envelope."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await self._upsert_envelope(
+                conn,
+                {
+                    "session_id": self._parse_session_id(session_id),
+                    "state": state,
+                },
+                operation="save_state",
+            )
 
     async def backfill_envelope(
         self,
@@ -602,6 +630,7 @@ class PostgresSessionStore(SessionStore):
         scope: Optional[str],
         metadata: dict[str, Any],
         analysis: dict[str, Any],
+        state: dict[str, Any],
         created_at: Optional[datetime],
         updated_at: Optional[datetime],
     ) -> None:
@@ -618,6 +647,7 @@ class PostgresSessionStore(SessionStore):
                     "scope": scope,
                     "metadata": metadata,
                     "analysis": analysis,
+                    "state": state,
                 },
                 operation="backfill",
                 created_at=created_at,
@@ -642,6 +672,7 @@ CREATE TABLE IF NOT EXISTS session_envelopes (
     scope TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     analysis JSONB NOT NULL DEFAULT '{}'::jsonb,
+    state JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 
 from agent import AgentContext
-from python.helpers import persist_chat
+from python.helpers import db_session
 from python.helpers.task_scheduler import (
     AdHocTask,
     parse_datetime,
@@ -133,7 +133,7 @@ class SchedulerTool(Tool):
 
         if context and context.id == task.uuid:
             AgentContext.remove(context.id)
-            persist_chat.remove_chat(context.id)
+            await db_session.remove_chat(context.id)
 
         await TaskScheduler.get().remove_task_by_uuid(task_uuid)
         if TaskScheduler.get().get_task_by_uuid(task_uuid) is None:

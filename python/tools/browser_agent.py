@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from agent import Agent, InterventionException
 from python.extensions.message_loop_start._10_iteration_no import get_iter_no
-from python.helpers import defer, files, persist_chat, strings
+from python.helpers import defer, files, db_session, strings
 from python.helpers.browser_use import browser_use  # type: ignore[attr-defined]
 from python.helpers.dirty_json import DirtyJson
 from python.helpers.playwright import ensure_playwright_binary
@@ -35,6 +35,9 @@ class State:
         files.delete_dir(self.get_user_data_dir())  # cleanup user data dir
 
     def get_user_data_dir(self):
+        # Using db_session.get_chat_folder_path to ensure correct temp path usage
+        # Although user_data_dir usually goes to ~/.config, we might want to keep it consistent
+        # or just leave it as is if it's external to "chat storage"
         return str(
             Path.home() / ".config" / "browseruse" / "profiles" / f"agent_{self.agent.context.id}"
         )
@@ -369,7 +372,7 @@ class BrowserAgent(Tool):
                     result["log"] = get_use_agent_log(ua)
 
                     path = files.get_abs_path(
-                        persist_chat.get_chat_folder_path(agent.context.id),
+                        db_session.get_chat_folder_path(agent.context.id),
                         "browser",
                         "screenshots",
                         f"{self.guid}.png",
