@@ -104,6 +104,11 @@ def env(name: str, default: Any = None) -> Any:
         if val is not None:
             return val
 
+    # Fall back to real environment variables to preserve legacy overrides.
+    env_value = os.getenv(name)
+    if env_value is not None:
+        return env_value
+
     # Fallback to the caller supplied default.
     return default
 

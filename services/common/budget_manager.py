@@ -5,11 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import os
 import redis.asyncio as redis
 
-from services.common import env
 from src.core.config import cfg
 from services.common.tenant_config import TenantConfig
+
+
+def _int_from_env(name: str, default: int) -> int:
+    raw = cfg.env(name, str(default))
+    try:
+        return int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass
@@ -24,10 +32,11 @@ class BudgetManager:
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
         # Use centralized configuration for Redis URL, falling back to provided URL if given.
-        raw_url = url or cfg.settings().redis.url
-        self.url = env.expand(raw_url)
-        self.prefix = env.get("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
-        self.limit = env.get_int("BUDGET_LIMIT_TOKENS", 0)  # 0 = unlimited
+        default_url = cfg.settings().redis.url
+        raw_url = url or cfg.env("REDIS_URL", default_url) or default_url
+        self.url = os.path.expandvars(raw_url)
+        self.prefix = cfg.env("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
+        self.limit = _int_from_env("BUDGET_LIMIT_TOKENS", 0)  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)
         self.tenant_config = tenant_config or TenantConfig()
 
@@ -65,13 +74,13 @@ class BudgetManager:
 
         env_key = f"BUDGET_LIMIT_{tenant.upper()}"
         persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
-        persona_env = env.get(persona_key)
+        persona_env = cfg.env(persona_key)
         if persona_env is not None:
             try:
                 return int(persona_env) or None
             except ValueError:
                 return None
-        limit = env.get_int(env_key, 0)
+        limit = _int_from_env(env_key, 0)
         if limit == 0:
             limit = self.limit
         return limit or None

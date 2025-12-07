@@ -10,8 +10,8 @@ from datetime import datetime
 from typing import Any, Optional
 
 import asyncpg
+import os
 
-from services.common import env
 from src.core.config import cfg
 
 
@@ -28,8 +28,9 @@ class SagaState:
 
 class SagaManager:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or cfg.settings().database.dsn or env.get("POSTGRES_DSN")
-        self.dsn = env.expand(raw_dsn)
+        default_dsn = cfg.settings().database.dsn
+        raw_dsn = dsn or cfg.env("POSTGRES_DSN", default_dsn) or default_dsn
+        self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _pool_conn(self) -> asyncpg.Pool:

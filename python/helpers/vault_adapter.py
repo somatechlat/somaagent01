@@ -4,7 +4,7 @@ import base64
 
 from cryptography.fernet import Fernet
 
-from services.common import env
+from src.core.config import cfg
 
 
 class VaultAdapter:
@@ -15,7 +15,7 @@ class VaultAdapter:
     @classmethod
     def cipher(cls) -> Fernet:
         if cls._cipher is None:
-            key = env.get("SA01_CRYPTO_FERNET_KEY")
+            key = cfg.env("SA01_CRYPTO_FERNET_KEY")
             material = key.encode() if isinstance(key, str) and key else Fernet.generate_key()
             cls._cipher = Fernet(material)
         return cls._cipher

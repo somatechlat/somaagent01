@@ -24,10 +24,10 @@ class RequeueStore:
         The original monolith used a ``dsn`` argument pointing at a Postgres
         connection string, but the refactored implementation switched to a Redis
         URL.  Some routers (e.g. ``services.gateway.routers.requeue``) still pass
-        ``dsn=ADMIN_SETTINGS.postgres_dsn``.  To retain compatibility we accept a
+        ``dsn=cfg.settings().database.dsn``.  To retain compatibility we accept a
         ``dsn`` keyword and treat it as an alias for ``url`` when provided.
         """
-        # Prefer explicit ``dsn`` if supplied, otherwise fall back to ``url``.
+        # Prefer explicit ``dsn`` if supplied, otherwise fallback on the Redis URL provided by the canonical configuration.
         raw_url = dsn or url or cfg.settings().redis.url
         self.url = os.path.expandvars(raw_url)
         self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")

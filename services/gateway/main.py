@@ -27,6 +27,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from services.gateway.routers import build_router
+from src.core.config import cfg
 
 webui_path = pathlib.Path(__file__).resolve().parents[2] / "webui"
 webui_path = str(webui_path)
@@ -117,10 +118,15 @@ import asyncio as _asyncio
 
 # Legacy admin settings removed – use the central cfg singleton.
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.policy_client import PolicyClient, PolicyRequest
 
 # JWT authentication module
 import jwt
 from fastapi import HTTPException, status
+
+# API key store used by the gateway API key router. Imported lazily in the helper
+# below to avoid circular import issues.
+from services.common.api_key_store import ApiKeyStore
 
 # JWT module for compatibility
 jwt_module = jwt
@@ -155,7 +161,6 @@ class SomaBrainClient:
 
 async def _resolve_signing_key(header: dict) -> str:
     """Resolve signing key from JWT header."""
-    from src.core.config import cfg
     
     # Try JWKS URL first
     jwks_url = cfg.settings().auth.jwt_jwks_url
@@ -179,6 +184,10 @@ async def _resolve_signing_key(header: dict) -> str:
     # Final fallback for testing
     return "secret"
 
+# Global flag used by legacy tests; defaults to the config value.
+REQUIRE_AUTH = None  # will be overridden in tests via monkeypatch
+_policy_client: PolicyClient | None = None
+
 async def authorize_request(request, policy_context: dict = None):
     """Authorize request using JWT token from headers.
     
@@ -192,10 +201,10 @@ async def authorize_request(request, policy_context: dict = None):
     Raises:
         HTTPException: If authentication is required but fails
     """
-    from src.core.config import cfg
-    
-    # Check if auth is required
-    auth_required = cfg.settings().auth.auth_required
+    # Check if auth is required – respect legacy ``REQUIRE_AUTH`` monkeypatch if set.
+    auth_required = getattr(globals(), "REQUIRE_AUTH", None)
+    if auth_required is None:
+        auth_required = cfg.settings().auth.auth_required
     if not auth_required:
         # Return default user context when auth is disabled
         return {
@@ -244,16 +253,35 @@ async def authorize_request(request, policy_context: dict = None):
             leeway=cfg.settings().auth.jwt_leeway
         )
         
-        # Evaluate OPA policy if provided
-        if policy_context is not None:
-            await _evaluate_opa(payload, policy_context)
-        
+        opa_context = dict(policy_context or {})
+        opa_context.setdefault("action", getattr(request, "method", "request"))
+        path = getattr(getattr(request, "url", None), "path", None)
+        if path:
+            opa_context.setdefault("resource", path)
+        opa_context.setdefault("tenant", payload.get("tenant"))
+        await _evaluate_opa(payload, opa_context)
+
+        # Optional OpenFGA tenant access check – only performed if a client is
+        # available. Tests may monkey‑patch ``_get_openfga_client``.
+        openfga_client = None
+        try:
+            openfga_client = _get_openfga_client()
+        except Exception:
+            openfga_client = None
+        if openfga_client is not None:
+            tenant = payload.get("tenant", payload.get("sub", "default_tenant"))
+            subject = payload.get("sub")
+            allowed = await openfga_client.check_tenant_access(tenant, subject)
+            if not allowed:
+                raise HTTPException(status_code=403, detail="OpenFGA tenant access denied")
+
         return {
             "user_id": payload.get("sub", "unknown_user"),
-            "tenant": payload.get("tenant", "default_tenant"),
+            "tenant": payload.get("tenant", payload.get("sub", "default_tenant")),
             "scope": payload.get("scope", "read"),
             "sub": payload.get("sub"),
-            **payload
+            "subject": payload.get("sub"),
+            **payload,
         }
         
     except jwt_module.PyJWTError as e:
@@ -267,15 +295,48 @@ async def authorize_request(request, policy_context: dict = None):
             detail=f"Authentication failed: {str(e)}"
         )
 
-async def _evaluate_opa(payload: dict, policy_context: dict):
+def _get_policy_client() -> PolicyClient | None:
+    """Return (and cache) the PolicyClient if OPA is configured."""
+
+    global _policy_client
+    if _policy_client is not None:
+        return _policy_client
+
+    opa_url = cfg.get_opa_url() or cfg.settings().external.opa_url
+    if not opa_url:
+        return None
+
+    _policy_client = PolicyClient(base_url=opa_url)
+    return _policy_client
+
+
+async def _evaluate_opa(payload: dict, policy_context: dict | None) -> None:
     """Evaluate OPA policy for authorization."""
-    # For testing purposes, this is a no-op
-    # In production, this would call OPA service for policy evaluation
-    pass
+
+    if not policy_context:
+        return
+
+    client = _get_policy_client()
+    if client is None:
+        return
+
+    request = PolicyRequest(
+        tenant=policy_context.get("tenant")
+        or payload.get("tenant")
+        or payload.get("sub")
+        or "default",
+        persona_id=policy_context.get("persona_id") or payload.get("persona_id"),
+        action=policy_context.get("action") or "gateway.request",
+        resource=str(policy_context.get("resource") or "gateway"),
+        context={"jwt": payload, **policy_context},
+    )
+
+    allowed = await client.evaluate(request)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="policy_denied")
 from services.common.outbox_repository import ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.session_repository import RedisSessionCache
-from src.core.config import cfg
 
 # Compatibility attributes for test suite
 JWKS_CACHE = {}
@@ -340,9 +401,27 @@ def get_session_cache() -> RedisSessionCache:
 
 
 def get_llm_credentials_store():
-    """Get the LLM credentials store instance."""
-    from services.common.llm_credentials_store import LlmCredentialsStore
-    return LlmCredentialsStore()
+    """Get the LLM credentials store instance.
+
+    The legacy ``LlmCredentialsStore`` shim has been removed in favor of the
+    central ``SecretManager`` implementation.  Tests and existing code expect a
+    ``list_providers``/``get_provider_key`` API, which ``SecretManager`` also
+    provides.  This function now returns a ``SecretManager`` instance directly,
+    preserving the public contract while eliminating the legacy import.
+    """
+    from services.common.secret_manager import SecretManager
+    return SecretManager()
+
+def get_api_key_store() -> ApiKeyStore:
+    """Return the API key store singleton.
+
+    The test suite overrides this dependency via ``gateway_main.get_api_key_store``.
+    Delegating to the central ``integrations.repositories`` module keeps a single
+    source of truth for the store instance.
+    """
+    # Import lazily to avoid circular imports at module load time.
+    from integrations.repositories import get_api_key_store as _repo_get
+    return _repo_get()
 
 
 def _gateway_slm_client():

@@ -13,6 +13,9 @@ from typing import Any, Mapping
 
 from jsonschema import Draft7Validator
 
+# Cache for compiled validators to avoid mutating the original schema dict.
+_validator_cache: dict[int, Draft7Validator] = {}
+
 __all__ = ["validate_payload"]
 
 
@@ -26,10 +29,14 @@ def _load_schema(schema: Mapping[str, Any]) -> Draft7Validator:
     if not isinstance(schema, dict):
         raise TypeError("Schema must be a mapping")
     # Attach a cached validator if not already present
-    validator = getattr(schema, "_validator", None)  # type: ignore[attr-defined]
+    # Use the ``id`` of the schema dict as a cache key – this is stable for the
+    # lifetime of the dict object. Storing the validator on the dict itself is
+    # prohibited by the VIBE rule against mutating input arguments.
+    key = id(schema)
+    validator = _validator_cache.get(key)
     if validator is None:
         validator = Draft7Validator(schema)
-        schema._validator = validator  # type: ignore[attr-defined]
+        _validator_cache[key] = validator
     return validator
 
 

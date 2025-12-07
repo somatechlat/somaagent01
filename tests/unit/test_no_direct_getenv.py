@@ -3,7 +3,6 @@ import pathlib
 ALLOWED = {
     # bootstrap/settings and facade
     "services/common/runtime_config.py",
-    "services/common/settings_base.py",
     # Legacy modules that still use direct getenv – temporarily allowed until refactored
     "services/common/attachments_store.py",
     "services/common/audit_store.py",

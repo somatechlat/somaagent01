@@ -3,30 +3,39 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 
 import asyncpg
 
-from services.common import env
 from src.core.config import cfg
-from services.common.settings_base import BaseServiceSettings
+
+
+def _int_from_env(name: str, default: int) -> int:
+    raw = cfg.env(name, str(default))
+    try:
+        return int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        return default
 
 
 class TelemetryStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Use the admin-wide Postgres DSN; ADMIN_SETTINGS already resolves any env overrides.
         raw_dsn = dsn or cfg.settings().database.dsn
-        self.dsn = env.expand(raw_dsn)
+        self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
-    def from_settings(cls, settings: BaseServiceSettings) -> "TelemetryStore":
-        return cls(dsn=settings.postgres_dsn)
+    def from_settings(cls, settings: object | None = None) -> "TelemetryStore":
+        database = getattr(settings, "database", None) if settings is not None else None
+        dsn = getattr(database, "dsn", None) or getattr(settings, "postgres_dsn", None)
+        return cls(dsn=dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = _int_from_env("PG_POOL_MIN_SIZE", 1)
+            max_size = _int_from_env("PG_POOL_MAX_SIZE", 2)
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

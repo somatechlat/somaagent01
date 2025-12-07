@@ -5,6 +5,7 @@ from typing import Any
 
 _SUBMODULES = {
     "budget_manager",
+    "degradation_monitor",
     "escalation",
     "event_bus",
     "model_costs",
@@ -13,13 +14,10 @@ _SUBMODULES = {
     "requeue_store",
     "router_client",
     "session_repository",
-    "settings_base",
     "settings_sa01",
     "slm_client",
     "telemetry",
     "telemetry_store",
-    "env",
-    "degradation_monitor",
 }
 
 __all__ = sorted(_SUBMODULES)

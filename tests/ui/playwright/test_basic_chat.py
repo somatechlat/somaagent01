@@ -5,7 +5,7 @@ import time
 import pytest
 from playwright.async_api import async_playwright
 
-from services.common import env
+from src.core.config import cfg
 
 
 async def _launch_page(headless: bool):
@@ -18,8 +18,8 @@ async def _launch_page(headless: bool):
 
 @pytest.mark.asyncio
 async def test_chat_message_roundtrip():
-    base_url = env.get("GATEWAY_BASE", "http://localhost:21016")
-    headless_env = (env.get("HEADLESS", "1") or "1").lower()
+    base_url = cfg.env("GATEWAY_BASE", "http://localhost:21016")
+    headless_env = (cfg.env("HEADLESS", "1") or "1").lower()
     headless = headless_env not in {"0", "false", "no"}
 
     pw = browser = context = page = None

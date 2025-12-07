@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
-from services.common import env
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,10 +43,8 @@ class OpenFGAClient:
         cache_ttl: float = 2.0,
         fail_open: bool = True,
     ) -> None:
-        self.base_url = (
-            base_url or env.get("OPENFGA_API_URL", "http://openfga:8080") or "http://openfga:8080"
-        )
-        self.store_id = store_id or env.get("OPENFGA_STORE_ID")
+        self.base_url = base_url or cfg.env("OPENFGA_API_URL", "http://openfga:8080") or "http://openfga:8080"
+        self.store_id = store_id or cfg.env("OPENFGA_STORE_ID")
         if not self.store_id:
             raise ValueError("OPENFGA_STORE_ID must be configured for OpenFGAClient")
         self.user_namespace = user_namespace
@@ -54,10 +52,11 @@ class OpenFGAClient:
         self.relation = relation
         self.action = action
         self.fail_open = fail_open
-        self._client = httpx.AsyncClient(timeout=timeout_seconds)
+        timeout = float(cfg.env("OPENFGA_TIMEOUT_SECONDS", str(timeout_seconds)) or timeout_seconds)
+        self._client = httpx.AsyncClient(timeout=timeout)
         self._cache: Dict[AuthorizationKey, Tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
-        self.cache_ttl = cache_ttl
+        self.cache_ttl = float(cfg.env("OPENFGA_CACHE_TTL", str(cache_ttl)) or cache_ttl)
 
     async def check_tenant_access(
         self,

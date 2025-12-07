@@ -8,15 +8,23 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from time import perf_counter
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from uuid import UUID
 
 import asyncpg
 import redis.asyncio as redis
+from src.core.config import cfg
 from prometheus_client import Counter, Histogram
 
-from services.common import env
-from src.core.config import cfg
+
+def _int_from_env(key: str, default: int) -> int:
+    """Fetch an integer override from cfg.env with robust parsing."""
+
+    raw: Union[str, int, None] = cfg.env(key, str(default))
+    try:
+        return int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        return default
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +95,7 @@ class RedisSessionCache(SessionCache):
         self._client: redis.Redis = redis.from_url(self.url, decode_responses=True)
         ttl = default_ttl
         if ttl is None:
-            ttl = env.get_int("SESSION_CACHE_TTL_SECONDS", 900)
+            ttl = _int_from_env("SESSION_CACHE_TTL_SECONDS", 900)
         self.default_ttl = ttl if ttl and ttl > 0 else 0
 
     async def get(self, key: str) -> Optional[dict[str, Any]]:
@@ -180,8 +188,8 @@ class PostgresSessionStore(SessionStore):
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = _int_from_env("PG_POOL_MIN_SIZE", 1)
+            max_size = _int_from_env("PG_POOL_MAX_SIZE", 2)
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

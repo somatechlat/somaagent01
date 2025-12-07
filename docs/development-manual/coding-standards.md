@@ -188,8 +188,7 @@ services/
 └── common/
     ├── __init__.py
     ├── event_bus.py
-    ├── logging_config.py
-    └── settings_base.py
+    └── logging_config.py
 ```
 
 ### Module Size

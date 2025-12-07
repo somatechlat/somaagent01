@@ -575,7 +575,7 @@ python/tasks/celery_app.py              # Add beat_schedule configuration
 | System | Location | Violation | Action |
 |--------|----------|-----------|--------|
 | `settings_sa01.py` | `services/common/` | Duplicates cfg functionality | Migrate to cfg |
-| `settings_base.py` | `services/common/` | Base class duplicates cfg | Migrate to cfg |
+| `settings_base.py` | (removed) | Base class duplicated cfg | ✅ Removed – use cfg |
 | `admin_settings.py` | `services/common/` | Wraps SA01Settings | Refactor to use cfg |
 | `settings.py` | `python/helpers/` | 1789-line monolith | Split: UI conversion + cfg |
 

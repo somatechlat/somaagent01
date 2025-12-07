@@ -6,6 +6,7 @@ insert, fetch, and TTL purge helpers.
 
 from __future__ import annotations
 
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -13,8 +14,15 @@ from typing import Optional
 
 import asyncpg
 
-from services.common import env
 from src.core.config import cfg
+
+
+def _int_from_env(name: str, default: int) -> int:
+    raw = cfg.env(name, str(default))
+    try:
+        return int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass(slots=True)
@@ -34,16 +42,15 @@ class Attachment:
 
 class AttachmentsStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        # Use centralized admin settings for Postgres DSN when not explicitly provided.
-        # Use the central configuration for Postgres DSN via cfg.settings().database.dsn.
-        default_dsn = dsn or self._cfg.settings().database.dsn
-        self.dsn = env.expand(default_dsn)
+        default_dsn = cfg.settings().database.dsn
+        raw_dsn = dsn or cfg.env("POSTGRES_DSN", default_dsn) or default_dsn
+        self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = _int_from_env("PG_POOL_MIN_SIZE", 1)
+            max_size = _int_from_env("PG_POOL_MAX_SIZE", 2)
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

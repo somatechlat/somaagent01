@@ -29,8 +29,6 @@ from typing import Dict, Iterable, List, Tuple
 
 from dotenv import load_dotenv
 
-from services.common import env as env_snapshot
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -180,12 +178,10 @@ async def main(argv: List[str]) -> int:
     load_dotenv(dotenv_path=default_env_path, override=True)
     if args.env_files:
         _load_env_files(args.env_files)
-    env_snapshot.refresh()
-
     if args.host is None:
-        args.host = env_snapshot.get("GATEWAY_HOST", "0.0.0.0") or "0.0.0.0"
+        args.host = os.getenv("GATEWAY_HOST", "0.0.0.0") or "0.0.0.0"
     if args.port is None:
-        args.port = env_snapshot.get("GATEWAY_PORT", "8010") or "8010"
+        args.port = os.getenv("GATEWAY_PORT", "8010") or "8010"
 
     env = _default_env()
     specs = _process_specs(args.reload, args.host, args.port)

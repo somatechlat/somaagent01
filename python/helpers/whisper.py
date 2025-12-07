@@ -12,7 +12,7 @@ from python.helpers.notification import (
     NotificationType,
 )
 from python.helpers.print_style import PrintStyle
-from services.common import env
+from src.core.config import cfg
 
 # Suppress FutureWarning from torch.load
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Whisper is optional in lightweight developer builds – only require the
 # package when audio support is explicitly enabled.
 LOGGER = logging.getLogger(__name__)
-_feature_audio = (env.get("FEATURE_AUDIO", "none") or "none").lower()
+_feature_audio = (cfg.env("FEATURE_AUDIO", "none") or "none").lower()
 
 try:
     if _feature_audio in {"none", "0", "false", "off"}:

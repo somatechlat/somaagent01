@@ -1,6 +1,6 @@
-# Canonical Docker Compose file for Agent Zero
-# This file defines all services for the development environment.
 
+
+  # Removed obsolete attribute `version` to avoid confusion.
 x-agent-env: &agent-env
   # Prioritize mounted repo code over baked image to enable live development
   # Include the project root and the src package for proper imports inside containers.

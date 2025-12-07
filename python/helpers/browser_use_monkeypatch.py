@@ -2,10 +2,10 @@ import logging
 from typing import Any
 
 from python.helpers import dirty_json
-from services.common import env
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
-_FEATURE_BROWSER = (env.get("FEATURE_BROWSER", "false") or "false").strip().lower()
+_FEATURE_BROWSER = (cfg.env("FEATURE_BROWSER", "false") or "false").strip().lower()
 
 
 def _feature_enabled() -> bool:
