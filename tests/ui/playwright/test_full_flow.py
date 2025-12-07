@@ -1,8 +1,8 @@
-from services.common import env
+from src.core.config import cfg
 
 UI_BASE_URL = (
-    env.get("WEB_UI_BASE_URL")
-    or f"http://127.0.0.1:{env.get('GATEWAY_PORT', '21016') or '21016'}/ui"
+    cfg.env("WEB_UI_BASE_URL")
+    or f"http://127.0.0.1:{cfg.env('GATEWAY_PORT', '21016') or '21016'}/ui"
 )
 
 

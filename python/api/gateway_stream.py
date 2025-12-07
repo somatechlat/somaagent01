@@ -7,7 +7,7 @@ from flask import Response
 
 from python.helpers.api import ApiHandler, Request
 from python.helpers.print_style import PrintStyle
-from services.common import env
+from src.core.config import cfg
 
 
 class GatewayStream(ApiHandler):
@@ -34,7 +34,7 @@ class GatewayStream(ApiHandler):
         if not session_id:
             return Response("Missing session_id", status=400, mimetype="text/plain")
 
-        base = env.get("UI_GATEWAY_BASE") or env.get("GATEWAY_BASE_URL")
+        base = cfg.env("UI_GATEWAY_BASE") or cfg.env("GATEWAY_BASE_URL")
         if not base:
             raise ValueError(
                 "UI_GATEWAY_BASE or GATEWAY_BASE_URL environment variable is required. "
@@ -42,8 +42,8 @@ class GatewayStream(ApiHandler):
             )
         base = base.rstrip("/")
         primary = f"{base}/v1/session/{session_id}/events"
-        host_alias = env.get("SOMA_CONTAINER_HOST_ALIAS")
-        gw_port = env.get("GATEWAY_PORT")
+        host_alias = cfg.env("SOMA_CONTAINER_HOST_ALIAS")
+        gw_port = cfg.env("GATEWAY_PORT")
         fallback = (
             f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events"
             if host_alias and gw_port
@@ -51,7 +51,7 @@ class GatewayStream(ApiHandler):
         )
 
         headers = {}
-        if bearer := env.get("UI_GATEWAY_BEARER"):
+        if bearer := cfg.env("UI_GATEWAY_BEARER"):
             headers["Authorization"] = f"Bearer {bearer}"
 
         def stream_from(url: str) -> Iterator[bytes]:

@@ -54,7 +54,8 @@ from . import (
     websocket,
     workdir,
     features,
-)
+    weights,
+    )
 
 
 def build_router() -> APIRouter:
@@ -82,6 +83,7 @@ def build_router() -> APIRouter:
         keys.router,
         workdir.router,
         features.router,
+        weights.router,
         tool_request.router,
         ui_settings.router,
         llm.router,

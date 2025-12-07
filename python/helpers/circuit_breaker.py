@@ -14,7 +14,7 @@ from typing import Any, Callable, TypeVar
 
 from prometheus_client import Counter, start_http_server
 
-from services.common import env
+from src.core.config import cfg
 
 T = TypeVar("T")
 
@@ -48,7 +48,7 @@ def ensure_metrics_exporter() -> None:
     if _EXPORTER_STARTED:
         return
 
-    raw_port = (env.get("CIRCUIT_BREAKER_METRICS_PORT", "") or "").strip()
+    raw_port = (cfg.env("CIRCUIT_BREAKER_METRICS_PORT", "") or "").strip()
     if not raw_port:
         return
 
@@ -69,7 +69,7 @@ def ensure_metrics_exporter() -> None:
         )
         return
 
-    host = env.get("CIRCUIT_BREAKER_METRICS_HOST", "0.0.0.0") or "0.0.0.0"
+    host = cfg.env("CIRCUIT_BREAKER_METRICS_HOST", "0.0.0.0") or "0.0.0.0"
     try:
         start_http_server(port, addr=host)
     except Exception as exc:  # pragma: no cover - binding failures depend on host env

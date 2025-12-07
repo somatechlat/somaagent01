@@ -16,8 +16,6 @@ import asyncpg
 
 # Legacy ADMIN_SETTINGS shim removed – use the canonical cfg façade.
 from src.core.config import cfg
-from services.common.settings_base import BaseServiceSettings
-from src.core.config import cfg
 
 
 @dataclass
@@ -37,9 +35,12 @@ class ToolCatalogStore:
         self._pool: Optional[asyncpg.Pool] = None
 
     @classmethod
-    def from_settings(cls, settings: BaseServiceSettings) -> "ToolCatalogStore":
-        # Construct using the central configuration DSN.
-        return cls(dsn=cfg.settings().database.dsn)
+    def from_settings(cls, settings: object | None = None) -> "ToolCatalogStore":
+        """Backward-compatible constructor that ignores legacy settings objects."""
+
+        database = getattr(settings, "database", None) if settings is not None else None
+        dsn = getattr(database, "dsn", None) or cfg.settings().database.dsn
+        return cls(dsn=dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:

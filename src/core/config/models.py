@@ -333,81 +333,100 @@ class Config(BaseModel):
     def get_environment(self) -> str:
         """Get environment with backward compatibility."""
         return self.service.environment
+    # -----------------------------------------------------------------
+    # Compatibility properties – expose legacy top‑level attributes.
+    # These properties allow existing code and tests that accessed configuration
+    # fields directly on the ``Config`` instance (e.g. ``cfg.settings().auth_required``)
+    # to continue working after the shim removal.  They delegate to the
+    # appropriate nested model and provide setters where the test suite mutates
+    # the values.
+    # -----------------------------------------------------------------
 
-    # Compatibility alias for legacy ``cfg.soma_base_url`` calls.
-    def soma_base_url(self) -> str:  # pragma: no cover
-        """Return the SomaBrain base URL (legacy name).
-
-        Older code expects ``cfg.soma_base_url()`` which maps to the newer
-        ``get_somabrain_url`` method.  This thin wrapper maintains that API.
-        """
-        return self.get_somabrain_url()
-
-    # Compatibility alias for legacy ``cfg.kafka_bootstrap_servers`` calls.
-    def kafka_bootstrap_servers(self) -> str:  # pragma: no cover
-        """Legacy accessor for Kafka bootstrap servers.
-
-        Mirrors the historic ``cfg.kafka_bootstrap_servers()`` helper.
-        """
-        return self.get_kafka_bootstrap_servers()
-
-    # Compatibility method used by some legacy tests.
-    def init_runtime_config(self) -> None:  # pragma: no cover
-        """Placeholder for historic runtime config initialization.
-
-        The previous implementation performed eager loading of environment
-        variables.  With the new ``Config`` model this is unnecessary, so the
-        method is retained as a no‑op to satisfy existing imports.
-        """
-        return None
-
-    # Compatibility accessor for legacy metric host configuration.
-    # Historically code accessed ``config.metrics_host`` to obtain the host
-    # address for Prometheus metrics endpoints.  The modern model stores this
-    # value as ``service.host``.  Providing a property preserves the original
-    # public API without altering the underlying data layout.
+    # Auth flag (legacy name)
     @property
-    def metrics_host(self) -> str:  # pragma: no cover – exercised via legacy paths
-        return self.service.host
-
-    # -----------------------------------------------------------------
-    # Compatibility aliases
-    # -----------------------------------------------------------------
-    # Older code (including tests) expects nested config classes to be
-    # accessible as attributes on the Config class, e.g. ``Config.ServiceConfig``.
-    # The models are defined at module level, so we expose them here to keep the
-    # public API stable while retaining the modern, typed structure.
-    ServiceConfig: ClassVar = ServiceConfig  # type: ignore
-    DatabaseConfig: ClassVar = DatabaseConfig  # type: ignore
-    KafkaConfig: ClassVar = KafkaConfig  # type: ignore
-    RedisConfig: ClassVar = RedisConfig  # type: ignore
-    AuthConfig: ClassVar = AuthConfig  # type: ignore
-    ExternalServiceConfig: ClassVar = ExternalServiceConfig  # type: ignore
-    VoiceConfig: ClassVar = VoiceConfig  # type: ignore
-    AudioConfig: ClassVar = AudioConfig  # type: ignore
-    OpenAIConfig: ClassVar = OpenAIConfig  # type: ignore
-    LocalVoiceConfig: ClassVar = LocalVoiceConfig  # type: ignore
-
-    # -----------------------------------------------------------------
-    # Compatibility attribute accessors – many legacy modules reference
-    # top‑level attributes on the ``Config`` instance (e.g. ``config.metrics_port``
-    # or ``config.auth_required``).  The new configuration nests these values
-    # under ``service`` and ``auth``.  The following properties provide a thin
-    # forwarding layer without violating VIBE rules (they are explicit, typed
-    # forwards, not dynamic magic).
-    # -----------------------------------------------------------------
-    @property
-    def metrics_port(self) -> int:  # pragma: no cover – exercised via legacy paths
-        return self.service.metrics_port
-
-    @property
-    def auth_required(self) -> bool:  # pragma: no cover
+    def auth_required(self) -> bool:  # pragma: no cover – exercised via tests
         return self.auth.auth_required
 
+    @auth_required.setter
+    def auth_required(self, value: bool) -> None:  # pragma: no cover
+        self.auth.auth_required = value
+
+    # Service metrics host/port
+    @property
+    def metrics_host(self) -> str:  # pragma: no cover
+        return self.service.metrics_host
+
+    @metrics_host.setter
+    def metrics_host(self, value: str) -> None:  # pragma: no cover
+        self.service.metrics_host = value
+
+    @property
+    def metrics_port(self) -> int:  # pragma: no cover
+        return self.service.metrics_port
+
+    @metrics_port.setter
+    def metrics_port(self, value: int) -> None:  # pragma: no cover
+        self.service.metrics_port = value
+
+    # Kafka bootstrap servers (legacy name)
+    @property
+    def kafka_bootstrap_servers(self) -> str:  # pragma: no cover
+        return self.kafka.bootstrap_servers
+
+    @kafka_bootstrap_servers.setter
+    def kafka_bootstrap_servers(self, value: str) -> None:  # pragma: no cover
+        self.kafka.bootstrap_servers = value
+
+    # PostgreSQL DSN (legacy name)
+    @property
+    def postgres_dsn(self) -> str:  # pragma: no cover
+        return self.database.dsn
+
+    @postgres_dsn.setter
+    def postgres_dsn(self, value: str) -> None:  # pragma: no cover
+        self.database.dsn = value
+
+    # Redis URL (legacy name)
+    @property
+    def redis_url(self) -> str:  # pragma: no cover
+        return self.redis.url
+
+    @redis_url.setter
+    def redis_url(self, value: str) -> None:  # pragma: no cover
+        self.redis.url = value
+
+    # OPA URL (legacy name)
+    @property
+    def opa_url(self) -> str:  # pragma: no cover
+        return self.external.opa_url or ""
+
+    @opa_url.setter
+    def opa_url(self, value: str) -> None:  # pragma: no cover
+        self.external.opa_url = value
+
+    # SomaBrain base URL (legacy name)
+    @property
+    def soma_base_url(self) -> str:  # pragma: no cover
+        return self.external.somabrain_base_url or ""
+
+    @soma_base_url.setter
+    def soma_base_url(self, value: str) -> None:  # pragma: no cover
+        self.external.somabrain_base_url = value
+
+    # Deployment mode (legacy name)
     @property
     def deployment_mode(self) -> str:  # pragma: no cover
         return self.service.deployment_mode
 
+    @deployment_mode.setter
+    def deployment_mode(self, value: str) -> None:  # pragma: no cover
+        self.service.deployment_mode = value
+
+    # Environment (legacy name)
     @property
     def environment(self) -> str:  # pragma: no cover
         return self.service.environment
+
+    @environment.setter
+    def environment(self, value: str) -> None:  # pragma: no cover
+        self.service.environment = value

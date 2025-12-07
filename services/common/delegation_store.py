@@ -3,27 +3,33 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 
 import asyncpg
 
-from services.common import env
+from src.core.config import cfg
+
+
+def _int_from_env(name: str, default: int) -> int:
+    raw = cfg.env(name, str(default))
+    try:
+        return int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        return default
 
 
 class DelegationStore:
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = (
-            dsn
-            or env.get("POSTGRES_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
-            or "postgresql://soma:soma@localhost:5432/somaagent01"
-        )
-        self.dsn = env.expand(raw_dsn)
+        default_dsn = cfg.settings().database.dsn
+        raw_dsn = dsn or cfg.env("POSTGRES_DSN", default_dsn) or default_dsn
+        self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
-            min_size = int(env.get("PG_POOL_MIN_SIZE", "1") or "1")
-            max_size = int(env.get("PG_POOL_MAX_SIZE", "2") or "2")
+            min_size = _int_from_env("PG_POOL_MIN_SIZE", 1)
+            max_size = _int_from_env("PG_POOL_MAX_SIZE", 2)
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )

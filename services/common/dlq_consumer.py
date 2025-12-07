@@ -25,10 +25,14 @@ class DLQConsumer:
     def __init__(self, topic: str, group: str = "dlq-consumer") -> None:
         self.topic = topic
         self.group = group
+        kafka_cfg = cfg.settings().kafka
         self.bus = KafkaEventBus(
             KafkaSettings(
-                bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-                security_protocol="PLAINTEXT",
+                bootstrap_servers=kafka_cfg.bootstrap_servers,
+                security_protocol=kafka_cfg.security_protocol,
+                sasl_mechanism=kafka_cfg.sasl_mechanism,
+                sasl_username=kafka_cfg.sasl_username,
+                sasl_password=kafka_cfg.sasl_password,
             )
         )
 

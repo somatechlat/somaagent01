@@ -1,0 +1,200 @@
+version: "3.8"
+# Canonical Docker Compose file for Agent Zero
+# This file defines all services for the development environment.
+
+x-agent-env: &agent-env
+  # Prioritize mounted repo code over baked image to enable live development
+  # Include the project root and the src package for proper imports inside containers.
+  PYTHONPATH: "/git/agent-zero:/git/agent-zero/src:/app"
+  LOG_LEVEL: INFO
+  # prior envs removed in favor of SA01_* canonical variables
+  SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
+  USE_LLM: "true"
+  # Canonical SA01_* envs (added for consistency while keeping prior vars above)
+  SA01_DEPLOYMENT_MODE: DEV
+  SA01_DB_DSN: postgresql://soma:soma@postgres:5432/somaagent01
+  SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SA01_REDIS_URL: redis://redis:6379/0
+  SA01_POLICY_URL: http://opa:8181
+  SA01_POLICY_DECISION_PATH: /v1/data/soma/policy/allow
+  SA01_AUTH_REQUIRED: "false"
+  SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
+  SA01_SOMA_BASE_URL: http://host.docker.internal:9696
+  # Provide a default Fernet key for dev; replace for staging/prod
+  SA01_CRYPTO_FERNET_KEY: "${SA01_CRYPTO_FERNET_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
+  # Streaming feature toggle (centralized)
+  SA01_SSE_ENABLED: "true"
+
+x-agent-service: &agent-service
+  image: somaagent01-dev:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      # Skip heavy ML deps (torch, CUDA, unstructured) for local dev builds
+      INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-false}
+  working_dir: /git/agent-zero
+  environment:
+    <<: *agent-env
+  # Load the canonical env file (production‑style settings) and the memory‑override file.
+  env_file:
+    - ${SOMA_ENV_FILE:-.env}
+    - .env.memory
+  # Production‑style memory limits, but tuned for a 10 GB development host.
+  # The generic limits act as a fallback if a specific service does not provide its own.
+  mem_limit: "${AGENT_MEM_LIMIT:-1024m}"
+  mem_reservation: "${AGENT_MEM_RESERVATION:-512m}"
+  volumes:
+    - ./memory:/git/agent-zero/memory
+    - ./logs:/git/agent-zero/logs
+    # Map .env so runtime can persist tokens/ids without permission errors
+    - ./.env:/git/agent-zero/.env
+    - ./conf:/git/agent-zero/conf:ro
+    - ./services:/git/agent-zero/services:ro
+    - ./python:/git/agent-zero/python:ro
+    - ./knowledge:/git/agent-zero/knowledge:ro
+    - ./instruments:/git/agent-zero/instruments:ro
+    - ./agents:/git/agent-zero/agents:ro
+    - ./tmp:/git/agent-zero/tmp
+    - ./prompts:/git/agent-zero/prompts:ro
+    - ./webui:/git/agent-zero/webui:ro
+    - ./schemas:/git/agent-zero/schemas:ro
+    - ./observability:/git/agent-zero/observability:ro
+    # Note: prior /a0 mounts removed for modern deployments. If you need
+    # historic A0 data, restore from agent-zero/prior_a0 or the prior backup.
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    kafka:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    opa:
+      condition: service_started
+  restart: unless-stopped
+
+services:
+  kafka-init:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: somaAgent01_kafka_init
+    # Include in core profile so dependent services can reference it without profile constraints.
+    profiles: ["core", "dev"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["bash", "-lc"]
+    command: bash /init/init-topics.sh
+    environment:
+      - SA01_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    volumes:
+      - ./infra/kafka/init-topics.sh:/init/init-topics.sh:ro
+    mem_limit: 300m
+    mem_reservation: 100m
+    restart: "no"
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: somaAgent01_kafka
+    # Include kafka in dev profile so dependent dev services (e.g., kafka-init, fasta2a) can start.
+    profiles: ["core", "dev"]
+    user: "0:0"
+    environment:
+      # KRaft mode: controller+broker in a single node for local dev
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "0"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # Dual listeners: internal (PLAINTEXT) for containers and EXTERNAL for host clients
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT:-21000}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_NUM_PARTITIONS: "3"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Single-broker dev settings so consumer groups and transactions work
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      # Unique cluster id for local KRaft cluster (can be any string)
+      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      # Tune JVM for local dev
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      KAFKA_LOG_RETENTION_BYTES: "1073741824"
+    ports:
+      # expose EXTERNAL listener to the host; 21000 by default
+      - "${KAFKA_PORT:-21000}:9094"
+    restart: unless-stopped
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ./kafka-logs:/var/log/kafka
+    healthcheck:
+      # Lightweight healthcheck: wait until the broker port is listening
+      test: ["CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    mem_limit: 2g
+    mem_reservation: 512m
+    cpus: "1.5"
+  redis:
+    image: redis:7-alpine
+    container_name: somaAgent01_redis
+    # Include redis in both core and dev profiles to satisfy dependencies of dev-only services like fasta2a-flower.
+    profiles: ["core", "dev"]
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "${REDIS_PORT:-20001}:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+      - ./redis-conf:/usr/local/etc/redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: "0.5"
+  # ---------------------------------------------------------------
+  # Flower – Celery monitoring UI (VIBE rule: observability, no hidden
+  # services). Exposes a web UI on port 5555 and connects to the same
+  # Redis broker used by the workers.
+  # ---------------------------------------------------------------
+  # Removed duplicate flower service; the canonical definition is kept later in the file.
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: somaAgent01_postgres
+    profiles: ["core"]
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+    environment:
+      POSTGRES_USER: soma
+      POSTGRES_PASSWORD: soma
+      POSTGRES_DB: somaagent01
+      OPENFGA_POSTGRES_USER: openfga
+      OPENFGA_POSTGRES_PASSWORD: openfga
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-20002}:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-backups:/backups
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soma -d somaagent01"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 1.5g
+    mem_reservation: 512m
+    cpus: "1"
+```

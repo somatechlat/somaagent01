@@ -8,7 +8,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, FastAPI, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -313,17 +313,6 @@ async def health_v1_endpoint():
     """
     # Reuse the existing health logic to avoid inconsistencies.
     return await health_endpoint()
-
-
-# -----------------------------------------------------------------
-# UI Settings Endpoints (new per VIBE compliance)
-# -----------------------------------------------------------------
-
-
-# NOTE: The legacy ``/v1/settings_save`` endpoint has been removed per VIBE
-# compliance. UI settings are now persisted via the ``/v1/settings/sections``
-# (PUT) endpoint defined elsewhere. Keeping this route would re‑introduce a
-# duplicate API and violate the “single source of truth” rule.
 
 
 @router.post("/v1/test_connection", response_model=HealthResponse)

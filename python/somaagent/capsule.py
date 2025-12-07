@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 
 import httpx
 
-from services.common import env
+from src.core.config import cfg
 
 
 # Base URL – can be overridden via env var for testing / staging.
@@ -24,7 +24,7 @@ def _get_capsule_registry_url() -> str:
     importable without requiring external configuration while preserving the
     original behaviour when the variable is explicitly set.
     """
-    url = env.get("CAPSULE_REGISTRY_URL")
+    url = cfg.env("CAPSULE_REGISTRY_URL")
     if not url:
         # Default to a non‑routable local address for testing purposes.
         url = "http://localhost"

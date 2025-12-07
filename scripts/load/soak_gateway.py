@@ -32,7 +32,7 @@ from typing import Any, Optional
 
 import httpx
 
-from services.common import env
+from src.core.config import cfg
 
 
 @dataclass
@@ -71,7 +71,7 @@ class Stats:
 
 
 def _env_float(name: str, default: float) -> float:
-    raw = env.get(name, str(default))
+    raw = cfg.env(name, str(default))
     try:
         return float(raw) if raw is not None else default
     except ValueError:
@@ -79,7 +79,7 @@ def _env_float(name: str, default: float) -> float:
 
 
 def _env_int(name: str, default: int) -> int:
-    raw = env.get(name, str(default))
+    raw = cfg.env(name, str(default))
     try:
         return int(raw) if raw is not None else default
     except ValueError:
@@ -123,15 +123,15 @@ async def _worker(
 
 
 async def main() -> None:
-    base_url = env.get("TARGET_URL", "http://127.0.0.1:8010") or "http://127.0.0.1:8010"
-    path = env.get("PATH", "/v1/session/message") or "/v1/session/message"
+    base_url = cfg.env("TARGET_URL", "http://127.0.0.1:8010") or "http://127.0.0.1:8010"
+    path = cfg.env("PATH", "/v1/session/message") or "/v1/session/message"
     rps = _env_float("RPS", 5.0)
     duration = _env_int("DURATION", 30)
     concurrency = _env_int("CONCURRENCY", 20)
-    jwt = env.get("JWT")
-    tenant = env.get("TENANT")
-    persona_id = env.get("PERSONA_ID")
-    message = env.get("MESSAGE", "ping") or "ping"
+    jwt = cfg.env("JWT")
+    tenant = cfg.env("TENANT")
+    persona_id = cfg.env("PERSONA_ID")
+    message = cfg.env("MESSAGE", "ping") or "ping"
 
     headers = {"content-type": "application/json"}
     if jwt:

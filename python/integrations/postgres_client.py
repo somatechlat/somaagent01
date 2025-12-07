@@ -6,7 +6,7 @@ import asyncio
 
 import asyncpg
 
-from services.common import env
+from src.core.config import cfg
 
 
 class PostgresPool:
@@ -28,8 +28,8 @@ class PostgresPool:
 
 
 # PRODUCTION ONLY - Always use real postgres
-dsn = env.get("SA01_DB_DSN")
+dsn = cfg.env("SA01_DB_DSN", cfg.settings().database.dsn)
 if not dsn:
-    raise RuntimeError("SA01_DB_DSN environment variable required")
+    raise RuntimeError("SA01_DB_DSN (or cfg.database.dsn) must be configured for Postgres access")
 
 postgres_pool = PostgresPool(dsn)

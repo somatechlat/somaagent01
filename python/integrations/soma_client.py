@@ -51,7 +51,7 @@ from opentelemetry.propagate import inject
 # that metric collectors are created only once, even if this module is
 # imported multiple times (e.g., in Celery workers).
 from observability.metrics import Counter, Histogram
-from services.common import env
+from src.core.config import cfg
 
 logger = logging.getLogger(__name__)
 
@@ -125,30 +125,30 @@ def _default_base_url() -> str:
     The environment variable ``SA01_SOMA_BASE_URL`` or ``SOMA_BASE_URL`` must be set to point to the
     SomaBrain service endpoint.
     """
-    url = env.get("SA01_SOMA_BASE_URL") or env.get("SOMA_BASE_URL")
+    url = cfg.get_somabrain_url()
     if not url:
         raise ValueError(
-            "SA01_SOMA_BASE_URL or SOMA_BASE_URL environment variable is required. "
-            "Set it to your SomaBrain service URL (e.g., http://somabrain:9696)"
+            "SomaBrain base URL is required. Configure cfg.external.somabrain_base_url "
+            "or SA01_SOMA_BASE_URL/SOMA_BASE_URL environment variable."
         )
     return url
 
 
 DEFAULT_BASE_URL = _default_base_url()
-DEFAULT_TIMEOUT = float(env.get("SOMA_TIMEOUT_SECONDS", "30") or "30")
+DEFAULT_TIMEOUT = float(cfg.env("SOMA_TIMEOUT_SECONDS", "30") or "30")
 # IMPORTANT: Distinguish logical universe vs. memory namespace
 # - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
 # - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
 #   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = env.get("SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = env.get("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
+DEFAULT_UNIVERSE = cfg.env("SOMA_NAMESPACE")
+DEFAULT_NAMESPACE = cfg.env("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
 
-TENANT_HEADER = env.get("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
-AUTH_HEADER = env.get("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
+TENANT_HEADER = cfg.env("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
+AUTH_HEADER = cfg.env("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
 
 
 def _truthy_env(var_name: str) -> bool:
-    value = env.get(var_name)
+    value = cfg.env(var_name)
     if value is None:
         return False
     return value.lower() in {"1", "true", "yes", "on"}
@@ -184,7 +184,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = env.get("SOMA_CONTAINER_HOST_ALIAS")
+        override_host = cfg.env("SOMA_CONTAINER_HOST_ALIAS")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -239,7 +239,7 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": env.get("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
@@ -248,16 +248,16 @@ class SomaClient:
         self.namespace = namespace
         # Universe/context identifier (e.g. "somabrain_ns:public")
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or env.get("SOMA_TENANT_ID")
-        self._api_key = api_key or env.get("SOMA_API_KEY")
-        verify_override = _boolean(env.get("SOMA_VERIFY_SSL"))
+        self._tenant_id = tenant_id or cfg.env("SOMA_TENANT_ID")
+        self._api_key = api_key or cfg.env("SOMA_API_KEY")
+        verify_override = _boolean(cfg.env("SOMA_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
         # TLS settings (optional mTLS)
-        ca_bundle = env.get("SOMA_TLS_CA")
-        client_cert = env.get("SOMA_TLS_CERT")
-        client_key = env.get("SOMA_TLS_KEY")
+        ca_bundle = cfg.env("SOMA_TLS_CA")
+        client_cert = cfg.env("SOMA_TLS_CERT")
+        client_key = cfg.env("SOMA_TLS_KEY")
         verify_value: bool | str = True
         if verify_ssl is not None:
             verify_value = verify_ssl
@@ -291,8 +291,8 @@ class SomaClient:
         self._CB_COOLDOWN_SEC: float = 15.0
 
         # Retry configuration
-        self._max_retries: int = int(env.get("SOMA_MAX_RETRIES", "2") or "2")
-        self._retry_base_ms: int = int(env.get("SOMA_RETRY_BASE_MS", "150") or "150")
+        self._max_retries: int = int(cfg.env("SOMA_MAX_RETRIES", "2") or "2")
+        self._retry_base_ms: int = int(cfg.env("SOMA_RETRY_BASE_MS", "150") or "150")
 
     @classmethod
     def get(cls) -> "SomaClient":
@@ -376,7 +376,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": env.get("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -528,7 +528,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or (env.get("SOMA_TENANT_ID", "") or "").strip()
+            or (cfg.env("SOMA_TENANT_ID", "") or "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -639,7 +639,7 @@ class SomaClient:
         """
 
         body: Dict[str, Any] = {
-            "tenant": tenant or (env.get("SOMA_TENANT_ID", "") or "").strip() or "default",
+            "tenant": tenant or (cfg.env("SOMA_TENANT_ID", "") or "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,
