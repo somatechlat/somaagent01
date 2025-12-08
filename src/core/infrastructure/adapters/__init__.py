@@ -1,0 +1,20 @@
+"""Infrastructure adapters implementing domain ports.
+
+These adapters wrap existing production implementations to provide
+domain port interface compliance. They add NO new functionality -
+only interface compliance.
+"""
+
+from .event_bus_adapter import KafkaEventBusAdapter
+from .memory_adapter import SomaBrainMemoryAdapter
+from .policy_adapter import OPAPolicyAdapter
+from .session_cache_adapter import RedisSessionCacheAdapter
+from .session_repository_adapter import PostgresSessionRepositoryAdapter
+
+__all__ = [
+    "PostgresSessionRepositoryAdapter",
+    "RedisSessionCacheAdapter",
+    "KafkaEventBusAdapter",
+    "OPAPolicyAdapter",
+    "SomaBrainMemoryAdapter",
+]
