@@ -199,6 +199,27 @@ services:
     mem_reservation: 512m
     cpus: "1"
 
+  orchestrator:
+    image: somaagent01-dev:latest
+    container_name: somaAgent01_orchestrator
+    <<: *agent-service
+    profiles: ["dev"]
+    working_dir: /git/agent-zero
+    environment:
+      <<: *agent-env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opa:
+        condition: service_started
+
   opa:
     image: openpolicyagent/opa:0.64.0
     container_name: somaAgent01_opa

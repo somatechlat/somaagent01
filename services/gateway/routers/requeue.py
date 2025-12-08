@@ -10,7 +10,10 @@ from src.core.config import cfg
 from services.common.requeue_store import RequeueStore
 
 router = APIRouter(prefix="/v1/requeue", tags=["requeue"])
-STORE = RequeueStore(dsn=cfg.settings().database.dsn)
+STORE = RequeueStore(
+    url=cfg.settings().redis.url,
+    prefix=cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue"),
+)
 
 
 class RequeueItem(BaseModel):
