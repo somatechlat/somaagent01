@@ -30,7 +30,13 @@ class PolicyClient:
         base_url: Optional[str] = None,
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
-        self.base_url = base_url or cfg.env("POLICY_BASE_URL", "http://opa:8181") or "http://opa:8181"
+        config = cfg.settings()
+        default_base_url = (
+            getattr(getattr(config, "external", None), "opa_url", None)
+            or cfg.env("POLICY_BASE_URL")
+            or "http://opa:8181"
+        )
+        self.base_url = base_url or default_base_url
         self.data_path = cfg.env("POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"
         self._client = httpx.AsyncClient(timeout=10.0)
         self.cache_ttl = float(cfg.env("POLICY_CACHE_TTL", "2") or "2")

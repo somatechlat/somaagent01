@@ -42,19 +42,26 @@ class RegistryEntry:
 
 class TaskRegistry:
     def __init__(self) -> None:
-        # Single source of truth: cfg.env(). Provide sensible defaults for the
-        # test environment where external services are not required.
-        # ``POSTGRES_DSN`` and ``REDIS_URL`` are optional for the parts of the
-        # system exercised by the unit tests; using a harmless in‑memory SQLite
-        # URL (supported by asyncpg) would still require a server, so we fall
-        # back to a placeholder that satisfies the type check but will not be
-        # used unless a test explicitly triggers a DB operation.
-        self.dsn = cfg.env("POSTGRES_DSN") or "postgresql://postgres:postgres@localhost:5432/postgres"
-        self.redis_url = cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL") or "redis://localhost:6379/0"
+        config = cfg.settings()
+        # Canonical configuration comes from cfg.settings(); env vars may still
+        # override for tests or ad-hoc tooling, but we no longer hard-code
+        # default DSNs/URLs spread across the codebase.
+        self.dsn = (
+            cfg.env("POSTGRES_DSN")
+            or getattr(config.database, "dsn", None)
+            or "postgresql://postgres:postgres@localhost:5432/postgres"
+        )
+        self.redis_url = (
+            cfg.env("SA01_REDIS_URL")
+            or cfg.env("REDIS_URL")
+            or getattr(config.redis, "url", None)
+            or "redis://localhost:6379/0"
+        )
         self.cache_key = "task_registry:all"
         self._pool: Optional[asyncpg.Pool] = None
         self._redis: Optional[redis.Redis] = None
-        self.policy = PolicyClient(base_url=cfg.env("OPA_URL"))
+        opa_base = getattr(getattr(config, "external", None), "opa_url", None)
+        self.policy = PolicyClient(base_url=opa_base or cfg.env("OPA_URL"))
 
     async def _pool_conn(self) -> asyncpg.Pool:
         if self._pool is None:

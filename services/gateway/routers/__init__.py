@@ -86,6 +86,7 @@ def build_router() -> APIRouter:
         weights.router,
         tool_request.router,
         ui_settings.router,
+        ui_settings.legacy_router,
         llm.router,
         requeue.router,
         dlq.router,

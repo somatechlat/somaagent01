@@ -168,6 +168,42 @@ def load_config() -> Config:
         "feature_flags": {},
         "extra": {},
     }
+    # Override defaults with canonical SA01_* environment variables so the
+    # configuration reflects the actual deployment settings.
+    default_cfg_dict["database"]["dsn"] = os.getenv(
+        "SA01_DB_DSN",
+        default_cfg_dict["database"]["dsn"],
+    )
+    default_cfg_dict["kafka"]["bootstrap_servers"] = os.getenv(
+        "SA01_KAFKA_BOOTSTRAP_SERVERS",
+        default_cfg_dict["kafka"]["bootstrap_servers"],
+    )
+    default_cfg_dict["redis"]["url"] = os.getenv(
+        "SA01_REDIS_URL",
+        default_cfg_dict["redis"]["url"],
+    )
+    default_cfg_dict["external"]["somabrain_base_url"] = os.getenv(
+        "SA01_SOMA_BASE_URL",
+        default_cfg_dict["external"]["somabrain_base_url"],
+    )
+    default_cfg_dict["external"]["opa_url"] = os.getenv(
+        "SA01_POLICY_URL",
+        default_cfg_dict["external"]["opa_url"],
+    )
+    # Authentication toggles and tokens are frequently set via environment
+    # variables; honour them here before validation.
+    auth_required_env = os.getenv("SA01_AUTH_REQUIRED")
+    if auth_required_env is not None:
+        default_cfg_dict["auth"]["auth_required"] = auth_required_env.lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+    internal_token_env = os.getenv("SA01_AUTH_INTERNAL_TOKEN")
+    if internal_token_env:
+        default_cfg_dict["auth"]["internal_token"] = internal_token_env
+
     # Use the Pydantic v2 API – ``model_validate`` replaces the deprecated ``parse_obj``.
     cfg = Config.model_validate(default_cfg_dict)
 
