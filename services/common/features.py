@@ -197,7 +197,7 @@ def build_default_registry() -> FeatureRegistry:
             enabled_env_var="SA01_ENABLE_REASONING_STREAM",
             stability="beta",
         ),
-        # Removed legacy "conversation_policy_bypass" feature descriptor (dev‑only shim).
+
         # ------------------------------------------------------------------
         # Newly centralized service flags (deployment/profile aware)
         # ------------------------------------------------------------------

@@ -22,9 +22,12 @@ from typing import Any, Dict, List
 
 import httpx
 
-from services.common.registry import registry
+from src.core.config import cfg
 
-GATEWAY_BASE = registry().soma_base_url().rstrip("/")
+
+def _get_gateway_base() -> str:
+    """Get gateway base URL. Fails fast if not configured."""
+    return cfg.get_somabrain_url()
 
 
 def _hash(text: str) -> str:
@@ -33,7 +36,7 @@ def _hash(text: str) -> str:
 
 
 async def _stream_prompt(prompt: str, internal_token: str, model: str) -> List[Dict[str, Any]]:
-    url = f"{GATEWAY_BASE}/v1/llm/invoke/stream"
+    url = f"{_get_gateway_base()}/v1/llm/invoke/stream"
     session_id = str(uuid.uuid4())
     body = {
         "role": "dialogue",

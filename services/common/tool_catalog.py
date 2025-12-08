@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 import asyncpg
 
-# Legacy ADMIN_SETTINGS shim removed – use the canonical cfg façade.
+
 from src.core.config import cfg
 
 
@@ -36,7 +36,7 @@ class ToolCatalogStore:
 
     @classmethod
     def from_settings(cls, settings: object | None = None) -> "ToolCatalogStore":
-        """Backward-compatible constructor that ignores legacy settings objects."""
+        """Constructor that accepts optional settings object."""
 
         database = getattr(settings, "database", None) if settings is not None else None
         dsn = getattr(database, "dsn", None) or cfg.settings().database.dsn

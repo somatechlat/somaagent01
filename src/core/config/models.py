@@ -1,11 +1,7 @@
 """Configuration Models for SomaAgent01.
 
-VIBE CODING RULES COMPLIANT:
-- NO SHIMS: Real Pydantic models with validation
-- NO FALLBACKS: Strict validation only
-- NO FAKE ANYTHING: Production-ready field validation
-- NO LEGACY: Modern Pydantic patterns only
-- NO BACKUPS: No duplicate model definitions
+Real Pydantic models with validation. Single source of truth.
+Production-ready field validation with modern Pydantic patterns.
 """
 
 from __future__ import annotations
@@ -74,7 +70,6 @@ class ServiceConfig(BaseModel):
     environment: str = Field(description="Environment (DEV, STAGING, PROD)")
     deployment_mode: str = Field(description="Deployment mode")
     host: str = Field(default="0.0.0.0", description="Service host")
-    # VIBE compliance: expose metrics host explicitly for legacy callers.
     metrics_host: str = Field(default="0.0.0.0", description="Metrics host address")
     port: int = Field(ge=1, le=65535, description="Service port")
     metrics_port: int = Field(ge=1, le=65535, description="Metrics port")
@@ -237,12 +232,8 @@ class VoiceConfig(BaseModel):
 class Config(BaseModel):
     """Main configuration model - single source of truth.
 
-    VIBE CODING RULES COMPLIANT:
-    - NO SHIMS: Real configuration with validation
-    - NO FALLBACKS: Single source of truth only
-    - NO FAKE ANYTHING: Production-ready settings
-    - NO LEGACY: Modern Pydantic patterns
-    - NO BACKUPS: No duplicate configuration
+    Real configuration with validation. Production-ready settings
+    using modern Pydantic patterns.
     """
 
     # Service configuration
@@ -287,22 +278,20 @@ class Config(BaseModel):
     def get_somabrain_url(self) -> str:
         """Return the SomaBrain base URL.
 
-        The configuration may be ``None`` in test environments where the
-        external service is not required.  In that case we fall back to the
-        legacy ``SA01_SOMA_BASE_URL`` environment variable to preserve
-        compatibility with existing code and the test suite.
+        Falls back to ``SA01_SOMA_BASE_URL`` environment variable when the
+        config field is not set.
         """
         if self.external.somabrain_base_url:
             return self.external.somabrain_base_url
-        # Legacy fallback – used only when the config does not provide a value.
         import os
 
         return os.getenv("SA01_SOMA_BASE_URL", "")
 
     def get_opa_url(self) -> str:
-        """Return the OPA service URL with a similar legacy fallback.
+        """Return the OPA service URL.
 
-        ``SA01_OPA_URL`` is consulted when the configuration field is ``None``.
+        Falls back to ``SA01_OPA_URL`` environment variable when the config
+        field is not set.
         """
         if self.external.opa_url:
             return self.external.opa_url
@@ -311,15 +300,15 @@ class Config(BaseModel):
         return os.getenv("SA01_OPA_URL", "")
 
     def get_postgres_dsn(self) -> str:
-        """Get PostgreSQL DSN with backward compatibility."""
+        """Get PostgreSQL DSN."""
         return self.database.dsn
 
     def get_kafka_bootstrap_servers(self) -> str:
-        """Get Kafka bootstrap servers with backward compatibility."""
+        """Get Kafka bootstrap servers."""
         return self.kafka.bootstrap_servers
 
     def get_redis_url(self) -> str:
-        """Get Redis URL with backward compatibility."""
+        """Get Redis URL."""
         return self.redis.url
 
     def is_auth_required(self) -> bool:
@@ -327,22 +316,16 @@ class Config(BaseModel):
         return self.auth.auth_required
 
     def get_deployment_mode(self) -> str:
-        """Get deployment mode with backward compatibility."""
+        """Get deployment mode."""
         return self.service.deployment_mode
 
     def get_environment(self) -> str:
-        """Get environment with backward compatibility."""
+        """Get environment."""
         return self.service.environment
     # -----------------------------------------------------------------
-    # Compatibility properties – expose legacy top‑level attributes.
-    # These properties allow existing code and tests that accessed configuration
-    # fields directly on the ``Config`` instance (e.g. ``cfg.settings().auth_required``)
-    # to continue working after the shim removal.  They delegate to the
-    # appropriate nested model and provide setters where the test suite mutates
-    # the values.
+    # Top-level attribute accessors for convenience.
     # -----------------------------------------------------------------
 
-    # Auth flag (legacy name)
     @property
     def auth_required(self) -> bool:  # pragma: no cover – exercised via tests
         return self.auth.auth_required
@@ -368,7 +351,6 @@ class Config(BaseModel):
     def metrics_port(self, value: int) -> None:  # pragma: no cover
         self.service.metrics_port = value
 
-    # Kafka bootstrap servers (legacy name)
     @property
     def kafka_bootstrap_servers(self) -> str:  # pragma: no cover
         return self.kafka.bootstrap_servers
@@ -377,7 +359,6 @@ class Config(BaseModel):
     def kafka_bootstrap_servers(self, value: str) -> None:  # pragma: no cover
         self.kafka.bootstrap_servers = value
 
-    # PostgreSQL DSN (legacy name)
     @property
     def postgres_dsn(self) -> str:  # pragma: no cover
         return self.database.dsn
@@ -386,7 +367,6 @@ class Config(BaseModel):
     def postgres_dsn(self, value: str) -> None:  # pragma: no cover
         self.database.dsn = value
 
-    # Redis URL (legacy name)
     @property
     def redis_url(self) -> str:  # pragma: no cover
         return self.redis.url
@@ -395,7 +375,6 @@ class Config(BaseModel):
     def redis_url(self, value: str) -> None:  # pragma: no cover
         self.redis.url = value
 
-    # OPA URL (legacy name)
     @property
     def opa_url(self) -> str:  # pragma: no cover
         return self.external.opa_url or ""
@@ -404,7 +383,6 @@ class Config(BaseModel):
     def opa_url(self, value: str) -> None:  # pragma: no cover
         self.external.opa_url = value
 
-    # SomaBrain base URL (legacy name)
     @property
     def soma_base_url(self) -> str:  # pragma: no cover
         return self.external.somabrain_base_url or ""
@@ -413,7 +391,6 @@ class Config(BaseModel):
     def soma_base_url(self, value: str) -> None:  # pragma: no cover
         self.external.somabrain_base_url = value
 
-    # Deployment mode (legacy name)
     @property
     def deployment_mode(self) -> str:  # pragma: no cover
         return self.service.deployment_mode
@@ -422,7 +399,6 @@ class Config(BaseModel):
     def deployment_mode(self, value: str) -> None:  # pragma: no cover
         self.service.deployment_mode = value
 
-    # Environment (legacy name)
     @property
     def environment(self) -> str:  # pragma: no cover
         return self.service.environment

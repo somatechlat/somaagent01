@@ -12,9 +12,7 @@ import asyncpg
 
 from src.core.config import cfg  # Import central configuration façade
 
-# NOTE: Previously this module performed a lazy import of ``ADMIN_SETTINGS`` to
-# avoid circular import issues. The legacy shim has been deprecated; we now use
-# the canonical ``cfg`` façade for configuration.
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +48,7 @@ class ModelProfileStore:
 
     @classmethod
     def from_settings(cls, settings: object | None = None) -> "ModelProfileStore":
-        # Accept legacy settings objects but always prefer the canonical DSN.
+        # Use the canonical DSN from cfg.
         database = getattr(settings, "database", None) if settings is not None else None
         override = getattr(database, "dsn", None) or cfg.env("POSTGRES_DSN", cfg.settings().database.dsn)
         return cls(dsn=override)
@@ -106,7 +104,7 @@ class ModelProfileStore:
                 json.dumps(profile.kwargs or {}, ensure_ascii=False),
             )
 
-    # Backward-compat helpers to match Gateway endpoint names
+
     async def create_profile(self, profile: ModelProfile) -> None:
         """Create or replace a model profile.
 
@@ -194,7 +192,7 @@ class ModelProfileStore:
             for row in rows
         ]
 
-    # Backward-compatible alias used by gateway endpoints
+
     async def list_profiles(self, deployment_mode: Optional[str] = None) -> list[ModelProfile]:
         """Alias for list(); maintained for gateway handler compatibility."""
         return await self.list(deployment_mode)

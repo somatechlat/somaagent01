@@ -1,10 +1,7 @@
 """Replica/audit store for memory writes consumed from WAL.
 
-This module has been moved from ``services.common.memory_replica_store`` to
-``src.core.domain.memory.replica_store`` as part of the VIBE‑compliant
-refactor.  The implementation is unchanged – it provides the same public API
-(`MemoryReplicaStore`, `ensure_schema`, etc.) – but imports the new central
-configuration façade instead of the historic shim.
+Provides the public API (`MemoryReplicaStore`, `ensure_schema`, etc.)
+using the central configuration façade.
 """
 
 from __future__ import annotations
@@ -18,8 +15,7 @@ from typing import Any, List, Optional
 
 import asyncpg
 
-# Use the new central config façade. The shim ``services.common.runtime_config``
-# still exists for backward compatibility, but we prefer the canonical source.
+# Use the central config façade.
 from src.core.config import cfg as _new_cfg
 
 LOGGER = logging.getLogger(__name__)

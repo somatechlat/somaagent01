@@ -14,7 +14,7 @@ from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
-# Legacy ADMIN_SETTINGS import removed – use the central cfg singleton.
+
 from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus, KafkaSettings
@@ -39,7 +39,6 @@ from services.tool_executor.resource_manager import default_limits, ResourceMana
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
-from src.core.config import cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -105,7 +104,6 @@ def ensure_metrics_server(settings: object) -> None:
 
 
 def _kafka_settings() -> KafkaSettings:
-    # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
         bootstrap_servers=cfg.env(
             "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers

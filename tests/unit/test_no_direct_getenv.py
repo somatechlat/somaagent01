@@ -25,7 +25,7 @@ ALLOWED = {
     "services/common/router_client.py",
     "services/common/secret_manager.py",
     "services/common/session_repository.py",
-    "services/common/settings_sa01.py",
+    # settings_sa01.py removed - migrated to src/core/config/cfg
     "services/common/slm_client.py",
     "services/common/telemetry_store.py",
     "services/common/tenant_config.py",

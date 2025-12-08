@@ -1,11 +1,7 @@
 """Configuration Registry for SomaAgent01.
 
-VIBE CODING RULES COMPLIANT:
-- NO SHIMS: Real configuration registry only
-- NO FALLBACKS: Single source of truth only
-- NO FAKE ANYTHING: Production-ready registry
-- NO LEGACY: Modern registry patterns
-- NO BACKUPS: No duplicate registry logic
+Real configuration registry. Single source of truth.
+Production-ready implementation with modern patterns.
 """
 
 from __future__ import annotations
@@ -33,12 +29,8 @@ class ConfigSubscription:
 class ConfigRegistry:
     """Single configuration registry for SomaAgent01.
 
-    VIBE CODING RULES COMPLIANT:
-    - NO SHIMS: Real configuration registry
-    - NO FALLBACKS: Single source of truth
-    - NO FAKE ANYTHING: Production-ready implementation
-    - NO LEGACY: Modern registry patterns
-    - NO BACKUPS: No duplicate registry logic
+    Real configuration registry. Single source of truth.
+    Production-ready implementation with modern patterns.
     """
 
     def __init__(self, config_loader: Optional[ConfigLoader] = None):

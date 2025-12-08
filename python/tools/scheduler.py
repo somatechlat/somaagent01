@@ -169,7 +169,7 @@ class SchedulerTool(Tool):
         )
 
         # Validate cron expression, agent might hallucinate
-        cron_regex = "^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})$"
+        cron_regex = r"^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})$"
         if not re.match(cron_regex, task_schedule.to_crontab()):
             return Response(
                 message="Invalid cron expression: " + task_schedule.to_crontab(),

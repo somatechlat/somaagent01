@@ -1,10 +1,9 @@
-"""Router that re‑exports the legacy message‑related endpoints.
+"""Router that re‑exports message‑related endpoints.
 
-The original implementation lives in ``services.gateway.main`` where the
-endpoints are attached directly to the monolithic FastAPI app. To satisfy the
-VIBE requirement of modular routers we expose thin wrappers that simply call the
-existing functions. This avoids code duplication while still providing a clean
-module that can be mounted by ``services/gateway/service.py``.
+The implementation lives in ``services.gateway.main`` where the endpoints are
+attached directly to the FastAPI app. This module exposes wrappers that call
+the existing functions, providing a clean module that can be mounted by
+``services/gateway/service.py``.
 """
 
 from fastapi import APIRouter

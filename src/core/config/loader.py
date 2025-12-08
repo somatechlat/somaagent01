@@ -259,7 +259,7 @@ def get_config() -> Config:
 
 
 # ---------------------------------------------------------------------------
-# Compatibility shim classes – lightweight wrappers required by the public API
+# Helper classes for the public API
 # ---------------------------------------------------------------------------
 
 from dataclasses import dataclass
@@ -268,15 +268,14 @@ from typing import Optional, Union
 
 @dataclass
 class EnvironmentMapping:
-    """Utility for retrieving environment variables with VIBE precedence.
+    """Utility for retrieving environment variables with precedence.
 
-    The loader itself already respects the ``SA01_`` prefix via the Pydantic
-    model. This helper is retained for backward compatibility with code that
-    expects ``env_mapping.get_env_value``.
+    The loader respects the ``SA01_`` prefix via the Pydantic model.
+    This helper provides ``env_mapping.get_env_value`` for callers.
     """
 
     sa01_prefix: str = "SA01_"
-    legacy_prefix: str = "SOMA_"
+    soma_prefix: str = "SOMA_"
 
     def get_env_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
         # Highest‑priority ``SA01_``
@@ -284,9 +283,9 @@ class EnvironmentMapping:
         value = os.getenv(prefixed)
         if value is not None:
             return value
-        # Legacy ``SOMA_`` fallback
-        legacy = f"{self.legacy_prefix}{key}"
-        value = os.getenv(legacy)
+        # ``SOMA_`` fallback
+        soma_key = f"{self.soma_prefix}{key}"
+        value = os.getenv(soma_key)
         if value is not None:
             return value
         return default

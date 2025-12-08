@@ -17,8 +17,8 @@ Status Legend: [ ] open | [~] in progress | [x] done
 - [x] add planner priors fetch from SomaBrain into task/tool planning prompts.
 
 ## Phase P1 – Settings single source of truth
-- [ ] deprecate `settings_sa01.py`, `settings_base.py`, `admin_settings.py`, `services/common/env.py`, `services/common/registry.py`; reroute callers to `src/core/config/cfg`.
-- [ ] split `python/helpers/settings.py`: keep UI converters; move config access to cfg/AgentSettingsStore/UiSettingsStore; remove file-based backups.
+- [x] deprecate `settings_sa01.py`, `settings_base.py`, `admin_settings.py`, `services/common/env.py`, `services/common/registry.py`; reroute callers to `src/core/config/cfg`.
+- [x] split `python/helpers/settings.py`: keep UI converters; move config access to cfg/AgentSettingsStore/UiSettingsStore; remove file-based backups.
 
 ## Phase P1 – Web UI alignment
 - [x] update `webui/config.js` & `webui/js/settings.js` to use `/v1/settings/sections` (PUT) and implement backend `/v1/test_connection`.

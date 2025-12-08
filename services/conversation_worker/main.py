@@ -1,12 +1,8 @@
-"""Compatibility shim and full implementation for the ConversationWorker.
+"""ConversationWorker implementation.
 
-The original project exposed a ``ConversationWorker`` class directly from this
-module.  After the refactor the functional code lives in
-``services.conversation_worker.service`` as ``ConversationWorkerService``.  To
-maintain backward compatibility (the test suite still imports this path) we
-re‑export the service class under the historic name **and** keep the original
-implementation here.  The shim is lightweight – it simply aliases the new
-class – and does not duplicate any business logic.
+The functional code lives in ``services.conversation_worker.service`` as
+``ConversationWorkerService``. This module re‑exports the service class
+under the ``ConversationWorker`` name and contains the full implementation.
 """
 
 from __future__ import annotations
@@ -38,7 +34,7 @@ from observability.metrics import (
 from python.helpers.tokens import count_tokens
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-# Legacy ADMIN_SETTINGS shim removed – use the central cfg façade.
+# Use the central cfg façade.
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
@@ -69,10 +65,10 @@ from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.tool_executor.tool_registry import ToolRegistry
 
-# Legacy settings import removed. Use centralized configuration.
+# Use centralized configuration.
 from src.core.config import cfg
 
-# Re‑export the new service implementation under the legacy name.
+# Re‑export the service implementation.
 from .service import ConversationWorkerService as ConversationWorker
 
 setup_logging()

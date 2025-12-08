@@ -23,6 +23,6 @@ singleton ``cfg`` exactly as before.  This satisfies the VIBE rule *NO UNNECESSA
 FILES* and guarantees a **single source of truth**.
 """
 
-from orchestrator.config import CentralizedConfig, cfg  # re‑export for legacy imports
+from orchestrator.config import CentralizedConfig, cfg  # re‑export
 
 __all__ = ["CentralizedConfig", "cfg"]

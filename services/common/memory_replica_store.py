@@ -1,12 +1,7 @@
-"""Compatibility shim for ``MemoryReplicaStore``.
+"""Re-exports for ``MemoryReplicaStore``.
 
-The original implementation now lives in
-``src.core.domain.memory.replica_store``.  This module exists solely to
-preserve the historic import path ``services.common.memory_replica_store``
-used throughout the codebase and external integrations.
-
-We simply re‑export the public symbols from the canonical module so that
-existing imports continue to work without pulling in duplicate code.
+The implementation lives in ``src.core.domain.memory.replica_store``.
+This module re‑exports the public symbols from the canonical module.
 """
 
 from __future__ import annotations
