@@ -87,5 +87,5 @@ class BaseSomaService(ABC):
         return None
 
 
-# Backward‑compatible alias used by legacy imports.
+# Alias for existing imports.
 BaseService = BaseSomaService

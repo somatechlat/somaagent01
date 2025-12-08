@@ -149,11 +149,7 @@ async def readiness_summary() -> Dict[str, Any]:
 __all__ = ["readiness_summary", "COMPONENTS"]
 
 # ---------------------------------------------------------------------------
-# Compatibility shim for legacy imports.
-# ``services.gateway.admin_memory`` historically imported ``get_replica_store``
-# from this module.  The function now lives in the canonical replica store
-# implementation under ``src.core.domain.memory.replica_store``.  Providing a thin
-# wrapper maintains backward compatibility without duplicating logic.
+# Re-export for imports that expect ``get_replica_store`` from this module.
 # ---------------------------------------------------------------------------
 from src.core.domain.memory.replica_store import MemoryReplicaStore
 
@@ -161,12 +157,9 @@ from src.core.domain.memory.replica_store import MemoryReplicaStore
 def get_replica_store() -> MemoryReplicaStore:
     """Return a ``MemoryReplicaStore`` instance using the current config.
 
-    The replica store reads its DSN from the central configuration façade, so
-    callers do not need to pass any arguments.  This wrapper satisfies legacy
-    imports and keeps a single source of truth for the store implementation.
+    The replica store reads its DSN from the central configuration façade.
     """
     return MemoryReplicaStore()
 
 
-# Export the shim alongside the original symbols.
 __all__.append("get_replica_store")

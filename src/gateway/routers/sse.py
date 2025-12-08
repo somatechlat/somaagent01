@@ -1,10 +1,9 @@
 """
-Server‑Sent Events (SSE) router – extracted from the original gateway monolith.
+Server‑Sent Events (SSE) router.
 
 Provides the `/v1/session/{session_id}/events` endpoint used by the UI to
-receive real‑time conversation updates. The implementation mirrors the legacy
-behaviour (Kafka consumer per connection, JSON‑encoded events) but lives in a
-dedicated, testable module.
+receive real‑time conversation updates. Uses Kafka consumer per connection
+with JSON‑encoded events.
 """
 
 from __future__ import annotations

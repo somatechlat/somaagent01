@@ -8,14 +8,12 @@ from typing import Any
 
 from jsonschema import ValidationError
 
-# Legacy import removed. Use centralized configuration via cfg.
 from src.core.config import cfg
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
 from services.common.tracing import setup_tracing
-from src.core.config import cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)

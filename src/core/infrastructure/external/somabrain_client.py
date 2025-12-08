@@ -1,9 +1,7 @@
-"""Compatibility shim for the SomaBrain client.
+"""SomaBrain client re-exports.
 
-The original implementation lives in ``python.integrations.somabrain_client``.
-To satisfy the VIBE rule of a single source of truth while keeping existing
-imports functional, this module re‑exports the public symbols from the
-canonical location.
+The implementation lives in ``python.integrations.somabrain_client``.
+This module re‑exports the public symbols from the canonical location.
 """
 
 from __future__ import annotations

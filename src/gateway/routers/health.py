@@ -1,11 +1,10 @@
 """Health router for the FastAPI gateway.
 
 Provides a minimal ``/v1/health`` endpoint that returns a JSON payload with
-basic status information.  This is deliberately lightweight – the full health
+basic status information. This is deliberately lightweight – the full health
 check (database, redis, kafka, etc.) remains in ``services/gateway/main.py``
-under the ``health_check`` function.  The router is useful for quick liveness
-probes and satisfies the VIBE rule *no shims* because it calls the real config
-facade.
+under the ``health_check`` function. The router is useful for quick liveness
+probes.
 """
 
 from __future__ import annotations

@@ -60,7 +60,7 @@ def env(name: str, default: Any = None) -> Any:
     This implementation delegates to :func:`src.core.config.registry.get_config`
     which returns a validated ``Config`` instance built by ``loader.py``.  The
     function also supports *dot‑notation* (e.g. ``DATABASE_DSN`` maps to
-    ``cfg.database.dsn``) for backward compatibility with historic code.
+    ``cfg.database.dsn``) for convenience.
     """
     # The loader caches the configuration, so a cheap call is fine.
     from .registry import get_config  # Imported lazily to avoid circular imports.
@@ -85,13 +85,10 @@ def env(name: str, default: Any = None) -> Any:
         return getattr(cfg_obj, name.lower())
 
     # ---------------------------------------------------------------------
-    # Legacy environment variable mappings – the older codebase expects flat
-    # names like ``POSTGRES_DSN`` or ``OPA_URL`` to resolve to nested config
-    # fields.  We provide explicit fallbacks so that ``services.common``
-    # components (e.g., ``TaskRegistry``) continue to work without requiring
-    # env var renaming.
+    # Environment variable mappings – flat names like ``POSTGRES_DSN`` or
+    # ``OPA_URL`` resolve to nested config fields.
     # ---------------------------------------------------------------------
-    legacy_map = {
+    env_map = {
         "POSTGRES_DSN": lambda: getattr(cfg_obj.database, "dsn", None),
         "SA01_REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
         "REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
@@ -99,12 +96,12 @@ def env(name: str, default: Any = None) -> Any:
         "SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
         "SA01_SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
     }
-    if name in legacy_map:
-        val = legacy_map[name]()
+    if name in env_map:
+        val = env_map[name]()
         if val is not None:
             return val
 
-    # Fall back to real environment variables to preserve legacy overrides.
+    # Fall back to real environment variables.
     env_value = os.getenv(name)
     if env_value is not None:
         return env_value
@@ -114,14 +111,14 @@ def env(name: str, default: Any = None) -> Any:
 
 
 def settings():
-    """Backward-compatible accessor returning the validated Config object."""
+    """Return the validated Config object."""
     from .registry import get_config
 
     return get_config()
 
 
 # -----------------------------------------------------------------------------
-# Convenience getters mirroring legacy runtime_config API (to ease migration).
+# Convenience getters for common configuration values.
 # -----------------------------------------------------------------------------
 def flag(key: str, tenant: Any = None) -> bool:
     # First check the feature_flags dictionary in the config
@@ -131,7 +128,7 @@ def flag(key: str, tenant: Any = None) -> bool:
     if key.lower() in config.feature_flags:
         return config.feature_flags[key.lower()]
     
-    # Fall back to environment variable for backward compatibility
+    # Fall back to environment variable
     env_key = f"SA01_ENABLE_{key.upper()}"
     val = env(env_key, default="false")
     return str(val).lower() in {"true", "1", "yes", "on"}
@@ -178,10 +175,9 @@ class _CfgFacade:
     def settings(self):
         return settings()
 
-    # Legacy compatibility attributes required by tests
     @property
     def _STATE(self):
-        """Legacy _STATE attribute required by tests."""
+        """State attribute for tests."""
         from .registry import get_config
         
         class StateWrapper:
@@ -195,69 +191,48 @@ class _CfgFacade:
 
     @property
     def postgres_dsn(self):
-        """Legacy postgres_dsn attribute required by tests."""
+        """Postgres DSN attribute."""
         return postgres_dsn()
 
     @property
     def redis_url(self):
-        """Legacy redis_url attribute required by tests."""
+        """Redis URL attribute."""
         return redis_url()
 
-    # -----------------------------------------------------------------
-    # Compatibility helpers – many legacy modules expect these methods on the
-    # ``cfg`` singleton.  They delegate to the newer ``src.core.config``
-    # functions or to the underlying ``Config`` model fields.
-    # -----------------------------------------------------------------
     def flag(self, key: str, tenant: Any = None) -> bool:  # pragma: no cover
-        """Legacy flag helper – mirrors the historic ``runtime_config.flag``.
+        """Check feature flag.
 
-        It checks the feature_flags dictionary in the config first, then falls back
-        to the ``SA01_ENABLE_<KEY>`` environment variable via the ``env`` helper.
+        Checks the feature_flags dictionary in the config first, then falls back
+        to the ``SA01_ENABLE_<KEY>`` environment variable.
         """
-        # First check the feature_flags dictionary in the config
         config = self.settings()
         if key.lower() in config.feature_flags:
             return config.feature_flags[key.lower()]
         
-        # Fall back to environment variable for backward compatibility
         val = env(f"SA01_ENABLE_{key.upper()}", default="false")
         return str(val).lower() in {"true", "1", "yes", "on"}
 
     def get_somabrain_url(self) -> str:  # pragma: no cover
-        """Return the SomaBrain base URL – compatibility shim.
-        """
+        """Return the SomaBrain base URL."""
         return soma_base_url()
 
     def get_opa_url(self) -> str:  # pragma: no cover
-        """Return the OPA service URL – compatibility shim.
-        """
+        """Return the OPA service URL."""
         return opa_url()
 
-    # -----------------------------------------------------------------
-    # Dynamic attribute delegation – many legacy callers access configuration
-    # values directly on the ``cfg`` singleton (e.g. ``cfg.metrics_port`` or
-    # ``cfg.auth_required``).  The new configuration model nests these under
-    # ``service`` and ``auth``.  ``__getattr__`` forwards unknown attribute
-    # accesses to the underlying ``Config`` instance returned by ``settings``.
-    # This maintains backward compatibility without introducing hidden magic
-    # because the forwarding is explicit and typed.
-    # -----------------------------------------------------------------
-    def __getattr__(self, name: str):  # pragma: no cover – exercised via legacy paths
+    def __getattr__(self, name: str):  # pragma: no cover
+        """Forward attribute access to the underlying Config instance."""
         return getattr(self.settings(), name)
 
 
 cfg = _CfgFacade()
 """Centralized Configuration System for SomaAgent01.
 
-VIBE CODING RULES COMPLIANT:
-- NO SHIMS: Real configuration only
-- NO FALLBACKS: Single source of truth
-- NO FAKE ANYTHING: Production-ready implementation
-- NO LEGACY: Modern patterns only
-- NO BACKUPS: No duplicate configuration systems
+Real configuration. Single source of truth.
+Production-ready implementation with modern patterns.
 """
 
-# Legacy compatibility attributes required by tests
+# Test support attributes
 JWKS_CACHE = {}
 APP_SETTINGS = {}
 
@@ -278,9 +253,7 @@ from .models import (
     ServiceConfig,
 )
 
-# Expose the ``load_config`` function at the package level.  This replaces the
-# previous shim‑style indirection and provides a single, real implementation for
-# callers such as ``orchestrator.config`` or ``services.common.central_config``.
+# Expose the ``load_config`` function at the package level.
 load_config = _load_config
 from .registry import (
     config_context,

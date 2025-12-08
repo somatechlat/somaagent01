@@ -69,12 +69,8 @@ class BackupService:
 {agent_root}/memory/**
 !{agent_root}/memory/**/embeddings/**
 
-# Configuration and Settings (CRITICAL)
-{agent_root}/.env
-{agent_root}/tmp/settings.json
-{agent_root}/tmp/chats/**
-{agent_root}/tmp/scheduler/**
-{agent_root}/tmp/uploads/**"""
+# Configuration (CRITICAL)
+{agent_root}/.env"""
 
     def _get_agent_zero_version(self) -> str:
         """Get current Agent Zero version"""

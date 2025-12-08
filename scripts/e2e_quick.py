@@ -17,15 +17,24 @@ from typing import Optional
 
 import httpx
 
-from services.common.registry import registry
+from src.core.config import cfg
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else registry().soma_base_url().rstrip("/")
+
+def _get_base_url() -> str:
+    """Get base URL from args or config. Fails fast if not configured."""
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    return cfg.get_somabrain_url()
+
+
+BASE = None  # Initialized in main()
 
 
 async def main() -> int:
+    base = _get_base_url()
     async with httpx.AsyncClient(timeout=10.0) as client:
         r = await client.post(
-            BASE + "/v1/session/message",
+            base + "/v1/session/message",
             headers={"Content-Type": "application/json"},
             json={"message": "hello from e2e_quick.py"},
         )
@@ -44,7 +53,7 @@ async def main() -> int:
 
     async with httpx.AsyncClient(timeout=None) as client:
         print("Opening SSE for session", sid)
-        async with client.stream("GET", f"{BASE}/v1/sessions/{sid}/events?stream=true") as resp:
+        async with client.stream("GET", f"{base}/v1/sessions/{sid}/events?stream=true") as resp:
             if resp.status_code != 200:
                 print("SSE open failed:", resp.status_code)
                 return 4

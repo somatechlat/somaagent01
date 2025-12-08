@@ -16,8 +16,7 @@ from typing import Any, Optional
 
 import asyncpg
 
-# Legacy admin settings removed – use the central cfg singleton.
-from src.core.config import cfg
+
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
