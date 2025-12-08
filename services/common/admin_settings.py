@@ -9,8 +9,9 @@ service configuration.  A deprecation warning is emitted on first use to guide
 developers toward importing ``cfg`` directly.
 """
 
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
+from typing import Any
 
 from src.core.config import cfg
 

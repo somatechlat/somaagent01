@@ -15,7 +15,7 @@ from python.helpers.print_style import PrintStyle
 
 class BackupService:
     """
-    Core backup and restore service for Agent Zero.
+    Core backup and restore service for SomaAgent01.
 
     Features:
     - JSON-based metadata with user-editable path specifications
@@ -27,7 +27,7 @@ class BackupService:
 
     def __init__(self):
         self.agent_zero_version = self._get_agent_zero_version()
-        self.agent_zero_root = files.get_abs_path("")  # Resolved Agent Zero root
+        self.agent_zero_root = files.get_abs_path("")  # Resolved SomaAgent01 root
 
         # Build base paths map for pattern resolution
         self.base_paths = {
@@ -52,16 +52,16 @@ class BackupService:
     def _get_default_patterns(self) -> str:
         """Get default backup patterns with resolved absolute paths.
 
-        Only includes Agent Zero project directory patterns.
+        Only includes SomaAgent01 project directory patterns.
         """
         # Ensure paths don't have double slashes
         agent_root = self.agent_zero_root.rstrip("/")
 
-        return f"""# Agent Zero Knowledge (excluding defaults)
+        return f"""# SomaAgent01 Knowledge (excluding defaults)
 {agent_root}/knowledge/**
 !{agent_root}/knowledge/default/**
 
-# Agent Zero Instruments (excluding defaults)
+# SomaAgent01 Instruments (excluding defaults)
 {agent_root}/instruments/**
 !{agent_root}/instruments/default/**
 
@@ -77,7 +77,7 @@ class BackupService:
 {agent_root}/tmp/uploads/**"""
 
     def _get_agent_zero_version(self) -> str:
-        """Get current Agent Zero version"""
+        """Get current SomaAgent01 version"""
         try:
             # Get version from git info (same as Gateway/service metadata)
             gitinfo = git.get_git_info()
@@ -216,7 +216,7 @@ class BackupService:
     ) -> List[str]:
         """Translate patterns from backed up system to current system.
 
-        Replaces the backed up Agent Zero root path with the current Agent Zero root path
+        Replaces the backed up SomaAgent01 root path with the current SomaAgent01 root path
         in all patterns if there's an exact match at the beginning of the pattern.
 
         Args:
@@ -826,7 +826,7 @@ class BackupService:
     def _translate_restore_path(self, archive_path: str, backup_metadata: Dict[str, Any]) -> str:
         """Translate file path from backed up system to current system.
 
-        Replaces the backed up Agent Zero root path with the current Agent Zero root path
+        Replaces the backed up SomaAgent01 root path with the current SomaAgent01 root path
         if there's an exact match at the beginning of the path.
 
         Args:

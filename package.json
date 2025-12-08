@@ -5,5 +5,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0"
+  },
+  "dependencies": {
+    "pyright": "^1.1.407"
   }
 }

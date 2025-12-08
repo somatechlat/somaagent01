@@ -13,7 +13,6 @@ from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from src.core.config import cfg
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings

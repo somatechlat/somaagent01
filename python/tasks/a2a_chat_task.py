@@ -171,6 +171,7 @@ def a2a_chat_task(
             # Run async code in Celery sync task context
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            response = None
             try:
 
                 async def _send_message():
@@ -186,53 +187,53 @@ def a2a_chat_task(
             finally:
                 loop.close()
 
-                # Extract reply from response
-                reply = _extract_reply_from_response(response)
+            # Extract reply from response (moved out of finally block)
+            reply = _extract_reply_from_response(response)
 
-                # REAL IMPLEMENTATION - Store conversation in Redis (sync wrapper)
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(
-                        _store_conversation_in_redis(session_id, message, reply, attachments or [])
-                    )
-                finally:
-                    loop.close()
-
-                # REAL IMPLEMENTATION - Publish event to SomaBrain (sync wrapper)
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(
-                        publish_event(
-                            event_type="fast_a2a_chat_completed",
-                            data={
-                                "task_id": task_id,
-                                "agent_url": agent_url,
-                                "session_id": session_id,
-                                "message_length": len(message),
-                                "reply_length": len(reply),
-                                "duration": time.time() - start_time,
-                                "has_attachments": bool(attachments),
-                            },
-                            metadata=metadata,
-                        )
-                    )
-                finally:
-                    loop.close()
-
-                # Track memory operation
-                increment_counter(
-                    somabrain_memory_operations_total,
-                    {
-                        "operation": "fast_a2a_chat",
-                        "status": "success",
-                        "tenant": metadata.get("tenant", "default") if metadata else "default",
-                    },
+            # REAL IMPLEMENTATION - Store conversation in Redis (sync wrapper)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(
+                    _store_conversation_in_redis(session_id, message, reply, attachments or [])
                 )
+            finally:
+                loop.close()
 
-                set_health_status("celery", "task_success", True)
-                return reply
+            # REAL IMPLEMENTATION - Publish event to SomaBrain (sync wrapper)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(
+                    publish_event(
+                        event_type="fast_a2a_chat_completed",
+                        data={
+                            "task_id": task_id,
+                            "agent_url": agent_url,
+                            "session_id": session_id,
+                            "message_length": len(message),
+                            "reply_length": len(reply),
+                            "duration": time.time() - start_time,
+                            "has_attachments": bool(attachments),
+                        },
+                        metadata=metadata,
+                    )
+                )
+            finally:
+                loop.close()
+
+            # Track memory operation
+            increment_counter(
+                somabrain_memory_operations_total,
+                {
+                    "operation": "fast_a2a_chat",
+                    "status": "success",
+                    "tenant": metadata.get("tenant", "default") if metadata else "default",
+                },
+            )
+
+            set_health_status("celery", "task_success", True)
+            return reply
 
     except Exception as e:
         # REAL IMPLEMENTATION - Comprehensive error handling

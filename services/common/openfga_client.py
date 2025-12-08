@@ -118,3 +118,12 @@ class OpenFGAClient:
 
     def clear_cache(self) -> None:
         self._cache.clear()
+
+_FGA_CLIENT: OpenFGAClient | None = None
+
+def _get_openfga_client() -> OpenFGAClient:
+    """Return a singleton OpenFGA client."""
+    global _FGA_CLIENT
+    if _FGA_CLIENT is None:
+        _FGA_CLIENT = OpenFGAClient()
+    return _FGA_CLIENT

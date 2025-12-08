@@ -1,7 +1,7 @@
 """HTTP client for interacting with the SomaBrain cognitive memory service.
 
 This module provides a thin asynchronous wrapper around the SomaBrain REST API
-endpoints that Agent Zero needs in order to offload long-term memory
+endpoints that SomaAgent01 needs in order to offload long-term memory
 operations.  It focuses on the high-level primitives used throughout the
 codebase – creating memories, recalling them, deleting memories by coordinate
 and exporting the current memory state.
@@ -22,7 +22,7 @@ Environment variables:
   ``X-Tenant-ID`` (or a custom header defined by ``SOMA_TENANT_HEADER``).
 * ``SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
   to outgoing request bodies under the ``universe`` key so that requests are
-  automatically segmented per Agent Zero memory sub-directory.
+  automatically segmented per SomaAgent01 memory sub-directory.
 * ``SOMA_TIMEOUT_SECONDS``: Optional request timeout (float seconds).  Defaults
   to 30 seconds which is generous enough for bulk exports.
 * ``SOMA_VERIFY_SSL``: Toggle TLS certificate verification (``true``/``false``).

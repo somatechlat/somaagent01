@@ -7,6 +7,7 @@ import asyncio
 
 import pytest
 
+from integrations.tool_catalog import catalog
 from python.tools.models import ToolDefinition
 
 

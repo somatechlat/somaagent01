@@ -1,6 +1,6 @@
 {
-  "name": "Agent Zero",
-  "short_name": "Agent Zero",
+  "name": "SomaAgent01",
+  "short_name": "SomaAgent01",
   "description": "Autonomous AI agent",
   "start_url": "/",
   "display": "standalone",

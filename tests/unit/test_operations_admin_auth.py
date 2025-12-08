@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
 
 from services.common.authorization import authorize
 
@@ -52,7 +53,7 @@ async def test_operations_admin_deny(monkeypatch):
         cfg._STATE.settings = fake_settings
 
         req = DummyRequest(headers={})
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             await authorize(
                 request=req,
                 action="ops.memory.list",

@@ -14,6 +14,7 @@ gateway tight coupling. The gateway or workers can import and call functions.
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, Dict, List, Optional
 
@@ -22,7 +23,6 @@ from prometheus_client import Counter, Histogram
 
 from python.integrations.somabrain_client import SomaClientError
 from src.core.config import cfg
-import logging
 
 LOGGER = logging.getLogger(__name__)
 

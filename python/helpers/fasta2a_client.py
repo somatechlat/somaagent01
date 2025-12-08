@@ -28,7 +28,7 @@ _PRINTER = PrintStyle(italic=True, font_color="cyan", padding=False)
 
 
 class AgentConnection:
-    """Helper class for connecting to and communicating with other Agent Zero instances via FastA2A.
+    """Helper class for connecting to and communicating with other SomaAgent01 instances via FastA2A.
     REAL IMPLEMENTATION with comprehensive metrics integration."""
 
     def __init__(self, agent_url: str, timeout: int = 30, token: Optional[str] = None):

@@ -7,7 +7,12 @@ breaking those imports (and to satisfy VIBE's rule of a single source of truth)
 we provide a thin re‑export module that forwards all attributes.
 """
 
-from services.gateway.degradation_monitor import *  # noqa: F403,F401
+from services.gateway.degradation_monitor import (
+    ComponentHealth,
+    DegradationLevel,
+    DegradationMonitor,
+    DegradationStatus,
+)  # noqa: F403,F401
 
 __all__ = [
     "DegradationLevel",

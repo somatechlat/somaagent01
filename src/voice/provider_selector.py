@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import AsyncGenerator
+
 """Factory for selecting the appropriate voice provider implementation.
 
 The real implementation will eventually instantiate either :class:`OpenAIClient`
@@ -11,11 +15,11 @@ All errors are expressed via :class:`ProviderNotSupportedError` defined in
 ``src.voice.exceptions``.
 """
 
-from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
 from src.core.config.models import Config
+
 from .exceptions import ProviderNotSupportedError
 
 # The concrete client classes are defined in separate modules.  Importing them

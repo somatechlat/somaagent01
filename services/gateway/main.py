@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from services.common.openfga_client import _get_openfga_client
+
 """Minimal modular Gateway entrypoint.
 
 All HTTP/WS routes are provided by the modular routers in
@@ -6,7 +10,6 @@ have been removed to comply with VIBE rules (single source, no legacy
 duplicates).
 """
 
-from __future__ import annotations
 
 import os
 
@@ -116,10 +119,6 @@ app.include_router(build_router())
 # ---------------------------------------------------------------------------
 import asyncio as _asyncio
 
-# Legacy admin settings removed – use the central cfg singleton.
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.policy_client import PolicyClient, PolicyRequest
-
 # JWT authentication module
 import jwt
 from fastapi import HTTPException, status
@@ -127,6 +126,10 @@ from fastapi import HTTPException, status
 # API key store used by the gateway API key router. Imported lazily in the helper
 # below to avoid circular import issues.
 from services.common.api_key_store import ApiKeyStore
+
+# Legacy admin settings removed – use the central cfg singleton.
+from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.policy_client import PolicyClient, PolicyRequest
 
 # JWT module for compatibility
 jwt_module = jwt

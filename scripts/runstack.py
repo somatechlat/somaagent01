@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run all Agent Zero runtime services locally without Docker.
+"""Run all SomaAgent01 runtime services locally without Docker.
 
 This helper script starts the Gateway plus all background workers in the
 same Python virtual environment. It mirrors the Docker Compose runtime but
@@ -144,7 +144,7 @@ def _load_env_files(paths: Iterable[Path]) -> None:
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run Agent Zero runtime services locally.")
+    parser = argparse.ArgumentParser(description="Run SomaAgent01 runtime services locally.")
     parser.add_argument(
         "--env-file",
         action="append",

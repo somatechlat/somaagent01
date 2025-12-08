@@ -1,4 +1,4 @@
-"""Pydantic ``BaseSettings`` model for Agent Zero configuration.
+"""Pydantic ``BaseSettings`` model for SomaAgent01 configuration.
 
 The original implementation used a large ``TypedDict`` (see ``settings.py``).
 That approach works but provides no validation, default handling, or
@@ -29,7 +29,7 @@ except Exception:  # pragma: no cover - fallback for older environments
 
 
 class SettingsModel(BaseSettings):
-    """Validated settings for the Agent Zero application.
+    """Validated settings for the SomaAgent01 application.
 
     The fields below cover the most commonly used configuration options.  Any
     additional keys present in the JSON file are accepted (``extra = "allow"``)

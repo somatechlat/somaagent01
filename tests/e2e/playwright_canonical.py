@@ -1,3 +1,5 @@
+import os
+
 """
 Playwright E2E tests for SomaAgent01 canonical backend.
 Dual-mode tests: headless for CI, headed for debugging.

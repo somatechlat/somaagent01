@@ -4,7 +4,7 @@
 This section provides onboarding documentation for AI agents working with SomaAgent01.
 
 ## Agent Types
-- [Agent Zero](./agent-zero.md) - Base agent framework
+- [SomaAgent01](./agent-zero.md) - Base agent framework
 - [Propagation Agent](./propagation-agent.md) - Event propagation specialist
 - [Monitoring Agent](./monitoring-agent.md) - System monitoring
 - [Security Hardening Agent](./security-hardening.md) - Security specialist

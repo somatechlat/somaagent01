@@ -22,7 +22,7 @@ def test_settings_modal_opens_and_loads_sections(page):
     # Skip selector wait due to potential UI changes
     try:
         page.wait_for_selector("#status-indicator", timeout=2000)
-    except:
+    except Exception:
         pytest.skip("UI selector issues unrelated to realtime removal")
 
     # Click Settings button

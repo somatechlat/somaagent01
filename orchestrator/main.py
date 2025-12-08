@@ -25,11 +25,11 @@ from typing import Any, Dict
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
+from .cache_sync_service import CacheSyncService
 from .config import load_config
 from .gateway_service import GatewayService
 from .orchestrator import SomaOrchestrator
 from .unified_memory_service import UnifiedMemoryService
-from .cache_sync_service import CacheSyncService
 
 LOGGER = logging.getLogger(__name__)
 

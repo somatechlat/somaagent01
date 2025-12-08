@@ -20,6 +20,7 @@ import asyncio
 from typing import AsyncGenerator
 
 from src.core.config.models import OpenAIConfig
+
 from .exceptions import VoiceProcessingError
 
 

@@ -6,7 +6,7 @@
 
 ### What is SomaAgent01?
 
-SomaAgent01 is a microservices-based conversational AI platform built on Agent Zero framework. It provides a general-purpose AI assistant with code execution, memory, and multi-agent capabilities.
+SomaAgent01 is a microservices-based conversational AI platform built on SomaAgent01 framework. It provides a general-purpose AI assistant with code execution, memory, and multi-agent capabilities.
 
 ### What LLM providers are supported?
 

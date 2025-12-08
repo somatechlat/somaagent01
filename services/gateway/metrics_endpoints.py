@@ -41,7 +41,7 @@ async def get_prometheus_metrics() -> PlainTextResponse:
 
 
 @router.get("/snapshot")
-async def get_metrics_snapshot() -> Dict[str, Any]:
+async def read_metrics_snapshot() -> Dict[str, Any]:
     """
     Get a snapshot of current key metrics.
 

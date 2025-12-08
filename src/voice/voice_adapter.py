@@ -13,13 +13,12 @@ common base class for the whole voice subsystem.
 
 from __future__ import annotations
 
-import asyncio
 from typing import AsyncGenerator
 
 from .audio_capture import AudioCapture
-from .speaker import Speaker
 from .exceptions import VoiceProcessingError
 from .provider_selector import _BaseClient
+from .speaker import Speaker
 
 
 class VoiceAdapter:

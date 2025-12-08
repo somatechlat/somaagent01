@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: agent0ai/agent-zero:latest
+          image: somatechlat/agent-zero:latest
           imagePullPolicy: IfNotPresent
           command: ["uvicorn"]
           args:

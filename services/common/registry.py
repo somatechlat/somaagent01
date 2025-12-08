@@ -27,6 +27,7 @@ def _load_sa01_settings():
     that expects a callable returning a class.
     """
     from types import SimpleNamespace
+
     from src.core.config import cfg
 
     # Extract the service‑level configuration from the central ``cfg`` object.

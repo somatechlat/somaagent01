@@ -12,7 +12,7 @@ home: https://github.com/agent0ai/agent-zero
 sources:
   - https://github.com/agent0ai/agent-zero
 maintainers:
-  - name: Agent Zero Team
+  - name: SomaAgent01 Team
     email: team@agentzero.org
 dependencies:
   - name: auth

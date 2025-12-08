@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from orchestrator.config import BaseServiceSettings
+
 """Model profile storage for SomaAgent 01."""
 
-from __future__ import annotations
 
 import json
 import logging

@@ -2,7 +2,7 @@
 
 ## What is SomaAgent01?
 
-SomaAgent01 is a production-grade agentic AI platform built on the Agent Zero framework, designed for real-time data propagation and intelligent conversation management.
+SomaAgent01 is a production-grade agentic AI platform built on the SomaAgent01 framework, designed for real-time data propagation and intelligent conversation management.
 
 ## Project Vision
 
@@ -219,7 +219,7 @@ pytest tests/e2e/
 ### External Resources
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [Kafka Documentation](https://kafka.apache.org/documentation/)
-- [Agent Zero Framework](https://github.com/agent0ai/agent-zero)
+- [SomaAgent01 Framework](https://github.com/agent0ai/agent-zero)
 
 ## Next Steps
 

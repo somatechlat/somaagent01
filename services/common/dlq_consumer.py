@@ -9,8 +9,8 @@ from typing import Any, Dict
 
 from prometheus_client import Counter
 
-from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from src.core.config import cfg
 
 DLQ_CONSUMED_TOTAL = Counter(
     "sa01_dlq_events_total",

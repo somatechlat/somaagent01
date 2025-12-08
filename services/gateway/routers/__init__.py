@@ -26,6 +26,7 @@ from . import (
     chat_full,
     constitution,
     dlq,
+    features,
     health,
     health_full,
     keys,
@@ -52,10 +53,9 @@ from . import (
     uploads,
     uploads_full,
     websocket,
-    workdir,
-    features,
     weights,
-    )
+    workdir,
+)
 
 
 def build_router() -> APIRouter:

@@ -6,7 +6,7 @@ const toast = globalThis.toast;
 const fetchApi = globalThis.fetchApi;
 
 // ⚠️ CRITICAL: The .env file contains API keys and essential configuration.
-// This file is REQUIRED for Agent Zero to function and must be backed up.
+// This file is REQUIRED for SomaAgent01 to function and must be backed up.
 
 const model = {
   // State
@@ -143,7 +143,7 @@ const model = {
     };
   },
 
-  // Editor Management - Following Agent Zero ACE editor patterns
+  // Editor Management - Following SomaAgent01 ACE editor patterns
   async initBackupEditor() {
     const container = document.getElementById("backup-metadata-editor");
     if (container) {
@@ -657,13 +657,13 @@ const model = {
 
     const warnings = [];
 
-    // Check Agent Zero version compatibility
+    // Check SomaAgent01 version compatibility
     // Note: Both backup and current versions are obtained via git.get_git_info()
     const backupVersion = this.backupMetadata.agent_zero_version;
     const currentVersion = "current"; // Retrieved from git.get_git_info() on backend
 
     if (backupVersion !== currentVersion && backupVersion !== "development") {
-      warnings.push(`Backup created with Agent Zero ${backupVersion}, current version is ${currentVersion}`);
+      warnings.push(`Backup created with SomaAgent01 ${backupVersion}, current version is ${currentVersion}`);
     }
 
     // Check backup age

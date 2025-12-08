@@ -8,7 +8,7 @@
     "headline": "Greeting user and starting conversation",
     "tool_name": "response",
     "tool_args": {
-        "text": "**Hello! 👋**, I'm **Agent Zero**, your AI assistant. How can I help you today?"
+        "text": "**Hello! 👋**, I'm **SomaAgent01**, your AI assistant. How can I help you today?"
     }
 }
 ```

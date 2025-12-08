@@ -20,7 +20,7 @@ from __future__ import annotations
 # Import the canonical configuration objects.
 from src.core.config import cfg as _cfg, Config as _Config, load_config as _load_config
 
-
+cfg = _cfg
 class CentralizedConfig(_Config):
     """Compatibility alias – instantiating returns the global ``cfg``.
 

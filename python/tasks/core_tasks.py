@@ -24,7 +24,7 @@ import uuid
 from typing import Any, Optional
 
 import httpx
-from celery import Task, shared_task
+from celery import shared_task, Task
 from prometheus_client import Counter, Histogram
 from redis import Redis
 
@@ -42,10 +42,10 @@ from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.messaging_utils import build_headers, idempotency_key
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
-from services.common.saga_manager import SagaManager, register_compensation, run_compensation
+from services.common.saga_manager import register_compensation, run_compensation, SagaManager
 from services.common.session_repository import (
-    PostgresSessionStore,
     ensure_schema as ensure_session_schema,
+    PostgresSessionStore,
 )
 from src.core.config import cfg
 

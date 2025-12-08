@@ -14,7 +14,7 @@ docs-serve:
 docs-verify: docs-build
 	@echo "Docs build OK"
 # ==============================================================================
-# Makefile for Agent Zero Development Environment
+# Makefile for SomaAgent01 Development Environment
 #
 # Provides common commands for building, running, and managing the Docker stack.
 # ==============================================================================

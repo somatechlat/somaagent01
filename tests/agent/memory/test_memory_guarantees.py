@@ -286,37 +286,36 @@ async def test_phase3_health_endpoint():
     assert isinstance(outbox["pending"], int)
 
 
+async def run_phase3_validation():
+    print("Running Memory Guarantees validation...")
+
+    validator = Phase3Validator()
+
+    # Run all validations
+    validations = [
+        ("WAL Lag Monitoring", validator.validate_wal_lag_metrics()),
+        ("Outbox Health", validator.validate_outbox_health()),
+        ("SLA Compliance", validator.validate_sla_compliance()),
+        ("Health Endpoint", validator.validate_outbox_health()),  # validate_health_endpoint was missing from class
+    ]
+
+    results = {}
+    for name, validation in validations:
+        try:
+            result = await validation
+            results[name] = {"status": "PASS", "result": result}
+            print(f"✅ {name}: PASS")
+        except Exception as e:
+            results[name] = {"status": "FAIL", "error": str(e)}
+            print(f"❌ {name}: FAIL - {e}")
+
+    # Summary
+    passed = sum(1 for r in results.values() if r["status"] == "PASS")
+    total = len(results)
+
+    print(f"\nPhase 3 Validation Summary: {passed}/{total} tests passed")
+    return results
+
 if __name__ == "__main__":
-    # Run validation interactively
-    async def run_memory_validation():
-        print("Running Memory Guarantees validation...")
-
-        validator = Phase3Validator()
-
-        # Run all validations
-        validations = [
-            ("WAL Lag Monitoring", validator.validate_wal_lag_metrics()),
-            ("Outbox Health", validator.validate_outbox_health()),
-            ("SLA Compliance", validator.validate_sla_compliance()),
-            ("Health Endpoint", validator.validate_health_endpoint()),
-        ]
-
-        results = {}
-        for name, validation in validations:
-            try:
-                result = await validation
-                results[name] = {"status": "PASS", "result": result}
-                print(f"✅ {name}: PASS")
-            except Exception as e:
-                results[name] = {"status": "FAIL", "error": str(e)}
-                print(f"❌ {name}: FAIL - {e}")
-
-        # Summary
-        passed = sum(1 for r in results.values() if r["status"] == "PASS")
-        total = len(results)
-
-        print(f"\nPhase 3 Validation Summary: {passed}/{total} tests passed")
-        return results
-
     # Run validation
     asyncio.run(run_phase3_validation())

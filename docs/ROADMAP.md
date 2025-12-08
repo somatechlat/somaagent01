@@ -14,7 +14,7 @@ This document defines the **canonical roadmap** for turning the entire Web UI of
 | **Settings modal** | “Save”, “Cancel”, tab titles (Agent, Model, Scheduler, System), section titles, field labels, placeholders, tooltips. |
 | **Toast / Notification messages** | “Error loading”, “No data”, “Clear All”, “Create”, “Mark Read”. |
 | **Tooltips / ARIA labels** | “Refresh”, “Toggle Sidebar”, “Open Modal”, etc. |
-| **HTML meta data** | `<title>Agent Zero</title>`, `alt` attributes, `aria‑label`s. |
+| **HTML meta data** | `<title>SomaAgent01</title>`, `alt` attributes, `aria‑label`s. |
 | **Help / Docs links** | “How to use”, “Documentation”, etc. |
 | **Static page text** (index.html, help pages) | Any hard‑coded headings or paragraphs. |
 

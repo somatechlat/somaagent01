@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: tool-executor
-          image: agent0ai/agent-zero:latest
+          image: somatechlat/agent-zero:latest
           imagePullPolicy: IfNotPresent
           command: ["python"]
           args: ["-m", "services.tool_executor.main"]

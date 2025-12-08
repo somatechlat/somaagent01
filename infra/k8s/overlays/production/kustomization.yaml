@@ -6,7 +6,7 @@ resources:
   - ../../base
 
 images:
-  - name: agent0ai/agent-zero
+  - name: somatechlat/agent-zero
     newTag: stable
 
 patches:

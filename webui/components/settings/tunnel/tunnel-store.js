@@ -192,7 +192,7 @@ const model = {
       // If no authentication is set, warn the user
       if (!hasAuth) {
         const proceed = confirm(
-          t('tunnel.noAuthWarning', "WARNING: No authentication is configured for your Agent Zero instance.\n\nCreating a public tunnel without authentication means anyone with the URL can access your Agent Zero instance.\n\nIt is recommended to set up authentication in the Settings > Authentication section before creating a public tunnel.\n\nDo you want to proceed anyway?")
+          t('tunnel.noAuthWarning', "WARNING: No authentication is configured for your SomaAgent01 instance.\n\nCreating a public tunnel without authentication means anyone with the URL can access your SomaAgent01 instance.\n\nIt is recommended to set up authentication in the Settings > Authentication section before creating a public tunnel.\n\nDo you want to proceed anyway?")
         );
 
         if (!proceed) {

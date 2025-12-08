@@ -1,5 +1,5 @@
 version: "3.8"
-# Canonical Docker Compose file for Agent Zero
+# Canonical Docker Compose file for SomaAgent01
 # This file defines all services for the development environment.
 
 x-agent-env: &agent-env

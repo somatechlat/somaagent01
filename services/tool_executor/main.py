@@ -13,9 +13,6 @@ from jsonschema import ValidationError
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-
-# Legacy ADMIN_SETTINGS import removed – use the central cfg singleton.
-from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.idempotency import generate_for_memory_payload
@@ -39,6 +36,8 @@ from services.tool_executor.resource_manager import default_limits, ResourceMana
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
+
+# Legacy ADMIN_SETTINGS import removed – use the central cfg singleton.
 from src.core.config import cfg
 
 setup_logging()
@@ -604,6 +603,7 @@ class ToolExecutor:
         await self._send_tool_feedback(result_event)
 
     async def _send_tool_feedback(self, result_event: dict[str, Any]) -> None:
+        tenant = (result_event.get("metadata") or {}).get("tenant")
         """Send tool execution feedback to SomaBrain; fallback to DLQ on failure."""
         feedback = {
             "task_name": result_event.get("tool_name"),
@@ -634,8 +634,8 @@ class ToolExecutor:
                 LOGGER.debug("Failed to enqueue tool feedback DLQ", exc_info=True)
                 TOOL_FEEDBACK_TOTAL.labels("failed").inc()
 
-        if status == "success":
-            await self._capture_memory(result_event, payload, tenant)
+        if result_event.get("status") == "success":
+            await self._capture_memory(result_event, result_event.get("payload", {}), tenant)
 
     async def _check_policy(
         self,

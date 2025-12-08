@@ -190,7 +190,7 @@ async def force_open_circuit_breaker(component_name: str) -> Dict[str, Any]:
         for _ in range(circuit.failure_threshold + 1):
             try:
                 await circuit.call(lambda: 1 / 0)  # Force an exception
-            except:
+            except Exception:
                 pass  # Expected to fail
 
         new_state = circuit.state.value

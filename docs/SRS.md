@@ -3,7 +3,7 @@
 ## Document Control
 - **Version:** 1.0.0
 - **Date:** 2025‑11‑28
-- **Author:** Agent Zero (generated from upgrade report)
+- **Author:** SomaAgent01 (generated from upgrade report)
 - **Scope:** Modular tool‑first architecture, sandbox manager, deterministic FSM engine, Oak option‑layer, observability, security, and production deployment for the SomaAgent01 orchestrator.
 
 ---
@@ -127,7 +127,7 @@ SomaAgent01 is the orchestrator that coordinates tool execution, manages state, 
 - **C. Revision History**
   | Version | Date | Author | Description |
   |---------|------|--------|-------------|
-  | 1.0.0 | 2025‑11‑28 | Agent Zero | Initial ISO SRS for SomaAgent01 |
+  | 1.0.0 | 2025‑11‑28 | SomaAgent01 | Initial ISO SRS for SomaAgent01 |
 
 ---
 *End of Document*

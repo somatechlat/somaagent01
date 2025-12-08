@@ -1,7 +1,7 @@
 """CLI utility for migrating local FAISS snapshots into SomaBrain.
 
 The tool reads a memory sub-directory from the prior FAISS store used by
-Agent Zero and converts every ``langchain`` document into the payload structure
+SomaAgent01 and converts every ``langchain`` document into the payload structure
 expected by ``SomaClient.migrate_import``.  Operators can dry-run the
 transformation, emit the intermediate JSON to disk, or stream the payloads to
 SomaBrain in batches.

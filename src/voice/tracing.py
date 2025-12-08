@@ -8,12 +8,12 @@ the import side‑effect‑free (VIBE rule **NO SIDE‑EFFECTS AT IMPORT**).
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Generator, Callable, Any
+from typing import Any, Callable, Generator
 
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
+    from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
     # Initialise a global tracer provider only once.
     _provider = TracerProvider()

@@ -10,7 +10,7 @@ VIBE CODING RULES COMPLIANT:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Literal, ClassVar
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 

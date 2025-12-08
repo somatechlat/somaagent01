@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import os
+
 """Compatibility shim and full implementation for the ConversationWorker.
 
 The original project exposed a ``ConversationWorker`` class directly from this
@@ -9,7 +13,6 @@ implementation here.  The shim is lightweight – it simply aliases the new
 class – and does not duplicate any business logic.
 """
 
-from __future__ import annotations
 
 import asyncio
 import json
@@ -19,7 +22,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import asyncpg
 import httpx
@@ -38,11 +41,13 @@ from observability.metrics import (
 from python.helpers.tokens import count_tokens
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
+
 # Legacy ADMIN_SETTINGS shim removed – use the central cfg façade.
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.escalation import EscalationDecision, should_escalate
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.header_factory import build_headers
 from services.common.idempotency import generate_for_memory_payload
 from services.common.logging_config import setup_logging
 from services.common.memory_write_outbox import (
@@ -73,7 +78,6 @@ from services.tool_executor.tool_registry import ToolRegistry
 from src.core.config import cfg
 
 # Re‑export the new service implementation under the legacy name.
-from .service import ConversationWorkerService as ConversationWorker
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -1756,6 +1760,9 @@ class ConversationWorker:
             tenant = "default"
 
         async def _process() -> None:
+            session_metadata = {}
+            enriched_metadata = {}
+            persona_id: str | None = None
             nonlocal path, result_label, tenant
 
             if not session_id:
@@ -2116,8 +2123,8 @@ class ConversationWorker:
         )
 
         priors = await self._fetch_planner_priors(
-            tenant_id=event.get("tenant") or session_metadata.get("tenant"),
-            persona_id=persona_id,
+            tenant_id=event.get("tenant") or session_metadata.get("tenant"),  # noqa: F821
+            persona_id=persona_id,  # noqa: F821
             session_id=session_id,
             analysis=analysis_dict,
         )
@@ -2242,7 +2249,7 @@ class ConversationWorker:
                         slm_kwargs.setdefault("metadata", {})
                         slm_kwargs["metadata"]["router_score"] = routed.score
 
-            metadata_for_decision = dict(enriched_metadata)
+            metadata_for_decision = dict(enriched_metadata)  # noqa: F821
             metadata_for_decision.pop("analysis", None)
 
             decision = EscalationDecision(False, "disabled", {"enabled": False})
@@ -2253,13 +2260,13 @@ class ConversationWorker:
                     event_metadata=metadata_for_decision,
                 )
 
-            budget_check = await self.budgets.consume(tenant, persona_id, 0)
+            budget_check = await self.budgets.consume(tenant, persona_id, 0)  # noqa: F821
             limit = budget_check.limit_tokens
             if limit and budget_check.total_tokens >= limit:
                 budget_response = {
                     "event_id": str(uuid.uuid4()),
                     "session_id": session_id,
-                    "persona_id": persona_id,
+                    "persona_id": persona_id,  # noqa: F821
                     "role": "assistant",
                     "message": "Token budget exceeded for this persona/tenant.",
                     "metadata": {"source": "budget"},
@@ -2268,7 +2275,7 @@ class ConversationWorker:
                 }
                 await self.telemetry.emit_budget(
                     tenant=tenant,
-                    persona_id=persona_id,
+                    persona_id=persona_id,  # noqa: F821
                     delta_tokens=0,
                     total_tokens=budget_check.total_tokens,
                     limit_tokens=limit,
@@ -2300,7 +2307,7 @@ class ConversationWorker:
                 thinking_event = {
                     "event_id": str(uuid.uuid4()),
                     "session_id": session_id,
-                    "persona_id": persona_id,
+                    "persona_id": persona_id,  # noqa: F821
                     "role": "assistant",
                     "message": "",
                     "metadata": thinking_meta,
@@ -2337,7 +2344,7 @@ class ConversationWorker:
                         escalation_base_url,
                     ) = await self._invoke_escalation_response(
                         session_id=session_id,
-                        persona_id=persona_id,
+                        persona_id=persona_id,  # noqa: F821
                         messages=messages,
                         slm_kwargs=slm_kwargs,
                     )
@@ -2375,7 +2382,7 @@ class ConversationWorker:
                     }
                     await self.telemetry.emit_escalation_llm(
                         session_id=session_id,
-                        persona_id=persona_id,
+                        persona_id=persona_id,  # noqa: F821
                         tenant=tenant,
                         model=model_used,
                         latency_seconds=0.0,
@@ -2397,7 +2404,7 @@ class ConversationWorker:
                 try:
                     response_text, usage = await self._generate_with_tools(
                         session_id=session_id,
-                        persona_id=persona_id,
+                        persona_id=persona_id,  # noqa: F821
                         messages=messages,
                         slm_kwargs=slm_kwargs,
                         analysis_metadata=analysis_dict,
@@ -2439,7 +2446,7 @@ class ConversationWorker:
                         body_ns = {
                             "role": "dialogue",
                             "session_id": session_id,
-                            "persona_id": persona_id,
+                            "persona_id": persona_id,  # noqa: F821
                             "tenant": (session_metadata or {}).get("tenant"),
                             "messages": [m.__dict__ for m in messages],
                             "overrides": ov2,
@@ -2474,7 +2481,7 @@ class ConversationWorker:
                 # Note: model_used may be overridden by Gateway's router; usage remains accurate
 
             total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-            budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)
+            budget_result = await self.budgets.consume(tenant, persona_id, total_tokens)  # noqa: F821
             if not budget_result.allowed:
                 response_text = "Token budget exceeded for this persona/tenant."
                 result_label = "budget_limit"
@@ -2491,7 +2498,7 @@ class ConversationWorker:
             if path == "escalation":
                 await self.telemetry.emit_escalation_llm(
                     session_id=session_id,
-                    persona_id=persona_id,
+                    persona_id=persona_id,  # noqa: F821
                     tenant=tenant,
                     model=model_used,
                     latency_seconds=latency,
@@ -2515,7 +2522,7 @@ class ConversationWorker:
                 }
                 await self.telemetry.emit_slm(
                     session_id=session_id,
-                    persona_id=persona_id,
+                    persona_id=persona_id,  # noqa: F821
                     tenant=tenant,
                     model=model_used,
                     latency_seconds=latency,

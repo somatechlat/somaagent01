@@ -12,11 +12,16 @@ uniform exception hierarchy for the rest of the service.
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import sounddevice
 import sys
 from dataclasses import dataclass
 from typing import AsyncGenerator
 
 from src.core.config.models import AudioConfig
+
 from .exceptions import VoiceProcessingError
 
 

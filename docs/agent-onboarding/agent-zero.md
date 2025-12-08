@@ -1,7 +1,7 @@
-# Agent Zero Integration
+# SomaAgent01 Integration
 
 ## Overview
-Agent Zero is the base framework for SomaAgent01.
+SomaAgent01 is the base framework for SomaAgent01.
 
 ## Key Features
 - General-purpose assistant
@@ -16,5 +16,5 @@ Agent Zero is the base framework for SomaAgent01.
 - Prompt system
 
 ## References
-- [Agent Zero GitHub](https://github.com/agent0ai/agent-zero)
-- [Agent Zero Documentation](https://agent-zero.ai)
+- [SomaAgent01 GitHub](https://github.com/agent0ai/agent-zero)
+- [SomaAgent01 Documentation](https://somaagent01.dev)

@@ -1,6 +1,12 @@
-# Coding Standards
+# SomaAgent01 Coding Standards
 
 **Standards**: ISO/IEC 12207§8.3
+
+## Core Philosophy: Code is Truth
+
+- **No AI Slop**: Do not add comments that merely restate the code. If the code is clear, no comment is needed.
+- **Why, Not What**: Comments must explain the *reasoning* behind the logic, not the logic itself.
+- **Documentation**: Documentation must strictly match the implementation. If there is a discrepancy, the code is the source of truth, and the documentation must be updated.
 
 ## Python Style Guide
 
@@ -11,7 +17,7 @@ All Python code must follow [PEP 8](https://peps.python.org/pep-0008/).
 **Enforced by**:
 - `black` (formatter)
 - `ruff` (linter)
-- `mypy` (type checker)
+- `pyright` (type checker)
 
 ### Formatting
 
@@ -23,10 +29,10 @@ black .
 black --check .
 
 # Lint
-ruff check .
+ruff check --fix
 
 # Type check
-mypy services/
+pyright .
 ```
 
 ### Naming Conventions
@@ -67,20 +73,28 @@ def process_message(
     pass
 ```
 
-### Docstrings
+### Docstrings & Comments
 
-**Google style** for all modules, classes, and public functions:
+**Google style** for all modules, classes, and public functions.
+
+**Rules for Comments:**
+1.  **No Redundancy**: Avoid comments like `# Increment i` for `i += 1`.
+2.  **Explain Why**: Focus on architectural decisions, trade-offs, and complex logic.
+    *   *Bad*: `# Check if n is prime`
+    *   *Good*: `# Using deterministic Miller-Rabin for performance on large inputs.`
+3.  **No "AI Slop"**: Remove verbose, generated-sounding fluff. Keep it professional and concise.
 
 ```python
 """Module for conversation processing.
 
 This module handles user messages, LLM calls, and response generation.
 It consumes from conversation.inbound and publishes to conversation.outbound.
-
-Example:
-    worker = ConversationWorker()
-    await worker.start()
 """
+
+def calculate_backoff(retry_count: int) -> float:
+    # Exponential backoff with jitter to prevent thundering herd problem
+    base = 2 ** retry_count
+    return base + random.uniform(0, 0.1)
 ```
 
 ### Imports
@@ -122,10 +136,10 @@ except:
 try:
     result = await call_llm()
 except httpx.TimeoutException as e:
-    logger.error(f"LLM call timed out: {e}")
+    logger.error("LLM call timed out", error=str(e))
     raise
 except httpx.HTTPStatusError as e:
-    logger.error(f"LLM API error: {e.response.status_code}")
+    logger.error("LLM API error", status_code=e.response.status_code)
     raise
 ```
 
@@ -240,21 +254,6 @@ pytest --cov=services --cov-report=html
 open htmlcov/index.html
 ```
 
-### Test Naming
-
-```python
-# Pattern: test_<function>_<scenario>_<expected>
-
-def test_process_message_empty_input_raises_value_error():
-    pass
-
-def test_fetch_session_not_found_returns_none():
-    pass
-
-def test_publish_event_kafka_down_uses_outbox():
-    pass
-```
-
 ## Security Standards
 
 ### Input Validation
@@ -281,12 +280,6 @@ logger.info(f"Using API key: {api_key}")
 
 # ✅ Good
 logger.info("Using API key", key_prefix=api_key[:8])
-
-# ❌ Bad
-print(f"Password: {password}")
-
-# ✅ Good (never log passwords)
-logger.info("Authentication successful")
 ```
 
 ### SQL Injection Prevention
@@ -302,95 +295,3 @@ await conn.execute(
 await conn.execute(
     f"SELECT * FROM sessions WHERE id = '{session_id}'"
 )
-```
-
-## Performance Standards
-
-### Database Queries
-
-```python
-# ✅ Good (batch)
-await conn.executemany(
-    "INSERT INTO events (session_id, data) VALUES ($1, $2)",
-    [(s, d) for s, d in events]
-)
-
-# ❌ Bad (N+1)
-for session_id, data in events:
-    await conn.execute(
-        "INSERT INTO events (session_id, data) VALUES ($1, $2)",
-        session_id, data
-    )
-```
-
-### Caching
-
-```python
-from functools import lru_cache
-
-@lru_cache(maxsize=1000)
-def get_model_config(model_name: str) -> dict:
-    """Get model configuration (cached)."""
-    return load_config(model_name)
-```
-
-### Connection Pooling
-
-```python
-# ✅ Good (reuse pool)
-pool = await asyncpg.create_pool(dsn, min_size=5, max_size=20)
-
-async with pool.acquire() as conn:
-    result = await conn.fetch("SELECT * FROM sessions")
-
-# ❌ Bad (new connection each time)
-conn = await asyncpg.connect(dsn)
-result = await conn.fetch("SELECT * FROM sessions")
-await conn.close()
-```
-
-## Git Commit Standards
-
-### Commit Message Format
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types**:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation
-- `style`: Formatting
-- `refactor`: Code restructuring
-- `test`: Tests
-- `chore`: Maintenance
-
-**Example**:
-```
-feat(gateway): add JWT authentication
-
-- Implement JWT token validation
-- Add /v1/auth/login endpoint
-- Update dependencies with PyJWT
-
-Closes #123
-```
-
-## Code Review Checklist
-
-- [ ] Follows PEP 8 and naming conventions
-- [ ] Type hints on all public functions
-- [ ] Docstrings on modules, classes, functions
-- [ ] Tests added/updated (80%+ coverage)
-- [ ] No hardcoded secrets or credentials
-- [ ] Error handling with specific exceptions
-- [ ] Structured logging with context
-- [ ] Async/await for I/O operations
-- [ ] Input validation with Pydantic
-- [ ] SQL queries parameterized
-- [ ] Commit message follows format

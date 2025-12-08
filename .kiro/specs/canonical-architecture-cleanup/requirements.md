@@ -926,7 +926,7 @@ CREATE TABLE tenant_tool_flags (
 
 ---
 
-## Message & Conversation Improvements (ADOPTED from Agent Zero Analysis)
+## Message & Conversation Improvements (ADOPTED from SomaAgent01 Analysis)
 
 ### Requirement 52: Unified Conversation Class
 
@@ -1060,7 +1060,7 @@ CREATE TABLE tenant_tool_flags (
 | Message & Conversation | 52-59 | 8 |
 | Other | 7, 11-12, 15-16 | 5 |
 
-### What Was ADOPTED from Agent Zero:
+### What Was ADOPTED from SomaAgent01:
 
 | Feature | Why Adopted | Benefit |
 |---------|-------------|---------|
@@ -1231,11 +1231,11 @@ CREATE TABLE tenant_tool_flags (
 
 ## Message & Conversation Architecture Requirements
 
-### Analysis: Agent Zero vs SomaAgent01 Comparison
+### Analysis: SomaAgent01 vs SomaAgent01 Comparison
 
-Based on the comprehensive comparison, SomaAgent01 needs significant improvements in message handling, conversation management, and streaming architecture to match Agent Zero's production-grade patterns.
+Based on the comprehensive comparison, SomaAgent01 needs significant improvements in message handling, conversation management, and streaming architecture to match SomaAgent01's production-grade patterns.
 
-| Aspect | Agent Zero | SomaAgent01 Current | Gap |
+| Aspect | SomaAgent01 | SomaAgent01 Current | Gap |
 |--------|------------|---------------------|-----|
 | Conversation abstraction | Central `Conversation` class | Manual state dicts | ❌ CRITICAL |
 | Tool result handling | Structured, auto-merged | Manual insertion | ❌ HIGH |
@@ -1413,13 +1413,13 @@ Based on the comprehensive comparison, SomaAgent01 needs significant improvement
 
 ---
 
-## Agent Zero Advanced Features Integration
+## SomaAgent01 Advanced Features Integration
 
-### Analysis: Agent Zero RL/ML Features for SomaAgent01
+### Analysis: SomaAgent01 RL/ML Features for SomaAgent01
 
-Based on the Agent Zero feature blueprint, SomaAgent01 needs advanced reinforcement learning and tool orchestration capabilities to achieve full Agent Zero parity.
+Based on the SomaAgent01 feature blueprint, SomaAgent01 needs advanced reinforcement learning and tool orchestration capabilities to achieve full SomaAgent01 parity.
 
-| Feature | Agent Zero | SomaAgent01 Current | Gap |
+| Feature | SomaAgent01 | SomaAgent01 Current | Gap |
 |---------|------------|---------------------|-----|
 | Tool Registry | Dynamic `ToolRegistry` with hooks | Static policy_client | ❌ CRITICAL |
 | State Encoder | Sentence transformer embeddings | None | ❌ CRITICAL |
@@ -1564,7 +1564,7 @@ Based on the Agent Zero feature blueprint, SomaAgent01 needs advanced reinforcem
 
 ### Requirement 78: Tool Prompt Templates
 
-**User Story:** As a system maintainer, I want tool prompt templates aligned with Agent Zero format, so that LLM tool requests are consistent.
+**User Story:** As a system maintainer, I want tool prompt templates aligned with SomaAgent01 format, so that LLM tool requests are consistent.
 
 #### Acceptance Criteria
 
@@ -1592,7 +1592,7 @@ Based on the Agent Zero feature blueprint, SomaAgent01 needs advanced reinforcem
 | Degradation Mode | 46-49 | 4 |
 | Context Builder | 50-55 | 6 |
 | Message & Conversation | 56-66 | 11 |
-| Agent Zero RL/ML | 67-78 | 12 |
+| SomaAgent01 RL/ML | 67-78 | 12 |
 | Other | 7, 11-12, 15-16 | 5 |
 
 ### VIBE Compliance Score (Final)

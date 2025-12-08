@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.config.models import Config, VoiceConfig, OpenAIConfig, LocalVoiceConfig
+from src.core.config.models import Config, VoiceConfig
 from src.voice.provider_selector import get_provider_client, ProviderNotSupportedError
 
 

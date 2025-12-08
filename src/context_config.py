@@ -15,7 +15,6 @@ This file follows the VIBE coding rules:
 from __future__ import annotations
 
 import os
-from typing import Any
 
 
 def _parse_int(name: str, default: int) -> int:
