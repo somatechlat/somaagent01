@@ -29,6 +29,7 @@ from .config import load_config
 from .gateway_service import GatewayService
 from .orchestrator import SomaOrchestrator
 from .unified_memory_service import UnifiedMemoryService
+from .cache_sync_service import CacheSyncService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,6 +65,9 @@ def create_app() -> FastAPI:
         memory = UnifiedMemoryService()
         memory._startup_order = 20
         orchestrator.register(memory, critical=True)
+        cache_sync = CacheSyncService()
+        cache_sync._startup_order = 30
+        orchestrator.register(cache_sync, critical=True)
     except Exception as exc:  # pragma: no cover – defensive
         LOGGER.error("Service registration failed during app creation: %s", exc)
 

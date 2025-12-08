@@ -25,7 +25,8 @@ class RequeueStore:
         connection string, but the refactored implementation switched to a Redis
         URL.  Some routers (e.g. ``services.gateway.routers.requeue``) still pass
         ``dsn=cfg.settings().database.dsn``.  To retain compatibility we accept a
-        ``dsn`` keyword and treat it as an alias for ``url`` when provided.
+        ``dsn`` keyword and treat it as an alias for ``url`` when provided – the
+        value must now be a Redis URL, not a Postgres DSN.
         """
         # Prefer explicit ``dsn`` if supplied, otherwise fallback on the Redis URL provided by the canonical configuration.
         raw_url = dsn or url or cfg.settings().redis.url
@@ -53,10 +54,13 @@ class RequeueStore:
         """Construct from settings object.
 
         Expects attributes or env fallbacks:
-        - redis_url (str)
+        - redis.url or redis_url (str)
         - policy_requeue_prefix (str)
         """
-        url = getattr(settings, "redis_url", None) or cfg.settings().redis.url
+        redis_url = getattr(settings, "redis_url", None)
+        if redis_url is None and hasattr(settings, "redis"):
+            redis_url = getattr(settings.redis, "url", None)
+        url = redis_url or cfg.settings().redis.url
         prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env(
             "POLICY_REQUEUE_PREFIX"
         )

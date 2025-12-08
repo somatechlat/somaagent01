@@ -14,7 +14,6 @@ _SUBMODULES = {
     "requeue_store",
     "router_client",
     "session_repository",
-    "settings_sa01",
     "slm_client",
     "telemetry",
     "telemetry_store",

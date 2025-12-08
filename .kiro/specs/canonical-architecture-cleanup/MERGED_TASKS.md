@@ -26,7 +26,7 @@
 ## 📋 Remaining Tasks (merged from original TASKS.md + new items)
 ### Phase P0 – Unblock startup & imports
 1. **Refactor `session_repository`** – replace `ADMIN_SETTINGS` with `cfg` (DSN & Redis URL).
-2. **Refactor `requeue_store`** – same replacement. *(in-progress)*
+2. ~~Refactor `requeue_store` – same replacement.~~ ✅ *(Completed Dec 8 2025 – defaults now use `cfg.settings().redis.url`, gateway router no longer passes a Postgres DSN.)*
 3. **Refactor `export_job_store`** – same replacement. *(in-progress)*
 4. **Refactor `budget_manager`** – same replacement. *(in-progress)*
 5. **Refactor `tool_catalog`** – same replacement. *(in-progress)*
@@ -43,7 +43,7 @@
 16. **Refactor `memory_sync` main** – replace config usages. *(in-progress)*
 17. **Refactor `memory_replicator` main** – replace config usages. *(in-progress)*
 18. **Refactor `session_store_adapter` helper** – replace config usages. *(in-progress)*
-19. **Refactor `core_tasks` module** – ensure OPA URL & DSN usage via `cfg`. *(in-progress)*
+19. ~~Refactor `core_tasks` module – ensure OPA URL & DSN usage via `cfg`.~~ ✅ *(Completed Dec 8 2025 – Celery tasks now share the cfg-based DSN/OPA hooks and remove duplicate legacy shims.)*
 
 ### Phase P1 – Celery reliability (additional items)
 20. **Add `beat_schedule`** to `python/tasks/celery_app.py` for metrics & cleanup. *(in-progress)*

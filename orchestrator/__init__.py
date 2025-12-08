@@ -16,6 +16,7 @@ implementations only, and full type‑checked configuration.
 """
 
 from .config import CentralizedConfig, load_config
+from .cache_sync_service import CacheSyncService
 from .health_monitor import UnifiedHealthMonitor
 from .main import app, main, run_orchestrator
 from .orchestrator import SomaOrchestrator
@@ -31,4 +32,5 @@ __all__ = [
     "UnifiedHealthMonitor",
     "CentralizedConfig",
     "load_config",
+    "CacheSyncService",
 ]
