@@ -16,6 +16,10 @@ from python.helpers.settings import get_default_settings
 from services.common.agent_settings_store import get_agent_settings_store
 
 router = APIRouter(prefix="/v1/settings", tags=["settings"])
+# Legacy compatibility router – exposes the original `/v1/settings_save`
+# and `/v1/test_connection` endpoints expected by the UI before the
+# refactor. These simply delegate to the canonical handlers above.
+legacy_router = APIRouter(prefix="/v1", tags=["settings"])
 
 
 class SettingsUpdate(BaseModel):
@@ -119,3 +123,15 @@ async def put_setting_field(key: str, body: dict):
     await store.ensure_schema()
     await store.set_field(key, body.get("value"))
     return {"status": "ok"}
+
+
+@legacy_router.post("/settings_save")
+async def legacy_settings_save(body: SettingsUpdate):
+    """Backward-compatible alias for `/v1/settings` PUT."""
+    return await put_settings(body)
+
+
+@legacy_router.post("/test_connection")
+async def legacy_test_connection(body: TestConnectionRequest):
+    """Backward-compatible alias for `/v1/settings/test_connection`."""
+    return await test_connection(body)
