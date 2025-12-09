@@ -248,22 +248,22 @@
 ## Phase 7: Decompose MCP Handler (1087 lines → < 300 lines)
 
 - [ ] 11. Extract MCP handler components
-  - [ ] 11.1 Create mcp/protocol module
+  - [x] 11.1 Create mcp/protocol module
     - Extract protocol parsing logic
     - Create `python/helpers/mcp_protocol.py` (< 200 lines)
     - _Requirements: 6.1_
 
-  - [ ] 11.2 Create mcp/registry module
+  - [x] 11.2 Create mcp/registry module
     - Extract tool registration logic
     - Create `python/helpers/mcp_registry.py` (< 150 lines)
     - _Requirements: 6.2_
 
-  - [ ] 11.3 Create mcp/connection module
+  - [x] 11.3 Create mcp/connection module
     - Extract connection management
     - Create `python/helpers/mcp_connection.py` (< 150 lines)
     - _Requirements: 6.4_
 
-  - [ ] 11.4 Refactor mcp_handler.py
+  - [x] 11.4 Refactor mcp_handler.py
     - Reduce to < 300 lines
     - _Requirements: 6.5_
 
