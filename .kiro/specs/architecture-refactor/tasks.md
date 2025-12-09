@@ -356,27 +356,27 @@
 ## Phase 11: Decompose Agent Module (4092 lines → < 200 lines)
 
 - [ ] 19. Extract agent components (LARGEST DECOMPOSITION)
-  - [ ] 19.1 Create agent/input_processor module
+  - [x] 19.1 Create agent/input_processor module
     - Extract input processing logic
     - Create `python/somaagent/input_processor.py` (< 200 lines)
     - _Requirements: 2.1_
 
-  - [ ] 19.2 Create agent/tool_selector module
+  - [x] 19.2 Create agent/tool_selector module
     - Extract tool selection strategy
     - Create `python/somaagent/tool_selector.py` (< 200 lines)
     - _Requirements: 2.2_
 
-  - [ ] 19.3 Create agent/response_generator module
+  - [x] 19.3 Create agent/response_generator module
     - Extract response generation logic
     - Create `python/somaagent/response_generator.py` (< 200 lines)
     - _Requirements: 2.3_
 
-  - [ ] 19.4 Create agent/conversation_orchestrator module
+  - [x] 19.4 Create agent/conversation_orchestrator module
     - Extract conversation flow management
     - Create `python/somaagent/conversation_orchestrator.py` (< 300 lines)
     - _Requirements: 2.4_
 
-  - [ ] 19.5 Create agent/error_handler module
+  - [x] 19.5 Create agent/error_handler module
     - Extract error handling with retry policies
     - Create `python/somaagent/error_handler.py` (< 150 lines)
     - _Requirements: 2.5_
