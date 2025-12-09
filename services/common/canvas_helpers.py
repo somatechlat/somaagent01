@@ -30,10 +30,8 @@ Usage examples (from within a Celery task or regular code)::
         body=build_context.s(tenant_id="t3", session_id="s2"),
     ).apply_async()
 
-These helpers are deliberately minimal – they construct the signatures and
-return the ``Signature`` objects so callers can decide when to ``apply_async``
-or ``delay``.  No additional configuration is performed, keeping the
-implementation production‑grade and free of placeholders.
+These helpers construct signatures and return ``Signature`` objects so callers
+can decide when to ``apply_async`` or ``delay``.
 """
 
 from __future__ import annotations

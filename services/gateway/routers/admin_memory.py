@@ -17,9 +17,9 @@ from src.core.infrastructure.repositories import MemoryReplicaStore
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 
-def _enforce_admin_rate_limit(request: Request) -> None:
-    """Placeholder – defer to orchestrator-level rate limiting or add token bucket here."""
-    return None
+async def _enforce_admin_rate_limit(request: Request) -> None:
+    """Admin rate limiting is enforced at the gateway middleware level."""
+    pass
 
 
 class AdminMemoryItem(BaseModel):

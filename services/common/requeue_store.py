@@ -33,18 +33,13 @@ class RequeueStore:
         self.url = os.path.expandvars(raw_url)
         self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
-        # Determine if the supplied URL is a valid Redis scheme. If not, fall back
-        # to an in‑memory implementation suitable for unit tests that do not
-        # require a real Redis instance.
-        if self.url.startswith(("redis://", "rediss://", "unix://")):
-            self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
-            self._use_redis = True
-        else:
-            # In‑memory placeholders.
-            self.client = None  # type: ignore[assignment]
-            self._use_redis = False
-            self._mem_store: dict[str, str] = {}
-            self._mem_keyset: set[str] = set()
+        # Redis is REQUIRED - no in-memory fallbacks per VIBE rules
+        if not self.url.startswith(("redis://", "rediss://", "unix://")):
+            raise ValueError(
+                f"Invalid Redis URL: {self.url}. "
+                "RequeueStore requires a valid Redis connection (redis://, rediss://, or unix://)."
+            )
+        self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
 
     def _key(self, identifier: str) -> str:
         return f"{self.prefix}:{identifier}"
@@ -67,45 +62,25 @@ class RequeueStore:
         return cls(url=url, prefix=prefix)
 
     async def add(self, identifier: str, event: dict[str, Any]) -> None:
-        """Add a requeue entry.
-
-        Supports both real Redis client and the in‑memory fallback used in tests.
-        """
-        if self._use_redis:
-            key = self._key(identifier)
-            await self.client.set(key, json.dumps(event, ensure_ascii=False))
-            await self.client.sadd(self.keyset, identifier)
-        else:
-            self._mem_store[identifier] = json.dumps(event, ensure_ascii=False)
-            self._mem_keyset.add(identifier)
+        """Add a requeue entry."""
+        key = self._key(identifier)
+        await self.client.set(key, json.dumps(event, ensure_ascii=False))
+        await self.client.sadd(self.keyset, identifier)
 
     async def remove(self, identifier: str) -> None:
-        if self._use_redis:
-            key = self._key(identifier)
-            await self.client.delete(key)
-            await self.client.srem(self.keyset, identifier)
-        else:
-            self._mem_store.pop(identifier, None)
-            self._mem_keyset.discard(identifier)
+        key = self._key(identifier)
+        await self.client.delete(key)
+        await self.client.srem(self.keyset, identifier)
 
     async def get(self, identifier: str) -> Optional[dict[str, Any]]:
-        if self._use_redis:
-            key = self._key(identifier)
-            raw = await self.client.get(key)
-            if raw is None:
-                return None
-            return json.loads(raw)
-        else:
-            raw = self._mem_store.get(identifier)
-            if raw is None:
-                return None
-            return json.loads(raw)
+        key = self._key(identifier)
+        raw = await self.client.get(key)
+        if raw is None:
+            return None
+        return json.loads(raw)
 
     async def list(self) -> list[dict[str, Any]]:
-        if self._use_redis:
-            identifiers = await self.client.smembers(self.keyset)
-        else:
-            identifiers = list(self._mem_keyset)
+        identifiers = await self.client.smembers(self.keyset)
         results: list[dict[str, Any]] = []
         for identifier in identifiers:
             data = await self.get(identifier)
@@ -114,10 +89,7 @@ class RequeueStore:
                 results.append(data)
             else:
                 # Clean up stale reference
-                if self._use_redis:
-                    await self.client.srem(self.keyset, identifier)
-                else:
-                    self._mem_keyset.discard(identifier)
+                await self.client.srem(self.keyset, identifier)
         return sorted(results, key=lambda item: item.get("timestamp", 0.0), reverse=True)
 
     # --- Backwards-compatibility aliases used by gateway ---

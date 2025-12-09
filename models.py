@@ -25,36 +25,11 @@ from litellm import acompletion, completion, embedding
 
 litellm_exceptions = getattr(litellm, "exceptions", None)
 
-# Browser‑use is optional for the test environment.  The original code raised
-# an ImportError, which prevented the entire test suite from being collected.
-# We now provide a lightweight fallback that mimics the required classes.
-try:
-    from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter  # type: ignore
-except Exception:  # pragma: no cover – only executed when the package is missing
-    # Minimal stubs so that type checks and attribute access in the code base
-    # succeed without pulling in the heavy external dependency.
-    class _NoOp:
-        def __init__(self, *_, **__):
-            pass
+# browser-use is a required dependency
+from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter  # type: ignore
 
-        def __getattr__(self, name: str):
-            # Return a callable no‑op for any accessed attribute.
-            def _dummy(*_, **__):
-                return None
-
-            return _dummy
-
-    # Stub implementations used by the rest of the code.
-    browser_use_monkeypatch = _NoOp()
-    ChatGoogle = _NoOp  # type: ignore
-    ChatOpenRouter = _NoOp  # type: ignore
-
-try:
-    # Older import path provided by the monolithic 'langchain' package
-    from langchain.embeddings.base import Embeddings  # type: ignore
-except Exception:  # pragma: no cover - fallback for slim builds using langchain-core only
-    # Newer, lighter-weight location provided by langchain-core
-    from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
+# langchain-core is a required dependency
+from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
@@ -68,21 +43,8 @@ from langchain_core.messages import (
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
 
-# sentence-transformers is required for embedding functionality
-# Sentence‑transformers is optional for the test suite.  The production code
-# expects the class to exist, but the heavy dependency is not installed in the
-# CI environment.  Provide a minimal stub when the import fails.
-try:
-    from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
-except Exception:  # pragma: no cover – executed only when the package is missing
-
-    class SentenceTransformer:  # type: ignore
-        def __init__(self, *_, **__):
-            pass
-
-        def encode(self, *_, **__):  # pragma: no cover
-            # Return an empty list to satisfy callers that expect a vector.
-            return []
+# sentence-transformers is a required dependency
+from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
 
 import time

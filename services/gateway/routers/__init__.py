@@ -1,24 +1,15 @@
-"""Router bundle for the decomposed gateway.
-
-These routers are lightweight, fully functional stubs that can be mounted by
-the main gateway ASGI app as decomposition progresses. They avoid placeholders
-by providing real, minimal endpoints for their domains.
-"""
+"""Router bundle for the gateway API."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 
-# Import all sub‑routers that compose the gateway API. The ``health`` router
-# provides a minimal liveness check, while ``health_full`` offers the detailed
-# health aggregation. Both are included in the final router.
 from . import (
     admin,
     admin_kafka,
     admin_memory,
     admin_migrate,
     attachments,
-    auth,
     av,
     capsules,
     celery_api,
@@ -46,7 +37,6 @@ from . import (
     tasks,
     tool_catalog,
     tool_request,
-    tools,
     tools_full,
     ui_settings,
     uploads,
@@ -55,7 +45,7 @@ from . import (
     workdir,
     features,
     weights,
-    )
+)
 
 
 def build_router() -> APIRouter:
@@ -79,7 +69,6 @@ def build_router() -> APIRouter:
         memory_exports.router,
         tool_catalog.router,
         notifications.router,
-        auth.router,
         keys.router,
         workdir.router,
         features.router,
@@ -99,7 +88,6 @@ def build_router() -> APIRouter:
         celery_api.router,
         memory.router,
         sessions.router,
-        tools.router,
         uploads.router,
         runtime_config.router,
         tasks.router,

@@ -785,6 +785,121 @@ class SomaClient:
     async def health(self) -> Mapping[str, Any]:
         return await self._request("GET", "/health")
 
+    # ------------------------------------------------------------------
+    # Neuromodulation endpoints (verified from SomaBrain OpenAPI spec)
+    # ------------------------------------------------------------------
+
+    async def get_neuromodulators(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        persona_id: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Get current neuromodulator state from SomaBrain.
+
+        Note: The SomaBrain /neuromodulators endpoint is global and does not
+        accept tenant_id or persona_id parameters. These are accepted here
+        for API compatibility but are not sent to the server.
+
+        Returns:
+            NeuromodStateModel with dopamine, serotonin, noradrenaline, acetylcholine
+        """
+        # SomaBrain API: GET /neuromodulators (no query params)
+        return await self._request("GET", "/neuromodulators")
+
+    async def update_neuromodulators(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        persona_id: Optional[str] = None,
+        neuromodulators: Optional[Mapping[str, float]] = None,
+    ) -> Mapping[str, Any]:
+        """Update neuromodulator state in SomaBrain.
+
+        Note: The SomaBrain /neuromodulators endpoint is global and does not
+        accept tenant_id or persona_id parameters. These are accepted here
+        for API compatibility but are not sent to the server.
+
+        Args:
+            tenant_id: Ignored (for API compatibility)
+            persona_id: Ignored (for API compatibility)
+            neuromodulators: Dict with dopamine, serotonin, noradrenaline, acetylcholine
+
+        Returns:
+            Updated NeuromodStateModel
+        """
+        # SomaBrain API: POST /neuromodulators with NeuromodStateModel body
+        body: Dict[str, Any] = {}
+        if neuromodulators:
+            body.update(neuromodulators)
+        return await self._request("POST", "/neuromodulators", json=body)
+
+    async def get_adaptation_state(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        persona_id: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Get current adaptation state from SomaBrain.
+
+        This wraps the /context/adaptation/state endpoint which returns
+        retrieval weights, utility weights, history length, and learning rate.
+
+        Note: persona_id is accepted for API compatibility but not used by SomaBrain.
+
+        Args:
+            tenant_id: Optional tenant filter
+            persona_id: Ignored (for API compatibility)
+
+        Returns:
+            AdaptationStateResponse with retrieval, utility, history_len, learning_rate
+        """
+        # SomaBrain API: GET /context/adaptation/state?tenant_id=X
+        params = {"tenant_id": tenant_id} if tenant_id else None
+        return await self._request("GET", "/context/adaptation/state", params=params)
+
+    async def sleep_cycle(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        persona_id: Optional[str] = None,
+        duration_minutes: Optional[int] = None,
+        nrem: bool = True,
+        rem: bool = True,
+    ) -> Mapping[str, Any]:
+        """Trigger a sleep cycle for memory consolidation.
+
+        This wraps the /sleep/run endpoint which initiates NREM and/or REM
+        sleep phases for memory consolidation and pruning.
+
+        Note: tenant_id, persona_id, and duration_minutes are accepted for API
+        compatibility but the SomaBrain /sleep/run endpoint only accepts nrem/rem bools.
+
+        Args:
+            tenant_id: Ignored (for API compatibility)
+            persona_id: Ignored (for API compatibility)
+            duration_minutes: Ignored (for API compatibility)
+            nrem: Whether to run NREM sleep phase (default True)
+            rem: Whether to run REM sleep phase (default True)
+
+        Returns:
+            SleepRunResponse with ok and run_id
+        """
+        # SomaBrain API: POST /sleep/run with SleepRunRequest body
+        body: Dict[str, Any] = {
+            "nrem": nrem,
+            "rem": rem,
+        }
+        return await self._request("POST", "/sleep/run", json=body)
+
+    async def sleep_status(self) -> Mapping[str, Any]:
+        """Get current sleep status from SomaBrain.
+
+        Returns:
+            SleepStatusResponse with enabled, interval_seconds, last
+        """
+        return await self._request("GET", "/sleep/status")
+
 
 __all__ = [
     "SomaClient",
