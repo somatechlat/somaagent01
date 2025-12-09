@@ -55,8 +55,8 @@ class MigrationBatch:
 def _ensure_local_memory_mode() -> None:
     """Force the memory helpers to load the prior FAISS backend."""
 
-    if os.environ.get("SOMA_ENABLED") is None:
-        os.environ["SOMA_ENABLED"] = "false"
+    if os.environ.get("SA01_SOMABRAIN_ENABLED") is None:
+        os.environ["SA01_SOMABRAIN_ENABLED"] = "false"
 
 
 async def _load_documents(memory_subdir: str, limit: int | None) -> List[Tuple[str, Document]]:

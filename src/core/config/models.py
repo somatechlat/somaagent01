@@ -6,7 +6,7 @@ Production-ready field validation with modern Pydantic patterns.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Literal, ClassVar
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -278,26 +278,18 @@ class Config(BaseModel):
     def get_somabrain_url(self) -> str:
         """Return the SomaBrain base URL.
 
-        Falls back to ``SA01_SOMA_BASE_URL`` environment variable when the
-        config field is not set.
+        Returns the configured value from external.somabrain_base_url.
+        The loader already handles SA01_SOMA_BASE_URL env var precedence.
         """
-        if self.external.somabrain_base_url:
-            return self.external.somabrain_base_url
-        import os
-
-        return os.getenv("SA01_SOMA_BASE_URL", "")
+        return self.external.somabrain_base_url or ""
 
     def get_opa_url(self) -> str:
         """Return the OPA service URL.
 
-        Falls back to ``SA01_OPA_URL`` environment variable when the config
-        field is not set.
+        Returns the configured value from external.opa_url.
+        The loader already handles SA01_OPA_URL env var precedence.
         """
-        if self.external.opa_url:
-            return self.external.opa_url
-        import os
-
-        return os.getenv("SA01_OPA_URL", "")
+        return self.external.opa_url or ""
 
     def get_postgres_dsn(self) -> str:
         """Get PostgreSQL DSN."""
