@@ -304,17 +304,17 @@
 ## Phase 9: Decompose Gateway (438 lines → < 100 lines main.py)
 
 - [ ] 15. Extract gateway components
-  - [ ] 15.1 Verify router modules exist
+  - [x] 15.1 Verify router modules exist
     - Check `services/gateway/routers/` structure
     - Ensure routes are properly separated
     - _Requirements: 8.1_
 
-  - [ ] 15.2 Create/verify middleware modules
+  - [x] 15.2 Create/verify middleware modules
     - Verify `AuthMiddleware` exists or create
     - Verify `RateLimitMiddleware` exists or create
     - _Requirements: 8.2, 8.3_
 
-  - [ ] 15.3 Refactor main.py to thin initializer
+  - [x] 15.3 Refactor main.py to thin initializer
     - Reduce `services/gateway/main.py` to < 100 lines
     - Keep only: FastAPI app init, middleware registration, router mounting
     - _Requirements: 8.5_
