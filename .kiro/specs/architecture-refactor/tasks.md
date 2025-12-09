@@ -200,12 +200,12 @@
     - Create `services/tool_executor/telemetry.py` (< 100 lines)
     - _Requirements: 3.3_
 
-  - [-] 7.3 Create audit module
+  - [x] 7.3 Create audit module
     - Extract audit logging logic
     - Create `services/tool_executor/audit.py` (< 100 lines)
     - _Requirements: 3.4_
 
-  - [ ] 7.4 Refactor main.py to thin orchestrator
+  - [-] 7.4 Refactor main.py to thin orchestrator
     - Reduce `services/tool_executor/main.py` to < 150 lines
     - Keep only: service bootstrap, event consumption, delegation
     - _Requirements: 3.6_
