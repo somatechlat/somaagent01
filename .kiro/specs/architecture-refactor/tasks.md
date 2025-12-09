@@ -328,22 +328,22 @@
 ## Phase 10: Decompose Core Tasks (764 lines → domain-specific modules)
 
 - [ ] 17. Split core tasks by domain
-  - [ ] 17.1 Create conversation_tasks module
+  - [x] 17.1 Create conversation_tasks module
     - Extract conversation-related Celery tasks
     - Create `python/tasks/conversation_tasks.py` (< 200 lines)
     - _Requirements: 10.1_
 
-  - [ ] 17.2 Create memory_tasks module
+  - [x] 17.2 Create memory_tasks module
     - Extract memory-related Celery tasks
     - Create `python/tasks/memory_tasks.py` (< 200 lines)
     - _Requirements: 10.2_
 
-  - [ ] 17.3 Create maintenance_tasks module
+  - [x] 17.3 Create maintenance_tasks module
     - Extract maintenance/cleanup tasks
     - Create `python/tasks/maintenance_tasks.py` (< 200 lines)
     - _Requirements: 10.3_
 
-  - [ ] 17.4 Refactor core_tasks.py
+  - [x] 17.4 Refactor core_tasks.py
     - Reduce to imports and task registration only (< 100 lines)
     - _Requirements: 10.4_
 
