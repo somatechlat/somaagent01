@@ -10,8 +10,36 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
 
-from observability.metrics import metrics_collector
+from observability.metrics import Counter, Gauge, Histogram, metrics_collector
 from services.gateway.circuit_breakers import CircuitBreaker, CircuitState
+
+# Prometheus metrics for degradation monitoring
+SERVICE_HEALTH_STATE = Gauge(
+    "service_health_state",
+    "Current health state of service (0=unhealthy, 1=healthy)",
+    labelnames=("service",),
+)
+SERVICE_DEGRADATION_LEVEL = Gauge(
+    "service_degradation_level",
+    "Current degradation level (0=none, 1=minor, 2=moderate, 3=severe, 4=critical)",
+    labelnames=("service",),
+)
+SERVICE_LATENCY_SECONDS = Histogram(
+    "service_latency_seconds",
+    "Service response latency in seconds",
+    labelnames=("service",),
+    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+)
+SERVICE_ERROR_RATE = Gauge(
+    "service_error_rate",
+    "Current error rate for service (0.0-1.0)",
+    labelnames=("service",),
+)
+CASCADING_FAILURES_TOTAL = Counter(
+    "cascading_failures_total",
+    "Total cascading failures detected",
+    labelnames=("source_service", "affected_service"),
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +86,28 @@ class DegradationMonitor:
 
     Monitors system health, detects degradation patterns, and provides
     actionable insights for system resilience.
+    
+    Features:
+    - Component health tracking
+    - Dependency graph for cascading failure detection
+    - Circuit breaker integration
+    - Prometheus metrics
     """
+
+    # Service dependency graph: key depends on values
+    # When a dependency fails, dependents are marked as degraded
+    SERVICE_DEPENDENCIES: Dict[str, List[str]] = {
+        "gateway": ["database", "redis", "kafka"],
+        "tool_executor": ["database", "kafka", "somabrain"],
+        "conversation_worker": ["database", "kafka", "somabrain", "redis"],
+        "memory_sync": ["database", "somabrain"],
+        "auth_service": ["database", "redis"],
+        # Core services have no dependencies (they ARE the dependencies)
+        "somabrain": [],
+        "database": [],
+        "kafka": [],
+        "redis": [],
+    }
 
     def __init__(self):
         self.components: Dict[str, ComponentHealth] = {}
@@ -70,6 +119,7 @@ class DegradationMonitor:
         }
         self._monitoring_active = False
         self._monitor_task: Optional[asyncio.Task] = None
+        self._dependency_graph: Dict[str, List[str]] = self.SERVICE_DEPENDENCIES.copy()
 
     async def initialize(self) -> None:
         """Initialize degradation monitor with default components."""
@@ -174,13 +224,41 @@ class DegradationMonitor:
 
             # Update degradation level based on metrics
             component.degradation_level = self._calculate_degradation_level(component)
+            
+            # Record Prometheus metrics
+            self._record_component_metrics(component)
 
         except Exception as e:
             component.healthy = False
             component.error_rate = 1.0
             component.response_time = time.time() - start_time
             component.degradation_level = DegradationLevel.SEVERE
+            self._record_component_metrics(component)
             logger.error(f"Health check failed for {component_name}: {e}")
+
+    def _record_component_metrics(self, component: ComponentHealth) -> None:
+        """Record Prometheus metrics for a component."""
+        SERVICE_HEALTH_STATE.labels(service=component.name).set(
+            1.0 if component.healthy else 0.0
+        )
+        SERVICE_DEGRADATION_LEVEL.labels(service=component.name).set(
+            self._degradation_level_to_int(component.degradation_level)
+        )
+        SERVICE_LATENCY_SECONDS.labels(service=component.name).observe(
+            component.response_time
+        )
+        SERVICE_ERROR_RATE.labels(service=component.name).set(component.error_rate)
+
+    def _degradation_level_to_int(self, level: DegradationLevel) -> int:
+        """Convert degradation level to integer for metrics."""
+        mapping = {
+            DegradationLevel.NONE: 0,
+            DegradationLevel.MINOR: 1,
+            DegradationLevel.MODERATE: 2,
+            DegradationLevel.SEVERE: 3,
+            DegradationLevel.CRITICAL: 4,
+        }
+        return mapping.get(level, 0)
 
     async def _check_somabrain_health(self, component: ComponentHealth) -> None:
         """Check SomaBrain health specifically."""
@@ -282,8 +360,8 @@ class DegradationMonitor:
 
     async def _analyze_degradation_patterns(self) -> None:
         """Analyze degradation patterns across all components."""
-        # This is where you could implement more sophisticated degradation analysis
-        # For now, we'll keep it simple but extensible
+        # Propagate cascading failures through dependency graph
+        await self._propagate_cascading_failures()
 
         degraded_components = [
             comp
@@ -299,6 +377,72 @@ class DegradationMonitor:
                     f"(response_time: {comp.response_time:.3f}s, "
                     f"error_rate: {comp.error_rate:.2f})"
                 )
+
+    async def _propagate_cascading_failures(self) -> None:
+        """Propagate failures through the dependency graph.
+        
+        When a core service (database, kafka, redis, somabrain) fails,
+        all services that depend on it are marked as degraded.
+        """
+        # Find all failed core services
+        failed_services = {
+            name for name, comp in self.components.items()
+            if not comp.healthy or comp.degradation_level in [
+                DegradationLevel.SEVERE, DegradationLevel.CRITICAL
+            ]
+        }
+        
+        if not failed_services:
+            return
+        
+        # Propagate failures to dependent services
+        for service_name, dependencies in self._dependency_graph.items():
+            if service_name not in self.components:
+                continue
+                
+            component = self.components[service_name]
+            
+            # Check if any dependency has failed
+            failed_deps = failed_services.intersection(set(dependencies))
+            if failed_deps:
+                # Mark this service as degraded due to dependency failure
+                if component.degradation_level == DegradationLevel.NONE:
+                    component.degradation_level = DegradationLevel.MODERATE
+                    # Record cascading failure metrics
+                    for failed_dep in failed_deps:
+                        CASCADING_FAILURES_TOTAL.labels(
+                            source_service=failed_dep,
+                            affected_service=service_name
+                        ).inc()
+                    logger.warning(
+                        f"Cascading degradation: {service_name} degraded due to "
+                        f"failed dependencies: {', '.join(failed_deps)}"
+                    )
+
+    def get_service_dependencies(self, service_name: str) -> List[str]:
+        """Get the dependencies for a service."""
+        return self._dependency_graph.get(service_name, [])
+
+    def get_dependent_services(self, service_name: str) -> List[str]:
+        """Get services that depend on the given service."""
+        dependents = []
+        for svc, deps in self._dependency_graph.items():
+            if service_name in deps:
+                dependents.append(svc)
+        return dependents
+
+    def add_dependency(self, service: str, depends_on: str) -> None:
+        """Add a dependency relationship."""
+        if service not in self._dependency_graph:
+            self._dependency_graph[service] = []
+        if depends_on not in self._dependency_graph[service]:
+            self._dependency_graph[service].append(depends_on)
+
+    def remove_dependency(self, service: str, depends_on: str) -> None:
+        """Remove a dependency relationship."""
+        if service in self._dependency_graph:
+            if depends_on in self._dependency_graph[service]:
+                self._dependency_graph[service].remove(depends_on)
 
     async def get_degradation_status(self) -> DegradationStatus:
         """Get current degradation status."""
