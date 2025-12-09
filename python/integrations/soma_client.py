@@ -8,24 +8,23 @@ and exporting the current memory state.
 
 The implementation is intentionally defensive.  The SomaBrain deployment used
 in development environments can differ slightly in the exact headers it
-expects, so the client reads configuration from environment variables with
-sensible defaults and exposes helpers for common headers and payload shapes.
+expects, so the client reads configuration via the canonical ``cfg`` facade
+and exposes helpers for common headers and payload shapes.
 
-Environment variables:
+Environment variables (all use SA01_ prefix per VIBE rules):
 
-* ``SOMA_BASE_URL``: Base URL of the SomaBrain API.  Defaults to
-    ``http://localhost:9696`` which matches the local development cluster.
-* ``SOMA_API_KEY``: Optional API key.  When provided the client sends it in an
-  ``Authorization: Bearer`` header (or a custom header if
-  ``SOMA_AUTH_HEADER`` is supplied).
-* ``SOMA_TENANT_ID``: Optional tenant identifier forwarded via
-  ``X-Tenant-ID`` (or a custom header defined by ``SOMA_TENANT_HEADER``).
-* ``SOMA_NAMESPACE``: Optional logical namespace value.  When set it is added
-  to outgoing request bodies under the ``universe`` key so that requests are
-  automatically segmented per Agent Zero memory sub-directory.
-* ``SOMA_TIMEOUT_SECONDS``: Optional request timeout (float seconds).  Defaults
-  to 30 seconds which is generous enough for bulk exports.
-* ``SOMA_VERIFY_SSL``: Toggle TLS certificate verification (``true``/``false``).
+* ``SA01_SOMA_BASE_URL``: Base URL of the SomaBrain API (REQUIRED).
+* ``SA01_SOMA_API_KEY``: Optional API key for Bearer authentication.
+* ``SA01_TENANT_ID``: Optional tenant identifier forwarded via X-Tenant-ID.
+* ``SA01_NAMESPACE``: Optional logical namespace for memory segmentation.
+* ``SA01_MEMORY_NAMESPACE``: Memory namespace (default: "wm").
+* ``SA01_SOMA_TIMEOUT_SECONDS``: Request timeout in seconds (default: 30).
+* ``SA01_VERIFY_SSL``: Toggle TLS certificate verification (true/false).
+* ``SA01_TLS_CA``: Path to CA bundle for TLS verification.
+* ``SA01_TLS_CERT``: Path to client certificate for mTLS.
+* ``SA01_TLS_KEY``: Path to client key for mTLS.
+* ``SA01_SOMA_MAX_RETRIES``: Maximum retry attempts (default: 2).
+* ``SA01_SOMA_RETRY_BASE_MS``: Base retry delay in milliseconds (default: 150).
 
 The client keeps a single ``httpx.AsyncClient`` instance per process to reuse
 connections.  Callers should obtain the singleton through ``SomaClient.get()``
@@ -91,7 +90,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     candidate = (raw_base_url or "").strip()
     if not candidate:
         raise ValueError(
-            "SOMA_BASE_URL is required. Set it to your SomaBrain service URL "
+            "SA01_SOMA_BASE_URL is required. Set it to your SomaBrain service URL "
             "(e.g., http://somabrain:9696)"
         )
 
@@ -128,23 +127,18 @@ def _default_base_url() -> str:
     url = cfg.get_somabrain_url()
     if not url:
         raise ValueError(
-            "SomaBrain base URL is required. Configure cfg.external.somabrain_base_url "
-            "or SA01_SOMA_BASE_URL/SOMA_BASE_URL environment variable."
+            "SomaBrain base URL is required. Set SA01_SOMA_BASE_URL environment variable."
         )
     return url
 
 
 DEFAULT_BASE_URL = _default_base_url()
-DEFAULT_TIMEOUT = float(cfg.env("SOMA_TIMEOUT_SECONDS", "30") or "30")
-# IMPORTANT: Distinguish logical universe vs. memory namespace
-# - SOMA_NAMESPACE conveys the universe/context (e.g. "somabrain_ns:public")
-# - SOMA_MEMORY_NAMESPACE is the memory sub-namespace (e.g. "wm", "ltm").
-#   If not provided, default to "wm" for working memory.
-DEFAULT_UNIVERSE = cfg.env("SOMA_NAMESPACE")
-DEFAULT_NAMESPACE = cfg.env("SOMA_MEMORY_NAMESPACE", "wm") or "wm"
+DEFAULT_TIMEOUT = float(cfg.env("SA01_SOMA_TIMEOUT_SECONDS", "30") or "30")
+DEFAULT_UNIVERSE = cfg.env("SA01_NAMESPACE")
+DEFAULT_NAMESPACE = cfg.env("SA01_MEMORY_NAMESPACE", "wm") or "wm"
 
-TENANT_HEADER = cfg.env("SOMA_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
-AUTH_HEADER = cfg.env("SOMA_AUTH_HEADER", "Authorization") or "Authorization"
+TENANT_HEADER = cfg.env("SA01_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
+AUTH_HEADER = cfg.env("SA01_AUTH_HEADER", "Authorization") or "Authorization"
 
 
 def _truthy_env(var_name: str) -> bool:
@@ -155,9 +149,9 @@ def _truthy_env(var_name: str) -> bool:
 
 
 def _running_inside_container() -> bool:
-    if _truthy_env("SOMA_FORCE_CONTAINER"):
+    if _truthy_env("SA01_FORCE_CONTAINER"):
         return True
-    if _truthy_env("SOMA_DISABLE_CONTAINER_CHECK"):
+    if _truthy_env("SA01_DISABLE_CONTAINER_CHECK"):
         return False
 
     if os.path.exists("/.dockerenv"):
@@ -184,7 +178,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = cfg.env("SOMA_CONTAINER_HOST_ALIAS")
+        override_host = cfg.env("SA01_CONTAINER_HOST_ALIAS")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -239,25 +233,23 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": cfg.env("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
         self.base_url = _normalize_base_url(sanitized_base_url)
-        # Memory namespace (e.g. "wm"). Not the same as the logical universe.
         self.namespace = namespace
-        # Universe/context identifier (e.g. "somabrain_ns:public")
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or cfg.env("SOMA_TENANT_ID")
-        self._api_key = api_key or cfg.env("SOMA_API_KEY")
-        verify_override = _boolean(cfg.env("SOMA_VERIFY_SSL"))
+        self._tenant_id = tenant_id or cfg.env("SA01_TENANT_ID")
+        self._api_key = api_key or cfg.env("SA01_SOMA_API_KEY")
+        verify_override = _boolean(cfg.env("SA01_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
         # TLS settings (optional mTLS)
-        ca_bundle = cfg.env("SOMA_TLS_CA")
-        client_cert = cfg.env("SOMA_TLS_CERT")
-        client_key = cfg.env("SOMA_TLS_KEY")
+        ca_bundle = cfg.env("SA01_TLS_CA")
+        client_cert = cfg.env("SA01_TLS_CERT")
+        client_key = cfg.env("SA01_TLS_KEY")
         verify_value: bool | str = True
         if verify_ssl is not None:
             verify_value = verify_ssl
@@ -291,8 +283,8 @@ class SomaClient:
         self._CB_COOLDOWN_SEC: float = 15.0
 
         # Retry configuration
-        self._max_retries: int = int(cfg.env("SOMA_MAX_RETRIES", "2") or "2")
-        self._retry_base_ms: int = int(cfg.env("SOMA_RETRY_BASE_MS", "150") or "150")
+        self._max_retries: int = int(cfg.env("SA01_SOMA_MAX_RETRIES", "2") or "2")
+        self._retry_base_ms: int = int(cfg.env("SA01_SOMA_RETRY_BASE_MS", "150") or "150")
 
     @classmethod
     def get(cls) -> "SomaClient":
@@ -376,7 +368,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": cfg.env("SOMA_BASE_URL"),
+                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -528,7 +520,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or (cfg.env("SOMA_TENANT_ID", "") or "").strip()
+            or (cfg.env("SA01_TENANT_ID", "") or "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -639,7 +631,7 @@ class SomaClient:
         """
 
         body: Dict[str, Any] = {
-            "tenant": tenant or (cfg.env("SOMA_TENANT_ID", "") or "").strip() or "default",
+            "tenant": tenant or (cfg.env("SA01_TENANT_ID", "") or "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,

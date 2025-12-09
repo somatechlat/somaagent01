@@ -194,7 +194,7 @@ class ResultPublisher:
                 **str_metadata,
                 "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
                 "universe_id": (result_event.get("metadata") or {}).get("universe_id")
-                or cfg.env("SOMA_NAMESPACE"),
+                or cfg.env("SA01_NAMESPACE"),
             },
             "status": result_event.get("status"),
         }

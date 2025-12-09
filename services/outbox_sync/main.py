@@ -150,15 +150,15 @@ class OutboxSyncWorker:
                 HEALTH_STATE.labels(state).set(1.0 if state == self._health_state else 0.0)
 
     async def _probe_somabrain_health(self) -> str:
-        """Probe SOMA_BASE_URL/health quickly and classify state.
+        """Probe SomaBrain health endpoint.
 
         - normal: HTTP 200 and body ok=true or status==ok within ~1.5s
         - degraded: HTTP 200 but body not clearly ok
         - down: request error/timeout/non-200
         """
-        base = cfg.env("SOMA_BASE_URL")
+        base = cfg.env("SA01_SOMA_BASE_URL")
         if not base:
-            raise RuntimeError("SOMA_BASE_URL must be set for outbox_sync")
+            raise RuntimeError("SA01_SOMA_BASE_URL must be set for outbox_sync")
         base = base.rstrip("/")
         url = f"{base}/health"
         timeout = _env_float("OUTBOX_SYNC_HEALTH_INTERVAL_SECONDS", 1.5)

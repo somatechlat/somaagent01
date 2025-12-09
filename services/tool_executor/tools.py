@@ -291,11 +291,10 @@ class IngestDocumentTool(BaseTool):
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             raise ToolExecutionError("'attachment_id' is required")
 
-        base = cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        # Harden internal token handling: only default in DEV, require explicit in non-DEV
-        mode = (cfg.env("SOMA_AGENT_MODE") or "DEV").upper()
+        base = cfg.env("SA01_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
+        mode = cfg.env("SA01_DEPLOYMENT_MODE", "DEV").upper()
         default_token = "dev-internal-token" if mode == "DEV" else ""
-        token = cfg.env("GATEWAY_INTERNAL_TOKEN", default_token)
+        token = cfg.env("SA01_GATEWAY_INTERNAL_TOKEN", default_token)
         if not token:
             raise ToolExecutionError("Internal token not configured for attachment fetch")
         url = f"{base}/internal/attachments/{attachment_id}/binary"

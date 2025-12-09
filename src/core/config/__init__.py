@@ -73,12 +73,15 @@ def env(name: str, default: Any = None) -> Any:
     # Environment variable mappings – flat names like ``POSTGRES_DSN`` or
     # ``OPA_URL`` resolve to nested config fields.
     # ---------------------------------------------------------------------
+    # VIBE COMPLIANT: Only canonical SA01_ prefixed keys supported.
+    # No legacy SOMA_ fallbacks.
+    # ---------------------------------------------------------------------
     env_map = {
         "POSTGRES_DSN": lambda: getattr(cfg_obj.database, "dsn", None),
         "SA01_REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
         "REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
+        "SA01_OPA_URL": lambda: getattr(cfg_obj.external, "opa_url", None),
         "OPA_URL": lambda: getattr(cfg_obj.external, "opa_url", None),
-        "SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
         "SA01_SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
     }
     if name in env_map:
@@ -128,10 +131,15 @@ def gateway_port() -> int:
 
 
 def soma_base_url() -> str:
-    url = env("SOMA_BASE_URL") or env("SA01_SOMA_BASE_URL") or env("SA01_SOMABRAIN_URL")
+    """Get SomaBrain base URL.
+    
+    VIBE COMPLIANT: Only SA01_SOMA_BASE_URL is supported.
+    No legacy SOMA_BASE_URL fallback.
+    """
+    url = env("SA01_SOMA_BASE_URL")
     if not url:
         raise RuntimeError(
-            "SOMA_BASE_URL (or SA01_SOMA_BASE_URL/SA01_SOMABRAIN_URL) must be set explicitly."
+            "SA01_SOMA_BASE_URL must be set explicitly. No fallbacks allowed per VIBE rules."
         )
     return str(url).rstrip("/")
 

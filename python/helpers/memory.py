@@ -58,9 +58,9 @@ def _env_flag(name: str, default: bool) -> bool:
     return v.strip().lower() in {"1", "true", "yes", "on"} if v else default
 
 
-SOMA_ENABLED = _env_flag("SOMA_ENABLED", True)
-SOMA_CACHE_INCLUDE_WM = _env_flag("SOMA_CACHE_INCLUDE_WM", False)
-SOMA_CACHE_WM_LIMIT = int(os.environ.get("SOMA_CACHE_WM_LIMIT", "128"))
+SOMABRAIN_ENABLED = _env_flag("SA01_SOMABRAIN_ENABLED", True)
+CACHE_INCLUDE_WM = _env_flag("SA01_CACHE_INCLUDE_WM", False)
+CACHE_WM_LIMIT = int(os.environ.get("SA01_CACHE_WM_LIMIT", "128"))
 
 
 class MemoryArea(Enum):
@@ -93,14 +93,14 @@ class Memory:
     def _get_soma(agent, memory_subdir: str) -> SomaMemory:
         if memory_subdir not in Memory._remote_instances:
             soma = SomaMemory(agent=agent, memory_subdir=memory_subdir, memory_area_enum=MemoryArea)
-            soma._docstore.configure(SOMA_CACHE_INCLUDE_WM, SOMA_CACHE_WM_LIMIT)
+            soma._docstore.configure(CACHE_INCLUDE_WM, CACHE_WM_LIMIT)
             Memory._remote_instances[memory_subdir] = soma
         return Memory._remote_instances[memory_subdir]
 
     @staticmethod
     async def get(agent: Agent):
         memory_subdir = agent.config.memory_subdir or "default"
-        if SOMA_ENABLED:
+        if SOMABRAIN_ENABLED:
             return Memory._get_soma(agent, memory_subdir)
         if Memory.index.get(memory_subdir) is None:
             log_item = agent.context.log.log(type="util", heading=f"Initializing VectorDB in '/{memory_subdir}'")
@@ -114,7 +114,7 @@ class Memory:
 
     @staticmethod
     async def get_by_subdir(memory_subdir: str, log_item: LogItem | None = None, preload_knowledge: bool = True):
-        if SOMA_ENABLED:
+        if SOMABRAIN_ENABLED:
             return Memory._get_soma(None, memory_subdir)
         if not Memory.index.get(memory_subdir):
             import initialize
@@ -129,7 +129,7 @@ class Memory:
     @staticmethod
     async def reload(agent: Agent):
         memory_subdir = agent.config.memory_subdir or "default"
-        if SOMA_ENABLED:
+        if SOMABRAIN_ENABLED:
             if memory_subdir in Memory._remote_instances:
                 await Memory._remote_instances[memory_subdir].refresh()
                 return Memory._remote_instances[memory_subdir]
@@ -181,7 +181,7 @@ class Memory:
 
         if not db:
             if not FAISS_AVAILABLE:
-                raise RuntimeError("Local FAISS library not installed. Set SOMA_ENABLED=true for remote memory.")
+                raise RuntimeError("Local FAISS library not installed. Set SOMABRAIN_ENABLED=true for remote memory.")
             index = faiss.IndexFlatIP(len(embedder.embed_query("example")))
             db = MyFaiss(embedding_function=embedder, index=index,
                         docstore=(InMemoryDocstore() if LC_AVAILABLE and InMemoryDocstore else None),

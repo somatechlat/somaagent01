@@ -272,20 +272,19 @@ class EnvironmentMapping:
 
     The loader respects the ``SA01_`` prefix via the Pydantic model.
     This helper provides ``env_mapping.get_env_value`` for callers.
+    
+    VIBE COMPLIANT: Only SA01_ prefix is supported. No legacy fallbacks.
     """
 
     sa01_prefix: str = "SA01_"
-    soma_prefix: str = "SOMA_"
 
     def get_env_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        # Highest‑priority ``SA01_``
+        """Get environment variable with SA01_ prefix.
+        
+        VIBE: No fallbacks. Only canonical SA01_ prefix supported.
+        """
         prefixed = f"{self.sa01_prefix}{key}"
         value = os.getenv(prefixed)
-        if value is not None:
-            return value
-        # ``SOMA_`` fallback
-        soma_key = f"{self.soma_prefix}{key}"
-        value = os.getenv(soma_key)
         if value is not None:
             return value
         return default

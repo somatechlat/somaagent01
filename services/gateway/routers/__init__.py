@@ -13,7 +13,6 @@ from . import (
     av,
     capsules,
     celery_api,
-    chat,
     chat_full,
     constitution,
     dlq,
@@ -21,7 +20,6 @@ from . import (
     health_full,
     keys,
     llm,
-    memory,
     memory_exports,
     memory_mutations,
     notifications,
@@ -39,7 +37,6 @@ from . import (
     tool_request,
     tools_full,
     ui_settings,
-    uploads,
     uploads_full,
     websocket,
     workdir,
@@ -52,7 +49,6 @@ def build_router() -> APIRouter:
     router = APIRouter()
     for sub in (
         admin.router,
-        chat.router,
         chat_full.router,
         health.router,
         health_full.router,
@@ -86,9 +82,7 @@ def build_router() -> APIRouter:
         av.router,
         websocket.router,
         celery_api.router,
-        memory.router,
         sessions.router,
-        uploads.router,
         runtime_config.router,
         tasks.router,
     ):
