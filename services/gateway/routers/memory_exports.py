@@ -1,8 +1,10 @@
-"""Memory export/admin endpoints extracted from gateway monolith."""
+"""Memory export/admin endpoints - VIBE COMPLIANT.
+
+All export data stored in PostgreSQL BYTEA, not filesystem.
+No Path operations for result storage.
+"""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -12,8 +14,6 @@ from services.common.export_job_store import (
     ensure_schema as ensure_export_jobs_schema,
     ExportJobStore,
 )
-
-# Legacy admin settings removed – use the central cfg singleton.
 from src.core.config import cfg
 from src.core.infrastructure.repositories import MemoryReplicaStore
 
@@ -54,17 +54,23 @@ async def get_export_job(job_id: int):
     job = await store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job_not_found")
-    return {"job_id": job.id, "status": job.status, "result_path": job.result_path}
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "row_count": job.row_count,
+        "byte_size": job.byte_size,
+        "has_result": job.result_data is not None,
+    }
 
 
 @router.get("/export/jobs/{job_id}/download", summary="Download export result")
 async def download_export(job_id: int):
+    """Download export result from PostgreSQL.
+
+    VIBE: Data retrieved directly from PostgreSQL BYTEA, not filesystem.
+    """
     store = ExportJobStore(dsn=cfg.settings().database.dsn)
-    job = await store.get_job(job_id)
-    if not job or not job.result_path:
+    result_data = await store.get_result_data(job_id)
+    if not result_data:
         raise HTTPException(status_code=404, detail="no_result")
-    try:
-        data = Path(job.result_path).read_bytes()
-    except Exception:
-        raise HTTPException(status_code=404, detail="missing_file")
-    return StreamingResponse(iter([data]), media_type="application/x-ndjson")
+    return StreamingResponse(iter([result_data]), media_type="application/x-ndjson")

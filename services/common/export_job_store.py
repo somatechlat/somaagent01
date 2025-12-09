@@ -23,17 +23,17 @@ class ExportJob:
     status: str
     params: dict[str, Any]
     tenant: Optional[str]
-    file_path: Optional[str]
+    result_data: Optional[bytes]  # VIBE: Store data in PostgreSQL, not filesystem
     row_count: Optional[int]
     byte_size: Optional[int]
     error: Optional[str]
     created_at: datetime
     updated_at: datetime
 
-    # Compatibility alias used by older code expecting ``result_path``.
+    # Compatibility alias - returns None since we no longer use file paths
     @property
     def result_path(self) -> Optional[str]:
-        return self.file_path
+        return None  # VIBE: No filesystem storage
 
 
 class ExportJobStatus(str, Enum):
@@ -95,9 +95,9 @@ class ExportJobStore:
 
         The original monolith exposed a ``create_job`` method that accepted the
         three parameters used by the router.  Internally we store them in the
-        ``params`` JSON column.  After insertion we retrieve the complete record
-        to provide ``id``, ``status`` and the ``result_path`` (alias for
-        ``file_path``).
+        ``params`` JSON column.  After insertion we retrieve the complete record.
+
+        VIBE: No file_path - result_data stored in PostgreSQL BYTEA.
         """
         params = {"namespace": namespace, "limit": limit}
         job_id = await self.create(params=params, tenant=tenant)
@@ -110,7 +110,7 @@ class ExportJobStore:
                 status="queued",
                 params=params,
                 tenant=tenant,
-                file_path=None,
+                result_data=None,
                 row_count=None,
                 byte_size=None,
                 error=None,
@@ -133,7 +133,7 @@ class ExportJobStore:
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT id, status, params, tenant, file_path, row_count, byte_size, error, created_at, updated_at
+                SELECT id, status, params, tenant, result_data, row_count, byte_size, error, created_at, updated_at
                 FROM export_jobs WHERE id = $1
                 """,
                 job_id,
@@ -145,13 +145,23 @@ class ExportJobStore:
                 status=row["status"],
                 params=row["params"],
                 tenant=row["tenant"],
-                file_path=row["file_path"],
+                result_data=row["result_data"],
                 row_count=row["row_count"],
                 byte_size=row["byte_size"],
                 error=row["error"],
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
             )
+
+    async def get_result_data(self, job_id: int) -> Optional[bytes]:
+        """Get only the result data for a job (for downloads)."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT result_data FROM export_jobs WHERE id = $1 AND status = 'completed'",
+                job_id,
+            )
+            return row["result_data"] if row else None
 
     async def claim_next(self) -> Optional[int]:
         pool = await self._ensure_pool()
@@ -184,18 +194,22 @@ class ExportJobStore:
             )
 
     async def mark_complete(
-        self, job_id: int, *, file_path: str, rows: int, byte_size: int
+        self, job_id: int, *, result_data: bytes, rows: int, byte_size: int
     ) -> None:
+        """Mark job as complete and store result data in PostgreSQL.
+
+        VIBE: Data stored directly in PostgreSQL BYTEA, not filesystem.
+        """
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """
                 UPDATE export_jobs
-                SET status = 'completed', file_path = $2, row_count = $3, byte_size = $4, updated_at = NOW()
+                SET status = 'completed', result_data = $2, row_count = $3, byte_size = $4, updated_at = NOW()
                 WHERE id = $1
                 """,
                 job_id,
-                file_path,
+                result_data,
                 rows,
                 byte_size,
             )
@@ -216,7 +230,7 @@ CREATE TABLE IF NOT EXISTS export_jobs (
     status TEXT NOT NULL,
     params JSONB NOT NULL,
     tenant TEXT,
-    file_path TEXT,
+    result_data BYTEA,
     row_count BIGINT,
     byte_size BIGINT,
     error TEXT,
@@ -227,8 +241,39 @@ CREATE TABLE IF NOT EXISTS export_jobs (
 CREATE INDEX IF NOT EXISTS export_jobs_status_idx ON export_jobs(status, id);
 """
 
+# Migration to convert existing file_path column to result_data
+MIGRATION_V2_SQL = """
+-- Add result_data column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'export_jobs' AND column_name = 'result_data'
+    ) THEN
+        ALTER TABLE export_jobs ADD COLUMN result_data BYTEA;
+    END IF;
+END $$;
+
+-- Drop file_path column if it exists (data migration should be done separately)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'export_jobs' AND column_name = 'file_path'
+    ) THEN
+        ALTER TABLE export_jobs DROP COLUMN file_path;
+    END IF;
+END $$;
+"""
+
 
 async def ensure_schema(store: ExportJobStore) -> None:
+    """Ensure the export_jobs table exists with the correct schema.
+
+    VIBE: Uses result_data BYTEA column, not file_path.
+    """
     pool = await store._ensure_pool()
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)
+        # Run V2 migration to handle existing tables
+        await conn.execute(MIGRATION_V2_SQL)

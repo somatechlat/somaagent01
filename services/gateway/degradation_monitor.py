@@ -86,7 +86,7 @@ class DegradationMonitor:
 
     Monitors system health, detects degradation patterns, and provides
     actionable insights for system resilience.
-    
+
     Features:
     - Component health tracking
     - Dependency graph for cascading failure detection
@@ -224,7 +224,7 @@ class DegradationMonitor:
 
             # Update degradation level based on metrics
             component.degradation_level = self._calculate_degradation_level(component)
-            
+
             # Record Prometheus metrics
             self._record_component_metrics(component)
 
@@ -238,15 +238,11 @@ class DegradationMonitor:
 
     def _record_component_metrics(self, component: ComponentHealth) -> None:
         """Record Prometheus metrics for a component."""
-        SERVICE_HEALTH_STATE.labels(service=component.name).set(
-            1.0 if component.healthy else 0.0
-        )
+        SERVICE_HEALTH_STATE.labels(service=component.name).set(1.0 if component.healthy else 0.0)
         SERVICE_DEGRADATION_LEVEL.labels(service=component.name).set(
             self._degradation_level_to_int(component.degradation_level)
         )
-        SERVICE_LATENCY_SECONDS.labels(service=component.name).observe(
-            component.response_time
-        )
+        SERVICE_LATENCY_SECONDS.labels(service=component.name).observe(component.response_time)
         SERVICE_ERROR_RATE.labels(service=component.name).set(component.error_rate)
 
     def _degradation_level_to_int(self, level: DegradationLevel) -> int:
@@ -380,28 +376,28 @@ class DegradationMonitor:
 
     async def _propagate_cascading_failures(self) -> None:
         """Propagate failures through the dependency graph.
-        
+
         When a core service (database, kafka, redis, somabrain) fails,
         all services that depend on it are marked as degraded.
         """
         # Find all failed core services
         failed_services = {
-            name for name, comp in self.components.items()
-            if not comp.healthy or comp.degradation_level in [
-                DegradationLevel.SEVERE, DegradationLevel.CRITICAL
-            ]
+            name
+            for name, comp in self.components.items()
+            if not comp.healthy
+            or comp.degradation_level in [DegradationLevel.SEVERE, DegradationLevel.CRITICAL]
         }
-        
+
         if not failed_services:
             return
-        
+
         # Propagate failures to dependent services
         for service_name, dependencies in self._dependency_graph.items():
             if service_name not in self.components:
                 continue
-                
+
             component = self.components[service_name]
-            
+
             # Check if any dependency has failed
             failed_deps = failed_services.intersection(set(dependencies))
             if failed_deps:
@@ -411,8 +407,7 @@ class DegradationMonitor:
                     # Record cascading failure metrics
                     for failed_dep in failed_deps:
                         CASCADING_FAILURES_TOTAL.labels(
-                            source_service=failed_dep,
-                            affected_service=service_name
+                            source_service=failed_dep, affected_service=service_name
                         ).inc()
                     logger.warning(
                         f"Cascading degradation: {service_name} degraded due to "

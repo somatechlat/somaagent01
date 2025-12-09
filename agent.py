@@ -3,6 +3,7 @@
 This module provides the Agent class which orchestrates conversation flow
 by delegating to extracted components in python/somaagent/.
 """
+
 # Standard library imports
 import asyncio
 from datetime import datetime, timezone
@@ -25,6 +26,7 @@ from python.helpers.errors import RepairableException
 from python.helpers.extension import call_extensions
 from python.helpers.history import output_text
 from python.helpers.print_style import PrintStyle
+from python.helpers.tool_tracking import track_tool_execution
 from python.integrations.soma_client import SomaClient
 from python.somaagent import cognitive as cognitive_ops, somabrain_integration as somabrain_ops
 
@@ -90,7 +92,7 @@ class Agent:
         self.session_id = self.context.id if self.context else f"session_{number}"
         self.state: Agent.AgentState = Agent.AgentState.IDLE
         Agent.fsm_state_gauge.labels(state=Agent.AgentState.IDLE.value).set(1)
-        
+
         # Initialize persona in SomaBrain
         persona_initialized = asyncio.run(somabrain_ops.initialize_persona(self))
         if not persona_initialized:
@@ -105,10 +107,14 @@ class Agent:
         if old_state == new_state:
             return
         self.state = new_state
-        Agent.fsm_transition_total.labels(from_state=old_state.value, to_state=new_state.value).inc()
+        Agent.fsm_transition_total.labels(
+            from_state=old_state.value, to_state=new_state.value
+        ).inc()
         Agent.fsm_state_gauge.labels(state=old_state.value).set(0)
         Agent.fsm_state_gauge.labels(state=new_state.value).set(1)
-        self.context.log.log(type="info", heading="FSM Transition", content=f"{old_state.value} → {new_state.value}")
+        self.context.log.log(
+            type="info", heading="FSM Transition", content=f"{old_state.value} → {new_state.value}"
+        )
 
     async def monologue(self):
         """Main conversation loop - delegates to cognitive and response modules."""
@@ -137,7 +143,11 @@ class Agent:
                             if chunk == full:
                                 p.print("Reasoning: ")
                             stream_data = {"chunk": chunk, "full": full}
-                            await self.call_extensions("reasoning_stream_chunk", loop_data=self.loop_data, stream_data=stream_data)
+                            await self.call_extensions(
+                                "reasoning_stream_chunk",
+                                loop_data=self.loop_data,
+                                stream_data=stream_data,
+                            )
                             if stream_data.get("chunk"):
                                 p.stream(stream_data["chunk"])
                             await self.handle_reasoning_stream(stream_data["full"])
@@ -147,13 +157,19 @@ class Agent:
                             if chunk == full:
                                 p.print("Response: ")
                             stream_data = {"chunk": chunk, "full": full}
-                            await self.call_extensions("response_stream_chunk", loop_data=self.loop_data, stream_data=stream_data)
+                            await self.call_extensions(
+                                "response_stream_chunk",
+                                loop_data=self.loop_data,
+                                stream_data=stream_data,
+                            )
                             if stream_data.get("chunk"):
                                 p.stream(stream_data["chunk"])
                             await self.handle_response_stream(stream_data["full"])
 
                         agent_response, _reasoning = await self.call_chat_model(
-                            messages=prompt, response_callback=stream_callback, reasoning_callback=reasoning_callback
+                            messages=prompt,
+                            response_callback=stream_callback,
+                            reasoning_callback=reasoning_callback,
                         )
                         await self.call_extensions("reasoning_stream_end", loop_data=self.loop_data)
                         await self.call_extensions("response_stream_end", loop_data=self.loop_data)
@@ -200,11 +216,19 @@ class Agent:
         loop_data.history_output = self.history.output()
         await self.call_extensions("message_loop_prompts_after", loop_data=loop_data)
         system_text = "\n\n".join(loop_data.system)
-        extras = history.Message(False, content=self.read_prompt("agent.context.extras.md", extras=dirty_json.stringify())).output()
-        history_langchain: list[BaseMessage] = history.output_langchain(loop_data.history_output + extras)
+        extras = history.Message(
+            False,
+            content=self.read_prompt("agent.context.extras.md", extras=dirty_json.stringify()),
+        ).output()
+        history_langchain: list[BaseMessage] = history.output_langchain(
+            loop_data.history_output + extras
+        )
         full_prompt: list[BaseMessage] = [SystemMessage(content=system_text), *history_langchain]
         full_text = ChatPromptTemplate.from_messages(full_prompt).format()
-        self.set_data(Agent.DATA_NAME_CTX_WINDOW, {"text": full_text, "tokens": tokens.approximate_tokens(full_text)})
+        self.set_data(
+            Agent.DATA_NAME_CTX_WINDOW,
+            {"text": full_text, "tokens": tokens.approximate_tokens(full_text)},
+        )
         return full_prompt
 
     def handle_critical_exception(self, exception: Exception):
@@ -220,7 +244,9 @@ class Agent:
 
     async def get_system_prompt(self, loop_data: LoopData) -> list[str]:
         system_prompt: list[str] = []
-        await self.call_extensions("system_prompt", system_prompt=system_prompt, loop_data=loop_data)
+        await self.call_extensions(
+            "system_prompt", system_prompt=system_prompt, loop_data=loop_data
+        )
         return system_prompt
 
     def parse_prompt(self, _prompt_file: str, **kwargs):
@@ -251,12 +277,19 @@ class Agent:
     async def hist_add_user_message(self, message: UserMessage, intervention: bool = False):
         self.history.new_topic()
         template = "fw.intervention.md" if intervention else "fw.user_message.md"
-        content = self.parse_prompt(template, message=message.message, attachments=message.attachments, system_message=message.system_message)
+        content = self.parse_prompt(
+            template,
+            message=message.message,
+            attachments=message.attachments,
+            system_message=message.system_message,
+        )
         if isinstance(content, dict):
             content = {k: v for k, v in content.items() if v}
         msg = self.hist_add_message(False, content=content)
         self.last_user_message = msg
-        await somabrain_ops.store_memory(self, {"message": message.message, "intervention": intervention}, "user_message")
+        await somabrain_ops.store_memory(
+            self, {"message": message.message, "intervention": intervention}, "user_message"
+        )
         return msg
 
     def hist_add_ai_response(self, message: str):
@@ -274,36 +307,94 @@ class Agent:
         return self.hist_add_message(False, content=data)
 
     def get_chat_model(self):
-        return models.get_chat_model(self.config.chat_model.provider, self.config.chat_model.name, model_config=self.config.chat_model, **self.config.chat_model.build_kwargs())
+        return models.get_chat_model(
+            self.config.chat_model.provider,
+            self.config.chat_model.name,
+            model_config=self.config.chat_model,
+            **self.config.chat_model.build_kwargs(),
+        )
 
     def get_utility_model(self):
-        return models.get_chat_model(self.config.utility_model.provider, self.config.utility_model.name, model_config=self.config.utility_model, **self.config.utility_model.build_kwargs())
+        return models.get_chat_model(
+            self.config.utility_model.provider,
+            self.config.utility_model.name,
+            model_config=self.config.utility_model,
+            **self.config.utility_model.build_kwargs(),
+        )
 
     def get_embedding_model(self):
-        return models.get_embedding_model(self.config.embeddings_model.provider, self.config.embeddings_model.name, model_config=self.config.embeddings_model, **self.config.embeddings_model.build_kwargs())
+        return models.get_embedding_model(
+            self.config.embeddings_model.provider,
+            self.config.embeddings_model.name,
+            model_config=self.config.embeddings_model,
+            **self.config.embeddings_model.build_kwargs(),
+        )
 
-    def concat_messages(self, messages, start_idx: int | None = None, end_idx: int | None = None, topic: bool = False, history_flag: bool = False):
+    def concat_messages(
+        self,
+        messages,
+        start_idx: int | None = None,
+        end_idx: int | None = None,
+        topic: bool = False,
+        history_flag: bool = False,
+    ):
         """Concatenate messages with optional slicing."""
         output_msgs = self.history.output()
         if topic and hasattr(self.history, "topics") and self.history.topics:
             current_topic = self.history.topics[-1]
-            output_msgs = [{"ai": False, "content": current_topic.summary}] if current_topic.summary else [m for r in current_topic.messages for m in r.output()]
+            output_msgs = (
+                [{"ai": False, "content": current_topic.summary}]
+                if current_topic.summary
+                else [m for r in current_topic.messages for m in r.output()]
+            )
         if start_idx is not None or end_idx is not None:
-            output_msgs = output_msgs[start_idx or 0:end_idx]
+            output_msgs = output_msgs[start_idx or 0 : end_idx]
         return output_text(output_msgs, ai_label="assistant", human_label="user")
 
-    async def call_chat_model(self, messages: list[BaseMessage], response_callback: Callable[[str, str], Awaitable[None]] | None = None, reasoning_callback: Callable[[str, str], Awaitable[None]] | None = None, background: bool = False):
+    async def call_chat_model(
+        self,
+        messages: list[BaseMessage],
+        response_callback: Callable[[str, str], Awaitable[None]] | None = None,
+        reasoning_callback: Callable[[str, str], Awaitable[None]] | None = None,
+        background: bool = False,
+    ):
         model = self.get_chat_model()
-        return await model.unified_call(messages=messages, reasoning_callback=reasoning_callback, response_callback=response_callback, rate_limiter_callback=(self.rate_limiter_callback if not background else None))
+        return await model.unified_call(
+            messages=messages,
+            reasoning_callback=reasoning_callback,
+            response_callback=response_callback,
+            rate_limiter_callback=(self.rate_limiter_callback if not background else None),
+        )
 
-    async def call_utility_model(self, system: str, message: str, callback: Callable[[str], Awaitable[None]] | None = None, background: bool = False):
+    async def call_utility_model(
+        self,
+        system: str,
+        message: str,
+        callback: Callable[[str], Awaitable[None]] | None = None,
+        background: bool = False,
+    ):
         model = self.get_utility_model()
-        call_data = {"model": model, "system": system, "message": message, "callback": callback, "background": background}
+        call_data = {
+            "model": model,
+            "system": system,
+            "message": message,
+            "callback": callback,
+            "background": background,
+        }
         await self.call_extensions("util_model_call_before", call_data=call_data)
+
         async def stream_callback(chunk: str, total: str):
             if call_data["callback"]:
                 await call_data["callback"](chunk)
-        response, _ = await call_data["model"].unified_call(system_message=call_data["system"], user_message=call_data["message"], response_callback=stream_callback, rate_limiter_callback=(self.rate_limiter_callback if not call_data["background"] else None))
+
+        response, _ = await call_data["model"].unified_call(
+            system_message=call_data["system"],
+            user_message=call_data["message"],
+            response_callback=stream_callback,
+            rate_limiter_callback=(
+                self.rate_limiter_callback if not call_data["background"] else None
+            ),
+        )
         return response
 
     async def rate_limiter_callback(self, message: str, key: str, total: int, limit: int):
@@ -327,34 +418,91 @@ class Agent:
         if tool_request is None:
             self.hist_add_warning(self.read_prompt("fw.msg_misformat.md"))
             return None
-        
+
         raw_tool_name = tool_request.get("tool_name", "")
         tool_args = tool_request.get("tool_args", {})
-        tool_name, tool_method = (raw_tool_name.split(":", 1) + [None])[:2] if ":" in raw_tool_name else (raw_tool_name, None)
-        
-        tool = self.get_tool(name=tool_name, method=tool_method, args=tool_args, message=msg, loop_data=self.loop_data)
+        tool_name, tool_method = (
+            (raw_tool_name.split(":", 1) + [None])[:2]
+            if ":" in raw_tool_name
+            else (raw_tool_name, None)
+        )
+
+        tool = self.get_tool(
+            name=tool_name,
+            method=tool_method,
+            args=tool_args,
+            message=msg,
+            loop_data=self.loop_data,
+        )
         if not tool:
             self.hist_add_warning(f"Tool '{raw_tool_name}' not found")
             return None
-        
+
         await self.handle_intervention()
         await tool.before_execution(**tool_args)
         await self.call_extensions("tool_execute_before", tool_args=tool_args, tool_name=tool_name)
-        response = await tool.execute(**tool_args)
+
+        # Track execution time for learning
+        import time
+
+        start_time = time.time()
+        error_msg = None
+        try:
+            response = await tool.execute(**tool_args)
+        except Exception as e:
+            error_msg = str(e)
+            duration = time.time() - start_time
+            # Track failed tool execution for SomaBrain learning
+            await track_tool_execution(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                response=error_msg,
+                success=False,
+                duration_seconds=duration,
+                session_id=getattr(self.context, "id", None),
+                tenant_id=getattr(self.context, "tenant_id", None),
+                persona_id=getattr(self.context, "persona_id", None),
+            )
+            raise
+
+        duration = time.time() - start_time
+        # Track successful tool execution for SomaBrain learning
+        await track_tool_execution(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            response=str(response.message),
+            success=True,
+            duration_seconds=duration,
+            session_id=getattr(self.context, "id", None),
+            tenant_id=getattr(self.context, "tenant_id", None),
+            persona_id=getattr(self.context, "persona_id", None),
+        )
+
         await self.call_extensions("tool_execute_after", response=response, tool_name=tool_name)
         await tool.after_execution(response)
-        
+
         if response.break_loop:
             return response.message
         return None
 
-    def get_tool(self, name: str, method: str | None, args: dict, message: str, loop_data: LoopData | None, **kwargs):
+    def get_tool(
+        self,
+        name: str,
+        method: str | None,
+        args: dict,
+        message: str,
+        loop_data: LoopData | None,
+        **kwargs,
+    ):
         from python.helpers.tool import Tool
         from python.tools.unknown import Unknown
+
         classes = []
         if self.config.profile:
             try:
-                classes = extract_tools.load_classes_from_file(f"agents/{self.config.profile}/tools/{name}.py", Tool)
+                classes = extract_tools.load_classes_from_file(
+                    f"agents/{self.config.profile}/tools/{name}.py", Tool
+                )
             except Exception:
                 pass
         if not classes:
@@ -363,7 +511,15 @@ class Agent:
             except Exception:
                 pass
         tool_class = classes[0] if classes else Unknown
-        return tool_class(agent=self, name=name, method=method, args=args, message=message, loop_data=loop_data, **kwargs)
+        return tool_class(
+            agent=self,
+            name=name,
+            method=method,
+            args=args,
+            message=message,
+            loop_data=loop_data,
+            **kwargs,
+        )
 
     async def call_extensions(self, extension_point: str, **kwargs) -> Any:
         return await call_extensions(extension_point=extension_point, agent=self, **kwargs)
@@ -378,7 +534,9 @@ class Agent:
             if len(stream) >= 25:
                 response = DirtyJson.parse_string(stream)
                 if isinstance(response, dict):
-                    await self.call_extensions("response_stream", loop_data=self.loop_data, text=stream, parsed=response)
+                    await self.call_extensions(
+                        "response_stream", loop_data=self.loop_data, text=stream, parsed=response
+                    )
         except Exception:
             pass
 
@@ -395,5 +553,7 @@ class Agent:
     async def store_memory_somabrain(self, content: dict, memory_type: str = "interaction"):
         return await somabrain_ops.store_memory(self, content, memory_type)
 
-    async def recall_memories_somabrain(self, query: str, top_k: int = 5, memory_type: str | None = None):
+    async def recall_memories_somabrain(
+        self, query: str, top_k: int = 5, memory_type: str | None = None
+    ):
         return await somabrain_ops.recall_memories(self, query, top_k, memory_type)
