@@ -111,11 +111,11 @@ def settings():
 def flag(key: str, tenant: Any = None) -> bool:
     # First check the feature_flags dictionary in the config
     from .registry import get_config
-    
+
     config = get_config()
     if key.lower() in config.feature_flags:
         return config.feature_flags[key.lower()]
-    
+
     # Fall back to environment variable
     env_key = f"SA01_ENABLE_{key.upper()}"
     val = env(env_key, default="false")
@@ -132,7 +132,7 @@ def gateway_port() -> int:
 
 def soma_base_url() -> str:
     """Get SomaBrain base URL.
-    
+
     VIBE COMPLIANT: Only SA01_SOMA_BASE_URL is supported.
     No legacy SOMA_BASE_URL fallback.
     """
@@ -172,14 +172,14 @@ class _CfgFacade:
     def _STATE(self):
         """State attribute for tests."""
         from .registry import get_config
-        
+
         class StateWrapper:
             def __init__(self, config):
                 self.settings = config
-                
+
             def __getattr__(self, name):
                 return getattr(self.settings, name)
-        
+
         return StateWrapper(get_config())
 
     @property
@@ -201,7 +201,7 @@ class _CfgFacade:
         config = self.settings()
         if key.lower() in config.feature_flags:
             return config.feature_flags[key.lower()]
-        
+
         val = env(f"SA01_ENABLE_{key.upper()}", default="false")
         return str(val).lower() in {"true", "1", "yes", "on"}
 

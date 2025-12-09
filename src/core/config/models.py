@@ -88,7 +88,7 @@ class ServiceConfig(BaseModel):
     @classmethod
     def validate_deployment_mode(cls, v: str) -> str:
         """Validate deployment mode."""
-        valid_modes = {"DEV", "STAGING", "PROD", "LOCAL"}
+        valid_modes = {"DEV", "STAGING", "PROD", "LOCAL", "TEST"}
         if v.upper() not in valid_modes:
             raise ValueError(f"Deployment mode must be one of: {valid_modes}")
         return v.upper()
@@ -106,9 +106,7 @@ class ExternalServiceConfig(BaseModel):
     is supplied.
     """
 
-    somabrain_base_url: Optional[str] = Field(
-        default=None, description="SomaBrain base URL"
-    )
+    somabrain_base_url: Optional[str] = Field(default=None, description="SomaBrain base URL")
     opa_url: Optional[str] = Field(default=None, description="OPA service URL")
     otlp_endpoint: Optional[str] = Field(default=None, description="OTLP endpoint")
 
@@ -123,9 +121,7 @@ class ExternalServiceConfig(BaseModel):
         if v is None:
             return v
         if not v.startswith(("http://", "https://")):
-            raise ValueError(
-                "SomaBrain URL must start with http:// or https://"
-            )
+            raise ValueError("SomaBrain URL must start with http:// or https://")
         return v.rstrip("/")
 
     @field_validator("opa_url")
@@ -155,9 +151,11 @@ class AuthConfig(BaseModel):
     jwt_leeway: int = Field(default=60, ge=0, description="JWT leeway in seconds")
     internal_token: Optional[str] = Field(default=None, description="Internal auth token")
 
+
 # ---------------------------------------------------------------------
 # Voice configuration models (new – added for real-time audio pipeline)
 # ---------------------------------------------------------------------
+
 
 class OpenAIConfig(BaseModel):
     """Configuration for the OpenAI Realtime provider.
@@ -167,7 +165,9 @@ class OpenAIConfig(BaseModel):
     """
 
     model: str = Field(default="gpt-4o-realtime", description="OpenAI model name")
-    sample_rate: int = Field(default=24000, ge=8000, le=48000, description="Audio sample rate in Hz")
+    sample_rate: int = Field(
+        default=24000, ge=8000, le=48000, description="Audio sample rate in Hz"
+    )
     encoding: str = Field(default="pcm16", description="Audio encoding type (pcm16, opus, etc.)")
 
 
@@ -205,9 +205,13 @@ class AudioConfig(BaseModel):
     give lower latency at the cost of higher CPU usage.
     """
 
-    input_device_index: int = Field(default=0, ge=0, description="Input device index for microphone")
+    input_device_index: int = Field(
+        default=0, ge=0, description="Input device index for microphone"
+    )
     output_device_index: int = Field(default=0, ge=0, description="Output device index for speaker")
-    chunk_ms: int = Field(default=20, ge=5, le=100, description="Capture chunk size in milliseconds")
+    chunk_ms: int = Field(
+        default=20, ge=5, le=100, description="Capture chunk size in milliseconds"
+    )
 
 
 class VoiceConfig(BaseModel):
@@ -222,11 +226,18 @@ class VoiceConfig(BaseModel):
 
     enable: bool = Field(default=False, description="Master switch for the voice subsystem")
     provider: Literal["openai", "local"] = Field(default="openai", description="Primary provider")
-    openai: OpenAIConfig = Field(default_factory=OpenAIConfig, description="OpenAI Realtime settings")
-    local: LocalVoiceConfig = Field(default_factory=LocalVoiceConfig, description="Local stack settings")
-    tts_provider: Literal["openai", "local"] = Field(default="openai", description="Fallback TTS provider when local TTS fails")
-    audio: AudioConfig = Field(default_factory=AudioConfig, description="Audio device and chunk configuration")
-
+    openai: OpenAIConfig = Field(
+        default_factory=OpenAIConfig, description="OpenAI Realtime settings"
+    )
+    local: LocalVoiceConfig = Field(
+        default_factory=LocalVoiceConfig, description="Local stack settings"
+    )
+    tts_provider: Literal["openai", "local"] = Field(
+        default="openai", description="Fallback TTS provider when local TTS fails"
+    )
+    audio: AudioConfig = Field(
+        default_factory=AudioConfig, description="Audio device and chunk configuration"
+    )
 
 
 class Config(BaseModel):
@@ -261,7 +272,9 @@ class Config(BaseModel):
     # compliant). All fields have sensible defaults; the provider selector
     # reads this section at runtime.
     # -----------------------------------------------------------------
-    voice: "VoiceConfig" = Field(default_factory=lambda: VoiceConfig(), description="Voice subsystem configuration")
+    voice: "VoiceConfig" = Field(
+        default_factory=lambda: VoiceConfig(), description="Voice subsystem configuration"
+    )
 
     @model_validator(mode="after")
     def validate_config(self) -> Config:
@@ -314,6 +327,7 @@ class Config(BaseModel):
     def get_environment(self) -> str:
         """Get environment."""
         return self.service.environment
+
     # -----------------------------------------------------------------
     # Top-level attribute accessors for convenience.
     # -----------------------------------------------------------------

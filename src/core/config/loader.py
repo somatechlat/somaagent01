@@ -204,21 +204,29 @@ def load_config() -> Config:
     if internal_token_env:
         default_cfg_dict["auth"]["internal_token"] = internal_token_env
 
+    # Service configuration from environment
+    deployment_mode_env = os.getenv("SA01_DEPLOYMENT_MODE")
+    if deployment_mode_env:
+        default_cfg_dict["service"]["deployment_mode"] = deployment_mode_env
+    environment_env = os.getenv("SA01_ENVIRONMENT")
+    if environment_env:
+        default_cfg_dict["service"]["environment"] = environment_env
+
     # Use the Pydantic v2 API – ``model_validate`` replaces the deprecated ``parse_obj``.
     cfg = Config.model_validate(default_cfg_dict)
 
     # 2️⃣ Process environment variables
     plain_env: dict[str, Any] = {}
     feature_flags: dict[str, bool] = {}
-    
+
     for key, value in os.environ.items():
         if key.startswith("SA01_ENABLE_"):
             # Extract feature flag name and convert to boolean
-            flag_name = key[len("SA01_ENABLE_"):].lower()
+            flag_name = key[len("SA01_ENABLE_") :].lower()
             feature_flags[flag_name] = str(value).lower() in {"true", "1", "yes", "on"}
         elif not key.startswith("SA01_"):
             plain_env[key] = value
-    
+
     # Add feature flags to the configuration
     if feature_flags:
         plain_env["feature_flags"] = feature_flags
@@ -272,7 +280,7 @@ class EnvironmentMapping:
 
     The loader respects the ``SA01_`` prefix via the Pydantic model.
     This helper provides ``env_mapping.get_env_value`` for callers.
-    
+
     VIBE COMPLIANT: Only SA01_ prefix is supported. No legacy fallbacks.
     """
 
@@ -280,7 +288,7 @@ class EnvironmentMapping:
 
     def get_env_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """Get environment variable with SA01_ prefix.
-        
+
         VIBE: No fallbacks. Only canonical SA01_ prefix supported.
         """
         prefixed = f"{self.sa01_prefix}{key}"
@@ -327,13 +335,15 @@ def get_config_loader(config_file_path: Optional[Union[str, Path]] = None) -> Co
     return _config_loader
 
 
-def reload_config() -> None:
+def reload_config() -> Config:
     """Force a reload of the cached configuration.
 
     This clears the module‑level cache and, if a ``ConfigLoader`` instance has
-    been created, also clears its internal cache.
+    been created, also clears its internal cache. Returns the newly loaded
+    configuration.
     """
     global _cached_config, _config_loader
     _cached_config = None
     if _config_loader is not None:
         _config_loader._config_cache = None
+    return get_config()
