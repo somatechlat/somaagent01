@@ -291,7 +291,7 @@
     - Create `python/helpers/memory_search.py` (< 150 lines)
     - _Requirements: 7.4_
 
-  - [ ] 13.4 Refactor memory.py
+  - [x] 13.4 Refactor memory.py
     - Reduce to < 300 lines
     - _Requirements: 7.5_
 

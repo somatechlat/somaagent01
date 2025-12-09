@@ -1,4 +1,4 @@
-"""Memory store implementations for local FAISS and remote SomaBrain.
+"""Memory store implementations for remote SomaBrain.
 
 This module contains the SomaMemory class and its supporting adapters
 for remote memory operations via the SomaBrain API.
@@ -26,24 +26,20 @@ except Exception:
             self.metadata = metadata or {}
 
 
-class MemoryAreaEnum:
-    MAIN = "main"
-    FRAGMENTS = "fragments"
-    SOLUTIONS = "solutions"
-    INSTRUMENTS = "instruments"
-
-
 class SomaMemory:
     """Remote memory store backed by the SomaBrain API."""
 
-    Area = MemoryAreaEnum
-
-    def __init__(self, agent: Optional[Any], memory_subdir: str) -> None:
+    def __init__(self, agent: Optional[Any], memory_subdir: str, memory_area_enum: Any) -> None:
         self.agent = agent
         self.memory_subdir = memory_subdir or "default"
+        self._memory_area_enum = memory_area_enum
         self._client = SomaBrainClient.get()
         self._docstore = _SomaDocStore(self)
         self.db = _SomaDocStoreAdapter(self._docstore)
+
+    @property
+    def Area(self):
+        return self._memory_area_enum
 
     @property
     def context(self):
@@ -55,12 +51,13 @@ class SomaMemory:
         await self._docstore.refresh()
 
     async def preload_knowledge(self, log_item: Any, knowledge_dirs: list[str], memory_subdir: str) -> None:
+        # SomaBrain handles knowledge centrally; nothing to preload locally.
         return None
 
     async def insert_text(self, text: str, metadata: dict | None = None) -> str:
         metadata = dict(metadata or {})
         if "area" not in metadata:
-            metadata["area"] = MemoryAreaEnum.MAIN
+            metadata["area"] = self._memory_area_enum.MAIN.value
         doc = Document(page_content=text, metadata=metadata)
         ids = await self.insert_documents([doc])
         if not ids:
@@ -122,13 +119,8 @@ class _SomaDocStoreAdapter:
         return self._store.get_all_docs_sync()
 
 
-
 class _SomaDocStore:
     """Handles caching and transformations for SomaBrain memory payloads."""
-
-    # Import env flags from memory module
-    SOMA_CACHE_INCLUDE_WM = False
-    SOMA_CACHE_WM_LIMIT = 128
 
     def __init__(self, memory: SomaMemory) -> None:
         self.memory = memory
@@ -136,6 +128,14 @@ class _SomaDocStore:
         self._cache: Dict[str, Document] = {}
         self._cache_valid = False
         self._locks: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
+        # Import env flags - these are set by the memory module
+        self._soma_cache_include_wm = False
+        self._soma_cache_wm_limit = 128
+
+    def configure(self, include_wm: bool, wm_limit: int) -> None:
+        """Configure cache settings from parent module."""
+        self._soma_cache_include_wm = include_wm
+        self._soma_cache_wm_limit = wm_limit
 
     def _get_lock(self) -> asyncio.Lock:
         loop = asyncio.get_running_loop()
@@ -149,14 +149,14 @@ class _SomaDocStore:
         async with self._get_lock():
             try:
                 data = await self._client.migrate_export(
-                    include_wm=self.SOMA_CACHE_INCLUDE_WM,
-                    wm_limit=self.SOMA_CACHE_WM_LIMIT,
+                    include_wm=self._soma_cache_include_wm,
+                    wm_limit=self._soma_cache_wm_limit,
                 )
                 memories = data.get("memories", []) if isinstance(data, Mapping) else []
                 self._cache = self._parse_memories(memories)
                 self._cache_valid = True
             except SomaClientError as exc:
-                PrintStyle.error(f"SomaBrain export failed: {exc}")
+                PrintStyle.error(f"SomaBrain export failed (cache kept): {exc}")
                 self._cache_valid = False
             return self._cache
 
@@ -211,7 +211,7 @@ class _SomaDocStore:
                     namespace=self.memory.memory_subdir,
                 )
             except SomaClientError as exc:
-                PrintStyle.error(f"Failed to store memory: {exc}")
+                PrintStyle.error(f"Failed to store memory via SomaBrain: {exc}")
                 continue
             else:
                 if isinstance(result, Mapping):
@@ -219,6 +219,10 @@ class _SomaDocStore:
                     if returned_coord:
                         metadata["coord"] = returned_coord
                         metadata["soma_coord"] = returned_coord
+                    if result.get("trace_id"):
+                        metadata["trace_id"] = result["trace_id"]
+                    if result.get("request_id"):
+                        metadata["request_id"] = result["request_id"]
             doc.metadata = metadata
             self._cache[doc_id] = doc
             ids.append(doc_id)
@@ -238,11 +242,12 @@ class _SomaDocStore:
             doc = self._cache.get(doc_id)
             if not doc:
                 continue
-            coord = doc.metadata.get("coord")
+            coord = doc.metadata.get("coord") or doc.metadata.get("soma_coord")
             if coord is None:
                 continue
+            coord_list = self._parse_coord(coord)
             try:
-                await self._client.delete(self._parse_coord(coord))
+                await self._client.delete(coord_list)
             except SomaClientError as exc:
                 PrintStyle.error(f"Failed to delete memory {doc_id}: {exc}")
                 continue
@@ -261,43 +266,74 @@ class _SomaDocStore:
             PrintStyle.error(f"SomaBrain recall failed: {exc}")
             return []
 
-        memory_items = None
+        memory_items: Optional[List[Any]] = None
         if isinstance(response, Mapping):
-            memory_items = response.get("memory") or response.get("results")
+            candidates = response.get("memory")
+            if isinstance(candidates, list):
+                memory_items = candidates
+            else:
+                candidates = response.get("results")
+                if isinstance(candidates, list):
+                    memory_items = candidates
         if not isinstance(memory_items, list):
             return []
+
+        # Import comparator function from memory module to avoid circular import
+        comparator = None
+        if filter:
+            try:
+                from python.helpers.memory import Memory
+                comparator = Memory._get_comparator(filter)
+            except Exception:
+                pass
 
         docs: List[Document] = []
         for raw in memory_items:
             record = self._convert_memory_record(raw)
-            if record is None or (record.score is not None and record.score < threshold):
+            if record is None:
                 continue
-            docs.append(self._record_to_document(record))
+            if record.score is not None and record.score < threshold:
+                continue
+            doc = self._record_to_document(record)
+            if comparator and not comparator(doc.metadata):
+                continue
+            docs.append(doc)
         return docs
 
     async def delete_documents_by_query(self, query: str, threshold: float, filter: str) -> List[Document]:
         matches = await self.search_similarity_threshold(query, 100, threshold, filter)
-        ids = [str(doc.metadata.get("id")) for doc in matches if doc.metadata.get("id")]
+        ids = [doc.metadata.get("id") for doc in matches if doc.metadata.get("id")]
+        ids = [str(i) for i in ids if i]
         if ids:
             await self.delete_documents_by_ids(ids)
         return matches
 
     def _build_payload(self, metadata: MutableMapping[str, Any], content: str) -> Dict[str, Any]:
         payload: Dict[str, Any] = dict(metadata)
-        payload.setdefault("memory_type", "episodic")
-        payload.setdefault("importance", 1)
-        payload.setdefault("area", MemoryAreaEnum.MAIN)
-        payload.setdefault("universe", self.memory.memory_subdir)
+        area_enum = self.memory._memory_area_enum
+        payload.setdefault("memory_type", metadata.get("memory_type", "episodic"))
+        payload.setdefault("importance", metadata.get("importance", 1))
+        payload.setdefault("area", metadata.get("area", area_enum.MAIN.value))
+        payload.setdefault("universe", metadata.get("universe", self.memory.memory_subdir))
+
         timestamp_val = metadata.get("timestamp")
+        numeric_timestamp: float | None = None
         if isinstance(timestamp_val, (int, float)):
-            payload["timestamp"] = float(timestamp_val)
+            numeric_timestamp = float(timestamp_val)
         elif isinstance(timestamp_val, str):
             try:
-                payload["timestamp"] = float(timestamp_val)
+                numeric_timestamp = float(timestamp_val)
             except ValueError:
-                payload["timestamp"] = datetime.utcnow().timestamp()
-        else:
-            payload["timestamp"] = datetime.utcnow().timestamp()
+                try:
+                    numeric_timestamp = datetime.fromisoformat(timestamp_val).timestamp()
+                except ValueError:
+                    numeric_timestamp = None
+
+        if numeric_timestamp is None:
+            numeric_timestamp = datetime.utcnow().timestamp()
+            metadata["timestamp"] = datetime.utcnow().isoformat()
+
+        payload["timestamp"] = numeric_timestamp
         payload["content"] = content
         payload["metadata"] = dict(metadata)
         return payload
@@ -306,7 +342,8 @@ class _SomaDocStore:
         if isinstance(coord, (list, tuple)):
             return [float(x) for x in coord[:3]]
         if isinstance(coord, str):
-            return [float(p.strip()) for p in coord.split(",")[:3]]
+            parts = coord.split(",")
+            return [float(p.strip()) for p in parts[:3]]
         raise ValueError(f"Unsupported coordinate format: {coord}")
 
     def _format_coord(self, coord: Any) -> str:
@@ -324,32 +361,42 @@ class _SomaDocStore:
         cache: Dict[str, Document] = {}
         for raw in memories:
             record = self._convert_memory_record(raw)
-            if record:
-                cache[record.identifier] = self._record_to_document(record)
+            if not record:
+                continue
+            doc = self._record_to_document(record)
+            cache[record.identifier] = doc
         return cache
 
     def _convert_memory_record(self, raw: Any) -> Optional[SomaMemoryRecord]:
         if not isinstance(raw, Mapping):
             return None
-        payload = raw.get("payload", {})
+        payload = raw.get("payload")
         if not isinstance(payload, Mapping):
             payload = {}
-        identifier = str(payload.get("id") or raw.get("key") or raw.get("coord") or guids.generate_id(10))
+        identifier = (
+            str(payload.get("id"))
+            if payload.get("id")
+            else str(raw.get("key") or raw.get("coord") or guids.generate_id(10))
+        )
         coord_raw = raw.get("coord") or payload.get("coord")
-        coordinate = None
-        if coord_raw:
+        coordinate: Optional[List[float]] = None
+        if coord_raw is not None:
             try:
                 coordinate = self._parse_coord(coord_raw)
             except Exception:
-                pass
+                coordinate = None
         score = raw.get("score")
         try:
             score_val = float(score) if score is not None else None
         except (TypeError, ValueError):
             score_val = None
+        retriever = raw.get("retriever")
         return SomaMemoryRecord(
-            identifier=identifier, payload=payload, score=score_val,
-            coordinate=coordinate, retriever=raw.get("retriever") if isinstance(raw.get("retriever"), str) else None,
+            identifier=identifier,
+            payload=payload,
+            score=score_val,
+            coordinate=coordinate,
+            retriever=retriever if isinstance(retriever, str) else None,
         )
 
     def _record_to_document(self, record: SomaMemoryRecord) -> Document:
@@ -361,7 +408,17 @@ class _SomaDocStore:
             metadata["soma_coord"] = coord_str
         if record.score is not None:
             metadata["score"] = record.score
-        content = next((metadata.get(k) for k in ["content", "what", "text", "summary", "value"] if isinstance(metadata.get(k), str)), "")
-        metadata.setdefault("area", MemoryAreaEnum.MAIN)
-        metadata.setdefault("universe", self.memory.memory_subdir)
+        if record.retriever:
+            metadata["retriever"] = record.retriever
+        content_candidates = [
+            metadata.get("content"),
+            metadata.get("what"),
+            metadata.get("text"),
+            metadata.get("summary"),
+            metadata.get("value"),
+        ]
+        content = next((c for c in content_candidates if isinstance(c, str)), "")
+        area_enum = self.memory._memory_area_enum
+        metadata.setdefault("area", metadata.get("area", area_enum.MAIN.value))
+        metadata.setdefault("universe", metadata.get("universe", self.memory.memory_subdir))
         return Document(page_content=content, metadata=metadata)
