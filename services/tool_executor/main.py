@@ -1,42 +1,38 @@
-"""Tool executor service for SomaAgent 01."""
+"""Tool executor service for SomaAgent 01.
+
+This is a thin entry point that wires up dependencies and starts the Kafka consumer.
+All business logic is delegated to extracted modules.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import time
-import uuid
 from typing import Any
 
-from python.integrations.soma_client import SomaClientError
 from python.integrations.somabrain_client import SomaBrainClient
 
 from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus
-from services.common.idempotency import generate_for_memory_payload
 from services.common.logging_config import setup_logging
 from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_outbox_schema,
     MemoryWriteOutbox,
 )
 from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
-from services.common.policy_client import PolicyClient, PolicyRequest
+from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
 from services.common.session_repository import PostgresSessionStore
-from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.tool_executor.execution_engine import ExecutionEngine
-from services.tool_executor.resource_manager import default_limits, ResourceManager
+from services.tool_executor.resource_manager import ResourceManager
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
-from services.tool_executor.tools import ToolExecutionError
 
 # Extracted modules
-from services.tool_executor.audit import get_trace_id, log_tool_event
 from services.tool_executor.config import (
     kafka_settings,
     redis_url,
@@ -45,29 +41,20 @@ from services.tool_executor.config import (
     get_stream_config,
     SERVICE_SETTINGS,
 )
-from services.tool_executor.metrics import (
-    TOOL_REQUEST_COUNTER,
-    TOOL_FEEDBACK_TOTAL,
-    POLICY_DECISIONS,
-    TOOL_EXECUTION_LATENCY,
-    TOOL_INFLIGHT,
-    REQUEUE_EVENTS,
-    ensure_metrics_server,
-)
-from services.tool_executor.validation import (
-    validate_tool_request,
-    validate_tool_result,
-    ValidationResult,
-)
+from services.tool_executor.metrics import ensure_metrics_server
+from services.tool_executor.request_handler import RequestHandler
+from services.tool_executor.result_publisher import ResultPublisher
+from services.tool_executor.telemetry import ToolTelemetryEmitter
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-# OTLP endpoint resides under external configuration.
 setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
 
 
 class ToolExecutor:
+    """Tool executor service - thin orchestrator."""
+
     def __init__(self) -> None:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = kafka_settings()
@@ -86,11 +73,14 @@ class ToolExecutor:
         self.tool_registry = ToolRegistry()
         self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
         self.telemetry = ToolTelemetryEmitter(publisher=self.publisher, settings=SERVICE_SETTINGS)
-        self.requeue_prefix = policy_requeue_prefix()
         self.soma = SomaBrainClient.get()
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         self.streams = get_stream_config()
         self._audit_store: _AuditStore | None = None
+
+        # Initialize handlers
+        self._request_handler = RequestHandler(self)
+        self._result_publisher = ResultPublisher(self)
 
     def get_audit_store(self) -> _AuditStore:
         if self._audit_store is not None:
@@ -98,306 +88,7 @@ class ToolExecutor:
         self._audit_store = audit_store_from_env()
         return self._audit_store
 
-    async def start(self) -> None:
-        await self.resources.initialize()
-        await self.sandbox.initialize()
-        await self.tool_registry.load_all_tools()
-        try:
-            await ensure_outbox_schema(self.outbox)
-        except Exception:
-            LOGGER.debug("Outbox schema ensure failed", exc_info=True)
-        try:
-            await ensure_mw_outbox_schema(self.mem_outbox)
-        except Exception:
-            LOGGER.debug("Memory write outbox schema ensure failed", exc_info=True)
-        # Ensure audit schema (best-effort)
-        try:
-            await self.get_audit_store().ensure_schema()
-        except Exception:
-            LOGGER.debug("Audit store schema ensure failed (tool-executor)", exc_info=True)
-        await self.bus.consume(
-            self.streams["requests"],
-            self.streams["group"],
-            self._handle_request,
-        )
-
-    async def _handle_request(self, event: dict[str, Any]) -> None:
-        # Validate request using extracted validation module
-        validation = validate_tool_request(event)
-        tool_label = validation.tool_name or "unknown"
-
-        if not validation.valid:
-            LOGGER.error("Invalid tool request", extra={"event": event, "error": validation.error_message})
-            TOOL_REQUEST_COUNTER.labels(tool_label, "invalid").inc()
-            return
-
-        session_id = validation.session_id
-        tool_name = validation.tool_name
-        tenant = validation.tenant
-        persona_id = validation.persona_id
-
-        # Get trace ID using extracted audit module
-        trace_id_hex = get_trace_id()
-        # Audit start (best-effort)
-        arg_keys = sorted(list((event.get("args") or {}).keys())) if event.get("args") else []
-        await log_tool_event(
-            self.get_audit_store(),
-            action="tool.execute.start",
-            tool_name=tool_name,
-            session_id=session_id,
-            tenant=tenant,
-            persona_id=persona_id,
-            event_id=event.get("event_id"),
-            trace_id=trace_id_hex,
-            details={"args_keys": arg_keys},
-        )
-
-        metadata = dict(event.get("metadata", {}))
-        args = dict(event.get("args", {}))
-        args.setdefault("session_id", session_id)
-
-        if not metadata.get("requeue_override"):
-            try:
-                allow = await self._check_policy(
-                    tenant=tenant,
-                    persona_id=persona_id,
-                    tool_name=tool_name,
-                    event=event,
-                )
-            except RuntimeError:
-                POLICY_DECISIONS.labels(tool_label, "error").inc()
-                TOOL_REQUEST_COUNTER.labels(tool_label, "policy_error").inc()
-                await self._publish_result(
-                    event,
-                    status="error",
-                    payload={"message": "Policy evaluation failed."},
-                    execution_time=0.0,
-                    metadata=metadata,
-                )
-                # Audit finish - policy error
-                await log_tool_event(
-                    self.get_audit_store(),
-                    action="tool.execute.finish",
-                    tool_name=tool_name,
-                    session_id=session_id,
-                    tenant=tenant,
-                    persona_id=persona_id,
-                    event_id=event.get("event_id"),
-                    trace_id=trace_id_hex,
-                    details={"status": "error", "reason": "policy_error"},
-                )
-                return
-            decision_label = "allowed" if allow else "denied"
-            POLICY_DECISIONS.labels(tool_label, decision_label).inc()
-            if not allow:
-                await self._enqueue_requeue(event)
-                REQUEUE_EVENTS.labels(tool_label, "policy_denied").inc()
-                await self._publish_result(
-                    event,
-                    status="blocked",
-                    payload={"message": "Policy denied tool execution."},
-                    execution_time=0.0,
-                    metadata=metadata,
-                )
-                try:
-                    await self.get_audit_store().log(
-                        request_id=None,
-                        trace_id=trace_id_hex,
-                        session_id=session_id,
-                        tenant=tenant,
-                        subject=str(persona_id) if persona_id else None,
-                        action="tool.execute.finish",
-                        resource=str(tool_name),
-                        target_id=event.get("event_id"),
-                        details={"status": "blocked", "reason": "policy_denied"},
-                        diff=None,
-                        ip=None,
-                        user_agent=None,
-                    )
-                except Exception:
-                    LOGGER.debug(
-                        "Failed to write audit log for tool.execute.finish (blocked)", exc_info=True
-                    )
-                return
-
-        tool = self.tool_registry.get(tool_name)
-        if not tool:
-            await self._publish_result(
-                event,
-                status="error",
-                payload={"message": f"Unknown tool '{tool_name}'"},
-                execution_time=0.0,
-                metadata=metadata,
-            )
-            TOOL_REQUEST_COUNTER.labels(tool_label, "unknown_tool").inc()
-            try:
-                await self.get_audit_store().log(
-                    request_id=None,
-                    trace_id=trace_id_hex,
-                    session_id=session_id,
-                    tenant=tenant,
-                    subject=str(persona_id) if persona_id else None,
-                    action="tool.execute.finish",
-                    resource=str(tool_name),
-                    target_id=event.get("event_id"),
-                    details={"status": "error", "reason": "unknown_tool"},
-                    diff=None,
-                    ip=None,
-                    user_agent=None,
-                )
-            except Exception:
-                LOGGER.debug(
-                    "Failed to write audit log for tool.execute.finish (unknown_tool)",
-                    exc_info=True,
-                )
-            return
-
-        # Publish a UI-friendly tool.start event so the Web UI can show lifecycle
-        try:
-            ui_meta = dict(metadata or {})
-            ui_meta.update(
-                {
-                    "status": "start",
-                    "source": "tool_executor",
-                    "tool_name": tool_name,
-                }
-            )
-            # Preserve stable request_id for UI message dedupe if available
-            req_id = (metadata or {}).get("request_id") or event.get("event_id")
-            if req_id:
-                ui_meta["request_id"] = req_id
-            start_event = {
-                "event_id": str(uuid.uuid4()),
-                "session_id": session_id,
-                "persona_id": persona_id,
-                "role": "tool",
-                "message": "",
-                "metadata": ui_meta,
-                "version": "sa01-v1",
-                "type": "tool.start",
-            }
-            await self.publisher.publish(
-                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
-                start_event,
-                dedupe_key=start_event.get("event_id"),
-                session_id=str(session_id),
-                tenant=(ui_meta or {}).get("tenant"),
-            )
-        except Exception:
-            LOGGER.debug("Failed to publish tool.start to conversation.outbound", exc_info=True)
-
-        try:
-            TOOL_INFLIGHT.labels(tool_label).inc()
-            result = await self.execution_engine.execute(tool, args, default_limits())
-        except ToolExecutionError as exc:
-            LOGGER.error("Tool execution failed", extra={"tool": tool_name, "error": str(exc)})
-            await self._publish_result(
-                event,
-                status="error",
-                payload={"message": str(exc)},
-                execution_time=0.0,
-                metadata=metadata,
-            )
-            TOOL_REQUEST_COUNTER.labels(tool_label, "execution_error").inc()
-            TOOL_INFLIGHT.labels(tool_label).dec()
-            try:
-                await self.get_audit_store().log(
-                    request_id=None,
-                    trace_id=trace_id_hex,
-                    session_id=session_id,
-                    tenant=tenant,
-                    subject=str(persona_id) if persona_id else None,
-                    action="tool.execute.finish",
-                    resource=str(tool_name),
-                    target_id=event.get("event_id"),
-                    details={"status": "error", "reason": "execution_error"},
-                    diff=None,
-                    ip=None,
-                    user_agent=None,
-                )
-            except Exception:
-                LOGGER.debug(
-                    "Failed to write audit log for tool.execute.finish (execution_error)",
-                    exc_info=True,
-                )
-            return
-        except Exception as exc:
-            LOGGER.error(
-                "Error processing tool request",
-                extra={
-                    "error": str(exc),
-                    "error_type": type(exc).__name__,
-                    "tool_name": event.get("tool_name", "unknown"),
-                },
-            )
-            await self._publish_result(
-                event,
-                status="error",
-                payload={"message": "Unhandled tool executor error."},
-                execution_time=0.0,
-                metadata={**metadata, "error": str(exc)},
-            )
-            TOOL_REQUEST_COUNTER.labels(tool_label, "unexpected_error").inc()
-            TOOL_INFLIGHT.labels(tool_label).dec()
-            try:
-                await self.get_audit_store().log(
-                    request_id=None,
-                    trace_id=trace_id_hex,
-                    session_id=session_id,
-                    tenant=tenant,
-                    subject=str(persona_id) if persona_id else None,
-                    action="tool.execute.finish",
-                    resource=str(tool_name),
-                    target_id=event.get("event_id"),
-                    details={"status": "error", "reason": "unexpected_error"},
-                    diff=None,
-                    ip=None,
-                    user_agent=None,
-                )
-            except Exception:
-                LOGGER.debug(
-                    "Failed to write audit log for tool.execute.finish (unexpected_error)",
-                    exc_info=True,
-                )
-            return
-        else:
-            TOOL_INFLIGHT.labels(tool_label).dec()
-            TOOL_EXECUTION_LATENCY.labels(tool_label).observe(result.execution_time)
-            TOOL_REQUEST_COUNTER.labels(tool_label, result.status).inc()
-
-        result_metadata = dict(metadata)
-        if getattr(result, "logs", None):
-            result_metadata.setdefault("sandbox_logs", result.logs)
-
-        await self._publish_result(
-            event,
-            status=result.status,
-            payload=result.payload,
-            execution_time=result.execution_time,
-            metadata=result_metadata,
-        )
-        # Audit finish success
-        try:
-            await self.get_audit_store().log(
-                request_id=None,
-                trace_id=trace_id_hex,
-                session_id=session_id,
-                tenant=tenant,
-                subject=str(persona_id) if persona_id else None,
-                action="tool.execute.finish",
-                resource=str(tool_name),
-                target_id=event.get("event_id"),
-                details={"status": result.status, "latency_ms": int(result.execution_time * 1000)},
-                diff=None,
-                ip=None,
-                user_agent=None,
-            )
-        except Exception:
-            LOGGER.debug(
-                "Failed to write audit log for tool.execute.finish (success)", exc_info=True
-            )
-
-    async def _publish_result(
+    async def publish_result(
         self,
         event: dict[str, Any],
         status: str,
@@ -406,267 +97,38 @@ class ToolExecutor:
         execution_time: float,
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        result_event = {
-            "event_id": str(uuid.uuid4()),
-            "session_id": event.get("session_id"),
-            "persona_id": event.get("persona_id"),
-            "tool_name": event.get("tool_name"),
-            "status": status,
-            "payload": payload,
-            "metadata": metadata if metadata is not None else event.get("metadata", {}),
-            "execution_time": execution_time,
-        }
-
-        if not validate_tool_result(result_event):
-            return
-
-        await self.store.append_event(
-            event.get("session_id", "unknown"), {"type": "tool", **result_event}
-        )
-        await self.publisher.publish(
-            self.streams["results"],
-            result_event,
-            dedupe_key=result_event.get("event_id"),
-            session_id=result_event.get("session_id"),
-            tenant=(result_event.get("metadata") or {}).get("tenant"),
+        """Delegate result publishing to ResultPublisher."""
+        await self._result_publisher.publish(
+            event, status, payload, execution_time=execution_time, metadata=metadata
         )
 
-        # Also publish a UI-friendly outbound event so the Web UI can render tool results via SSE
+    async def start(self) -> None:
+        """Initialize resources and start consuming events."""
+        await self.resources.initialize()
+        await self.sandbox.initialize()
+        await self.tool_registry.load_all_tools()
+
+        # Ensure schemas (best-effort)
+        for ensure_fn, store, name in [
+            (ensure_outbox_schema, self.outbox, "Outbox"),
+            (ensure_mw_outbox_schema, self.mem_outbox, "Memory write outbox"),
+        ]:
+            try:
+                await ensure_fn(store)
+            except Exception:
+                LOGGER.debug(f"{name} schema ensure failed", exc_info=True)
+
         try:
-            # Convert payload to a concise string for the chat stream
-            if isinstance(payload, str):
-                tool_text = payload
-            else:
-                try:
-                    tool_text = json.dumps(payload, ensure_ascii=False)
-                except Exception:
-                    tool_text = str(payload)
-
-            # Build metadata with helpful fields for the UI
-            ui_meta = dict(result_event.get("metadata") or {})
-            ui_meta.update(
-                {
-                    "status": status,
-                    "source": "tool_executor",
-                    "tool_name": result_event.get("tool_name"),
-                    "execution_time": execution_time,
-                }
-            )
-            outbound_event = {
-                "event_id": str(uuid.uuid4()),
-                "session_id": result_event.get("session_id"),
-                "persona_id": result_event.get("persona_id"),
-                "role": "tool",
-                "message": tool_text,
-                "metadata": ui_meta,
-                "version": "sa01-v1",
-                "type": "tool.result",
-            }
-            await self.publisher.publish(
-                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
-                outbound_event,
-                dedupe_key=outbound_event.get("event_id"),
-                session_id=str(result_event.get("session_id")),
-                tenant=(ui_meta or {}).get("tenant"),
-            )
+            await self.get_audit_store().ensure_schema()
         except Exception:
-            # Non-fatal: UI will still see the tool result in session events and tool.results
-            LOGGER.debug("Failed to publish tool result to conversation.outbound", exc_info=True)
+            LOGGER.debug("Audit store schema ensure failed (tool-executor)", exc_info=True)
 
-        await self.telemetry.emit_tool_execution(result_event, status, execution_time)
-
-        await self._send_tool_feedback(result_event)
-
-    async def _send_tool_feedback(self, result_event: dict[str, Any]) -> None:
-        """Send tool execution feedback to SomaBrain; fallback to DLQ on failure."""
-        feedback = {
-            "task_name": result_event.get("tool_name"),
-            "tenant_id": (result_event.get("metadata") or {}).get("tenant"),
-            "persona_id": result_event.get("persona_id"),
-            "session_id": result_event.get("session_id"),
-            "success": result_event.get("status") == "success",
-            "latency_ms": int((result_event.get("execution_time") or 0) * 1000),
-            "error_type": (
-                None if result_event.get("status") == "success" else result_event.get("status")
-            ),
-            "tags": ["tool_executor"],
-        }
-        try:
-            await self.soma.context_feedback(feedback)
-            TOOL_FEEDBACK_TOTAL.labels("delivered").inc()
-        except Exception as exc:
-            try:
-                await self.publisher.publish(
-                    cfg.env("TASK_FEEDBACK_TOPIC", "task.feedback.dlq"),
-                    {"payload": feedback, "error": str(exc)},
-                    dedupe_key=str(result_event.get("event_id")),
-                    session_id=str(result_event.get("session_id")),
-                    tenant=feedback.get("tenant_id"),
-                )
-                TOOL_FEEDBACK_TOTAL.labels("queued_dlq").inc()
-            except Exception:
-                LOGGER.debug("Failed to enqueue tool feedback DLQ", exc_info=True)
-                TOOL_FEEDBACK_TOTAL.labels("failed").inc()
-
-        # Capture memory for successful tool executions
-        result_status = result_event.get("status")
-        result_payload = result_event.get("payload", {})
-        result_tenant = (result_event.get("metadata") or {}).get("tenant", "default")
-        if result_status == "success":
-            await self._capture_memory(result_event, result_payload, result_tenant)
-
-    async def _check_policy(
-        self,
-        tenant: str,
-        persona_id: str | None,
-        tool_name: str,
-        event: dict[str, Any],
-    ) -> bool:
-        request = PolicyRequest(
-            tenant=tenant,
-            persona_id=persona_id,
-            action="tool.execute",
-            resource=tool_name,
-            context={
-                "args": event.get("args", {}),
-                "metadata": event.get("metadata", {}),
-            },
+        # Start consuming
+        await self.bus.consume(
+            self.streams["requests"],
+            self.streams["group"],
+            self._request_handler.handle,
         )
-        try:
-            return await self.policy.evaluate(request)
-        except Exception as exc:
-            LOGGER.exception("Policy evaluation failed")
-            raise RuntimeError("Policy evaluation failed") from exc
-
-    async def _enqueue_requeue(self, event: dict[str, Any]) -> None:
-        identifier = event.get("event_id") or str(uuid.uuid4())
-        payload = dict(event)
-        payload["timestamp"] = time.time()
-        await self.requeue.add(identifier, payload)
-
-    async def _capture_memory(
-        self,
-        result_event: dict[str, Any],
-        payload: dict[str, Any],
-        tenant: str,
-    ) -> None:
-        persona_id = result_event.get("persona_id")
-        # Serialize tool payload to a stable string representation
-        if isinstance(payload, str):
-            content = payload
-        else:
-            try:
-                content = json.dumps(payload, ensure_ascii=False)
-            except Exception:
-                content = str(payload)
-
-        metadata = result_event.get("metadata") or {}
-        str_metadata = {str(key): str(value) for key, value in metadata.items()}
-        if result_event.get("tool_name"):
-            str_metadata.setdefault("tool_name", str(result_event.get("tool_name")))
-        if result_event.get("session_id"):
-            str_metadata.setdefault("session_id", str(result_event.get("session_id")))
-        if isinstance(payload, dict) and payload.get("model"):
-            str_metadata.setdefault("tool_model", str(payload.get("model")))
-
-        # Pre-write OPA memory.write; then persist tool result as a SomaBrain memory
-        memory_payload = {
-            "id": result_event.get("event_id"),
-            "type": "tool_result",
-            "tool_name": result_event.get("tool_name"),
-            "content": content,
-            "session_id": result_event.get("session_id"),
-            "persona_id": persona_id,
-            "metadata": {
-                **str_metadata,
-                "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
-                "universe_id": (result_event.get("metadata") or {}).get("universe_id")
-                or cfg.env("SOMA_NAMESPACE"),
-            },
-            "status": result_event.get("status"),
-        }
-        memory_payload["idempotency_key"] = generate_for_memory_payload(memory_payload)
-        try:
-            # Fail-closed by default
-            allow_memory = False
-            try:
-                allow_memory = await self.policy.evaluate(
-                    PolicyRequest(
-                        tenant=tenant,
-                        persona_id=persona_id,
-                        action="memory.write",
-                        resource="somabrain",
-                        context={
-                            "payload_type": memory_payload.get("type"),
-                            "tool_name": memory_payload.get("tool_name"),
-                            "session_id": memory_payload.get("session_id"),
-                            "metadata": memory_payload.get("metadata", {}),
-                        },
-                    )
-                )
-            except Exception:
-                LOGGER.warning(
-                    "OPA memory.write check failed; denying by fail-closed policy", exc_info=True
-                )
-            if allow_memory:
-                wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
-                result = await self.soma.remember(memory_payload)
-                try:
-                    wal_event = {
-                        "type": "memory.write",
-                        "role": "tool",
-                        "session_id": result_event.get("session_id"),
-                        "persona_id": persona_id,
-                        "tenant": tenant,
-                        "payload": memory_payload,
-                        "result": {
-                            "coord": (result or {}).get("coordinate")
-                            or (result or {}).get("coord"),
-                            "trace_id": (result or {}).get("trace_id"),
-                            "request_id": (result or {}).get("request_id"),
-                        },
-                        "timestamp": time.time(),
-                    }
-                    await self.publisher.publish(
-                        wal_topic,
-                        wal_event,
-                        dedupe_key=str(memory_payload.get("id")),
-                        session_id=str(result_event.get("session_id")),
-                        tenant=tenant,
-                    )
-                except Exception:
-                    LOGGER.debug("Failed to publish memory WAL (tool result)", exc_info=True)
-            else:
-                LOGGER.info(
-                    "memory.write denied by policy",
-                    extra={
-                        "session_id": result_event.get("session_id"),
-                        "tool": result_event.get("tool_name"),
-                        "event_id": result_event.get("event_id"),
-                    },
-                )
-        except SomaClientError as exc:
-            LOGGER.warning(
-                "SomaBrain remember failed for tool result",
-                extra={
-                    "session_id": result_event.get("session_id"),
-                    "tool": result_event.get("tool_name"),
-                    "error": str(exc),
-                },
-            )
-            try:
-                await self.mem_outbox.enqueue(
-                    payload=memory_payload,
-                    tenant=tenant,
-                    session_id=result_event.get("session_id"),
-                    persona_id=persona_id,
-                    idempotency_key=memory_payload.get("idempotency_key"),
-                    dedupe_key=str(memory_payload.get("id")) if memory_payload.get("id") else None,
-                )
-            except Exception:
-                LOGGER.debug("Failed to enqueue memory write for retry (tool)", exc_info=True)
-        except Exception:
-            LOGGER.debug("SomaBrain remember (tool result) unexpected error", exc_info=True)
 
 
 async def main() -> None:
