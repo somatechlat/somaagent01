@@ -205,7 +205,7 @@
     - Create `services/tool_executor/audit.py` (< 100 lines)
     - _Requirements: 3.4_
 
-  - [-] 7.4 Refactor main.py to thin orchestrator
+  - [x] 7.4 Refactor main.py to thin orchestrator
     - Reduce `services/tool_executor/main.py` to < 150 lines
     - Keep only: service bootstrap, event consumption, delegation
     - _Requirements: 3.6_
@@ -219,22 +219,22 @@
 ## Phase 6: Decompose Task Scheduler (1276 lines → < 300 lines)
 
 - [ ] 9. Extract task scheduler components
-  - [ ] 9.1 Create scheduler/handlers module
+  - [x] 9.1 Create scheduler/handlers module
     - Extract task handler implementations
     - Create `python/helpers/scheduler_handlers.py` (< 200 lines)
     - _Requirements: 5.2_
 
-  - [ ] 9.2 Create scheduler/repository module
+  - [x] 9.2 Create scheduler/repository module
     - Extract task state management
     - Create `python/helpers/scheduler_repository.py` (< 150 lines)
     - _Requirements: 5.4_
 
-  - [ ] 9.3 Create scheduler/events module
+  - [x] 9.3 Create scheduler/events module
     - Extract event emission logic
     - Create `python/helpers/scheduler_events.py` (< 100 lines)
     - _Requirements: 5.3_
 
-  - [ ] 9.4 Refactor task_scheduler.py
+  - [x] 9.4 Refactor task_scheduler.py
     - Reduce to < 300 lines
     - Keep only: main scheduler interface, delegation
     - _Requirements: 5.5_
