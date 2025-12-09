@@ -6,7 +6,7 @@ import string
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict
+from typing import Any, Callable, Coroutine, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent import Agent

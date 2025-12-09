@@ -26,14 +26,17 @@ from litellm import acompletion, completion, embedding
 litellm_exceptions = getattr(litellm, "exceptions", None)
 
 # browser-use is a required dependency
-from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter  # type: ignore
+import time
+import uuid
 
-# langchain-core is a required dependency
-from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
+from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter  # type: ignore
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
 )
+
+# langchain-core is a required dependency
+from langchain_core.embeddings.embeddings import Embeddings  # type: ignore
 from langchain_core.language_models.chat_models import SimpleChatModel
 from langchain_core.messages import (
     AIMessageChunk,
@@ -45,10 +48,6 @@ from langchain_core.outputs.chat_generation import ChatGenerationChunk
 
 # sentence-transformers is a required dependency
 from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
-
-
-import time
-import uuid
 
 from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
 from python.helpers.dotenv import load_dotenv

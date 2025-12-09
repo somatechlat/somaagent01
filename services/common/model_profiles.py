@@ -12,8 +12,6 @@ import asyncpg
 
 from src.core.config import cfg  # Import central configuration façade
 
-
-
 LOGGER = logging.getLogger(__name__)
 
 

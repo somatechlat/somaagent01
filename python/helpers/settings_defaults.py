@@ -4,6 +4,7 @@ Contains the get_default_settings() function with all default configuration valu
 """
 
 from python.helpers import runtime
+
 from .settings_model import SettingsModel as Settings
 
 

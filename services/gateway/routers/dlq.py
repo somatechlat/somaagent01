@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from services.common.dlq_store import DLQItem, DLQStore
+
 # Legacy admin settings removed – use the central cfg singleton.
 from src.core.config import cfg
-from services.common.dlq_store import DLQItem, DLQStore
 
 router = APIRouter(prefix="/v1/admin/dlq", tags=["admin"])
 STORE = DLQStore(dsn=cfg.settings().database.dsn)

@@ -9,14 +9,12 @@ from __future__ import annotations
 import json
 import threading
 from collections.abc import Iterable, Mapping
-from typing import Annotated, Any, ClassVar, Dict, List, Optional, Union
+from typing import Annotated, Any, ClassVar, Dict, List, Union
 
 from mcp.types import CallToolResult
 from pydantic import BaseModel, Discriminator, Field, PrivateAttr, Tag
 
 from python.helpers import dirty_json
-from python.helpers.print_style import PrintStyle
-from python.helpers.tool import Response, Tool
 
 # Re-export from extracted modules
 from python.helpers.mcp_servers import (
@@ -24,12 +22,8 @@ from python.helpers.mcp_servers import (
     MCPServerRemote,
     normalize_name,
 )
-from python.helpers.mcp_clients import (
-    MCPClientBase,
-    MCPClientLocal,
-    MCPClientRemote,
-    _is_streaming_http_type,
-)
+from python.helpers.print_style import PrintStyle
+from python.helpers.tool import Response, Tool
 
 
 def _determine_server_type(config_dict: dict) -> str:

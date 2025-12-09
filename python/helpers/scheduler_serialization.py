@@ -14,12 +14,12 @@ from python.helpers.localization import Localization
 from python.helpers.print_style import PrintStyle
 from python.helpers.scheduler_models import (
     AdHocTask,
+    AnyTask,
     PlannedTask,
     ScheduledTask,
     TaskPlan,
     TaskSchedule,
     TaskState,
-    AnyTask,
 )
 
 

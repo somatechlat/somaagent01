@@ -11,7 +11,18 @@ from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
 from datetime import timedelta
 from shutil import which
-from typing import Any, Awaitable, Callable, cast, ClassVar, Dict, List, Optional, TextIO, TypeVar, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    cast,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    TextIO,
+    TypeVar,
+)
 
 import httpx
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream

@@ -7,9 +7,10 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from services.common.api_key_store import ApiKeyResponse, ApiKeyStore
+
 # Legacy admin settings removed – use the central cfg singleton.
 from src.core.config import cfg
-from services.common.api_key_store import ApiKeyResponse, ApiKeyStore
 
 router = APIRouter(prefix="/v1/keys", tags=["auth"])
 STORE = ApiKeyStore(cfg.settings().database.dsn)

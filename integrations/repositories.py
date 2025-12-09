@@ -17,8 +17,8 @@ from services.common.audit_store import AuditStore as _AuditStore, from_env as _
 from services.common.dlq_store import DLQStore
 from services.common.export_job_store import ExportJobStore
 from services.common.memory_replica_store import MemoryReplicaStore
-from services.common.secret_manager import SecretManager
 from services.common.notifications_store import NotificationsStore
+from services.common.secret_manager import SecretManager
 from services.common.session_repository import PostgresSessionStore
 from services.common.ui_settings_store import UiSettingsStore
 

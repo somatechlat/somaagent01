@@ -13,8 +13,9 @@ from uuid import UUID
 
 import asyncpg
 import redis.asyncio as redis
-from src.core.config import cfg
 from prometheus_client import Counter, Histogram
+
+from src.core.config import cfg
 
 
 def _int_from_env(key: str, default: int) -> int:

@@ -224,8 +224,8 @@ class BaseTask(BaseModel):
         await TaskScheduler.get().update_task(self.uuid, updated_at=datetime.now(timezone.utc))
 
     async def on_error(self, error: str):
-        from python.helpers.task_scheduler import TaskScheduler
         from python.helpers.print_style import PrintStyle
+        from python.helpers.task_scheduler import TaskScheduler
         scheduler = TaskScheduler.get()
         await scheduler.reload()
         updated_task = await scheduler.update_task(
@@ -241,8 +241,8 @@ class BaseTask(BaseModel):
         await scheduler.save()
 
     async def on_success(self, result: str):
-        from python.helpers.task_scheduler import TaskScheduler
         from python.helpers.print_style import PrintStyle
+        from python.helpers.task_scheduler import TaskScheduler
         scheduler = TaskScheduler.get()
         await scheduler.reload()
         updated_task = await scheduler.update_task(

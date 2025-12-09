@@ -1,6 +1,9 @@
 """Memory module - Local FAISS and Remote SomaBrain memory stores."""
 from __future__ import annotations
-import json, logging, os
+
+import json
+import logging
+import os
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Sequence
@@ -47,8 +50,9 @@ import models
 from agent import Agent
 from python.helpers import guids, knowledge_import
 from python.helpers.log import LogItem
-from python.helpers.print_style import PrintStyle
 from python.helpers.memory_stores import SomaMemory
+from python.helpers.print_style import PrintStyle
+
 from . import files
 
 logging.getLogger("langchain_core.vectorstores.base").setLevel(logging.ERROR)

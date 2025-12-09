@@ -3,25 +3,13 @@ import base64
 import hashlib
 import json
 import subprocess
-from typing import Any
 
 # Third-party imports
 from python.helpers import defer, git, runtime, whisper
 from python.helpers.print_style import PrintStyle
 
 # Local imports
-from .secrets import SecretsManager
 from .settings_model import SettingsModel as Settings
-
-# Import types from extracted module
-from .settings_types import (
-    API_KEY_PLACEHOLDER,
-    PASSWORD_PLACEHOLDER,
-    FieldOption,
-    SettingsField,
-    SettingsOutput,
-    SettingsSection,
-)
 
 # Import section builders from extracted modules
 from .settings_sections_external import (
@@ -48,6 +36,13 @@ from .settings_sections_models import (
     build_chat_model_section,
     build_embed_model_section,
     build_util_model_section,
+)
+
+# Import types from extracted module
+from .settings_types import (
+    API_KEY_PLACEHOLDER,
+    PASSWORD_PLACEHOLDER,
+    SettingsOutput,
 )
 
 

@@ -7,10 +7,18 @@ from typing import Any
 from celery import shared_task
 
 from python.tasks.core_tasks import (
-    SafeTask, _run, _append_event_sync, policy_client, publisher, saga_manager,
-    run_compensation, build_headers, idempotency_key, _enforce_policy
+    _append_event_sync,
+    _enforce_policy,
+    _run,
+    build_headers,
+    idempotency_key,
+    policy_client,
+    publisher,
+    run_compensation,
+    SafeTask,
+    saga_manager,
 )
-from python.tasks.schemas import REBUILD_INDEX_ARGS_SCHEMA, EVALUATE_POLICY_ARGS_SCHEMA
+from python.tasks.schemas import EVALUATE_POLICY_ARGS_SCHEMA, REBUILD_INDEX_ARGS_SCHEMA
 from python.tasks.validation import validate_payload
 from services.common.policy_client import PolicyRequest
 from src.core.config import cfg

@@ -155,6 +155,7 @@ class ProtectedPostgresClient:
     async def _execute_query(self, query: str, *args):
         """Execute query against PostgreSQL."""
         import asyncpg
+
         from src.core.config import cfg
         
         dsn = cfg.settings().database.dsn

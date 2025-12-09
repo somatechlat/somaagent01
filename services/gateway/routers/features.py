@@ -3,8 +3,7 @@
 Provides endpoints for feature flag listings with proper response formats.
 """
 
-from fastapi import APIRouter, Request, HTTPException
-from typing import Dict, Any
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 

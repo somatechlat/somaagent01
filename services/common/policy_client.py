@@ -9,8 +9,8 @@ from typing import Any, Optional
 
 import httpx
 
-from src.core.config import cfg
 from services.common.tenant_config import TenantConfig
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 

@@ -10,6 +10,7 @@ For tests that require real infrastructure, use:
 """
 
 import os
+
 import pytest
 
 # Set minimal environment variables BEFORE any imports that might trigger config loading

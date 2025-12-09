@@ -11,8 +11,6 @@ import logging
 from typing import Any
 
 from python.integrations.somabrain_client import SomaBrainClient
-
-from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus
 from services.common.logging_config import setup_logging
@@ -27,24 +25,25 @@ from services.common.requeue_store import RequeueStore
 from services.common.session_repository import PostgresSessionStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
-from services.tool_executor.execution_engine import ExecutionEngine
-from services.tool_executor.resource_manager import ResourceManager
-from services.tool_executor.sandbox_manager import SandboxManager
-from services.tool_executor.tool_registry import ToolRegistry
 
 # Extracted modules
 from services.tool_executor.config import (
-    kafka_settings,
-    redis_url,
-    tenant_config_path,
-    policy_requeue_prefix,
     get_stream_config,
+    kafka_settings,
+    policy_requeue_prefix,
+    redis_url,
     SERVICE_SETTINGS,
+    tenant_config_path,
 )
+from services.tool_executor.execution_engine import ExecutionEngine
 from services.tool_executor.metrics import ensure_metrics_server
 from services.tool_executor.request_handler import RequestHandler
+from services.tool_executor.resource_manager import ResourceManager
 from services.tool_executor.result_publisher import ResultPublisher
+from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.telemetry import ToolTelemetryEmitter
+from services.tool_executor.tool_registry import ToolRegistry
+from src.core.config import cfg
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)

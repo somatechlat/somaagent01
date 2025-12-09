@@ -86,7 +86,7 @@ def test_domain_has_no_infrastructure_imports():
                     violations.append(f"{rel_path}: imports '{imp}'")
     
     assert not violations, (
-        f"Domain layer has forbidden infrastructure imports:\n"
+        "Domain layer has forbidden infrastructure imports:\n"
         + "\n".join(sorted(set(violations)))
     )
 
@@ -128,6 +128,6 @@ def test_domain_ports_are_abstract():
                     violations.append(f"{rel_path}: {node.name} does not inherit from ABC")
     
     assert not violations, (
-        f"Port interfaces must inherit from ABC:\n"
+        "Port interfaces must inherit from ABC:\n"
         + "\n".join(sorted(set(violations)))
     )

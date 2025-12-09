@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 import asyncpg
 
-
 from src.core.config import cfg
 
 

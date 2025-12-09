@@ -6,26 +6,24 @@ requests, extracted from main.py to keep the entry point thin.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid
 from typing import Any, TYPE_CHECKING
 
-from src.core.config import cfg
 from services.common.policy_client import PolicyRequest
 from services.tool_executor.audit import get_trace_id, log_tool_event
 from services.tool_executor.metrics import (
-    TOOL_REQUEST_COUNTER,
-    TOOL_FEEDBACK_TOTAL,
     POLICY_DECISIONS,
+    REQUEUE_EVENTS,
     TOOL_EXECUTION_LATENCY,
     TOOL_INFLIGHT,
-    REQUEUE_EVENTS,
+    TOOL_REQUEST_COUNTER,
 )
 from services.tool_executor.resource_manager import default_limits
 from services.tool_executor.tools import ToolExecutionError
-from services.tool_executor.validation import validate_tool_request, validate_tool_result
+from services.tool_executor.validation import validate_tool_request
+from src.core.config import cfg
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor
