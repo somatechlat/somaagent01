@@ -1,6 +1,7 @@
 """SomaAgent package - Agent components and orchestration.
 
 This package contains extracted components from the main agent module:
+- agent_context: AgentContext, AgentConfig, UserMessage
 - input_processor: User message handling
 - tool_selector: Tool selection and execution
 - response_generator: LLM calls and response handling
@@ -10,7 +11,9 @@ This package contains extracted components from the main agent module:
 - capsule: Capsule management
 """
 
-from python.somaagent.input_processor import UserMessage, process_user_message, process_intervention
+from python.somaagent.agent_context import (
+    AgentContext, AgentContextType, AgentConfig, UserMessage
+)
 from python.somaagent.tool_selector import get_tool, process_tool_request, extract_tool_from_response
 from python.somaagent.response_generator import (
     get_chat_model, get_utility_model, call_chat_model, call_utility_model, apply_neuromodulation
@@ -22,10 +25,11 @@ from python.somaagent.error_handler import (
 from python.somaagent.conversation_orchestrator import LoopData, run_message_loop, process_chain
 
 __all__ = [
-    # Input processing
+    # Context and config
+    "AgentContext",
+    "AgentContextType",
+    "AgentConfig",
     "UserMessage",
-    "process_user_message",
-    "process_intervention",
     # Tool selection
     "get_tool",
     "process_tool_request",
