@@ -30,13 +30,14 @@ LIMITS = {
 
 # Files to exclude from checks
 EXCLUDE = {
-    "**/__pycache__/**",
-    "**/node_modules/**",
-    "**/.venv/**",
-    "**/migrations/**",
-    "**/tests/**",
-    "**/*_test.py",
-    "**/test_*.py",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "migrations",
+    "tests",
+    "*_test.py",
+    "test_*.py",
+    "conftest.py",
 }
 
 
@@ -57,6 +58,10 @@ def matches_pattern(path: Path, pattern: str) -> bool:
 
 def is_excluded(path: Path) -> bool:
     """Check if path should be excluded."""
+    path_str = str(path)
+    for part in path.parts:
+        if part in EXCLUDE:
+            return True
     return any(matches_pattern(path, pat) for pat in EXCLUDE)
 
 
