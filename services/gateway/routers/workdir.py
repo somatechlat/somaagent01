@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from src.core.config import cfg
 from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/workdir", tags=["workdir"])
 

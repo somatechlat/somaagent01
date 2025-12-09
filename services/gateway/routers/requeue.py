@@ -5,9 +5,10 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from services.common.requeue_store import RequeueStore
+
 # Legacy admin settings removed – use central cfg singleton.
 from src.core.config import cfg
-from services.common.requeue_store import RequeueStore
 
 router = APIRouter(prefix="/v1/requeue", tags=["requeue"])
 STORE = RequeueStore(

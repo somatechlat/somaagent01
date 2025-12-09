@@ -16,10 +16,11 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from agent import AgentContext
-# Use central configuration via cfg instead of legacy ADMIN_SETTINGS.
-from src.core.config import cfg
 from services.common.attachments_store import AttachmentsStore
 from services.common.session_repository import PostgresSessionStore
+
+# Use central configuration via cfg instead of legacy ADMIN_SETTINGS.
+from src.core.config import cfg
 
 # Lazily created singletons
 _SESSION_STORE: Optional[PostgresSessionStore] = None

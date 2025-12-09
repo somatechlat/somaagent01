@@ -15,18 +15,18 @@ from unittest import mock
 import pytest
 
 from src.core.config.models import (
+    AudioConfig,
+    AuthConfig,
     Config,
-    ServiceConfig,
     DatabaseConfig,
+    ExternalServiceConfig,
     KafkaConfig,
     RedisConfig,
-    AuthConfig,
-    ExternalServiceConfig,
-    AudioConfig,
+    ServiceConfig,
     VoiceConfig,
 )
-from src.voice.service import VoiceService
 from src.voice.exceptions import VoiceProcessingError
+from src.voice.service import VoiceService
 
 
 @pytest.fixture

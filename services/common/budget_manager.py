@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Optional
 
-import os
 import redis.asyncio as redis
 
-from src.core.config import cfg
 from services.common.tenant_config import TenantConfig
+from src.core.config import cfg
 
 
 def _int_from_env(name: str, default: int) -> int:

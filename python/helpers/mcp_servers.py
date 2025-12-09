@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import re
 import threading
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Union
+from typing import Any, ClassVar, Dict, List, Literal, Optional
 
 from mcp.types import CallToolResult
 from pydantic import BaseModel, Field, PrivateAttr

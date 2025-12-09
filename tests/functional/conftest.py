@@ -21,10 +21,10 @@ To skip functional tests in CI without infrastructure:
     pytest tests/ --ignore=tests/functional/
 """
 
-import os
-import pytest
 import asyncio
-from typing import AsyncGenerator
+import os
+
+import pytest
 
 # Verify required environment variables are set for real infrastructure
 REQUIRED_ENV_VARS = [
@@ -56,8 +56,9 @@ def event_loop():
 @pytest.fixture(scope="session")
 async def db_pool():
     """Create a real database connection pool for functional tests."""
-    from src.core.config import cfg
     import asyncpg
+
+    from src.core.config import cfg
     
     dsn = cfg.env("SA01_DB_DSN")
     pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
@@ -68,8 +69,9 @@ async def db_pool():
 @pytest.fixture(scope="session")
 async def redis_client():
     """Create a real Redis client for functional tests."""
-    from src.core.config import cfg
     import redis.asyncio as redis
+
+    from src.core.config import cfg
     
     url = cfg.env("SA01_REDIS_URL")
     client = redis.from_url(url)

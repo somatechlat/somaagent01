@@ -13,11 +13,11 @@ import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from services.gateway import degradation_monitor
-# Legacy admin settings removed – use the central cfg singleton.
-from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
+from services.gateway import degradation_monitor
+
+# Legacy admin settings removed – use the central cfg singleton.
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1", tags=["health"])

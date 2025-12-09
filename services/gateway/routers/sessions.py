@@ -13,9 +13,10 @@ from typing import Any, AsyncGenerator, Optional
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
+from services.common.session_repository import ensure_schema, PostgresSessionStore
+
 # Legacy admin settings replaced – use central cfg singleton.
 from src.core.config import cfg
-from services.common.session_repository import ensure_schema, PostgresSessionStore
 
 router = APIRouter(prefix="/v1/session", tags=["sessions"])
 

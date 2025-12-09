@@ -17,10 +17,10 @@ from python.helpers.files import get_abs_path, make_dirs, read_file, write_file
 from python.helpers.print_style import PrintStyle
 from python.helpers.scheduler_models import (
     AdHocTask,
+    AnyTask,
     PlannedTask,
     ScheduledTask,
     TaskState,
-    AnyTask,
 )
 
 SCHEDULER_FOLDER = "tmp/scheduler"

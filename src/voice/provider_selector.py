@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from typing import AsyncGenerator
 
 from src.core.config.models import Config
+
 from .exceptions import ProviderNotSupportedError
 
 

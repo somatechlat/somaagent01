@@ -12,18 +12,20 @@ import uuid
 from typing import Any, Optional
 
 import httpx
-from celery import Task, shared_task
+from celery import Task
 from prometheus_client import Counter, Histogram
 from redis import Redis
 
 from python.tasks.config import create_redis_client
-from python.tasks.validation import validate_payload
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.messaging_utils import build_headers, idempotency_key
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
-from services.common.saga_manager import SagaManager, register_compensation, run_compensation
-from services.common.session_repository import PostgresSessionStore, ensure_schema as ensure_session_schema
+from services.common.saga_manager import register_compensation, run_compensation, SagaManager
+from services.common.session_repository import (
+    ensure_schema as ensure_session_schema,
+    PostgresSessionStore,
+)
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -202,9 +204,14 @@ register_compensation("delegate", _delegate_compensation)
 # ---------------------------------------------------------------------------
 # Re-export tasks from domain modules for backward compatibility
 # ---------------------------------------------------------------------------
-from python.tasks.conversation_tasks import delegate, build_context, store_interaction, feedback_loop
-from python.tasks.memory_tasks import rebuild_index, evaluate_policy
-from python.tasks.maintenance_tasks import publish_metrics, cleanup_sessions, dead_letter
+from python.tasks.conversation_tasks import (
+    build_context,
+    delegate,
+    feedback_loop,
+    store_interaction,
+)
+from python.tasks.maintenance_tasks import cleanup_sessions, dead_letter, publish_metrics
+from python.tasks.memory_tasks import evaluate_policy, rebuild_index
 
 __all__ = [
     "delegate", "build_context", "store_interaction", "feedback_loop",

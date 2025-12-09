@@ -428,7 +428,7 @@ class DegradationMonitor:
         if circuit_breaker:
             try:
                 await circuit_breaker.call(lambda: None)  # This will record success
-            except:
+            except Exception:
                 pass  # Ignore circuit breaker errors in success recording
 
         logger.debug(f"Recorded success for {component_name}: {response_time:.3f}s")

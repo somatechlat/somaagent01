@@ -5,9 +5,10 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
+from services.common.attachments_store import AttachmentsStore
+
 # Legacy admin settings removed – use the central cfg singleton.
 from src.core.config import cfg
-from services.common.attachments_store import AttachmentsStore
 
 router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
 

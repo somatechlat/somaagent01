@@ -7,7 +7,6 @@ This file verifies that a registered CacheSyncService is reachable via its
 
 import pytest
 from httpx import AsyncClient
-from orchestrator.main import create_app
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 """Response generation for agent LLM calls."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent import Agent
@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 from langchain_core.messages import BaseMessage
 
 import models
-from python.helpers.print_style import PrintStyle
 
 
 def get_chat_model(agent: "Agent"):

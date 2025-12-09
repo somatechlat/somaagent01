@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from python.helpers.settings_types import SettingsField, SettingsSection
+from python.helpers.settings_types import SettingsSection
 
 
 def build_mcp_client_section(settings: Any) -> SettingsSection:

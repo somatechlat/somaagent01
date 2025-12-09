@@ -71,7 +71,7 @@ def test_new_code_uses_core_config():
                 violations.append(f"{rel_path}: uses deprecated '{deprecated}'")
     
     assert not violations, (
-        f"New code should use src.core.config, not legacy imports:\n"
+        "New code should use src.core.config, not legacy imports:\n"
         + "\n".join(sorted(set(violations)))
     )
 

@@ -13,11 +13,11 @@ import uuid
 from typing import Any, TYPE_CHECKING
 
 from python.integrations.soma_client import SomaClientError
-from src.core.config import cfg
 from services.common.idempotency import generate_for_memory_payload
 from services.common.policy_client import PolicyRequest
 from services.tool_executor.metrics import TOOL_FEEDBACK_TOTAL
 from services.tool_executor.validation import validate_tool_result
+from src.core.config import cfg
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor

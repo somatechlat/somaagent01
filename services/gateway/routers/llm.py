@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -39,7 +40,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
         text = req.prompt
     
     # REAL IMPLEMENTATION - Use SLM client for LLM invocation
-    from services.gateway.main import get_llm_credentials_store, _gateway_slm_client
+    from services.gateway.main import _gateway_slm_client, get_llm_credentials_store
     
     # Get credentials and client
     creds_store = get_llm_credentials_store()
@@ -85,7 +86,7 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
         text = req.prompt
     
     # REAL IMPLEMENTATION - Use SLM client for streaming LLM invocation
-    from services.gateway.main import get_llm_credentials_store, _gateway_slm_client
+    from services.gateway.main import _gateway_slm_client, get_llm_credentials_store
     
     # Get credentials and client
     creds_store = get_llm_credentials_store()

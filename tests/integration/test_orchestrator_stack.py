@@ -8,7 +8,6 @@ services with length 3 and finally triggers a shutdown.  The test uses the
 
 import pytest
 from httpx import AsyncClient
-from orchestrator.main import create_app
 
 
 @pytest.mark.asyncio

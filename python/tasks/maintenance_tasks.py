@@ -8,8 +8,15 @@ from typing import Any
 from celery import shared_task
 
 from python.tasks.core_tasks import (
-    SafeTask, _run, _get_store, _append_event_sync, publisher,
-    build_headers, idempotency_key, _enforce_policy, task_invocations_total
+    _append_event_sync,
+    _enforce_policy,
+    _get_store,
+    _run,
+    build_headers,
+    idempotency_key,
+    publisher,
+    SafeTask,
+    task_invocations_total,
 )
 from python.tasks.schemas import CLEANUP_SESSIONS_ARGS_SCHEMA
 from python.tasks.validation import validate_payload

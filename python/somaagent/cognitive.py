@@ -1,7 +1,7 @@
 """Cognitive processing and neuromodulation for agent."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent import Agent

@@ -17,17 +17,11 @@ Utility modules (available for external use):
 """
 
 # Primary exports - used by agent.py
-from python.somaagent.agent_context import (
-    AgentContext, AgentContextType, AgentConfig, UserMessage
-)
-from python.somaagent.error_handler import (
-    InterventionException, HandledException
-)
-from python.somaagent.conversation_orchestrator import LoopData
-
 # Cognitive and SomaBrain modules - imported as namespaces by agent.py
-from python.somaagent import cognitive
-from python.somaagent import somabrain_integration
+from python.somaagent import cognitive, somabrain_integration
+from python.somaagent.agent_context import AgentConfig, AgentContext, AgentContextType, UserMessage
+from python.somaagent.conversation_orchestrator import LoopData
+from python.somaagent.error_handler import HandledException, InterventionException
 
 __all__ = [
     # Primary exports (used by agent.py)

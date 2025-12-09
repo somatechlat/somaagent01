@@ -15,28 +15,10 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+# Re-exports for test compatibility
+# Re-export auth and providers for backward compatibility
 from services.gateway.routers import build_router
 from src.core.config import cfg
-
-# Re-export auth and providers for backward compatibility
-from services.gateway.auth import (
-    authorize_request, jwt_module, SomaBrainClient, REQUIRE_AUTH,
-    _resolve_signing_key, _get_policy_client, _evaluate_opa
-)
-from services.gateway.providers import (
-    get_event_bus, get_bus, get_publisher, get_session_cache,
-    get_llm_credentials_store, get_api_key_store, get_slm_client,
-    JWKS_CACHE, APP_SETTINGS, JWT_SECRET
-)
-
-# Re-exports for test compatibility
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.policy_client import PolicyClient, PolicyRequest
-from services.common.outbox_repository import ensure_outbox_schema, OutboxStore
-from services.common.publisher import DurablePublisher
-from services.common.session_repository import RedisSessionCache
-from services.common.api_key_store import ApiKeyStore
-import jwt
 
 webui_path = str(pathlib.Path(__file__).resolve().parents[2] / "webui")
 app = FastAPI(title="SomaAgent Gateway")
@@ -46,6 +28,7 @@ app = FastAPI(title="SomaAgent Gateway")
 async def _ensure_settings_schema() -> None:
     """Ensure the agent_settings table exists at startup."""
     import logging
+
     from services.common.agent_settings_store import get_agent_settings_store
     store = get_agent_settings_store()
     try:

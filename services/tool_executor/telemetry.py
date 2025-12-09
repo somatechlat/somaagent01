@@ -9,9 +9,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from services.common.publisher import DurablePublisher
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
-from services.common.publisher import DurablePublisher
 
 LOGGER = logging.getLogger(__name__)
 

@@ -22,16 +22,16 @@ modules.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Awaitable
 
 from src.core.config.models import Config
+
 from .audio_capture import AudioCapture
+from .metrics import record_error, VOICE_SESSION_DURATION_SECONDS, VOICE_SESSIONS_TOTAL
+from .provider_selector import _BaseClient, get_provider_client
 from .speaker import Speaker
-from .provider_selector import get_provider_client, _BaseClient
-from .voice_adapter import VoiceAdapter
-from .metrics import VOICE_SESSIONS_TOTAL, VOICE_SESSION_DURATION_SECONDS, record_error
 from .tracing import span
+from .voice_adapter import VoiceAdapter
 
 
 class VoiceService:

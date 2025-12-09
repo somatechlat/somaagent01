@@ -1,7 +1,7 @@
 """Configuration helpers for tool executor service."""
 
-from src.core.config import cfg
 from services.common.event_bus import KafkaSettings
+from src.core.config import cfg
 
 SERVICE_SETTINGS = cfg.settings()
 

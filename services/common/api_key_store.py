@@ -7,6 +7,7 @@ import base64
 import binascii
 import hashlib
 import json
+import os
 import secrets
 import time
 import uuid
@@ -14,6 +15,8 @@ from dataclasses import dataclass
 from typing import Any, List, Optional
 
 import redis.asyncio as redis
+
+from src.core.config import cfg
 
 __all__ = [
     "ApiKeyMetadata",

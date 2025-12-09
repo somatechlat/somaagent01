@@ -26,21 +26,20 @@ from python.helpers.extension import call_extensions
 from python.helpers.history import output_text
 from python.helpers.print_style import PrintStyle
 from python.integrations.soma_client import SomaClient
+from python.somaagent import cognitive as cognitive_ops, somabrain_integration as somabrain_ops
 
 # Import from extracted somaagent modules
 from python.somaagent.agent_context import (
+    AgentConfig,
     AgentContext,
     AgentContextType,
-    AgentConfig,
     UserMessage,
 )
 from python.somaagent.conversation_orchestrator import LoopData
 from python.somaagent.error_handler import (
-    InterventionException,
     HandledException,
+    InterventionException,
 )
-from python.somaagent import cognitive as cognitive_ops
-from python.somaagent import somabrain_integration as somabrain_ops
 
 # Re-export for backward compatibility
 __all__ = [

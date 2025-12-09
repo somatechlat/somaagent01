@@ -71,7 +71,7 @@ def test_application_layer_no_direct_db_access():
                 violations.append(f"{rel_path}: imports '{imp}'")
     
     assert not violations, (
-        f"Application layer has forbidden direct infrastructure imports:\n"
+        "Application layer has forbidden direct infrastructure imports:\n"
         + "\n".join(sorted(set(violations)))
     )
 
@@ -98,6 +98,6 @@ def test_domain_layer_no_direct_db_access():
                 violations.append(f"{rel_path}: imports '{imp}'")
     
     assert not violations, (
-        f"Domain layer has forbidden direct infrastructure imports:\n"
+        "Domain layer has forbidden direct infrastructure imports:\n"
         + "\n".join(sorted(set(violations)))
     )

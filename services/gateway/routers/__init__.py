@@ -16,6 +16,7 @@ from . import (
     chat_full,
     constitution,
     dlq,
+    features,
     health,
     health_full,
     keys,
@@ -39,9 +40,8 @@ from . import (
     ui_settings,
     uploads_full,
     websocket,
-    workdir,
-    features,
     weights,
+    workdir,
 )
 
 
