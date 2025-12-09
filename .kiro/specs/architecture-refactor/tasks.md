@@ -193,13 +193,18 @@
 - [x] 21. Extract conversation worker components
   - [x] 21.1 Create message_processor module (115 lines)
   - [x] 21.2 Create context_builder service (existing in somaagent/)
-  - [x] 21.3 Create tool_orchestrator service (175 lines)
+  - [x] 21.3 Create tool_orchestrator service (183 lines)
   - [x] 21.4 Create health_monitor component (86 lines)
   - [x] 21.5a Create llm_metrics module (104 lines)
-  - [x] 21.5b Create event_handler module (220 lines)
-  - [ ] 21.5c Refactor main.py to use extracted modules
+  - [x] 21.5b Create event_handler module (222 lines)
+  - [x] 21.5c Create memory_handler module (310 lines)
+  - [x] 21.5d Create response_handler module (225 lines)
+  - [x] 21.5e Create preprocessor module (72 lines)
+  - [x] 21.5f Create main_thin.py prototype (229 lines)
+  - [ ] 21.6 Integrate extracted modules into main.py
     - Current: 3022 lines, Target: < 150 lines
-    - Modules extracted, integration pending
+    - Challenge: _handle_event is 990 lines of tightly coupled logic
+    - Extracted modules ready, full integration requires careful testing
 
 - [ ] 22. Checkpoint: Verify conversation worker works
 
