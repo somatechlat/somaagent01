@@ -151,7 +151,7 @@ __all__ = ["readiness_summary", "COMPONENTS"]
 # ---------------------------------------------------------------------------
 # Re-export for imports that expect ``get_replica_store`` from this module.
 # ---------------------------------------------------------------------------
-from src.core.domain.memory.replica_store import MemoryReplicaStore
+from src.core.infrastructure.repositories import MemoryReplicaStore
 
 
 def get_replica_store() -> MemoryReplicaStore:

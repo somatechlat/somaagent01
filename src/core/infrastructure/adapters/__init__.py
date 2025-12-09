@@ -6,10 +6,13 @@ only interface compliance.
 """
 
 from .event_bus_adapter import KafkaEventBusAdapter
+from .execution_engine_adapter import ExecutionEngineAdapter
 from .memory_adapter import SomaBrainMemoryAdapter
 from .policy_adapter import OPAPolicyAdapter
+from .secret_manager_adapter import SecretManagerAdapter
 from .session_cache_adapter import RedisSessionCacheAdapter
 from .session_repository_adapter import PostgresSessionRepositoryAdapter
+from .tool_registry_adapter import ToolRegistryAdapter
 
 __all__ = [
     "PostgresSessionRepositoryAdapter",
@@ -17,4 +20,7 @@ __all__ = [
     "KafkaEventBusAdapter",
     "OPAPolicyAdapter",
     "SomaBrainMemoryAdapter",
+    "SecretManagerAdapter",
+    "ToolRegistryAdapter",
+    "ExecutionEngineAdapter",
 ]

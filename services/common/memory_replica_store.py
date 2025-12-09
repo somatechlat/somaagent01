@@ -7,7 +7,7 @@ This module re‑exports the public symbols from the canonical module.
 from __future__ import annotations
 
 # Re‑export the canonical implementation.
-from src.core.domain.memory.replica_store import (
+from src.core.infrastructure.repositories import (
     ensure_schema,
     MemoryReplicaRow,
     MemoryReplicaStore,

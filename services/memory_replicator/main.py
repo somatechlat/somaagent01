@@ -22,7 +22,7 @@ from services.common.tracing import setup_tracing
 
 # Legacy settings import removed. Use centralized configuration.
 from src.core.config import cfg
-from src.core.domain.memory.replica_store import (
+from src.core.infrastructure.repositories import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

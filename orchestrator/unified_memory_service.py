@@ -27,7 +27,7 @@ from services.common.memory_write_outbox import (
     ensure_schema as ensure_outbox_schema,
     MemoryWriteOutbox,
 )
-from src.core.domain.memory.replica_store import (
+from src.core.infrastructure.repositories import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

@@ -1,7 +1,10 @@
 """Replica/audit store for memory writes consumed from WAL.
 
-Provides the public API (`MemoryReplicaStore`, `ensure_schema`, etc.)
-using the central configuration façade.
+This is the infrastructure implementation of MemoryReplicaStorePort.
+It uses asyncpg for PostgreSQL access.
+
+Implements:
+    src.core.domain.ports.repositories.memory_replica.MemoryReplicaStorePort
 """
 
 from __future__ import annotations
@@ -15,7 +18,6 @@ from typing import Any, List, Optional
 
 import asyncpg
 
-# Use the central config façade.
 from src.core.config import cfg as _new_cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -23,6 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class MemoryReplicaRow:
+    """Data class for memory replica row."""
     id: int
     event_id: str | None
     session_id: str | None
@@ -38,6 +41,12 @@ class MemoryReplicaRow:
 
 
 class MemoryReplicaStore:
+    """PostgreSQL implementation of memory replica storage.
+    
+    This class provides the concrete implementation for storing and
+    retrieving memory replicas from PostgreSQL.
+    """
+    
     def __init__(self, dsn: Optional[str] = None) -> None:
         raw_dsn = dsn or _new_cfg.env(
             "POSTGRES_DSN",
@@ -51,7 +60,7 @@ class MemoryReplicaStore:
             min_size = int(_new_cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(_new_cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
 
-            async def _init_conn(conn: asyncpg.Connection) -> None:  # type: ignore[name-defined]
+            async def _init_conn(conn: asyncpg.Connection) -> None:
                 """Configure JSON/JSONB codecs for asyncpg connections."""
                 try:
                     await conn.set_type_codec(
@@ -87,9 +96,6 @@ class MemoryReplicaStore:
             await self._pool.close()
             self._pool = None
 
-    # ---------------------------------------------------------------------
-    # Public API – identical to the original implementation
-    # ---------------------------------------------------------------------
     async def insert_from_wal(self, wal: dict[str, Any]) -> int:
         payload = wal.get("payload") or {}
         result = wal.get("result") or {}
@@ -119,7 +125,7 @@ class MemoryReplicaStore:
                 wal.get("timestamp"),
             )
             if row:
-                return int(row["id"])  # type: ignore[index]
+                return int(row["id"])
             existing = await conn.fetchrow(
                 "SELECT id FROM memory_replica WHERE event_id = $1 ORDER BY id DESC LIMIT 1",
                 (payload or {}).get("id"),
@@ -288,6 +294,7 @@ ON memory_replica ((COALESCE(payload->>'namespace', payload->'metadata'->>'names
 
 
 async def ensure_schema(store: MemoryReplicaStore) -> None:
+    """Ensure the memory_replica table and indexes exist."""
     pool = await store._ensure_pool()
     async with pool.acquire() as conn:
         await conn.execute(MIGRATION_SQL)

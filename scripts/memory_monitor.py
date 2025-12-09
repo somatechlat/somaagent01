@@ -18,7 +18,7 @@ from typing import Any, Dict
 import aiohttp
 
 from services.common.memory_write_outbox import MemoryWriteOutbox
-from src.core.domain.memory.replica_store import MemoryReplicaStore
+from src.core.infrastructure.repositories import MemoryReplicaStore
 
 
 class MemoryMonitor:
