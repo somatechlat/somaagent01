@@ -13,7 +13,7 @@ import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from services.common import degradation_monitor
+from services.gateway import degradation_monitor
 # Legacy admin settings removed – use the central cfg singleton.
 from src.core.config import cfg
 from services.common.event_bus import KafkaEventBus, KafkaSettings

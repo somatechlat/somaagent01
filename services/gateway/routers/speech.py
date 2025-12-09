@@ -20,11 +20,7 @@ class TranscribeRequest(BaseModel):
 async def transcribe(
     file: UploadFile = File(...), req: TranscribeRequest | None = None
 ) -> JSONResponse:
-    data = await file.read()
-    # Minimal: just return fake transcription length
-    return JSONResponse(
-        {"text": f"transcribed {len(data)} bytes", "language": req.language if req else None}
-    )
+    raise HTTPException(status_code=501, detail="Speech transcription not implemented")
 
 
 class KokoroSynthesizeRequest(BaseModel):
@@ -37,8 +33,7 @@ class KokoroSynthesizeRequest(BaseModel):
 async def kokoro_tts(req: KokoroSynthesizeRequest) -> JSONResponse:
     if not req.text:
         raise HTTPException(status_code=400, detail="missing_text")
-    audio_b64 = base64.b64encode(req.text.encode()).decode()
-    return JSONResponse({"audio": audio_b64})
+    raise HTTPException(status_code=501, detail="Kokoro TTS not implemented")
 
 
 class RealtimeSessionRequest(BaseModel):
@@ -55,9 +50,7 @@ class RealtimeSessionResponse(BaseModel):
 
 @router.post("/realtime/session", response_model=RealtimeSessionResponse)
 async def realtime_session(_: RealtimeSessionRequest) -> RealtimeSessionResponse:
-    return RealtimeSessionResponse(
-        session_id="session-1", ws_url="ws://localhost/rt", expires_at=0.0, caps=None
-    )
+    raise HTTPException(status_code=501, detail="Realtime session not implemented")
 
 
 class OpenAIRealtimeAnswer(BaseModel):
@@ -68,4 +61,4 @@ class OpenAIRealtimeAnswer(BaseModel):
 
 @router.post("/openai/realtime/offer", response_model=OpenAIRealtimeAnswer)
 async def openai_realtime_offer(body: OpenAIRealtimeAnswer) -> OpenAIRealtimeAnswer:
-    return body
+    raise HTTPException(status_code=501, detail="OpenAI realtime not implemented")

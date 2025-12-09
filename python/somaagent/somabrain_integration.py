@@ -72,11 +72,15 @@ async def recall_memories(
 
 
 async def get_adaptation_state(agent: "Agent") -> Optional[Dict[str, Any]]:
-    """Get current adaptation state from SomaBrain."""
+    """Get current adaptation state from SomaBrain.
+    
+    Uses GET /context/adaptation/state endpoint which returns retrieval weights,
+    utility weights, history length, and learning rate.
+    """
     try:
         result = await agent.soma_client.get_adaptation_state(
             tenant_id=agent.tenant_id,
-            persona_id=agent.persona_id,
+            persona_id=agent.persona_id,  # Accepted for compatibility, not used by SomaBrain
         )
         if result:
             agent.data["adaptation_state"] = result

@@ -29,7 +29,7 @@ def _attachments_store() -> AttachmentsStore:
 
 
 def _publisher() -> DurablePublisher:
-    # Minimal stub; in monolith this used specific publisher wiring.
+    """Create a durable publisher for upload events."""
     bus = KafkaEventBus(KafkaSettings.from_env())
     return DurablePublisher(bus=bus, outbox=MemoryWriteOutbox(dsn=cfg.settings().database.dsn))
 

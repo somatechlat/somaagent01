@@ -1,11 +1,7 @@
-"""Weights router exposing the Somabrain learning weights endpoint.
+"""Weights router exposing the SomaBrain learning weights endpoint.
 
-The original monolith provided a ``/v1/weights`` endpoint used by the client
-side and the test suite. During the refactor the route was unintentionally
-omitted, causing OpenAPI validation failures. This router reinstates the
-endpoint in a minimal, production‑ready fashion by delegating to the shared
-``services.common.learning.get_weights`` helper, which already contains the
-logic for contacting SomaBrain (or a stub in tests).
+Delegates to ``services.common.learning.get_weights`` which handles
+authentication and the HTTP request to SomaBrain.
 """
 
 from __future__ import annotations

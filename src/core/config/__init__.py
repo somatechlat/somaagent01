@@ -1,18 +1,11 @@
 """Centralised configuration package.
 
-The *VIBE* refactor requires a **single source of truth** for all runtime
-configuration.  This module provides a lightweight façade – ``cfg`` – that
-exposes an ``env`` helper mirroring the historic ``runtime_config.env`` API but
-delegates to a ``Settings`` object built with *pydantic* ``BaseSettings``.  The
-implementation respects the precedence rules defined in the roadmap:
+Single source of truth for all runtime configuration. Precedence order:
 
 1. ``SA01_*`` environment variables (highest priority)
 2. Raw environment variables (fallback)
-3. Optional YAML/JSON configuration files (not yet implemented – placeholder)
-4. Hard‑coded defaults
-
-Only the ``env`` helper is required by the existing codebase; additional
-structured access can be added later via ``Settings`` fields.
+3. YAML/JSON configuration files
+4. Hard-coded defaults
 """
 
 from __future__ import annotations
@@ -23,24 +16,16 @@ from typing import Any, Dict
 
 
 def _load_file_config() -> Dict[str, Any]:
-    """Placeholder for future file‑based configuration loading.
-
-    The roadmap mentions YAML/JSON config files with a clear precedence order.
-    For now we simply return an empty dict; the function exists so that later
-    implementation can plug in a file loader without touching callers.
-    """
-    # Look for a conventional ``config.yaml`` in the repository root.
+    """Load configuration from YAML file if present."""
     config_path = Path(__file__).resolve().parents[3] / "config.yaml"
     if not config_path.is_file():
         return {}
     try:
-        import yaml  # type: ignore
+        import yaml
 
         with config_path.open("r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     except Exception:
-        # If the optional yaml library is missing or parsing fails we fall back
-        # to an empty dict – the ``env`` helper will still honour env vars.
         return {}
 
 
