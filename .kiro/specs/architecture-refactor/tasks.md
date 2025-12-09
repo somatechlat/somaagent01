@@ -395,7 +395,7 @@
 ## Phase 12: Decompose Conversation Worker (3022 lines → < 150 lines main.py)
 
 - [ ] 21. Extract conversation worker components
-  - [ ] 21.1 Create message_processor use case
+  - [x] 21.1 Create message_processor use case
     - Create `src/core/application/use_cases/conversation/process_message.py`
     - Handle message routing only
     - _Requirements: 1.1_
@@ -410,7 +410,7 @@
     - Handle tool execution coordination
     - _Requirements: 1.5_
 
-  - [ ] 21.4 Create health_monitor component
+  - [x] 21.4 Create health_monitor component
     - Create `services/conversation_worker/health_monitor.py`
     - Dedicated health monitoring
     - _Requirements: 1.6_
