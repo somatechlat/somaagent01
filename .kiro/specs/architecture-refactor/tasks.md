@@ -276,7 +276,7 @@
 ## Phase 8: Decompose Memory Module (1010 lines → < 300 lines)
 
 - [ ] 13. Extract memory components
-  - [ ] 13.1 Create memory/stores module
+  - [x] 13.1 Create memory/stores module
     - Extract `ShortTermMemoryStore`, `LongTermMemoryStore`
     - Create `python/helpers/memory_stores.py` (< 200 lines)
     - _Requirements: 7.1, 7.2_
