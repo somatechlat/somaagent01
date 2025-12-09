@@ -60,8 +60,8 @@ logger = logging.getLogger(__name__)
 # Prometheus metrics for the SomaBrain client – created via the wrapper
 # ``Counter`` / ``Histogram`` which internally calls ``_ensure_metric``.
 SOMA_REQUESTS_TOTAL = Counter(
-    "somabrain_requests_total",
-    "Total SomaBrain HTTP requests",
+    "somabrain_http_requests_total",
+    "Total SomaBrain HTTP requests by method/path/status",
     labelnames=("method", "path", "status"),
 )
 SOMA_REQUEST_SECONDS = Histogram(

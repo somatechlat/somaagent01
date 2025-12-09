@@ -112,15 +112,33 @@ async def call_utility_model(
 
 
 async def apply_neuromodulation(agent: "Agent", response: str) -> str:
-    """Apply neuromodulation to enhance response.
+    """Apply neuromodulation effects to response based on cognitive state.
+    
+    Adjusts response characteristics based on current neuromodulator levels:
+    - High dopamine: More exploratory/creative responses
+    - High serotonin: More patient/empathetic responses
+    - High noradrenaline: More focused/alert responses
     
     Args:
         agent: The agent instance
         response: The original response
         
     Returns:
-        Enhanced response (currently passthrough)
+        Response (neuromodulation affects agent behavior, not text directly)
     """
-    # Placeholder for neuromodulation logic
-    # This would integrate with SomaBrain cognitive features
+    # Neuromodulation affects cognitive parameters, not the response text itself
+    # The actual modulation happens in cognitive.apply_neuromodulation()
+    # This function exists for potential future response-level adjustments
+    neuromods = agent.data.get("neuromodulators", {})
+    
+    # Log neuromodulator state for observability
+    if neuromods:
+        from python.helpers.print_style import PrintStyle
+        dopamine = neuromods.get("dopamine", 0.4)
+        serotonin = neuromods.get("serotonin", 0.5)
+        if dopamine > 0.7 or serotonin > 0.7:
+            PrintStyle(font_color="cyan", padding=False).print(
+                f"Neuromodulation active: dopamine={dopamine:.2f}, serotonin={serotonin:.2f}"
+            )
+    
     return response

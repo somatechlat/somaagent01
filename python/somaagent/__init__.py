@@ -1,53 +1,44 @@
 """SomaAgent package - Agent components and orchestration.
 
-This package contains extracted components from the main agent module:
+This package contains extracted components from the main agent module.
+The Agent class in agent.py imports directly from these submodules.
+
+Primary modules (actively used by Agent):
 - agent_context: AgentContext, AgentConfig, UserMessage
-- input_processor: User message handling
-- tool_selector: Tool selection and execution
-- response_generator: LLM calls and response handling
-- error_handler: Exception handling
-- conversation_orchestrator: Message flow management
-- context_builder: LLM context building
-- capsule: Capsule management
+- cognitive: Cognitive state and neuromodulation functions
+- somabrain_integration: SomaBrain memory operations
+- error_handler: Exception classes
+- conversation_orchestrator: LoopData
+
+Utility modules (available for external use):
+- tool_selector: Standalone tool selection utilities
+- response_generator: LLM model utilities
+- input_processor: Message processing utilities
 """
 
+# Primary exports - used by agent.py
 from python.somaagent.agent_context import (
     AgentContext, AgentContextType, AgentConfig, UserMessage
 )
-from python.somaagent.tool_selector import get_tool, process_tool_request, extract_tool_from_response
-from python.somaagent.response_generator import (
-    get_chat_model, get_utility_model, call_chat_model, call_utility_model, apply_neuromodulation
-)
 from python.somaagent.error_handler import (
-    InterventionException, HandledException, handle_critical_exception,
-    is_recoverable_error, format_error_for_llm
+    InterventionException, HandledException
 )
-from python.somaagent.conversation_orchestrator import LoopData, run_message_loop, process_chain
+from python.somaagent.conversation_orchestrator import LoopData
+
+# Cognitive and SomaBrain modules - imported as namespaces by agent.py
+from python.somaagent import cognitive
+from python.somaagent import somabrain_integration
 
 __all__ = [
-    # Context and config
+    # Primary exports (used by agent.py)
     "AgentContext",
     "AgentContextType",
     "AgentConfig",
     "UserMessage",
-    # Tool selection
-    "get_tool",
-    "process_tool_request",
-    "extract_tool_from_response",
-    # Response generation
-    "get_chat_model",
-    "get_utility_model",
-    "call_chat_model",
-    "call_utility_model",
-    "apply_neuromodulation",
-    # Error handling
     "InterventionException",
     "HandledException",
-    "handle_critical_exception",
-    "is_recoverable_error",
-    "format_error_for_llm",
-    # Conversation orchestration
     "LoopData",
-    "run_message_loop",
-    "process_chain",
+    # Module namespaces
+    "cognitive",
+    "somabrain_integration",
 ]

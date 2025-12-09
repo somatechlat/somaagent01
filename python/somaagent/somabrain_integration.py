@@ -129,13 +129,31 @@ async def update_neuromodulators(
 
 
 async def initialize_persona(agent: "Agent") -> bool:
-    """Initialize persona in SomaBrain if not exists."""
+    """Initialize persona in SomaBrain if not exists.
+    
+    Checks if persona exists via get_persona, creates via put_persona if not.
+    """
     try:
-        result = await agent.soma_client.ensure_persona(
-            tenant_id=agent.tenant_id,
-            persona_id=agent.persona_id,
-        )
-        return bool(result)
+        # Try to get existing persona first
+        try:
+            existing = await agent.soma_client.get_persona(agent.persona_id)
+            if existing:
+                return True
+        except SomaClientError:
+            pass  # Persona doesn't exist, create it
+        
+        # Create new persona
+        persona_data = {
+            "id": agent.persona_id,
+            "tenant_id": agent.tenant_id,
+            "display_name": f"Agent {agent.number}",
+            "properties": {
+                "agent_number": agent.number,
+                "profile": agent.config.profile,
+            },
+        }
+        await agent.soma_client.put_persona(agent.persona_id, persona_data)
+        return True
     except SomaClientError as e:
         PrintStyle(font_color="orange", padding=False).print(f"Failed to initialize persona: {e}")
         return False

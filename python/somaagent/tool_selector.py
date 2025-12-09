@@ -14,6 +14,9 @@ from python.helpers.print_style import PrintStyle
 def get_tool(agent: "Agent", name: str, args: dict, message: str):
     """Get a tool instance by name.
     
+    Note: This function is provided for external use. The Agent class has its own
+    get_tool() method that includes profile-specific tool loading.
+    
     Args:
         agent: The agent instance
         name: Tool name
@@ -22,6 +25,9 @@ def get_tool(agent: "Agent", name: str, args: dict, message: str):
         
     Returns:
         Tool instance or None if not found
+        
+    Raises:
+        ImportError: If tool module cannot be loaded (logged, not raised)
     """
     from python.tools.base_tool import BaseTool
     
@@ -31,8 +37,14 @@ def get_tool(agent: "Agent", name: str, args: dict, message: str):
         tool_class = getattr(module, name.title().replace("_", ""), None)
         if tool_class and issubclass(tool_class, BaseTool):
             return tool_class(agent=agent, name=name, args=args, message=message)
-    except (ImportError, AttributeError):
-        pass
+        else:
+            PrintStyle(font_color="orange", padding=False).print(
+                f"Tool '{name}' found but class not valid BaseTool subclass"
+            )
+    except ImportError as e:
+        PrintStyle(font_color="orange", padding=False).print(f"Tool module '{name}' not found: {e}")
+    except AttributeError as e:
+        PrintStyle(font_color="orange", padding=False).print(f"Tool class in '{name}' not accessible: {e}")
     
     return None
 
