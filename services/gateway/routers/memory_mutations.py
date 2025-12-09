@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from src.core.domain.memory.replica_store import MemoryReplicaStore
+from src.core.infrastructure.repositories import MemoryReplicaStore
 
 router = APIRouter(prefix="/v1/memory", tags=["memory"])
 

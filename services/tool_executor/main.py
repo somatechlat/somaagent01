@@ -9,15 +9,12 @@ import time
 import uuid
 from typing import Any
 
-from jsonschema import ValidationError
-from prometheus_client import Counter, Gauge, Histogram, start_http_server
-
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
-
+from python.integrations.soma_client import SomaClientError
+from python.integrations.somabrain_client import SomaBrainClient
 
 from src.core.config import cfg
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
-from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.event_bus import KafkaEventBus
 from services.common.idempotency import generate_for_memory_payload
 from services.common.logging_config import setup_logging
 from services.common.memory_write_outbox import (
@@ -28,10 +25,8 @@ from services.common.outbox_repository import ensure_schema as ensure_outbox_sch
 from services.common.policy_client import PolicyClient, PolicyRequest
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
-from services.common.schema_validator import validate_event
 from services.common.session_repository import PostgresSessionStore
-from services.common.telemetry import TelemetryPublisher
-from services.common.telemetry_store import TelemetryStore
+from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.tool_executor.execution_engine import ExecutionEngine
@@ -40,141 +35,61 @@ from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.tools import ToolExecutionError
 
+# Extracted modules
+from services.tool_executor.audit import get_trace_id, log_tool_event
+from services.tool_executor.config import (
+    kafka_settings,
+    redis_url,
+    tenant_config_path,
+    policy_requeue_prefix,
+    get_stream_config,
+    SERVICE_SETTINGS,
+)
+from services.tool_executor.metrics import (
+    TOOL_REQUEST_COUNTER,
+    TOOL_FEEDBACK_TOTAL,
+    POLICY_DECISIONS,
+    TOOL_EXECUTION_LATENCY,
+    TOOL_INFLIGHT,
+    REQUEUE_EVENTS,
+    ensure_metrics_server,
+)
+from services.tool_executor.validation import (
+    validate_tool_request,
+    validate_tool_result,
+    ValidationResult,
+)
+
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 
-SERVICE_SETTINGS = cfg.settings()
 # OTLP endpoint resides under external configuration.
 setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
-
-
-TOOL_REQUEST_COUNTER = Counter(
-    "tool_executor_requests_total",
-    "Total tool execution requests processed",
-    labelnames=("tool", "outcome"),
-)
-TOOL_FEEDBACK_TOTAL = Counter(
-    "tool_executor_feedback_total",
-    "Tool feedback delivery outcomes",
-    labelnames=("status",),
-)
-POLICY_DECISIONS = Counter(
-    "tool_executor_policy_decisions_total",
-    "Policy evaluation outcomes for tool executions",
-    labelnames=("tool", "decision"),
-)
-TOOL_EXECUTION_LATENCY = Histogram(
-    "tool_executor_execution_seconds",
-    "Execution latency by tool",
-    labelnames=("tool",),
-)
-TOOL_INFLIGHT = Gauge(
-    "tool_executor_inflight",
-    "Current number of in-flight tool executions",
-    labelnames=("tool",),
-)
-REQUEUE_EVENTS = Counter(
-    "tool_executor_requeue_total",
-    "Requeue events emitted by the tool executor",
-    labelnames=("tool", "reason"),
-)
-
-_METRICS_SERVER_STARTED = False
-
-
-def ensure_metrics_server(settings: object) -> None:
-    global _METRICS_SERVER_STARTED
-    if _METRICS_SERVER_STARTED:
-        return
-
-    # Use central configuration defaults for metrics; fallback to env overrides.
-    default_port = int(cfg.settings().service.metrics_port)
-    default_host = str(cfg.settings().service.metrics_host)
-
-    port = int(cfg.env("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
-    if port <= 0:
-        LOGGER.warning("Tool executor metrics disabled", extra={"port": port})
-        _METRICS_SERVER_STARTED = True
-        return
-
-    host = cfg.env("TOOL_EXECUTOR_METRICS_HOST", default_host)
-    start_http_server(port, addr=host)
-    LOGGER.info("Tool executor metrics server started", extra={"host": host, "port": port})
-    _METRICS_SERVER_STARTED = True
-
-
-def _kafka_settings() -> KafkaSettings:
-    return KafkaSettings(
-        bootstrap_servers=cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
-        ),
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
-    )
-
-
-def _redis_url() -> str:
-    # Use admin-wide Redis URL configuration.
-    return cfg.env("REDIS_URL", cfg.settings().redis.url)
-
-
-def _tenant_config_path() -> str:
-    return cfg.env(
-        "TENANT_CONFIG_PATH",
-        SERVICE_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
-    )
-
-
-def _policy_requeue_prefix() -> str:
-    return cfg.env(
-        "POLICY_REQUEUE_PREFIX",
-        SERVICE_SETTINGS.extra.get("policy_requeue_prefix", "policy:requeue"),
-    )
 
 
 class ToolExecutor:
     def __init__(self) -> None:
         ensure_metrics_server(SERVICE_SETTINGS)
-        self.kafka_settings = _kafka_settings()
+        self.kafka_settings = kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
         self.outbox = OutboxStore(dsn=cfg.settings().database.dsn)
         self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
-        self.tenant_config = TenantConfig(path=_tenant_config_path())
+        self.tenant_config = TenantConfig(path=tenant_config_path())
         self.policy = PolicyClient(
             base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
             tenant_config=self.tenant_config,
         )
         self.store = PostgresSessionStore(dsn=cfg.settings().database.dsn)
-        self.requeue = RequeueStore(url=_redis_url(), prefix=_policy_requeue_prefix())
+        self.requeue = RequeueStore(url=redis_url(), prefix=policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
         self.tool_registry = ToolRegistry()
         self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
-        telemetry_store = TelemetryStore.from_settings(SERVICE_SETTINGS)
-        self.telemetry = TelemetryPublisher(publisher=self.publisher, store=telemetry_store)
-        self.requeue_prefix = _policy_requeue_prefix()
-        # Use SomaBrain HTTP client for memory persistence
+        self.telemetry = ToolTelemetryEmitter(publisher=self.publisher, settings=SERVICE_SETTINGS)
+        self.requeue_prefix = policy_requeue_prefix()
         self.soma = SomaBrainClient.get()
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
-        stream_defaults = SERVICE_SETTINGS.extra.get(
-            "tool_executor_topics",
-            {
-                "requests": "tool.requests",
-                "results": "tool.results",
-                "group": "tool-executor",
-            },
-        )
-        self.streams = {
-            "requests": cfg.env(
-                "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
-            ),
-            "results": cfg.env(
-                "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
-            ),
-            "group": cfg.env("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
-        }
+        self.streams = get_stream_config()
         self._audit_store: _AuditStore | None = None
 
     def get_audit_store(self) -> _AuditStore:
@@ -207,49 +122,35 @@ class ToolExecutor:
         )
 
     async def _handle_request(self, event: dict[str, Any]) -> None:
-        session_id = event.get("session_id")
-        tool_name = event.get("tool_name")
-        tool_label = tool_name or "unknown"
-        tenant = event.get("metadata", {}).get("tenant", "default")
-        persona_id = event.get("persona_id")
+        # Validate request using extracted validation module
+        validation = validate_tool_request(event)
+        tool_label = validation.tool_name or "unknown"
 
-        if not session_id or not tool_name:
-            LOGGER.error("Invalid tool request", extra={"event": event})
+        if not validation.valid:
+            LOGGER.error("Invalid tool request", extra={"event": event, "error": validation.error_message})
             TOOL_REQUEST_COUNTER.labels(tool_label, "invalid").inc()
             return
 
-        # Audit start (best-effort)
-        try:
-            from opentelemetry import trace as _trace
+        session_id = validation.session_id
+        tool_name = validation.tool_name
+        tenant = validation.tenant
+        persona_id = validation.persona_id
 
-            ctx = _trace.get_current_span().get_span_context()
-            trace_id_hex = f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
-        except Exception:
-            trace_id_hex = None
-        try:
-            arg_keys = []
-            try:
-                arg_keys = sorted(list((event.get("args") or {}).keys()))
-            except Exception:
-                arg_keys = []
-            await self.get_audit_store().log(
-                request_id=None,
-                trace_id=trace_id_hex,
-                session_id=session_id,
-                tenant=tenant,
-                subject=str(persona_id) if persona_id else None,
-                action="tool.execute.start",
-                resource=str(tool_name),
-                target_id=event.get("event_id"),
-                details={
-                    "args_keys": arg_keys,
-                },
-                diff=None,
-                ip=None,
-                user_agent=None,
-            )
-        except Exception:
-            LOGGER.debug("Failed to write audit log for tool.execute.start", exc_info=True)
+        # Get trace ID using extracted audit module
+        trace_id_hex = get_trace_id()
+        # Audit start (best-effort)
+        arg_keys = sorted(list((event.get("args") or {}).keys())) if event.get("args") else []
+        await log_tool_event(
+            self.get_audit_store(),
+            action="tool.execute.start",
+            tool_name=tool_name,
+            session_id=session_id,
+            tenant=tenant,
+            persona_id=persona_id,
+            event_id=event.get("event_id"),
+            trace_id=trace_id_hex,
+            details={"args_keys": arg_keys},
+        )
 
         metadata = dict(event.get("metadata", {}))
         args = dict(event.get("args", {}))
@@ -274,26 +175,17 @@ class ToolExecutor:
                     metadata=metadata,
                 )
                 # Audit finish - policy error
-                try:
-                    await self.get_audit_store().log(
-                        request_id=None,
-                        trace_id=trace_id_hex,
-                        session_id=session_id,
-                        tenant=tenant,
-                        subject=str(persona_id) if persona_id else None,
-                        action="tool.execute.finish",
-                        resource=str(tool_name),
-                        target_id=event.get("event_id"),
-                        details={"status": "error", "reason": "policy_error"},
-                        diff=None,
-                        ip=None,
-                        user_agent=None,
-                    )
-                except Exception:
-                    LOGGER.debug(
-                        "Failed to write audit log for tool.execute.finish (policy_error)",
-                        exc_info=True,
-                    )
+                await log_tool_event(
+                    self.get_audit_store(),
+                    action="tool.execute.finish",
+                    tool_name=tool_name,
+                    session_id=session_id,
+                    tenant=tenant,
+                    persona_id=persona_id,
+                    event_id=event.get("event_id"),
+                    trace_id=trace_id_hex,
+                    details={"status": "error", "reason": "policy_error"},
+                )
                 return
             decision_label = "allowed" if allow else "denied"
             POLICY_DECISIONS.labels(tool_label, decision_label).inc()
@@ -525,13 +417,7 @@ class ToolExecutor:
             "execution_time": execution_time,
         }
 
-        try:
-            validate_event(result_event, "tool_result")
-        except ValidationError as exc:
-            LOGGER.error(
-                "Invalid tool result payload",
-                extra={"tool": event.get("tool_name"), "error": exc.message},
-            )
+        if not validate_tool_result(result_event):
             return
 
         await self.store.append_event(
@@ -587,17 +473,7 @@ class ToolExecutor:
             # Non-fatal: UI will still see the tool result in session events and tool.results
             LOGGER.debug("Failed to publish tool result to conversation.outbound", exc_info=True)
 
-        tenant_meta = result_event.get("metadata", {})
-        tenant = tenant_meta.get("tenant", "default")
-        await self.telemetry.emit_tool(
-            session_id=result_event["session_id"],
-            persona_id=result_event.get("persona_id"),
-            tenant=tenant,
-            tool_name=result_event.get("tool_name", ""),
-            status=status,
-            latency_seconds=execution_time,
-            metadata=tenant_meta,
-        )
+        await self.telemetry.emit_tool_execution(result_event, status, execution_time)
 
         await self._send_tool_feedback(result_event)
 
@@ -632,8 +508,12 @@ class ToolExecutor:
                 LOGGER.debug("Failed to enqueue tool feedback DLQ", exc_info=True)
                 TOOL_FEEDBACK_TOTAL.labels("failed").inc()
 
-        if status == "success":
-            await self._capture_memory(result_event, payload, tenant)
+        # Capture memory for successful tool executions
+        result_status = result_event.get("status")
+        result_payload = result_event.get("payload", {})
+        result_tenant = (result_event.get("metadata") or {}).get("tenant", "default")
+        if result_status == "success":
+            await self._capture_memory(result_event, result_payload, result_tenant)
 
     async def _check_policy(
         self,

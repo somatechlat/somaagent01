@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from services.common.authorization import _require_admin_scope, authorize_request
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from src.core.domain.memory.replica_store import MemoryReplicaStore
+from src.core.infrastructure.repositories import MemoryReplicaStore
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
