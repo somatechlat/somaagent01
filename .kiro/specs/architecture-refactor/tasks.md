@@ -429,12 +429,12 @@
 ## Phase 13: File Size Enforcement
 
 - [ ] 23. Add automated enforcement
-  - [ ] 23.1 Create pre-commit hook for file size
+  - [x] 23.1 Create pre-commit hook for file size
     - Update `.pre-commit-config.yaml` with file size check
     - Create `scripts/check_file_sizes.py` enforcement script
     - _Requirements: 14.3_
 
-  - [ ] 23.2 Document decomposition patterns
+  - [x] 23.2 Document decomposition patterns
     - Update `CONTRIBUTING.md` with file size guidelines
     - Add decomposition examples and patterns
     - _Requirements: 14.4_
