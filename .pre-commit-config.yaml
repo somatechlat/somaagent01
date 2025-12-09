@@ -40,3 +40,10 @@ repos:
         types_or: [python, pyi]
         require_serial: true
 
+      - id: file-size-check
+        name: file size check
+        entry: python scripts/check_file_sizes.py
+        language: system
+        types: [python]
+        pass_filenames: true
+
