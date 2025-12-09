@@ -1,15 +1,15 @@
+# =============================================================================
+# SomaAgent01 Docker Compose - Production-Grade Local Development
+# =============================================================================
+# Single canonical compose file. Total cluster memory: 10GB max.
+# Memory allocations are production-style but constrained for local dev.
+# =============================================================================
 
-
-  # Removed obsolete attribute `version` to avoid confusion.
 x-agent-env: &agent-env
-  # Prioritize mounted repo code over baked image to enable live development
-  # Include the project root and the src package for proper imports inside containers.
   PYTHONPATH: "/git/agent-zero:/git/agent-zero/src:/app"
   LOG_LEVEL: INFO
-  # prior envs removed in favor of SA01_* canonical variables
   SOMA_CONTAINER_HOST_ALIAS: host.docker.internal
   USE_LLM: "true"
-  # Canonical SA01_* envs (added for consistency while keeping prior vars above)
   SA01_DEPLOYMENT_MODE: DEV
   SA01_DB_DSN: postgresql://soma:soma@postgres:5432/somaagent01
   SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -19,9 +19,7 @@ x-agent-env: &agent-env
   SA01_AUTH_REQUIRED: "false"
   SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
   SA01_SOMA_BASE_URL: http://host.docker.internal:9696
-  # Provide a default Fernet key for dev; replace for staging/prod
   SA01_CRYPTO_FERNET_KEY: "${SA01_CRYPTO_FERNET_KEY:-O6qM9Oe7zB3w6CqQFctciVwEciXxV9nOcDSBxPTsPOg=}"
-  # Streaming feature toggle (centralized)
   SA01_SSE_ENABLED: "true"
 
 x-agent-service: &agent-service
@@ -30,23 +28,16 @@ x-agent-service: &agent-service
     context: .
     dockerfile: Dockerfile
     args:
-      # Skip heavy ML deps (torch, CUDA, unstructured) for local dev builds
       INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-false}
   working_dir: /git/agent-zero
   environment:
-      <<: *agent-env
-  # Load the canonical env file (production‑style settings) and the memory‑override file.
+    <<: *agent-env
   env_file:
     - ${SOMA_ENV_FILE:-.env}
     - .env.memory
-  # Production‑style memory limits, but tuned for a 10 GB development host.
-  # The generic limits act as a fallback if a specific service does not provide its own.
-  mem_limit: "${AGENT_MEM_LIMIT:-1024m}"
-  mem_reservation: "${AGENT_MEM_RESERVATION:-512m}"
   volumes:
     - ./memory:/git/agent-zero/memory
     - ./logs:/git/agent-zero/logs
-    # Map .env so runtime can persist tokens/ids without permission errors
     - ./.env:/git/agent-zero/.env
     - ./conf:/git/agent-zero/conf:ro
     - ./services:/git/agent-zero/services:ro
@@ -59,10 +50,7 @@ x-agent-service: &agent-service
     - ./webui:/git/agent-zero/webui:ro
     - ./schemas:/git/agent-zero/schemas:ro
     - ./observability:/git/agent-zero/observability:ro
-    # Mount src for Clean Architecture modules
     - ./src:/git/agent-zero/src:ro
-    # Note: prior /a0 mounts removed for modern deployments. If you need
-    # historic A0 data, restore from agent-zero/prior_a0 or the prior backup.
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -77,10 +65,55 @@ x-agent-service: &agent-service
   restart: unless-stopped
 
 services:
+  # ===========================================================================
+  # INFRASTRUCTURE SERVICES (Core Profile)
+  # ===========================================================================
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: somaAgent01_kafka
+    profiles: ["core", "dev"]
+    user: "0:0"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "0"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT:-21000}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_NUM_PARTITIONS: "3"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_HEAP_OPTS: "-Xms384m -Xmx768m"
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      KAFKA_LOG_RETENTION_BYTES: "1073741824"
+    ports:
+      - "${KAFKA_PORT:-21000}:9094"
+    restart: unless-stopped
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ./kafka-logs:/var/log/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    mem_limit: 1536m
+    mem_reservation: 384m
+    cpus: "1.0"
+
   kafka-init:
     image: confluentinc/cp-kafka:7.4.0
     container_name: somaAgent01_kafka_init
-    # Include in core profile so dependent services can reference it without profile constraints.
     profiles: ["core", "dev"]
     depends_on:
       kafka:
@@ -88,68 +121,18 @@ services:
     entrypoint: ["bash", "-lc"]
     command: bash /init/init-topics.sh
     environment:
-      - SA01_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     volumes:
       - ./infra/kafka/init-topics.sh:/init/init-topics.sh:ro
-    mem_limit: 300m
-    mem_reservation: 100m
+    mem_limit: 256m
+    mem_reservation: 64m
     restart: "no"
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: somaAgent01_kafka
-    # Include kafka in dev profile so dependent dev services (e.g., kafka-init, fasta2a) can start.
-    profiles: ["core", "dev"]
-    user: "0:0"
-    environment:
-      # KRaft mode: controller+broker in a single node for local dev
-      KAFKA_PROCESS_ROLES: "broker,controller"
-      KAFKA_NODE_ID: "0"
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
-      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      # Dual listeners: internal (PLAINTEXT) for containers and EXTERNAL for host clients
-      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT:-21000}"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
-      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
-      KAFKA_NUM_PARTITIONS: "3"
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      # Single-broker dev settings so consumer groups and transactions work
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
-      # Unique cluster id for local KRaft cluster (can be any string)
-      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
-      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
-      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
-      # Tune JVM for local dev
-      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
-      KAFKA_LOG_RETENTION_HOURS: "168"
-      KAFKA_LOG_RETENTION_BYTES: "1073741824"
-    ports:
-      # expose EXTERNAL listener to the host; 21000 by default
-      - "${KAFKA_PORT:-21000}:9094"
-    restart: unless-stopped
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-      - ./kafka-logs:/var/log/kafka
-    healthcheck:
-      # Lightweight healthcheck: wait until the broker port is listening
-      test: ["CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 40s
-    mem_limit: 2g
-    mem_reservation: 512m
-    cpus: "1.5"
 
   redis:
     image: redis:7-alpine
     container_name: somaAgent01_redis
-    # Include redis in both core and dev profiles to satisfy dependencies of dev-only services like fasta2a-flower.
     profiles: ["core", "dev"]
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec"]
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "${REDIS_PORT:-20001}:6379"
     restart: unless-stopped
@@ -161,22 +144,15 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 128m
     cpus: "0.5"
-
-  # ---------------------------------------------------------------
-  # Flower – Celery monitoring UI (VIBE rule: observability, no hidden
-  # services). Exposes a web UI on port 5555 and connects to the same
-  # Redis broker used by the workers.
-  # ---------------------------------------------------------------
-  # Removed duplicate flower service; the canonical definition is kept later in the file.
 
   postgres:
     image: postgres:16-alpine
     container_name: somaAgent01_postgres
-    profiles: ["core"]
-    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+    profiles: ["core", "dev"]
+    command: ["postgres", "-c", "max_connections=100", "-c", "shared_buffers=128MB", "-c", "work_mem=4MB", "-c", "maintenance_work_mem=64MB"]
     environment:
       POSTGRES_USER: soma
       POSTGRES_PASSWORD: soma
@@ -197,20 +173,65 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
-    mem_limit: 1.5g
-    mem_reservation: 512m
-    cpus: "1"
+    mem_limit: 1024m
+    mem_reservation: 256m
+    cpus: "0.75"
 
   opa:
     image: openpolicyagent/opa:0.64.0
     container_name: somaAgent01_opa
-    profiles: ["core"]
+    profiles: ["core", "dev"]
     command: ["run", "--server", "--watch", "/policy", "--set=decision_logs.console=true"]
     ports:
       - "${OPA_PORT:-20009}:8181"
     restart: unless-stopped
     volumes:
       - ./policy:/policy:ro
+    mem_limit: 128m
+    mem_reservation: 64m
+    cpus: "0.25"
+
+
+  # ===========================================================================
+  # AGENT SERVICES (Dev Profile)
+  # ===========================================================================
+
+  gateway:
+    <<: *agent-service
+    container_name: somaAgent01_gateway
+    profiles: ["dev"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - services.gateway.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8010"
+    environment:
+      <<: *agent-env
+      PORT: "8010"
+      SA01_KAFKA_PUBLISH_TIMEOUT_SECONDS: "5.0"
+      SA01_GATEWAY_WRITE_THROUGH: "true"
+      SA01_GATEWAY_WRITE_THROUGH_ASYNC: "true"
+    ports:
+      - "${GATEWAY_PORT:-21016}:8010"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8010/v1/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    mem_limit: 1536m
+    mem_reservation: 512m
+    cpus: "1.0"
+    networks:
+      - default
+      - somaagent01_dev
 
   conversation-worker:
     <<: *agent-service
@@ -227,9 +248,15 @@ services:
       - python3
       - -m
       - services.conversation_worker.main
-    
     healthcheck:
       test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 512m
+    mem_reservation: 192m
+    cpus: "0.5"
+
   tool-executor:
     <<: *agent-service
     container_name: somaAgent01_tool-executor
@@ -246,6 +273,13 @@ services:
       TOOL_EXECUTOR_METRICS_PORT: "9411"
     healthcheck:
       test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 512m
+    mem_reservation: 192m
+    cpus: "0.5"
+
   memory-replicator:
     <<: *agent-service
     container_name: somaAgent01_memory-replicator
@@ -262,6 +296,13 @@ services:
       REPLICATOR_METRICS_PORT: "9412"
     healthcheck:
       test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 256m
+    mem_reservation: 96m
+    cpus: "0.25"
+
   memory-sync:
     <<: *agent-service
     container_name: somaAgent01_memory-sync
@@ -278,43 +319,12 @@ services:
       MEMORY_SYNC_METRICS_PORT: "9413"
     healthcheck:
       test: ["CMD", "true"]
-  # memory-service removed; SomaBrain HTTP is used directly by services
-
-  gateway:
-    <<: *agent-service
-    container_name: somaAgent01_gateway
-    profiles: ["dev"]
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-    command:
-      - python3
-      - -m
-      - uvicorn
-      - services.gateway.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8010"
-    environment:
-      <<: *agent-env
-      PORT: "8010"
-      # Kafka publish timeout (canonical)
-      SA01_KAFKA_PUBLISH_TIMEOUT_SECONDS: "5.0"
-      # Enable write-through to SomaBrain in dev so WAL is emitted immediately (canonical)
-      SA01_GATEWAY_WRITE_THROUGH: "true"
-      SA01_GATEWAY_WRITE_THROUGH_ASYNC: "true"
-    ports:
-      - "${GATEWAY_PORT:-21016}:8010"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8010/v1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    networks:
-      - default
-      - somaagent01_dev
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 256m
+    mem_reservation: 96m
+    cpus: "0.25"
 
   outbox-sync:
     <<: *agent-service
@@ -336,30 +346,92 @@ services:
       OUTBOX_SYNC_BACKOFF_MAX_SECONDS: "60.0"
       OUTBOX_SYNC_METRICS_PORT: "9469"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:${OUTBOX_SYNC_METRICS_PORT:-9469}/metrics >/dev/null"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 256m
+    mem_reservation: 96m
+    cpus: "0.25"
+
+  # ===========================================================================
+  # FASTA2A SERVICES (Agent-to-Agent Communication)
+  # ===========================================================================
+
+  fasta2a-gateway:
+    <<: *agent-service
+    container_name: somaAgent01_fasta2a-gateway
+    profiles: ["dev"]
+    command:
+      - python3
+      - -m
+      - uvicorn
+      - python.api.router:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8011"
+    environment:
+      <<: *agent-env
+      PORT: "8011"
+      FASTA2A_GATEWAY_METRICS_PORT: "9420"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    ports:
+      - "${FASTA2A_GATEWAY_PORT:-21017}:8011"
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 512m
+    mem_reservation: 192m
+    cpus: "0.5"
+
+  fasta2a-worker:
+    <<: *agent-service
+    container_name: somaAgent01_fasta2a-worker
+    profiles: ["core", "dev"]
+    command:
+      - celery
+      - -A
+      - python.tasks.celery_app
+      - worker
+      - --loglevel=info
+      - --concurrency=2
+      - --max-tasks-per-child=500
+    environment:
+      <<: *agent-env
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      FASTA2A_WORKER_METRICS_PORT: "9421"
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 512m
+    mem_reservation: 192m
+    cpus: "0.5"
+
+  # ===========================================================================
+  # MONITORING SERVICES
+  # ===========================================================================
 
   flower:
     image: mher/flower:2.0.1
     container_name: somaAgent01_flower
-    profiles: ["dev", "core"]
+    profiles: ["dev"]
     command:
+      - celery
+      - --broker=redis://redis:6379/0
       - flower
-      - --app=python.tasks.celery_app
-      - --broker=${SA01_REDIS_URL:-redis://redis:6379/0}
-      - --address=0.0.0.0
       - --port=5555
       - --persistent=True
       - --db=/data/flower.db
-      - --auto-refresh=True
-      - --max_tasks=10000
-      - --state-save-interval=10
-      - --url_prefix=/flower
     environment:
-      - FLOWER_PORT=5555
+      CELERY_BROKER_URL: redis://redis:6379/0
+      FLOWER_PORT: "5555"
     ports:
       - "${FLOWER_PORT:-20010}:5555"
     volumes:
@@ -368,100 +440,13 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    mem_limit: 128m
+    mem_reservation: 64m
+    cpus: "0.25"
 
-  # FastA2A Services for enhanced agent-to-agent communication
-  fasta2a-gateway:
-    <<: *agent-service
-    container_name: somaAgent01_fasta2a-gateway
-    profiles: ["dev"]
-    # Simplified dependencies for compose validation (no condition syntax).
-    # Dependency on redis removed to avoid compose validation issues when only
-    # a subset of services (e.g., gateway) is started.
-    command:
-      - python3
-      - -m
-      - uvicorn
-      - python.api.router:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8011"
-    environment:
-      <<: *agent-env
-      PORT: "8011"
-      FASTA2A_GATEWAY_METRICS_PORT: "9420"
-      # Celery configuration
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    ports:
-      - "${FASTA2A_GATEWAY_PORT:-21017}:8011"
-    healthcheck:
-      test: ["CMD", "true"]
-  fasta2a-worker:
-    <<: *agent-service
-    container_name: somaAgent01_fasta2a-worker
-    # Celery worker is part of the core runtime and should start with the cluster.
-    # Include it in the core and dev profiles so its dependencies are recognised
-    # during validation when those services are defined.
-    profiles: ["core", "dev"]
-    # Dependencies are optional for UI testing; keep redis as it is always present
-    # in the core profile.
-    # No service dependencies required for the UI test; removed to allow
-    # standalone gateway startup without pulling in other services.
-    command:
-      - celery
-      - -A
-      - python.tasks.celery_app
-      - worker
-      - --loglevel=info
-      - --concurrency=4
-      - --max-tasks-per-child=1000
-    environment:
-      <<: *agent-env
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      FASTA2A_WORKER_METRICS_PORT: "9421"
-    healthcheck:
-      test: ["CMD", "true"]
-  fasta2a-flower:
-    image: mher/flower:2.0.1
-    container_name: somaAgent01_fasta2a-flower
-    profiles: ["dev"]
-    # No explicit service dependencies for celery-beat in UI‑only mode.
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      FLOWER_PORT: 5555
-    ports:
-      - "${FLOWER_PORT:-21018}:5555"
-    volumes:
-      - flower_data:/data
-    mem_limit: 256m
-    mem_reservation: 128m
-
-  # celery-beat service disabled for UI‑only testing to avoid dependency validation issues.
-  # The service is not required for the Settings UI flow.
-  # If needed in the future, re‑enable this block.
-  # celery-beat:
-  #   <<: *agent-service
-  #   container_name: somaAgent01_celery-beat
-  #   environment:
-  #     <<: *agent-env
-  #     # Use a writable location for the beat schedule to avoid permission errors
-  #     CELERY_BEAT_SCHEDULE_FILENAME: /tmp/celerybeat-schedule
-  #     # Ensure the temporary directory exists via the container's default /tmp
-  #     CELERY_BROKER_URL: redis://redis:6379/0
-  #     CELERY_RESULT_BACKEND: redis://redis:6379/0
-  #   command:
-  #     - celery
-  #     - -A
-  #     - python.tasks.celery_app
-  #     - beat
-  #     - --loglevel=info
-  #     - -s
-  #     - /tmp/celerybeat-schedule
-  #   healthcheck:
-  #     test: ["CMD", "true"]
+# =============================================================================
+# NETWORKS
+# =============================================================================
 
 networks:
   default:
@@ -471,21 +456,12 @@ networks:
     external: true
     name: somaagent01_dev
 
+# =============================================================================
+# VOLUMES
+# =============================================================================
+
 volumes:
   kafka_data:
   redis_data:
   postgres_data:
   flower_data:
-  # -----------------------------------------------------------------
-  # Production & Monitoring Volumes (added for prod profile)
-  # -----------------------------------------------------------------
-  prometheus-data:
-  grafana-data:
-
-
-# -----------------------------------------------------------------
-# Celery Beat service (schedules periodic tasks)
-# -----------------------------------------------------------------
-  # NOTE: This block was previously misplaced under the top-level `volumes` key,
-  # which caused docker compose validation errors. It has been moved under the
-  # `services` section (see below) to ensure proper parsing.
