@@ -45,7 +45,13 @@ class HealthChecker:
 
             from src.core.config import cfg
 
-            bootstrap_servers = cfg.settings().kafka_bootstrap_servers or "localhost:9092"
+            bootstrap_servers = cfg.settings().kafka_bootstrap_servers
+            if not bootstrap_servers:
+                return {
+                    "status": "unhealthy",
+                    "message": "Kafka bootstrap servers not configured",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
             producer = KafkaProducer(
                 bootstrap_servers=bootstrap_servers,
                 value_serializer=lambda x: str(x).encode("utf-8"),

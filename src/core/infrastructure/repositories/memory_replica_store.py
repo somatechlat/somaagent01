@@ -49,10 +49,9 @@ class MemoryReplicaStore:
     """
 
     def __init__(self, dsn: Optional[str] = None) -> None:
-        raw_dsn = dsn or _new_cfg.env(
-            "POSTGRES_DSN",
-            "postgresql://soma:soma@localhost:5432/somaagent01",
-        )
+        raw_dsn = dsn or _new_cfg.env("POSTGRES_DSN")
+        if not raw_dsn:
+            raise RuntimeError("POSTGRES_DSN environment variable is required")
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
 

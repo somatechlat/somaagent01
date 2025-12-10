@@ -44,19 +44,20 @@ class TaskRegistry:
     def __init__(self) -> None:
         config = cfg.settings()
         # Canonical configuration comes from cfg.settings(); env vars may still
-        # override for tests or ad-hoc tooling, but we no longer hard-code
-        # default DSNs/URLs spread across the codebase.
+        # override for tests or ad-hoc tooling. No hardcoded fallbacks per VIBE rules.
         self.dsn = (
             cfg.env("POSTGRES_DSN")
             or getattr(config.database, "dsn", None)
-            or "postgresql://postgres:postgres@localhost:5432/postgres"
         )
+        if not self.dsn:
+            raise RuntimeError("POSTGRES_DSN environment variable is required")
         self.redis_url = (
             cfg.env("SA01_REDIS_URL")
             or cfg.env("REDIS_URL")
             or getattr(config.redis, "url", None)
-            or "redis://localhost:6379/0"
         )
+        if not self.redis_url:
+            raise RuntimeError("SA01_REDIS_URL or REDIS_URL environment variable is required")
         self.cache_key = "task_registry:all"
         self._pool: Optional[asyncpg.Pool] = None
         self._redis: Optional[redis.Redis] = None
