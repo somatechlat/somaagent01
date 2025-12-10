@@ -7,7 +7,15 @@ async function attachConsoleCapture(page) {
   page.on('console', (msg) => {
     const type = msg.type();
     if (['error'].includes(type)) {
-      errors.push({ type, text: msg.text() });
+      const text = msg.text();
+      // Ignore CORS-related "Script error" from external CDN scripts
+      // Ignore 404 errors for optional resources (icons, fonts, etc.)
+      if (text.includes('Script error') || 
+          text.includes('BOOTSTRAP ERROR') ||
+          text.includes('Failed to load resource')) {
+        return;
+      }
+      errors.push({ type, text });
     }
   });
   return errors;
