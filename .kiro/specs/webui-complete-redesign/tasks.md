@@ -1,0 +1,479 @@
+# Implementation Plan
+
+## WebUI Complete Redesign
+
+This implementation plan transforms the SomaAgent01 Web Interface into a state-of-the-art, AI-native experience following the approved requirements and design documents.
+
+---
+
+- [x] 1. Design System Foundation
+  - [x] 1.1 Create design system tokens CSS file
+    - Import Inter font from Google Fonts
+    - Define CSS custom properties matching reference dashboard (tmp/DASHBOARD)
+    - Light theme as default, dark theme via `[data-theme="dark"]` attribute
+    - Include glassmorphism utilities (`.glass`, `.glass-panel`)
+    - Include layout utilities (`.flex-center`, `.flex-between`, `.grid-cols-dashboard`)
+    - Include custom scrollbar styling
+    - _Requirements: 1.1, 1.2, 1.3, 1.6, 1.7, 1.8, 1.9, 1.10_
+  - [ ]* 1.2 Write property test for design token completeness
+    - **Property 1: Design System Token Completeness**
+    - **Validates: Requirements 1.1, 1.2, 1.6, 1.7, 1.8, 1.9, 1.10**
+  - [x] 1.3 Create typography CSS file
+    - Define font scales (Display, H1-H3, Body, Small, Code)
+    - Configure Inter and JetBrains Mono font families
+    - _Requirements: 1.4, 1.5_
+  - [x] 1.4 Create animations CSS file
+    - Define transition durations and easing functions
+    - Create keyframe animations (spin, pulse, fade, slide)
+    - _Requirements: 1.10, 1.11, 1.12_
+  - [x] 1.5 Create utility classes CSS file
+    - Spacing utilities, flex/grid helpers, visibility classes
+    - _Requirements: 1.6_
+
+- [x] 2. Core Infrastructure Layer
+  - [x] 2.1 Create API client module (core/api/client.js)
+    - Implement fetchApi with error handling and interceptors
+    - Add request/response logging for development
+    - _Requirements: 30.1, 30.2_
+  - [x] 2.2 Create endpoints module (core/api/endpoints.js)
+    - Define all Gateway endpoint constants
+    - Create buildUrl helper function
+    - _Requirements: 30.1, 30.4, 30.5, 30.6_
+  - [ ]* 2.3 Write property test for API compatibility
+    - **Property 10: Backend API Compatibility**
+    - **Validates: Requirements 30.1, 30.2, 30.3, 30.4, 30.5, 30.6**
+  - [x] 2.4 Create state store factory (core/state/store.js)
+    - Implement Alpine.js store factory with persistence support
+    - Add computed property helpers
+    - _Requirements: 7.9_
+  - [x] 2.5 Create event bus module (core/events/bus.js)
+    - Implement emit/on/off event system
+    - Define event type constants
+    - _Requirements: 12.2, 12.3, 12.4_
+  - [x] 2.6 Create SSE manager module (core/sse/manager.js)
+    - Implement EventSource connection with auto-reconnect
+    - Add exponential backoff (1s, 2s, 4s, max 30s)
+    - _Requirements: 12.1, 12.10_
+  - [ ]* 2.7 Write property test for SSE event handling
+    - **Property 9: SSE Event Handling**
+    - **Validates: Requirements 12.2, 12.3, 12.4, 12.7, 12.8**
+
+- [ ] 3. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 4. Component Library - Base Components
+  - [x] 4.1 Create Button component
+    - Implement variants: primary, secondary, ghost, danger, icon
+    - Add loading state with spinner
+    - _Requirements: 19.1, 32.1, 32.2, 32.3, 32.4, 32.5_
+  - [x] 4.2 Create Input component
+    - Implement types: text, password, email, number, textarea
+    - Add error state and validation display
+    - _Requirements: 19.2, 34.1, 34.2_
+  - [x] 4.3 Create Select component
+    - Implement single and multi-select with search
+    - Support option icons (provider logos)
+    - _Requirements: 19.3, 34.3_
+  - [x] 4.4 Create Toggle component
+    - Implement switch with label positioning
+    - _Requirements: 34.4_
+  - [x] 4.5 Create Slider component
+    - Implement with value label and min/max display
+    - _Requirements: 34.5_
+  - [x] 4.6 Create Modal component
+    - Implement sizes: small, medium, large, fullscreen
+    - Add focus trap and keyboard handling (Escape to close)
+    - _Requirements: 19.4, 35.1, 35.2_
+  - [x] 4.7 Create Card component
+    - Implement header, body, footer slots
+    - Add hover elevation effect
+    - _Requirements: 19.5, 33.1, 33.2_
+  - [x] 4.8 Create Avatar component
+    - Implement image, initials, and icon variants
+    - _Requirements: 19.6_
+  - [x] 4.9 Create Badge component
+    - Implement status colors and dot indicator
+    - _Requirements: 19.7_
+  - [x] 4.10 Create Tooltip component
+    - Implement positions: top, right, bottom, left
+    - _Requirements: 19.8_
+  - [x] 4.11 Create Dropdown component
+    - Implement with keyboard navigation
+    - _Requirements: 19.9_
+  - [x] 4.12 Create Toast/Notification component
+    - Implement variants: success, error, warning, info
+    - Add auto-dismiss and stacking
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
+
+- [ ] 5. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. Layout System
+  - [x] 6.1 Create main application shell layout
+    - Implement header bar (48px), sidebar (240px collapsible), main content, status bar (24px)
+    - _Requirements: 2.1, 31.1_
+  - [x] 6.2 Create sidebar navigation component
+    - Implement navigation icons with labels
+    - Add session list and quick actions
+    - _Requirements: 2.2, 2.3, 3.1, 3.2, 3.3_
+  - [ ]* 6.3 Write property test for responsive layout breakpoints
+    - **Property 2: Responsive Layout Breakpoints**
+    - **Validates: Requirements 2.6, 2.7**
+  - [x] 6.4 Implement responsive breakpoints
+    - Mobile (<768px): single-panel layout
+    - Tablet (768-1024px): two-panel layout
+    - Desktop (>1024px): three-panel layout
+    - _Requirements: 2.6, 2.7_
+  - [x] 6.5 Implement panel resize persistence
+    - Save panel widths to localStorage
+    - _Requirements: 2.8_
+
+- [x] 7. Settings Feature Module
+  - [x] 7.1 Create settings store (features/settings/settings.store.js)
+    - Implement state: isOpen, isLoading, sections, activeTab, expandedCards
+    - Add computed: isDirty, filteredSections
+    - _Requirements: 7.1, 7.9_
+  - [x] 7.2 Create settings API module (features/settings/settings.api.js)
+    - Implement fetchSettings (GET /v1/settings/sections)
+    - Implement saveSettings (PUT /v1/settings/sections)
+    - _Requirements: 7.2, 7.51, 7.52_
+  - [x] 7.3 Create settings modal layout
+    - Implement full-screen modal with sidebar tabs and content area
+    - Add tab navigation: Agent, External, Connectivity, System
+    - _Requirements: 7.1, 7.3, 7.4, 35.3_
+  - [x] 7.4 Create settings card component
+    - Implement collapsible card with icon, title, description
+    - Add expand/collapse animation (200ms)
+    - _Requirements: 7.6, 7.7, 7.8, 33.3, 33.4_
+  - [ ]* 7.5 Write property test for settings card state consistency
+    - **Property 3: Settings Card State Consistency**
+    - **Validates: Requirements 7.6, 7.7, 7.8, 7.9**
+  - [x] 7.6 Create model card component (Chat, Utility, Browser, Embedding)
+    - Implement provider dropdown with icons
+    - Add model name input with autocomplete
+    - Add context length slider, rate limit inputs, kwargs editor
+    - _Requirements: 7.11, 7.12, 7.13, 7.14, 7.15, 7.16, 7.17, 7.18, 7.19, 33.5_
+  - [ ]* 7.7 Write property test for model card field completeness
+    - **Property 4: Model Card Field Completeness**
+    - **Validates: Requirements 7.11, 7.12, 7.13, 7.14**
+  - [ ] 7.8 Create Memory/SomaBrain settings card
+    - Implement recall settings, search limits, similarity threshold, memorization settings
+    - _Requirements: 7.20, 7.21, 7.22, 7.23, 7.24_
+  - [x] 7.9 Create API Keys settings card
+    - Implement masked key display with show/hide toggle
+    - Add test connection button
+    - _Requirements: 7.25, 7.26, 7.27, 7.28, 7.29, 7.30_
+  - [ ]* 7.10 Write property test for API key masking
+    - **Property 5: API Key Masking**
+    - **Validates: Requirements 7.26, 7.27**
+  - [ ] 7.11 Create MCP/A2A settings cards
+    - Implement JSON editor for MCP server config
+    - Add timeout inputs, enabled toggles, token display
+    - _Requirements: 7.31, 7.32, 7.33, 7.34, 7.35_
+  - [ ] 7.12 Create Speech settings card
+    - Implement provider selector, STT settings, realtime/Kokoro options
+    - _Requirements: 7.36, 7.37, 7.38, 7.39_
+  - [ ] 7.13 Create Authentication settings card
+    - Implement username, password inputs with strength indicator
+    - _Requirements: 7.40, 7.41, 7.42, 7.43_
+  - [ ] 7.14 Create Backup & Restore settings card
+    - Implement backup download and restore file picker
+    - _Requirements: 7.44, 7.45, 7.46, 7.47_
+  - [ ] 7.15 Create Developer settings card
+    - Implement shell interface selector, RFC connection settings
+    - _Requirements: 7.48, 7.49, 7.50_
+  - [ ] 7.16 Implement settings save/cancel actions
+    - Add unsaved changes confirmation dialog
+    - Show success/error toasts
+    - _Requirements: 7.51, 7.52, 7.53, 7.54, 7.55_
+
+- [ ] 8. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 9. Chat Feature Module
+  - [x] 9.1 Create chat store (features/chat/chat.store.js)
+    - Implement state: sessionId, messages, isStreaming, isThinking, connectionStatus
+    - Add streaming event handlers
+    - _Requirements: 4.4, 4.5, 4.6, 12.2, 12.3, 12.4, 12.5, 12.6_
+  - [x] 9.2 Create chat API module (features/chat/chat.api.js)
+    - Implement sendMessage, loadHistory, createSession
+    - _Requirements: 6.3, 6.4_
+  - [x] 9.3 Create message list component
+    - Implement virtualized scrolling for large lists
+    - Add smooth auto-scroll on new messages
+    - _Requirements: 4.1, 16.4_
+  - [x] 9.4 Create user message component
+    - Implement right-aligned card with avatar, timestamp
+    - _Requirements: 4.2_
+  - [x] 9.5 Create assistant message component
+    - Implement left-aligned card with gradient accent border, AI glow avatar
+    - _Requirements: 4.3_
+  - [ ]* 9.6 Write property test for message role styling
+    - **Property 6: Message Role Styling**
+    - **Validates: Requirements 4.2, 4.3**
+  - [x] 9.7 Implement streaming visualization
+    - Add thinking indicator with pulsing animation
+    - Implement progressive token display with cursor
+    - _Requirements: 4.4, 4.5, 4.6_
+  - [ ]* 9.8 Write property test for streaming state visualization
+    - **Property 7: Streaming State Visualization**
+    - **Validates: Requirements 4.4, 4.5, 4.6**
+  - [ ] 9.9 Create code block renderer
+    - Implement syntax highlighting with Prism.js
+    - Add language label, copy button, line numbers
+    - _Requirements: 4.7_
+  - [ ]* 9.10 Write property test for code block syntax highlighting
+    - **Property 8: Code Block Syntax Highlighting**
+    - **Validates: Requirements 4.7**
+  - [ ] 9.11 Create markdown renderer
+    - Implement headings, lists, links, formatting, blockquotes, tables
+    - _Requirements: 4.8_
+  - [ ] 9.12 Create math renderer (KaTeX)
+    - Implement inline and block LaTeX rendering
+    - _Requirements: 4.9_
+  - [ ] 9.13 Create image renderer
+    - Implement thumbnails with lightbox on click
+    - _Requirements: 4.10_
+  - [x] 9.14 Create chat input component
+    - Implement multi-line textarea with auto-resize
+    - Add attachment button, microphone button, send button
+    - _Requirements: 4.11, 4.12, 4.13, 4.14_
+  - [x] 9.15 Create connection status indicator
+    - Implement green/yellow/red dot with reconnecting banner
+    - _Requirements: 4.15, 4.16, 4.17_
+
+- [ ] 10. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 11. Tool Execution Visualization
+  - [x] 11.1 Create tool execution card component
+    - Implement icon, name, status indicator (running/success/error)
+    - Add progress indicator and expandable details
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.8, 33.6_
+  - [ ] 11.2 Create code execution tool display
+    - Implement collapsible code input and output sections
+    - _Requirements: 5.5_
+  - [ ] 11.3 Create search tool display
+    - Implement query and results summary
+    - _Requirements: 5.6_
+  - [ ] 11.4 Create memory tool display
+    - Implement operation type and affected items
+    - _Requirements: 5.7_
+  - [ ] 11.5 Create tool timeline component
+    - Implement chronological display of multiple tools
+    - _Requirements: 5.9_
+
+- [x] 12. Session Management Feature
+  - [x] 12.1 Create session store
+    - Implement state: sessions, currentSession, isLoading
+    - _Requirements: 6.1_
+  - [x] 12.2 Create session API module
+    - Implement CRUD operations for sessions
+    - _Requirements: 6.1, 6.3, 6.4, 6.5, 6.6_
+  - [x] 12.3 Create session list component
+    - Implement session cards with name, date, message count
+    - Add search and sort functionality
+    - _Requirements: 6.2, 6.7, 6.8_
+  - [x] 12.4 Create session actions (new, rename, delete)
+    - Implement with confirmation dialogs
+    - _Requirements: 6.3, 6.5, 6.6_
+
+- [x] 13. Memory Dashboard Feature
+  - [x] 13.1 Create memory store
+    - Implement state: memories, searchQuery, filters
+    - _Requirements: 8.1_
+  - [x] 13.2 Create memory API module
+    - Implement fetch, search, delete operations
+    - _Requirements: 8.1, 8.3, 8.5_
+  - [x] 13.3 Create memory list component
+    - Implement cards with preview, timestamp, relevance score
+    - _Requirements: 8.2_
+  - [x] 13.4 Create memory search and filter
+    - Implement search with highlighting, type filters
+    - _Requirements: 8.3, 8.4, 8.6_
+  - [x] 13.5 Create memory detail panel
+    - Implement full content, metadata, related memories
+    - _Requirements: 8.7_
+
+- [x] 14. Scheduler Feature
+  - [x] 14.1 Create scheduler store
+    - Implement state: tasks, isLoading
+    - _Requirements: 9.1_
+  - [x] 14.2 Create scheduler API module
+    - Implement CRUD operations for tasks
+    - _Requirements: 9.1, 9.3, 9.7, 9.8_
+  - [ ] 14.3 Create task list component
+    - Implement table with name, type, schedule, status
+    - _Requirements: 9.2_
+  - [ ] 14.4 Create task creation forms
+    - Implement cron builder, datetime picker, token display
+    - _Requirements: 9.4, 9.5, 9.6_
+  - [ ] 14.5 Implement real-time task status updates
+    - Subscribe to SSE for task status changes
+    - _Requirements: 9.9_
+
+- [x] 15. Health Dashboard Feature
+  - [x] 15.1 Create health store
+    - Implement state: services, lastCheck
+    - _Requirements: 10.1_
+  - [x] 15.2 Create health API module
+    - Implement health check polling (30s interval)
+    - _Requirements: 10.1, 10.7_
+  - [x] 15.3 Create health status display
+    - Implement service cards with green/yellow/red indicators
+    - _Requirements: 10.2, 10.3, 10.4_
+  - [x] 15.4 Create degradation banner
+    - Implement header banner for SomaBrain offline
+    - _Requirements: 10.5, 10.6_
+
+- [x] 16. File Upload Feature
+  - [x] 16.1 Create upload store
+    - Implement state: uploads, queue, progress
+    - _Requirements: 11.6_
+  - [x] 16.2 Create upload API module
+    - Implement multipart upload to /v1/uploads
+    - _Requirements: 11.2, 30.5_
+  - [x] 16.3 Create drop zone component
+    - Implement drag-and-drop overlay
+    - _Requirements: 11.1_
+  - [x] 16.4 Create upload progress display
+    - Implement progress bar with percentage
+    - _Requirements: 11.3_
+  - [x] 16.5 Create file preview component
+    - Implement image thumbnails and document icons
+    - _Requirements: 11.4, 11.7, 11.8_
+  - [x] 16.6 Implement upload error handling
+    - Add retry option on failure
+    - _Requirements: 11.5_
+
+- [ ] 17. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 18. Navigation and Keyboard Shortcuts
+  - [ ] 18.1 Implement keyboard navigation
+    - Add Tab, Arrow keys, Enter support for navigation
+    - _Requirements: 3.4_
+  - [ ] 18.2 Create command palette
+    - Implement Cmd/Ctrl+K to open, fuzzy search
+    - _Requirements: 3.5, 3.6, 13.1_
+  - [ ] 18.3 Implement global keyboard shortcuts
+    - Cmd/Ctrl+N (new chat), Cmd/Ctrl+, (settings), Escape (close modal)
+    - _Requirements: 13.2, 13.3, 13.4, 13.5, 13.6, 13.7_
+
+- [ ] 19. Accessibility Implementation
+  - [ ] 19.1 Add ARIA labels to all interactive elements
+    - _Requirements: 15.1_
+  - [ ] 19.2 Implement visible focus indicators
+    - Add 2px outline on focus
+    - _Requirements: 15.2_
+  - [ ] 19.3 Ensure color is not sole indicator
+    - Add icons or text alongside color
+    - _Requirements: 15.3_
+  - [ ] 19.4 Add alt text to all images
+    - _Requirements: 15.4_
+  - [ ] 19.5 Associate labels with form inputs
+    - _Requirements: 15.5_
+  - [ ] 19.6 Implement screen reader announcements
+    - Announce errors and state changes
+    - _Requirements: 15.6_
+  - [ ] 19.7 Ensure logical tab order
+    - _Requirements: 15.7_
+  - [ ] 19.8 Verify contrast ratios (4.5:1 minimum)
+    - _Requirements: 15.8_
+
+- [ ] 20. Internationalization
+  - [ ] 20.1 Create i18n infrastructure
+    - Implement translation loading from /i18n/{locale}.json
+    - _Requirements: 17.1_
+  - [ ] 20.2 Create English translation file
+    - _Requirements: 17.1_
+  - [ ] 20.3 Implement locale switching
+    - Update all text without page reload
+    - _Requirements: 17.2, 17.3_
+  - [ ] 20.4 Implement date/number formatting
+    - Format according to locale
+    - _Requirements: 17.4, 17.5_
+  - [ ] 20.5 Implement RTL layout support
+    - Mirror layout for RTL languages
+    - _Requirements: 17.6_
+
+- [ ] 21. Progressive Web App
+  - [ ] 21.1 Create service worker
+    - Implement caching strategy
+    - _Requirements: 18.1_
+  - [ ] 21.2 Create offline UI
+    - Show cached UI with offline indicator
+    - _Requirements: 18.2_
+  - [ ] 21.3 Create web app manifest
+    - Define icons (192px, 512px), standalone mode
+    - _Requirements: 18.4, 18.5_
+  - [ ] 21.4 Implement install prompt
+    - Show install prompt on supported browsers
+    - _Requirements: 18.3_
+
+- [ ] 22. Performance Optimization
+  - [ ] 22.1 Implement lazy loading
+    - Lazy load images and heavy components
+    - _Requirements: 16.5_
+  - [ ] 22.2 Implement virtual scrolling
+    - Use virtual scrolling for lists > 100 items
+    - _Requirements: 16.4_
+  - [ ] 22.3 Optimize bundle size
+    - Target < 200KB gzipped
+    - _Requirements: 16.6_
+  - [ ] 22.4 Verify performance metrics
+    - FCP < 1.5s, TTI < 3s, interaction < 100ms
+    - _Requirements: 16.1, 16.2, 16.3, 16.7_
+
+- [ ] 23. Additional Features
+  - [ ] 23.1 Implement voice interface
+    - Add microphone button, speech recognition, TTS playback
+    - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5, 21.6_
+  - [ ] 23.2 Implement agent control panel
+    - Add restart/pause/resume controls, cognitive state display
+    - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6_
+  - [ ] 23.3 Implement code editor integration
+    - Add syntax highlighting for 20+ languages, line numbers
+    - _Requirements: 23.1, 23.2, 23.3, 23.4, 23.5_
+  - [ ] 23.4 Implement global search
+    - Search across sessions, memories, messages
+    - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5_
+  - [ ] 23.5 Implement data export
+    - Export to JSON, Markdown, PDF
+    - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5_
+  - [ ] 23.6 Implement theming system
+    - Dark/light mode toggle, accent color selection
+    - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5_
+  - [ ] 23.7 Implement onboarding experience
+    - Welcome modal, tooltips, help system
+    - _Requirements: 27.1, 27.2, 27.3, 27.4, 27.5_
+  - [ ] 23.8 Implement error handling UI
+    - User-friendly errors, offline banner, validation messages
+    - _Requirements: 28.1, 28.2, 28.3, 28.4, 28.5_
+  - [ ] 23.9 Implement mobile optimization
+    - Bottom navigation, touch targets, gesture navigation
+    - _Requirements: 29.1, 29.2, 29.3, 29.4, 29.5_
+
+- [ ] 24. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 25. Playwright E2E Tests
+  - [ ]* 25.1 Write navigation path tests
+    - _Requirements: 20.1_
+  - [ ]* 25.2 Write chat message send/receive tests
+    - _Requirements: 20.2_
+  - [ ]* 25.3 Write settings save/load tests
+    - _Requirements: 20.3_
+  - [ ]* 25.4 Write file upload flow tests
+    - _Requirements: 20.4_
+  - [ ]* 25.5 Write session management tests
+    - _Requirements: 20.5_
+  - [ ]* 25.6 Write keyboard shortcuts tests
+    - _Requirements: 20.6_
+  - [ ]* 25.7 Write accessibility tests with axe-core
+    - _Requirements: 20.7_
+  - [ ]* 25.8 Verify 80% code coverage
+    - _Requirements: 20.8_
+
+- [ ] 26. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
