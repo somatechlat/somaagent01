@@ -251,7 +251,7 @@ class ConfigRegistry:
             bool: True if configuration is valid
         """
         try:
-            config = self.get_config()
+            self.get_config()
             # Pydantic validation happens during model creation
             # Additional validation can be added here if needed
             return True

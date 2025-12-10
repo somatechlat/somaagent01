@@ -84,7 +84,7 @@ class VoiceService:
             with VOICE_SESSION_DURATION_SECONDS.time():
                 try:
                     await self._adapter.run()
-                except Exception as exc:  # pragma: no cover – defensive
+                except Exception:  # pragma: no cover – defensive
                     record_error("adapter")
                     raise
                 finally:

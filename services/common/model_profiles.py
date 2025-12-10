@@ -195,9 +195,12 @@ class ModelProfileStore:
         """Alias for list(); maintained for gateway handler compatibility."""
         return await self.list(deployment_mode)
 
-    async def sync_from_settings(self, settings: BaseServiceSettings) -> None:
-        """Upsert profiles defined in the shared ``model_profiles.yaml`` file."""
-
+    async def sync_from_settings(self, settings: Any) -> None:
+        """Upsert profiles defined in the shared ``model_profiles.yaml`` file.
+        
+        Args:
+            settings: Settings object with environment_profile() method and deployment_mode attribute
+        """
         payload = settings.environment_profile()
         records = payload.get("profiles", []) if isinstance(payload, dict) else []
         for record in records:

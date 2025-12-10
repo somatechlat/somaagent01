@@ -58,7 +58,7 @@ async def list_sessions_endpoint(
             await store.append_event(sid, welcome_event)
             # Re‑query after seeding.
             envelopes = await store.list_sessions(limit=limit, tenant=tenant)
-        except Exception as exc:
+        except Exception:
             LOGGER.debug("Failed to seed default welcome session", exc_info=True)
 
     # Convert envelopes to the SessionSummary model expected by the API.

@@ -158,7 +158,7 @@ class RequestHandler:
                 },
             )
             allow = await self._executor.policy.evaluate(request)
-        except Exception as exc:
+        except Exception:
             LOGGER.exception("Policy evaluation failed")
             POLICY_DECISIONS.labels(tool_label, "error").inc()
             TOOL_REQUEST_COUNTER.labels(tool_label, "policy_error").inc()
