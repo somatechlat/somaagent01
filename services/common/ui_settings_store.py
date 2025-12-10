@@ -45,7 +45,7 @@ class UiSettingsStore:
                     min_size=max(0, min_size),
                     max_size=max(1, max_size),
                 )
-            except OSError as exc:
+            except OSError:
                 # Hostname resolution failure – try localhost as a real fallback.
                 import re
 

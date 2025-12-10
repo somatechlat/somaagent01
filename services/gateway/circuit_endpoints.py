@@ -517,7 +517,7 @@ async def test_circuit_breaker(component_name: str) -> Dict[str, Any]:
         # Test 1: Successful call
         try:
             test_start = time.time()
-            result = await circuit.call(lambda: "success")
+            await circuit.call(lambda: "success")
             test_duration = time.time() - test_start
 
             test_results["tests"].append(

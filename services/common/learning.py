@@ -112,7 +112,6 @@ async def publish_reward(
 ) -> bool:
     if not cfg.flag("learning_context"):
         return False
-    endpoint = "reward"
     try:
         payload = {"session_id": session_id, "signal": signal, "value": value, "meta": meta or {}}
         async with httpx.AsyncClient(timeout=30) as client:

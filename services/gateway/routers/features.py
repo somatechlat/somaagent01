@@ -13,8 +13,8 @@ async def list_features(request: Request):
     """Return feature list with profile information."""
     from src.core.config import cfg
 
-    # Get tenant from headers
-    tenant = request.headers.get("X-Tenant-Id", "default")
+    # Tenant from headers (reserved for future per-tenant feature flags)
+    _ = request.headers.get("X-Tenant-Id", "default")
 
     # Get feature profile from config
     profile = cfg.env("SA01_FEATURE_PROFILE", "standard")

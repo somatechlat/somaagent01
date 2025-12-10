@@ -60,7 +60,6 @@ async def upload_files(
     sess = auth_meta.get("session_id")
 
     results = []
-    start = time.perf_counter()
     for idx, file in enumerate(files):
         raw = await file.read()
         size = len(raw)

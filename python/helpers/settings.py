@@ -130,7 +130,7 @@ def get_settings() -> Settings:
                 return await store.get_settings()
 
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Running in async context - use defaults, will be loaded async elsewhere
                 _settings = get_default_settings()
             except RuntimeError:
@@ -163,7 +163,7 @@ def set_settings(settings: Settings, apply: bool = True):
             await store.set_settings(dict(_settings))
 
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # Running in async context - schedule task
             asyncio.create_task(_save())
         except RuntimeError:

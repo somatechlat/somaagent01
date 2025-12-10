@@ -374,7 +374,6 @@ class SomaClient:
         )
 
         attempt = 0
-        last_exc: Exception | None = None
         start_ts = time.perf_counter()
         status_label = "error"
         while True:
@@ -390,7 +389,6 @@ class SomaClient:
             except httpx.RequestError as e:
                 # Network / transport-level failure: record failure and maybe retry
                 self._cb_failures += 1
-                last_exc = e
                 if self._cb_failures >= self._CB_THRESHOLD:
                     self._cb_open_until = time.time() + self._CB_COOLDOWN_SEC
                 if attempt < self._max_retries:

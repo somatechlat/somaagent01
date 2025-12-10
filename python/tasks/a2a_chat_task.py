@@ -424,7 +424,7 @@ def get_conversation_history(session_id: str, limit: int = 50) -> List[Dict[str,
 
         return conversation
 
-    except RedisError as e:
+    except RedisError:
         increment_counter(
             fast_a2a_errors_total,
             {
