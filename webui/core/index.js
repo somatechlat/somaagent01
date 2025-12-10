@@ -2,7 +2,7 @@
  * Core Module Index
  * 
  * Re-exports all core infrastructure modules.
- * Import from 'core' to access API client, state management, events, etc.
+ * Import from 'core' to access API client, state management, events, SSE, etc.
  * 
  * @module core
  */
@@ -16,6 +16,9 @@ export * from './state/store.js';
 
 // Events
 export * from './events/types.js';
+
+// SSE Manager
+export { sseManager, ConnectionState } from './sse/manager.js';
 
 // Re-export event bus from existing location for backward compatibility
 export { emit, on, once, off } from '../js/event-bus.js';
