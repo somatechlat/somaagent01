@@ -381,19 +381,19 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [x] 19.8 Verify contrast ratios (4.5:1 minimum)
     - _Requirements: 15.8_
 
-- [ ] 20. Internationalization
-  - [ ] 20.1 Create i18n infrastructure
+- [x] 20. Internationalization
+  - [x] 20.1 Create i18n infrastructure
     - Implement translation loading from /i18n/{locale}.json
     - _Requirements: 17.1_
-  - [ ] 20.2 Create English translation file
+  - [x] 20.2 Create English translation file
     - _Requirements: 17.1_
-  - [ ] 20.3 Implement locale switching
+  - [x] 20.3 Implement locale switching
     - Update all text without page reload
     - _Requirements: 17.2, 17.3_
-  - [ ] 20.4 Implement date/number formatting
+  - [x] 20.4 Implement date/number formatting
     - Format according to locale
     - _Requirements: 17.4, 17.5_
-  - [ ] 20.5 Implement RTL layout support
+  - [x] 20.5 Implement RTL layout support
     - Mirror layout for RTL languages
     - _Requirements: 17.6_
 
