@@ -6,4 +6,5 @@ from python.helpers.extension import Extension
 class MemoryInit(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
-        db = await memory.Memory.get(self.agent)
+        # Initialize memory for the agent (result stored in agent context)
+        await memory.Memory.get(self.agent)

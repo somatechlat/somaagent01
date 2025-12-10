@@ -155,8 +155,8 @@ class AgentConnection:
                             )
 
                             _PRINTER.print(f"Retrieved agent card from {root_url}")
-                        except Exception as fallback_error:
-                            # Track fallback failure
+                        except Exception:
+                            # Track fallback failure (error details not needed)
                             increment_counter(
                                 fast_a2a_errors_total,
                                 {
@@ -165,7 +165,7 @@ class AgentConnection:
                                     "method": "get_agent_card_fallback",
                                 },
                             )
-                            pass  # swallow, will re-raise below
+                            # swallow, will re-raise below
 
                     _PRINTER.print(
                         f"[!] Could not connect to {self.agent_url}\n    → Ensure the server is running and reachable.\n    → Full error: {e}"

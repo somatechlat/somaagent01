@@ -43,7 +43,6 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         # Fast-path allow for health and metrics to avoid boot loops
-        path = str(getattr(request, "url", ""))
         if request.url.path in {
             "/live",
             "/ready",

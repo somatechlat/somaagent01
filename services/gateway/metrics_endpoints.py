@@ -448,7 +448,7 @@ async def get_custom_metrics(
 
                 custom_metrics[name] = metric_data
 
-            except Exception as e:
+            except Exception:
                 # Skip problematic metrics
                 continue
 
