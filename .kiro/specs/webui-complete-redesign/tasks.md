@@ -253,13 +253,13 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [x] 11.2 Create code execution tool display
     - Implement collapsible code input and output sections
     - _Requirements: 5.5_
-  - [ ] 11.3 Create search tool display
+  - [x] 11.3 Create search tool display
     - Implement query and results summary
     - _Requirements: 5.6_
-  - [ ] 11.4 Create memory tool display
+  - [x] 11.4 Create memory tool display
     - Implement operation type and affected items
     - _Requirements: 5.7_
-  - [ ] 11.5 Create tool timeline component
+  - [x] 11.5 Create tool timeline component
     - Implement chronological display of multiple tools
     - _Requirements: 5.9_
 
@@ -302,13 +302,13 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [x] 14.2 Create scheduler API module
     - Implement CRUD operations for tasks
     - _Requirements: 9.1, 9.3, 9.7, 9.8_
-  - [ ] 14.3 Create task list component
+  - [x] 14.3 Create task list component
     - Implement table with name, type, schedule, status
     - _Requirements: 9.2_
-  - [ ] 14.4 Create task creation forms
+  - [x] 14.4 Create task creation forms
     - Implement cron builder, datetime picker, token display
     - _Requirements: 9.4, 9.5, 9.6_
-  - [ ] 14.5 Implement real-time task status updates
+  - [x] 14.5 Implement real-time task status updates
     - Subscribe to SSE for task status changes
     - _Requirements: 9.9_
 
@@ -350,13 +350,13 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 18. Navigation and Keyboard Shortcuts
-  - [ ] 18.1 Implement keyboard navigation
+  - [x] 18.1 Implement keyboard navigation
     - Add Tab, Arrow keys, Enter support for navigation
     - _Requirements: 3.4_
-  - [ ] 18.2 Create command palette
+  - [x] 18.2 Create command palette
     - Implement Cmd/Ctrl+K to open, fuzzy search
     - _Requirements: 3.5, 3.6, 13.1_
-  - [ ] 18.3 Implement global keyboard shortcuts
+  - [x] 18.3 Implement global keyboard shortcuts
     - Cmd/Ctrl+N (new chat), Cmd/Ctrl+, (settings), Escape (close modal)
     - _Requirements: 13.2, 13.3, 13.4, 13.5, 13.6, 13.7_
 
