@@ -3,13 +3,15 @@
  *
  * Quick navigation and action palette with fuzzy search.
  * Opens with Cmd/Ctrl+K.
+ * Includes full ARIA accessibility support.
  *
  * @module components/command-palette/command-palette
  * Requirements: 3.5, 3.6, 13.1
  */
 
-import { emit, on, off } from '../../js/event-bus.js';
+import { emit, on } from '../../js/event-bus.js';
 import { SHORTCUT_EVENTS, formatShortcut } from '../../core/keyboard/shortcuts.js';
+import { ARIA_LABELS, announce, createFocusTrap } from '../../core/accessibility/index.js';
 
 /**
  * Default commands
@@ -144,9 +146,11 @@ export default function CommandPalette(options = {}) {
     query: '',
     selectedIndex: 0,
     commands: [...DEFAULT_COMMANDS, ...(options.commands ?? [])],
+    paletteId: `command-palette-${Math.random().toString(36).substr(2, 9)}`,
 
     // Event listener cleanup
     _cleanup: null,
+    _focusTrap: null,
 
     /**
      * Initialize component
@@ -229,10 +233,16 @@ export default function CommandPalette(options = {}) {
       this.query = '';
       this.selectedIndex = 0;
 
-      // Focus input after render
+      // Focus input after render and set up focus trap
       this.$nextTick(() => {
+        const dialog = this.$el?.querySelector('[role="dialog"]');
+        if (dialog) {
+          this._focusTrap = createFocusTrap(dialog);
+          this._focusTrap.activate();
+        }
         const input = this.$refs?.searchInput;
         input?.focus();
+        announce('Command palette opened. Type to search commands.');
       });
     },
 
@@ -243,6 +253,10 @@ export default function CommandPalette(options = {}) {
       this.isOpen = false;
       this.query = '';
       this.selectedIndex = 0;
+      
+      // Deactivate focus trap
+      this._focusTrap?.deactivate();
+      this._focusTrap = null;
     },
 
     /**
@@ -389,6 +403,94 @@ export default function CommandPalette(options = {}) {
      */
     registerCommands(commands) {
       this.commands = [...this.commands, ...commands];
+    },
+    
+    // ============================================
+    // ARIA Bindings
+    // ============================================
+    
+    /**
+     * Bind for dialog container
+     */
+    get dialogBind() {
+      return {
+        'role': 'dialog',
+        'aria-modal': 'true',
+        'aria-label': ARIA_LABELS.commandPalette,
+        ':aria-hidden': () => !this.isOpen,
+      };
+    },
+    
+    /**
+     * Bind for search input
+     */
+    get searchInputBind() {
+      return {
+        'x-ref': 'searchInput',
+        'type': 'text',
+        'role': 'combobox',
+        'aria-label': ARIA_LABELS.commandSearch,
+        'aria-autocomplete': 'list',
+        ':aria-expanded': () => this.isOpen,
+        ':aria-controls': () => `${this.paletteId}-listbox`,
+        ':aria-activedescendant': () => this.selectedCommand 
+          ? `${this.paletteId}-option-${this.selectedIndex}` 
+          : null,
+        '@input': () => this.onInput(),
+        '@keydown': (e) => this.onKeyDown(e),
+        'placeholder': 'Type a command or search...',
+      };
+    },
+    
+    /**
+     * Bind for command listbox
+     */
+    get listboxBind() {
+      return {
+        'id': `${this.paletteId}-listbox`,
+        'role': 'listbox',
+        'aria-label': 'Commands',
+        ':aria-activedescendant': () => this.selectedCommand 
+          ? `${this.paletteId}-option-${this.selectedIndex}` 
+          : null,
+      };
+    },
+    
+    /**
+     * Bind factory for command options
+     * @param {Object} command - Command object
+     * @param {number} index - Command index
+     */
+    optionBind(command, index) {
+      return {
+        'id': `${this.paletteId}-option-${index}`,
+        'role': 'option',
+        ':aria-selected': () => this.isSelected(index),
+        ':data-selected': () => this.isSelected(index),
+        '@click': () => this.execute(command),
+        '@mouseenter': () => this.select(index),
+      };
+    },
+    
+    /**
+     * Bind for category group
+     * @param {string} category - Category name
+     */
+    groupBind(category) {
+      return {
+        'role': 'group',
+        'aria-label': category,
+      };
+    },
+    
+    /**
+     * Bind for backdrop
+     */
+    get backdropBind() {
+      return {
+        '@click.self': () => this.close(),
+        'aria-hidden': 'true',
+      };
     },
   };
 }

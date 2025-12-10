@@ -2,9 +2,12 @@
  * Settings Card Component
  * 
  * Collapsible card for settings sections with icon and description.
+ * Includes full ARIA accessibility support.
  * 
  * @module components/settings/settings-card
  */
+
+import { ARIA_LABELS } from '../../core/accessibility/index.js';
 
 /**
  * Settings Card component factory
@@ -26,13 +29,31 @@ export default function SettingsCard(options = {}) {
     expanded: options.expanded ?? false,
     
     /**
-     * Bind for card header
+     * Bind for card container
+     */
+    get container() {
+      return {
+        'role': 'region',
+        ':aria-labelledby': () => `${this.id}-header`,
+      };
+    },
+    
+    /**
+     * Bind for card header (acts as button)
      */
     get header() {
       return {
+        'id': `${this.id}-header`,
+        'role': 'button',
+        'tabindex': '0',
         '@click': () => this.toggle(),
+        '@keydown.enter.prevent': () => this.toggle(),
+        '@keydown.space.prevent': () => this.toggle(),
         ':aria-expanded': () => this.expanded,
         ':aria-controls': () => `${this.id}-content`,
+        ':aria-label': () => this.expanded 
+          ? ARIA_LABELS.collapseCard(this.title)
+          : ARIA_LABELS.expandCard(this.title),
         'class': 'card-header cursor-pointer',
       };
     },
@@ -44,7 +65,10 @@ export default function SettingsCard(options = {}) {
       return {
         'x-show': () => this.expanded,
         'x-collapse': '',
-        ':id': () => `${this.id}-content`,
+        'id': `${this.id}-content`,
+        'role': 'region',
+        ':aria-labelledby': () => `${this.id}-header`,
+        ':aria-hidden': () => !this.expanded,
         'class': 'card-body',
       };
     },

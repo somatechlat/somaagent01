@@ -2,6 +2,7 @@
  * Settings Modal Component
  * 
  * Full-screen settings modal with tabbed navigation.
+ * Includes full ARIA accessibility support.
  * 
  * @module components/settings/settings-modal
  */
@@ -20,6 +21,7 @@ import {
 } from '../../features/settings/settings.store.js';
 import { fetchSettings, saveSettings } from '../../features/settings/settings.api.js';
 import { toastManager } from '../base/toast.js';
+import { ARIA_LABELS, announce, createFocusTrap } from '../../core/accessibility/index.js';
 
 /**
  * Settings tabs configuration
@@ -67,12 +69,22 @@ export default function SettingsModal() {
     tabs: TABS,
     expandedCards: new Set(),
     formData: {},
+    focusTrap: null,
     
     async init() {
       // Load settings when modal opens
       this.$watch('isOpen', async (open) => {
         if (open) {
           await this.loadSettings();
+          // Set up focus trap
+          this.$nextTick(() => {
+            this.focusTrap = createFocusTrap(this.$el.querySelector('[role="dialog"]'));
+            this.focusTrap.activate();
+            announce('Settings dialog opened');
+          });
+        } else {
+          // Deactivate focus trap
+          this.focusTrap?.deactivate();
         }
       });
     },
@@ -258,6 +270,132 @@ export default function SettingsModal() {
         'role': 'dialog',
         'aria-modal': 'true',
         'aria-labelledby': 'settings-title',
+        'aria-describedby': 'settings-description',
+      };
+    },
+    
+    /**
+     * Bind for tab list
+     */
+    get tabList() {
+      return {
+        'role': 'tablist',
+        'aria-label': 'Settings categories',
+      };
+    },
+    
+    /**
+     * Bind factory for tab buttons
+     * @param {Object} tab - Tab object
+     * @param {number} index - Tab index
+     */
+    tabButton(tab, index) {
+      return {
+        'role': 'tab',
+        'id': `settings-tab-${tab.id}`,
+        ':aria-selected': () => this.activeTab === tab.id,
+        ':aria-controls': () => `settings-panel-${tab.id}`,
+        ':tabindex': () => this.activeTab === tab.id ? 0 : -1,
+        '@click': () => this.switchTab(tab.id),
+        '@keydown.arrow-right.prevent': () => this.focusNextTab(index),
+        '@keydown.arrow-left.prevent': () => this.focusPrevTab(index),
+        '@keydown.home.prevent': () => this.focusFirstTab(),
+        '@keydown.end.prevent': () => this.focusLastTab(),
+      };
+    },
+    
+    /**
+     * Bind factory for tab panels
+     * @param {Object} tab - Tab object
+     */
+    tabPanel(tab) {
+      return {
+        'role': 'tabpanel',
+        'id': `settings-panel-${tab.id}`,
+        ':aria-labelledby': () => `settings-tab-${tab.id}`,
+        ':hidden': () => this.activeTab !== tab.id,
+        ':tabindex': () => 0,
+      };
+    },
+    
+    /**
+     * Focus next tab
+     * @param {number} currentIndex - Current tab index
+     */
+    focusNextTab(currentIndex) {
+      const nextIndex = (currentIndex + 1) % this.tabs.length;
+      this.switchTab(this.tabs[nextIndex].id);
+      this.$nextTick(() => {
+        document.getElementById(`settings-tab-${this.tabs[nextIndex].id}`)?.focus();
+      });
+    },
+    
+    /**
+     * Focus previous tab
+     * @param {number} currentIndex - Current tab index
+     */
+    focusPrevTab(currentIndex) {
+      const prevIndex = (currentIndex - 1 + this.tabs.length) % this.tabs.length;
+      this.switchTab(this.tabs[prevIndex].id);
+      this.$nextTick(() => {
+        document.getElementById(`settings-tab-${this.tabs[prevIndex].id}`)?.focus();
+      });
+    },
+    
+    /**
+     * Focus first tab
+     */
+    focusFirstTab() {
+      this.switchTab(this.tabs[0].id);
+      this.$nextTick(() => {
+        document.getElementById(`settings-tab-${this.tabs[0].id}`)?.focus();
+      });
+    },
+    
+    /**
+     * Focus last tab
+     */
+    focusLastTab() {
+      const lastTab = this.tabs[this.tabs.length - 1];
+      this.switchTab(lastTab.id);
+      this.$nextTick(() => {
+        document.getElementById(`settings-tab-${lastTab.id}`)?.focus();
+      });
+    },
+    
+    /**
+     * Bind for close button
+     */
+    get closeButton() {
+      return {
+        '@click': () => this.close(),
+        'aria-label': ARIA_LABELS.settingsClose,
+        'type': 'button',
+      };
+    },
+    
+    /**
+     * Bind for save button
+     */
+    get saveButton() {
+      return {
+        '@click': () => this.save(),
+        ':disabled': () => this.isSaving || !this.isDirty,
+        ':aria-busy': () => this.isSaving,
+        'aria-label': ARIA_LABELS.settingsSave,
+        'type': 'button',
+      };
+    },
+    
+    /**
+     * Bind for cancel button
+     */
+    get cancelButton() {
+      return {
+        '@click': () => this.cancel(),
+        ':disabled': () => this.isSaving,
+        'aria-label': ARIA_LABELS.settingsCancel,
+        'type': 'button',
       };
     },
   };
