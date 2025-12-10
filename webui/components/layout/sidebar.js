@@ -2,17 +2,18 @@
  * Sidebar Component
  * 
  * Navigation sidebar with sections, items, and session list.
+ * Includes full ARIA accessibility support for keyboard navigation.
  * 
  * Usage:
- * <aside x-data="sidebar({ items: [...] })" class="app-sidebar">
+ * <aside x-data="sidebar({ items: [...] })" x-bind="container" class="app-sidebar">
  *   <div class="sidebar-content">
- *     <nav class="sidebar-nav">
+ *     <nav x-bind="nav" class="sidebar-nav">
  *       <template x-for="section in sections">
- *         <div class="nav-section">
- *           <div class="nav-section-title" x-text="section.title"></div>
+ *         <div class="nav-section" role="group" :aria-labelledby="'section-' + section.id">
+ *           <div :id="'section-' + section.id" class="nav-section-title" x-text="section.title"></div>
  *           <template x-for="item in section.items">
  *             <a x-bind="navItem(item)" class="nav-item">
- *               <span class="nav-item-icon" x-html="item.icon"></span>
+ *               <span class="nav-item-icon" x-html="item.icon" aria-hidden="true"></span>
  *               <span class="nav-item-label" x-text="item.label"></span>
  *             </a>
  *           </template>
@@ -26,6 +27,7 @@
  */
 
 import { emit } from '../../js/event-bus.js';
+import { ARIA_LABELS } from '../../core/accessibility/index.js';
 
 /**
  * Sidebar component factory
@@ -39,6 +41,28 @@ export default function Sidebar(options = {}) {
   return {
     sections: options.sections ?? [],
     activeItem: options.activeItem ?? '',
+    isCollapsed: false,
+    
+    /**
+     * Bind for sidebar container
+     */
+    get container() {
+      return {
+        'role': 'complementary',
+        'aria-label': ARIA_LABELS.sidebar,
+        ':aria-expanded': () => !this.isCollapsed,
+      };
+    },
+    
+    /**
+     * Bind for navigation element
+     */
+    get nav() {
+      return {
+        'role': 'navigation',
+        'aria-label': ARIA_LABELS.sidebar,
+      };
+    },
     
     /**
      * Bind factory for navigation items
@@ -49,10 +73,20 @@ export default function Sidebar(options = {}) {
         ':href': () => item.href ?? '#',
         ':data-active': () => this.activeItem === item.id,
         ':aria-current': () => this.activeItem === item.id ? 'page' : null,
+        'aria-label': item.label,
+        ':tabindex': () => 0,
         '@click': (e) => {
           if (!item.href || item.href === '#') {
             e.preventDefault();
           }
+          this.navigate(item);
+        },
+        '@keydown.enter': (e) => {
+          e.preventDefault();
+          this.navigate(item);
+        },
+        '@keydown.space': (e) => {
+          e.preventDefault();
           this.navigate(item);
         },
       };
@@ -90,6 +124,25 @@ export default function Sidebar(options = {}) {
      */
     setSections(sections) {
       this.sections = sections;
+    },
+    
+    /**
+     * Toggle sidebar collapsed state
+     */
+    toggleCollapsed() {
+      this.isCollapsed = !this.isCollapsed;
+    },
+    
+    /**
+     * Bind for collapse toggle button
+     */
+    get toggleButton() {
+      return {
+        '@click': () => this.toggleCollapsed(),
+        'aria-label': ARIA_LABELS.sidebarToggle,
+        ':aria-expanded': () => !this.isCollapsed,
+        'aria-controls': 'sidebar-content',
+      };
     },
   };
 }

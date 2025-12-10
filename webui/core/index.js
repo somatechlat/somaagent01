@@ -23,5 +23,8 @@ export { sseManager, ConnectionState } from './sse/manager.js';
 // Keyboard Navigation & Shortcuts
 export * from './keyboard/index.js';
 
+// Accessibility
+export * from './accessibility/index.js';
+
 // Re-export event bus from existing location for backward compatibility
 export { emit, on, once, off } from '../js/event-bus.js';

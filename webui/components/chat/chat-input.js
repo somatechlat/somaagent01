@@ -2,9 +2,12 @@
  * Chat Input Component
  * 
  * Multi-line input with auto-resize, attachments, and send button.
+ * Includes full ARIA accessibility support.
  * 
  * @module components/chat/chat-input
  */
+
+import { ARIA_LABELS, announce } from '../../core/accessibility/index.js';
 
 /**
  * Chat Input component factory
@@ -25,12 +28,14 @@ export default function ChatInput(options = {}) {
     isSending: false,
     attachments: [],
     maxHeight: 200,
+    inputId: `chat-input-${Math.random().toString(36).substr(2, 9)}`,
     
     /**
      * Bind for textarea
      */
     get textarea() {
       return {
+        'id': this.inputId,
         ':value': () => this.value,
         '@input': (e) => this.onInput(e),
         '@keydown.enter': (e) => this.onKeyDown(e),
@@ -40,6 +45,11 @@ export default function ChatInput(options = {}) {
         ':rows': () => 1,
         ':style': () => `max-height: ${this.maxHeight}px; overflow-y: auto;`,
         'class': 'input textarea',
+        // ARIA attributes
+        'aria-label': ARIA_LABELS.chatInput,
+        ':aria-disabled': () => this.disabled || this.isSending,
+        'aria-multiline': 'true',
+        ':aria-describedby': () => this.attachments.length > 0 ? `${this.inputId}-attachments` : null,
       };
     },
     
@@ -183,6 +193,10 @@ export default function ChatInput(options = {}) {
         ':class': () => ({
           'btn-loading': this.isSending,
         }),
+        // ARIA attributes
+        'aria-label': ARIA_LABELS.sendMessage,
+        ':aria-disabled': () => !this.canSend,
+        ':aria-busy': () => this.isSending,
       };
     },
     
@@ -193,6 +207,54 @@ export default function ChatInput(options = {}) {
       return {
         '@click': () => this.openFilePicker(),
         ':disabled': () => this.disabled,
+        // ARIA attributes
+        'aria-label': ARIA_LABELS.attachFile,
+        ':aria-disabled': () => this.disabled,
+      };
+    },
+    
+    /**
+     * Bind for voice input button
+     */
+    get voiceButton() {
+      return {
+        ':disabled': () => this.disabled,
+        'aria-label': ARIA_LABELS.voiceInput,
+        ':aria-disabled': () => this.disabled,
+      };
+    },
+    
+    /**
+     * Bind for attachments list (for screen readers)
+     */
+    get attachmentsList() {
+      return {
+        'id': `${this.inputId}-attachments`,
+        'role': 'list',
+        'aria-label': `${this.attachments.length} file${this.attachments.length !== 1 ? 's' : ''} attached`,
+      };
+    },
+    
+    /**
+     * Bind for individual attachment item
+     * @param {Object} attachment - Attachment object
+     */
+    attachmentItem(attachment) {
+      return {
+        'role': 'listitem',
+        'aria-label': `Attached file: ${attachment.name}`,
+      };
+    },
+    
+    /**
+     * Bind for remove attachment button
+     * @param {Object} attachment - Attachment object
+     */
+    removeAttachmentButton(attachment) {
+      return {
+        '@click': () => this.removeAttachment(attachment.id),
+        'aria-label': `Remove ${attachment.name}`,
+        'type': 'button',
       };
     },
   };
