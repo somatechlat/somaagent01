@@ -114,7 +114,7 @@ async def chat_completion(request: Request, payload: ChatPayload) -> JSONRespons
             ip=getattr(request.client, "host", None) if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
-    except Exception as exc:
+    except Exception:
         LOGGER.debug("Audit log failed for chat completion", exc_info=True)
 
     # -----------------------------------------------------------------
