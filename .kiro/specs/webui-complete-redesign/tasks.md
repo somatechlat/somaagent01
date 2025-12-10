@@ -156,7 +156,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [ ]* 7.7 Write property test for model card field completeness
     - **Property 4: Model Card Field Completeness**
     - **Validates: Requirements 7.11, 7.12, 7.13, 7.14**
-  - [ ] 7.8 Create Memory/SomaBrain settings card
+  - [x] 7.8 Create Memory/SomaBrain settings card
     - Implement recall settings, search limits, similarity threshold, memorization settings
     - _Requirements: 7.20, 7.21, 7.22, 7.23, 7.24_
   - [x] 7.9 Create API Keys settings card
@@ -166,23 +166,23 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [ ]* 7.10 Write property test for API key masking
     - **Property 5: API Key Masking**
     - **Validates: Requirements 7.26, 7.27**
-  - [ ] 7.11 Create MCP/A2A settings cards
+  - [x] 7.11 Create MCP/A2A settings cards
     - Implement JSON editor for MCP server config
     - Add timeout inputs, enabled toggles, token display
     - _Requirements: 7.31, 7.32, 7.33, 7.34, 7.35_
-  - [ ] 7.12 Create Speech settings card
+  - [x] 7.12 Create Speech settings card
     - Implement provider selector, STT settings, realtime/Kokoro options
     - _Requirements: 7.36, 7.37, 7.38, 7.39_
-  - [ ] 7.13 Create Authentication settings card
+  - [x] 7.13 Create Authentication settings card
     - Implement username, password inputs with strength indicator
     - _Requirements: 7.40, 7.41, 7.42, 7.43_
-  - [ ] 7.14 Create Backup & Restore settings card
+  - [x] 7.14 Create Backup & Restore settings card
     - Implement backup download and restore file picker
     - _Requirements: 7.44, 7.45, 7.46, 7.47_
-  - [ ] 7.15 Create Developer settings card
+  - [x] 7.15 Create Developer settings card
     - Implement shell interface selector, RFC connection settings
     - _Requirements: 7.48, 7.49, 7.50_
-  - [ ] 7.16 Implement settings save/cancel actions
+  - [x] 7.16 Implement settings save/cancel actions
     - Add unsaved changes confirmation dialog
     - Show success/error toasts
     - _Requirements: 7.51, 7.52, 7.53, 7.54, 7.55_
@@ -218,20 +218,20 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [ ]* 9.8 Write property test for streaming state visualization
     - **Property 7: Streaming State Visualization**
     - **Validates: Requirements 4.4, 4.5, 4.6**
-  - [ ] 9.9 Create code block renderer
+  - [x] 9.9 Create code block renderer
     - Implement syntax highlighting with Prism.js
     - Add language label, copy button, line numbers
     - _Requirements: 4.7_
   - [ ]* 9.10 Write property test for code block syntax highlighting
     - **Property 8: Code Block Syntax Highlighting**
     - **Validates: Requirements 4.7**
-  - [ ] 9.11 Create markdown renderer
+  - [x] 9.11 Create markdown renderer
     - Implement headings, lists, links, formatting, blockquotes, tables
     - _Requirements: 4.8_
-  - [ ] 9.12 Create math renderer (KaTeX)
+  - [x] 9.12 Create math renderer (KaTeX)
     - Implement inline and block LaTeX rendering
     - _Requirements: 4.9_
-  - [ ] 9.13 Create image renderer
+  - [x] 9.13 Create image renderer
     - Implement thumbnails with lightbox on click
     - _Requirements: 4.10_
   - [x] 9.14 Create chat input component
@@ -250,7 +250,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Implement icon, name, status indicator (running/success/error)
     - Add progress indicator and expandable details
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.8, 33.6_
-  - [ ] 11.2 Create code execution tool display
+  - [x] 11.2 Create code execution tool display
     - Implement collapsible code input and output sections
     - _Requirements: 5.5_
   - [ ] 11.3 Create search tool display

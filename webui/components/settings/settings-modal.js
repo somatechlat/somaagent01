@@ -6,7 +6,18 @@
  * @module components/settings/settings-modal
  */
 
-import { settingsStore, switchTab, closeSettings, setLoading, setError } from '../../features/settings/settings.store.js';
+import {
+  settingsStore,
+  switchTab,
+  closeSettings,
+  setLoading,
+  setSaving,
+  setError,
+  markDirty,
+  showUnsavedDialog,
+  hideUnsavedDialog,
+  discardChanges,
+} from '../../features/settings/settings.store.js';
 import { fetchSettings, saveSettings } from '../../features/settings/settings.api.js';
 import { toastManager } from '../base/toast.js';
 
@@ -27,15 +38,33 @@ const TABS = [
 export default function SettingsModal() {
   return {
     // State from store
-    get isOpen() { return settingsStore.isOpen; },
-    get isLoading() { return settingsStore.isLoading; },
-    get activeTab() { return settingsStore.activeTab; },
-    get sections() { return settingsStore.filteredSections; },
-    get error() { return settingsStore.error; },
-    
+    get isOpen() {
+      return settingsStore.isOpen;
+    },
+    get isLoading() {
+      return settingsStore.isLoading;
+    },
+    get isSaving() {
+      return settingsStore.isSaving;
+    },
+    get activeTab() {
+      return settingsStore.activeTab;
+    },
+    get sections() {
+      return settingsStore.filteredSections;
+    },
+    get error() {
+      return settingsStore.error;
+    },
+    get isDirty() {
+      return settingsStore.isDirty;
+    },
+    get showUnsavedDialog() {
+      return settingsStore.showUnsavedDialog;
+    },
+
     // Local state
     tabs: TABS,
-    isDirty: false,
     expandedCards: new Set(),
     formData: {},
     
@@ -79,20 +108,52 @@ export default function SettingsModal() {
     /**
      * Save settings to API
      */
-    async saveSettings() {
-      setLoading(true);
+    async save() {
+      setSaving(true);
       setError(null);
-      
+
       try {
         await saveSettings(this.formData);
-        this.isDirty = false;
-        toastManager.success('Settings saved', 'Your changes have been saved successfully.');
+        // Update original sections to match current
+        settingsStore.originalSections = JSON.parse(
+          JSON.stringify(settingsStore.sections)
+        );
+        settingsStore.isDirty = false;
+        toastManager.success(
+          'Settings saved',
+          'Your changes have been saved successfully.'
+        );
       } catch (err) {
         setError(err.message);
         toastManager.error('Failed to save settings', err.message);
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
+    },
+
+    /**
+     * Cancel and close (with confirmation if dirty)
+     */
+    cancel() {
+      if (this.isDirty) {
+        showUnsavedDialog();
+      } else {
+        closeSettings();
+      }
+    },
+
+    /**
+     * Confirm discard changes
+     */
+    confirmDiscard() {
+      discardChanges();
+    },
+
+    /**
+     * Cancel discard dialog
+     */
+    cancelDiscard() {
+      hideUnsavedDialog();
     },
     
     /**
@@ -102,7 +163,7 @@ export default function SettingsModal() {
      */
     onFieldChange(fieldId, value) {
       this.formData[fieldId] = value;
-      this.isDirty = true;
+      markDirty();
     },
     
     /**
@@ -118,9 +179,8 @@ export default function SettingsModal() {
      */
     close() {
       if (this.isDirty) {
-        if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
-          return;
-        }
+        showUnsavedDialog();
+        return;
       }
       closeSettings();
     },

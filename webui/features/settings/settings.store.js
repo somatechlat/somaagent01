@@ -16,17 +16,21 @@ const initialState = {
   // Modal state
   isOpen: false,
   isLoading: false,
-  
+  isSaving: false,
+
   // Tab state
   activeTab: localStorage.getItem('settingsActiveTab') || 'agent',
-  
+
   // Settings data
   sections: [],
   filteredSections: [],
-  
+  originalSections: [], // For dirty checking
+
   // UI state
   title: 'Settings',
   error: null,
+  isDirty: false,
+  showUnsavedDialog: false,
 };
 
 /**
@@ -88,7 +92,61 @@ export function switchTab(tabId) {
  */
 export function setSections(sections) {
   settingsStore.sections = sections || [];
+  settingsStore.originalSections = JSON.parse(JSON.stringify(sections || []));
+  settingsStore.isDirty = false;
   updateFilteredSections();
+}
+
+/**
+ * Mark settings as dirty (modified)
+ */
+export function markDirty() {
+  settingsStore.isDirty = true;
+}
+
+/**
+ * Check if settings have been modified
+ * @returns {boolean}
+ */
+export function checkDirty() {
+  return (
+    JSON.stringify(settingsStore.sections) !==
+    JSON.stringify(settingsStore.originalSections)
+  );
+}
+
+/**
+ * Set saving state
+ * @param {boolean} saving - Saving state
+ */
+export function setSaving(saving) {
+  settingsStore.isSaving = saving;
+}
+
+/**
+ * Show unsaved changes dialog
+ */
+export function showUnsavedDialog() {
+  settingsStore.showUnsavedDialog = true;
+}
+
+/**
+ * Hide unsaved changes dialog
+ */
+export function hideUnsavedDialog() {
+  settingsStore.showUnsavedDialog = false;
+}
+
+/**
+ * Discard changes and close
+ */
+export function discardChanges() {
+  settingsStore.sections = JSON.parse(
+    JSON.stringify(settingsStore.originalSections)
+  );
+  settingsStore.isDirty = false;
+  settingsStore.showUnsavedDialog = false;
+  closeSettings();
 }
 
 /**
@@ -170,8 +228,14 @@ export default {
   setSections,
   updateFilteredSections,
   setLoading,
+  setSaving,
   setError,
   getFieldValue,
   setFieldValue,
   onSettingsChange,
+  markDirty,
+  checkDirty,
+  showUnsavedDialog,
+  hideUnsavedDialog,
+  discardChanges,
 };
