@@ -109,9 +109,7 @@ class SchedulerTaskList(BaseModel):
         with self._lock:
             return self.tasks
 
-    def get_tasks_by_context_id(
-        self, context_id: str, only_running: bool = False
-    ) -> list[AnyTask]:
+    def get_tasks_by_context_id(self, context_id: str, only_running: bool = False) -> list[AnyTask]:
         with self._lock:
             return [
                 task

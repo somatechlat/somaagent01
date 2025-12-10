@@ -41,7 +41,12 @@ T = TypeVar("T")
 
 def _is_streaming_http_type(server_type: str) -> bool:
     """Check if the server type is a streaming HTTP variant."""
-    return server_type.lower() in ["http-stream", "streaming-http", "streamable-http", "http-streaming"]
+    return server_type.lower() in [
+        "http-stream",
+        "streaming-http",
+        "streamable-http",
+        "http-streaming",
+    ]
 
 
 class MCPClientBase(ABC):
@@ -100,11 +105,16 @@ class MCPClientBase(ABC):
 
     async def update_tools(self) -> "MCPClientBase":
         """Fetch and cache tools from the server."""
+
         async def list_tools_op(current_session: ClientSession):
             response: ListToolsResult = await current_session.list_tools()
             with self.__lock:
                 self.tools = [
-                    {"name": tool.name, "description": tool.description, "input_schema": tool.inputSchema}
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.inputSchema,
+                    }
                     for tool in response.tools
                 ]
             PrintStyle(font_color="green").print(
@@ -119,9 +129,9 @@ class MCPClientBase(ABC):
             )
         except Exception as e:
             error_text = errors.format_error(e, 0, 0)
-            PrintStyle(background_color="#CC34C3", font_color="white", bold=True, padding=True).print(
-                f"MCPClientBase ({self.server.name}): 'update_tools' failed: {error_text}"
-            )
+            PrintStyle(
+                background_color="#CC34C3", font_color="white", bold=True, padding=True
+            ).print(f"MCPClientBase ({self.server.name}): 'update_tools' failed: {error_text}")
             with self.__lock:
                 self.tools = []
                 self.error = f"Failed to initialize. {error_text[:200]}{'...' if len(error_text) > 200 else ''}"
@@ -164,7 +174,6 @@ class MCPClientBase(ABC):
             return ""
 
 
-
 class MCPClientLocal(MCPClientBase):
     """Local MCP client using stdio transport."""
 
@@ -181,6 +190,7 @@ class MCPClientLocal(MCPClientBase):
         MemoryObjectSendStream[SessionMessage],
     ]:
         from python.helpers.mcp_servers import MCPServerLocal
+
         server: MCPServerLocal = cast(MCPServerLocal, self.server)
 
         if not server.command:
@@ -238,6 +248,7 @@ class MCPClientRemote(MCPClientBase):
         MemoryObjectSendStream[SessionMessage],
     ]:
         from python.helpers.mcp_servers import MCPServerRemote
+
         server: MCPServerRemote = cast(MCPServerRemote, self.server)
         set = settings.get_settings()
 

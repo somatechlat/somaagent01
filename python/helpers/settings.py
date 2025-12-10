@@ -57,7 +57,7 @@ _settings: Settings | None = None
 
 def convert_out(settings: Settings) -> SettingsOutput:
     """Convert settings to UI output format.
-    
+
     Delegates to section builders in settings_sections_* modules.
     """
     default_settings = get_default_settings()

@@ -26,6 +26,7 @@ LOGGER = logging.getLogger(__name__)
 @dataclass(slots=True)
 class MemoryReplicaRow:
     """Data class for memory replica row."""
+
     id: int
     event_id: str | None
     session_id: str | None
@@ -42,11 +43,11 @@ class MemoryReplicaRow:
 
 class MemoryReplicaStore:
     """PostgreSQL implementation of memory replica storage.
-    
+
     This class provides the concrete implementation for storing and
     retrieving memory replicas from PostgreSQL.
     """
-    
+
     def __init__(self, dsn: Optional[str] = None) -> None:
         raw_dsn = dsn or _new_cfg.env(
             "POSTGRES_DSN",

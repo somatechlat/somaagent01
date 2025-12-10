@@ -197,7 +197,6 @@ def build_default_registry() -> FeatureRegistry:
             enabled_env_var="SA01_ENABLE_REASONING_STREAM",
             stability="beta",
         ),
-
         # ------------------------------------------------------------------
         # Newly centralized service flags (deployment/profile aware)
         # ------------------------------------------------------------------

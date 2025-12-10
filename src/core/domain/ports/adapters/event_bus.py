@@ -15,11 +15,11 @@ from typing import Any, Callable, Dict, Optional
 
 class EventBusPort(ABC):
     """Abstract interface for event bus operations.
-    
+
     This port wraps the existing KafkaEventBus implementation.
     All methods match the production implementation signature exactly.
     """
-    
+
     @abstractmethod
     async def publish(
         self,
@@ -28,14 +28,14 @@ class EventBusPort(ABC):
         headers: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Publish an event to a topic.
-        
+
         Args:
             topic: Target topic name
             payload: Event payload (will be JSON serialized)
             headers: Optional message headers
         """
         ...
-    
+
     @abstractmethod
     async def consume(
         self,
@@ -45,7 +45,7 @@ class EventBusPort(ABC):
         stop_event: Optional[asyncio.Event] = None,
     ) -> None:
         """Consume events from a topic.
-        
+
         Args:
             topic: Source topic name
             group_id: Consumer group identifier
@@ -53,12 +53,12 @@ class EventBusPort(ABC):
             stop_event: Optional event to signal consumer shutdown
         """
         ...
-    
+
     @abstractmethod
     async def healthcheck(self) -> None:
         """Verify event bus connectivity."""
         ...
-    
+
     @abstractmethod
     async def close(self) -> None:
         """Close connections and release resources."""

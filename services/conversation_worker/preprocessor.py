@@ -3,6 +3,7 @@
 This module extracts the ConversationPreprocessor and AnalysisResult
 from main.py to reduce file size.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from typing import Any, Dict, List
 @dataclass
 class AnalysisResult:
     """Result of message analysis."""
+
     intent: str
     sentiment: str
     tags: List[str]
@@ -26,13 +28,13 @@ class AnalysisResult:
 
 class ConversationPreprocessor:
     """Preprocess conversation messages for analysis."""
-    
+
     def analyze(self, message: str) -> AnalysisResult:
         """Analyze a message for intent, sentiment, and tags.
-        
+
         Args:
             message: The message text to analyze
-            
+
         Returns:
             AnalysisResult with intent, sentiment, and tags
         """

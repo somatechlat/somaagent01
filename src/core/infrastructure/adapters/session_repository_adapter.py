@@ -16,19 +16,19 @@ from src.core.domain.ports.repositories.session_repository import (
 
 class PostgresSessionRepositoryAdapter(SessionRepositoryPort):
     """Implements SessionRepositoryPort using existing PostgresSessionStore.
-    
+
     Delegates ALL operations to services.common.session_repository.PostgresSessionStore.
     """
-    
+
     def __init__(self, store: Optional[PostgresSessionStore] = None, dsn: Optional[str] = None):
         """Initialize adapter with existing store or create new one.
-        
+
         Args:
             store: Existing PostgresSessionStore instance (preferred)
             dsn: Database DSN (used if store not provided)
         """
         self._store = store or PostgresSessionStore(dsn=dsn)
-    
+
     @staticmethod
     def _to_dto(envelope: SessionEnvelope) -> SessionEnvelopeDTO:
         """Convert production SessionEnvelope to DTO."""
@@ -44,13 +44,13 @@ class PostgresSessionRepositoryAdapter(SessionRepositoryPort):
             created_at=envelope.created_at,
             updated_at=envelope.updated_at,
         )
-    
+
     async def append_event(self, session_id: str, event: Dict[str, Any]) -> None:
         await self._store.append_event(session_id, event)
-    
+
     async def list_events(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         return await self._store.list_events(session_id, limit)
-    
+
     async def list_events_after(
         self,
         session_id: str,
@@ -59,17 +59,17 @@ class PostgresSessionRepositoryAdapter(SessionRepositoryPort):
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         return await self._store.list_events_after(session_id, after_id=after_id, limit=limit)
-    
+
     async def get_envelope(self, session_id: str) -> Optional[SessionEnvelopeDTO]:
         envelope = await self._store.get_envelope(session_id)
         return self._to_dto(envelope) if envelope else None
-    
+
     async def delete_session(self, session_id: str) -> Dict[str, int]:
         return await self._store.delete_session(session_id)
-    
+
     async def reset_session(self, session_id: str) -> Dict[str, int]:
         return await self._store.reset_session(session_id)
-    
+
     async def list_sessions(
         self,
         *,
@@ -78,7 +78,7 @@ class PostgresSessionRepositoryAdapter(SessionRepositoryPort):
     ) -> List[SessionEnvelopeDTO]:
         envelopes = await self._store.list_sessions(limit=limit, tenant=tenant)
         return [self._to_dto(e) for e in envelopes]
-    
+
     async def backfill_envelope(
         self,
         session_id: str,
@@ -105,9 +105,9 @@ class PostgresSessionRepositoryAdapter(SessionRepositoryPort):
             created_at=created_at,
             updated_at=updated_at,
         )
-    
+
     async def ping(self) -> None:
         await self._store.ping()
-    
+
     async def close(self) -> None:
         await self._store.close()

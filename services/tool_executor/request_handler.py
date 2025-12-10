@@ -43,7 +43,9 @@ class RequestHandler:
         tool_label = validation.tool_name or "unknown"
 
         if not validation.valid:
-            LOGGER.error("Invalid tool request", extra={"event": event, "error": validation.error_message})
+            LOGGER.error(
+                "Invalid tool request", extra={"event": event, "error": validation.error_message}
+            )
             TOOL_REQUEST_COUNTER.labels(tool_label, "invalid").inc()
             return
 
@@ -92,7 +94,16 @@ class RequestHandler:
 
         # Execute tool
         result = await self._execute_tool(
-            tool, tool_name, tool_label, args, event, metadata, session_id, tenant, persona_id, trace_id_hex
+            tool,
+            tool_name,
+            tool_label,
+            args,
+            event,
+            metadata,
+            session_id,
+            tenant,
+            persona_id,
+            trace_id_hex,
         )
         if result is None:
             return
@@ -122,7 +133,6 @@ class RequestHandler:
             trace_id=trace_id_hex,
             details={"status": result.status, "latency_ms": int(result.execution_time * 1000)},
         )
-
 
     async def _check_policy(
         self,
@@ -246,11 +256,13 @@ class RequestHandler:
         """Publish tool.start event for UI."""
         try:
             ui_meta = dict(metadata or {})
-            ui_meta.update({
-                "status": "start",
-                "source": "tool_executor",
-                "tool_name": tool_name,
-            })
+            ui_meta.update(
+                {
+                    "status": "start",
+                    "source": "tool_executor",
+                    "tool_name": tool_name,
+                }
+            )
             req_id = (metadata or {}).get("request_id") or event.get("event_id")
             if req_id:
                 ui_meta["request_id"] = req_id

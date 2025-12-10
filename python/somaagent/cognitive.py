@@ -1,4 +1,5 @@
 """Cognitive processing and neuromodulation for agent."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, TYPE_CHECKING
@@ -27,7 +28,9 @@ async def initialize_cognitive_state(agent: "Agent") -> None:
         if agent.loop_data.iteration > 0 and agent.loop_data.iteration % 100 == 0:
             await consider_sleep_cycle(agent)
     except Exception as e:
-        PrintStyle(font_color="orange", padding=False).print(f"Failed to initialize cognitive state: {e}")
+        PrintStyle(font_color="orange", padding=False).print(
+            f"Failed to initialize cognitive state: {e}"
+        )
 
 
 async def load_adaptation_state(agent: "Agent") -> None:
@@ -50,7 +53,9 @@ async def load_adaptation_state(agent: "Agent") -> None:
                 if recent_patterns:
                     agent.data["recent_learning_patterns"] = recent_patterns[-5:]
     except Exception as e:
-        PrintStyle(font_color="orange", padding=False).print(f"Failed to load adaptation state: {e}")
+        PrintStyle(font_color="orange", padding=False).print(
+            f"Failed to load adaptation state: {e}"
+        )
 
 
 async def apply_neuromodulation(agent: "Agent") -> None:
@@ -77,7 +82,9 @@ async def apply_neuromodulation(agent: "Agent") -> None:
         if noradrenaline > 0.0:
             neuromods["noradrenaline"] = max(0.0, noradrenaline - 0.02)
     except Exception as e:
-        PrintStyle(font_color="orange", padding=False).print(f"Failed to apply neuromodulation: {e}")
+        PrintStyle(font_color="orange", padding=False).print(
+            f"Failed to apply neuromodulation: {e}"
+        )
 
 
 async def consider_sleep_cycle(agent: "Agent") -> None:
@@ -85,7 +92,9 @@ async def consider_sleep_cycle(agent: "Agent") -> None:
     try:
         cognitive_load = agent.data.get("cognitive_load", 0.5)
         if cognitive_load > 0.8:
-            PrintStyle(font_color="blue", padding=False).print("High cognitive load detected, considering sleep cycle")
+            PrintStyle(font_color="blue", padding=False).print(
+                "High cognitive load detected, considering sleep cycle"
+            )
             sleep_result = await agent.soma_client.sleep_cycle(
                 tenant_id=agent.tenant_id,
                 persona_id=agent.persona_id,
@@ -95,7 +104,9 @@ async def consider_sleep_cycle(agent: "Agent") -> None:
                 agent.data["last_sleep_cycle"] = sleep_result
                 await optimize_cognitive_parameters(agent, sleep_result)
     except Exception as e:
-        PrintStyle(font_color="orange", padding=False).print(f"Sleep cycle consideration failed: {e}")
+        PrintStyle(font_color="orange", padding=False).print(
+            f"Sleep cycle consideration failed: {e}"
+        )
 
 
 async def optimize_cognitive_parameters(agent: "Agent", sleep_result: Dict[str, Any]) -> None:
@@ -103,32 +114,57 @@ async def optimize_cognitive_parameters(agent: "Agent", sleep_result: Dict[str, 
     try:
         consolidation_score = sleep_result.get("consolidation_score", 0.5)
         pruning_score = sleep_result.get("pruning_score", 0.5)
-        
+
         cognitive_params = agent.data.setdefault("cognitive_params", {})
         cognitive_params["memory_clarity"] = consolidation_score
         cognitive_params["cognitive_efficiency"] = pruning_score
-        
+
         # Reset cognitive load after sleep
         agent.data["cognitive_load"] = max(0.3, agent.data.get("cognitive_load", 0.5) - 0.3)
     except Exception as e:
-        PrintStyle(font_color="orange", padding=False).print(f"Failed to optimize cognitive parameters: {e}")
+        PrintStyle(font_color="orange", padding=False).print(
+            f"Failed to optimize cognitive parameters: {e}"
+        )
 
 
 def get_complexity_indicators() -> list[str]:
     """Get list of complexity indicators for planning detection."""
     return [
-        "how to", "steps", "plan", "strategy", "approach", "implement",
-        "build", "create", "develop", "design", "optimize", "improve",
-        "enhance", "refactor", "debug", "solve", "analyze", "evaluate",
-        "assess", "review",
+        "how to",
+        "steps",
+        "plan",
+        "strategy",
+        "approach",
+        "implement",
+        "build",
+        "create",
+        "develop",
+        "design",
+        "optimize",
+        "improve",
+        "enhance",
+        "refactor",
+        "debug",
+        "solve",
+        "analyze",
+        "evaluate",
+        "assess",
+        "review",
     ]
 
 
 def get_contextual_triggers() -> list[str]:
     """Get list of contextual triggers for planning."""
     return [
-        "multi-step", "phase", "stage", "milestone", "deadline",
-        "priority", "sequence", "workflow", "process",
+        "multi-step",
+        "phase",
+        "stage",
+        "milestone",
+        "deadline",
+        "priority",
+        "sequence",
+        "workflow",
+        "process",
     ]
 
 
@@ -137,8 +173,8 @@ def should_generate_plan(message: str) -> bool:
     message_lower = message.lower()
     indicators = get_complexity_indicators()
     triggers = get_contextual_triggers()
-    
+
     indicator_count = sum(1 for ind in indicators if ind in message_lower)
     trigger_count = sum(1 for trig in triggers if trig in message_lower)
-    
+
     return indicator_count >= 2 or trigger_count >= 1

@@ -48,7 +48,9 @@ class ModelProfileStore:
     def from_settings(cls, settings: object | None = None) -> "ModelProfileStore":
         # Use the canonical DSN from cfg.
         database = getattr(settings, "database", None) if settings is not None else None
-        override = getattr(database, "dsn", None) or cfg.env("POSTGRES_DSN", cfg.settings().database.dsn)
+        override = getattr(database, "dsn", None) or cfg.env(
+            "POSTGRES_DSN", cfg.settings().database.dsn
+        )
         return cls(dsn=override)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
@@ -101,7 +103,6 @@ class ModelProfileStore:
                 profile.temperature,
                 json.dumps(profile.kwargs or {}, ensure_ascii=False),
             )
-
 
     async def create_profile(self, profile: ModelProfile) -> None:
         """Create or replace a model profile.
@@ -189,7 +190,6 @@ class ModelProfileStore:
             )
             for row in rows
         ]
-
 
     async def list_profiles(self, deployment_mode: Optional[str] = None) -> list[ModelProfile]:
         """Alias for list(); maintained for gateway handler compatibility."""

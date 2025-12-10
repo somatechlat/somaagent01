@@ -167,11 +167,11 @@ async def authorize_request(request: Request, meta: dict[str, Any] | None = None
 
 def _require_admin_scope(auth: dict[str, Any]) -> None:
     """Validate that the authenticated user has admin scope.
-    
+
     Raises HTTPException 403 if admin scope is not present.
     """
     from fastapi import HTTPException
-    
+
     scopes = auth.get("scopes", [])
     if "admin" not in scopes and not auth.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Admin scope required")

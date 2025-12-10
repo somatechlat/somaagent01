@@ -97,7 +97,7 @@ class DLQStore:
 
         async def reprocess(self, topic: str, item_id: str) -> bool:
             """Re-publish a DLQ item back to the processing pipeline.
-            
+
             Retrieves the item, publishes it to Kafka, then removes from DLQ.
             """
             try:
@@ -107,14 +107,15 @@ class DLQStore:
             msg = await self.get_by_id(id=iid)
             if not msg:
                 return False
-            
+
             from services.common.event_bus import KafkaEventBus, KafkaSettings
+
             bus = KafkaEventBus(KafkaSettings.from_env())
             try:
                 await bus.send(topic, msg.event)
             finally:
                 await bus.close()
-            
+
             await self.delete_by_id(id=iid)
             return True
 

@@ -1,4 +1,5 @@
 """Gateway authentication and authorization module."""
+
 from __future__ import annotations
 
 import jwt
@@ -16,22 +17,22 @@ _policy_client: PolicyClient | None = None
 
 class SomaBrainClient:
     """SomaBrain client for constitution operations."""
-    
+
     def __init__(self):
         self.regen_called = False
-    
+
     async def constitution_version(self):
         return {"checksum": "abc123", "version": 7}
-    
+
     async def constitution_validate(self, payload):
         return {"ok": True}
-    
+
     async def constitution_load(self, payload):
         return {"loaded": True}
-    
+
     async def update_opa_policy(self):
         self.regen_called = True
-    
+
     @classmethod
     def get(cls):
         return cls()
@@ -42,6 +43,7 @@ async def _resolve_signing_key(header: dict) -> str:
     jwks_url = cfg.settings().auth.jwt_jwks_url
     if jwks_url:
         import httpx
+
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(jwks_url)
@@ -75,7 +77,10 @@ async def _evaluate_opa(payload: dict, policy_context: dict | None) -> None:
     if client is None:
         return
     request = PolicyRequest(
-        tenant=policy_context.get("tenant") or payload.get("tenant") or payload.get("sub") or "default",
+        tenant=policy_context.get("tenant")
+        or payload.get("tenant")
+        or payload.get("sub")
+        or "default",
         persona_id=policy_context.get("persona_id") or payload.get("persona_id"),
         action=policy_context.get("action") or "gateway.request",
         resource=str(policy_context.get("resource") or "gateway"),
@@ -98,31 +103,36 @@ async def authorize_request(request, policy_context: dict = None):
         auth_required = cfg.settings().auth.auth_required
     if not auth_required:
         return {"user_id": "test_user", "tenant": "test_tenant", "scope": "read", "sub": "user-123"}
-    
+
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         if auth_required:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header required")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header required"
+            )
         return None
-    
+
     if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format")
-    
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format"
+        )
+
     token = auth_header.split(" ")[1]
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token not provided")
-    
+
     try:
         header = jwt_module.get_unverified_header(token)
         key = await _resolve_signing_key(header)
         payload = jwt_module.decode(
-            token, key=key,
+            token,
+            key=key,
             algorithms=cfg.settings().auth.jwt_algorithms,
             audience=cfg.settings().auth.jwt_audience,
             issuer=cfg.settings().auth.jwt_issuer,
-            leeway=cfg.settings().auth.jwt_leeway
+            leeway=cfg.settings().auth.jwt_leeway,
         )
-        
+
         opa_context = dict(policy_context or {})
         opa_context.setdefault("action", getattr(request, "method", "request"))
         path = getattr(getattr(request, "url", None), "path", None)
@@ -152,6 +162,10 @@ async def authorize_request(request, policy_context: dict = None):
             **payload,
         }
     except jwt_module.PyJWTError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}"
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Authentication failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Authentication failed: {str(e)}"
+        )

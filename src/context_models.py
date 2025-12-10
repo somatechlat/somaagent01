@@ -58,8 +58,8 @@ class RetrievedDoc:
     doc_id: str
     text: str
     similarity: float  # 0..1
-    salience: float    # 0..1
-    recency: float     # 0..1
+    salience: float  # 0..1
+    recency: float  # 0..1
     metadata: Dict[str, Any]
 
 

@@ -157,7 +157,7 @@ class ProtectedPostgresClient:
         import asyncpg
 
         from src.core.config import cfg
-        
+
         dsn = cfg.settings().database.dsn
         conn = await asyncpg.connect(dsn)
         try:

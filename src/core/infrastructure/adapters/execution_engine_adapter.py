@@ -19,17 +19,17 @@ from src.core.domain.ports.adapters.execution_engine import (
 
 class ExecutionEngineAdapter(ExecutionEnginePort):
     """Implements ExecutionEnginePort using existing ExecutionEngine.
-    
+
     Delegates ALL operations to services.tool_executor.execution_engine.ExecutionEngine.
     """
-    
+
     def __init__(
         self,
         engine: Optional[ExecutionEngine] = None,
         registry: Optional[ToolRegistry] = None,
     ):
         """Initialize adapter with existing engine or create new one.
-        
+
         Args:
             engine: Existing ExecutionEngine instance (preferred)
             registry: Tool registry for looking up tools
@@ -41,9 +41,9 @@ class ExecutionEngineAdapter(ExecutionEnginePort):
             sandbox = SandboxManager()
             resources = ResourceManager()
             self._engine = ExecutionEngine(sandbox, resources)
-        
+
         self._registry = registry or ToolRegistry()
-    
+
     async def execute(
         self,
         tool_name: str,
@@ -59,17 +59,17 @@ class ExecutionEngineAdapter(ExecutionEnginePort):
                 execution_time=0.0,
                 logs=[f"Tool '{tool_name}' not found in registry"],
             )
-        
+
         # Convert DTO to internal limits
         internal_limits = ExecutionLimits(
             timeout_seconds=limits.timeout_seconds,
             max_memory_mb=limits.max_memory_mb,
             max_output_bytes=limits.max_output_bytes,
         )
-        
+
         # Execute via the engine
         result = await self._engine.execute(tool_def, args, internal_limits)
-        
+
         return ExecutionResultDTO(
             status=result.status,
             payload=result.payload,

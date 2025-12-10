@@ -25,11 +25,13 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     def __init__(self, app, evaluate_url: str | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        base = (cfg.get_somabrain_url() or cfg.env("SA01_SOMA_BASE_URL") or "http://host.docker.internal:9696").rstrip("/")
+        base = (
+            cfg.get_somabrain_url()
+            or cfg.env("SA01_SOMA_BASE_URL")
+            or "http://host.docker.internal:9696"
+        ).rstrip("/")
         self.evaluate_url = (
-            evaluate_url
-            or cfg.env("POLICY_EVALUATE_URL")
-            or f"{base}/v1/policy/evaluate"
+            evaluate_url or cfg.env("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )
         # previous behaviour where the service being unavailable would not block
         # the request. This can be overridden via the ``SA01_OPA_FAIL_OPEN``

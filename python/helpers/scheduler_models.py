@@ -128,7 +128,6 @@ class TaskPlan(BaseModel):
         return None
 
 
-
 class BaseTask(BaseModel):
     uuid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     context_id: Optional[str] = Field(default=None)
@@ -221,11 +220,13 @@ class BaseTask(BaseModel):
 
     async def on_finish(self):
         from python.helpers.task_scheduler import TaskScheduler
+
         await TaskScheduler.get().update_task(self.uuid, updated_at=datetime.now(timezone.utc))
 
     async def on_error(self, error: str):
         from python.helpers.print_style import PrintStyle
         from python.helpers.task_scheduler import TaskScheduler
+
         scheduler = TaskScheduler.get()
         await scheduler.reload()
         updated_task = await scheduler.update_task(
@@ -243,6 +244,7 @@ class BaseTask(BaseModel):
     async def on_success(self, result: str):
         from python.helpers.print_style import PrintStyle
         from python.helpers.task_scheduler import TaskScheduler
+
         scheduler = TaskScheduler.get()
         await scheduler.reload()
         updated_task = await scheduler.update_task(
@@ -308,7 +310,6 @@ class AdHocTask(BaseTask):
             token=token,
             **kwargs,
         )
-
 
 
 class ScheduledTask(BaseTask):
@@ -452,6 +453,7 @@ class PlannedTask(BaseTask):
 
     async def on_finish(self):
         from python.helpers.task_scheduler import TaskScheduler
+
         plan_updated = False
         with self._lock:
             if self.plan.in_progress is not None:

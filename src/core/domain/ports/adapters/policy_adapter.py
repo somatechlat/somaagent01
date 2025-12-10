@@ -16,9 +16,10 @@ from typing import Any, Dict, Optional
 @dataclass
 class PolicyRequestDTO:
     """Data transfer object for policy requests.
-    
+
     Mirrors services.common.policy_client.PolicyRequest structure.
     """
+
     tenant: str
     persona_id: Optional[str]
     action: str
@@ -28,15 +29,15 @@ class PolicyRequestDTO:
 
 class PolicyAdapterPort(ABC):
     """Abstract interface for policy evaluation.
-    
+
     This port wraps the existing PolicyClient implementation.
     All methods match the production implementation signature exactly.
     """
-    
+
     @abstractmethod
     async def evaluate(self, request: PolicyRequestDTO) -> bool:
         """Evaluate a policy request.
-        
+
         Args:
             request: Policy request containing:
                 - tenant: Tenant identifier
@@ -44,12 +45,12 @@ class PolicyAdapterPort(ABC):
                 - action: Action being performed
                 - resource: Resource being accessed
                 - context: Additional context
-                
+
         Returns:
             True if allowed, False if denied
         """
         ...
-    
+
     @abstractmethod
     async def close(self) -> None:
         """Close the policy client and release resources."""

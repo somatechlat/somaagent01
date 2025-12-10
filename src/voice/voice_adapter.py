@@ -40,7 +40,9 @@ class VoiceAdapter:
         self._client = client
         self._speaker = speaker
 
-    async def _audio_responses(self, audio_stream: AsyncGenerator[bytes, None]) -> AsyncGenerator[bytes, None]:
+    async def _audio_responses(
+        self, audio_stream: AsyncGenerator[bytes, None]
+    ) -> AsyncGenerator[bytes, None]:
         """Transform provider responses into a pure audio byte stream.
 
         The concrete client returns dictionaries with a ``type`` field.

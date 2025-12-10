@@ -119,6 +119,3 @@ async def put_setting_field(key: str, body: dict):
     await store.ensure_schema()
     await store.set_field(key, body.get("value"))
     return {"status": "ok"}
-
-
-
