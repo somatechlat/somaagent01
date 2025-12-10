@@ -20,6 +20,7 @@ from python.integrations.somabrain_client import SomaBrainClient, SomaClientErro
 try:
     from langchain_core.documents import Document
 except Exception:
+
     class Document:
         def __init__(self, page_content: str = "", metadata: dict | None = None):
             self.page_content = page_content
@@ -50,7 +51,9 @@ class SomaMemory:
     async def refresh(self) -> None:
         await self._docstore.refresh()
 
-    async def preload_knowledge(self, log_item: Any, knowledge_dirs: list[str], memory_subdir: str) -> None:
+    async def preload_knowledge(
+        self, log_item: Any, knowledge_dirs: list[str], memory_subdir: str
+    ) -> None:
         # SomaBrain handles knowledge centrally; nothing to preload locally.
         return None
 
@@ -70,10 +73,14 @@ class SomaMemory:
     async def update_documents(self, docs: list[Document]) -> List[str]:
         return await self._docstore.update_documents(docs)
 
-    async def search_similarity_threshold(self, query: str, limit: int, threshold: float, filter: str = "") -> List[Document]:
+    async def search_similarity_threshold(
+        self, query: str, limit: int, threshold: float, filter: str = ""
+    ) -> List[Document]:
         return await self._docstore.search_similarity_threshold(query, limit, threshold, filter)
 
-    async def delete_documents_by_query(self, query: str, threshold: float, filter: str = "") -> List[Document]:
+    async def delete_documents_by_query(
+        self, query: str, threshold: float, filter: str = ""
+    ) -> List[Document]:
         return await self._docstore.delete_documents_by_query(query, threshold, filter)
 
     async def delete_documents_by_ids(self, ids: list[str]) -> List[Document]:
@@ -127,7 +134,9 @@ class _SomaDocStore:
         self._client = memory._client
         self._cache: Dict[str, Document] = {}
         self._cache_valid = False
-        self._locks: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
+        self._locks: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
+            WeakKeyDictionary()
+        )
         # Import env flags - these are set by the memory module
         self._soma_cache_include_wm = False
         self._soma_cache_wm_limit = 128
@@ -199,14 +208,17 @@ class _SomaDocStore:
             metadata = dict(doc.metadata)
             doc_id = metadata.get("id") or guids.generate_id(10)
             metadata["id"] = doc_id
-            coord = metadata.get("coord") or metadata.get("soma_coord") or self._generate_coord(doc_id)
+            coord = (
+                metadata.get("coord") or metadata.get("soma_coord") or self._generate_coord(doc_id)
+            )
             metadata["coord"] = coord
             metadata["soma_coord"] = coord
             payload = self._build_payload(metadata, doc.page_content)
             try:
                 coord_str = self._format_coord(coord)
                 result = await self._client.remember(
-                    payload, coord=coord_str,
+                    payload,
+                    coord=coord_str,
                     universe=self.memory.memory_subdir,
                     namespace=self.memory.memory_subdir,
                 )
@@ -255,10 +267,13 @@ class _SomaDocStore:
             self._cache.pop(doc_id, None)
         return removed
 
-    async def search_similarity_threshold(self, query: str, limit: int, threshold: float, filter: str) -> List[Document]:
+    async def search_similarity_threshold(
+        self, query: str, limit: int, threshold: float, filter: str
+    ) -> List[Document]:
         try:
             response = await self._client.recall(
-                query, top_k=limit or 3,
+                query,
+                top_k=limit or 3,
                 universe=self.memory.memory_subdir,
                 namespace=self.memory.memory_subdir,
             )
@@ -283,6 +298,7 @@ class _SomaDocStore:
         if filter:
             try:
                 from python.helpers.memory import Memory
+
                 comparator = Memory._get_comparator(filter)
             except Exception:
                 pass
@@ -300,7 +316,9 @@ class _SomaDocStore:
             docs.append(doc)
         return docs
 
-    async def delete_documents_by_query(self, query: str, threshold: float, filter: str) -> List[Document]:
+    async def delete_documents_by_query(
+        self, query: str, threshold: float, filter: str
+    ) -> List[Document]:
         matches = await self.search_similarity_threshold(query, 100, threshold, filter)
         ids = [doc.metadata.get("id") for doc in matches if doc.metadata.get("id")]
         ids = [str(i) for i in ids if i]

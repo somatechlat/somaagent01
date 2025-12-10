@@ -93,12 +93,14 @@ class ResultPublisher:
                     tool_text = str(payload)
 
             ui_meta = dict(result_event.get("metadata") or {})
-            ui_meta.update({
-                "status": status,
-                "source": "tool_executor",
-                "tool_name": result_event.get("tool_name"),
-                "execution_time": execution_time,
-            })
+            ui_meta.update(
+                {
+                    "status": status,
+                    "source": "tool_executor",
+                    "tool_name": result_event.get("tool_name"),
+                    "execution_time": execution_time,
+                }
+            )
             outbound_event = {
                 "event_id": str(uuid.uuid4()),
                 "session_id": result_event.get("session_id"),
@@ -156,7 +158,6 @@ class ResultPublisher:
         result_tenant = (result_event.get("metadata") or {}).get("tenant", "default")
         if result_status == "success":
             await self._capture_memory(result_event, result_payload, result_tenant)
-
 
     async def _capture_memory(
         self,
@@ -234,7 +235,8 @@ class ResultPublisher:
                         "tenant": tenant,
                         "payload": memory_payload,
                         "result": {
-                            "coord": (result or {}).get("coordinate") or (result or {}).get("coord"),
+                            "coord": (result or {}).get("coordinate")
+                            or (result or {}).get("coord"),
                             "trace_id": (result or {}).get("trace_id"),
                             "request_id": (result or {}).get("request_id"),
                         },

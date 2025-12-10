@@ -1,4 +1,5 @@
 """LLM metrics and usage tracking for conversation worker."""
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -13,27 +14,27 @@ from observability.metrics import (
 
 def normalize_usage(raw: Dict[str, Any] | None) -> dict[str, int]:
     """Coerce provider usage payloads into {input_tokens, output_tokens} ints.
-    
+
     Args:
         raw: Raw usage data from LLM provider
-        
+
     Returns:
         Normalized usage dict with input_tokens and output_tokens
     """
     payload: Dict[str, Any] = raw or {}
     prompt = payload.get("input_tokens", payload.get("prompt_tokens", 0))
     completion = payload.get("output_tokens", payload.get("completion_tokens", 0))
-    
+
     try:
         prompt_val = int(prompt) if prompt is not None else 0
     except Exception:
         prompt_val = 0
-    
+
     try:
         completion_val = int(completion) if completion is not None else 0
     except Exception:
         completion_val = 0
-    
+
     return {"input_tokens": max(prompt_val, 0), "output_tokens": max(completion_val, 0)}
 
 
@@ -41,7 +42,7 @@ def record_llm_success(
     model: str | None, input_tokens: int, output_tokens: int, elapsed: float
 ) -> None:
     """Record successful LLM call metrics.
-    
+
     Args:
         model: Model name
         input_tokens: Number of input tokens
@@ -59,7 +60,7 @@ def record_llm_success(
 
 def record_llm_failure(model: str | None) -> None:
     """Record failed LLM call metrics.
-    
+
     Args:
         model: Model name
     """
@@ -77,7 +78,7 @@ def compose_outbound_metadata(
     usage: Dict[str, int] | None = None,
 ) -> Dict[str, Any]:
     """Compose metadata for outbound messages.
-    
+
     Args:
         base: Base metadata dict
         source: Source identifier
@@ -85,13 +86,13 @@ def compose_outbound_metadata(
         error: Optional error message
         model: Optional model name
         usage: Optional usage stats
-        
+
     Returns:
         Composed metadata dict
     """
     metadata = dict(base or {})
     metadata["source"] = source
-    
+
     if status:
         metadata["status"] = status
     if error:
@@ -100,5 +101,5 @@ def compose_outbound_metadata(
         metadata["model"] = model
     if usage:
         metadata["usage"] = usage
-    
+
     return metadata

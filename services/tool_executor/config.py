@@ -54,8 +54,6 @@ def get_stream_config() -> dict[str, str]:
         "requests": cfg.env(
             "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
         ),
-        "results": cfg.env(
-            "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
-        ),
+        "results": cfg.env("TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")),
         "group": cfg.env("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
     }

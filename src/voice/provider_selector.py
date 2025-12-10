@@ -20,8 +20,9 @@ from .exceptions import ProviderNotSupportedError
 class _BaseClient(Protocol):
     """Common protocol shared by all provider clients."""
 
-    async def process(self, audio_stream: "AsyncGenerator[bytes, None]") -> "AsyncGenerator[object, None]":
-        ...
+    async def process(
+        self, audio_stream: "AsyncGenerator[bytes, None]"
+    ) -> "AsyncGenerator[object, None]": ...
 
 
 def get_provider_client(config: Config) -> _BaseClient:

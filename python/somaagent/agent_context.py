@@ -1,4 +1,5 @@
 """Agent context management and configuration."""
+
 from __future__ import annotations
 
 import random
@@ -26,6 +27,7 @@ class AgentContextType(Enum):
 @dataclass
 class AgentConfig:
     """Configuration for an agent instance."""
+
     chat_model: models.ModelConfig
     utility_model: models.ModelConfig
     embeddings_model: models.ModelConfig
@@ -46,6 +48,7 @@ class AgentConfig:
 @dataclass
 class UserMessage:
     """User message with optional attachments."""
+
     message: str
     attachments: list[str] = field(default_factory=list)
     system_message: list[str] = field(default_factory=list)
@@ -86,7 +89,7 @@ class AgentContext:
 
         # Deferred agent creation to avoid circular import
         self._agent0 = agent0
-        
+
         existing = self._contexts.get(self.id, None)
         if existing:
             AgentContext.remove(self.id)
@@ -96,6 +99,7 @@ class AgentContext:
     def agent0(self) -> "Agent":
         if self._agent0 is None:
             from agent import Agent
+
             self._agent0 = Agent(0, self.config, self)
         return self._agent0
 
@@ -121,6 +125,7 @@ class AgentContext:
     def generate_id() -> str:
         def generate_short_id():
             return "".join(random.choices(string.ascii_letters + string.digits, k=8))
+
         while True:
             short_id = generate_short_id()
             if short_id not in AgentContext._contexts:
@@ -130,6 +135,7 @@ class AgentContext:
     def get_notification_manager(cls):
         if cls._notification_manager is None:
             from python.helpers.notification import NotificationManager
+
             cls._notification_manager = NotificationManager()
         return cls._notification_manager
 
@@ -144,23 +150,40 @@ class AgentContext:
         return {
             "id": self.id,
             "name": self.name,
-            "created_at": Localization.get().serialize_datetime(self.created_at) if self.created_at else Localization.get().serialize_datetime(datetime.fromtimestamp(0)),
+            "created_at": (
+                Localization.get().serialize_datetime(self.created_at)
+                if self.created_at
+                else Localization.get().serialize_datetime(datetime.fromtimestamp(0))
+            ),
             "no": self.no,
             "log_guid": self.log.guid,
             "log_version": len(self.log.updates),
             "log_length": len(self.log.logs),
             "paused": self.paused,
-            "last_message": Localization.get().serialize_datetime(self.last_message) if self.last_message else Localization.get().serialize_datetime(datetime.fromtimestamp(0)),
+            "last_message": (
+                Localization.get().serialize_datetime(self.last_message)
+                if self.last_message
+                else Localization.get().serialize_datetime(datetime.fromtimestamp(0))
+            ),
             "type": self.type.value,
         }
 
     @staticmethod
-    def log_to_all(type: Log.Type, heading: str | None = None, content: str | None = None,
-                   kvps: dict | None = None, temp: bool | None = None,
-                   update_progress: Log.ProgressUpdate | None = None, id: str | None = None, **kwargs) -> list[Log.LogItem]:
+    def log_to_all(
+        type: Log.Type,
+        heading: str | None = None,
+        content: str | None = None,
+        kvps: dict | None = None,
+        temp: bool | None = None,
+        update_progress: Log.ProgressUpdate | None = None,
+        id: str | None = None,
+        **kwargs,
+    ) -> list[Log.LogItem]:
         items: list[Log.LogItem] = []
         for context in AgentContext.all():
-            items.append(context.log.log(type, heading, content, kvps, temp, update_progress, id, **kwargs))
+            items.append(
+                context.log.log(type, heading, content, kvps, temp, update_progress, id, **kwargs)
+            )
         return items
 
     def kill_process(self):
@@ -171,6 +194,7 @@ class AgentContext:
         self.kill_process()
         self.log.reset()
         from agent import Agent
+
         self._agent0 = Agent(0, self.config, self)
         self.streaming_agent = None
         self.paused = False
@@ -186,6 +210,7 @@ class AgentContext:
 
     def communicate(self, msg: UserMessage, broadcast_level: int = 1):
         from agent import Agent
+
         self.paused = False
         current_agent = self.get_agent()
         if self.task and self.task.is_alive():
@@ -206,6 +231,7 @@ class AgentContext:
 
     async def _process_chain(self, agent: "Agent", msg: "UserMessage | str", user: bool = True):
         from agent import Agent
+
         try:
             if user:
                 await agent.hist_add_user_message(msg)

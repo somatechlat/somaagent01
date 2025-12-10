@@ -41,6 +41,7 @@ def get_trace_id() -> str | None:
     """Extract current OpenTelemetry trace ID if available."""
     try:
         from opentelemetry import trace as _trace
+
         ctx = _trace.get_current_span().get_span_context()
         return f"{ctx.trace_id:032x}" if getattr(ctx, "trace_id", 0) else None
     except Exception:

@@ -27,6 +27,7 @@ def _int_from_env(name: str, default: int) -> int:
     except (TypeError, ValueError):
         return default
 
+
 LOGGER = logging.getLogger(__name__)
 
 

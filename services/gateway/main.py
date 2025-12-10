@@ -3,6 +3,7 @@
 All HTTP/WS routes are provided by the modular routers in
 ``services.gateway.routers``. Auth and providers extracted to separate modules.
 """
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ async def _ensure_settings_schema() -> None:
     import logging
 
     from services.common.agent_settings_store import get_agent_settings_store
+
     store = get_agent_settings_store()
     try:
         await store.ensure_schema()
@@ -55,10 +57,15 @@ async def aggregated_health() -> dict:
         for name, url in services.items():
             try:
                 resp = await client.get(url, timeout=2.0)
-                results[name] = {"status": "healthy" if resp.status_code == 200 else "unhealthy", "code": resp.status_code}
+                results[name] = {
+                    "status": "healthy" if resp.status_code == 200 else "unhealthy",
+                    "code": resp.status_code,
+                }
             except Exception as exc:
                 results[name] = {"status": "unhealthy", "error": str(exc)}
-    overall = "healthy" if all(r.get("status") == "healthy" for r in results.values()) else "unhealthy"
+    overall = (
+        "healthy" if all(r.get("status") == "healthy" for r in results.values()) else "unhealthy"
+    )
     return {"overall": overall, "components": results}
 
 

@@ -129,6 +129,7 @@ class TaskScheduler:
     ) -> AnyTask | None:
         def _update_task(task):
             task.update(**update_params)
+
         return await self._tasks.update_task_by_uuid(task_uuid, _update_task, verify_func)
 
     async def update_task(self, task_uuid: str, **update_params) -> AnyTask | None:
@@ -157,7 +158,6 @@ class TaskScheduler:
         if context.id != task.context_id:
             raise ValueError(f"Context ID mismatch: {context.id} != {task.context_id}")
         await save_context(context, reason="scheduler:checkpoint")
-
 
     async def _run_task(self, task: AnyTask, task_context: str | None = None):
         async def _run_task_wrapper(task_uuid: str, task_context: str | None = None):

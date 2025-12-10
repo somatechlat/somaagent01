@@ -103,7 +103,5 @@ def chord_tasks(header: Iterable[Signature], body: Signature) -> Signature:
     """
     header_sigs = _ensure_signatures(header)
     if not isinstance(body, Signature):
-        raise TypeError(
-            "Chord body must be a Celery Signature. Use task_name.s(...) to create it."
-        )
+        raise TypeError("Chord body must be a Celery Signature. Use task_name.s(...) to create it.")
     return chord(header_sigs, body)

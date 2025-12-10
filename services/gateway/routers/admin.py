@@ -33,9 +33,9 @@ async def audit_export(
 ):
     """
     Export audit logs as newline-delimited JSON from real PostgreSQL AuditStore.
-    
+
     Requires admin authorization.
-    
+
     Args:
         request: FastAPI request for authorization
         action: Filter by specific action (e.g., "llm.invoke")
@@ -43,10 +43,10 @@ async def audit_export(
         tenant: Filter by tenant
         limit: Maximum number of records (default 1000, max 10000)
         after_id: Return records after this ID for pagination
-    
+
     Returns:
         Newline-delimited JSON response of real audit records from database
-    
+
     Raises:
         HTTPException 403: If admin authorization fails
         HTTPException 503: If AuditStore is unavailable
@@ -54,10 +54,10 @@ async def audit_export(
     # Authorize request - require admin scope
     auth = await authorize_request(request, {"action": "audit.export"})
     _require_admin_scope(auth)
-    
+
     # Get real AuditStore instance
     store = get_audit_store()
-    
+
     try:
         # Query real audit records from PostgreSQL
         records = await store.list(
@@ -69,31 +69,29 @@ async def audit_export(
         )
     except Exception as exc:
         LOGGER.error("AuditStore query failed: %s", exc)
-        raise HTTPException(
-            status_code=503,
-            detail="Audit store unavailable"
-        ) from exc
-    
+        raise HTTPException(status_code=503, detail="Audit store unavailable") from exc
+
     # Format as newline-delimited JSON from real database records
     lines = []
     for r in records:
-        lines.append(json.dumps({
-            "id": r.id,
-            "timestamp": r.ts.isoformat() if r.ts else None,
-            "action": r.action,
-            "resource": r.resource,
-            "details": r.details,
-            "user": r.subject,
-            "session_id": r.session_id,
-            "tenant": r.tenant,
-            "request_id": r.request_id,
-            "trace_id": r.trace_id,
-            "target_id": r.target_id,
-            "ip": r.ip,
-            "user_agent": r.user_agent,
-        }))
-    
-    return Response(
-        content="\n".join(lines),
-        media_type="text/plain"
-    )
+        lines.append(
+            json.dumps(
+                {
+                    "id": r.id,
+                    "timestamp": r.ts.isoformat() if r.ts else None,
+                    "action": r.action,
+                    "resource": r.resource,
+                    "details": r.details,
+                    "user": r.subject,
+                    "session_id": r.session_id,
+                    "tenant": r.tenant,
+                    "request_id": r.request_id,
+                    "trace_id": r.trace_id,
+                    "target_id": r.target_id,
+                    "ip": r.ip,
+                    "user_agent": r.user_agent,
+                }
+            )
+        )
+
+    return Response(content="\n".join(lines), media_type="text/plain")

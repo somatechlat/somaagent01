@@ -40,6 +40,7 @@ class MCPServerRemote(BaseModel):
     def __init__(self, config: dict[str, Any]):
         super().__init__()
         from python.helpers.mcp_clients import MCPClientRemote
+
         self.__client = MCPClientRemote(self)
         self.update(config)
 
@@ -66,8 +67,18 @@ class MCPServerRemote(BaseModel):
     def update(self, config: dict[str, Any]) -> "MCPServerRemote":
         with self.__lock:
             for key, value in config.items():
-                if key in ["name", "description", "type", "url", "serverUrl", "headers",
-                           "init_timeout", "tool_timeout", "disabled", "verify"]:
+                if key in [
+                    "name",
+                    "description",
+                    "type",
+                    "url",
+                    "serverUrl",
+                    "headers",
+                    "init_timeout",
+                    "tool_timeout",
+                    "disabled",
+                    "verify",
+                ]:
                     if key == "name":
                         value = normalize_name(value)
                     if key == "serverUrl":
@@ -102,6 +113,7 @@ class MCPServerLocal(BaseModel):
     def __init__(self, config: dict[str, Any]):
         super().__init__()
         from python.helpers.mcp_clients import MCPClientLocal
+
         self.__client = MCPClientLocal(self)
         self.update(config)
 
@@ -128,9 +140,19 @@ class MCPServerLocal(BaseModel):
     def update(self, config: dict[str, Any]) -> "MCPServerLocal":
         with self.__lock:
             for key, value in config.items():
-                if key in ["name", "description", "type", "command", "args", "env",
-                           "encoding", "encoding_error_handler", "init_timeout",
-                           "tool_timeout", "disabled"]:
+                if key in [
+                    "name",
+                    "description",
+                    "type",
+                    "command",
+                    "args",
+                    "env",
+                    "encoding",
+                    "encoding_error_handler",
+                    "init_timeout",
+                    "tool_timeout",
+                    "disabled",
+                ]:
                     if key == "name":
                         value = normalize_name(value)
                     setattr(self, key, value)

@@ -12,6 +12,7 @@ def _get_version() -> str:
     """Get current version from git."""
     try:
         from python.helpers import git
+
         git_info = git.get_git_info()
         return str(git_info.get("short_tag", "")).strip() or "unknown"
     except Exception:
@@ -20,12 +21,12 @@ def _get_version() -> str:
 
 def get_default_settings(auth_token_fn=None) -> Settings:
     """Return default settings configuration.
-    
+
     Args:
         auth_token_fn: Optional function to generate auth token. If None, uses empty string.
     """
     mcp_token = auth_token_fn() if auth_token_fn else ""
-    
+
     return Settings(
         version=_get_version(),
         chat_model_provider="openrouter",

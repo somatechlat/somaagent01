@@ -30,7 +30,13 @@ def _determine_server_type(config_dict: dict) -> str:
     """Determine the server type based on configuration."""
     if "type" in config_dict:
         server_type = config_dict["type"].lower()
-        if server_type in ["sse", "http-stream", "streaming-http", "streamable-http", "http-streaming"]:
+        if server_type in [
+            "sse",
+            "http-stream",
+            "streaming-http",
+            "streamable-http",
+            "http-streaming",
+        ]:
             return "MCPServerRemote"
         elif server_type == "stdio":
             return "MCPServerLocal"
@@ -46,8 +52,13 @@ def initialize_mcp(mcp_servers_config: str):
             MCPConfig.update(mcp_servers_config)
         except Exception as e:
             from agent import AgentContext
-            AgentContext.log_to_all(type="warning", content=f"Failed to update MCP settings: {e}", temp=False)
-            PrintStyle(background_color="black", font_color="red", padding=True).print(f"Failed to update MCP settings: {e}")
+
+            AgentContext.log_to_all(
+                type="warning", content=f"Failed to update MCP settings: {e}", temp=False
+            )
+            PrintStyle(background_color="black", font_color="red", padding=True).print(
+                f"Failed to update MCP settings: {e}"
+            )
 
 
 class MCPTool(Tool):
@@ -65,9 +76,9 @@ class MCPTool(Tool):
             message = f"ERROR: {str(e)}"
 
         if error:
-            PrintStyle(background_color="#CC34C3", font_color="white", bold=True, padding=True).print(
-                f"MCPTool::Failed to call mcp tool {self.name}:"
-            )
+            PrintStyle(
+                background_color="#CC34C3", font_color="white", bold=True, padding=True
+            ).print(f"MCPTool::Failed to call mcp tool {self.name}:")
             PrintStyle(background_color="#AA4455", font_color="white", padding=False).print(error)
             self.agent.context.log.log(type="warning", content=f"{self.name}: {error}")
 
@@ -80,20 +91,26 @@ class MCPTool(Tool):
         self.log = self.get_log_object()
         for key, value in self.args.items():
             PrintStyle(font_color="#85C1E9", bold=True).stream(self.nice_key(key) + ": ")
-            PrintStyle(font_color="#85C1E9", padding=isinstance(value, str) and "\n" in value).stream(value)
+            PrintStyle(
+                font_color="#85C1E9", padding=isinstance(value, str) and "\n" in value
+            ).stream(value)
             PrintStyle().print()
 
     async def after_execution(self, response: Response, **kwargs: Any):
         raw_tool_response = response.message.strip() if response.message else ""
         if not raw_tool_response:
-            PrintStyle(font_color="red").print(f"Warning: Tool '{self.name}' returned an empty message.")
+            PrintStyle(font_color="red").print(
+                f"Warning: Tool '{self.name}' returned an empty message."
+            )
             raw_tool_response = "[Tool returned no textual content]"
 
         self.agent.hist_add_tool_result(self.name, raw_tool_response)
         PrintStyle(font_color="#1B4F72", background_color="white", padding=True, bold=True).print(
             f"{self.agent.agent_name}: Response from tool '{self.name}'"
         )
-        PrintStyle(font_color="#85C1E9").print(raw_tool_response or "[No direct textual output from tool]")
+        PrintStyle(font_color="#85C1E9").print(
+            raw_tool_response or "[No direct textual output from tool]"
+        )
         if self.log:
             self.log.update(content=raw_tool_response)
 
@@ -105,7 +122,6 @@ MCPServer = Annotated[
     ],
     Discriminator(_determine_server_type),
 ]
-
 
 
 class MCPConfig(BaseModel):
@@ -178,25 +194,35 @@ class MCPConfig(BaseModel):
 
         for server_item in servers_list:
             if not isinstance(server_item, Mapping):
-                self.disconnected_servers.append({
-                    "config": server_item if isinstance(server_item, dict) else {"raw": str(server_item)},
-                    "error": "server_item must be a mapping",
-                    "name": "invalid_server_config",
-                })
+                self.disconnected_servers.append(
+                    {
+                        "config": (
+                            server_item
+                            if isinstance(server_item, dict)
+                            else {"raw": str(server_item)}
+                        ),
+                        "error": "server_item must be a mapping",
+                        "name": "invalid_server_config",
+                    }
+                )
                 continue
 
             if server_item.get("disabled", False):
                 server_name = normalize_name(server_item.get("name", "unnamed_server"))
-                self.disconnected_servers.append({
-                    "config": server_item, "error": "Disabled in config", "name": server_name
-                })
+                self.disconnected_servers.append(
+                    {"config": server_item, "error": "Disabled in config", "name": server_name}
+                )
                 continue
 
             server_name = server_item.get("name", "__not__found__")
             if server_name == "__not__found__":
-                self.disconnected_servers.append({
-                    "config": server_item, "error": "server_name is required", "name": "unnamed_server"
-                })
+                self.disconnected_servers.append(
+                    {
+                        "config": server_item,
+                        "error": "server_name is required",
+                        "name": "unnamed_server",
+                    }
+                )
                 continue
 
             try:
@@ -205,9 +231,9 @@ class MCPConfig(BaseModel):
                 else:
                     self.servers.append(MCPServerLocal(server_item))
             except Exception as e:
-                self.disconnected_servers.append({
-                    "config": server_item, "error": str(e), "name": server_name
-                })
+                self.disconnected_servers.append(
+                    {"config": server_item, "error": str(e), "name": server_name}
+                )
 
     def get_server_log(self, server_name: str) -> str:
         with self.__lock:
@@ -220,21 +246,25 @@ class MCPConfig(BaseModel):
         result = []
         with self.__lock:
             for server in self.servers:
-                result.append({
-                    "name": server.name,
-                    "connected": True,
-                    "error": server.get_error(),
-                    "tool_count": len(server.get_tools()),
-                    "has_log": server.get_log() != "",
-                })
+                result.append(
+                    {
+                        "name": server.name,
+                        "connected": True,
+                        "error": server.get_error(),
+                        "tool_count": len(server.get_tools()),
+                        "has_log": server.get_log() != "",
+                    }
+                )
             for disconnected in self.disconnected_servers:
-                result.append({
-                    "name": disconnected["name"],
-                    "connected": False,
-                    "error": disconnected["error"],
-                    "tool_count": 0,
-                    "has_log": False,
-                })
+                result.append(
+                    {
+                        "name": disconnected["name"],
+                        "connected": False,
+                        "error": disconnected["error"],
+                        "tool_count": 0,
+                        "has_log": False,
+                    }
+                )
         return result
 
     def get_server_detail(self, server_name: str) -> dict[str, Any]:
@@ -300,7 +330,9 @@ class MCPConfig(BaseModel):
     def get_tool(self, agent: Any, tool_name: str) -> MCPTool | None:
         if not self.has_tool(tool_name):
             return None
-        return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None)
+        return MCPTool(
+            agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None
+        )
 
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         if "." not in tool_name:

@@ -1,4 +1,5 @@
 """SomaBrain integration for agent memory and cognitive operations."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -73,7 +74,7 @@ async def recall_memories(
 
 async def get_adaptation_state(agent: "Agent") -> Optional[Dict[str, Any]]:
     """Get current adaptation state from SomaBrain.
-    
+
     Uses GET /context/adaptation/state endpoint which returns retrieval weights,
     utility weights, history length, and learning rate.
     """
@@ -117,7 +118,9 @@ async def update_neuromodulators(
         new_levels = {
             "dopamine": max(0.0, min(1.0, current.get("dopamine", 0.4) + dopamine_delta)),
             "serotonin": max(0.0, min(1.0, current.get("serotonin", 0.5) + serotonin_delta)),
-            "noradrenaline": max(0.0, min(1.0, current.get("noradrenaline", 0.0) + noradrenaline_delta)),
+            "noradrenaline": max(
+                0.0, min(1.0, current.get("noradrenaline", 0.0) + noradrenaline_delta)
+            ),
         }
         result = await agent.soma_client.update_neuromodulators(
             tenant_id=agent.tenant_id,
@@ -128,13 +131,15 @@ async def update_neuromodulators(
             agent.data["neuromodulators"] = new_levels
             return True
     except SomaClientError as e:
-        PrintStyle(font_color="orange", padding=False).print(f"Failed to update neuromodulators: {e}")
+        PrintStyle(font_color="orange", padding=False).print(
+            f"Failed to update neuromodulators: {e}"
+        )
     return False
 
 
 async def initialize_persona(agent: "Agent") -> bool:
     """Initialize persona in SomaBrain if not exists.
-    
+
     Checks if persona exists via get_persona, creates via put_persona if not.
     """
     try:
@@ -145,7 +150,7 @@ async def initialize_persona(agent: "Agent") -> bool:
                 return True
         except SomaClientError:
             pass  # Persona doesn't exist, create it
-        
+
         # Create new persona
         persona_data = {
             "id": agent.persona_id,

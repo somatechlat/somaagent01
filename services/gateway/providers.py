@@ -1,4 +1,5 @@
 """Gateway dependency providers for FastAPI injection."""
+
 from __future__ import annotations
 
 import asyncio as _asyncio
@@ -38,8 +39,10 @@ def get_publisher() -> DurablePublisher:
     bus = get_bus()
     outbox = OutboxStore(dsn=cfg.settings().database.dsn)
     try:
+
         async def _ensure():
             await ensure_outbox_schema(outbox)
+
         loop = _asyncio.get_event_loop()
         if loop.is_running():
             loop.create_task(_ensure())
@@ -58,16 +61,19 @@ def get_session_cache() -> RedisSessionCache:
 def get_llm_credentials_store():
     """Get the LLM credentials store instance."""
     from services.common.secret_manager import SecretManager
+
     return SecretManager()
 
 
 def get_api_key_store() -> ApiKeyStore:
     """Return the API key store singleton."""
     from integrations.repositories import get_api_key_store as _repo_get
+
     return _repo_get()
 
 
 def get_slm_client():
     """Get the SLM client instance for the gateway."""
     from services.common.slm_client import SLMClient
+
     return SLMClient()

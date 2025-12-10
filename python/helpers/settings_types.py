@@ -9,12 +9,14 @@ from typing import Any, Literal, TypedDict
 
 class FieldOption(TypedDict):
     """Option for select/dropdown fields."""
+
     value: str
     label: str
 
 
 class SettingsField(TypedDict, total=False):
     """Definition of a single settings field for UI rendering."""
+
     id: str
     title: str
     description: str
@@ -40,6 +42,7 @@ class SettingsField(TypedDict, total=False):
 
 class SettingsSection(TypedDict, total=False):
     """Definition of a settings section containing multiple fields."""
+
     id: str
     title: str
     description: str
@@ -49,6 +52,7 @@ class SettingsSection(TypedDict, total=False):
 
 class SettingsOutput(TypedDict):
     """Output structure for settings UI."""
+
     sections: list[SettingsSection]
 
 

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class ProcessMessageInput:
     """Input for ProcessMessage use case."""
+
     session_id: str
     message: str
     persona_id: Optional[str]
@@ -21,6 +22,7 @@ class ProcessMessageInput:
 @dataclass
 class ProcessMessageOutput:
     """Output from ProcessMessage use case."""
+
     response: str
     session_id: str
     tool_calls: List[Dict[str, Any]]
@@ -30,6 +32,7 @@ class ProcessMessageOutput:
 @dataclass
 class ExecuteToolInput:
     """Input for ExecuteTool use case."""
+
     tool_name: str
     args: Dict[str, Any]
     session_id: str
@@ -40,6 +43,7 @@ class ExecuteToolInput:
 @dataclass
 class ExecuteToolOutput:
     """Output from ExecuteTool use case."""
+
     status: str
     result: Dict[str, Any]
     execution_time: float
@@ -49,6 +53,7 @@ class ExecuteToolOutput:
 @dataclass
 class StoreMemoryInput:
     """Input for StoreMemory use case."""
+
     session_id: str
     content: str
     memory_type: str  # "short_term" or "long_term"
@@ -58,6 +63,7 @@ class StoreMemoryInput:
 @dataclass
 class StoreMemoryOutput:
     """Output from StoreMemory use case."""
+
     memory_id: str
     stored: bool
     metadata: Dict[str, Any]
