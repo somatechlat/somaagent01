@@ -1,20 +1,24 @@
-"""Port discovery service for automatic port assignment."""
+"""Port discovery service for automatic port assignment.
+
+VIBE COMPLIANT: No file-based storage. All assignments are in-memory only.
+For persistent port assignments, use environment variables or config.
+"""
 
 import logging
 import socket
-from pathlib import Path
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class PortDiscovery:
+    """In-memory port discovery - no file storage per VIBE rules."""
+
     PORT_RANGE_START = 68000
     PORT_RANGE_END = 69000
 
     def __init__(self):
-        self.port_file = Path(".port_assignments.txt")
-        self._load_assignments()
+        self.assignments: Dict[str, int] = {}
 
     def is_port_available(self, port: int) -> bool:
         """Check if a port is available."""
@@ -34,14 +38,6 @@ class PortDiscovery:
             current_port += 1
         return None
 
-    def _load_assignments(self):
-        """Load port assignments (disabled: no file I/O)."""
-        self.assignments = {}
-
-    def _save_assignments(self):
-        """Persisting assignments is disabled (no file saving)."""
-        return
-
     def get_service_port(self, service_name: str, preferred_port: int) -> int:
         """Get port for a service, assign if not exists."""
         # Try to get existing port assignment
@@ -57,9 +53,8 @@ class PortDiscovery:
             if not assigned_port:
                 raise RuntimeError(f"No available ports found for {service_name}")
 
-        # Store the assignment
+        # Store the assignment in memory
         self.assignments[service_name] = assigned_port
-        self._save_assignments()
         return assigned_port
 
     def get_all_service_ports(self) -> Dict[str, int]:
@@ -67,10 +62,8 @@ class PortDiscovery:
         return self.assignments.copy()
 
     def clear_port_assignments(self):
-        """Clear all port assignments."""
+        """Clear all port assignments from memory."""
         self.assignments.clear()
-        if self.port_file.exists():
-            self.port_file.unlink()
 
 
 # Service name to default port mapping

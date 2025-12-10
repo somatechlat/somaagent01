@@ -25,11 +25,13 @@ class EnforcePolicy(BaseHTTPMiddleware):
 
     def __init__(self, app, evaluate_url: str | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        base = (
-            cfg.get_somabrain_url()
-            or cfg.env("SA01_SOMA_BASE_URL")
-            or "http://host.docker.internal:9696"
-        ).rstrip("/")
+        base = cfg.get_somabrain_url() or cfg.env("SA01_SOMA_BASE_URL")
+        if not base:
+            raise ValueError(
+                "SA01_SOMA_BASE_URL is required for OPA middleware. "
+                "No hardcoded fallbacks per VIBE rules."
+            )
+        base = base.rstrip("/")
         self.evaluate_url = (
             evaluate_url or cfg.env("POLICY_EVALUATE_URL") or f"{base}/v1/policy/evaluate"
         )
