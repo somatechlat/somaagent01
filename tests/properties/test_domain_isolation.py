@@ -56,66 +56,65 @@ def _get_imports(filepath: pathlib.Path) -> Set[str]:
 
 def test_domain_has_no_infrastructure_imports():
     """Verify domain layer has no direct infrastructure imports.
-    
+
     Property 7: No Direct Infrastructure Imports in Domain
     Validates: Requirements 11.4, 12.4
     """
     repo = pathlib.Path(__file__).resolve().parents[2]
     domain_path = repo / "src" / "core" / "domain"
-    
+
     if not domain_path.exists():
         return
-    
+
     violations: list[str] = []
-    
+
     for filepath in domain_path.rglob("*.py"):
         if filepath.name == "__init__.py":
             continue
-            
+
         rel_path = filepath.relative_to(repo).as_posix()
-        
+
         # Skip known violations (tracked architectural debt)
         if rel_path in KNOWN_DOMAIN_VIOLATIONS:
             continue
-            
+
         imports = _get_imports(filepath)
-        
+
         for imp in imports:
             for forbidden in FORBIDDEN_IMPORTS:
                 if imp == forbidden or imp.startswith(f"{forbidden}."):
                     violations.append(f"{rel_path}: imports '{imp}'")
-    
-    assert not violations, (
-        "Domain layer has forbidden infrastructure imports:\n"
-        + "\n".join(sorted(set(violations)))
+
+    assert not violations, "Domain layer has forbidden infrastructure imports:\n" + "\n".join(
+        sorted(set(violations))
     )
 
 
 def test_domain_ports_are_abstract():
     """Verify all port interfaces are abstract base classes.
-    
+
     Property 7 corollary: Ports must be abstract interfaces.
     """
     repo = pathlib.Path(__file__).resolve().parents[2]
     ports_path = repo / "src" / "core" / "domain" / "ports"
-    
+
     if not ports_path.exists():
         return
-    
+
     violations: list[str] = []
-    
+
     for filepath in ports_path.rglob("*.py"):
         if filepath.name == "__init__.py":
             continue
-            
+
         rel_path = filepath.relative_to(repo).as_posix()
-        
+
         try:
             content = filepath.read_text(encoding="utf-8", errors="ignore")
             tree = ast.parse(content)
         except (SyntaxError, UnicodeDecodeError):
             continue
-        
+
         # Find classes that end with "Port" and verify they inherit from ABC
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name.endswith("Port"):
@@ -126,8 +125,7 @@ def test_domain_ports_are_abstract():
                         break
                 if not has_abc:
                     violations.append(f"{rel_path}: {node.name} does not inherit from ABC")
-    
-    assert not violations, (
-        "Port interfaces must inherit from ABC:\n"
-        + "\n".join(sorted(set(violations)))
+
+    assert not violations, "Port interfaces must inherit from ABC:\n" + "\n".join(
+        sorted(set(violations))
     )

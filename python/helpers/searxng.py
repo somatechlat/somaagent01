@@ -1,12 +1,11 @@
-import os
-
 import aiohttp
 
 from python.helpers import runtime
+from src.core.config import cfg
 
 
 def _get_searxng_url() -> str:
-    url = os.getenv("SEARXNG_URL")
+    url = cfg.env("SEARXNG_URL")
     if not url:
         raise RuntimeError(
             "SEARXNG_URL environment variable is required. "

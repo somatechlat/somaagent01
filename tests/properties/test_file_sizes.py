@@ -95,28 +95,28 @@ def _get_max_lines(filepath: pathlib.Path, rel_path: str) -> int:
 
 def test_no_new_file_size_violations():
     """Verify no new files exceed size limits.
-    
+
     Property 1: File Size Limits
     Validates: Requirements 1.7, 2.6, 3.6, 14.1, 14.2
-    
+
     Known violations are tracked in KNOWN_VIOLATIONS.
     This test fails if:
     1. A new file exceeds limits
     2. A known violation gets worse (more lines)
     """
     repo = pathlib.Path(__file__).resolve().parents[2]
-    
+
     new_violations: List[Tuple[str, int, int]] = []
     worse_violations: List[Tuple[str, int, int, int]] = []
-    
+
     for filepath in repo.rglob("*.py"):
         if _should_skip(filepath):
             continue
-            
+
         rel_path = filepath.relative_to(repo).as_posix()
         line_count = _count_lines(filepath)
         max_lines = _get_max_lines(filepath, rel_path)
-        
+
         if line_count > max_lines:
             if rel_path in KNOWN_VIOLATIONS:
                 # Check if it got worse
@@ -125,40 +125,40 @@ def test_no_new_file_size_violations():
                     worse_violations.append((rel_path, known_count, line_count, max_lines))
             else:
                 new_violations.append((rel_path, line_count, max_lines))
-    
+
     errors = []
-    
+
     if new_violations:
         errors.append("New file size violations:")
         for path, count, max_l in sorted(new_violations):
             errors.append(f"  {path}: {count} lines (max {max_l})")
-    
+
     if worse_violations:
         errors.append("Known violations got worse:")
         for path, old, new, max_l in sorted(worse_violations):
             errors.append(f"  {path}: {old} -> {new} lines (max {max_l})")
-    
+
     assert not errors, "\n".join(errors)
 
 
 def test_file_size_improvement_tracking():
     """Track progress on reducing known violations.
-    
+
     This test reports improvements but does not fail.
     """
     repo = pathlib.Path(__file__).resolve().parents[2]
-    
+
     improvements: List[Tuple[str, int, int]] = []
-    
+
     for rel_path, known_count in KNOWN_VIOLATIONS.items():
         filepath = repo / rel_path
         if not filepath.exists():
             continue
-            
+
         current_count = _count_lines(filepath)
         if current_count < known_count - 50:  # Significant improvement
             improvements.append((rel_path, known_count, current_count))
-    
+
     # This is informational - update KNOWN_VIOLATIONS when files are decomposed
     if improvements:
         print("\nFile size improvements detected:")
