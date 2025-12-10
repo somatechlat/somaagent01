@@ -4,6 +4,7 @@ Real resilience for external service dependencies with no mocks.
 """
 
 import asyncio
+import logging
 import time
 from datetime import datetime
 from functools import wraps
@@ -12,6 +13,8 @@ from typing import Any, Callable, Dict
 import pybreaker
 
 from observability.metrics import metrics_collector
+
+logger = logging.getLogger(__name__)
 
 
 class CircuitBreakerConfig:
@@ -40,15 +43,15 @@ class ResilientService:
     def _on_breaker_open(self):
         """Handle circuit breaker opening."""
         metrics_collector.track_error("circuit_breaker_open", self.name)
-        print(f"⚠️ Circuit breaker OPEN for {self.name}")
+        logger.warning("Circuit breaker OPEN for %s", self.name)
 
     def _on_breaker_close(self):
         """Handle circuit breaker closing."""
-        print(f"✅ Circuit breaker CLOSED for {self.name}")
+        logger.info("Circuit breaker CLOSED for %s", self.name)
 
     def _on_breaker_half_open(self):
         """Handle circuit breaker half-open."""
-        print(f"🔄 Circuit breaker HALF-OPEN for {self.name}")
+        logger.info("Circuit breaker HALF-OPEN for %s", self.name)
 
     def call(self, func: Callable, *args, **kwargs) -> Any:
         """Call function with circuit breaker protection."""

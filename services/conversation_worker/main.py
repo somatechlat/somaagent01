@@ -108,13 +108,18 @@ class ConversationWorkerImpl:
             health_provider=lambda: SomabrainHealthState.NORMAL,
             on_degraded=lambda d: None,
         )
-        # Use Cases
+        # Use Cases - all config from env, no hardcoded fallbacks per VIBE rules
+        gateway_base = cfg.env("SA01_WORKER_GATEWAY_BASE")
+        if not gateway_base:
+            raise ValueError(
+                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded fallbacks per VIBE rules."
+            )
         self._gen = GenerateResponseUseCase(
-            gateway_base=cfg.env("WORKER_GATEWAY_BASE", "http://gateway:8010"),
-            internal_token=cfg.env("GATEWAY_INTERNAL_TOKEN", ""),
+            gateway_base=gateway_base,
+            internal_token=cfg.env("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=cfg.env("SLM_MODEL", "unknown"),
+            default_model=cfg.env("SA01_SLM_MODEL", "gpt-4o-mini"),
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,

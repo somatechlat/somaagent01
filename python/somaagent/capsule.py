@@ -14,24 +14,24 @@ import httpx
 from src.core.config import cfg
 
 
-# Base URL – can be overridden via env var for testing / staging.
+# Base URL – must be set via env var per VIBE rules (no hardcoded fallbacks)
 def _get_capsule_registry_url() -> str:
     """Return the capsule registry base URL.
 
-    Production requires the ``CAPSULE_REGISTRY_URL`` environment variable.
-    For the test environment we provide a harmless default (``http://localhost``)
-    instead of raising an exception at import time.  This keeps the module
-    importable without requiring external configuration while preserving the
-    original behaviour when the variable is explicitly set.
+    Requires the ``SA01_CAPSULE_REGISTRY_URL`` environment variable.
+    No hardcoded fallbacks per VIBE rules.
     """
-    url = cfg.env("CAPSULE_REGISTRY_URL")
+    url = cfg.env("SA01_CAPSULE_REGISTRY_URL")
     if not url:
-        # Default to a non‑routable local address for testing purposes.
-        url = "http://localhost"
+        raise ValueError(
+            "SA01_CAPSULE_REGISTRY_URL is required. No hardcoded fallbacks per VIBE rules."
+        )
     return url.rstrip("/")
 
 
-BASE_URL = _get_capsule_registry_url()
+def _get_base_url() -> str:
+    """Lazy getter for BASE_URL to avoid import-time errors."""
+    return _get_capsule_registry_url()
 
 
 def list_capsules() -> List[Dict[str, Any]]:
@@ -40,7 +40,8 @@ def list_capsules() -> List[Dict[str, Any]]:
     The endpoint ``GET /capsules`` returns a JSON array of objects matching the
     ``CapsuleMeta`` model defined in the service.
     """
-    resp = httpx.get(f"{BASE_URL}/capsules")
+    base_url = _get_base_url()
+    resp = httpx.get(f"{base_url}/capsules")
     resp.raise_for_status()
     return resp.json()
 
@@ -56,7 +57,8 @@ def download_capsule(capsule_id: str, dest_dir: str | None = None) -> Path:
     Returns:
         Path to the downloaded file.
     """
-    url = f"{BASE_URL}/capsules/{capsule_id}"
+    base_url = _get_base_url()
+    url = f"{base_url}/capsules/{capsule_id}"
     resp = httpx.get(url, follow_redirects=True)
     resp.raise_for_status()
     # The response is a streamed file; ``httpx`` already provides the content.

@@ -106,14 +106,14 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
     if url.port == 9595:
         try:
             override = url.copy_with(port=9696)
-        except Exception:
-            override = httpx.URL("http://localhost:9696")
-        logger.warning(
-            "Detected legacy SomaBrain port on %s; redirecting to %s",
-            normalized,
-            override,
-        )
-        return str(override).rstrip("/")
+            logger.warning(
+                "Detected legacy SomaBrain port on %s; redirecting to %s",
+                normalized,
+                override,
+            )
+            return str(override).rstrip("/")
+        except Exception as exc:
+            raise ValueError(f"Cannot rewrite legacy port for '{normalized}': {exc}") from exc
 
     return normalized
 

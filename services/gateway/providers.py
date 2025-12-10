@@ -12,9 +12,10 @@ from services.common.session_repository import RedisSessionCache
 from src.core.config import cfg
 
 # Compatibility attributes for test suite
-JWKS_CACHE = {}
-APP_SETTINGS = {}
-JWT_SECRET = "secret"
+JWKS_CACHE: dict = {}
+APP_SETTINGS: dict = {}
+# JWT_SECRET must come from config - no hardcoded secrets per VIBE rules
+JWT_SECRET = cfg.env("SA01_JWT_SECRET", "")
 
 
 def get_event_bus() -> KafkaEventBus:

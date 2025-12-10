@@ -291,12 +291,17 @@ class IngestDocumentTool(BaseTool):
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             raise ToolExecutionError("'attachment_id' is required")
 
-        base = cfg.env("SA01_GATEWAY_BASE", "http://gateway:8010").rstrip("/")
-        mode = cfg.env("SA01_DEPLOYMENT_MODE", "DEV").upper()
-        default_token = "dev-internal-token" if mode == "DEV" else ""
-        token = cfg.env("SA01_GATEWAY_INTERNAL_TOKEN", default_token)
+        base = cfg.env("SA01_GATEWAY_BASE")
+        if not base:
+            raise ToolExecutionError(
+                "SA01_GATEWAY_BASE is required. No hardcoded fallbacks per VIBE rules."
+            )
+        base = base.rstrip("/")
+        token = cfg.env("SA01_GATEWAY_INTERNAL_TOKEN")
         if not token:
-            raise ToolExecutionError("Internal token not configured for attachment fetch")
+            raise ToolExecutionError(
+                "SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded fallbacks per VIBE rules."
+            )
         url = f"{base}/internal/attachments/{attachment_id}/binary"
         headers = {"X-Internal-Token": token}
         if tenant_header:
