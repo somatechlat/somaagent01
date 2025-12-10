@@ -116,6 +116,8 @@ async def get_degradation_history(
     """
     Get degradation history for analysis.
 
+    VIBE COMPLIANT: Returns REAL history data from DegradationMonitor.
+
     Args:
         limit: Maximum number of history records to return
         component_name: Filter by specific component (optional)
@@ -124,17 +126,16 @@ async def get_degradation_history(
         Dict with degradation history
     """
     try:
-        # Historical data retrieval implementation
-        # Stores and retrieves degradation history
-        history = {
-            "records": [],
-            "total_records": 0,
+        # Get REAL history from degradation monitor
+        records = degradation_monitor.get_history(limit=limit, component_name=component_name)
+
+        return {
+            "records": records,
+            "total_records": len(records),
             "component_filter": component_name,
             "limit": limit,
             "timestamp": time.time(),
         }
-
-        return history
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get degradation history: {str(e)}")

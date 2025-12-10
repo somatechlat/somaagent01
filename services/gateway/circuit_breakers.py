@@ -309,6 +309,23 @@ class CircuitBreakerRegistry:
             return CircuitBreakerWrapper(breaker)
         return None
 
+    @staticmethod
+    def get_state(name: str):
+        """Get the state of a circuit breaker by name.
+
+        Returns a state wrapper with a .value attribute, or None if not found.
+        """
+        if name in circuit_breakers:
+            breaker = circuit_breakers[name]
+            state_name = breaker.breaker.current_state.name
+
+            class StateWrapper:
+                def __init__(self, state):
+                    self.value = state.upper() if state else "CLOSED"
+
+            return StateWrapper(state_name)
+        return None
+
 
 class CircuitBreakerWrapper:
     """Wrapper to make ResilientService compatible with circuit_endpoints expectations."""

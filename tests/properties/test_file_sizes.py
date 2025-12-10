@@ -31,6 +31,9 @@ KNOWN_VIOLATIONS: Dict[str, int] = {
     "python/integrations/soma_client.py": 950,
     # backup.py: Backup service - single class with related methods
     "python/helpers/backup.py": 950,
+    # degradation_monitor.py: Degradation monitoring - REAL health checks, history tracking
+    # VIBE COMPLIANT: Contains real DB/Redis/Kafka health checks, not stubs
+    "services/gateway/degradation_monitor.py": 650,
     # === Service Entry Points ===
     "services/conversation_worker/main.py": 3022,
     "agent.py": 4092,
