@@ -49,9 +49,9 @@ class EventPublisher:
         if self._initialized:
             return
 
-        import os
+        from src.core.config import cfg
 
-        somabrain_base = os.getenv("SA01_SOMA_BASE_URL")
+        somabrain_base = cfg.env("SA01_SOMA_BASE_URL")
         if not somabrain_base:
             raise ValueError(
                 "SA01_SOMA_BASE_URL environment variable is required for event publishing. "

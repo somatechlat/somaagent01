@@ -54,3 +54,83 @@ python scripts/check_file_sizes.py --all
 - No mocks, stubs, or placeholders
 - Real implementations only
 - Document all public APIs
+
+## Configuration Access
+
+All configuration MUST use the canonical `cfg` facade from `src.core.config`:
+
+```python
+from src.core.config import cfg
+
+# Get environment variable with SA01_ prefix priority
+value = cfg.env("SA01_MY_SETTING", "default")
+
+# Get boolean feature flag
+enabled = cfg.flag("SA01_FEATURE_ENABLED")
+```
+
+**DO NOT** use `os.getenv()` or `os.environ` directly in production code.
+
+Acceptable exceptions:
+- `src/core/config/loader.py` - The canonical loader itself
+- Test files - May set env vars directly
+- Scripts that copy env for subprocesses
+
+## Tool Catalog
+
+Tools are registered in the PostgreSQL-backed tool catalog:
+
+```python
+from services.common.tool_catalog import ToolCatalogStore
+
+# Check if tool is enabled for tenant
+enabled = await store.is_enabled("my_tool", tenant_id="tenant-123")
+
+# Register a new tool
+await store.register_tool(ToolCatalogEntry(
+    name="my_tool",
+    description="My tool description",
+    params={"input": {"type": "string"}},
+    source="builtin",
+))
+```
+
+## Degradation Manager
+
+Use the DegradationManager for service health tracking:
+
+```python
+from services.common.degradation_manager import DegradationManager, ServiceState
+
+manager = DegradationManager()
+
+# Update service status
+manager.update_service_status("postgres", ServiceState.HEALTHY)
+
+# Check system health
+health = manager.get_system_health()
+# Returns: {"overall_state": "healthy", "services": {...}}
+```
+
+## Property Tests
+
+Property tests validate architectural invariants. Add new tests to `tests/properties/`:
+
+```python
+# tests/properties/test_my_property.py
+"""Property N: Description.
+
+**Feature: feature-name, Property N: Description**
+**Validates: Requirements X.Y**
+"""
+
+def test_my_property():
+    """Property N: Description."""
+    # Test implementation
+    pass
+```
+
+Run property tests:
+```bash
+pytest tests/properties/ -v
+```
