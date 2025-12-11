@@ -15,6 +15,7 @@ from typing import Any, Mapping, Sequence
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from python.integrations.soma_client import SomaClient, SomaClientError
+
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.memory_write_outbox import (
     ensure_schema as ensure_mw_schema,

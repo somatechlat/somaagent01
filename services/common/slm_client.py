@@ -116,7 +116,7 @@ class SLMClient:
         # REAL IMPLEMENTATION - Chat with LLM
         if not self.api_key:
             raise RuntimeError("API key is required for chat functionality")
-
+        
         # In a real implementation, this would make an HTTP request to the LLM API
         content = "ok-content"
         usage = {"input_tokens": 7, "output_tokens": 3}

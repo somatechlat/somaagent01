@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0");
 
 /* Add box-sizing globally for better cross-browser consistency */
@@ -62,8 +62,8 @@
   --font-size-large: 1.2rem;
 
   /* Font families */
-  --font-family-main: "Rubik", Arial, Helvetica, sans-serif;
-  --font-family-code: "Roboto Mono", monospace;
+  --font-family-main: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+  --font-family-code: "JetBrains Mono", "Roboto Mono", monospace;
 
   /* Other variables */
   --border-radius: 1.125rem;
@@ -850,7 +850,7 @@ h4 {
   border-radius: var(--spacing-xs);
   cursor: pointer;
   display: inline;
-  font-family: "Rubik", Arial, Helvetica, sans-serif;
+  font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
   font-size: var(--font-size-small);
   opacity: 0.8;
   text-wrap: nowrap;
@@ -1179,7 +1179,7 @@ h4 {
   border: none;
   border-radius: 5px;
   color: var(--color-text);
-  font-family: "Rubik", Arial, Helvetica, sans-serif;
+  font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
   font-size: 0.6rem;
   padding: 6px var(--spacing-sm);
   cursor: pointer;
@@ -1620,7 +1620,7 @@ input:checked + .slider:before {
     content: "Copied!";
     position: absolute;
     opacity: 0;
-    font-family: "Rubik", Arial, Helvetica, sans-serif;
+    font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
     font-size: 0.7rem;
     padding: 6px var(--spacing-sm);
     -webkit-transition: opacity var(--transition-speed) ease-in-out;

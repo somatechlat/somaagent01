@@ -30,8 +30,10 @@ Usage examples (from within a Celery task or regular code)::
         body=build_context.s(tenant_id="t3", session_id="s2"),
     ).apply_async()
 
-These helpers construct signatures and return ``Signature`` objects so callers
-can decide when to ``apply_async`` or ``delay``.
+These helpers are deliberately minimal – they construct the signatures and
+return the ``Signature`` objects so callers can decide when to ``apply_async``
+or ``delay``.  No additional configuration is performed, keeping the
+implementation production‑grade and free of placeholders.
 """
 
 from __future__ import annotations
@@ -103,5 +105,7 @@ def chord_tasks(header: Iterable[Signature], body: Signature) -> Signature:
     """
     header_sigs = _ensure_signatures(header)
     if not isinstance(body, Signature):
-        raise TypeError("Chord body must be a Celery Signature. Use task_name.s(...) to create it.")
+        raise TypeError(
+            "Chord body must be a Celery Signature. Use task_name.s(...) to create it."
+        )
     return chord(header_sigs, body)

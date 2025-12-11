@@ -43,7 +43,6 @@ KNOWN_VIOLATIONS: Dict[str, int] = {
     "services/outbox_sync/main.py": 206,
     "services/tool_executor/main.py": 748,
     # === Helper Modules ===
-    "python/helpers/settings.py": 610,
     "python/helpers/task_scheduler.py": 1276,
     "python/helpers/mcp_handler.py": 1087,
     "python/helpers/memory.py": 1050,

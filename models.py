@@ -49,11 +49,12 @@ from langchain_core.outputs.chat_generation import ChatGenerationChunk
 # sentence-transformers is a required dependency
 from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
-from python.helpers import browser_use_monkeypatch, dirty_json, dotenv, settings
+from python.helpers import browser_use_monkeypatch, dirty_json, dotenv
 from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
+from src.core.config import cfg
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -95,6 +96,25 @@ if litellm is not None:
         litellm.modify_params = True  # helps fix anthropic tool calls by browser-use
     except Exception:
         pass
+
+
+def _env_flag(name: str, default: bool = True) -> bool:
+    val = cfg.env(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _json_env(name: str):
+    import json
+
+    raw = cfg.env(name)
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
 
 # ---------------------------------------------------------------------------
 # Production LLM Configuration - Enterprise Grade Implementation
@@ -1185,10 +1205,7 @@ def _merge_provider_defaults(
             kwargs["api_key"] = key
 
     # Merge LiteLLM global kwargs (timeouts, stream_timeout, etc.)
-    try:
-        global_kwargs = settings.get_settings().get("litellm_global_kwargs", {})  # type: ignore[union-attr]
-    except Exception:
-        global_kwargs = {}
+    global_kwargs = _json_env("SA01_LITELLM_GLOBAL_KWARGS")
     if isinstance(global_kwargs, dict):
         for k, v in _normalize_values(global_kwargs).items():
             kwargs.setdefault(k, v)
@@ -1208,9 +1225,7 @@ def get_chat_model(
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
 
     # Production systems must have proper LLM configuration
-    from python.helpers.settings import get_settings
-
-    use_llm = get_settings().get("USE_LLM", True)  # Default to True for production
+    use_llm = _env_flag("SA01_USE_LLM", True)
     api_key = kwargs.get("api_key")
 
     if not use_llm:

@@ -57,21 +57,3 @@ export function buildUrl(endpoint, ...args) {
   const path = typeof endpoint === 'function' ? endpoint(...args) : endpoint;
   return `${API_VERSION}${path}`;
 }
-
-/**
- * Legacy API object for backward compatibility
- * @deprecated Use ENDPOINTS and buildUrl instead
- */
-export const API = Object.freeze({
-  BASE: API_VERSION,
-  NOTIFICATIONS: ENDPOINTS.NOTIFICATIONS,
-  SESSION: ENDPOINTS.SESSION,
-  SESSIONS: ENDPOINTS.SESSIONS,
-  UPLOADS: ENDPOINTS.UPLOADS,
-  SETTINGS: ENDPOINTS.SETTINGS,
-  TEST_CONNECTION: ENDPOINTS.TEST_CONNECTION,
-  ATTACHMENTS: ENDPOINTS.ATTACHMENTS,
-  HEALTH: ENDPOINTS.HEALTH,
-  SOMABRAIN_HEALTH: ENDPOINTS.SOMABRAIN_HEALTH,
-  UI_SETTINGS: ENDPOINTS.SETTINGS_SECTIONS,
-});

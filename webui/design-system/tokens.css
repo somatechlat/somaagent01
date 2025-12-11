@@ -6,13 +6,13 @@
  * Light theme is default, dark theme via [data-theme="dark"] attribute.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 :root {
   /* ========================================
    * Typography
    * ======================================== */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Geist", "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
   
   /* Font Sizes */

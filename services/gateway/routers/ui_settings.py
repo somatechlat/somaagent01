@@ -12,8 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from python.helpers.settings import get_default_settings
-from services.common.agent_settings_store import get_agent_settings_store
+from services.common.ui_settings_store import UiSettingsStore
 
 router = APIRouter(prefix="/v1/settings", tags=["settings"])
 
@@ -23,28 +22,20 @@ class SettingsUpdate(BaseModel):
 
 
 def _get_store():
-    """Get AgentSettingsStore instance."""
-    return get_agent_settings_store()
+    """Get UiSettingsStore instance."""
+    return UiSettingsStore()
 
 
 @router.get("")
 async def get_settings() -> dict:
-    """Return agent settings with UI schema."""
+    """Return UI settings schema/payload."""
     store = _get_store()
     await store.ensure_schema()
 
     settings = await store.get_settings()
-    if not settings:
-        settings = get_default_settings()
-
-    # Import here to avoid circular imports
-    from python.helpers.settings import convert_out
-
-    ui_data = convert_out(settings)
-
-    if not ui_data.get("sections"):
+    if not settings or not settings.get("sections"):
         raise HTTPException(status_code=500, detail="Settings schema generation failed")
-    return ui_data
+    return settings
 
 
 @router.get("/sections")
@@ -60,12 +51,7 @@ async def put_settings(body: SettingsUpdate):
     store = _get_store()
     await store.ensure_schema()
 
-    # Import here to avoid circular imports
-    from python.helpers.settings import convert_in
-
-    settings = convert_in(body.data)
-
-    await store.set_settings(settings)
+    await store.set_settings(body.data)
     return {"status": "ok"}
 
 
@@ -105,17 +91,19 @@ async def test_connection(body: TestConnectionRequest):
 
 @router.get("/{key}")
 async def get_setting_field(key: str):
-    """Get single settings field."""
+    """Get single settings field (top-level key)."""
     store = _get_store()
     await store.ensure_schema()
-    value = await store.get_field(key)
-    return {"key": key, "value": value}
+    value = await store.get_settings()
+    return {"key": key, "value": value.get(key)}
 
 
 @router.put("/{key}")
 async def put_setting_field(key: str, body: dict):
-    """Set single settings field."""
+    """Set single settings field (top-level key)."""
     store = _get_store()
     await store.ensure_schema()
-    await store.set_field(key, body.get("value"))
+    current = await store.get_settings()
+    current[key] = body.get("value")
+    await store.set_settings(current)
     return {"status": "ok"}

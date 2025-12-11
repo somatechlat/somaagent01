@@ -5,13 +5,23 @@ Real resilience for external service dependencies with no mocks.
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 from functools import wraps
 from typing import Any, Callable, Dict
 
+import asyncpg
 import pybreaker
 
 from observability.metrics import metrics_collector
+
+# Patch pybreaker to use timezone-aware UTC to avoid deprecated datetime.utcnow warnings.
+class _AwareDateTime:
+    @staticmethod
+    def utcnow():
+        return datetime.now(UTC)
+
+
+pybreaker.datetime = _AwareDateTime  # type: ignore[attr-defined]
 
 
 class CircuitBreakerConfig:
@@ -147,17 +157,28 @@ class ProtectedPostgresClient:
 
     def __init__(self):
         self.breaker = circuit_breakers["postgres"]
+        self._dsn = None
 
     async def execute_query(self, query: str, *args):
-        """Protected query execution."""
+        """Protected query execution with real asyncpg client."""
         return await self.breaker.call_async(self._execute_query, query, *args)
 
     async def _execute_query(self, query: str, *args):
-        """Actual query execution - postgres_client not available."""
-        # This stub signals that PostgreSQL support is optional and not
-        # bundled in the current runtime. Sub‑classes should provide a concrete
-        # implementation when the feature is required.
-        raise NotImplementedError("PostgreSQL client not available")
+        """Actual query execution against PostgreSQL using asyncpg."""
+        # Lazy-load DSN to avoid config resolution during import time.
+        if self._dsn is None:
+            from src.core.config import cfg
+
+            self._dsn = cfg.settings().database.dsn
+
+        if not self._dsn:
+            raise RuntimeError("POSTGRES_DSN is not configured")
+
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            return await conn.fetch(query, *args)
+        finally:
+            await conn.close()
 
 
 class ProtectedKafkaClient:
@@ -284,6 +305,13 @@ class CircuitBreakerRegistry:
         for name, breaker in self._breakers.items():
             statuses[name] = self.get_breaker_status(name)
         return {"circuit_breakers": statuses}
+
+    def get_state(self, name: str) -> str:
+        """Return the current state name for the requested breaker."""
+        breaker = self.get_breaker(name)
+        if not breaker:
+            raise KeyError(f"circuit breaker '{name}' not found")
+        return breaker.breaker.current_state.name
 
     # Static methods for compatibility with circuit_endpoints.py
     @staticmethod
