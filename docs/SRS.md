@@ -687,6 +687,31 @@ with tracer.start_as_current_span("somabrain.remember"):
 4) Implement enforcement hooks in gateway/tool executor/workflow engine (egress, time, concurrency, HITL, risk thresholds).
 5) Publish OpenAPI for capsule endpoints and DDL snapshot; add tests for policy enforcement and retention purges.
 
+### 14.6 Capsule Creator (Admin UI & Pipeline)
+- **Goal**: Let admins build, validate, sign, and export capsules inside the Agent, without CLI tooling; output must be install-ready and policy-compliant.
+- **UI Workflow**:
+  - Create new capsule → choose template (skin, UI module, provider adapter, data, persona, workflow) → fill manifest fields (id/name/version/tenant, compatibility, policy, classification/retention, HITL, risk thresholds, egress/domain/MCP/tool allow/deny, resource_profile, runtimes).
+  - Add assets: upload skin tokens/layouts, UI module bundles, adapter code, data payloads (KB/memories), workflows/temporal jobs, persona overlays.
+  - Settings schema builder: form designer to define `settingsSchema` entries (type, required, secret, enum, default).
+  - Policy presets: Prod/Training/Test/Dev profiles toggle signature requirement, allowUnsigned, egress rules, RL export flags.
+  - Validation step: schema/compatibility check, dependency scan, signature readiness, size limits, checksum preview.
+  - Signing: integrate cosign/sigstore via backend; store public keys; present detached signature + checksum.
+  - Export: generate `.tgz` + `.sig`; optional encryption for data capsules; store draft history; version bump helper.
+  - Drafts & versioning: save WIP capsules in Postgres; promote to published; duplicate existing capsule as baseline.
+- **Backend pipeline**:
+  - POST `/v1/capsules/build` receives spec + assets; runs validation; produces build artifact; persists draft CapsuleDefinition (status=draft).
+  - POST `/v1/capsules/sign` signs artifact with org key; records signature provenance.
+  - POST `/v1/capsules/publish` marks definition as published and registers in CapsuleDefinition table; optional auto-install flag.
+  - GET `/v1/capsules/drafts` list drafts; GET `/v1/capsules/{id}/history` show versions and signatures.
+- **Enforcement**:
+  - Drafts cannot be installed until published and signature verified (except Dev mode with allowUnsigned).
+  - Classification/retention applied to stored draft payloads; secrets stripped from exports.
+  - HITL/risk/egress constraints must pass validation before publish in Prod/Training modes.
+- **Acceptance Criteria**:
+  - Admin can create a capsule with skin + UI module + adapter + settings schema, validate, sign, export `.tgz/.sig`, and install it via the existing install path without editing files manually.
+  - Build logs and audit entries include capsule id/version and user; draft history preserved.
+  - Validation blocks publish if required fields or policy gates are unmet; Dev override is explicit and logged.
+
 ## 15. Appendices
 
 ### Appendix A: File Size Summary (Post-Refactor)
