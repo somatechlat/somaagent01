@@ -125,7 +125,7 @@
 }
 
 #path-text {
-  font-family: 'Roboto Mono', monospace;
+  font-family: "JetBrains Mono", "Roboto Mono", monospace;
   font-optical-sizing: auto;
   -webkit-font-optical-sizing: auto;
   opacity: 0.9;

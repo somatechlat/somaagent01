@@ -86,7 +86,6 @@
 
 .message-user > div {
   padding-top: var(--spacing-xs);
-  /* font-family: "Roboto Mono", monospace; */
   font-optical-sizing: auto;
   -webkit-font-optical-sizing: auto;
   font-size: var(--font-size-smaller);

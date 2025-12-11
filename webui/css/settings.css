@@ -51,7 +51,7 @@ select {
   border-radius: 0.25rem;
   background-color: var(--color-background);
   color: var(--color-text);
-  font-family: "Rubik", Arial, Helvetica, sans-serif;
+  font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
   outline: none;
   transition: all 0.3s ease;
 }
@@ -63,7 +63,7 @@ input[type="password"]:focus {
 
 textarea {
   min-height: 100px;
-  font-family: 'Roboto Mono', monospace;
+  font-family: "JetBrains Mono", "Roboto Mono", monospace;
   scroll-behavior: smooth;
   resize: none;
   background-clip: border-box;

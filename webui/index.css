@@ -733,7 +733,7 @@ h4 {
   border-radius: 8px;
   color: var(--color-text);
   flex-grow: 1;
-  font-family: "Roboto Mono", monospace;
+  font-family: "JetBrains Mono", "Roboto Mono", monospace;
   font-optical-sizing: auto;
   -webkit-font-optical-sizing: auto;
   font-size: 0.9rem;

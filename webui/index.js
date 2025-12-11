@@ -6,6 +6,7 @@ import * as stream from "./js/stream.js";
 import { sleep } from "./js/sleep.js";
 import { store as attachmentsStore } from "./components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "./components/chat/speech/speech-store.js";
+import { themeManager } from "./components/theming/theme-manager.js";
 import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "./js/error-handling.js";
 
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
@@ -923,15 +924,15 @@ globalThis.toggleUtils = async function (showUtils) {
 };
 
 globalThis.toggleDarkMode = function (isDark) {
-  if (isDark) {
-    document.body.classList.remove("light-mode");
-    document.body.classList.add("dark-mode");
-  } else {
-    document.body.classList.remove("dark-mode");
-    document.body.classList.add("light-mode");
-  }
-  // Debug: Dark mode:, isDark
+  const theme = isDark ? "dark" : "light";
+
+  document.body.classList.toggle("dark-mode", isDark);
+  document.body.classList.toggle("light-mode", !isDark);
+  document.documentElement.setAttribute("data-theme", theme);
+
+  // Persist for both legacy and new theming helpers
   localStorage.setItem("darkMode", isDark);
+  themeManager.setTheme(theme);
 };
 
 globalThis.toggleSpeech = function (isOn) {
