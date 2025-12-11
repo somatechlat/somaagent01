@@ -570,6 +570,21 @@ CircuitBreaker(
 | Provider Credentials | Web UI Settings | Runtime injection |
 | Internal Tokens | Environment | `SA01_AUTH_INTERNAL_TOKEN` |
 
+### 11.4 Security & Transmission Hardening
+
+- **Transport**: TLS 1.3 only; disable TLS 1.2/weak ciphers; enforce HSTS and OCSP stapling; no plaintext fallbacks.
+- **Mutual TLS**: All service-to-service calls (Agent ↔ Hub ↔ Providers) use mTLS with short-lived client certificates from an internal CA; pin server certificates in the agent to prevent MITM.
+- **Request Signing**: Every API request is JWS-signed (with `kid`, nonce, timestamp). Enforce tight replay window; validate both TLS client identity and signature.
+- **Capsule Supply Chain**: Require SHA-256 checksum and detached signature (cosign/sigstore) before install/upgrade/rollback; optional transparency log; reject unsigned or incompatible capsules in Production.
+- **Payload Encryption**: For sensitive bodies, support envelope encryption (per-request data keys from KMS) layered on top of TLS.
+- **Mode-Aware Policy**: Dev/Test may allow unsigned dev capsules; Prod/Training must enforce signatures, allow/deny lists, and classification/retention rules. Modes gate tool/capsule execution and adaptive learning.
+- **Authorization**: Fine-grained allow/deny by capsule id/version, tool, tenant, environment; link to manifest policy.
+- **Audit & Telemetry**: Immutable, structured logs for install/enable/disable/rollback/API calls/workflows, tagged with capsule id/version, user, client cert fingerprint, nonce. Alert on replay or failed signature attempts.
+- **Background Tasks**: Celery tasks include capsule id/version; emit audit + metrics; respect classification/retention when handling data.
+- **Network Posture**: Least-privilege firewall rules; disable compression on sensitive endpoints (mitigate CRIME/BREACH); DDoS/abuse throttles; circuit breakers and exponential backoff around provider calls.
+- **Key Hygiene**: Rotate TLS, JWS, and signing keys regularly; short TTL tokens; support key revocation; store keys in HSM/KMS; zeroize secrets on shutdown.
+- **Export/Import**: Capsule export supports signing and optional encryption; verify signatures and policy on import. Data exports honor classification and retention timers.
+
 ---
 
 ## 12. Observability Architecture
@@ -635,7 +650,44 @@ with tracer.start_as_current_span("somabrain.remember"):
 
 ---
 
-## 14. Appendices
+## 14. Capsule Domain Integration (SomaAgentHub)
+
+### 14.1 Domain Model Alignment
+
+**CapsuleDefinition** (Hub) ↔ Capsule manifest header:
+- Keys: `id`, `tenant_id`, `name`, `version`, `status`, `description`, `default_persona_ref_id`, `role_overrides`, `allowed_tools`, `prohibited_tools`, `allowed_mcp_servers`, `tool_risk_profile`, `max_wall_clock_seconds`, `max_concurrent_nodes`, `allowed_runtimes`, `resource_profile`, `allowed_domains`, `blocked_domains`, `egress_mode`, `opa_policy_packages`, `guardrail_profiles`, `default_hitl_mode`, `risk_thresholds`, `max_pending_hitl`, `rl_export_allowed`, `rl_export_scope`, `rl_excluded_fields`, `example_store_policy`, `data_classification`, `retention_policy_days`, timestamps.
+- Action: extend our capsule manifest `policy` block to carry all above; persist in DB as canonical CapsuleDefinition.
+
+**CapsuleInstance** (Hub) ↔ runtime activation record:
+- Keys: `id`, `tenant_id`, `capsule_definition_id`, `capsule_definition_version`, `scope`, `scope_reference`, `start_time`, `end_time`, `effective_config`, `derived_from_id`, timestamps.
+- Action: create CapsuleInstance rows on every run/enablement; include in audit and task tagging.
+
+### 14.2 Service & Data Flow Integration
+- Source of truth: Task Capsule Repo ingests manifest → normalized CapsuleDefinition (Postgres). Orchestrator `/capsules` serves that data; deprecate duplicate CapsuleModel.
+- Run flow: Client → Orchestrator `/workflows/...` creates CapsuleInstance → WorkflowEngine executes → results posted to `memory-gateway /v1/capsule/results` (object store + optional vector index/Qdrant) with capsule_instance metadata.
+- Manifest storage: keep both raw `manifest_yaml` and normalized spec for drift detection.
+
+### 14.3 API Contracts (to converge)
+- `POST /capsules` (CapsuleSpec) → create CapsuleDefinition (uniqueness on tenant_id, name, version).
+- `POST /v1/capsules` (manifest upload) → ingest + normalize → CapsuleDefinition.
+- `POST /workflows/{id}/run` with capsule reference → create CapsuleInstance, enforce policy/HITL/limits.
+- `POST /v1/capsule/results` (file, metadata) → store artifact; upsert vector if provided; apply classification/retention.
+
+### 14.4 Enforcement & Policy (gaps to close)
+- Enforce egress/domain allow/deny and allowed MCP servers at gateway/tool executor.
+- Apply `max_wall_clock_seconds`, `max_concurrent_nodes`, `risk_thresholds`, `default_hitl_mode`, `max_pending_hitl` inside workflow engine/orchestrator dispatch.
+- Respect `rl_export_allowed` / `rl_excluded_fields` on export endpoints; block export in Prod if disallowed.
+- Classification/retention applied to artifacts and vector entries; purge jobs scheduled per `retention_policy_days`.
+- All runs/results audited with `capsule_definition_id/version` and `capsule_instance_id`.
+
+### 14.5 Integrity/Alignment Actions
+1) Pick single capsule authority (Task Capsule Repo + normalized CapsuleDefinition); map orchestrator API to it.
+2) Add migrations for CapsuleDefinition/CapsuleInstance with FK constraints and uniqueness (tenant_id, name, version).
+3) Wire manifest ingestion pipeline to populate policy/risk/HITL fields and reject incompatible capsules by mode.
+4) Implement enforcement hooks in gateway/tool executor/workflow engine (egress, time, concurrency, HITL, risk thresholds).
+5) Publish OpenAPI for capsule endpoints and DDL snapshot; add tests for policy enforcement and retention purges.
+
+## 15. Appendices
 
 ### Appendix A: File Size Summary (Post-Refactor)
 
