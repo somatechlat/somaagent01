@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from pydantic import ConfigDict
 
 from python.tasks.celery_app import app as celery_app, register_dynamic_tasks
 from services.common.policy_client import PolicyClient, PolicyRequest
@@ -38,8 +39,7 @@ class TaskRegistration(BaseModel):
     soma_tags: List[str] = Field(default_factory=list)
     created_by: Optional[str] = None
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 def _allow(action: str, tenant: Optional[str], resource: str, context: dict[str, Any]) -> bool:

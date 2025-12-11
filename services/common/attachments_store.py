@@ -127,6 +127,35 @@ class AttachmentsStore:
             )
         return att_id
 
+    async def create(
+        self,
+        *,
+        tenant: Optional[str],
+        session_id: Optional[str],
+        persona_id: Optional[str],
+        filename: str,
+        mime: str,
+        size: int,
+        sha256: str,
+        status: str,
+        quarantine_reason: Optional[str],
+        content: Optional[bytes],
+    ) -> uuid.UUID:
+        """Ensure schema exists then insert attachment."""
+        await self.ensure_schema()
+        return await self.insert(
+            tenant=tenant,
+            session_id=session_id,
+            persona_id=persona_id,
+            filename=filename,
+            mime=mime,
+            size=size,
+            sha256=sha256,
+            status=status,
+            quarantine_reason=quarantine_reason,
+            content=content,
+        )
+
     async def get_metadata(self, att_id: uuid.UUID) -> Optional[Attachment]:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:

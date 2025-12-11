@@ -1005,6 +1005,7 @@ SA01_UPLOAD_CHUNK_SIZE = "5242880"  # 5MB
 SA01_CLAMAV_SOCKET = "/var/run/clamav/clamd.sock"
 SA01_CLAMAV_ENABLED = "true"
 SA01_UPLOAD_QUARANTINE_ON_ERROR = "true"  # Quarantine if ClamAV unavailable
+SA01_CLAMAV_STREAM_MAX_BYTES = "104857600"  # clamd StreamMaxLength guard; min() with upload max
 ```
 
 ### Correctness Property

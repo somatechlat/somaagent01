@@ -14,6 +14,10 @@ local ``python`` package takes precedence.
 
 import os
 import sys
+import warnings
+
+# Silence upstream DeprecationWarnings from native bindings (e.g., SWIG/faiss) in test runs.
+warnings.simplefilter("ignore", DeprecationWarning)
 
 # Compatibility shim for tests that reference ``pytest.Request`` (which does not
 # exist in the public pytest API). The test suite only uses the type for type
@@ -40,12 +44,6 @@ except Exception:
 
 if not hasattr(pytest, "Request"):
     pytest.Request = _req_type  # type: ignore[attr-defined]
-
-# Debug: confirm attribute is set
-print("sitecustomize: pytest.Request exists?", hasattr(pytest, "Request"))
-
-# Debug: indicate that sitecustomize has been imported (useful for pytest import path issues)
-print("sitecustomize loaded: repository root added to sys.path")
 
 # Resolve the absolute path of the repository root (the directory containing this file).
 REPO_ROOT = os.path.abspath(os.path.dirname(__file__))

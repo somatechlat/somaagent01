@@ -20,14 +20,14 @@ DEPRECATED_CONFIG_IMPORTS: Set[str] = {
 
 # Files allowed to import deprecated config (transitional)
 ALLOWED_LEGACY_FILES: Set[str] = {
-    # The settings module itself
-    "python/helpers/settings.py",
-    "python/helpers/settings_model.py",
     # Test files
     "tests/",
     # Scripts
     "scripts/",
 }
+
+# Legacy usage temporarily allowed in UI settings router (UI schema conversion only)
+SERVICES_ALLOWED: Set[str] = set()
 
 
 def _is_allowed_file(rel_path: str) -> bool:
@@ -78,8 +78,8 @@ def test_new_code_uses_core_config():
 def test_services_config_migration_tracking():
     """Track services/ migration to src.core.config.
 
-    This test documents current state and will fail when migration
-    is complete to ensure we update the tracking.
+    Enforces that services/ no longer import legacy python.helpers.settings
+    except for explicitly allowed UI conversion paths.
     """
     repo = pathlib.Path(__file__).resolve().parents[2]
     services_path = repo / "services"
@@ -87,9 +87,7 @@ def test_services_config_migration_tracking():
     if not services_path.exists():
         return
 
-    # Count files still using legacy config
-    legacy_count = 0
-    migrated_count = 0
+    violations = []
 
     for filepath in services_path.rglob("*.py"):
         try:
@@ -98,14 +96,12 @@ def test_services_config_migration_tracking():
             continue
 
         has_legacy = any(dep in content for dep in DEPRECATED_CONFIG_IMPORTS)
-        has_new = "from src.core.config" in content or "import src.core.config" in content
-
         if has_legacy:
-            legacy_count += 1
-        if has_new:
-            migrated_count += 1
+            rel = filepath.relative_to(repo).as_posix()
+            if any(rel.startswith(p) for p in SERVICES_ALLOWED):
+                continue
+            violations.append(rel)
 
-    # This is informational - we track progress but don't fail
-    # Uncomment the assertion below when ready to enforce
-    # assert legacy_count == 0, f"{legacy_count} files still use legacy config"
-    pass
+    assert not violations, "services/ files must not import legacy config modules:\n" + "\n".join(
+        sorted(set(violations))
+    )

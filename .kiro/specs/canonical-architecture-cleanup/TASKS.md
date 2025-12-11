@@ -565,41 +565,41 @@ All required tasks are complete. Only optional property tests remain:
 
 **Goal:** Align SomaAgent01 with SomaAgentHub capsule domain, add Marketplace integration, and define the no-code Capsule Creator (docs/architecture tasks only).
 
-- [ ] 12.1 Data Model Split
-  - Add doc tasks to introduce `Capsule` + `CapsuleVersion` tables (mirror Hub) and keep `CapsuleInstance/CapsuleRun` as runtime records; note uniqueness (tenant_id, name, version) and FK CapsuleVersion→Capsule.
+- [x] 12.1 Data Model Split
+  - Documented in design.md (Capsule Marketplace & Creator Design): Capsule/CapsuleVersion tables, uniqueness (tenant_id, name, version), CapsuleVersion→Capsule FK, CapsuleInstance/CapsuleRun runtime records.
 
-- [ ] 12.2 Marketplace Manager Contract (Hub)
-  - Document APIs to consume: `GET /marketplace/capsules`, `GET /marketplace/capsules/{id}`, `POST /marketplace/install`, `GET /marketplace/updates`, `POST /marketplace/telemetry`; include license/entitlement check and artifact_url + manifest return.
+- [x] 12.2 Marketplace Manager Contract (Hub)
+  - Documented: Hub APIs list (list/get/install/updates/telemetry), entitlement/license check, artifact_url + manifest returned.
 
-- [ ] 12.3 Agent MarketplaceClient & Installer
-  - Define client interface (list/get/install/check_updates/send_telemetry) and installer responsibilities (download artifact_url, verify checksum/signature, register LocalCapsule with version/status/path).
+- [x] 12.3 Agent MarketplaceClient & Installer
+  - Client interface + installer responsibilities captured in design.md.
 
-- [ ] 12.4 Runtime Engine Flag
-  - Document manifest `runtime_engine` (orchestrator|local|external) and enforcement rules (local only for short jobs; default orchestrator).
+- [x] 12.4 Runtime Engine Flag
+  - Manifest runtime_engine modes and enforcement rules documented.
 
-- [ ] 12.5 Telemetry & Licensing
-  - Specify telemetry payload (capsule_id/version, agent_instance_id, usage metrics) and entitlement gate before install/run; include reconciliation with Hub AgentInstallation state.
+- [x] 12.5 Telemetry & Licensing
+  - Telemetry envelope, entitlement gate, reconciliation noted in design.md.
 
-- [ ] 12.6 Capsule Creator UX
-  - Add UX spec steps: template → metadata → policy/security → assets → settingsSchema → temporal/workflows → validation → signing → export/publish; include live manifest preview and draft/history model; Dev override logging.
+- [x] 12.6 Capsule Creator UX
+  - UX stepper, live preview, draft/history, Dev override logging documented.
 
-- [ ] 12.7 Security/Verification Path
-  - Document install pipeline: verify checksum + signature from artifact_url; block unsigned in Prod/Training; note policy gates for egress/domain/MCP/tool allow/deny, HITL/risk limits.
+- [x] 12.7 Security/Verification Path
+  - Install pipeline, signature/checksum enforcement, policy gates captured.
 
-- [ ] 12.8 Acceptance Criteria
-  - Capture success criteria: browse/install/update/run via Hub; local fast-path allowed for small capsules respecting `runtime_engine`; Creator can build/sign/export without CLI; all actions audited.
+- [x] 12.8 Acceptance Criteria
+  - Success criteria listed in design.md Acceptance sections.
 
-- [ ] 12.9 Workspace Manager Capsule Spec
-  - Add detailed design/requirements for Workspace Manager as a capsule UI module: mount API, provider-agnostic contract (`project_provider_v1`), Settings panel fields, card→modal pattern, runtime_engine rules, background jobs, exports, telemetry, policy/audit requirements.
+- [x] 12.9 Workspace Manager Capsule Spec
+  - Detailed design present (mount API, provider-agnostic, settings, runtime rules, jobs, exports, telemetry, audit).
 
-- [ ] 12.10 Reusable Creator Shell
-  - Document the creator as a reusable stepper component (shared manifest builder, validator, signer client, upload helper, draft autosave) to be reused for other builders (tools, prompts, tasks), avoiding duplicate flows.
+- [x] 12.10 Reusable Creator Shell
+  - Reusable stepper shell documented.
 
-- [ ] 12.11 Runtime Engine Policy & Telemetry Schema
-  - Document runtime_engine enforcement (limits for local, orchestrator-required flows) and telemetry envelope/events/fields/transport; add example manifest and client API shapes for MarketplaceClient/CapsuleInstaller.
+- [x] 12.11 Runtime Engine Policy & Telemetry Schema
+  - Enforcement rules, telemetry schema, manifest/client examples included.
 
-- [ ] 12.12 File Manager Capsule Spec
-  - Add File Manager capsule design/requirements: mount API, reuse of existing Uploads Manager UI, storage backends (attachments DB/object store), AV scan enforcement, classification/retention, RL export gates, linking to memories/sessions, settings panel fields, runtime_engine rules (local browse vs orchestrator bulk), telemetry/audit expectations.
+- [x] 12.12 File Manager Capsule Spec
+  - File Manager capsule design captured (mount API, storage, AV scan, policy gates, runtime rules, telemetry/audit).
 
 ---
 

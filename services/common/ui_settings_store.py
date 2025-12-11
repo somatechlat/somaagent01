@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 import asyncpg
 
+
 from src.core.config import cfg
 
 
@@ -45,7 +46,7 @@ class UiSettingsStore:
                     min_size=max(0, min_size),
                     max_size=max(1, max_size),
                 )
-            except OSError:
+            except OSError as exc:
                 # Hostname resolution failure – try localhost as a real fallback.
                 import re
 
