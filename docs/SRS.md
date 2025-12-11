@@ -712,6 +712,37 @@ with tracer.start_as_current_span("somabrain.remember"):
   - Build logs and audit entries include capsule id/version and user; draft history preserved.
   - Validation blocks publish if required fields or policy gates are unmet; Dev override is explicit and logged.
 
+### 14.7 Marketplace & Versioned Capsule Model (Hub + Agent)
+- **Shared domain types**:
+  - `Capsule` (id, name, description, owner_vendor_id, tags/category, latest_version)
+  - `CapsuleVersion` (capsule_id, semver version, manifest YAML/JSON, input_schema, output_schema, runtime_engine=orchestrator|local|external, status=draft|published|deprecated)
+  - `CapsuleManifest` (steps graph, resources: tools/models/secrets, policies: limits/egress/HITL, dependencies)
+  - `CapsuleRun` (run_id, capsule_version_id, status, input, result_ref)
+- **Hub services**:
+  - **Capsule Registry (task_capsule_repo)**: source of truth for Capsule + CapsuleVersion; endpoints GET/POST capsules, versions, publish.
+  - **Marketplace Manager (new)**: maps Capsule ↔ Mercur product/price; manages licenses/entitlements and agent installations; generates signed artifact URLs; hides Mercur from agents.
+    - Entities: `CapsulePlan`, `License`, `AgentInstallation`.
+    - API to Agent: `GET /marketplace/capsules`, `GET /marketplace/capsules/{id}`, `POST /marketplace/install`, `GET /marketplace/updates`, `POST /marketplace/telemetry`.
+  - **Orchestrator**: Temporal workflows for `CapsuleRun`; fetches CapsuleVersion, validates input, executes steps, stores results, updates status.
+  - **Agent Runtime**: executes steps when orchestrator delegates; unaware of marketplace/licensing.
+- **Agent modules**:
+  - `MarketplaceClient` (talks only to Hub Marketplace Manager): list/get/install/check_updates/send_telemetry.
+  - `CapsuleInstaller`: consumes install payload (capsule_id, version, artifact_url, manifest); downloads, verifies, registers LocalCapsule.
+  - Local registry: tracks installed versions/status; reconciles with Hub `AgentInstallation`.
+  - GUI: Marketplace tab (browse/install/update), Installed tab (local state), Run action chooses Hub-orchestrated path (preferred for long jobs) or local quick-run for small manifests.
+- **Flows**:
+  - Browse/Install: Agent GUI → Hub list → POST install → Hub handles license/entitlement → returns artifact_url + manifest → Agent installs → reports status.
+  - Run (recommended): Agent → Hub `/v1/capsules/{id}/runs` → Orchestrator → Agent Runtime/tools/object store → Agent polls run status.
+  - Run (local fast path): allowed for short/simple capsules; honor runtime_engine flag and policy limits.
+- **Policy/Licensing**:
+  - Entitlement check before install/update/run; license state stored via Marketplace Manager.
+  - Telemetry from Agent to Hub for usage/billing.
+  - Artifact retrieval always checksum/signature verified on Agent side.
+- **SRS Actions**:
+  - Split data model: add `Capsule` + `CapsuleVersion` tables and APIs mirroring Hub; keep `CapsuleInstance` as runtime record mapped to `CapsuleRun`.
+  - Document Marketplace Manager module, its API, and Agent integration components.
+  - Add `runtime_engine` and entitlement/telemetry requirements to manifest and installer flow.
+
 ## 15. Appendices
 
 ### Appendix A: File Size Summary (Post-Refactor)
