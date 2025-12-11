@@ -589,6 +589,9 @@ All required tasks are complete. Only optional property tests remain:
 - [ ] 12.8 Acceptance Criteria
   - Capture success criteria: browse/install/update/run via Hub; local fast-path allowed for small capsules respecting `runtime_engine`; Creator can build/sign/export without CLI; all actions audited.
 
+- [ ] 12.9 Workspace Manager Capsule Spec
+  - Add detailed design/requirements for Workspace Manager as a capsule UI module: mount API, provider-agnostic contract (`project_provider_v1`), Settings panel fields, card→modal pattern, runtime_engine rules, background jobs, exports, telemetry, policy/audit requirements.
+
 ---
 
 ## VIBE Compliance Checklist
