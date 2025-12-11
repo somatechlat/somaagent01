@@ -2274,6 +2274,17 @@ This violates VIBE rules:
 - **Telemetry Schema:** Telemetry SHALL use envelope `{agent_instance_id, capsule_id, capsule_version, ts, event, data}` with core events install/update/run.start/run.finish/run.error/ui.interaction/export.created; data SHALL include duration_ms, provider, item_counts, errors, policy_hits, runtime_engine_used, billable_units?; transport SHALL batch POST to `/marketplace/telemetry` with retry/backoff and signed requests over mTLS.
 - **Example Manifest:** An example CapsuleVersion manifest SHALL be maintained (id/version/runtime_engine/policy/settingsSchema/skins/ui_modules/tools/temporal/provenance) to guide implementers.
 - **Client APIs:** MarketplaceClient interfaces (list/get/install/check_updates/send_telemetry) and CapsuleInstaller (install/verify/register) SHALL be specified and kept in sync with Hub.
+
+## Additional Requirements – File Manager Capsule (NEW)
+
+- **UI Module Capsule:** File Manager SHALL be delivered as a capsule UI module (`mountFileManager`) reusing the existing Uploads/File Manager UI logic and consuming the canonical file service.
+- **Storage Backends:** Must support attachments DB (PostgreSQL BYTEA) and optional object-store; downloads SHALL use signed URLs when object-store is enabled.
+- **Scanning & Policy:** All uploads SHALL pass ClamAV/AV scan before persistence; size/type allow-lists enforced; classification/retention from manifest applied to files; RL export flags enforced on download/export.
+- **Linking:** Users SHALL be able to link/unlink files to sessions/messages/memories; links SHALL be auditable and discoverable.
+- **Settings Panel:** Must expose backend choice, allowed types, max size, scan toggle, retention override, signed URL TTL; credentials stay server-side.
+- **Runtime Engine:** `local` allowed for browse/preview/small uploads within limits; bulk uploads/scan workflows SHALL require orchestrator; enforcement SHALL occur at runtime.
+- **Telemetry & Audit:** Upload/download/scan-fail/link/delete events SHALL be emitted with capsule_id/version and agent_instance_id; all actions SHALL be audited.
+- **Acceptance Criteria:** Verified install, policy-compliant uploads, scan enforcement, retention applied, linking works, signed URL enforcement, local vs orchestrator routing respected.
 - **Policy Enforcement:** Install/run SHALL enforce policy gates from manifest (egress/domain/MCP/tool allow/deny, HITL/risk limits, retention/classification, RL export flags); unsigned artifacts SHALL be blocked in Prod/Training.
 - **Auditability:** All install/update/run/telemetry events SHALL be audited with capsule_id/version and agent_instance_id; creator actions SHALL be logged with user identity.
 

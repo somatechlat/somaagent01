@@ -2210,6 +2210,22 @@ provenance:
 - Card→modal edit saves via provider adapter; audit + telemetry emitted.
 - Background sync job runs, tagged with capsule id/version, respecting retention/classification on exports.
 
+### File Manager as Capsule UI Module (NEW)
+- **Role**: Unified file/asset manager for the agent, packaged as a capsule UI module; reuses existing Uploads Manager UI logic and integrates with attachment store, object store, and memories.
+- **Mount API**: `mountFileManager(el, opts, services)`; `services` include file_service client, theme, i18n, telemetry, auth, and memory linking APIs.
+- **Data Sources**: Uses existing Upload/Attachments backend (PostgreSQL BYTEA + object store if enabled) and ClamAV scanning pipeline; respects classification/retention from capsule policy.
+- **Features**: upload (single/bulk), folder/tags, preview (images/pdf/text), versioning (if backend supports), link/unlink files to sessions/messages/memories, search/filter, download with signed URLs, delete with retention rules.
+- **Policy & Security**: Enforce egress/domain/tool allow/deny; virus scan required before persistence; classification/retention applied per file; export blocked if RL export disabled; audit every upload/download/delete/link.
+- **Settings Integration**: Panel to set storage backend (attachments DB vs object store), max size, allowed types, virus-scan toggle, retention days override, signed URL TTL; credentials stored server-side.
+- **Runtime Engine**: Default `orchestrator` for large/bulk uploads or virus-scan workflows; `local` allowed for browse/preview and small uploads within size limits and no background scanning.
+- **Telemetry**: Events for upload.start/finish, scan.fail, preview, download, link_to_memory, delete; include capsule_id/version and agent_instance_id.
+- **Acceptance Criteria**:
+  - Installs/updates as capsule; checksum/signature verified.
+  - Uploads pass through scan and respect size/type policies; classification/retention applied; audit/telemetry emitted.
+  - Linking a file to a memory/session works and is discoverable in File Manager and memory viewer.
+  - Downloads use signed URLs and enforce TTL/policy; blocked when policy forbids (e.g., RL export off).
+  - Local vs orchestrator execution respected based on runtime_engine and payload size.
+
 ### Workspace Manager as Capsule UI Module (NEW)
 - **Role**: Primary project/board UX shipped as a capsule UI module; must stay provider-agnostic and skin-aware.
 - **Mount API**: `mountWorkspaceManager(el, opts, services)`; `services` supplies `project_provider_v1`, events, theme, i18n, telemetry, auth context. Supports multiple mounts per page.

@@ -598,6 +598,9 @@ All required tasks are complete. Only optional property tests remain:
 - [ ] 12.11 Runtime Engine Policy & Telemetry Schema
   - Document runtime_engine enforcement (limits for local, orchestrator-required flows) and telemetry envelope/events/fields/transport; add example manifest and client API shapes for MarketplaceClient/CapsuleInstaller.
 
+- [ ] 12.12 File Manager Capsule Spec
+  - Add File Manager capsule design/requirements: mount API, reuse of existing Uploads Manager UI, storage backends (attachments DB/object store), AV scan enforcement, classification/retention, RL export gates, linking to memories/sessions, settings panel fields, runtime_engine rules (local browse vs orchestrator bulk), telemetry/audit expectations.
+
 ---
 
 ## VIBE Compliance Checklist
