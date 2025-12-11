@@ -2122,6 +2122,25 @@ cascading_failures_total{source_service, affected_service}
 - Entitlement enforced before install/run; artifacts retrieved via signed URLs.
 - Full audit trail for draft/build/sign/publish/install/update/run/telemetry events with capsule_id/version and agent_instance_id.
 
+### Workspace Manager as Capsule UI Module (NEW)
+- **Role**: Primary project/board UX shipped as a capsule UI module; must stay provider-agnostic and skin-aware.
+- **Mount API**: `mountWorkspaceManager(el, opts, services)`; `services` supplies `project_provider_v1`, events, theme, i18n, telemetry, auth context. Supports multiple mounts per page.
+- **Data Source**: Uses only `project_provider_v1` (listProjects/getProject/listWorkItems/create/update/delete/listUsers/listStates/listLabels) so providers (Plane/Mercur/Jira/Linear) can swap with no UI code change.
+- **Settings Integration**: Registers a Settings panel; lets admins pick provider, map states/labels, toggle features (risk tab, exec digest), and set adapter creds (stored server-side, never in capsule).
+- **Card→Modal Pattern**: Renders cards; click opens modal editor; modals inherit capsule skin tokens (spacing/color/typography) for consistency.
+- **Runtime Engine**: Default `orchestrator` for heavy flows (bulk sync, exports). `local` fast-path allowed for lightweight render/filter when manifest `runtime_engine=local` and policy permits.
+- **Background Jobs**: Capsule may declare temporal jobs (e.g., nightly status sync, CPI/SPI updates); jobs tagged with capsule id/version; must honor time limits, HITL, egress rules; audited.
+- **Exports**: Optional exec digest/export workflow; artifacts stored via object store with classification/retention from manifest; RL export flags enforced.
+- **Telemetry & Billing**: Emits usage (filters, edits, exports) via Marketplace telemetry (capsule_id/version, agent_instance_id) for analytics/billing.
+- **Security/Policy**: Enforces manifest gates—egress/domain/MCP/tool allow/deny; HITL/risk thresholds; classification/retention on stored artifacts; signature/checksum verification on install/update.
+- **Audit**: Installs/updates/runs/exports/edits audited with capsule_definition_id/version and capsule_instance_id.
+- **Acceptance Criteria**:
+  - Installs/updates as a capsule with verified checksum/signature; manifest + assets registered.
+  - Board renders via provider-agnostic API; switching provider in Settings requires no UI change.
+  - Card→modal edits persist through provider adapter; respects skin styling.
+  - Background sync job registers and runs with audit + retention applied.
+  - Telemetry/audit entries include capsule id/version and agent_instance_id; policy gates (egress/HITL/retention) enforced.
+
 | # | Property | Subsystem | Status |
 |---|----------|-----------|--------|
 | 1-18 | Original properties | Core | Documented |

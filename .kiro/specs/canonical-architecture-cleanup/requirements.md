@@ -2271,3 +2271,20 @@ This violates VIBE rules:
 - **Capsule Creator (No-Code):** Admin UI SHALL provide a multi-step creator (template → metadata → policy/security → assets → settingsSchema → temporal/workflows → validation → signing → export/publish) with live manifest preview, draft/history storage, and explicit Dev overrides.
 - **Policy Enforcement:** Install/run SHALL enforce policy gates from manifest (egress/domain/MCP/tool allow/deny, HITL/risk limits, retention/classification, RL export flags); unsigned artifacts SHALL be blocked in Prod/Training.
 - **Auditability:** All install/update/run/telemetry events SHALL be audited with capsule_id/version and agent_instance_id; creator actions SHALL be logged with user identity.
+
+## Additional Requirements – Workspace Manager Capsule (NEW)
+
+- **Provider-Agnostic UI Module:** Workspace Manager SHALL be delivered as a capsule UI module exposing `mountWorkspaceManager(el, opts, services)` and consuming only `project_provider_v1` (listProjects/getProject/listWorkItems/create/update/delete/listUsers/listStates/listLabels).
+- **Settings Integration:** Module SHALL register a settings panel to select provider, map states/labels, toggle features (e.g., risk tab, exec digest), and capture adapter credentials (stored server-side, not in capsule).
+- **Card→Modal Interaction:** Item lists SHALL use card layout; clicking a card SHALL open a modal editor consistent with system modal patterns and skin tokens.
+- **Runtime Engine Enforcement:** Workspace capsule SHALL declare `runtime_engine`; heavy flows default to `orchestrator`; `local` allowed only for short/low-resource operations per policy.
+- **Background Jobs:** Capsule MAY declare temporal jobs (syncs, health labels). Jobs SHALL be registered with capsule id/version, respect time limits, HITL/egress policies, and be audited.
+- **Exports:** Optional export/digest workflows SHALL store artifacts with manifest classification/retention; RL export flags SHALL be enforced.
+- **Telemetry:** Usage events (filters, edits, exports) SHALL be sent via Marketplace telemetry API with capsule_id/version and agent_instance_id for analytics/billing.
+- **Security & Policy:** Install/update/run SHALL enforce egress/domain/MCP/tool allow/deny, HITL/risk thresholds, classification/retention; checksum/signature verification SHALL be required (Prod/Training).
+- **Acceptance Criteria:**
+  - Capsule installs/updates with verified checksum/signature and registers manifest/assets.
+  - Board renders against provider-agnostic API; provider switch requires no UI code change.
+  - Card→modal edits persist through provider adapter and honor skin styling.
+  - Background sync job runs with audit + retention applied.
+  - Telemetry/audit entries include capsule id/version and agent_instance_id; policy gates enforced.
