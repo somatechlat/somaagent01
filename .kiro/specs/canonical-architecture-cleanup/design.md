@@ -2123,6 +2123,93 @@ cascading_failures_total{source_service, affected_service}
 - Entitlement enforced before install/run; artifacts retrieved via signed URLs.
 - Full audit trail for draft/build/sign/publish/install/update/run/telemetry events with capsule_id/version and agent_instance_id.
 
+### Runtime Engine Policy
+- **Modes**: `orchestrator` (default; Temporal-backed; long/complex flows), `local` (UI/agent process; low-latency, small workloads), `external` (delegate to third-party runtime).
+- **Local limits**: soft cap 5s CPU, 50MB heap, no external egress unless allow-listed; no background jobs; max 200 items per fetch; suited for render/filter only.
+- **Orchestrator-required**: background jobs, exports, bulk mutations, provider sync, multi-step workflows, HITL checkpoints, or any manifest marking "orchestrator-only".
+- **Enforcement**: validate `runtime_engine` at install; runtime guards reject local execution when limits violated; fallback to orchestrator when uncertain.
+
+### Telemetry Schema (Marketplace/Usage)
+- Envelope: `{ agent_instance_id, capsule_id, capsule_version, session_id?, user_id?, ts, event, data }`
+- Core events: `install`, `update`, `run.start`, `run.finish`, `run.error`, `ui.interaction` (filters, card_open, modal_save), `export.created`.
+- Data fields: `duration_ms`, `provider`, `item_counts`, `errors`, `policy_hits`, `runtime_engine_used`, `billable_units?`.
+- Transport: batched POST to `/marketplace/telemetry` with retry/backoff; never drop—queue locally until delivered; signed requests over mTLS.
+
+### Example CapsuleVersion Manifest (excerpt)
+```yaml
+id: com.acme.workspace
+version: 1.2.3
+runtime_engine: orchestrator
+compatibility:
+  agent_min: 0.9.0
+  api_levels: [v1]
+policy:
+  classification: internal
+  retention_days: 90
+  allow_install: [env:prod, env:stage]
+  egress_mode: allowlist
+  allowed_domains: ["api.plane.so"]
+  allowed_mcp_servers: []
+  allowed_tools: ["project_provider_v1"]
+  blocked_domains: []
+  hitl:
+    default_mode: off
+    max_pending: 0
+  risk_thresholds: { p0: 0.2, p1: 0.4 }
+settingsSchema:
+  - key: provider.apiBase
+    type: url
+    required: true
+  - key: provider.apiKey
+    type: secret
+    required: true
+agent:
+  skins:
+    - id: exec-dark
+      tokens: skins/exec-dark/tokens.css
+  ui_modules:
+    - id: workspace-manager
+      entry: ui/workspace/index.js
+      style: ui/workspace/style.css
+      mounts:
+        - name: mountWorkspaceManager
+          selector: '[data-widget="workspace"]'
+          props: {}
+  tools:
+    - id: plane-adapter
+      type: provider_adapter
+      entry: adapters/plane/index.py
+      implements: project_provider_v1
+  temporal:
+    - id: sync-plane
+      schedule: "*/10 * * * *"
+      task: tasks.sync_plane
+      params: {}
+provenance:
+  author: "Acme"
+  source: "https://capsules.acme.test/workspace-1.2.3.tgz"
+```
+
+### Client API Shapes (Agent-side)
+- **MarketplaceClient**
+  - `list_capsules() -> [CapsuleSummary]`
+  - `get_capsule(capsule_id) -> CapsuleDetail`
+  - `install_capsule(capsule_id) -> InstallPayload {artifact_url, manifest, capsule_id, version, installation_id}`
+  - `check_updates(agent_instance_id) -> [UpdateInfo]`
+  - `send_telemetry(batch)`
+- **CapsuleInstaller**
+  - `install(payload)`: download artifact_url, verify checksum+signature, unpack, register LocalCapsule, emit audit/telemetry
+  - `verify(artifact_path, checksum, signature) -> bool`
+  - `register(local_capsule_meta)`
+  - Emit install status back to Hub if installation_id present.
+
+### Acceptance Test Matrix (Workspace Manager Capsule)
+- Provider swap: Plane → Mercur with no UI code change; board renders successfully.
+- Policy gates: blocked domain fails install; unsigned artifact rejected in Prod.
+- Runtime: `runtime_engine=local` exceeds limits → routed to orchestrator; orchestrator path executes.
+- Card→modal edit saves via provider adapter; audit + telemetry emitted.
+- Background sync job runs, tagged with capsule id/version, respecting retention/classification on exports.
+
 ### Workspace Manager as Capsule UI Module (NEW)
 - **Role**: Primary project/board UX shipped as a capsule UI module; must stay provider-agnostic and skin-aware.
 - **Mount API**: `mountWorkspaceManager(el, opts, services)`; `services` supplies `project_provider_v1`, events, theme, i18n, telemetry, auth context. Supports multiple mounts per page.

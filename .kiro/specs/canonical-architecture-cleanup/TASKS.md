@@ -595,6 +595,9 @@ All required tasks are complete. Only optional property tests remain:
 - [ ] 12.10 Reusable Creator Shell
   - Document the creator as a reusable stepper component (shared manifest builder, validator, signer client, upload helper, draft autosave) to be reused for other builders (tools, prompts, tasks), avoiding duplicate flows.
 
+- [ ] 12.11 Runtime Engine Policy & Telemetry Schema
+  - Document runtime_engine enforcement (limits for local, orchestrator-required flows) and telemetry envelope/events/fields/transport; add example manifest and client API shapes for MarketplaceClient/CapsuleInstaller.
+
 ---
 
 ## VIBE Compliance Checklist
