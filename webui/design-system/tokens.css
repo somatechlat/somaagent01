@@ -18,6 +18,7 @@
   /* Font Sizes */
   --text-xs: 0.75rem;    /* 12px */
   --text-sm: 0.875rem;   /* 14px */
+  --text-md: 1rem;       /* 16px */
   --text-base: 1rem;     /* 16px */
   --text-lg: 1.125rem;   /* 18px */
   --text-xl: 1.25rem;    /* 20px */
@@ -136,11 +137,50 @@
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-fixed: 300;
+  --z-overlay: 350;
   --z-modal-backdrop: 400;
   --z-modal: 500;
   --z-popover: 600;
   --z-tooltip: 700;
   --z-toast: 800;
+  
+  /* ========================================
+   * Semantic Color Aliases (for components)
+   * ======================================== */
+  --c-bg-1: var(--bg-primary);
+  --c-bg-2: var(--bg-secondary);
+  --c-bg-3: var(--bg-tertiary);
+  --c-surface: var(--surface-1);
+  --c-surface-overlay: var(--glass-bg);
+  --c-text-1: var(--text-primary);
+  --c-text-2: var(--text-secondary);
+  --c-text-3: var(--text-muted);
+  --c-border: var(--border-color);
+  --c-border-subtle: var(--border-color);
+  --c-accent: var(--accent-primary);
+  --c-accent-hover: var(--accent-hover);
+  --c-accent-subtle: rgba(99, 102, 241, 0.1);
+  --c-success: var(--success);
+  --c-success-subtle: rgba(16, 185, 129, 0.1);
+  --c-warning: var(--warning);
+  --c-warning-subtle: rgba(245, 158, 11, 0.1);
+  --c-error: var(--error);
+  --c-error-subtle: rgba(239, 68, 68, 0.1);
+  --c-info: var(--info);
+  --c-info-subtle: rgba(59, 130, 246, 0.1);
+  
+  /* ========================================
+   * Layout Dimensions
+   * ======================================== */
+  --header-h: 3.5rem;
+  --sidebar-w: 16rem;
+  --sidebar-collapsed-w: 4rem;
+  --panel-max-w: 48rem;
+  
+  /* ========================================
+   * Animation Easing
+   * ======================================== */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* ========================================
@@ -170,6 +210,23 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  
+  /* Dark theme semantic aliases */
+  --c-bg-1: var(--bg-primary);
+  --c-bg-2: var(--bg-secondary);
+  --c-bg-3: var(--bg-tertiary);
+  --c-surface: var(--surface-1);
+  --c-surface-overlay: var(--glass-bg);
+  --c-text-1: var(--text-primary);
+  --c-text-2: var(--text-secondary);
+  --c-text-3: var(--text-muted);
+  --c-border: var(--border-color);
+  --c-border-subtle: rgba(255, 255, 255, 0.05);
+  --c-accent-subtle: rgba(99, 102, 241, 0.15);
+  --c-success-subtle: rgba(16, 185, 129, 0.15);
+  --c-warning-subtle: rgba(245, 158, 11, 0.15);
+  --c-error-subtle: rgba(239, 68, 68, 0.15);
+  --c-info-subtle: rgba(59, 130, 246, 0.15);
 }
 
 /* ========================================
@@ -414,6 +471,11 @@ pre code {
 }
 
 .hidden {
+  display: none !important;
+}
+
+/* Alpine.js cloak - hide until Alpine initializes */
+[x-cloak] {
   display: none !important;
 }
 

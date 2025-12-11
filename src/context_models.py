@@ -13,7 +13,7 @@ codebase without side effects.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -58,8 +58,8 @@ class RetrievedDoc:
     doc_id: str
     text: str
     similarity: float  # 0..1
-    salience: float  # 0..1
-    recency: float  # 0..1
+    salience: float    # 0..1
+    recency: float     # 0..1
     metadata: Dict[str, Any]
 
 

@@ -8,6 +8,7 @@ configurable.
 
 import pytest
 from httpx import AsyncClient
+from orchestrator.main import create_app
 
 
 @pytest.mark.asyncio

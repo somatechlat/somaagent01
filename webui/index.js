@@ -186,10 +186,6 @@ function markSomabrainUnknown(reason) {
 
 function updateSomabrainIndicatorFromMetadata(meta) {
   try {
-    // Ensure required variables exist before proceeding.
-    if (typeof message !== "string") {
-      throw new Error("Message text is missing or not a string");
-    }
     if (!meta) return;
     const raw = meta.somabrain_state || meta.soma_state || meta.brain_state;
     if (!raw) return;

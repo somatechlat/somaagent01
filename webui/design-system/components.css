@@ -9,7 +9,51 @@
  * - Zero specificity wars (CSS Layers)
  */
 
+/* ========================================
+ * LOADING SCREEN - Outside layer for highest priority
+ * ======================================== */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4, 1rem);
+  background: var(--c-bg-1, #0f172a);
+  z-index: 9999;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+}
+
+.loading-screen.hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 @layer components {
+  
+  .loading-logo {
+    width: 64px;
+    height: 64px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  .loading-text {
+    font-size: var(--text-sm);
+    color: var(--c-text-2);
+    animation: fadeInOut 2s ease-in-out infinite;
+  }
+  
+  @keyframes fadeInOut {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+  }
   
   /* ========================================
    * BUTTON COMPONENT

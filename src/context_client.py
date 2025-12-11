@@ -16,7 +16,7 @@ avoids duplication and satisfies the VIBE rule of a **single source of truth**.
 
 from __future__ import annotations
 
-from typing import Any, List, Mapping
+from typing import List, Mapping, Any
 
 from python.integrations.soma_client import SomaClient, SomaClientError
 
