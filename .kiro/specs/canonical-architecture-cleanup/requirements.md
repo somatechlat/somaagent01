@@ -2285,6 +2285,7 @@ This violates VIBE rules:
 - **Runtime Engine:** `local` allowed for browse/preview/small uploads within limits; bulk uploads/scan workflows SHALL require orchestrator; enforcement SHALL occur at runtime.
 - **Telemetry & Audit:** Upload/download/scan-fail/link/delete events SHALL be emitted with capsule_id/version and agent_instance_id; all actions SHALL be audited.
 - **Acceptance Criteria:** Verified install, policy-compliant uploads, scan enforcement, retention applied, linking works, signed URL enforcement, local vs orchestrator routing respected.
+- **File Service Contract:** Agent-facing file service SHALL expose list/upload/download/delete/link/unlink/tag/folder APIs, enforce size/type allow-lists, AV scan, classification/retention, signed-URL TTLs, and audit all actions.
 - **Policy Enforcement:** Install/run SHALL enforce policy gates from manifest (egress/domain/MCP/tool allow/deny, HITL/risk limits, retention/classification, RL export flags); unsigned artifacts SHALL be blocked in Prod/Training.
 - **Auditability:** All install/update/run/telemetry events SHALL be audited with capsule_id/version and agent_instance_id; creator actions SHALL be logged with user identity.
 

@@ -2226,6 +2226,23 @@ provenance:
   - Downloads use signed URLs and enforce TTL/policy; blocked when policy forbids (e.g., RL export off).
   - Local vs orchestrator execution respected based on runtime_engine and payload size.
 
+#### File Service Contract (Agent-facing)
+- `list_files(filter)` → paged list with tags/folders/links metadata, classification, retention_expiry, size, checksum.
+- `upload(file, metadata)` → returns file_id; performs AV scan; enforces size/type; stores classification/retention.
+- `download(file_id)` → returns signed URL or stream; enforces policy/TTL.
+- `delete(file_id)` → soft-delete respecting retention; audit logged.
+- `link(file_id, target_type=session|message|memory, target_id)` / `unlink(...)` → auditable link actions.
+- `set_tags(file_id, tags[])` / `set_folder(file_id, folder_id)`.
+- `list_versions(file_id)` (optional) → version metadata.
+
+#### Acceptance Test Matrix (File Manager Capsule)
+- Upload with disallowed type fails pre-scan.
+- AV scan failure blocks persistence and surfaces error.
+- Classification/retention applied; delete before expiry blocked unless policy allows.
+- Download via signed URL enforces TTL; RL export disabled blocks download.
+- Link/unlink to memory/session recorded and visible in both File Manager and memory view.
+- runtime_engine=local respected: small upload allowed; large/bulk routed to orchestrator.
+
 ### Workspace Manager as Capsule UI Module (NEW)
 - **Role**: Primary project/board UX shipped as a capsule UI module; must stay provider-agnostic and skin-aware.
 - **Mount API**: `mountWorkspaceManager(el, opts, services)`; `services` supplies `project_provider_v1`, events, theme, i18n, telemetry, auth context. Supports multiple mounts per page.
