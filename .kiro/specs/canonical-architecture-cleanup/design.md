@@ -2085,6 +2085,43 @@ cascading_failures_total{source_service, affected_service}
 
 ## Summary of All Correctness Properties
 
+---
+
+## Capsule Marketplace & Creator Design (NEW)
+
+### Domain Model (Aligned with Hub)
+- `Capsule`: id, name, description, owner_vendor_id, tags/category, latest_version.
+- `CapsuleVersion`: capsule_id, semver version, manifest (YAML/JSON), input_schema, output_schema, runtime_engine (orchestrator|local|external), status (draft|published|deprecated).
+- `CapsuleRun`/`CapsuleInstance`: run record with capsule_version_id, scope, status, input, result_ref, start/end times.
+
+### Hub Services
+- **Capsule Registry (task_capsule_repo)**: source of truth for Capsule + CapsuleVersion; APIs to list/create versions and publish.
+- **Marketplace Manager (new)**: maps Capsule↔Mercur product/price, manages licenses/entitlements (`CapsulePlan`, `License`, `AgentInstallation`), generates signed artifact URLs, exposes clean API to agents.
+- **Orchestrator (Temporal)**: executes CapsuleRun workflows, pulls manifests from registry, stores results to object store/vector store, updates run status.
+- **Agent Runtime**: executes delegated steps; unaware of marketplace/licensing.
+
+### Agent Components
+- **MarketplaceClient**: calls Hub Marketplace Manager only (list/get/install/updates/telemetry).
+- **CapsuleInstaller**: downloads artifact_url, verifies checksum + signature, registers LocalCapsule (id/version/status/path/manifest), stores provenance.
+- **Local Registry & GUI**: Marketplace tab (browse/install/update), Installed tab (local state). Run action prefers Hub-orchestrated path for long workflows; local fast-path allowed for short capsules respecting `runtime_engine`.
+
+### Flows
+- **Browse/Install**: Agent → Hub list → POST install (Hub handles license/entitlement) → returns artifact_url + manifest → Installer verifies and registers → Agent reports install status.
+- **Run (recommended)**: Agent → Hub `/v1/capsules/{id}/runs` → Orchestrator → Agent Runtime/tools/object store → Agent polls status.
+- **Run (local)**: allowed for small capsules with `runtime_engine=local`, enforcing time/resource limits.
+- **Updates/Telemetry**: Agent polls `GET /marketplace/updates`; sends usage to `POST /marketplace/telemetry` (capsule_id/version, agent_instance_id, metrics).
+
+### Capsule Creator (Admin, No-Code)
+- Steps: template → metadata → policy/security → assets (skins/modules/adapters/data/workflows/persona) → settingsSchema builder → temporal jobs → validation → signing → export/publish.
+- Live manifest preview; draft/history storage; Dev overrides explicit and logged.
+- Backend endpoints: build, validate, sign (cosign/sigstore), publish; drafts stored in DB + object store; artifacts signed and checksumed.
+
+### Security & Policy
+- mTLS + JWS for Marketplace/Creator calls; artifact signature + checksum required (Prod/Training).
+- Policy gates: egress/domain/MCP/tool allow/deny, HITL/risk limits, classification/retention, RL export flags enforced at install/run.
+- Entitlement enforced before install/run; artifacts retrieved via signed URLs.
+- Full audit trail for draft/build/sign/publish/install/update/run/telemetry events with capsule_id/version and agent_instance_id.
+
 | # | Property | Subsystem | Status |
 |---|----------|-----------|--------|
 | 1-18 | Original properties | Core | Documented |

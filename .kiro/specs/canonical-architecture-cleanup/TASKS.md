@@ -561,6 +561,36 @@ All required tasks are complete. Only optional property tests remain:
 
 ---
 
+## Phase 12: Capsule Marketplace & Creator Alignment
+
+**Goal:** Align SomaAgent01 with SomaAgentHub capsule domain, add Marketplace integration, and define the no-code Capsule Creator (docs/architecture tasks only).
+
+- [ ] 12.1 Data Model Split
+  - Add doc tasks to introduce `Capsule` + `CapsuleVersion` tables (mirror Hub) and keep `CapsuleInstance/CapsuleRun` as runtime records; note uniqueness (tenant_id, name, version) and FK CapsuleVersion→Capsule.
+
+- [ ] 12.2 Marketplace Manager Contract (Hub)
+  - Document APIs to consume: `GET /marketplace/capsules`, `GET /marketplace/capsules/{id}`, `POST /marketplace/install`, `GET /marketplace/updates`, `POST /marketplace/telemetry`; include license/entitlement check and artifact_url + manifest return.
+
+- [ ] 12.3 Agent MarketplaceClient & Installer
+  - Define client interface (list/get/install/check_updates/send_telemetry) and installer responsibilities (download artifact_url, verify checksum/signature, register LocalCapsule with version/status/path).
+
+- [ ] 12.4 Runtime Engine Flag
+  - Document manifest `runtime_engine` (orchestrator|local|external) and enforcement rules (local only for short jobs; default orchestrator).
+
+- [ ] 12.5 Telemetry & Licensing
+  - Specify telemetry payload (capsule_id/version, agent_instance_id, usage metrics) and entitlement gate before install/run; include reconciliation with Hub AgentInstallation state.
+
+- [ ] 12.6 Capsule Creator UX
+  - Add UX spec steps: template → metadata → policy/security → assets → settingsSchema → temporal/workflows → validation → signing → export/publish; include live manifest preview and draft/history model; Dev override logging.
+
+- [ ] 12.7 Security/Verification Path
+  - Document install pipeline: verify checksum + signature from artifact_url; block unsigned in Prod/Training; note policy gates for egress/domain/MCP/tool allow/deny, HITL/risk limits.
+
+- [ ] 12.8 Acceptance Criteria
+  - Capture success criteria: browse/install/update/run via Hub; local fast-path allowed for small capsules respecting `runtime_engine`; Creator can build/sign/export without CLI; all actions audited.
+
+---
+
 ## VIBE Compliance Checklist
 
 - [x] No stubs in codebase

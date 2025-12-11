@@ -2259,3 +2259,15 @@ This violates VIBE rules:
 - **Planning Priors:** Before generating plans/tool choices, the system SHALL fetch prior task/tool patterns from SomaBrain and inject them into planner prompts.
 - **Feedback Standardization:** Tool executions SHALL send `tool_feedback` (same fields as task_feedback) to SomaBrain; failures SHALL enqueue for retry.
 - **Policy Enrichment:** Policy inputs SHALL include SomaBrain risk/sensitivity signals when available; policy decisions SHALL fail closed on errors.
+
+## Additional Requirements – Capsule Marketplace & Creator (NEW)
+
+- **Domain Split:** The system SHALL model `Capsule` (id, name, owner_vendor_id, tags/category, latest_version) and `CapsuleVersion` (capsule_id, semver version, manifest, input_schema, output_schema, runtime_engine=orchestrator|local|external, status=draft|published|deprecated). Uniqueness on (tenant_id, name, version) SHALL be enforced.
+- **Runtime Engine Flag:** Manifest `runtime_engine` SHALL be validated and enforced; local runs SHALL be limited to short/low-resource capsules; orchestrator is the default for long workflows.
+- **Marketplace Manager Contract:** The agent SHALL consume Hub endpoints `GET /marketplace/capsules`, `GET /marketplace/capsules/{id}`, `POST /marketplace/install`, `GET /marketplace/updates`, `POST /marketplace/telemetry`; installs SHALL return artifact_url + manifest and SHALL perform license/entitlement checks.
+- **Licensing & Entitlements:** A license/entitlement check SHALL precede install/update/run; AgentInstallation state SHALL be reconciled with Hub before execution.
+- **Installer Verification:** CapsuleInstaller SHALL download artifact_url, verify checksum and detached signature, reject unsigned/invalid artifacts (especially in Prod/Training), and register LocalCapsule with version/status/path metadata.
+- **Telemetry:** Agents SHALL send usage telemetry (capsule_id/version, agent_instance_id, usage metrics) to Hub `POST /marketplace/telemetry` for billing/analytics; failures SHALL be retried with backoff.
+- **Capsule Creator (No-Code):** Admin UI SHALL provide a multi-step creator (template → metadata → policy/security → assets → settingsSchema → temporal/workflows → validation → signing → export/publish) with live manifest preview, draft/history storage, and explicit Dev overrides.
+- **Policy Enforcement:** Install/run SHALL enforce policy gates from manifest (egress/domain/MCP/tool allow/deny, HITL/risk limits, retention/classification, RL export flags); unsigned artifacts SHALL be blocked in Prod/Training.
+- **Auditability:** All install/update/run/telemetry events SHALL be audited with capsule_id/version and agent_instance_id; creator actions SHALL be logged with user identity.
