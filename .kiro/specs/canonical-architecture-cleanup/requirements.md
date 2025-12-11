@@ -2269,6 +2269,7 @@ This violates VIBE rules:
 - **Installer Verification:** CapsuleInstaller SHALL download artifact_url, verify checksum and detached signature, reject unsigned/invalid artifacts (especially in Prod/Training), and register LocalCapsule with version/status/path metadata.
 - **Telemetry:** Agents SHALL send usage telemetry (capsule_id/version, agent_instance_id, usage metrics) to Hub `POST /marketplace/telemetry` for billing/analytics; failures SHALL be retried with backoff.
 - **Capsule Creator (No-Code):** Admin UI SHALL provide a multi-step creator (template → metadata → policy/security → assets → settingsSchema → temporal/workflows → validation → signing → export/publish) with live manifest preview, draft/history storage, and explicit Dev overrides.
+- **Reusable Creator Shell:** The creator SHALL be a reusable stepper component (shared services: manifest builder, validator, signer client, upload helper, draft autosave) that can be reused for other builders (tools/prompts/tasks) without duplicating logic.
 - **Policy Enforcement:** Install/run SHALL enforce policy gates from manifest (egress/domain/MCP/tool allow/deny, HITL/risk limits, retention/classification, RL export flags); unsigned artifacts SHALL be blocked in Prod/Training.
 - **Auditability:** All install/update/run/telemetry events SHALL be audited with capsule_id/version and agent_instance_id; creator actions SHALL be logged with user identity.
 

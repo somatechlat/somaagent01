@@ -592,6 +592,9 @@ All required tasks are complete. Only optional property tests remain:
 - [ ] 12.9 Workspace Manager Capsule Spec
   - Add detailed design/requirements for Workspace Manager as a capsule UI module: mount API, provider-agnostic contract (`project_provider_v1`), Settings panel fields, card→modal pattern, runtime_engine rules, background jobs, exports, telemetry, policy/audit requirements.
 
+- [ ] 12.10 Reusable Creator Shell
+  - Document the creator as a reusable stepper component (shared manifest builder, validator, signer client, upload helper, draft autosave) to be reused for other builders (tools, prompts, tasks), avoiding duplicate flows.
+
 ---
 
 ## VIBE Compliance Checklist

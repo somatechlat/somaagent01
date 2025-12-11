@@ -2115,6 +2115,7 @@ cascading_failures_total{source_service, affected_service}
 - Steps: template → metadata → policy/security → assets (skins/modules/adapters/data/workflows/persona) → settingsSchema builder → temporal jobs → validation → signing → export/publish.
 - Live manifest preview; draft/history storage; Dev overrides explicit and logged.
 - Backend endpoints: build, validate, sign (cosign/sigstore), publish; drafts stored in DB + object store; artifacts signed and checksumed.
+- **Reusable Creator Shell**: Implement as a generic stepper component consumable by other builders (tools, prompts, tasks). Provides shared services (manifest builder, validator, signer client, upload helper, draft autosave) and pluggable steps.
 
 ### Security & Policy
 - mTLS + JWS for Marketplace/Creator calls; artifact signature + checksum required (Prod/Training).
