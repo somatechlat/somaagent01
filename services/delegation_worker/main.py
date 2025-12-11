@@ -8,6 +8,8 @@ from typing import Any
 
 from jsonschema import ValidationError
 
+# Legacy import removed. Use centralized configuration via cfg.
+from src.core.config import cfg
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging

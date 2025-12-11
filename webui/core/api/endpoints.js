@@ -21,13 +21,14 @@ export const ENDPOINTS = Object.freeze({
   
   // Sessions & Chat
   SESSIONS: '/sessions',
-  SESSION: '/session',
+  SESSION: (sessionId) => `/sessions/${encodeURIComponent(sessionId)}`,
   SESSION_MESSAGE: '/session/message',
   SESSION_EVENTS: (sessionId) => `/session/${encodeURIComponent(sessionId)}/events`,
   SESSION_HISTORY: (sessionId) => `/sessions/${encodeURIComponent(sessionId)}/history`,
+  CHAT: '/llm/invoke',
   
   // Settings
-  SETTINGS: '/settings',
+  SETTINGS: '/settings/sections',
   SETTINGS_SECTIONS: '/settings/sections',
   TEST_CONNECTION: '/settings/test-connection',
   
@@ -41,6 +42,9 @@ export const ENDPOINTS = Object.freeze({
   // Scheduler
   SCHEDULER_TASKS: '/scheduler/tasks',
   SCHEDULER_TASK: (taskId) => `/scheduler/tasks/${encodeURIComponent(taskId)}`,
+  
+  // Memory
+  MEMORY: '/memory',
 });
 
 /**

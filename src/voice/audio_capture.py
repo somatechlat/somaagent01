@@ -22,14 +22,10 @@ from __future__ import annotations
 import asyncio
 import sys
 from dataclasses import dataclass
-from typing import AsyncGenerator, TYPE_CHECKING
+from typing import AsyncGenerator
 
 from src.core.config.models import AudioConfig
-
 from .exceptions import VoiceProcessingError
-
-if TYPE_CHECKING:
-    import sounddevice
 
 
 @dataclass

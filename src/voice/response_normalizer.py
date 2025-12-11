@@ -1,10 +1,15 @@
 """Utility to normalize provider responses into a common schema.
 
-Provider clients emit dictionaries with a ``type`` key. Supported types are
-``"audio"``, ``"text"`` (transcriptions), or ``"event"`` messages.
+Both the OpenAI and local client stubs emit dictionaries with a ``type`` key –
+currently only ``"audio"`` is used.  In a full implementation the provider may
+also return ``"text"`` (transcriptions) or ``"event"`` messages.  The
+``ResponseNormalizer`` centralises this transformation so that downstream code
+does not need to branch on the provider implementation.
 
-The normaliser validates expected keys and produces a ``dict`` with ``kind``
-(the normalized type) and ``payload`` (the raw data).
+The normaliser is deliberately lightweight: it validates the expected keys and
+produces a ``dict`` with ``kind`` (the normalized type) and ``payload`` (the
+raw data).  Errors are raised as :class:`VoiceProcessingError` to keep a
+consistent exception hierarchy.
 """
 
 from __future__ import annotations

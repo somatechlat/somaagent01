@@ -13,12 +13,13 @@ common base class for the whole voice subsystem.
 
 from __future__ import annotations
 
+import asyncio
 from typing import AsyncGenerator
 
 from .audio_capture import AudioCapture
+from .speaker import Speaker
 from .exceptions import VoiceProcessingError
 from .provider_selector import _BaseClient
-from .speaker import Speaker
 
 
 class VoiceAdapter:
@@ -40,13 +41,12 @@ class VoiceAdapter:
         self._client = client
         self._speaker = speaker
 
-    async def _audio_responses(
-        self, audio_stream: AsyncGenerator[bytes, None]
-    ) -> AsyncGenerator[bytes, None]:
+    async def _audio_responses(self, audio_stream: AsyncGenerator[bytes, None]) -> AsyncGenerator[bytes, None]:
         """Transform provider responses into a pure audio byte stream.
 
-        The concrete client returns dictionaries with a ``type`` field.
-        The adapter filters for ``"audio"`` type and yields the ``data`` payload.
+        The concrete client returns dictionaries with a ``type`` field.  For the
+        stub implementations the type is always ``"audio"``; the adapter filters
+        accordingly and yields the ``data`` payload.
         """
         try:
             async for resp in self._client.process(audio_stream):

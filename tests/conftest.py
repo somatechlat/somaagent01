@@ -13,10 +13,8 @@ definition and no code is executed at import time.
 """
 
 import os
-
 import pytest
 from httpx import AsyncClient
-
 from orchestrator.main import create_app
 
 

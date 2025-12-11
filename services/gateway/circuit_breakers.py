@@ -4,7 +4,6 @@ Real resilience for external service dependencies with no mocks.
 """
 
 import asyncio
-import logging
 import time
 from datetime import datetime
 from functools import wraps
@@ -13,8 +12,6 @@ from typing import Any, Callable, Dict
 import pybreaker
 
 from observability.metrics import metrics_collector
-
-logger = logging.getLogger(__name__)
 
 
 class CircuitBreakerConfig:
@@ -43,15 +40,15 @@ class ResilientService:
     def _on_breaker_open(self):
         """Handle circuit breaker opening."""
         metrics_collector.track_error("circuit_breaker_open", self.name)
-        logger.warning("Circuit breaker OPEN for %s", self.name)
+        print(f"⚠️ Circuit breaker OPEN for {self.name}")
 
     def _on_breaker_close(self):
         """Handle circuit breaker closing."""
-        logger.info("Circuit breaker CLOSED for %s", self.name)
+        print(f"✅ Circuit breaker CLOSED for {self.name}")
 
     def _on_breaker_half_open(self):
         """Handle circuit breaker half-open."""
-        logger.info("Circuit breaker HALF-OPEN for %s", self.name)
+        print(f"🔄 Circuit breaker HALF-OPEN for {self.name}")
 
     def call(self, func: Callable, *args, **kwargs) -> Any:
         """Call function with circuit breaker protection."""
@@ -156,17 +153,11 @@ class ProtectedPostgresClient:
         return await self.breaker.call_async(self._execute_query, query, *args)
 
     async def _execute_query(self, query: str, *args):
-        """Execute query against PostgreSQL."""
-        import asyncpg
-
-        from src.core.config import cfg
-
-        dsn = cfg.settings().database.dsn
-        conn = await asyncpg.connect(dsn)
-        try:
-            return await conn.fetch(query, *args)
-        finally:
-            await conn.close()
+        """Actual query execution - postgres_client not available."""
+        # This stub signals that PostgreSQL support is optional and not
+        # bundled in the current runtime. Sub‑classes should provide a concrete
+        # implementation when the feature is required.
+        raise NotImplementedError("PostgreSQL client not available")
 
 
 class ProtectedKafkaClient:
@@ -307,23 +298,6 @@ class CircuitBreakerRegistry:
             # Return a wrapper object compatible with circuit_endpoints expectations
             breaker = circuit_breakers[name]
             return CircuitBreakerWrapper(breaker)
-        return None
-
-    @staticmethod
-    def get_state(name: str):
-        """Get the state of a circuit breaker by name.
-
-        Returns a state wrapper with a .value attribute, or None if not found.
-        """
-        if name in circuit_breakers:
-            breaker = circuit_breakers[name]
-            state_name = breaker.breaker.current_state.name
-
-            class StateWrapper:
-                def __init__(self, state):
-                    self.value = state.upper() if state else "CLOSED"
-
-            return StateWrapper(state_name)
         return None
 
 

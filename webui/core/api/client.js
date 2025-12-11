@@ -126,35 +126,83 @@ function injectAuthHeaders(headers) {
 }
 
 /**
- * Core fetch wrapper with authentication and error handling
- * @param {string} url - Request URL
+ * Core fetch wrapper with authentication and error handling.
+ *
+ * Returns a data object augmented with Response-like metadata so both
+ * legacy callers (expecting a Response with `.ok` / `.json()`) and
+ * modern callers (expecting parsed JSON) keep working.
+ *
+ * @param {string} url - Request URL (will be prefixed with /v1 if not already)
  * @param {Object} [options] - Fetch options
- * @returns {Promise<Response>} Fetch response
+ * @returns {Promise<Object>} Parsed data object with response metadata attached
  */
 export async function fetchApi(url, options = {}) {
+  // Prepend API version if not already present
+  const fullUrl = url.startsWith('/v1') || url.startsWith('http') ? url : `${API_VERSION}${url}`;
+
   // Build initial config
   let config = {
     ...options,
-    headers: injectAuthHeaders(options.headers || {}),
+    headers: {
+      'Content-Type': 'application/json',
+      ...injectAuthHeaders(options.headers || {}),
+    },
     credentials: options.credentials || 'same-origin',
   };
-  
+
   // Apply request interceptors
   config = await applyRequestInterceptors(config);
-  
+
   // Perform fetch
-  let response = await fetch(url, config);
-  
+  let response = await fetch(fullUrl, config);
+
   // Handle login redirect
   if (response.redirected && response.url.endsWith('/login')) {
     window.location.href = response.url;
-    return response;
+    throw new Error('Redirected to login');
   }
-  
+
   // Apply response interceptors
   response = await applyResponseInterceptors(response, config);
-  
-  return response;
+
+  // Read body once from a clone so the original response remains untouched
+  const cloned = response.clone();
+  const rawText = await cloned.text();
+
+  // Parse JSON if possible; fall back to raw text
+  let parsed;
+  try {
+    parsed = rawText ? JSON.parse(rawText) : {};
+  } catch (e) {
+    parsed = { raw: rawText };
+  }
+
+  // Build a compatibility wrapper that behaves like parsed JSON but exposes
+  // Response-like metadata for callers that previously expected a Response.
+  const result = (parsed && typeof parsed === 'object') ? parsed : { value: parsed };
+
+  Object.defineProperties(result, {
+    ok: { value: response.ok, enumerable: false },
+    status: { value: response.status, enumerable: false },
+    statusText: { value: response.statusText, enumerable: false },
+    headers: { value: response.headers, enumerable: false },
+    url: { value: response.url, enumerable: false },
+    raw: { value: rawText, enumerable: false },
+    json: { value: async () => parsed, enumerable: false },
+    text: { value: async () => rawText, enumerable: false },
+    response: { value: response, enumerable: false },
+  });
+
+  // Surface HTTP errors with meaningful messages while preserving parsed body
+  if (!response.ok) {
+    const message = (parsed && parsed.error) || rawText || `HTTP ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = parsed;
+    throw error;
+  }
+
+  return result;
 }
 
 /**

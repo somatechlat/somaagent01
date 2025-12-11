@@ -1,0 +1,224 @@
+/**
+ * Agent Control Panel Styles
+ * Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6
+ */
+
+/* Control Panel Container */
+.agent-control-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.agent-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.agent-control-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Status Display */
+.agent-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.agent-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.agent-status-dot.running {
+  background: var(--success);
+}
+
+.agent-status-dot.paused {
+  background: var(--warning);
+  animation: none;
+}
+
+.agent-status-dot.stopped {
+  background: var(--text-muted);
+  animation: none;
+}
+
+.agent-status-dot.error {
+  background: var(--error);
+}
+
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.agent-status-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+/* Control Buttons */
+.agent-controls {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.agent-control-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.agent-control-btn:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--accent-primary);
+}
+
+.agent-control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-control-btn.pause {
+  color: var(--warning);
+}
+
+.agent-control-btn.resume {
+  color: var(--success);
+}
+
+.agent-control-btn.restart {
+  color: var(--error);
+}
+
+/* Cognitive State Display */
+.cognitive-state {
+  margin-top: var(--space-4);
+}
+
+.cognitive-state-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+}
+
+.neuromodulator-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.neuromodulator-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.neuromodulator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.neuromodulator-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.neuromodulator-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.neuromodulator-bar {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.neuromodulator-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+/* Compact Mode */
+.agent-control-panel.compact {
+  padding: var(--space-3);
+}
+
+.agent-control-panel.compact .agent-control-header {
+  margin-bottom: var(--space-3);
+}
+
+.agent-control-panel.compact .agent-controls {
+  margin-bottom: var(--space-3);
+}
+
+.agent-control-panel.compact .agent-control-btn {
+  padding: var(--space-2);
+  font-size: 12px;
+}
+
+.agent-control-panel.compact .neuromodulator-item {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.agent-control-panel.compact .neuromodulator-bar {
+  flex: 1;
+  height: 4px;
+}
+
+/* Error State */
+.agent-control-error {
+  padding: var(--space-2) var(--space-3);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  font-size: 12px;
+  margin-top: var(--space-3);
+}
+
+/* Last Update */
+.agent-last-update {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: var(--space-2);
+}

@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from typing import Any, Callable, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, Optional, Union
 from urllib.parse import urlparse
 
 import nest_asyncio
@@ -20,24 +21,41 @@ from agent import AgentContext, UserMessage
 from initialize import initialize_agent
 from python.helpers.defer import DeferredTask
 from python.helpers.print_style import PrintStyle
+from python.helpers.session_store_adapter import save_context
 
 # Re-export models for backward compatibility
 from python.helpers.scheduler_models import (
-    AnyTask,
     TaskState,
+    TaskType,
+    TaskSchedule,
+    TaskPlan,
+    BaseTask,
+    AdHocTask,
+    ScheduledTask,
+    PlannedTask,
+    AnyTask,
+    task_schedule_evaluations_total,
+    task_schedule_latency_seconds,
 )
 
 # Re-export repository
 from python.helpers.scheduler_repository import (
     SchedulerTaskList,
+    SCHEDULER_FOLDER,
 )
 
 # Re-export serialization helpers
 from python.helpers.scheduler_serialization import (
+    serialize_datetime,
+    parse_datetime,
+    serialize_task_schedule,
+    parse_task_schedule,
+    serialize_task_plan,
+    parse_task_plan,
     serialize_task,
     serialize_tasks,
+    deserialize_task,
 )
-from python.helpers.session_store_adapter import save_context
 
 
 class TaskScheduler:
@@ -129,7 +147,6 @@ class TaskScheduler:
     ) -> AnyTask | None:
         def _update_task(task):
             task.update(**update_params)
-
         return await self._tasks.update_task_by_uuid(task_uuid, _update_task, verify_func)
 
     async def update_task(self, task_uuid: str, **update_params) -> AnyTask | None:
@@ -158,6 +175,7 @@ class TaskScheduler:
         if context.id != task.context_id:
             raise ValueError(f"Context ID mismatch: {context.id} != {task.context_id}")
         await save_context(context, reason="scheduler:checkpoint")
+
 
     async def _run_task(self, task: AnyTask, task_context: str | None = None):
         async def _run_task_wrapper(task_uuid: str, task_context: str | None = None):
