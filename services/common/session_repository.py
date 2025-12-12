@@ -14,6 +14,7 @@ from uuid import UUID
 import asyncpg
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram
+from urllib.parse import urlparse, urlunparse
 
 from src.core.config import cfg
 
@@ -187,6 +188,7 @@ class PostgresSessionStore(SessionStore):
         # ``cfg.settings().database.dsn`` provides the validated DSN; an explicit ``dsn`` argument can still override it.
         self.dsn = dsn or cfg.settings().database.dsn
         self._pool: Optional[asyncpg.Pool] = None
+        self._pool_log_context = self._redact_dsn(self.dsn)
 
     async def _ensure_pool(self) -> asyncpg.Pool:
         if self._pool is None:
@@ -195,7 +197,30 @@ class PostgresSessionStore(SessionStore):
             self._pool = await asyncpg.create_pool(
                 self.dsn, min_size=max(0, min_size), max_size=max(1, max_size)
             )
+            LOGGER.debug(
+                "Created Postgres session pool",
+                extra={
+                    "dsn": self._pool_log_context,
+                    "pool_min": min_size,
+                    "pool_max": max_size,
+                },
+            )
         return self._pool
+
+    @staticmethod
+    def _redact_dsn(dsn: str) -> str:
+        """Redact credentials in DSN for safe logging."""
+        try:
+            parsed = urlparse(dsn)
+            if parsed.username or parsed.password:
+                netloc = parsed.hostname or ""
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                redacted = parsed._replace(netloc=netloc)
+                return urlunparse(redacted)
+            return dsn
+        except Exception:
+            return "<redacted>"
 
     @staticmethod
     def _parse_session_id(session_id: str) -> UUID:

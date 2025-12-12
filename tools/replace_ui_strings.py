@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/replace_ui_strings.py
+r"""tools/replace_ui_strings.py
 ================================
 
 **Purpose** – Replace every user‑visible literal string inside the ``webui/``
