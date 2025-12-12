@@ -960,3 +960,86 @@ webui/
    - Persist scroll position per tab
    - Show unsaved changes warning on close attempt
 
+### Requirement 36: Capsule Marketplace & Module System
+
+**User Story:** As an operator, I want to discover and install UI capsules (modules/themes/UI packs), so that the AgentSkin can gain new capabilities without code changes.
+
+#### Acceptance Criteria
+1. WHEN the marketplace opens THEN the System SHALL list capsules with name, version, kind (module/theme/ui-pack), size, signature status, and compatibility badge.
+2. WHEN a capsule is selected THEN the System SHALL show detail drawer with description, permissions/scopes, changelog, dependencies, and screenshots.
+3. WHEN Install is clicked THEN the System SHALL call POST `/v1/capsules/{id}/install`, show progress, and surface success/error toasts.
+4. WHEN a capsule provides a theme THEN the System SHALL register the theme and allow immediate switch without reload.
+5. WHEN a capsule provides a feature module THEN the System SHALL register its adapter/entrypoint and emit `capsule:installed` event.
+6. WHEN a capsule update is available THEN the System SHALL show Update CTA and allow rollback to previous version.
+7. WHEN a capsule is unsigned or incompatible THEN the System SHALL show warning badge and block install unless user confirms.
+
+### Requirement 37: Project Manager Provider Abstraction
+
+**User Story:** As a user, I want to use the same Project Manager UI with different backends (Plane, Project Open, MS Project Server, etc.), so that I can plug in any provider without changing the UI.
+
+#### Acceptance Criteria
+1. WHEN the project manager loads THEN the System SHALL select an active provider adapter (configured or capsule-registered).
+2. WHEN listing projects/boards/tasks THEN the System SHALL call the provider adapter interface (list/create/update/delete) instead of provider-specific code.
+3. WHEN provider changes THEN the UI SHALL refresh data via the new adapter without full page reload.
+4. WHEN a capsule registers a new provider adapter THEN it SHALL appear as an option and work with the same UI components.
+5. WHEN network or auth errors occur THEN the System SHALL surface provider-specific errors in a consistent UI envelope.
+
+### Requirement 38: Canvas Visualization Framework
+
+**User Story:** As a user, I want rich, low-latency visualizations (graphs, task flows, timelines) without jank, so that large data sets remain smooth.
+
+#### Acceptance Criteria
+1. WHEN canvas-based visuals render THEN the System SHALL use devicePixelRatio scaling and resize handlers for crisp output.
+2. WHEN data exceeds 1k items THEN the System SHALL use decimation/virtualization to keep render under 16ms per frame.
+3. WHEN hovering or clicking THEN tooltips/selection SHALL be hit-tested without full re-render.
+4. WHEN theme changes THEN canvas styles SHALL update using CSS variables (no hardcoded colors).
+5. WHEN canvas components mount/unmount THEN event listeners SHALL be cleaned up to avoid leaks.
+6. WHEN SSE/streaming updates arrive THEN visuals SHALL update incrementally without blocking the main thread.
+
+### Requirement 39: In-Browser Code Execution & Canvas Output
+
+**User Story:** As a user, I want the agent to generate code, run it instantly in an isolated environment, and see live output (stdout/errors/graphics) rendered into canvas, so that I can iterate without backend round-trips.
+
+#### Acceptance Criteria
+1. WHEN code is run THEN it SHALL execute in-browser in an isolated runtime (e.g., Pyodide in a Web Worker) without server dependency.
+2. WHEN execution starts THEN the UI SHALL show status (starting/running) and a cancel/timeout control.
+3. WHEN code produces stdout/stderr THEN the UI SHALL stream it live to a console pane.
+4. WHEN code emits drawing commands THEN the System SHALL render them to a canvas pane using CSS-variable-based theming.
+5. WHEN execution exceeds the timeout or resource limits THEN it SHALL stop and surface an error status.
+6. WHEN a new run is triggered THEN the prior run’s resources SHALL be cleaned up (worker/OffscreenCanvas).
+7. WHEN a theme changes THEN canvas output colors SHALL adapt via shared tokens (no hardcoded colors).
+
+### Requirement 40: Canvas Module Layering Contracts
+
+**User Story:** As a developer, I want every canvas-capable feature to follow a consistent Module→Canvas→Component→Tool contract, so that capsules can add/replace visuals without breaking the core UI.
+
+#### Acceptance Criteria
+1. WHEN a capsule is registered THEN it SHALL provide a manifest declaring its canvas tools and UI components (kind, entrypoints, adapters, canvasTools, uiComponents).
+2. WHEN a canvas tool is mounted THEN it SHALL receive init/render/handleEvent/dispose callbacks and a theming context (CSS tokens).
+3. WHEN a canvas renderer mounts THEN it SHALL manage DPR scaling, resize observation, and lifecycle cleanup (listeners, OffscreenCanvas).
+4. WHEN events (hover/click/keys) occur THEN the renderer SHALL forward them to the active tool via the tool interface.
+5. WHEN the backend changes (2D/Pixi/Konva) THEN the module SHALL continue to work by using only the shared tool interface and draw commands.
+6. WHEN a tool runs in a Worker THEN draw commands SHALL render via the same renderer contract (no DOM access required).
+
+### Requirement 41: Memory & Workflow Canvas Theming
+
+**User Story:** As a user, I want canvas-based memory/workflow visuals to stay theme-consistent and crisp, so that the experience matches the rest of the UI.
+
+#### Acceptance Criteria
+1. WHEN memory/workflow canvases render THEN background, borders, and accents SHALL use CSS custom properties (no hardcoded colors).
+2. WHEN DPR > 1 THEN visuals SHALL scale to remain sharp without layout shifts.
+3. WHEN theme toggles (light/dark) THEN graph backgrounds and strokes SHALL update without reload.
+4. WHEN canvas is resized THEN content SHALL re-render to fill the container without distortion.
+
+### Requirement 42: SomaBrain Memory Backend Integration
+
+**User Story:** As a user, I want the Memory UI to reflect real SomaBrain data, so that I see live memories, links, and similarity without fake/demo content.
+
+#### Acceptance Criteria
+1. WHEN the Memory dashboard loads THEN it SHALL fetch memories from SomaBrain/gateway endpoints (e.g., `GET /v1/admin/memory` or equivalent user-scoped listing) with auth/tenant headers.
+2. WHEN the user filters/searches THEN the UI SHALL call the backend search/recall endpoint (e.g., `/v1/memory/search` or `/memory/recall`) instead of client-side demo data.
+3. WHEN similarity/links are shown THEN they SHALL come from backend-provided relatedness or computed client-side only from backend-provided embeddings.
+4. WHEN new memories are written via the UI THEN the System SHALL post to the backend (`/v1/memory/batch` or `/memory/remember`) and update the graph from the backend response.
+5. WHEN memory data changes on the backend THEN the UI SHALL refresh via SSE or polling (interval configurable) to stay current.
+6. WHEN auth is enforced THEN all calls SHALL include required Bearer/token + tenant/persona headers.
+7. WHEN export is requested THEN the UI SHALL use `/v1/memory/export` (or async jobs) instead of local download of demo data.

@@ -62,6 +62,7 @@ def build_router() -> APIRouter:
         sessions_full.router,
         sessions_events.router,
         attachments.router,
+        attachments.internal_router,
         memory_exports.router,
         tool_catalog.router,
         notifications.router,

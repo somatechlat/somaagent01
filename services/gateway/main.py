@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 # Re-exports for test compatibility
 # Re-export auth and providers for backward compatibility
 from services.gateway.routers import build_router
+from services.gateway import providers
 from src.core.config import cfg
 
 webui_path = str(pathlib.Path(__file__).resolve().parents[2] / "webui")
@@ -77,6 +78,30 @@ def serve_root() -> FileResponse:
 
 app.mount("/static", StaticFiles(directory=webui_path, html=False), name="webui")
 app.include_router(build_router())
+
+
+# ---------------------------------------------------------------------------
+# Compatibility helpers for routers/tests (centralised in providers)
+# ---------------------------------------------------------------------------
+def get_llm_credentials_store():
+    return providers.get_llm_credentials_store()
+
+
+def _gateway_slm_client():
+    return providers.get_slm_client()
+
+
+# Compatibility getters used by integration tests to override dependencies.
+def get_event_bus():
+    return providers.get_event_bus()
+
+
+def get_session_cache():
+    return providers.get_session_cache()
+
+
+def get_session_store():
+    return providers.get_session_store()
 
 
 def main() -> None:

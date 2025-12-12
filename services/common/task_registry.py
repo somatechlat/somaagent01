@@ -60,8 +60,10 @@ class TaskRegistry:
         self.cache_key = "task_registry:all"
         self._pool: Optional[asyncpg.Pool] = None
         self._redis: Optional[redis.Redis] = None
-        opa_base = getattr(getattr(config, "external", None), "opa_url", None)
-        self.policy = PolicyClient(base_url=opa_base or cfg.env("OPA_URL"))
+        self._opa_base = getattr(getattr(config, "external", None), "opa_url", None) or cfg.env(
+            "OPA_URL"
+        )
+        self.policy: PolicyClient | None = None
 
     async def _pool_conn(self) -> asyncpg.Pool:
         if self._pool is None:
@@ -221,6 +223,11 @@ class TaskRegistry:
         if entry.persona_scope and persona and persona not in entry.persona_scope:
             return False
         # OPA
+        if self.policy is None:
+            if not self._opa_base:
+                raise RuntimeError("OPA_URL (SA01_POLICY_URL) is required for task policy evaluation")
+            self.policy = PolicyClient(base_url=self._opa_base)
+
         return await self.policy.evaluate(
             PolicyRequest(
                 tenant=tenant,

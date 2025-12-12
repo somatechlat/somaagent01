@@ -10,10 +10,11 @@ import asyncio
 import json
 from typing import Any, AsyncGenerator, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 
 from services.common.session_repository import ensure_schema, PostgresSessionStore
+from services.gateway import providers
 
 # Legacy admin settings replaced – use central cfg singleton.
 from src.core.config import cfg
@@ -30,6 +31,14 @@ async def _get_store() -> PostgresSessionStore:
     store = PostgresSessionStore(cfg.settings().database.dsn)
     await ensure_schema(store)
     return store
+
+
+def _get_event_bus():
+    return providers.get_event_bus()
+
+
+def _get_session_cache():
+    return providers.get_session_cache()
 
 
 async def _sse_event_generator(
@@ -106,6 +115,56 @@ async def session_events_sse(
     # Non-streaming: return events as JSON
     events = await store.list_events(session_id=session_id, limit=limit)
     return {"session_id": session_id, "events": events or []}
+
+
+@router.post("/message")
+async def post_session_message(
+    payload: dict[str, Any],
+    bus=Depends(_get_event_bus),
+    store: PostgresSessionStore = Depends(_get_store),
+    cache=Depends(_get_session_cache),
+):
+    """Enqueue a user message and persist a session event.
+
+    This endpoint mirrors the legacy contract used by integration tests:
+    it returns ``session_id`` and ``event_id`` for the enqueued message.
+    """
+    message = payload.get("message", "")
+    if not isinstance(message, str) or not message.strip():
+        raise HTTPException(status_code=400, detail="message required")
+
+    import uuid
+
+    session_id = payload.get("session_id") or str(uuid.uuid4())
+    event = {
+        "session_id": session_id,
+        "persona_id": payload.get("persona_id"),
+        "metadata": {"tenant": payload.get("tenant"), "source": "gateway"},
+        "message": message,
+        "role": "user",
+    }
+
+    # Persist event
+    await store.append_event(session_id, event)
+
+    # Fetch last event id for response
+    events = await store.list_events_after(session_id, limit=1)
+    event_id = events[-1]["id"] if events else None
+
+    # Publish to event bus for downstream workers
+    try:
+        await bus.publish("conversation.inbound", {"session_id": session_id, "message": message})
+    except Exception:
+        # Metrics/logging would capture; do not fail user path
+        pass
+
+    # Cache persona/metadata for quick access
+    try:
+        await cache.write_context(session_id, payload.get("persona_id"), {"tenant": payload.get("tenant")})
+    except Exception:
+        pass
+
+    return {"session_id": session_id, "event_id": event_id}
 
 
 @router.get("/{session_id}")

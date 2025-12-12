@@ -32,7 +32,7 @@ async def get_settings() -> dict:
     store = _get_store()
     await store.ensure_schema()
 
-    settings = await store.get_settings()
+    settings = await store.get()
     if not settings or not settings.get("sections"):
         raise HTTPException(status_code=500, detail="Settings schema generation failed")
     return settings
@@ -51,7 +51,7 @@ async def put_settings(body: SettingsUpdate):
     store = _get_store()
     await store.ensure_schema()
 
-    await store.set_settings(body.data)
+    await store.set(body.data)
     return {"status": "ok"}
 
 
@@ -94,7 +94,7 @@ async def get_setting_field(key: str):
     """Get single settings field (top-level key)."""
     store = _get_store()
     await store.ensure_schema()
-    value = await store.get_settings()
+    value = await store.get()
     return {"key": key, "value": value.get(key)}
 
 
@@ -103,7 +103,7 @@ async def put_setting_field(key: str, body: dict):
     """Set single settings field (top-level key)."""
     store = _get_store()
     await store.ensure_schema()
-    current = await store.get_settings()
+    current = await store.get()
     current[key] = body.get("value")
-    await store.set_settings(current)
+    await store.set(current)
     return {"status": "ok"}
