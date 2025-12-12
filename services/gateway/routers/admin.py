@@ -7,6 +7,8 @@ import json
 import time
 from typing import Optional
 
+from integrations.repositories import get_audit_store
+
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 
@@ -26,56 +28,33 @@ async def audit_export(action: Optional[str] = Query(None)):
     Returns:
         Newline-delimited JSON response of audit records
     """
-    # REAL IMPLEMENTATION - Audit export functionality
-    # In a real implementation, this would query the audit store
-    
-    # Create a sample audit record for testing
-    audit_records = []
-    
-    # Add an llm.invoke record if that's what's being requested
-    if action is None or action == "llm.invoke":
-        audit_records.append({
-            "timestamp": "2025-01-15T00:00:00Z",
-            "action": "llm.invoke",
-            "details": {
-                "status": "ok",
-                "model": "gpt-4o-mini",
-                "provider": "openai",
-                "input_tokens": 7,
-                "output_tokens": 3
-            },
-            "user": "test-user",
-            "session_id": "sess-llm-1"
-        })
-    
-    # Add other sample records if no specific action is requested
-    if action is None:
-        audit_records.extend([
-            {
-                "timestamp": "2025-01-15T00:00:01Z",
-                "action": "memory.store",
-                "details": {
-                    "status": "ok",
-                    "memory_id": "mem-123"
-                },
-                "user": "test-user",
-                "session_id": "sess-llm-1"
-            },
-            {
-                "timestamp": "2025-01-15T00:00:02Z",
-                "action": "tool.invoke",
-                "details": {
-                    "status": "ok",
-                    "tool": "calculator"
-                },
-                "user": "test-user",
-                "session_id": "sess-llm-1"
-            }
-        ])
-    
-    # Return as newline-delimited JSON response
     from fastapi import Response
-    return Response(
-        content="\n".join(json.dumps(record) for record in audit_records),
-        media_type="text/plain"
-    )
+
+    store = get_audit_store()
+    try:
+        await store.ensure_schema()
+    except Exception:
+        # If schema ensure fails we still attempt list; log at debug level.
+        import logging
+
+        logging.getLogger(__name__).debug("audit ensure_schema failed", exc_info=True)
+
+    records = await store.list(action=action, limit=1000)
+
+    def _serialize(evt) -> dict:
+        return {
+            "id": getattr(evt, "id", None),
+            "timestamp": getattr(evt, "ts", None).isoformat() if getattr(evt, "ts", None) else None,
+            "action": getattr(evt, "action", None),
+            "resource": getattr(evt, "resource", None),
+            "session_id": getattr(evt, "session_id", None),
+            "tenant": getattr(evt, "tenant", None),
+            "details": getattr(evt, "details", None),
+            "trace_id": getattr(evt, "trace_id", None),
+            "request_id": getattr(evt, "request_id", None),
+            "ip": getattr(evt, "ip", None),
+            "user_agent": getattr(evt, "user_agent", None),
+        }
+
+    payload = "\n".join(json.dumps(_serialize(evt), default=str) for evt in records)
+    return Response(content=payload, media_type="text/plain")

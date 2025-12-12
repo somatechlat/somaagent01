@@ -117,6 +117,11 @@ class UiSettingsStore:
             if not row:
                 return {}
             val = row["value"]
+            if isinstance(val, str):
+                try:
+                    val = json.loads(val)
+                except Exception:
+                    return {}
             return dict(val) if isinstance(val, dict) else {}
 
     async def set(self, value: dict[str, Any]) -> None:

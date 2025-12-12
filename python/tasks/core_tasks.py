@@ -38,7 +38,8 @@ redis_client: Redis = create_redis_client()
 _store: Optional[PostgresSessionStore] = None
 _schema_ready = False
 _schema_lock = asyncio.Lock()
-policy_client = PolicyClient(base_url=cfg.settings().external.opa_url)
+# Lazily instantiate PolicyClient to avoid import-time env errors in tests.
+policy_client: PolicyClient | None = None
 
 bus = KafkaEventBus(
     settings=KafkaSettings(
@@ -127,6 +128,10 @@ def _append_event_sync(session_id: str, event: dict[str, Any]) -> None:
 
 
 def _enforce_policy(task_name: str, tenant_id: str, action: str, resource: dict[str, Any]) -> None:
+    global policy_client
+    if policy_client is None:
+        policy_client = PolicyClient(base_url=cfg.settings().external.opa_url)
+
     allowed = _run(
         policy_client.evaluate(
             PolicyRequest(

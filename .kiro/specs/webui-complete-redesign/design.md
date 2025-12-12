@@ -100,6 +100,16 @@ webui/
 │   │   ├── settings-card.html
 │   │   ├── model-card.html     # Reusable model settings card
 │   │   └── index.js
+│   ├── capsules/               # Capsule marketplace & loader
+│   │   ├── capsules.store.js
+│   │   ├── capsules.api.js
+│   │   ├── capsules.events.js
+│   │   └── index.js
+│   ├── project-manager/        # Provider-agnostic project UI
+│   │   ├── pm.store.js
+│   │   ├── pm.api.js           # Adapter registry + calls
+│   │   ├── providers/          # Plane, ProjectOpen, MS Project adapters
+│   │   └── index.js
 │   ├── memory/
 │   │   ├── memory.store.js
 │   │   ├── memory.api.js
@@ -326,6 +336,46 @@ h1, h2, h3, h4, h5, h6 {
   transition: var(--transition-all);
 }
 ```
+
+## Architecture Extensions for Capsules & Adapters
+- **Capsule Loader**: Fetch manifest (kind, version, integrity, entrypoints, theme assets); verify signature/integrity before dynamic import of JS/CSS.
+- **Feature Registry**: Maintain registered adapters (e.g., project-manager providers) and theme packs; emit events on register/unregister.
+- **Marketplace UI**: Grid + detail drawer with install/update/rollback, signature badges, compatibility checks, dependency warnings.
+- **Provider Adapters**: Each implements provider-neutral interfaces (projects/boards/tasks CRUD, search, assignments, files). UI never imports provider-specific code directly.
+- **Theme Packs**: Theme-type capsules register token overrides; ThemeRegistry applies via data-theme or injected CSS module.
+
+## Canvas Visualization Guidance
+- Scale by `devicePixelRatio`, debounce resize, reuse contexts to avoid reflows.
+- Use CSS variables for all colors to stay theme-compatible.
+- Decimate/virtualize for large datasets; incremental updates for streaming/SSE data.
+- Clean up listeners on unmount; target <16ms per frame for 60fps.
+
+## In-Browser Code Execution to Canvas
+- Runtime: Web Worker hosting Pyodide (Python WASM) as the “venv”; optional future runtimes via adapters.
+- IPC protocol: run/cancel/status/stdout/stderr/draw messages; timeouts and resource guards enforced in worker.
+- Rendering: OffscreenCanvas preferred; fall back to main-thread canvas helper. Colors read from design-system CSS vars.
+- UI shell: Code runner component with run/cancel buttons, live console, canvas pane, status badges.
+- Cleanup: Dispose worker/OffscreenCanvas per run; rehydrate tokens on theme change.
+
+## Canvas Module Layering Pattern
+- Module Manifest: declares kind, entrypoints, adapters, `canvasTools`, `uiComponents`, and theme packs; registered with feature registry.
+- Canvas Renderer: shared host handling DPR scaling, resize observer, event wiring, OffscreenCanvas transfer, theme token injection; pluggable backends (2D default, Pixi/Konva optional).
+- Canvas Tool Interface: `init(ctx, theme)`, `render(state)`, `handleEvent(evt)`, `dispose()`; tools may run in a Worker and emit draw commands.
+- Component Shell: React/Next wrapper that mounts the renderer, passes props/state, and surfaces controls (run, zoom, filters) without domain logic.
+- Compatibility: Tools never import provider-specific code; they consume draw commands/theme only, so swapping providers or backends doesn’t break UI.
+
+### Canvas Theming (Memory/Workflow)
+- Use CSS custom properties for all graph backgrounds, borders, strokes, fills; no hardcoded colors.
+- Re-render on resize and theme change; scale for DPR>1 for crisp output.
+- Apply the same renderer/tool contracts for memory graphs and workflow canvases (timeline/board).
+
+### Memory Data Flow (SomaBrain)
+- Data source: gateway/SomaBrain endpoints (e.g., `GET /v1/admin/memory` for admin list, `/v1/memory/search` or `/memory/recall` for recall).
+- Auth: Bearer/API token + tenant/persona headers as required.
+- Relatedness: prefer backend-provided similarities; if embeddings are returned, compute cosine client-side to build links.
+- Live updates: subscribe to SSE if available; otherwise poll at configurable interval.
+- Writes: use backend (`/v1/memory/batch` or `/memory/remember`) and re-fetch graph on success.
+- Export: use `/v1/memory/export` (NDJSON) or async export job endpoints.
 
 ### Component: Button
 
@@ -892,4 +942,3 @@ Each property-based test MUST:
 3. **Store Tests**: Verify state management logic
 4. **API Tests**: Verify API calls use correct endpoints and formats
 5. **E2E Tests**: Verify full user flows with Playwright
-

@@ -119,20 +119,19 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
 
 
 def _default_base_url() -> str:
-    """Return the base URL for SomaBrain.
-
-    The environment variable ``SA01_SOMA_BASE_URL`` or ``SOMA_BASE_URL`` must be set to point to the
-    SomaBrain service endpoint.
-    """
-    url = cfg.get_somabrain_url()
+    """Return the base URL for SomaBrain on demand (no import-time side effects)."""
+    url = cfg.env("SA01_SOMA_BASE_URL")
     if not url:
-        raise ValueError(
-            "SomaBrain base URL is required. Set SA01_SOMA_BASE_URL environment variable."
+        raise RuntimeError(
+            "SA01_SOMA_BASE_URL must be set explicitly. No fallbacks allowed per VIBE rules."
         )
-    return url
+    return str(url).rstrip("/")
 
 
-DEFAULT_BASE_URL = _default_base_url()
+# Deliberately avoid computing the base URL at import time to keep tests/env
+# setup lightweight. The value is resolved at runtime when a client is
+# instantiated.
+DEFAULT_BASE_URL: str | None = None
 DEFAULT_TIMEOUT = float(cfg.env("SA01_SOMA_TIMEOUT_SECONDS", "30") or "30")
 DEFAULT_UNIVERSE = cfg.env("SA01_NAMESPACE")
 DEFAULT_NAMESPACE = cfg.env("SA01_MEMORY_NAMESPACE", "wm") or "wm"
@@ -221,7 +220,7 @@ class SomaClient:
 
     def __init__(
         self,
-        base_url: str = DEFAULT_BASE_URL,
+        base_url: str | None = DEFAULT_BASE_URL,
         *,
         api_key: Optional[str] = None,
         tenant_id: Optional[str] = None,
@@ -229,6 +228,8 @@ class SomaClient:
         timeout: float = DEFAULT_TIMEOUT,
         verify_ssl: Optional[bool] = None,
     ) -> None:
+        if not base_url:
+            base_url = _default_base_url()
         logger.debug(
             "SomaClient initializing",
             extra={
