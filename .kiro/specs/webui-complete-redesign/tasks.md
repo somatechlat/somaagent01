@@ -15,7 +15,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Include layout utilities (`.flex-center`, `.flex-between`, `.grid-cols-dashboard`)
     - Include custom scrollbar styling
     - _Requirements: 1.1, 1.2, 1.3, 1.6, 1.7, 1.8, 1.9, 1.10_
-  - [ ]* 1.2 Write property test for design token completeness
+  - [x] 1.2 Write property test for design token completeness
     - **Property 1: Design System Token Completeness**
     - **Validates: Requirements 1.1, 1.2, 1.6, 1.7, 1.8, 1.9, 1.10**
   - [x] 1.3 Create typography CSS file
@@ -39,7 +39,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Define all Gateway endpoint constants
     - Create buildUrl helper function
     - _Requirements: 30.1, 30.4, 30.5, 30.6_
-  - [ ]* 2.3 Write property test for API compatibility
+  - [x] 2.3 Write property test for API compatibility
     - **Property 10: Backend API Compatibility**
     - **Validates: Requirements 30.1, 30.2, 30.3, 30.4, 30.5, 30.6**
   - [x] 2.4 Create state store factory (core/state/store.js)
@@ -54,7 +54,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Implement EventSource connection with auto-reconnect
     - Add exponential backoff (1s, 2s, 4s, max 30s)
     - _Requirements: 12.1, 12.10_
-  - [ ]* 2.7 Write property test for SSE event handling
+  - [x] 2.7 Write property test for SSE event handling
     - **Property 9: SSE Event Handling**
     - **Validates: Requirements 12.2, 12.3, 12.4, 12.7, 12.8**
 
@@ -116,7 +116,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Implement navigation icons with labels
     - Add session list and quick actions
     - _Requirements: 2.2, 2.3, 3.1, 3.2, 3.3_
-  - [ ]* 6.3 Write property test for responsive layout breakpoints
+  - [x] 6.3 Write property test for responsive layout breakpoints
     - **Property 2: Responsive Layout Breakpoints**
     - **Validates: Requirements 2.6, 2.7**
   - [x] 6.4 Implement responsive breakpoints
@@ -145,7 +145,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Implement collapsible card with icon, title, description
     - Add expand/collapse animation (200ms)
     - _Requirements: 7.6, 7.7, 7.8, 33.3, 33.4_
-  - [ ]* 7.5 Write property test for settings card state consistency
+  - [x] 7.5 Write property test for settings card state consistency
     - **Property 3: Settings Card State Consistency**
     - **Validates: Requirements 7.6, 7.7, 7.8, 7.9**
   - [x] 7.6 Create model card component (Chat, Utility, Browser, Embedding)
@@ -153,7 +153,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Add model name input with autocomplete
     - Add context length slider, rate limit inputs, kwargs editor
     - _Requirements: 7.11, 7.12, 7.13, 7.14, 7.15, 7.16, 7.17, 7.18, 7.19, 33.5_
-  - [ ]* 7.7 Write property test for model card field completeness
+  - [x] 7.7 Write property test for model card field completeness
     - **Property 4: Model Card Field Completeness**
     - **Validates: Requirements 7.11, 7.12, 7.13, 7.14**
   - [x] 7.8 Create Memory/SomaBrain settings card
@@ -163,7 +163,7 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
     - Implement masked key display with show/hide toggle
     - Add test connection button
     - _Requirements: 7.25, 7.26, 7.27, 7.28, 7.29, 7.30_
-  - [ ]* 7.10 Write property test for API key masking
+  - [x] 7.10 Write property test for API key masking
     - **Property 5: API Key Masking**
     - **Validates: Requirements 7.26, 7.27**
   - [x] 7.11 Create MCP/A2A settings cards
@@ -208,21 +208,21 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
   - [x] 9.5 Create assistant message component
     - Implement left-aligned card with gradient accent border, AI glow avatar
     - _Requirements: 4.3_
-  - [ ]* 9.6 Write property test for message role styling
+  - [x] 9.6 Write property test for message role styling
     - **Property 6: Message Role Styling**
     - **Validates: Requirements 4.2, 4.3**
   - [x] 9.7 Implement streaming visualization
     - Add thinking indicator with pulsing animation
     - Implement progressive token display with cursor
     - _Requirements: 4.4, 4.5, 4.6_
-  - [ ]* 9.8 Write property test for streaming state visualization
+  - [x] 9.8 Write property test for streaming state visualization
     - **Property 7: Streaming State Visualization**
     - **Validates: Requirements 4.4, 4.5, 4.6**
   - [x] 9.9 Create code block renderer
     - Implement syntax highlighting with Prism.js
     - Add language label, copy button, line numbers
     - _Requirements: 4.7_
-  - [ ]* 9.10 Write property test for code block syntax highlighting
+  - [x] 9.10 Write property test for code block syntax highlighting
     - **Property 8: Code Block Syntax Highlighting**
     - **Validates: Requirements 4.7**
   - [x] 9.11 Create markdown renderer
@@ -477,3 +477,85 @@ This implementation plan transforms the SomaAgent01 Web Interface into a state-o
 
 - [x] 26. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 27. Capsule Marketplace & Theme Packs
+  - [ ] 27.1 Implement capsule endpoints in client registry (list/get/install)
+    - _Requirements: 36.1, 36.3_
+  - [ ] 27.2 Build marketplace UI (list, filter, detail drawer, signature badges)
+    - _Requirements: 36.1, 36.2, 36.7_
+  - [ ] 27.3 Implement install/update/rollback flow with events
+    - _Requirements: 36.3, 36.5, 36.6_
+  - [ ] 27.4 Theme capsule integration with ThemeRegistry
+    - _Requirements: 36.4_
+  - [ ]* 27.5 Property test: capsule endpoint map & install state transitions
+    - _Requirements: 36.3, 36.5_
+
+- [ ] 28. Project Manager Provider Abstraction
+  - [ ] 28.1 Define provider-neutral interfaces and adapter registry
+    - _Requirements: 37.1, 37.2_
+  - [ ] 28.2 Implement Plane adapter (reference)
+    - _Requirements: 37.1, 37.2_
+  - [ ] 28.3 Provider switch UX and data refresh
+    - _Requirements: 37.3_
+  - [ ] 28.4 Capsule adapter registration hook
+    - _Requirements: 37.4_
+  - [ ]* 28.5 Property test: adapter registry contract and fallback errors
+    - _Requirements: 37.2, 37.5_
+
+- [ ] 29. Canvas Visualization Framework
+  - [ ] 29.1 Extract reusable canvas utilities (dpr scaling, resize handling)
+    - _Requirements: 38.1, 38.5_
+  - [ ] 29.2 Add performance decimation/virtualization for large datasets
+    - _Requirements: 38.2, 38.6_
+  - [ ] 29.3 Theme-aware canvas styling via CSS variables
+    - _Requirements: 38.4_
+  - [ ]* 29.4 Property test: canvas components respect dpr and clean listeners
+    - _Requirements: 38.1, 38.5_
+
+- [ ] 30. In-Browser Code Execution to Canvas
+  - [ ] 30.1 Add worker-based runtime (Pyodide) with run/cancel/timeout
+    - _Requirements: 39.1, 39.2, 39.5_
+  - [ ] 30.2 Stream stdout/stderr to console pane
+    - _Requirements: 39.3_
+  - [ ] 30.3 Implement draw-message pipeline to canvas (OffscreenCanvas first)
+    - _Requirements: 39.4, 39.7_
+  - [ ] 30.4 Cleanup/teardown per run and on theme change
+    - _Requirements: 39.6, 39.7_
+  - [ ]* 30.5 Property test: run lifecycle (start/timeout/cancel) and cleanup
+    - _Requirements: 39.2, 39.5, 39.6_
+
+- [ ] 31. Canvas Module Layering
+  - [ ] 31.1 Define ModuleManifest, CanvasRenderer, and CanvasTool interfaces
+    - _Requirements: 40.1, 40.2, 40.3_
+  - [ ] 31.2 Build shared canvas host (DPR, resize, OffscreenCanvas, theme tokens)
+    - _Requirements: 40.3, 40.5_
+  - [ ] 31.3 Add pluggable backends (2D default; Pixi/Konva optional)
+    - _Requirements: 40.5_
+  - [ ] 31.4 Wire event forwarding and lifecycle cleanup
+    - _Requirements: 40.3, 40.4, 40.6_
+  - [ ]* 31.5 Property test: renderer lifecycle and tool contract adherence
+    - _Requirements: 40.2, 40.3, 40.6_
+
+- [ ] 32. Memory & Workflow Canvas Theming
+  - [ ] 32.1 Refactor memory/workflow canvas styles to use tokens (no hardcoded colors)
+    - _Requirements: 41.1_
+  - [ ] 32.2 Ensure DPR scaling and resize re-render for memory/workflow canvases
+    - _Requirements: 41.2, 41.4_
+  - [ ] 32.3 Theme toggle handling for canvas backgrounds/strokes
+    - _Requirements: 41.3_
+  - [ ]* 32.4 Property test: theme application on canvas components
+    - _Requirements: 41.1, 41.3_
+
+- [ ] 33. SomaBrain Memory Backend Integration
+  - [ ] 33.1 Replace demo memory data with backend fetch (list/search/recall)
+    - _Requirements: 42.1, 42.2_
+  - [ ] 33.2 Build links/relatedness from backend similarities or embeddings
+    - _Requirements: 42.3_
+  - [ ] 33.3 Hook memory writes to backend endpoints and refresh graph
+    - _Requirements: 42.4_
+  - [ ] 33.4 Implement SSE/polling refresh for memory updates
+    - _Requirements: 42.5_
+  - [ ] 33.5 Add export flow via `/v1/memory/export` or jobs
+    - _Requirements: 42.7_
+  - [ ]* 33.6 Property test: no synthetic memory data in production builds
+    - _Requirements: 42.1_
