@@ -1,25 +1,137 @@
-# somaAgent01 Documentation
+# 📁 SOMAAGENT01 DOCUMENTATION STRUCTURE
+## Organization & Navigation Guide
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+**Last Updated:** 2025-12-14  
+**Purpose:** Standard documentation structure for all somaAgent01 docs
 
-## Quick Overview
-- **What**: Real-time agentic platform with perfect memory, built on Kubernetes, Kafka & SomaBrain
-- **Who**: Engineers, SREs, Product owners, auditors, AI agents
-- **Where**: Docs live under `/docs/` and are published via MkDocs-Material
+---
 
-## Documentation Structure
-| Manual | Path | Audience |
-|--------|------|----------|
-| User Manual | `docs/user-manual/` | End-users, product managers |
-| Technical Manual | `docs/technical-manual/` | SREs, Ops, Platform engineers |
-| Development Manual | `docs/development-manual/` | Contributors, developers |
-| Onboarding Manual | `docs/onboarding-manual/` | New hires, contractors |
-| Agent Onboarding | `docs/agent-onboarding/` | AI agents, automation bots |
+## 📂 FOLDER STRUCTURE
 
-## Key Integration Guides
-- **[FastA2A Integration](./technical-manual/fasta2a-integration.md)** - Agent-to-agent communication protocol
-- **[System Architecture](./technical-manual/architecture.md)** - Complete system overview and data flow
-- **[Security Hardening](./agent-onboarding/security-hardening.md)** - Security guidelines and best practices
+```
+docs/
+├── architecture/          # System architecture & components
+│   ├── CONTEXT_BUILDER_DEEP_DIVE.md
+│   ├── AGENT_FSM.md
+│   ├── SOMABRAIN_INTEGRATION.md
+│   └── DEGRADATION_MODE.md
+│
+├── flows/                 # Message & process flows
+│   ├── ULTIMATE_COMPLETE_FLOW.md (ALL scenarios)
+│   ├── COMPLETE_MULTIMODAL_FLOW.md
+│   └── MESSAGE_FLOW_DIAGRAM.md
+│
+├── reference/             # Reference documentation
+│   ├── DATA_MODELS.md (Mermaid ER diagrams)
+│   ├── COMPLETE_AGENT_SETTINGS_CATALOG.md
+│   ├── API_ENDPOINTS.md
+│   └── TOOL_CATALOG.md
+│
+├── guides/                # How-to guides
+│   ├── GETTING_STARTED.md
+│   ├── ADDING_NEW_ROUTER.md
+│   ├── IMPLEMENTING_TOOLS.md
+│   └── DEPLOYMENT_GUIDE.md
+│
+├── ui-integration/        # UI/UX documentation
+│   ├── PERSONA_CAPSULES_TOOLS_UI.md
+│   ├── COMPLETE_AGENTSKIN_UIX_SPEC.md
+│   └── WEBUI_PATTERNS.md
+│
+└── README.md              # THIS FILE - Index
 
-## Standards Compliance
-This documentation set follows ISO/IEC 26514 (user docs), 26515 (online delivery), 26512 (processes), and 42010 (architecture).
+---
+
+## 🎯 STANDARDS
+
+### Mermaid Diagrams (REQUIRED)
+All documentation **MUST** include Mermaid diagrams for:
+- **Data Models**: Use `erDiagram` for entities
+- **Flows**: Use `sequenceDiagram` for processes
+- **Architecture**: Use `graph` or `flowchart` for components
+- **State Machines**: Use `stateDiagram-v2` for states
+
+### File Naming
+- Use `SCREAMING_SNAKE_CASE.md` for major docs
+- Use `kebab-case.md` for guides
+- Always include extension `.md`
+
+### Document Structure
+```markdown
+# Title
+## Subtitle
+
+**Key Info Block**
+
+---
+
+## Section 1
+
+### Subsection
+
+\`\`\`mermaid
+<diagram>
+\`\`\`
+
+<content>
+```
+
+---
+
+## 🗂️ DOCUMENT INDEX
+
+### Architecture (5 docs)
+| Document | Description | Lines |
+|----------|-------------|-------|
+| [CONTEXT_BUILDER_DEEP_DIVE.md](architecture/CONTEXT_BUILDER_DEEP_DIVE.md) | Memory retrieval & token budgeting | 350+ |
+| [AGENT_BEHAVIOR_SETTINGS.md](architecture/AGENT_BEHAVIOR_SETTINGS.md) | Agent configuration & behavior | 200+ |
+| AGENT_FSM.md | Finite state machine flow | TBD |
+| SOMABRAIN_INTEGRATION.md | SomaBrain API integration | TBD |
+| DEGRADATION_MODE.md | System degradation handling | TBD |
+
+### Flows (3 docs)
+| Document | Description | Lines |
+|----------|-------------|-------|
+| [ULTIMATE_COMPLETE_FLOW.md](flows/ULTIMATE_COMPLETE_FLOW.md) | ALL scenarios + degradation | 450+ |
+| [COMPLETE_MULTIMODAL_FLOW.md](flows/COMPLETE_MULTIMODAL_FLOW.md) | Text/Voice/Files/Vision | 400+ |
+| [MESSAGE_FLOW_DIAGRAM.md](flows/MESSAGE_FLOW_DIAGRAM.md) | Basic text message flow | 300+ |
+
+### Reference (4 docs)
+| Document | Description | Lines |
+|----------|-------------|-------|
+| [DATA_MODELS.md](reference/DATA_MODELS.md) | All Mermaid ER diagrams | 250+ |
+| [COMPLETE_AGENT_SETTINGS_CATALOG.md](reference/COMPLETE_AGENT_SETTINGS_CATALOG.md) | 100+ settings | 292 |
+| API_ENDPOINTS.md | Complete API reference | TBD |
+| TOOL_CATALOG.md | All 19 tools documented | TBD |
+
+### Guides (4 docs)
+| Document | Description | Lines |
+|----------|-------------|-------|
+| GETTING_STARTED.md | New developer onboarding | TBD |
+| ADDING_NEW_ROUTER.md | How to add API endpoints | TBD |
+| IMPLEMENTING_TOOLS.md | How to create tools | TBD |
+| DEPLOYMENT_GUIDE.md | Production deployment | TBD |
+
+### UI Integration (3 docs)
+| Document | Description | Lines |
+|----------|-------------|-------|
+| [PERSONA_CAPSULES_TOOLS_UI.md](ui-integration/PERSONA_CAPSULES_TOOLS_UI.md) | Persona/Capsules/Tools UI | 450+ |
+| [COMPLETE_AGENTSKIN_UIX_SPEC.md](ui-integration/COMPLETE_AGENTSKIN_UIX_SPEC.md) | AgentSkin complete spec | 840+ |
+| WEBUI_PATTERNS.md | Alpine.js patterns | TBD |
+
+---
+
+## 🚀 FROM NOW ON: USE THIS STRUCTURE
+
+**All new documentation must:**
+1. ✅ Be saved in appropriate `docs/` subfolder
+2. ✅ Include Mermaid diagrams for models/flows
+3. ✅ Follow naming conventions
+4. ✅ Be added to this index
+
+**No more scattered docs!** Everything is organized in `docs/`.
+
+---
+
+**Total Docs:** 19 (10 complete, 9 TBD)  
+**Total Lines:** ~3,500+ lines documented

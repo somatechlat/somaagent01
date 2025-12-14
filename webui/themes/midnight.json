@@ -1,0 +1,30 @@
+{
+    "name": "midnight",
+    "description": "Dark theme skin for SomaAgent01",
+    "version": "1.0.0",
+    "variables": {
+        "--bg-void": "#0f172a",
+        "--glass-surface": "rgba(15,23,42,0.96)",
+        "--glass-border": "rgba(255,255,255,0.08)",
+        "--text-main": "#f8fafc",
+        "--text-dim": "#94a3b8",
+        "--bg-primary": "#0f172a",
+        "--bg-secondary": "#1e293b",
+        "--bg-tertiary": "#334155",
+        "--surface-1": "#1e293b",
+        "--surface-2": "#334155",
+        "--surface-3": "#475569",
+        "--text-primary": "#f8fafc",
+        "--text-secondary": "#cbd5e1",
+        "--text-muted": "#64748b",
+        "--border-color": "#334155",
+        "--border-subtle": "#1e293b",
+        "--accent-primary": "#ff6b47",
+        "--accent-hover": "#ff8567",
+        "--accent-subtle": "rgba(255, 107, 71, 0.15)",
+        "--success": "#34d399",
+        "--warning": "#fbbf24",
+        "--error": "#f87171",
+        "--info": "#60a5fa"
+    }
+}
