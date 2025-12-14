@@ -1,8 +1,11 @@
 /**
  * SomaAgent01 Design System Tokens
  * 
- * Modern design system using Geist font and coral accent colors.
- * Light theme default, dark theme via [data-theme="dark"].
+ * Aligned with SRS AGENTSKIN.md v1.0.0
+ * Supports SomaAgentSkin SDK theming system
+ * 
+ * Font: Geist (primary) + JetBrains Mono (code)
+ * Colors: Coral accent (#ff6b47), light theme default
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
@@ -10,38 +13,36 @@
 
 :root {
     /* ========================================
+   * SomaAgentSkin Compatible Variables
+   * Per SRS AGENTSKIN.md Section 9.2
+   * ======================================== */
+    --bg-void: #ffffff;
+    --glass-surface: rgba(255, 255, 255, 0.96);
+    --glass-border: rgba(0, 0, 0, 0.04);
+    --text-main: #000000;
+    --text-dim: #555555;
+
+    /* ========================================
    * Typography - Geist Font Family
    * ======================================== */
     --font-sans: "Geist", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-    /* Font Sizes */
     --text-xs: 0.75rem;
-    /* 12px */
     --text-sm: 0.875rem;
-    /* 14px */
     --text-base: 1rem;
-    /* 16px */
     --text-lg: 1.125rem;
-    /* 18px */
     --text-xl: 1.25rem;
-    /* 20px */
     --text-2xl: 1.5rem;
-    /* 24px */
     --text-3xl: 2rem;
-    /* 32px */
     --text-4xl: 2.5rem;
-    /* 40px */
     --text-5xl: 3rem;
-    /* 48px */
 
-    /* Font Weights */
     --font-normal: 400;
     --font-medium: 500;
     --font-semibold: 600;
     --font-bold: 700;
 
-    /* Line Heights */
     --leading-none: 1;
     --leading-tight: 1.25;
     --leading-snug: 1.375;
@@ -65,13 +66,11 @@
     --border-color: #e5e7eb;
     --border-subtle: #f3f4f6;
 
-    /* Accent Colors - Coral/Orange */
     --accent-primary: #ff6b47;
     --accent-hover: #e85a38;
     --accent-subtle: rgba(255, 107, 71, 0.1);
     --accent-cta: #ff6b47;
 
-    /* Semantic Colors */
     --success: #10b981;
     --success-subtle: rgba(16, 185, 129, 0.1);
     --warning: #f59e0b;
@@ -86,44 +85,27 @@
    * ======================================== */
     --space-0: 0;
     --space-1: 0.25rem;
-    /* 4px */
     --space-2: 0.5rem;
-    /* 8px */
     --space-3: 0.75rem;
-    /* 12px */
     --space-4: 1rem;
-    /* 16px */
     --space-5: 1.25rem;
-    /* 20px */
     --space-6: 1.5rem;
-    /* 24px */
     --space-8: 2rem;
-    /* 32px */
     --space-10: 2.5rem;
-    /* 40px */
     --space-12: 3rem;
-    /* 48px */
     --space-16: 4rem;
-    /* 64px */
     --space-20: 5rem;
-    /* 80px */
     --space-24: 6rem;
-    /* 96px */
 
     /* ========================================
    * Border Radius
    * ======================================== */
     --radius-none: 0;
     --radius-sm: 0.25rem;
-    /* 4px */
     --radius-md: 0.5rem;
-    /* 8px */
     --radius-lg: 0.75rem;
-    /* 12px */
     --radius-xl: 1rem;
-    /* 16px */
     --radius-2xl: 1.5rem;
-    /* 24px */
     --radius-full: 9999px;
 
     /* ========================================
@@ -169,6 +151,12 @@
  * Dark Theme
  * ======================================== */
 [data-theme="dark"] {
+    --bg-void: #0f172a;
+    --glass-surface: rgba(15, 23, 42, 0.96);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --text-main: #f8fafc;
+    --text-dim: #94a3b8;
+
     --bg-primary: #0f172a;
     --bg-secondary: #1e293b;
     --bg-tertiary: #334155;
@@ -189,21 +177,6 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-}
-
-/* Legacy class support for backward compatibility */
-.dark-mode {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-tertiary: #334155;
-    --surface-1: #1e293b;
-    --surface-2: #334155;
-    --surface-3: #475569;
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-    --border-color: #334155;
-    --border-subtle: #1e293b;
 }
 
 /* ========================================
@@ -228,11 +201,10 @@ body {
     font-family: var(--font-sans);
     font-size: var(--text-base);
     line-height: var(--leading-normal);
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    background-color: var(--bg-void);
+    color: var(--text-main);
 }
 
-/* Typography */
 h1,
 h2,
 h3,
@@ -241,7 +213,7 @@ h5,
 h6 {
     font-family: var(--font-sans);
     font-weight: var(--font-semibold);
-    color: var(--text-primary);
+    color: var(--text-main);
 }
 
 h1 {
@@ -293,7 +265,6 @@ code {
     border-radius: var(--radius-sm);
 }
 
-/* Focus States */
 :focus-visible {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
@@ -303,13 +274,11 @@ code {
     outline: none;
 }
 
-/* Selection */
 ::selection {
     background: var(--accent-primary);
     color: white;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -328,7 +297,6 @@ code {
     background: var(--text-secondary);
 }
 
-/* Alpine.js cloak */
 [x-cloak] {
     display: none !important;
 }
