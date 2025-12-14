@@ -378,7 +378,7 @@ print(f"Debug info: {context.debug}")
 
 - [SomaBrain API Reference](../somabrain-openapi.json)
 - [Product Overview](../../.kiro/steering/product.md)
-- [Architecture Analysis](../../.kiro/specs/canonical-architecture-cleanup/ARCHITECTURE_ANALYSIS.md)
+- [Canonical Architecture Cleanup Requirements](../../.kiro/specs/canonical-architecture-cleanup/requirements.md)
 
 
 ---
@@ -1085,4 +1085,3 @@ def test_history_trimming_preserves_recent(history):
 | `services/conversation_worker/main.py` | ConversationWorker integration |
 | `src/core/application/use_cases/conversation/process_message.py` | ProcessMessageUseCase integration |
 | `python/helpers/tokens.py` | Token counting utilities |
-

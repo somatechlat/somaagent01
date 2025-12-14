@@ -86,23 +86,283 @@ class UiSettingsStore:
             # the row is persisted and will be used by all callers.
             row = await conn.fetchrow("SELECT 1 FROM ui_settings WHERE key = 'global'")
             if not row:
+                # Comprehensive 17-section schema expected by the redesigned WebUI
                 default_settings = {
                     "sections": [
+                        # Agent tab
                         {
-                            "id": "llm",
+                            "id": "chat_model",
                             "tab": "agent",
-                            "title": "LLM Settings",
+                            "title": "Chat Model",
+                            "description": "Primary conversational model (vision optional)",
+                            "icon": "chat",
                             "fields": [
-                                {
-                                    "id": "chat-model-provider",
-                                    "title": "Provider",
-                                    "type": "select",
-                                    "options": [{"value": "groq", "label": "Groq"}],
-                                },
-                                {"id": "chat-model-name", "title": "Model Name", "type": "text"},
-                                {"id": "api_key_groq", "title": "API Key", "type": "password"},
+                                {"id": "chat_provider", "title": "Provider", "type": "select",
+                                 "options": [
+                                     {"value": "openai", "label": "OpenAI"},
+                                     {"value": "anthropic", "label": "Anthropic"},
+                                     {"value": "google", "label": "Google"},
+                                     {"value": "azure", "label": "Azure OpenAI"},
+                                     {"value": "groq", "label": "Groq"},
+                                     {"value": "mistral", "label": "Mistral"},
+                                     {"value": "ollama", "label": "Ollama"},
+                                 ]},
+                                {"id": "chat_model_name", "title": "Model Name", "type": "text", "placeholder": "gpt-4.1"},
+                                {"id": "chat_base_url", "title": "Base URL", "type": "text", "placeholder": "https://api.openai.com/v1"},
+                                {"id": "chat_context_length", "title": "Context Length", "type": "slider", "min": 1000, "max": 200000, "step": 1000, "value": 128000},
+                                {"id": "chat_rpm", "title": "Requests / min", "type": "number", "value": 60},
+                                {"id": "chat_tpm", "title": "Tokens / min", "type": "number", "value": 90000},
+                                {"id": "chat_kwargs", "title": "Extra Parameters", "type": "json", "value": {}},
+                                {"id": "chat_vision", "title": "Enable Vision", "type": "toggle", "value": True},
                             ],
-                        }
+                        },
+                        {
+                            "id": "utility_model",
+                            "tab": "agent",
+                            "title": "Utility Model",
+                            "description": "Low-latency model for tool routing and light tasks",
+                            "icon": "smart_toy",
+                            "fields": [
+                                {"id": "utility_provider", "title": "Provider", "type": "select",
+                                 "options": [
+                                     {"value": "groq", "label": "Groq"},
+                                     {"value": "openai", "label": "OpenAI"},
+                                     {"value": "anthropic", "label": "Anthropic"},
+                                 ]},
+                                {"id": "utility_model_name", "title": "Model Name", "type": "text", "placeholder": "llama-3.1-70b-versatile"},
+                                {"id": "utility_context_length", "title": "Context Length", "type": "slider", "min": 1000, "max": 100000, "step": 1000, "value": 32000},
+                                {"id": "utility_rpm", "title": "Requests / min", "type": "number", "value": 120},
+                                {"id": "utility_tpm", "title": "Tokens / min", "type": "number", "value": 120000},
+                                {"id": "utility_kwargs", "title": "Extra Parameters", "type": "json", "value": {}},
+                            ],
+                        },
+                        {
+                            "id": "browser_model",
+                            "tab": "agent",
+                            "title": "Browser Model",
+                            "description": "Model used for browser/tool calls",
+                            "icon": "public",
+                            "fields": [
+                                {"id": "browser_provider", "title": "Provider", "type": "select",
+                                 "options": [
+                                     {"value": "openai", "label": "OpenAI"},
+                                     {"value": "anthropic", "label": "Anthropic"},
+                                     {"value": "groq", "label": "Groq"},
+                                 ]},
+                                {"id": "browser_model_name", "title": "Model Name", "type": "text", "placeholder": "gpt-4o-mini"},
+                                {"id": "browser_headers", "title": "HTTP Headers", "type": "json", "value": {}},
+                                {"id": "browser_rate_limit", "title": "Requests / min", "type": "number", "value": 60},
+                            ],
+                        },
+                        {
+                            "id": "embedding_model",
+                            "tab": "agent",
+                            "title": "Embedding Model",
+                            "description": "Vector embedding configuration",
+                            "icon": "timeline",
+                            "fields": [
+                                {"id": "embedding_provider", "title": "Provider", "type": "select",
+                                 "options": [
+                                     {"value": "openai", "label": "OpenAI"},
+                                     {"value": "cohere", "label": "Cohere"},
+                                     {"value": "mistral", "label": "Mistral"},
+                                     {"value": "voyage", "label": "Voyage"},
+                                 ]},
+                                {"id": "embedding_model_name", "title": "Model Name", "type": "text", "placeholder": "text-embedding-3-large"},
+                                {"id": "embedding_dim", "title": "Embedding Dim", "type": "number", "value": 3072},
+                                {"id": "embedding_kwargs", "title": "Extra Parameters", "type": "json", "value": {}},
+                            ],
+                        },
+                        {
+                            "id": "memory",
+                            "tab": "agent",
+                            "title": "Memory / SomaBrain",
+                            "description": "Recall, search limits, and consolidation",
+                            "icon": "psychology",
+                            "fields": [
+                                {"id": "recall_enabled", "title": "Enable Recall", "type": "toggle", "value": True},
+                                {"id": "recall_delayed", "title": "Delay Recall", "type": "toggle", "value": False},
+                                {"id": "recall_interval", "title": "Recall Interval (s)", "type": "number", "value": 5},
+                                {"id": "memories_max", "title": "Max Memories", "type": "number", "value": 10},
+                                {"id": "solutions_max", "title": "Max Solutions", "type": "number", "value": 5},
+                                {"id": "similarity_threshold", "title": "Similarity Threshold", "type": "slider", "min": 0.0, "max": 1.0, "step": 0.05, "value": 0.7},
+                                {"id": "memorization_enabled", "title": "Memorization", "type": "toggle", "value": True},
+                                {"id": "consolidation_enabled", "title": "Consolidation", "type": "toggle", "value": True},
+                                {"id": "knowledge_subdirectory", "title": "Knowledge Subdirectory", "type": "select",
+                                 "options": [
+                                     {"value": "default", "label": "default"},
+                                     {"value": "custom", "label": "custom"},
+                                     {"value": "shared", "label": "shared"},
+                                 ],
+                                 "value": "default"},
+                            ],
+                        },
+
+                        # External tab
+                        {
+                            "id": "api_keys",
+                            "tab": "external",
+                            "title": "API Keys",
+                            "description": "Provider credentials with masking and testing",
+                            "icon": "vpn_key",
+                            "fields": [
+                                {"id": "api_key_openai", "title": "OpenAI API Key", "type": "password"},
+                                {"id": "api_key_anthropic", "title": "Anthropic API Key", "type": "password"},
+                                {"id": "api_key_google", "title": "Google API Key", "type": "password"},
+                                {"id": "api_key_groq", "title": "Groq API Key", "type": "password"},
+                                {"id": "api_key_mistral", "title": "Mistral API Key", "type": "password"},
+                            ],
+                        },
+                        {
+                            "id": "mcp_client",
+                            "tab": "external",
+                            "title": "MCP Client",
+                            "description": "Configure MCP servers",
+                            "icon": "hub",
+                            "fields": [
+                                {"id": "mcp_servers", "title": "Servers JSON", "type": "json", "value": []},
+                                {"id": "mcp_init_timeout_ms", "title": "Init Timeout (ms)", "type": "number", "value": 8000},
+                                {"id": "mcp_tool_timeout_ms", "title": "Tool Timeout (ms)", "type": "number", "value": 12000},
+                            ],
+                        },
+                        {
+                            "id": "mcp_server",
+                            "tab": "external",
+                            "title": "MCP Server",
+                            "description": "Built-in MCP server settings",
+                            "icon": "dns",
+                            "fields": [
+                                {"id": "mcp_server_enabled", "title": "Enabled", "type": "toggle", "value": False},
+                                {"id": "mcp_server_endpoint", "title": "Endpoint", "type": "text", "placeholder": "http://localhost:8000/mcp"},
+                                {"id": "mcp_server_token", "title": "Token", "type": "password"},
+                            ],
+                        },
+                        {
+                            "id": "a2a_server",
+                            "tab": "external",
+                            "title": "A2A Server",
+                            "description": "Agent-to-Agent bridge",
+                            "icon": "sync_alt",
+                            "fields": [
+                                {"id": "a2a_enabled", "title": "Enabled", "type": "toggle", "value": False},
+                                {"id": "a2a_endpoint", "title": "Endpoint", "type": "text", "placeholder": "https://a2a.example.com"},
+                                {"id": "a2a_token", "title": "Token", "type": "password"},
+                            ],
+                        },
+                        {
+                            "id": "tunnel",
+                            "tab": "external",
+                            "title": "Flare Tunnel",
+                            "description": "Ingress/egress tunneling settings",
+                            "icon": "tunnel",
+                            "fields": [
+                                {"id": "tunnel_enabled", "title": "Enable Tunnel", "type": "toggle", "value": False},
+                                {"id": "tunnel_url", "title": "Tunnel URL", "type": "text", "placeholder": "https://your-tunnel.trycloudflare.com"},
+                                {"id": "tunnel_auth_token", "title": "Auth Token", "type": "password"},
+                            ],
+                        },
+
+                        # Connectivity tab
+                        {
+                            "id": "connectivity",
+                            "tab": "connectivity",
+                            "title": "Connectivity",
+                            "description": "HTTP/SSE connectivity defaults",
+                            "icon": "settings_ethernet",
+                            "fields": [
+                                {"id": "http_proxy", "title": "HTTP Proxy", "type": "text"},
+                                {"id": "https_proxy", "title": "HTTPS Proxy", "type": "text"},
+                                {"id": "sse_retry_ms", "title": "SSE Retry (ms)", "type": "number", "value": 1000},
+                                {"id": "timeout_seconds", "title": "Request Timeout (s)", "type": "number", "value": 30},
+                            ],
+                        },
+                        {
+                            "id": "speech",
+                            "tab": "connectivity",
+                            "title": "Speech",
+                            "description": "STT/TTS providers and voices",
+                            "icon": "record_voice_over",
+                            "fields": [
+                                {"id": "speech_provider", "title": "Provider", "type": "select",
+                                 "options": [
+                                     {"value": "browser", "label": "Browser"},
+                                     {"value": "realtime", "label": "Realtime"},
+                                     {"value": "kokoro", "label": "Kokoro"},
+                                 ],
+                                 "value": "browser"},
+                                {"id": "speech_language", "title": "Language", "type": "text", "placeholder": "en-US"},
+                                {"id": "speech_realtime_model", "title": "Realtime Model", "type": "text", "placeholder": "gpt-4o-realtime"},
+                                {"id": "speech_voice", "title": "Voice", "type": "text", "placeholder": "alloy"},
+                                {"id": "speech_vad_threshold", "title": "VAD Threshold", "type": "number", "value": 0.5},
+                            ],
+                        },
+                        {
+                            "id": "health",
+                            "tab": "connectivity",
+                            "title": "Health & Monitoring",
+                            "description": "Polling and degradation detection",
+                            "icon": "monitor_heart",
+                            "fields": [
+                                {"id": "health_poll_interval", "title": "Poll Interval (s)", "type": "number", "value": 30},
+                                {"id": "health_degradation_threshold", "title": "Degradation Threshold %", "type": "number", "value": 30},
+                                {"id": "health_alerts_enabled", "title": "Enable Alerts", "type": "toggle", "value": True},
+                            ],
+                        },
+
+                        # System tab
+                        {
+                            "id": "auth",
+                            "tab": "system",
+                            "title": "Authentication",
+                            "description": "Credentials and password policy",
+                            "icon": "lock",
+                            "fields": [
+                                {"id": "auth_username", "title": "Username", "type": "text"},
+                                {"id": "auth_password", "title": "Password", "type": "password"},
+                                {"id": "auth_password_confirm", "title": "Confirm Password", "type": "password"},
+                                {"id": "root_password", "title": "Root Password (Docker)", "type": "password"},
+                            ],
+                        },
+                        {
+                            "id": "backup",
+                            "tab": "system",
+                            "title": "Backup & Restore",
+                            "description": "Create and restore backups",
+                            "icon": "backup",
+                            "fields": [
+                                {"id": "backup_auto", "title": "Auto Backup", "type": "toggle", "value": False},
+                                {"id": "backup_location", "title": "Backup Location", "type": "text", "placeholder": "/var/backups"},
+                                {"id": "restore_file", "title": "Restore File", "type": "file"},
+                            ],
+                        },
+                        {
+                            "id": "developer",
+                            "tab": "system",
+                            "title": "Developer",
+                            "description": "Shell access and RFC settings",
+                            "icon": "terminal",
+                            "fields": [
+                                {"id": "shell_interface", "title": "Shell Interface", "type": "select",
+                                 "options": [
+                                     {"value": "local", "label": "Local"},
+                                     {"value": "ssh", "label": "SSH"},
+                                 ],
+                                 "value": "local"},
+                                {"id": "rfc_host", "title": "RFC Host", "type": "text", "placeholder": "127.0.0.1"},
+                                {"id": "rfc_port", "title": "RFC Port", "type": "number", "value": 6000},
+                                {"id": "debug_mode", "title": "Enable Debug", "type": "toggle", "value": False},
+                            ],
+                        },
+                        {
+                            "id": "secrets",
+                            "tab": "system",
+                            "title": "Secrets",
+                            "description": "Opaque secrets blob for adapters",
+                            "icon": "key",
+                            "fields": [
+                                {"id": "secrets_blob", "title": "Secrets JSON", "type": "json", "value": {}},
+                            ],
+                        },
                     ]
                 }
                 await conn.execute(

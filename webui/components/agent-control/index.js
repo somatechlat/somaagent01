@@ -1,9 +1,0 @@
-/**
- * Agent Control Components Index
- * Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6
- */
-
-export {
-  createAgentControlPanel,
-  registerAgentControlPanel
-} from './agent-control-panel.js';

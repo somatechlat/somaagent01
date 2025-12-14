@@ -7,13 +7,22 @@
  * The UI is served from the same origin as the gateway, therefore the base
  * URL is a relative path (`/v1`).  If the backend ever changes the prefix, only
  * this file needs to be updated.
- * 
- * NOTE: This file is maintained for backward compatibility.
- * New code should import from 'core/api/endpoints.js' instead.
  */
+export const API = {
+  // Root prefix for all API routes.
+  BASE: "/v1",
 
-// Re-export from new canonical location
-export { API } from './core/api/endpoints.js';
-
-// Also export individual constants for direct imports
-export { API_VERSION, ENDPOINTS, buildUrl } from './core/api/endpoints.js';
+  // Resource‑specific suffixes (concatenated with BASE when used).
+  NOTIFICATIONS: "/notifications",
+  SESSION: "/session",
+  SESSIONS: "/sessions",
+  UPLOADS: "/uploads",
+  SETTINGS: "/settings",
+  // Endpoint to test LLM connection credentials (used by Settings modal).
+  TEST_CONNECTION: "/test_connection",
+  ATTACHMENTS: "/attachments",
+  HEALTH: "/health",
+  SOMABRAIN_HEALTH: "/somabrain/health",
+  // UI settings endpoint (relative to BASE, not absolute).
+  UI_SETTINGS: "/settings/sections",
+};

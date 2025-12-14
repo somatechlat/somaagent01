@@ -28,22 +28,17 @@ def test_settings_modal_opens_and_loads_sections(page):
     # Click Settings button
     page.click("#settings")
 
-    # Quick sanity: settingsModalProxy should be present
-    typ = page.evaluate("() => typeof window.settingsModalProxy")
-    print("settingsModalProxy typeof:", typ)
+    # Modern settings modal should render
+    page.wait_for_selector(".settings-overlay", state="visible")
+    page.wait_for_selector(".settings-dialog .settings-header")
 
-    # Modal overlay and container should appear
-    page.wait_for_selector(".modal-overlay", state="visible")
-    page.wait_for_selector(".modal-container .modal-header")
+    # Title text present
+    header = page.locator("#settings-title").text_content()
+    assert header and "Settings" in header
 
-    # Settings title present (target the settings modal title only)
-    header = page.locator('[data-testid="settings-modal-title"]').text_content()
-    assert header is not None
-
-    # Tabs should be visible for non-scheduler tabs
+    # Tabs are visible
     page.wait_for_selector(".settings-tabs .settings-tab")
 
-    # Sections list should render when not on scheduler tab
-    # If scheduler is default, skip this assertion gracefully
-    if page.locator("#settings-sections nav ul li").count() > 0:
-        assert page.locator("#settings-sections nav ul li").count() > 0
+    # At least one settings card is rendered with fields
+    page.wait_for_selector(".settings-card")
+    assert page.locator(".settings-card").count() > 0
