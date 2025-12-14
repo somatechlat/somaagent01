@@ -1,9 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
-
 body {
     background-color: #131313;
     color: #d4d4d4;
-    font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+    font-family: "Rubik", Arial, Helvetica, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;

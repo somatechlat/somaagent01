@@ -177,7 +177,7 @@
   border: none;
   background-color: transparent;
   color: var(--color-text);
-  font-family: "JetBrains Mono", "Roboto Mono", monospace;
+  font-family: "Roboto Mono", monospace;
   font-optical-sizing: auto;
   font-size: 0.955rem;
   padding: 1.2rem 1rem;
@@ -262,7 +262,7 @@
   cursor: pointer;
   border: none;
   font-size: 0.875rem;
-  font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+  font-family: "Rubik", Arial, Helvetica, sans-serif;
 }
 
 .btn.slim {
