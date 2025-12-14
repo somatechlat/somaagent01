@@ -6,7 +6,6 @@ import * as stream from "./js/stream.js";
 import { sleep } from "./js/sleep.js";
 import { store as attachmentsStore } from "./components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "./components/chat/speech/speech-store.js";
-import { themeManager } from "./components/theming/theme-manager.js";
 import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "./js/error-handling.js";
 
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
@@ -177,16 +176,20 @@ function pushSomabrainState(state, detail = {}) {
 function markSomabrainUnknown(reason) {
   const overrides = reason
     ? {
-        tooltip: t('somabrain.unknownReasonTooltip', 'SomaBrain status unknown — {reason}').replace('{reason}', reason),
-        banner: t('somabrain.unknownReasonBanner', 'SomaBrain status unknown — {reason}.').replace('{reason}', reason),
-        reason: "unknown",
-      }
+      tooltip: t('somabrain.unknownReasonTooltip', 'SomaBrain status unknown — {reason}').replace('{reason}', reason),
+      banner: t('somabrain.unknownReasonBanner', 'SomaBrain status unknown — {reason}.').replace('{reason}', reason),
+      reason: "unknown",
+    }
     : {};
   pushSomabrainState("unknown", overrides);
 }
 
 function updateSomabrainIndicatorFromMetadata(meta) {
   try {
+    // Ensure required variables exist before proceeding.
+    if (typeof message !== "string") {
+      throw new Error("Message text is missing or not a string");
+    }
     if (!meta) return;
     const raw = meta.somabrain_state || meta.soma_state || meta.brain_state;
     if (!raw) return;
@@ -201,7 +204,7 @@ function updateSomabrainIndicatorFromMetadata(meta) {
     if (tooltipHint) detail.tooltip = String(tooltipHint);
     if (note) detail.banner = String(note);
     pushSomabrainState(state, detail);
-  } catch {}
+  } catch { }
 }
 
 // Initialize the toggle button
@@ -271,7 +274,7 @@ function setupSidebarToggle() {
 }
 document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 
-export const sendMessage = appErrorBoundary.wrapAsync(async function() {
+export const sendMessage = appErrorBoundary.wrapAsync(async function () {
   try {
     const message = chatInput.value.trim();
     const hasLocalAttachments = (attachmentsStore.attachments || []).length > 0;
@@ -350,7 +353,7 @@ function toastFetchError(text, error) {
   // Emit an SSE-style notification creation
   try {
     notificationsSseStore.create({ type: "error", title: text, body: errorMessage, severity: "error", ttl_seconds: 8 });
-  } catch {}
+  } catch { }
 }
 globalThis.toastFetchError = toastFetchError;
 
@@ -498,7 +501,7 @@ function setConnectionStatus(connected) {
       s.status = connected ? 'online' : 'offline';
       s.tooltip = connected ? t('conn.online', 'Online') : t('conn.offline', 'Offline');
     }
-  } catch {}
+  } catch { }
 }
 
 let lastLogVersion = 0;
@@ -512,28 +515,28 @@ let assistantBuffer = "";
 // Subscribe to stream lifecycle & events
 bus.on("stream.online", () => {
   setConnectionStatus(true);
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = t('conn.online', 'Online'); } } catch {}
-  try { notificationsSseStore.create({ type: "system", title: t('conn.connectedTitle', 'Connected'), body: t('conn.connectedBody', 'Streaming online'), severity: "success", ttl_seconds: 3 }); } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = t('conn.online', 'Online'); } } catch { }
+  try { notificationsSseStore.create({ type: "system", title: t('conn.connectedTitle', 'Connected'), body: t('conn.connectedBody', 'Streaming online'), severity: "success", ttl_seconds: 3 }); } catch { }
 });
 bus.on("stream.offline", (info) => {
   setConnectionStatus(false);
   const reasonText = info?.reason ? info.reason : t('conn.reason.offline', 'offline');
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = info?.reason ? t('conn.offlineReason', 'Offline — {reason}').replace('{reason}', reasonText) : t('conn.offline', 'Offline'); } } catch {}
-  try { notificationsSseStore.create({ type: "system", title: t('conn.disconnectedTitle', 'Disconnected'), body: t('conn.disconnectedBody', 'Backend stream offline'), severity: "warning", ttl_seconds: 15 }); } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = info?.reason ? t('conn.offlineReason', 'Offline — {reason}').replace('{reason}', reasonText) : t('conn.offline', 'Offline'); } } catch { }
+  try { notificationsSseStore.create({ type: "system", title: t('conn.disconnectedTitle', 'Disconnected'), body: t('conn.disconnectedBody', 'Backend stream offline'), severity: "warning", ttl_seconds: 15 }); } catch { }
   markSomabrainUnknown(reasonText);
 });
 bus.on("stream.stale", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'stale'; const secs = Math.max(1, Math.round((info?.ms_since_heartbeat || 0)/1000)); s.tooltip = t('conn.staleTooltip', 'Stale — {seconds}s since last heartbeat').replace('{seconds}', secs); } } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'stale'; const secs = Math.max(1, Math.round((info?.ms_since_heartbeat || 0) / 1000)); s.tooltip = t('conn.staleTooltip', 'Stale — {seconds}s since last heartbeat').replace('{seconds}', secs); } } catch { }
 });
 bus.on("stream.reconnecting", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'reconnecting'; const attempt = info?.attempt || 1; const delayMs = info?.delay || 0; s.tooltip = t('conn.reconnectingTooltip', 'Reconnecting (attempt {attempt}, {delay}ms)').replace('{attempt}', attempt).replace('{delay}', Math.round(delayMs)); } } catch {}
-  try { notificationsSseStore.create({ type: "system", title: t('conn.reconnectingTitle', 'Reconnecting'), body: t('conn.reconnectingBody', 'Attempt {attempt}').replace('{attempt}', info.attempt || 1), severity: "info", ttl_seconds: 4 }); } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'reconnecting'; const attempt = info?.attempt || 1; const delayMs = info?.delay || 0; s.tooltip = t('conn.reconnectingTooltip', 'Reconnecting (attempt {attempt}, {delay}ms)').replace('{attempt}', attempt).replace('{delay}', Math.round(delayMs)); } } catch { }
+  try { notificationsSseStore.create({ type: "system", title: t('conn.reconnectingTitle', 'Reconnecting'), body: t('conn.reconnectingBody', 'Attempt {attempt}').replace('{attempt}', info.attempt || 1), severity: "info", ttl_seconds: 4 }); } catch { }
 });
 bus.on("stream.retry.success", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = t('conn.reconnectedTooltip', 'Reconnected after {attempts} attempts').replace('{attempts}', info?.attempt || 1); } } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'online'; s.tooltip = t('conn.reconnectedTooltip', 'Reconnected after {attempts} attempts').replace('{attempts}', info?.attempt || 1); } } catch { }
 });
 bus.on("stream.retry.giveup", (info) => {
-  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = t('conn.giveupTooltip', 'Reconnection paused after {attempts} attempts').replace('{attempts}', info?.attempt || 1); } } catch {}
+  try { const s = globalThis.Alpine?.store && globalThis.Alpine.store('conn'); if (s) { s.status = 'offline'; s.tooltip = t('conn.giveupTooltip', 'Reconnection paused after {attempts} attempts').replace('{attempts}', info?.attempt || 1); } } catch { }
 });
 bus.on("sse:event", (ev) => {
   if (ev && (!ev.session_id || ev.session_id === context)) {
@@ -924,15 +927,18 @@ globalThis.toggleUtils = async function (showUtils) {
 };
 
 globalThis.toggleDarkMode = function (isDark) {
-  const theme = isDark ? "dark" : "light";
+  // Use data-theme attribute (modern approach)
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
 
-  document.body.classList.toggle("dark-mode", isDark);
-  document.body.classList.toggle("light-mode", !isDark);
-  document.documentElement.setAttribute("data-theme", theme);
-
-  // Persist for both legacy and new theming helpers
+  // Also toggle classes for backward compatibility with legacy CSS
+  if (isDark) {
+    document.body.classList.remove("light-mode");
+    document.body.classList.add("dark-mode");
+  } else {
+    document.body.classList.remove("dark-mode");
+    document.body.classList.add("light-mode");
+  }
   localStorage.setItem("darkMode", isDark);
-  themeManager.setTheme(theme);
 };
 
 globalThis.toggleSpeech = function (isOn) {
@@ -997,7 +1003,7 @@ globalThis.restart = async function () {
 document.addEventListener("DOMContentLoaded", () => {
   // Setup global error handlers if not already done
   setupGlobalErrorHandlers();
-  
+
   const isDarkMode = localStorage.getItem("darkMode") !== "false";
   toggleDarkMode(isDarkMode);
 
@@ -1012,14 +1018,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Create notification store with proper initialization
-      const notifBridge = createAlpineStore("notificationSse", { 
-        unreadCount: 0, 
-        count: 0, 
-        list: [], 
+      const notifBridge = createAlpineStore("notificationSse", {
+        unreadCount: 0,
+        count: 0,
+        list: [],
         toastStack: [],
         lastSync: Date.now()
       });
-      
+
       // Seed initial values if already loaded
       if (notificationsSseStore?.state) {
         notifBridge.unreadCount = notificationsSseStore.state.unreadCount || 0;
@@ -1027,7 +1033,7 @@ document.addEventListener("DOMContentLoaded", () => {
         notifBridge.list = notificationsSseStore.state.list || [];
         notifBridge.toastStack = notificationsSseStore.state.toastStack || [];
       }
-      
+
       // Set up event listener with error handling
       bus.on("notifications.updated", ({ unread, count }) => {
         try {
@@ -1042,12 +1048,12 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       // Connection status Alpine store (used by bell-adjacent indicator)
-      const connBridge = createAlpineStore('conn', { 
-        status: 'offline', 
+      const connBridge = createAlpineStore('conn', {
+        status: 'offline',
         tooltip: t('conn.offline', 'Offline'),
         lastUpdate: Date.now()
       });
-      
+
       // If connection already established before DOM ready, reflect it
       if (typeof connectionStatus === 'boolean') {
         connBridge.status = connectionStatus ? 'online' : 'offline';
@@ -1192,12 +1198,12 @@ function removeClassFromElement(element, className) {
 }
 
 function justToast(text, type = "info", timeout = 5000) {
-  try { notificationsSseStore.create({ type, title: text, body: "", severity: type, ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
+  try { notificationsSseStore.create({ type, title: text, body: "", severity: type, ttl_seconds: Math.max(1, timeout / 1000) }); } catch { }
 }
-  
+
 
 function toast(text, type = "info", timeout = 5000) {
-  try { notificationsSseStore.create({ type, title: text, body: "", severity: type.toLowerCase(), ttl_seconds: Math.max(1, timeout/1000) }); } catch {}
+  try { notificationsSseStore.create({ type, title: text, body: "", severity: type.toLowerCase(), ttl_seconds: Math.max(1, timeout / 1000) }); } catch { }
 }
 globalThis.toast = toast;
 
@@ -1333,11 +1339,11 @@ function activateTab(tabName) {
   }
 
   // Refresh sessions list and rebind SSE/history for current context
-    fetchSessionsAndPopulate().then(() => {
-      if (context) {
-        loadHistory(context).then(() => stream.start(context));
-      }
-    });
+  fetchSessionsAndPopulate().then(() => {
+    if (context) {
+      loadHistory(context).then(() => stream.start(context));
+    }
+  });
 }
 
 // Add function to initialize active tab and selections from localStorage

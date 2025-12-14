@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <!-- Base URL for relative asset paths; ensures they resolve under /static/ -->
     <base href="/static/">
-<title data-i18n-key="nav.title">Agent Zero</title>
+    <title data-i18n-key="nav.title">Agent Zero</title>
     <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="css/messages.css">
@@ -143,9 +143,10 @@
 
     <!-- Google Icons -->
     <link rel="stylesheet" href="vendor/google/google-icons.css" />
-    
+
     <!-- Material Symbols Outlined Alternative -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
     <!-- Link the PWA manifest file -->
     <link rel="manifest" href="js/manifest.json">
@@ -158,7 +159,8 @@
 
 <body class="dark-mode device-pointer">
     <!-- Lightweight language switcher tied to global i18n runtime -->
-    <div style="position: fixed; top: 10px; right: 12px; z-index: 2000; font-size: 12px; background: rgba(0,0,0,0.04); padding: 6px 8px; border-radius: 6px;">
+    <div
+        style="position: fixed; top: 10px; right: 12px; z-index: 2000; font-size: 12px; background: rgba(0,0,0,0.04); padding: 6px 8px; border-radius: 6px;">
         <label for="lang-select" style="margin-right: 6px;" data-i18n-key="nav.language">Language</label>
         <select id="lang-select" onchange="globalThis.setLocale(this.value)" style="padding: 2px 4px;">
             <option value="en" data-i18n-key="nav.langEn">English</option>
@@ -191,11 +193,16 @@
             <!--Sidebar upper elements-->
             <div class="left-panel-top">
                 <div class="config-section" x-data="{ showQuickActions: true }">
-                    <button class="config-button" id="resetChat" @click="resetChat()" data-i18n-key="actions.resetChat">Reset Chat</button>
-                    <button class="config-button" id="newChat" @click="newChat()" data-i18n-key="actions.newChat">New Chat</button>
-                    <button class="config-button" id="loadChats" @click="loadChats()" data-i18n-key="actions.loadChat">Load Chat</button>
-                    <button class="config-button" id="loadChat" @click="saveChat()" data-i18n-key="actions.saveChat">Save Chat</button>
-                    <button class="config-button" id="restart" @click="restart()" data-i18n-key="actions.restart">Restart</button>
+                    <button class="config-button" id="resetChat" @click="resetChat()"
+                        data-i18n-key="actions.resetChat">Reset Chat</button>
+                    <button class="config-button" id="newChat" @click="newChat()" data-i18n-key="actions.newChat">New
+                        Chat</button>
+                    <button class="config-button" id="loadChats" @click="loadChats()"
+                        data-i18n-key="actions.loadChat">Load Chat</button>
+                    <button class="config-button" id="loadChat" @click="saveChat()"
+                        data-i18n-key="actions.saveChat">Save Chat</button>
+                    <button class="config-button" id="restart" @click="restart()"
+                        data-i18n-key="actions.restart">Restart</button>
                     <button class="config-button" id="settings" @click="settingsModalProxy.openModal()"><svg
                             xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-5.0 -17.0 110.0 135.0"
                             fill="currentColor" width="24" height="24">
@@ -207,7 +214,8 @@
                             </path>
                         </svg><span data-i18n-key="nav.settings">Settings</span></button>
                     <button class="config-button" id="memory-dash"
-                        @click="openModal('settings/memory/memory-dashboard.html');" data-i18n-key="nav.memory">Memory</button>
+                        @click="openModal('settings/memory/memory-dashboard.html');"
+                        data-i18n-key="nav.memory">Memory</button>
 
 
                 </div>
@@ -386,8 +394,7 @@
                 <!-- Notification Toggle positioned next to time-date -->
                 <x-component path="notifications/notification-icons.html"></x-component>
             </div>
-            <div class="somabrain-banner"
-                 x-data="{ 
+            <div class="somabrain-banner" x-data="{ 
                      somabrainState: ($store.somabrain && $store.somabrain.state) || 'unknown',
                      monitoringIssues: ($store.monitoring && $store.monitoring.healthSummary && $store.monitoring.healthSummary.issues) || [],
                      hasSystemIssues: false,
@@ -452,16 +459,12 @@
                          }
                          return ($store.somabrain && $store.somabrain.banner) || 'System status monitoring active.';
                      }
-                 }"
-                 x-cloak
-                 :class="bannerClass"
-                 x-show="shouldShow">
-                <span class="material-symbols-outlined somabrain-banner-icon"
-                      x-text="bannerIcon"></span>
+                 }" x-cloak :class="bannerClass" x-show="shouldShow">
+                <span class="material-symbols-outlined somabrain-banner-icon" x-text="bannerIcon"></span>
                 <div class="somabrain-banner-body">
                     <span class="somabrain-banner-title" x-text="bannerTitle"></span>
                     <p class="somabrain-banner-text" x-text="bannerText"></p>
-                    
+
                     <!-- System Issues Details -->
                     <div class="system-issues-details" x-show="hasSystemIssues" x-cloak>
                         <template x-for="issue in monitoringIssues" :key="issue.type + issue.level">
@@ -482,7 +485,8 @@
                     <span id="progress-bar-i">|></span><span id="progress-bar"></span>
                 </h4>
                 <h4 id="progress-bar-stop-speech" x-data x-cloak x-show="$store.speech && $store.speech.isSpeaking">
-                    <span id="stop-speech" @click="$store.speech && $store.speech.stop()" style="cursor: pointer" data-i18n-key="actions.stopSpeech">Stop Speech</span>
+                    <span id="stop-speech" @click="$store.speech && $store.speech.stop()" style="cursor: pointer"
+                        data-i18n-key="actions.stopSpeech">Stop Speech</span>
                 </h4>
             </div>
             <div id="input-section" x-data="{
@@ -516,7 +520,8 @@
 
                     <!-- Container for textarea and button -->
                     <div id="chat-input-container" style="position: relative;">
-                        <textarea id="chat-input" placeholder="Type your message here..." rows="1" data-i18n-placeholder="chat.placeholder"></textarea>
+                        <textarea id="chat-input" placeholder="Type your message here..." rows="1"
+                            data-i18n-placeholder="chat.placeholder"></textarea>
 
                         <!-- Expand button inside the textarea container -->
                         <button id="expand-button" @click="$store.fullScreenInputModal.openModal()"
@@ -531,7 +536,8 @@
                     <div id="chat-buttons-wrapper">
 
                         <!-- Send button -->
-                        <button class="chat-button" id="send-button" aria-label="Send message" data-i18n-aria-label="chat.sendAria">
+                        <button class="chat-button" id="send-button" aria-label="Send message"
+                            data-i18n-aria-label="chat.sendAria">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
                                 <path d="M25 20 L75 50 L25 80" fill="none" stroke="currentColor" stroke-width="15">
                                 </path>
@@ -540,7 +546,8 @@
 
                         <!-- Microphone button -->
                         <button class="chat-button mic-inactive" id="microphone-button"
-                            aria-label="Start/Stop recording" data-i18n-aria-label="chat.micAria" @click="$store.speech && $store.speech.handleMicrophoneClick()"
+                            aria-label="Start/Stop recording" data-i18n-aria-label="chat.micAria"
+                            @click="$store.speech && $store.speech.handleMicrophoneClick()"
                             x-effect="$store.speech && $store.speech.updateMicrophoneButtonUI()">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18" fill="currentColor">
                                 <path
@@ -570,7 +577,8 @@
                             </svg>
                         </template>
                         </svg>
-                        <span :data-i18n-key="paused ? 'chat.resume' : 'chat.pause'" x-text="paused ? 'Resume Agent' : 'Pause Agent'"></span>
+                        <span :data-i18n-key="paused ? 'chat.resume' : 'chat.pause'"
+                            x-text="paused ? 'Resume Agent' : 'Pause Agent'"></span>
                     </button>
 
                     <button class="text-button" @click="loadKnowledge()"><svg xmlns="http://www.w3.org/2000/svg"
@@ -649,7 +657,9 @@
                         <div class="settings-tabs-container">
                             <div class="settings-tabs">
                                 <div class="settings-tab" :class="{'active': activeTab === 'agent'}"
-                                    @click="switchTab('agent')" title="Agent Settings" data-i18n-title="nav.agentSettings" data-i18n-key="nav.agentSettings">Agent Settings</div>
+                                    @click="switchTab('agent')" title="Agent Settings"
+                                    data-i18n-title="nav.agentSettings" data-i18n-key="nav.agentSettings">Agent Settings
+                                </div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'external'}"
                                     @click="switchTab('external')" title="External Services">External Services</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'mcp'}"
@@ -657,7 +667,9 @@
                                 <div class="settings-tab" :class="{'active': activeTab === 'developer'}"
                                     @click="switchTab('developer')" title="Developer">Developer</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'scheduler'}"
-                                    @click="switchTab('scheduler')" title="Task Scheduler" data-i18n-title="scheduler.title" data-i18n-key="scheduler.title">Task Scheduler</div>
+                                    @click="switchTab('scheduler')" title="Task Scheduler"
+                                    data-i18n-title="scheduler.title" data-i18n-key="scheduler.title">Task Scheduler
+                                </div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'backup'}"
                                     @click="switchTab('backup')" title="Backup & Restore">Backup & Restore</div>
                             </div>
@@ -703,8 +715,8 @@
                                             <div class="field-control">
                                                 <!-- Input field -->
                                                 <template x-if="field.type === 'text'">
-                                                    <input type="text" :id="field.id" :class="field.classes" :value="field.value"
-                                                        :readonly="field.readonly === true"
+                                                    <input type="text" :id="field.id" :class="field.classes"
+                                                        :value="field.value" :readonly="field.readonly === true"
                                                         @input="field.value = $event.target.value">
                                                 </template>
 
@@ -763,9 +775,7 @@
 
                                                 <!-- Select field -->
                                                 <template x-if="field.type === 'select'">
-                                                    <select :id="field.id"
-                                                        :class="field.classes"
-                                                        x-model="field.value"
+                                                    <select :id="field.id" :class="field.classes" x-model="field.value"
                                                         :disabled="field.readonly === true"
                                                         x-bind:data-i18n-key="field.id === 'chat-model-provider' ? 'settings.llm.provider' : ''">
                                                         <template x-for="option in field.options" :key="option.value">
@@ -798,7 +808,8 @@
                                 <ul>
                                     <li>
                                         <a href="#section-task-scheduler">
-                                            <img src="public/task_scheduler.svg" alt="Task Scheduler" data-i18n-aria-label="scheduler.title">
+                                            <img src="public/task_scheduler.svg" alt="Task Scheduler"
+                                                data-i18n-aria-label="scheduler.title">
                                             <span data-i18n-key="scheduler.title">Task Scheduler</span>
                                         </a>
                                     </li>
@@ -807,16 +818,20 @@
 
                             <div id="section-task-scheduler" class="section" x-data="schedulerSettings">
                                 <div class="section-title" data-i18n-key="scheduler.title">Task Scheduler</div>
-                                <div class="section-description" data-i18n-key="scheduler.description">Manage scheduled tasks and automated processes for
+                                <div class="section-description" data-i18n-key="scheduler.description">Manage scheduled
+                                    tasks and automated processes for
                                     Agent Zero.</div>
 
                                 <!-- Create Task Form -->
                                 <div class="scheduler-form" x-show="isCreating">
                                     <div class="scheduler-form-header">
-                                        <div class="scheduler-form-title" data-i18n-key="scheduler.createTitle">Create New Task</div>
+                                        <div class="scheduler-form-title" data-i18n-key="scheduler.createTitle">Create
+                                            New Task</div>
                                         <div class="scheduler-form-actions">
-                                            <button class="btn btn-ok btn-field" @click="saveTask()" data-i18n-key="scheduler.save">Save</button>
-                                            <button class="btn btn-cancel" @click="cancelEdit()" data-i18n-key="scheduler.cancel">Cancel</button>
+                                            <button class="btn btn-ok btn-field" @click="saveTask()"
+                                                data-i18n-key="scheduler.save">Save</button>
+                                            <button class="btn btn-cancel" @click="cancelEdit()"
+                                                data-i18n-key="scheduler.cancel">Cancel</button>
                                         </div>
                                     </div>
 
@@ -824,31 +839,41 @@
                                         <!-- Task Name -->
                                         <div class="scheduler-form-field">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.taskName">Task Name</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.taskNameHelp">A unique name to identify this task
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.taskName">Task Name</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.taskNameHelp">
+                                                    A unique name to identify this task
                                                 </div>
                                             </div>
-                                            <input type="text" x-model="editingTask.name" placeholder="Enter task name" data-i18n-placeholder="scheduler.taskNamePlaceholder">
+                                            <input type="text" x-model="editingTask.name" placeholder="Enter task name"
+                                                data-i18n-placeholder="scheduler.taskNamePlaceholder">
                                         </div>
 
                                         <!-- Task Type Selection -->
                                         <div class="scheduler-form-field">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.type">Type</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.typeHelp">Task execution method</div>
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.type">Type</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.typeHelp">Task
+                                                    execution method</div>
                                             </div>
                                             <select x-model="editingTask.type">
-                                                <option value="scheduled" data-i18n-key="scheduler.typeScheduled">Scheduled (Cron)</option>
-                                                <option value="adhoc" data-i18n-key="scheduler.typeAdhoc">Ad-hoc (Manual)</option>
-                                                <option value="planned" data-i18n-key="scheduler.typePlanned">Planned (Specific Times)</option>
+                                                <option value="scheduled" data-i18n-key="scheduler.typeScheduled">
+                                                    Scheduled (Cron)</option>
+                                                <option value="adhoc" data-i18n-key="scheduler.typeAdhoc">Ad-hoc
+                                                    (Manual)</option>
+                                                <option value="planned" data-i18n-key="scheduler.typePlanned">Planned
+                                                    (Specific Times)</option>
                                             </select>
                                         </div>
 
                                         <!-- Task State in Create Form - Add after Task Type -->
                                         <div class="scheduler-form-field" x-show="isCreating">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.state">State</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.stateHelp">Select the initial state of the task
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.state">State</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.stateHelp">
+                                                    Select the initial state of the task
                                                 </div>
                                             </div>
                                             <div>
@@ -867,15 +892,17 @@
                                                         @click="editingTask.state = 'error'">error</span>
                                                 </div>
                                                 <div class="scheduler-state-explanation">
-                                                    <span x-show="editingTask.state === 'idle'" data-i18n-key="scheduler.stateIdle"><strong>idle</strong>:
+                                                    <span x-show="editingTask.state === 'idle'"
+                                                        data-i18n-key="scheduler.stateIdle"><strong>idle</strong>:
                                                         ready to run</span>
-                                                    <span
-                                                        x-show="editingTask.state === 'running'" data-i18n-key="scheduler.stateRunning"><strong>running</strong>:
+                                                    <span x-show="editingTask.state === 'running'"
+                                                        data-i18n-key="scheduler.stateRunning"><strong>running</strong>:
                                                         currently executing</span>
-                                                    <span
-                                                        x-show="editingTask.state === 'disabled'" data-i18n-key="scheduler.stateDisabled"><strong>disabled</strong>:
+                                                    <span x-show="editingTask.state === 'disabled'"
+                                                        data-i18n-key="scheduler.stateDisabled"><strong>disabled</strong>:
                                                         won't execute automatically</span>
-                                                    <span x-show="editingTask.state === 'error'" data-i18n-key="scheduler.stateError"><strong>error</strong>:
+                                                    <span x-show="editingTask.state === 'error'"
+                                                        data-i18n-key="scheduler.stateError"><strong>error</strong>:
                                                         task encountered an error</span>
                                                 </div>
                                             </div>
@@ -885,33 +912,40 @@
                                         <div class="scheduler-form-field full-width"
                                             x-show="editingTask.type === 'scheduled'">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.schedule">Schedule</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.scheduleHelp">Cron schedule for automated execution
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.schedule">Schedule</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.scheduleHelp">
+                                                    Cron schedule for automated execution
                                                     (minute hour day month weekday)</div>
                                             </div>
                                             <div class="scheduler-schedule-builder">
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.minute">Minute</span>
+                                                    <span class="scheduler-schedule-label"
+                                                        data-i18n-key="scheduler.minute">Minute</span>
                                                     <input type="text" x-model="editingTask.schedule.minute"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.hour">Hour</span>
+                                                    <span class="scheduler-schedule-label"
+                                                        data-i18n-key="scheduler.hour">Hour</span>
                                                     <input type="text" x-model="editingTask.schedule.hour"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.day">Day</span>
+                                                    <span class="scheduler-schedule-label"
+                                                        data-i18n-key="scheduler.day">Day</span>
                                                     <input type="text" x-model="editingTask.schedule.day"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.month">Month</span>
+                                                    <span class="scheduler-schedule-label"
+                                                        data-i18n-key="scheduler.month">Month</span>
                                                     <input type="text" x-model="editingTask.schedule.month"
                                                         placeholder="*" maxlength="9">
                                                 </div>
                                                 <div class="scheduler-schedule-field">
-                                                    <span class="scheduler-schedule-label" data-i18n-key="scheduler.weekday">Weekday</span>
+                                                    <span class="scheduler-schedule-label"
+                                                        data-i18n-key="scheduler.weekday">Weekday</span>
                                                     <input type="text" x-model="editingTask.schedule.weekday"
                                                         placeholder="*" maxlength="9">
                                                 </div>
@@ -922,13 +956,16 @@
                                         <div class="scheduler-form-field full-width"
                                             x-show="editingTask.type === 'planned'">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.plan">Plan</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.planHelp">Specific execution times for this task
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.plan">Plan</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.planHelp">
+                                                    Specific execution times for this task
                                                 </div>
                                             </div>
                                             <div class="scheduler-plan-builder">
                                                 <div class="scheduler-plan-todo">
-                                                    <span class="scheduler-plan-label" data-i18n-key="scheduler.upcoming">Upcoming Executions</span>
+                                                    <span class="scheduler-plan-label"
+                                                        data-i18n-key="scheduler.upcoming">Upcoming Executions</span>
                                                     <div class="scheduler-todo-list">
                                                         <template
                                                             x-if="editingTask.plan && Array.isArray(editingTask.plan.todo) && editingTask.plan.todo.length > 0">
@@ -953,7 +990,8 @@
                                                         </template>
                                                         <template
                                                             x-if="!editingTask.plan || !Array.isArray(editingTask.plan.todo) || editingTask.plan.todo.length === 0">
-                                                            <div class="scheduler-empty-plan" data-i18n-key="scheduler.noPlanned">
+                                                            <div class="scheduler-empty-plan"
+                                                                data-i18n-key="scheduler.noPlanned">
                                                                 No scheduled execution times yet. Add one below.
                                                             </div>
                                                         </template>
@@ -962,7 +1000,8 @@
                                                             <input type="text" id="newPlannedTime-create"
                                                                 x-ref="plannedTimeCreate"
                                                                 class="scheduler-flatpickr-input"
-                                                                placeholder="Select date and time" data-i18n-placeholder="scheduler.selectDate">
+                                                                placeholder="Select date and time"
+                                                                data-i18n-placeholder="scheduler.selectDate">
                                                             <!-- Create Task Form Add Time Button -->
                                                             <button @click.prevent="
                                                                 const input = $refs.plannedTimeCreate;
@@ -1025,13 +1064,16 @@
                                         <div class="scheduler-form-field full-width"
                                             x-show="editingTask.type === 'adhoc'">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.token">Token</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.tokenHelp">Token used to trigger this task
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.token">Token</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.tokenHelp">
+                                                    Token used to trigger this task
                                                     externally</div>
                                             </div>
                                             <div class="input-group">
                                                 <input type="text" x-model="editingTask.token"
-                                                    placeholder="Token for ad-hoc task" data-i18n-placeholder="scheduler.tokenPlaceholder">
+                                                    placeholder="Token for ad-hoc task"
+                                                    data-i18n-placeholder="scheduler.tokenPlaceholder">
                                                 <button class="scheduler-task-action"
                                                     @click="editingTask.token = generateRandomToken()">
                                                     <span data-i18n-key="scheduler.generate">Generate</span>
@@ -1042,12 +1084,15 @@
                                         <!-- System Prompt -->
                                         <div class="scheduler-form-field full-width">
                                             <div class="label-help-wrapper">
-                                                <label class="scheduler-form-label" data-i18n-key="scheduler.system">System Prompt</label>
-                                                <div class="scheduler-form-help" data-i18n-key="scheduler.systemHelp">System-level instructions for the
+                                                <label class="scheduler-form-label"
+                                                    data-i18n-key="scheduler.system">System Prompt</label>
+                                                <div class="scheduler-form-help" data-i18n-key="scheduler.systemHelp">
+                                                    System-level instructions for the
                                                     assistant</div>
                                             </div>
                                             <textarea x-model="editingTask.system_prompt"
-                                                placeholder="System instructions for the AI" data-i18n-placeholder="scheduler.systemPlaceholder"></textarea>
+                                                placeholder="System instructions for the AI"
+                                                data-i18n-placeholder="scheduler.systemPlaceholder"></textarea>
                                         </div>
 
                                         <!-- User Prompt -->
