@@ -50,14 +50,17 @@ class ResilientService:
     def _on_breaker_open(self):
         """Handle circuit breaker opening."""
         metrics_collector.track_error("circuit_breaker_open", self.name)
+        metrics_collector.track_circuit_state(self.name, 1)
         print(f"⚠️ Circuit breaker OPEN for {self.name}")
 
     def _on_breaker_close(self):
         """Handle circuit breaker closing."""
+        metrics_collector.track_circuit_state(self.name, 0)
         print(f"✅ Circuit breaker CLOSED for {self.name}")
 
     def _on_breaker_half_open(self):
         """Handle circuit breaker half-open."""
+        metrics_collector.track_circuit_state(self.name, 2)
         print(f"🔄 Circuit breaker HALF-OPEN for {self.name}")
 
     def call(self, func: Callable, *args, **kwargs) -> Any:

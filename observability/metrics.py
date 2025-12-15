@@ -182,6 +182,14 @@ errors_total = Counter(
     "errors_total", "Total errors by type", ["error_type", "location"], registry=registry
 )
 
+# Circuit Breaker metrics
+circuit_breaker_state = Gauge(
+    "circuit_breaker_state", 
+    "Circuit breaker state (0=closed, 1=open, 2=half-open)", 
+    ["circuit_name"], 
+    registry=registry
+)
+
 # System metrics
 system_memory_usage = Gauge(
     "system_memory_usage_bytes", "System memory usage in bytes", registry=registry
@@ -683,6 +691,13 @@ class MetricsCollector:
     def track_auth_result(self, result: str, source: str) -> None:
         try:
             auth_requests.labels(result=result, source=source).inc()
+        except Exception:
+            pass
+
+    # Circuit breaker state tracking
+    def track_circuit_state(self, name: str, state_value: int) -> None:
+        try:
+            circuit_breaker_state.labels(circuit_name=name).set(state_value)
         except Exception:
             pass
 

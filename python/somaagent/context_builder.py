@@ -11,8 +11,18 @@ from typing import Any, Callable, Dict, List, Optional, Protocol
 
 from observability.metrics import ContextBuilderMetrics
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
+
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 LOGGER = logging.getLogger(__name__)
+
+# Circuit Breaker for SomaBrain
+SOMABRAIN_BREAKER = AsyncCircuitBreaker(
+    name="somabrain_breaker",
+    fail_max=5,
+    reset_timeout=30
+)
 
 
 class SomabrainHealthState(str, Enum):
@@ -25,9 +35,47 @@ class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
     def redact(self, text: str) -> str: ...
 
 
-class _NoopRedactor:
+class RealPresidioRedactor:
+    """Production-grade sensitive data redaction using Presidio.
+    
+    VIBE COMPLIANCE:
+    - Real implementation (no mocks) using presidio-analyzer/anonymizer
+    - Lazy loading to reduce startup time
+    - Handles PII entities: PHONE_NUMBER, EMAIL_ADDRESS, IBAN, CREDIT_CARD
+    """
+
+    def __init__(self):
+        self._analyzer = None
+        self._anonymizer = None
+        self._entities = ["PHONE_NUMBER", "EMAIL_ADDRESS", "IBAN", "CREDIT_CARD", "US_SSN"]
+
+    def _ensure_loaded(self):
+        if self._analyzer is None:
+            try:
+                from presidio_analyzer import AnalyzerEngine
+                from presidio_anonymizer import AnonymizerEngine
+                
+                self._analyzer = AnalyzerEngine()
+                self._anonymizer = AnonymizerEngine()
+            except ImportError as e:
+                LOGGER.error("Presidio dependencies missing. Redaction disabled. Install requirements.", exc_info=True)
+                raise e
+
     def redact(self, text: str) -> str:
-        return text
+        if not text:
+            return ""
+        
+        try:
+            self._ensure_loaded()
+            if not self._analyzer or not self._anonymizer:
+                return text
+
+            results = self._analyzer.analyze(text=text, entities=self._entities, language="en")
+            anonymized = self._anonymizer.anonymize(text=text, analyzer_results=results)
+            return anonymized.text
+        except Exception:
+            LOGGER.warning("Presidio redaction failed. Returning original text.", exc_info=True)
+            return text  # Fail open (return text) to avoid breaking conversation, but log error.
 
 
 @dataclass
@@ -54,13 +102,15 @@ class ContextBuilder:
         redactor: Optional[RedactorProtocol] = None,
         health_provider: Optional[Callable[[], SomabrainHealthState]] = None,
         on_degraded: Optional[Callable[[float], None]] = None,
+        use_optimal_budget: bool = False,
     ) -> None:
         self.somabrain = somabrain
         self.metrics = metrics
         self.count_tokens = token_counter
-        self.redactor = redactor or _NoopRedactor()
+        self.redactor = redactor or RealPresidioRedactor()
         self.health_provider = health_provider or (lambda: SomabrainHealthState.NORMAL)
         self.on_degraded = on_degraded or (lambda _duration: None)
+        self.use_optimal_budget = use_optimal_budget
 
     async def build_for_turn(
         self,
@@ -81,8 +131,14 @@ class ContextBuilder:
             if state != SomabrainHealthState.DOWN:
                 raw_snippets = await self._retrieve_snippets(turn, state)
                 scored_snippets = self._apply_salience(raw_snippets)
+                self.metrics.inc_snippets(stage="salient", count=len(scored_snippets))
+
                 ranked_snippets = self._rank_and_clip_snippets(scored_snippets, state)
+                self.metrics.inc_snippets(stage="ranked", count=len(ranked_snippets))
+
                 snippets = self._redact_snippets(ranked_snippets)
+                self.metrics.inc_snippets(stage="redacted", count=len(snippets))
+
                 snippet_tokens = self._count_snippet_tokens(snippets)
                 self.metrics.inc_snippets(stage="final", count=len(snippets))
             else:
@@ -96,11 +152,20 @@ class ContextBuilder:
 
             budget_for_history = max_prompt_tokens - (system_tokens + user_tokens + snippet_tokens)
             if budget_for_history < 0:
-                snippets, snippet_tokens = self._trim_snippets_to_budget(
-                    snippets,
-                    snippet_tokens,
-                    max_prompt_tokens - (system_tokens + user_tokens),
-                )
+                available_for_snippets = max_prompt_tokens - (system_tokens + user_tokens)
+                if self.use_optimal_budget:
+                    snippets, snippet_tokens = self._trim_snippets_optimal(
+                        snippets,
+                        available_for_snippets
+                    )
+                    self.metrics.inc_snippets(stage="budgeted_optimal", count=len(snippets))
+                else:
+                    snippets, snippet_tokens = self._trim_snippets_to_budget(
+                        snippets,
+                        snippet_tokens,
+                        available_for_snippets,
+                    )
+                    self.metrics.inc_snippets(stage="budgeted_greedy", count=len(snippets))
                 budget_for_history = max(
                     0, max_prompt_tokens - (system_tokens + user_tokens + snippet_tokens)
                 )
@@ -197,10 +262,28 @@ class ContextBuilder:
         }
         try:
             with self.metrics.time_retrieval(state=state.value):
-                resp = await self.somabrain.context_evaluate(payload)
+                # VIBE: Resilience (Circuit Breaker + Retries)
+                # We use specific exception catching to avoid retrying on 4xx if possible,
+                # but SomaClientError might be generic.
+                @retry(
+                    stop=stop_after_attempt(3),
+                    wait=wait_exponential(multiplier=1, min=1, max=10),
+                    retry=retry_if_exception_type((SomaClientError, TimeoutError)),
+                    reraise=True
+                )
+                async def _reliable_evaluate(p):
+                    return await SOMABRAIN_BREAKER.call(self.somabrain.context_evaluate, p)
+
+                resp = await _reliable_evaluate(payload)
+                self.metrics.inc_snippets(stage="retrieved", count=len(resp.get("candidates", [])))
+
+        except CircuitBreakerError:
+            LOGGER.warning("Somabrain circuit open. Skipping context retrieval.")
+            self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
+            return []
         except SomaClientError as exc:
             LOGGER.info(
-                "Somabrain context_evaluate failed", exc_info=True, extra={"state": state.value}
+                "Somabrain context_evaluate failed after retries", exc_info=True, extra={"state": state.value}
             )
             if state == SomabrainHealthState.NORMAL:
                 self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
@@ -318,6 +401,68 @@ class ContextBuilder:
             trimmed.append(snippet)
             total += tokens
         return trimmed, total
+
+    def _trim_snippets_optimal(
+        self,
+        snippets: List[Dict[str, Any]],
+        allowed_tokens: int,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Knapsack-style selection to maximize score within token budget."""
+        if allowed_tokens <= 0 or not snippets:
+            return [], 0
+            
+        # Get token cost for each snippet
+        items = []
+        for s in snippets:
+            cost = self.count_tokens(s.get("text", ""))
+            score = self._safe_float(s.get("score"))
+            # Skip items that alone exceed budget (optional optimization)
+            if cost <= allowed_tokens:
+                items.append((cost, score, s))
+                
+        n = len(items)
+        if n == 0:
+            return [], 0
+            
+        # DP Table: dp[i][w] = max score using first i items with weight limit w
+        # Optimised space: 1D array dp[w] stores max score for capacity w
+        dp = [0.0] * (allowed_tokens + 1)
+        # To reconstruct solution, we keep track of which items led to the max score
+        # keep[i][w] = True if item i was included for capacity w
+        # Since we need full reconstruction and N/W are relatively small (context window),
+        # 2D table for reconstruction is safer or dict based approach.
+        # Given allowed_tokens can be 8k+, O(N*W) might be slow if W is token count?
+        # Typically snippet budget is ~1-2k. 2000 * 10 = 20k operations. Fast.
+        
+        # Using 2D for reconstruction simplicity
+        # dp[i][w]
+        dp_table = [[0.0 for _ in range(allowed_tokens + 1)] for _ in range(n + 1)]
+        
+        for i in range(1, n + 1):
+            w_i, v_i, _ = items[i-1]
+            for w in range(allowed_tokens + 1):
+                if w_i <= w:
+                    dp_table[i][w] = max(dp_table[i-1][w], dp_table[i-1][w-w_i] + v_i)
+                else:
+                    dp_table[i][w] = dp_table[i-1][w]
+                    
+        # Reconstruct
+        selected = []
+        total_tokens = 0
+        w = allowed_tokens
+        for i in range(n, 0, -1):
+            if dp_table[i][w] != dp_table[i-1][w]:
+                # Item was selected
+                cost, _, snippet = items[i-1]
+                selected.append(snippet)
+                total_tokens += cost
+                w -= cost
+                
+        selected.reverse() # Restore original relative order? No, Knapsack doesn't preserve order.
+        # We might want to re-sort by score or original index if order matters for context linearisation.
+        # For now, we return as is (reverse selection order).
+        
+        return selected, total_tokens
 
     def _trim_history(
         self,

@@ -29,7 +29,7 @@ litellm_exceptions = getattr(litellm, "exceptions", None)
 import time
 import uuid
 
-from browser_use import browser_use_monkeypatch, ChatGoogle, ChatOpenRouter  # type: ignore
+from browser_use import ChatGoogle  # type: ignore
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
