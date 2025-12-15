@@ -19,6 +19,7 @@ class InstallRequest(BaseModel):
 
 @router.get("", response_model=List[CapsuleRecord])
 async def list_capsules():
+    await STORE.ensure_schema()
     return await STORE.list()
 
 

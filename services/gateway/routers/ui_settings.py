@@ -9,10 +9,12 @@ No Redis secrets, no .env files, no fallbacks.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from services.common.ui_settings_store import UiSettingsStore
+from services.common.feature_flags_store import FeatureFlagsStore
+from services.common.agent_config_loader import reload_agent_config
 
 router = APIRouter(prefix="/v1/settings", tags=["settings"])
 
@@ -27,7 +29,7 @@ def _get_store():
 
 
 @router.get("")
-async def get_settings() -> dict:
+async def get_settings(request: Request) -> dict:
     """Return UI settings schema/payload."""
     store = _get_store()
     await store.ensure_schema()
@@ -35,6 +37,39 @@ async def get_settings() -> dict:
     settings = await store.get()
     if not settings or not settings.get("sections"):
         raise HTTPException(status_code=500, detail="Settings schema generation failed")
+
+    # REQ-PERSIST-001: Merge effective feature flags from database
+    try:
+        tenant = request.headers.get("X-Tenant-Id", "default")
+        ff_store = FeatureFlagsStore()
+        effective = await ff_store.get_effective_flags(tenant)
+        
+        # Find feature_flags section
+        sections = settings.get("sections", [])
+        ff_section = next((s for s in sections if s["id"] == "feature_flags"), None)
+        
+        if ff_section and "fields" in ff_section:
+            # Update profile value
+            profile_field = next((f for f in ff_section["fields"] if f["id"] == "profile"), None)
+            if profile_field:
+                profile_field["value"] = effective["profile"]
+            
+            # Update individual flags
+            flags_map = effective.get("flags", {})
+            for field in ff_section["fields"]:
+                fid = field["id"]
+                if fid in flags_map:
+                    # Update value and add hint about source
+                    verdict = flags_map[fid]
+                    field["value"] = verdict["enabled"]
+                    if verdict["source"] == "environment":
+                        field["hint"] = f"(Overridden by {verdict['env_var']}) {field.get('hint', '')}"
+    except Exception as exc:
+        # If feature flags store is unavailable, return settings without flags enrichment.
+        # This prevents a total failure of the settings API if the flags DB is down.
+        LOGGER.warning("Failed to enrich settings with feature flags", extra={"error": str(exc)})
+        pass
+
     return settings
 
 
@@ -46,12 +81,43 @@ async def get_settings_sections() -> dict:
 
 
 @router.put("/sections")
-async def put_settings(body: SettingsUpdate):
+async def put_settings(request: Request, body: SettingsUpdate):
     """Save settings from UI."""
     store = _get_store()
     await store.ensure_schema()
 
+    # 1. Persist the schema/blob modifications (UI layout etc)
     await store.set(body.data)
+    
+    # 2. REQ-PERSIST-001: Persist feature flags to dedicated table
+    tenant = request.headers.get("X-Tenant-Id", "default")
+    
+    sections = body.data.get("sections", [])
+    ff_section = next((s for s in sections if s["id"] == "feature_flags"), None)
+    
+    if ff_section and "fields" in ff_section:
+        ff_store = FeatureFlagsStore()
+        
+        # first update profile if present
+        profile_field = next((f for f in ff_section["fields"] if f["id"] == "profile"), None)
+        if profile_field:
+            try:
+                await ff_store.set_profile(tenant, profile_field["value"])
+            except ValueError:
+                pass # Ignore invalid profile, proceed to flags
+        
+        # then update all individual flags
+        for field in ff_section["fields"]:
+            fid = field["id"]
+            if fid == "profile":
+                continue
+            # Logic: If it looks like a boolean flag, save it
+            if "value" in field and isinstance(field["value"], bool):
+                await ff_store.set_flag(tenant, fid, field["value"])
+
+    # 3. REQ-PERSIST-001: Trigger Agent Reload
+    await reload_agent_config(tenant)
+
     return {"status": "ok"}
 
 

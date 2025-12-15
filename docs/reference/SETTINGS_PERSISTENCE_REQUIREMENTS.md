@@ -2,7 +2,7 @@
 
 ## REQ-PERSIST-001: Feature Flags Database Persistence
 **Priority:** HIGH  
-**Status:** NOT IMPLEMENTED  
+**Status:** IMPLEMENTED  
 **Category:** Configuration Management
 
 ### Problem Statement
@@ -92,7 +92,7 @@ await agent_manager.reload_agent(tenant_id)
 
 ## REQ-PERSIST-002: AgentConfig UI Exposure
 **Priority:** MEDIUM  
-**Status:** NOT IMPLEMENTED  
+**Status:** IMPLEMENTED  
 **Category:** Configuration Management
 
 ### Problem Statement
@@ -194,8 +194,8 @@ async def validate_knowledge_subdirs(subdirs: list[str]) -> bool:
 |---------|----------|--------|
 | PostgreSQL `ui_settings` | 60 | ✅ ACTIVE |
 | Vault | 10 | ✅ ACTIVE |
-| Environment (read-only) | 14 | ⚠️ REQ-PERSIST-001 |
-| Code-level (no persistence) | 5 | ⚠️ REQ-PERSIST-002 |
+| Environment (read-only) | 14 | ✅ REQ-PERSIST-001 (Implemented) |
+| Code-level (no persistence) | 5 | ✅ REQ-PERSIST-002 (Implemented) |
 
 ### Dependencies
 - REQ-PERSIST-001 depends on: PostgreSQL, Agent reload mechanism

@@ -1,72 +1,112 @@
-"""In‑memory capsule store used by gateway routers.
+"""Capsule store using PostgreSQL for persistence.
 
-The original monolith provided a persistent store for installed "capsules"
-— lightweight plugins or extensions.  For the purpose of the test suite we
-only need a minimal implementation that satisfies the router's expectations:
-
-* ``list`` returns a list of :class:`CapsuleRecord` objects.
-* ``get`` returns a single record or ``None``.
-* ``install`` marks a capsule as installed and returns ``True`` if the capsule
-  existed.
-
-All data is kept in a simple dictionary; no external services are required.
+Replaces the in-memory store with a persistent implementation backed by the
+`capsules` table.
 """
 
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+import json
+from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any
+
+import asyncpg
+
+from src.core.config import cfg
 
 __all__ = ["CapsuleRecord", "CapsuleStore"]
 
 
 @dataclass(slots=True)
 class CapsuleRecord:
-    """Public representation of a capsule.
-
-    Only the ``capsule_id`` field is required for the router tests, but we keep
-    a ``name`` attribute for realism.
-    """
+    """Public representation of a capsule."""
 
     capsule_id: str
     name: str | None = None
     installed: bool = False
+    metadata: Dict[str, Any] | None = None
 
 
 class CapsuleStore:
-    """Very small in‑memory store mimicking the original API.
+    """PostgreSQL-backed store for capsules."""
 
-    The store is thread‑safe via an ``asyncio.Lock`` because the router may be
-    accessed concurrently by FastAPI.
-    """
+    def __init__(self, dsn: str | None = None) -> None:
+        self._dsn = dsn or cfg.settings().database.dsn
 
-    def __init__(self) -> None:
-        self._records: Dict[str, CapsuleRecord] = {}
-        self._lock = asyncio.Lock()
-
-        # Populate with a couple of example capsules so that the list endpoint
-        # returns something useful in tests.
-        for i in range(1, 4):
-            cid = f"capsule-{i}"
-            self._records[cid] = CapsuleRecord(capsule_id=cid, name=f"Capsule {i}")
+    async def ensure_schema(self) -> None:
+        """Create the capsules table if it doesn't exist."""
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS capsules (
+                    capsule_id TEXT PRIMARY KEY,
+                    name TEXT,
+                    installed BOOLEAN DEFAULT FALSE,
+                    metadata JSONB DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """
+            )
+            # Table is created but we do NOT seed mock data in production.
+            # Real capsules should be installed via the API or a migration script.
+            pass
+        finally:
+            await conn.close()
 
     async def list(self) -> List[CapsuleRecord]:
-        async with self._lock:
-            return list(self._records.values())
+        """List all capsules."""
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            rows = await conn.fetch("SELECT capsule_id, name, installed, metadata FROM capsules ORDER BY capsule_id")
+            return [
+                CapsuleRecord(
+                    capsule_id=r["capsule_id"],
+                    name=r["name"],
+                    installed=r["installed"],
+                    metadata=json.loads(r["metadata"]) if r["metadata"] else {},
+                )
+                for r in rows
+            ]
+        finally:
+            await conn.close()
 
     async def get(self, capsule_id: str) -> Optional[CapsuleRecord]:
-        async with self._lock:
-            return self._records.get(capsule_id)
+        """Get a single capsule by ID."""
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            row = await conn.fetchrow(
+                "SELECT capsule_id, name, installed, metadata FROM capsules WHERE capsule_id = $1",
+                capsule_id,
+            )
+            if not row:
+                return None
+            return CapsuleRecord(
+                capsule_id=row["capsule_id"],
+                name=row["name"],
+                installed=row["installed"],
+                metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+            )
+        finally:
+            await conn.close()
 
     async def install(self, capsule_id: str) -> bool:
         """Mark the capsule as installed.
 
-        Returns ``True`` if the capsule exists, ``False`` otherwise.
+        Returns True if successful (capsule existed), False otherwise.
         """
-        async with self._lock:
-            rec = self._records.get(capsule_id)
-            if rec is None:
-                return False
-            rec.installed = True
-            return True
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            # Check if exists first? Or just update and check rowcount.
+            # Only update if it exists.
+            result = await conn.execute(
+                "UPDATE capsules SET installed = TRUE, updated_at = NOW() WHERE capsule_id = $1",
+                capsule_id,
+            )
+            # format is usually "UPDATE 1"
+            _, count_str = result.split(" ")
+            count = int(count_str)
+            return count > 0
+        finally:
+            await conn.close()

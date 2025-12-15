@@ -787,16 +787,21 @@ class SomaClient:
         persona_id: Optional[str] = None,
     ) -> Mapping[str, Any]:
         """Get current neuromodulator state from SomaBrain.
-
-        Note: The SomaBrain /neuromodulators endpoint is global and does not
-        accept tenant_id or persona_id parameters. These are accepted here
-        for API compatibility but are not sent to the server.
+        
+        Args:
+            tenant_id: Optional tenant identifier.
+            persona_id: Optional persona identifier.
 
         Returns:
             NeuromodStateModel with dopamine, serotonin, noradrenaline, acetylcholine
         """
-        # SomaBrain API: GET /neuromodulators (no query params)
-        return await self._request("GET", "/neuromodulators")
+        # SomaBrain API: GET /neuromodulators?tenant_id=...&persona_id=...
+        params = {}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        if persona_id:
+            params["persona_id"] = persona_id
+        return await self._request("GET", "/neuromodulators", params=params)
 
     async def update_neuromodulators(
         self,
@@ -807,13 +812,9 @@ class SomaClient:
     ) -> Mapping[str, Any]:
         """Update neuromodulator state in SomaBrain.
 
-        Note: The SomaBrain /neuromodulators endpoint is global and does not
-        accept tenant_id or persona_id parameters. These are accepted here
-        for API compatibility but are not sent to the server.
-
         Args:
-            tenant_id: Ignored (for API compatibility)
-            persona_id: Ignored (for API compatibility)
+            tenant_id: Optional tenant identifier.
+            persona_id: Optional persona identifier.
             neuromodulators: Dict with dopamine, serotonin, noradrenaline, acetylcholine
 
         Returns:
@@ -823,6 +824,10 @@ class SomaClient:
         body: Dict[str, Any] = {}
         if neuromodulators:
             body.update(neuromodulators)
+        if tenant_id:
+            body["tenant_id"] = tenant_id
+        if persona_id:
+            body["persona_id"] = persona_id
         return await self._request("POST", "/neuromodulators", json=body)
 
     async def get_adaptation_state(
@@ -836,17 +841,19 @@ class SomaClient:
         This wraps the /context/adaptation/state endpoint which returns
         retrieval weights, utility weights, history length, and learning rate.
 
-        Note: persona_id is accepted for API compatibility but not used by SomaBrain.
-
         Args:
             tenant_id: Optional tenant filter
-            persona_id: Ignored (for API compatibility)
+            persona_id: Optional persona filter
 
         Returns:
             AdaptationStateResponse with retrieval, utility, history_len, learning_rate
         """
-        # SomaBrain API: GET /context/adaptation/state?tenant_id=X
-        params = {"tenant_id": tenant_id} if tenant_id else None
+        # SomaBrain API: GET /context/adaptation/state?tenant_id=X&persona_id=Y
+        params = {}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        if persona_id:
+            params["persona_id"] = persona_id
         return await self._request("GET", "/context/adaptation/state", params=params)
 
     async def sleep_cycle(
@@ -863,13 +870,10 @@ class SomaClient:
         This wraps the /sleep/run endpoint which initiates NREM and/or REM
         sleep phases for memory consolidation and pruning.
 
-        Note: tenant_id, persona_id, and duration_minutes are accepted for API
-        compatibility but the SomaBrain /sleep/run endpoint only accepts nrem/rem bools.
-
         Args:
-            tenant_id: Ignored (for API compatibility)
-            persona_id: Ignored (for API compatibility)
-            duration_minutes: Ignored (for API compatibility)
+            tenant_id: Optional tenant identifier.
+            persona_id: Optional persona identifier.
+            duration_minutes: Optional duration in minutes.
             nrem: Whether to run NREM sleep phase (default True)
             rem: Whether to run REM sleep phase (default True)
 
@@ -881,6 +885,12 @@ class SomaClient:
             "nrem": nrem,
             "rem": rem,
         }
+        if tenant_id:
+            body["tenant_id"] = tenant_id
+        if persona_id:
+            body["persona_id"] = persona_id
+        if duration_minutes:
+            body["duration_minutes"] = duration_minutes
         return await self._request("POST", "/sleep/run", json=body)
 
     async def sleep_status(self) -> Mapping[str, Any]:

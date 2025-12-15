@@ -40,23 +40,11 @@ class UiSettingsStore:
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            try:
-                self._pool = await asyncpg.create_pool(
-                    self.dsn,
-                    min_size=max(0, min_size),
-                    max_size=max(1, max_size),
-                )
-            except OSError as exc:
-                # Hostname resolution failure – try localhost as a real fallback.
-                import re
-
-                # Replace the host component in the DSN (postgres://user:pass@host:port/db)
-                fallback_dsn = re.sub(r"@[^:/]+", "@127.0.0.1", self.dsn)
-                self._pool = await asyncpg.create_pool(
-                    fallback_dsn,
-                    min_size=max(0, min_size),
-                    max_size=max(1, max_size),
-                )
+            self._pool = await asyncpg.create_pool(
+                self.dsn,
+                min_size=max(0, min_size),
+                max_size=max(1, max_size),
+            )
         return self._pool
 
     async def ensure_schema(self) -> None:
@@ -453,6 +441,45 @@ class UiSettingsStore:
                                  "hint": "Stream LLM responses in real-time"},
                                 {"id": "delegation", "title": "Agent Delegation", "type": "toggle", "value": False,
                                  "hint": "Allow agent to delegate to other agents"},
+                            ],
+                        },
+                        {
+                            "id": "agent_config",
+                            "tab": "system",
+                            "title": "Agent Configuration",
+                            "description": "Core agent behavior settings (restart required)",
+                            "icon": "settings",
+                            "fields": [
+                                {"id": "profile", "title": "Agent Profile", "type": "select",
+                                 "options": [
+                                     {"value": "minimal", "label": "Minimal (Essential only)"},
+                                     {"value": "standard", "label": "Standard (Balanced)"},
+                                     {"value": "enhanced", "label": "Enhanced (Recommended)"},
+                                     {"value": "max", "label": "Maximum (All features)"},
+                                 ],
+                                 "value": "enhanced",
+                                 "hint": "Controls which features are enabled by default"},
+                                {"id": "knowledge_subdirs", "title": "Knowledge Directories", "type": "json",
+                                 "value": ["default", "custom"],
+                                 "hint": "Must exist in /knowledge/ directory"},
+                                {"id": "memory_subdir", "title": "Memory Subdirectory", "type": "text",
+                                 "value": "",
+                                 "placeholder": "default",
+                                 "hint": "FAISS memory storage location"},
+                                {"id": "code_exec_ssh_enabled", "title": "SSH Code Execution", "type": "toggle",
+                                 "value": True,
+                                 "hint": "Enable remote code execution via SSH"},
+                                {"id": "code_exec_ssh_addr", "title": "SSH Host", "type": "text",
+                                 "value": "localhost",
+                                 "hint": "SSH server address"},
+                                {"id": "code_exec_ssh_port", "title": "SSH Port", "type": "number",
+                                 "value": 55022,
+                                 "min": 1,
+                                 "max": 65535,
+                                 "hint": "SSH server port"},
+                                {"id": "code_exec_ssh_user", "title": "SSH User", "type": "text",
+                                 "value": "root",
+                                 "hint": "SSH username for code execution"},
                             ],
                         },
                     ]

@@ -60,6 +60,9 @@ langchain-community==0.3.19
 # Optional ML/NLP extras are gated in requirements-ml.txt
 tiktoken==0.8.0
 numpy==1.26.4
+presidio-analyzer==2.2.355
+presidio-anonymizer==2.2.355
+tenacity==9.0.0
 
 # Audio and OCR (moved to requirements-ml.txt)
 

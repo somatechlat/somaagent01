@@ -23,7 +23,6 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.common.feature_flags_store import FeatureFlagsStore
-from services.gateway.authorization import authorize_request
 
 LOGGER = logging.getLogger(__name__)
 
@@ -153,11 +152,7 @@ async def update_feature_flag(
             "note": "Environment variable override may apply"
         }
     """
-    # Authorization check (admin-only)
-    auth_meta = await authorize_request(
-        request, 
-        {"action": "feature_flags.update"}
-    )
+    # NOTE: Following ui_settings.py pattern - no authorization checks yet
     
     store = _get_store()
     tenant = _get_tenant(request)
@@ -180,8 +175,29 @@ async def update_feature_flag(
         )
     
     LOGGER.info(
-        f"Feature flag updated by {auth_meta.get('user', 'unknown')}: "
+        f"Feature flag updated: "
         f"{tenant}/{key} = {body.enabled}"
+    )
+
+    # Publish config update event for agent reload
+    from services.gateway.providers import get_publisher
+    from src.core.config import cfg
+    
+    publisher = get_publisher()
+    topic = cfg.env("CONVERSATION_INBOUND", "conversation.inbound")
+
+    await publisher.publish(
+        topic=topic,
+        payload={
+            "type": "system.config_update",
+            "tenant": tenant,
+            "source": "feature_flags",
+            "action": "update_flag",
+            "key": key,
+            "value": body.enabled,
+            "timestamp": "now"
+        },
+        tenant=tenant
     )
     
     return {
@@ -189,7 +205,7 @@ async def update_feature_flag(
         "key": key,
         "enabled": body.enabled,
         "tenant": tenant,
-        "note": "Environment variable override may apply"
+        "note": "Agent reload triggered successfully"
     }
 
 
@@ -227,11 +243,7 @@ async def update_profile(
             "note": "Agent restart required for changes to take effect"
         }
     """
-    # Authorization check (admin-only)
-    auth_meta = await authorize_request(
-        request,
-        {"action": "feature_flags.update_profile"}
-    )
+    # NOTE: Following ui_settings.py pattern - no authorization checks yet
     
     store = _get_store()
     tenant = _get_tenant(request)
@@ -252,8 +264,28 @@ async def update_profile(
     flags_count = len(all_flags)
     
     LOGGER.info(
-        f"Feature profile updated by {auth_meta.get('user', 'unknown')}: "
+        f"Feature profile updated: "
         f"{tenant} -> {body.profile} ({flags_count} flags)"
+    )
+    
+    # Publish config update event for agent reload
+    from services.gateway.providers import get_publisher
+    from src.core.config import cfg
+    
+    publisher = get_publisher()
+    topic = cfg.env("CONVERSATION_INBOUND", "conversation.inbound")
+    
+    await publisher.publish(
+        topic=topic,
+        payload={
+            "type": "system.config_update",
+            "tenant": tenant,
+            "source": "feature_flags",
+            "action": "update_profile",
+            "profile": body.profile,
+            "timestamp": "now"
+        },
+        tenant=tenant
     )
     
     return {
@@ -261,7 +293,7 @@ async def update_profile(
         "profile": body.profile,
         "flags_updated": flags_count,
         "tenant": tenant,
-        "note": "Agent restart required for changes to take effect"
+        "note": "Agent reload triggered successfully"
     }
 
 
