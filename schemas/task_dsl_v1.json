@@ -1,0 +1,274 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://somaagent.ai/schemas/task-dsl-v1.json",
+    "title": "Task DSL v1.0",
+    "description": "Schema for multimodal job plans. Defines workflow steps for image, diagram, screenshot, and video generation.",
+    "type": "object",
+    "required": [
+        "version",
+        "tasks"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "const": "1.0",
+            "description": "Schema version"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "plan_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Unique plan identifier"
+                },
+                "tenant_id": {
+                    "type": "string",
+                    "description": "Owning tenant"
+                },
+                "session_id": {
+                    "type": "string",
+                    "description": "Session this plan belongs to"
+                },
+                "request_id": {
+                    "type": "string",
+                    "description": "Original request correlation ID"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": [
+                        "low",
+                        "normal",
+                        "high",
+                        "urgent"
+                    ],
+                    "default": "normal"
+                }
+            },
+            "additionalProperties": true
+        },
+        "budget": {
+            "type": "object",
+            "properties": {
+                "max_cost_cents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Maximum total cost in cents"
+                },
+                "max_latency_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Maximum total latency in milliseconds"
+                },
+                "cost_tier_limit": {
+                    "type": "string",
+                    "enum": [
+                        "free",
+                        "low",
+                        "medium",
+                        "high",
+                        "premium"
+                    ],
+                    "description": "Maximum allowed cost tier for any step"
+                }
+            }
+        },
+        "tasks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/definitions/task"
+            }
+        },
+        "policy_overrides": {
+            "type": "object",
+            "description": "Override default policies for this plan",
+            "properties": {
+                "allow_retry": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "max_retries": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5,
+                    "default": 2
+                },
+                "fallback_enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "quality_gate_enabled": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        }
+    },
+    "definitions": {
+        "task": {
+            "type": "object",
+            "required": [
+                "task_id",
+                "step_type",
+                "modality"
+            ],
+            "properties": {
+                "task_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+                    "description": "Unique task identifier within the plan"
+                },
+                "step_type": {
+                    "type": "string",
+                    "enum": [
+                        "generate_image",
+                        "generate_diagram",
+                        "capture_screenshot",
+                        "generate_video",
+                        "compose_document",
+                        "transform_asset"
+                    ],
+                    "description": "Type of operation to perform"
+                },
+                "modality": {
+                    "type": "string",
+                    "enum": [
+                        "image",
+                        "image_photo",
+                        "image_diagram",
+                        "diagram",
+                        "screenshot",
+                        "video",
+                        "video_short",
+                        "document"
+                    ],
+                    "description": "Output modality type"
+                },
+                "depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Task IDs this task depends on"
+                },
+                "params": {
+                    "type": "object",
+                    "description": "Step-specific parameters",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "Generation prompt"
+                        },
+                        "format": {
+                            "type": "string",
+                            "description": "Output format (png, svg, mp4, etc.)"
+                        },
+                        "dimensions": {
+                            "type": "object",
+                            "properties": {
+                                "width": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                "height": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
+                        "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "description": "URL for screenshot capture"
+                        },
+                        "code": {
+                            "type": "string",
+                            "description": "Diagram code (Mermaid, PlantUML)"
+                        },
+                        "style": {
+                            "type": "string",
+                            "description": "Style preset or instructions"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "constraints": {
+                    "type": "object",
+                    "properties": {
+                        "preferred_provider": {
+                            "type": "string",
+                            "description": "Preferred tool/provider"
+                        },
+                        "excluded_providers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Providers to exclude"
+                        },
+                        "max_cost_cents": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Max cost for this step"
+                        },
+                        "timeout_ms": {
+                            "type": "integer",
+                            "minimum": 1000,
+                            "description": "Step timeout in milliseconds"
+                        }
+                    }
+                },
+                "quality_gate": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "min_score": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7,
+                            "description": "Minimum quality score to pass"
+                        },
+                        "max_reworks": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 5,
+                            "default": 2,
+                            "description": "Max rework attempts if quality fails"
+                        },
+                        "criteria": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Quality criteria to evaluate"
+                        }
+                    }
+                },
+                "on_failure": {
+                    "type": "string",
+                    "enum": [
+                        "fail",
+                        "skip",
+                        "fallback"
+                    ],
+                    "default": "fallback",
+                    "description": "Action on step failure"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Additional task metadata"
+                }
+            }
+        }
+    }
+}
