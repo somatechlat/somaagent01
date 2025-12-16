@@ -454,26 +454,28 @@
 ### Phase 2: Asset Pipeline & Provenance
 
 #### 2.1 Asset Storage & Management
-- [ ] Create `AssetStore` service
-  - [ ] File: `services/common/asset_store.py`
-  - [ ] S3 integration (primary storage)
-  - [ ] PostgreSQL fallback (bytea column)
-  - [ ] SHA256 checksum deduplication
-  - [ ] `create(tenant_id, asset_type, format, content, metadata)` method
-  - [ ] `get(asset_id)` method (fetch from S3 or DB)
-- [ ] Asset versioning logic (same hash = same content)
-- [ ] Asset lifecycle management (retention policies)
-- [ ] Access control enforcement (tenant-scoped)
+- [x] Create `AssetStore` service
+  - [x] File: `services/common/asset_store.py`
+  - [x] PostgreSQL bytea storage (v1)
+  - [x] SHA256 checksum deduplication
+  - [x] `create()` method with auto-dedup
+  - [x] `get()`, `get_by_checksum()`, `list()`, `delete()` methods
+  - [x] MIME type detection
+  - [x] Unit tests: `tests/unit/test_asset_store.py` (19 tests)
+- [x] Asset versioning logic (checksum-based dedup)
+- [ ] S3 integration — Phase 4
+- [ ] Asset lifecycle management — Phase 5
 
 #### 2.2 Provenance System
-- [ ] Create `ProvenanceRecorder` service
-  - [ ] File: `services/common/provenance_recorder.py`
-  - [ ] `create_provenance(asset_id, request_id, execution_id, prompt_summary, params, user_id)` method
-  - [ ] Redaction policy integration (sensitive prompts, params)
-  - [ ] PII scrubbing per GDPR/compliance
-- [ ] Provenance querying API
-  - [ ] `GET /v1/multimodal/provenance/{asset_id}` endpoint
-- [ ] Audit trail integration
+- [x] Create `ProvenanceRecorder` service
+  - [x] File: `services/common/provenance_recorder.py`
+  - [x] `record()` method with redaction policy
+  - [x] Redaction: prompts, params, PII (SSN, email, API keys, credit cards)
+  - [x] Quality gate tracking
+  - [x] OpenTelemetry trace correlation
+  - [x] Unit tests: `tests/unit/test_provenance_recorder.py` (20 tests)
+- [ ] Provenance querying API — Phase 5
+- [ ] Audit trail integration — Phase 5
 
 ---
 
