@@ -482,18 +482,20 @@
 ### Phase 3: Task Planning & Compilation (D)
 
 #### 3.1 Task DSL & Plan Schema
-- [ ] Define JSON schema for Task DSL v1.0
-  - [ ] File: `schemas/task_dsl_v1.json`
-  - [ ] Fields: version, metadata, tasks[], budget
-  - [ ] Task fields: task_id, step_type, modality, depends_on, constraints, quality_gate, user_defaults
-- [ ] Implement plan validator
-  - [ ] File: `services/common/plan_validator.py`
-  - [ ] Validate: no circular dependencies, all references exist, modality/step_type compatibility, positive budgets
-- [ ] Create plan compiler
-  - [ ] File: `services/common/plan_compiler.py`
-  - [ ] JSON → Executable DAG
-  - [ ] Topological ordering (Kahn's algorithm)
-  - [ ] Step types: generate_image, generate_diagram, capture_screenshot, generate_video, compose_srs
+- [x] Define JSON schema for Task DSL v1.0
+  - [x] File: `schemas/task_dsl_v1.json`
+  - [x] Fields: version, metadata, tasks[], budget, policy_overrides
+  - [x] Task fields: task_id, step_type, modality, depends_on, params, constraints, quality_gate
+- [x] Implement JobPlanner service (plan validation + compilation)
+  - [x] File: `services/common/job_planner.py`
+  - [x] Validate: no circular dependencies, all references exist, valid step types
+  - [x] Topological ordering (Kahn's algorithm)
+  - [x] Step types: generate_image, generate_diagram, capture_screenshot, generate_video, compose_document, transform_asset
+  - [x] Unit tests: `tests/unit/test_job_planner.py` (24 tests)
+- [x] Implement ExecutionTracker service
+  - [x] File: `services/common/execution_tracker.py`
+  - [x] Track execution state, metrics, quality scores
+  - [x] Unit tests: `tests/unit/test_execution_tracker.py` (11 tests)
 
 #### 3.2 Intent & Plan Extraction
 - [ ] Extend `ContextBuilder` with multimodal awareness
