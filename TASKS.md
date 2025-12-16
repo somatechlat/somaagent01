@@ -514,27 +514,25 @@
 
 ### Phase 4: Execution Engine
 
-#### 4.1 Multimodal Tool Executor Extension
-- [ ] Extend ToolExecutor with multimodal dispatch
-  - [ ] File: `services/tool_executor/main.py`
-  - [ ] Add `multimodal_dispatch(tool_name, args, tenant_id, session_id, execution_id)` method
-  - [ ] Route to image_gen, diagram_gen, screenshot, video tools
-- [ ] Implement provider adapters:
-  - [ ] OpenAI DALL-E adapter
-    - [ ] File: `services/tool_executor/adapters/openai_image.py`
-    - [ ] `generate_image(prompt, size, quality)` method
-  - [ ] Stability AI adapter
-    - [ ] File: `services/tool_executor/adapters/stability_image.py`
-    - [ ] `generate_image(prompt, ...)` method
-  - [ ] Mermaid diagram adapter
-    - [ ] File: `services/tool_executor/adapters/mermaid_diagram.py`
-    - [ ] `generate_diagram(description)` method (calls `mmdc` CLI)
-  - [ ] PlantUML diagram adapter
-    - [ ] File: `services/tool_executor/adapters/plantuml_diagram.py`
-  - [ ] Playwright screenshot adapter
-    - [ ] File: `services/tool_executor/adapters/playwright_screenshot.py`
-  - [ ] (Optional) Runway/Pika video adapter
-    - [ ] File: `services/tool_executor/adapters/runway_video.py`
+#### 4.1 Multimodal Provider Adapters
+- [x] Create base provider interface
+  - [x] File: `services/multimodal/base_provider.py`
+  - [x] `MultimodalProvider` abstract base class
+  - [x] `GenerationRequest`, `GenerationResult` dataclasses
+  - [x] Exception hierarchy (ProviderError, RateLimitError, etc.)
+- [x] Implement provider adapters:
+  - [x] OpenAI DALL-E adapter
+    - [x] File: `services/multimodal/dalle_provider.py`
+    - [x] Size/quality/style options, cost estimation
+  - [x] Mermaid diagram adapter
+    - [x] File: `services/multimodal/mermaid_provider.py`
+    - [x] Local CLI execution, SVG/PNG output
+  - [x] Playwright screenshot adapter
+    - [x] File: `services/multimodal/playwright_provider.py`
+    - [x] Viewport config, full-page capture
+  - [ ] Stability AI adapter — Future
+  - [ ] PlantUML diagram adapter — Future
+- [x] Unit tests: `tests/unit/test_multimodal_providers.py` (30 tests)
 
 #### 4.2 Execution Orchestration
 - [ ] Create `MultimodalExecutor` service
