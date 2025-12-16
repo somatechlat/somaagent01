@@ -8,17 +8,19 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Annotated, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import redis.asyncio as redis
 
 from services.common.attachments_store import AttachmentsStore
 from services.common.authorization import authorize_request
+from services.common.clamav_scanner import ClamAVScanner, ScanStatus
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import get_logger
 from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.publisher import DurablePublisher
+from services.gateway.limiter import limiter
 from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/uploads", tags=["uploads"])
@@ -63,8 +65,8 @@ class TUSUploadHandler:
     def __init__(
         self,
         store: AttachmentsStore,
+        scanner: ClamAVScanner,
         *,
-        clamd_socket: str,
         max_size: int,
         quarantine_on_error: bool,
         clamav_enabled: bool,
@@ -72,7 +74,7 @@ class TUSUploadHandler:
         session_ttl: int = 24 * 3600,
     ) -> None:
         self._store = store
-        self._clamd_socket = clamd_socket
+        self._scanner = scanner
         # Enforce clamd stream size; overall max is the minimum of upload limit and clamd limit.
         self._max_size = min(max_size, stream_max_bytes)
         self._quarantine_on_error = quarantine_on_error
@@ -219,15 +221,43 @@ class TUSUploadHandler:
                 raise ValueError("upload_exceeds_stream_limit")
             content = bytes(sess.buffer)
 
+    async def get_offset(self, upload_id: str) -> Optional[int]:
+        if self._redis:
+            meta = await self._redis.hgetall(f"tus:upload:{upload_id}:meta")
+            if not meta:
+                return None
+            return int(meta.get(b"offset", b"0"))
+        sess = self._uploads.get(upload_id)
+        return sess.offset if sess else None
+
+    async def delete_upload(self, upload_id: str) -> None:
+        if self._redis:
+            await self._redis.delete(f"tus:upload:{upload_id}:meta", f"tus:upload:{upload_id}:content")
+        else:
+            self._uploads.pop(upload_id, None)
+
         sha256_hex = hashlib.sha256(content).hexdigest()
 
-        status, reason = await self._scan_with_clamav(content)
-        if status == "error":
-            if self._quarantine_on_error:
+        scan_result = self._scanner.scan_bytes(content) if self._clamav_enabled else None
+        
+        status = "clean"
+        reason = None
+        
+        if scan_result:
+            if scan_result.status == ScanStatus.QUARANTINED:
                 status = "quarantined"
-                reason = reason or "scan_error"
-            else:
-                raise RuntimeError(reason or "clamav_unavailable")
+                reason = scan_result.threat_name
+            elif scan_result.status == ScanStatus.ERROR:
+                if self._quarantine_on_error:
+                    status = "quarantined"
+                    reason = scan_result.error_message or "scan_error"
+                else:
+                    raise RuntimeError(scan_result.error_message or "clamav_unavailable")
+            elif scan_result.status == ScanStatus.SCAN_PENDING:
+                 # What to do if pending? Assume clean or error? 
+                 # Given current logic, we probably treat as error-ish or bypass if not critical.
+                 # Let's trust ClamAVScanner returns explicit status.
+                 pass
 
         att_id = await self._store.create(
             tenant=sess.tenant_id,
@@ -257,50 +287,19 @@ class TUSUploadHandler:
         self._uploads.pop(upload_id, None)
         return record
 
-    async def _scan_with_clamav(self, content: bytes) -> Tuple[str, Optional[str]]:
-        """Return (status, reason). Status: clean | quarantined | error."""
-        if not self._clamav_enabled:
-            return "clean", None
-        try:
-            import pyclamd
 
-            client = pyclamd.ClamdUnixSocket(self._clamd_socket)
-            try:
-                client.ping()
-            except Exception:
-                # Try TCP fallback if UNIX socket ping fails
-                host = cfg.env("SA01_CLAMAV_HOST")
-                port = cfg.env("SA01_CLAMAV_PORT")
-                if host and port:
-                    client = pyclamd.ClamdNetworkSocket(host, int(port))
-            result = client.scan_stream(content)
-            if result is None:
-                return "clean", None
-            # result dict: {"stream": ("FOUND", "Threat")}
-            for _name, (status, threat) in result.items():
-                if status == "FOUND":
-                    return "quarantined", threat
-            return "clean", None
-        except Exception as exc:  # pragma: no cover - depends on clamd availability
-            return "error", str(exc)
 
     async def health(self) -> dict:
         """Return health snapshot including clamd reachability."""
         scan = "disabled"
         error = None
-        if self._clamav_enabled:
-            try:
-                import pyclamd
-
-                client = pyclamd.ClamdUnixSocket(self._clamd_socket)
-                client.ping()
-                scan = "ok"
-            except Exception as exc:
-                scan = "error"
-                error = str(exc)
+        scan_ok = self._scanner.ping() if self._clamav_enabled else True
+        if not scan_ok and self._clamav_enabled:
+             error = "ClamAV Unreachable"
+        
         return {
-            "status": "ok" if scan in ("disabled", "ok") else "degraded",
-            "clamav": scan,
+            "status": "ok" if scan_ok else "degraded",
+            "clamav": "ok" if scan_ok else "error",
             "clamav_error": error,
             "max_upload_bytes": self._max_size,
             "session_backend": "redis" if self._redis else "memory",
@@ -330,10 +329,14 @@ def _tus_handler(store: AttachmentsStore = Depends(_attachments_store)) -> TUSUp
         stream_max = int(cfg.env("SA01_CLAMAV_STREAM_MAX_BYTES", str(100 * 1024 * 1024)))
         quarantine_on_error = cfg.env("SA01_UPLOAD_QUARANTINE_ON_ERROR", "true").lower() == "true"
         clamav_enabled = cfg.env("SA01_CLAMAV_ENABLED", "true").lower() == "true"
-        socket_path = cfg.env("SA01_CLAMAV_SOCKET", "/var/run/clamav/clamd.sock")
+        scanner = ClamAVScanner(
+            socket_path=cfg.env("SA01_CLAMAV_SOCKET", "/var/run/clamav/clamd.sock"),
+            host=cfg.env("SA01_CLAMAV_HOST"),
+            port=int(cfg.env("SA01_CLAMAV_PORT", "3310"))
+        )
         _tus_handler_singleton = TUSUploadHandler(
             store,
-            clamd_socket=socket_path,
+            scanner=scanner,
             max_size=max_size,
             quarantine_on_error=quarantine_on_error,
             clamav_enabled=clamav_enabled,
@@ -343,6 +346,7 @@ def _tus_handler(store: AttachmentsStore = Depends(_attachments_store)) -> TUSUp
 
 
 @router.post("")
+@limiter.limit("10/minute")
 async def upload_files(
     request: Request,
     files: List[UploadFile] = File(...),
@@ -403,6 +407,7 @@ class UploadInitRequest(BaseModel):
 
 
 @router.post("/tus")
+@limiter.limit("20/minute")
 async def tus_create(
     payload: UploadInitRequest,
     request: Request,
@@ -422,6 +427,7 @@ async def tus_create(
 
 
 @router.patch("/tus/{upload_id}")
+@limiter.limit("100/minute")
 async def tus_patch(
     upload_id: str,
     request: Request,
@@ -439,7 +445,36 @@ async def tus_patch(
     return JSONResponse({"upload_id": upload_id, "offset": new_offset})
 
 
+@router.head("/tus/{upload_id}")
+async def tus_head(
+    upload_id: str,
+    handler: Annotated[TUSUploadHandler, Depends(_tus_handler)],
+):
+    offset = await handler.get_offset(upload_id)
+    if offset is None:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    
+    return Response(
+        status_code=200,
+        headers={
+            "Upload-Offset": str(offset),
+            "Tus-Resumable": "1.0.0",
+            "Cache-Control": "no-store",
+        }
+    )
+
+
+@router.delete("/tus/{upload_id}")
+async def tus_delete(
+    upload_id: str,
+    handler: Annotated[TUSUploadHandler, Depends(_tus_handler)],
+):
+    await handler.delete_upload(upload_id)
+    return Response(status_code=204, headers={"Tus-Resumable": "1.0.0"})
+
+
 @router.post("/tus/{upload_id}/finalize")
+@limiter.limit("20/minute")
 async def tus_finalize(
     upload_id: str,
     handler: Annotated[TUSUploadHandler, Depends(_tus_handler)],

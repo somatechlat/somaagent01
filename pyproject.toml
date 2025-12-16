@@ -16,6 +16,7 @@ python = "^3.11,<3.13"
 fastapi = "^0.115.0"
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
 httpx = "^0.28.0"
+slowapi = "^0.1.9"
 flask = "^3.0.0"
 a2wsgi = "^1.10.0"
 
@@ -88,6 +89,7 @@ paramiko = "^3.5.0"
 psutil = "^7.0.0"
 unstructured-client = {version = "^0.31.0", markers = "python_version < '3.12'"}
 websockets = "^14.0.0"
+pyclamd = "^0.4.0"
 
 [tool.poetry.group.dev.dependencies]
 # Developer tools

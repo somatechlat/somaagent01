@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from observability.metrics import metrics_collector
 from services.gateway.circuit_breakers import CircuitBreakerRegistry, CircuitState
-from services.gateway.degradation_monitor import degradation_monitor
+from services.common.degradation_monitor import degradation_monitor
 
 router = APIRouter(prefix="/circuit", tags=["circuit"])
 

@@ -161,22 +161,33 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
     
     return config
 
-async def reload_agent_config(tenant_id: str):
-    """Reload agent configuration for the given tenant."""
-    LOGGER.info(f"Reloading agent config for tenant: {tenant_id}")
+async def reload_agent_config(tenant_id: str) -> int:
+    """Reload AgentConfig for all in‑memory contexts.
+
+    NOTE:
+    - Today ``AgentContext`` does not carry an explicit ``tenant_id`` field, so
+      we cannot safely perform per‑tenant reloads.
+    - Rather than guessing, we **reload all contexts** using the configuration
+      for the supplied tenant (defaulting to the common \"default\" tenant).
+    - This behaviour is acceptable for the current single‑tenant / shared‑config
+      deployment model and is documented here to avoid any hidden assumptions.
+
+    Args:
+        tenant_id: Tenant identifier used when loading the new configuration.
+
+    Returns:
+        Number of contexts that were reloaded.
+    """
+    LOGGER.info("Reloading AgentConfig for tenant %s (applied to all contexts)", tenant_id)
     new_config = await load_agent_config(tenant_id)
-    
+
     count = 0
     for ctx in AgentContext.all():
-        # TODO: Check tenant_id matching. 
-        # Using agent0.tenant_id if available, or finding a way to map ctx to tenant.
-        # For now assume single tenant or default tenant matches.
-        # If ctx doesn't have tenant info easily accessible, we might reload all?
-        # SafeTask: Implement tenant check if possible.
-        
-        # Updating config
+        # Update configuration and fully reset the agent so that the new
+        # settings (models, SSH behaviour, knowledge paths, etc.) take effect.
         ctx.config = new_config
         ctx.reset()
         count += 1
-        
-    LOGGER.info(f"Reloaded config for {count} agents.")
+
+    LOGGER.info("Reloaded AgentConfig for %d contexts", count)
+    return count

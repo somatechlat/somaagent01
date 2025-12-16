@@ -18,7 +18,7 @@ from observability.metrics import (
     record_wal_lag,
 )
 from services.gateway.circuit_breakers import CircuitBreakerRegistry
-from services.gateway.degradation_monitor import degradation_monitor
+from services.common.degradation_monitor import degradation_monitor
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 

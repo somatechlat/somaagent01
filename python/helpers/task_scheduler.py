@@ -171,7 +171,7 @@ class TaskScheduler:
             self._printer.print(f"Scheduler Task {task.name} context not found, creating new")
             return await self.__new_context(task)
 
-    async def _persist_chat(self, task: AnyTask, context: AgentContext):
+    async def _checkpoint_session(self, task: AnyTask, context: AgentContext):
         if context.id != task.context_id:
             raise ValueError(f"Context ID mismatch: {context.id} != {task.context_id}")
         await save_context(context, reason="scheduler:checkpoint")
@@ -243,11 +243,11 @@ class TaskScheduler:
                     )
                 )
 
-                await self._persist_chat(current_task, context)
+                await self._checkpoint_session(current_task, context)
                 result = await agent.monologue()
 
                 self._printer.print(f"Task '{current_task.name}' completed: {result}")
-                await self._persist_chat(current_task, context)
+                await self._checkpoint_session(current_task, context)
                 await current_task.on_success(result)
 
                 await self._tasks.reload()
