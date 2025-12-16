@@ -26,6 +26,7 @@ from src.core.config import cfg
 __all__ = [
     "AssetRecord",
     "AssetType",
+    "AssetFormat",
     "AssetStore",
 ]
 
@@ -39,6 +40,18 @@ class AssetType(str, Enum):
     DIAGRAM = "diagram"
     SCREENSHOT = "screenshot"
     DOCUMENT = "document"
+
+
+class AssetFormat(str, Enum):
+    """Supported file formats."""
+    PNG = "png"
+    JPG = "jpg"
+    JPEG = "jpeg"
+    SVG = "svg"
+    MP4 = "mp4"
+    MD = "md"
+    PDF = "pdf"
+
 
 
 @dataclass(slots=True)
