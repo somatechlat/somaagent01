@@ -23,12 +23,13 @@ RUN python -m venv "$VENV_PATH" && \
 WORKDIR /opt/build
 
 # Copy only essential dependency files
-COPY requirements.txt requirements-dev.txt ./
+COPY requirements.txt requirements-dev.txt requirements-ml.txt ./
 
 # Install core dependencies for development (no ML deps by default)
 RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
                 echo "Installing full dependencies with ML/document-processing deps" && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt; \
+                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt && \
+                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-ml.txt; \
         else \
                 echo "Installing essential dev dependencies (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})" && \
                 "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-dev.txt; \

@@ -58,6 +58,8 @@ numpy==1.26.4
 fastmcp==2.3.4
 fasta2a==0.5.0
 ansio==0.0.1
+browser-use==0.5.11
+playwright==1.52.0
 duckduckgo-search==6.1.12
 flask-basicauth==0.2.0
 GitPython==3.1.43

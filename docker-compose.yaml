@@ -28,7 +28,7 @@ x-agent-service: &agent-service
     context: .
     dockerfile: Dockerfile
     args:
-      INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-false}
+      INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-true}
   working_dir: /git/agent-zero
   environment:
     <<: *agent-env
