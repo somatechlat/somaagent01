@@ -1,0 +1,311 @@
+"""Multimodal Executor service.
+
+Orchestrates the execution of multimodal job plans. Manages dependencies,
+selects appropriate providers, executes tasks, stores assets, and tracks progress.
+
+SRS Reference: Section 16.6 (Execution Engine)
+Feature Flag: SA01_ENABLE_multimodal_capabilities
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any, Dict, List, Optional, Set
+from uuid import UUID
+
+from services.common.asset_store import AssetStore, AssetType, AssetFormat
+from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
+from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
+from services.multimodal.base_provider import (
+    MultimodalProvider,
+    GenerationRequest,
+    GenerationResult,
+    ProviderError,
+    ProviderCapability,
+)
+from services.multimodal.dalle_provider import DalleProvider
+from services.multimodal.mermaid_provider import MermaidProvider
+from services.multimodal.playwright_provider import PlaywrightProvider
+from src.core.config import cfg
+
+__all__ = ["MultimodalExecutor", "ExecutorError"]
+
+logger = logging.getLogger(__name__)
+
+
+class ExecutorError(Exception):
+    """Base exception for executor errors."""
+    pass
+
+
+class MultimodalExecutor:
+    """Orchestrates multimodal job execution.
+    
+    Coordinates providers, asset storage, and execution tracking to fulfill
+    multimodal job plans. Handles dependency resolution and error recovery.
+    
+    Usage:
+        executor = MultimodalExecutor()
+        await executor.initialize()
+        await executor.execute_plan(plan_id)
+    """
+
+    def __init__(
+        self,
+        dsn: Optional[str] = None,
+        asset_store: Optional[AssetStore] = None,
+        job_planner: Optional[JobPlanner] = None,
+        execution_tracker: Optional[ExecutionTracker] = None,
+    ) -> None:
+        """Initialize executor with services.
+        
+        Args:
+            dsn: Database connection string
+            asset_store: AssetStore instance
+            job_planner: JobPlanner instance
+            execution_tracker: ExecutionTracker instance
+        """
+        self._dsn = dsn or cfg.settings().database.dsn
+        self._asset_store = asset_store or AssetStore(dsn=self._dsn)
+        self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
+        self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
+        
+        # Initialize providers registry
+        self._providers: Dict[str, MultimodalProvider] = {}
+        self._capability_map: Dict[ProviderCapability, List[str]] = {}
+
+    async def initialize(self) -> None:
+        """Initialize providers and verify dependencies."""
+        # Register default providers
+        await self.register_provider(MermaidProvider())
+        await self.register_provider(PlaywrightProvider())
+        
+        # Only register DALL-E if API key is present
+        dalle = DalleProvider()
+        if await dalle.health_check():
+            await self.register_provider(dalle)
+        else:
+            logger.warning("DALL-E provider not available (missing API key?)")
+
+    async def register_provider(self, provider: MultimodalProvider) -> None:
+        """Register a provider instance.
+        
+        Args:
+            provider: Provider instance to register
+        """
+        self._providers[provider.name] = provider
+        
+        # Update capability map
+        for cap in provider.capabilities:
+            if cap not in self._capability_map:
+                self._capability_map[cap] = []
+            self._capability_map[cap].append(provider.name)
+            
+        logger.info("Registered provider: %s", provider.name)
+
+    async def execute_plan(self, plan_id: UUID) -> bool:
+        """Execute a full job plan.
+        
+        Args:
+            plan_id: UUID of plan to execute
+            
+        Returns:
+            True if execution completed successfully
+        """
+        plan = await self._job_planner.get(plan_id)
+        if not plan:
+            raise ExecutorError(f"Plan {plan_id} not found")
+        
+        if plan.status in (JobStatus.COMPLETED, JobStatus.CANCELLED):
+            logger.info("Plan %s already finished via status %s", plan_id, plan.status)
+            return True
+            
+        # Update status to RUNNING
+        await self._job_planner.update_status(plan.id, JobStatus.RUNNING)
+        
+        context: Dict[str, Any] = {}
+        failed = False
+        error_msg = None
+        
+        try:
+            # Execute tasks in order (plan.tasks is already topologically sorted)
+            for i, task in enumerate(plan.tasks):
+                # Skip if already completed (resumption logic)
+                latest_exec = await self._execution_tracker.get_latest_for_step(plan.id, i)
+                if latest_exec and latest_exec.status == ExecutionStatus.SUCCESS:
+                    logger.info("Step %d (%s) already completed", i, task.task_id)
+                    # Load asset into context if needed by dependents
+                    if latest_exec.asset_id:
+                        asset = await self._asset_store.get(latest_exec.asset_id)
+                        if asset:
+                            context[task.task_id] = asset
+                    continue
+                
+                # Execute step
+                success = await self._execute_step(plan, i, task, context)
+                if not success:
+                    failed = True
+                    error_msg = f"Step {task.task_id} failed"
+                    break
+                    
+                # Update progress
+                await self._job_planner.update_status(
+                    plan.id,
+                    JobStatus.RUNNING,
+                    completed_steps=i + 1
+                )
+            
+            # Final status update
+            status = JobStatus.FAILED if failed else JobStatus.COMPLETED
+            await self._job_planner.update_status(
+                plan.id,
+                status,
+                error_message=error_msg
+            )
+            return not failed
+            
+        except Exception as exc:
+            logger.exception("Plan execution failed: %s", exc)
+            await self._job_planner.update_status(
+                plan.id,
+                JobStatus.FAILED,
+                error_message=str(exc)
+            )
+            return False
+
+    async def _execute_step(
+        self,
+        plan: JobPlan,
+        step_index: int,
+        task: TaskStep,
+        context: Dict[str, Any],
+    ) -> bool:
+        """Execute a single task step.
+        
+        Args:
+            plan: Parent plan
+            step_index: Index of step
+            task: Task definition
+            context: Execution context (results of previous steps)
+            
+        Returns:
+            True if successful
+        """
+        # Resolve provider
+        provider = self._select_provider(task)
+        if not provider:
+            msg = f"No provider found for step type {task.step_type}"
+            logger.error(msg)
+            # Record failure
+            await self._execution_tracker.start(
+                plan.id, step_index, plan.tenant_id, "unknown", "unknown"
+            )
+            return False
+            
+        # Prepare request
+        prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
+        request = GenerationRequest(
+            tenant_id=plan.tenant_id,
+            session_id=plan.session_id,
+            modality=task.modality,
+            prompt=prompt,
+            request_id=plan.request_id,
+            format=task.params.get("format", "png"),
+            dimensions=task.params.get("dimensions"),
+            parameters=task.params,
+        )
+        
+        # Start tracking
+        exec_record = await self._execution_tracker.start(
+            plan.id,
+            step_index,
+            plan.tenant_id,
+            provider.name,
+            provider.provider_id,
+        )
+        
+        try:
+            # Generate
+            result = await provider.generate(request)
+            
+            if not result.success:
+                await self._execution_tracker.complete(
+                    exec_record.id,
+                    ExecutionStatus.FAILED,
+                    error_code=result.error_code,
+                    error_message=result.error_message,
+                )
+                return False
+                
+            # Store asset
+            # Map content type to asset type
+            asset_type = AssetType.IMAGE
+            if result.content_type and "svg" in result.content_type:
+                asset_type = AssetType.DIAGRAM
+            elif result.content_type and "pdf" in result.content_type:
+                asset_type = AssetType.DOCUMENT
+            
+            asset = await self._asset_store.create(
+                tenant_id=plan.tenant_id,
+                asset_type=asset_type,
+                asset_format=AssetFormat(result.format) if result.format else AssetFormat.PNG,
+                content=result.content,
+                metadata={
+                    "plan_id": str(plan.id),
+                    "task_id": task.task_id,
+                    "provider": provider.name,
+                    "dimensions": result.dimensions,
+                }
+            )
+            
+            # Update context
+            context[task.task_id] = asset
+            
+            # Complete tracking
+            await self._execution_tracker.complete(
+                exec_record.id,
+                ExecutionStatus.SUCCESS,
+                asset_id=asset.id,
+                latency_ms=result.latency_ms,
+                cost_estimate_cents=result.cost_cents,
+            )
+            
+            return True
+            
+        except Exception as exc:
+            logger.exception("Step execution error: %s", exc)
+            await self._execution_tracker.complete(
+                exec_record.id,
+                ExecutionStatus.FAILED,
+                error_message=str(exc),
+            )
+            return False
+
+    def _select_provider(self, task: TaskStep) -> Optional[MultimodalProvider]:
+        """Select appropriate provider for task."""
+        # Simple selection logic for now
+        # In future: use constraints, checking availability, costs, etc.
+        
+        if task.step_type == StepType.GENERATE_DIAGRAM:
+            return self._providers.get("mermaid_diagram")
+        elif task.step_type == StepType.GENERATE_IMAGE:
+            # Prefer DALL-E if available
+            return self._providers.get("dalle3_image_gen")
+        elif task.step_type == StepType.CAPTURE_SCREENSHOT:
+            return self._providers.get("playwright_screenshot")
+            
+        return None
+
+    def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
+        """Resolve dependency placeholders in prompt.
+        
+        Replaces {{task_id.url}} or similar patterns with actual values
+        from context.
+        """
+        resolved = prompt
+        for task_id, asset in context.items():
+            if f"{{{{{task_id}}}}}" in resolved:
+                # Basic substitution, relying on string repr or ID
+                resolved = resolved.replace(f"{{{{{task_id}}}}}", str(asset.id))
+        return resolved
