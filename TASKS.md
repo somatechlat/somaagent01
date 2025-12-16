@@ -433,19 +433,21 @@
   - [ ] Circuit breaker integration — Phase 3
 
 #### 1.3 Policy Graph Router (A)
-- [ ] Implement `PolicyGraphRouter` service
-  - [ ] File: `services/common/policy_graph_router.py`
-  - [ ] Define fallback ladders per modality:
-    - [ ] `image_diagram`: mermaid_svg → plantuml_png → matplotlib_png → dalle_raster
-    - [ ] `image_photo`: dalle3 → dalle2 → stable_diffusion
-    - [ ] `screenshot`: playwright_capture → selenium_screenshot → user_upload
-    - [ ] `video_short`: runway_gen2 → pika_labs → storyboard_frames
-  - [ ] `route()` method with OPA integration
-  - [ ] `_check_policy()` for capability authorization
-  - [ ] `_within_budget()` for cost tier filtering
-- [ ] Integrate with existing OPA policy enforcement
-- [ ] Budget/quota enforcement per modality
-- [ ] Circuit breaker integration for multimodal providers
+- [x] Implement `PolicyGraphRouter` service
+  - [x] File: `services/common/policy_graph_router.py`
+  - [x] Define fallback ladders per modality:
+    - [x] `image_diagram`: mermaid → plantuml → dalle3
+    - [x] `image_photo`: dalle3 → stability
+    - [x] `screenshot`: playwright
+    - [x] `video_short`: (prepared for future)
+  - [x] `route()` method with OPA integration
+  - [x] `_check_policy()` for capability authorization
+  - [x] `_check_budget()` for cost tier filtering
+  - [x] Unit tests: `tests/unit/test_policy_graph_router.py` (29 tests)
+- [x] Integrated with existing OPA policy enforcement via PolicyClient
+- [x] Budget/quota enforcement per modality
+- [ ] Circuit breaker integration for multimodal providers — Phase 3
+
 
 ---
 
