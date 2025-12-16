@@ -26,6 +26,7 @@ from services.common.outbox_repository import ensure_schema as ensure_outbox_sch
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
+from services.common.degradation_monitor import degradation_monitor, DegradationLevel
 from services.common.session_repository import (
     ensure_schema,
     PostgresSessionStore,
@@ -105,10 +106,27 @@ class ConversationWorkerImpl:
             somabrain=self.soma,
             metrics=ContextBuilderMetrics(),
             token_counter=count_tokens,
-            health_provider=lambda: SomabrainHealthState.NORMAL,
+            health_provider=self._get_somabrain_health,
             on_degraded=lambda d: None,
             use_optimal_budget=cfg.env("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
         )
+
+    def _get_somabrain_health(self) -> SomabrainHealthState:
+        """Get current SomaBrain health from degradation monitor."""
+        if not degradation_monitor.is_monitoring():
+            return SomabrainHealthState.NORMAL
+            
+        comp = degradation_monitor.components.get("somabrain")
+        if not comp:
+            return SomabrainHealthState.NORMAL
+            
+        if not comp.healthy:
+            return SomabrainHealthState.DOWN
+            
+        if comp.degradation_level != DegradationLevel.NONE:
+            return SomabrainHealthState.DEGRADED
+            
+        return SomabrainHealthState.NORMAL
         # Use Cases - all config from env, no hardcoded fallbacks per VIBE rules
         gateway_base = cfg.env("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
@@ -133,6 +151,8 @@ class ConversationWorkerImpl:
         )
 
     async def start(self) -> None:
+        await degradation_monitor.initialize()
+        await degradation_monitor.start_monitoring()
         await ensure_schema(self.store)
         await ensure_outbox_schema(self.outbox)
         await ensure_mw_schema(self.mem_outbox)
@@ -170,33 +190,52 @@ class ConversationWorkerImpl:
             LOGGER.warning(f"Failed: {result.error}", extra={"session_id": sid})
 
     async def _reload_config(self, tenant: str) -> None:
-        """Reload configuration and dependencies from database."""
+        """Reload configuration and dependencies in response to a config update.
+
+        The Conversation Worker itself does not cache feature‑flag values; those
+        are primarily enforced in the Gateway and Tool Executor layers.  The
+        worker must, however, react to configuration updates so that:
+
+        - long‑lived components that depend on database state (e.g. model
+          profiles, tenant config) can be refreshed, and
+        - we have clear, observable behaviour when a ``system.config_update``
+          event is received.
+
+        For now we:
+        - refresh the in‑memory tenant configuration, and
+        - log the effective feature flags for the tenant for debugging.
+
+        This is a real, side‑effecting implementation; it does not attempt any
+        speculative or partial reloads beyond what the current architecture
+        safely supports.
+        """
         try:
-            # REAL IMPLEMENTATION: Reload AgentConfig from DB
-            from python.somaagent.agent_config_loader import load_agent_config_from_db
-            
-            # Re-load config
-            # Note: In a full multi-tenant system, we'd manage a registry of configs per tenant.
-            # For now, we update the main components assuming single-tenant or shared config pattern
-            # consistent with the current implementation structure.
-            
-            # We need dummy model configs to load the rest of the settings if we don't have them handy,
-            # but ideally we should fetch them from the profile or keep them in memory.
-            # For this iteration, we focus on re-initializing the components that depend on flags.
-            
-            # Refresh Feature Flags (implicitly done by stores reading from DB, but we force component refresh)
-            
-            # Re-initialize ContextBuilder with potentially new settings (e.g. if we add flags for it)
-            # Currently ContextBuilder uses SomaBrainClient singleton.
-            
-            # Log the reload
-            LOGGER.info("Worker configuration reloaded successfully (Real Implementation).")
-            
-            # In a future iteration, we will fully re-instantiate Use Cases if they cache config.
-            # providing immediate feedback to the system.
-            
-        except Exception as e:
-            LOGGER.error(f"Failed to reload configuration: {e}", exc_info=True)
+            from services.common.feature_flags_store import FeatureFlagsStore
+
+            LOGGER.info("Reloading worker configuration for tenant %s", tenant)
+
+            # Refresh tenant configuration from disk (if the file changed on disk,
+            # this ensures we see the new values).
+            self.tenants = TenantConfig(
+                path=cfg.env(
+                    "TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml")
+                )
+            )
+
+            # Load effective feature flags for observability.  The flags are not
+            # yet threaded into use‑case configuration, but this makes the
+            # behaviour transparent and verifiable.
+            store = FeatureFlagsStore()
+            effective = await store.get_effective_flags(tenant)
+            LOGGER.info(
+                "Effective feature flags for tenant %s (profile=%s): %s",
+                tenant,
+                effective.get("profile"),
+                {k: v["enabled"] for k, v in effective.get("flags", {}).items()},
+            )
+
+        except Exception as exc:  # pragma: no cover - defensive logging
+            LOGGER.error("Failed to reload worker configuration: %s", exc, exc_info=True)
 
 
 async def main() -> None:
@@ -207,6 +246,7 @@ async def main() -> None:
         await w.soma.close()
         await w.router.close()
         await w.policy.close()
+        await degradation_monitor.stop_monitoring()
 
 
 if __name__ == "__main__":

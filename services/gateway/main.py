@@ -19,11 +19,19 @@ from fastapi.staticfiles import StaticFiles
 # Re-exports for test compatibility
 # Re-export auth and providers for backward compatibility
 from services.gateway.routers import build_router
+from services.gateway.routers import build_router
 from services.gateway import providers
+from services.gateway.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
 from src.core.config import cfg
 
 webui_path = str(pathlib.Path(__file__).resolve().parents[2] / "webui")
 app = FastAPI(title="SomaAgent Gateway")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 @app.on_event("startup")

@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
-from services.gateway import degradation_monitor
+from services.common import degradation_monitor
 
 from src.core.config import cfg
 
