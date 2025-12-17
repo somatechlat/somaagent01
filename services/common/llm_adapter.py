@@ -1,14 +1,18 @@
-"""SLM Client for SomaAgent01.
+"""LLM Adapter for SomaAgent01.
 
-Production-grade client that talks to real HTTP endpoints – no stubs, no
-placeholders. The client is intentionally minimal but fully functional:
+Production-grade adapter that talks to real HTTP endpoints – no stubs, no
+placeholders. This adapter acts as a unified interface for LLM providers
+(OpenAI-compatible).
+
+Functionality:
 * Uses httpx for async HTTP calls.
 * Requires an API key for chat/LLM interactions.
 * Accepts per-call ``base_url``/``api_path`` overrides to stay provider-agnostic.
+* Supports Text and Multimodal (Vision) payloads.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional, Sequence
+from typing import Any, Dict, Iterable, Optional, Sequence, List, Union
 
 import httpx
 
@@ -17,30 +21,29 @@ from src.core.config import cfg
 
 @dataclass
 class ChatMessage:
-    """Chat message structure for SLM communications."""
+    """Chat message structure for LLM communications."""
 
     role: str
-    content: str
+    content: Union[str, List[Dict[str, Any]]]
     metadata: Optional[Dict[str, Any]] = None
 
 
-class SLMClient:
+class LLMAdapter:
     """
-    Service Level Management Client for SomaAgent01.
+    Language Model Adapter for SomaAgent01.
 
-    Provides service management capabilities including:
+    Provides interface capabilities including:
+    - Chat message processing for LLM communications
     - Service health monitoring
     - Performance metrics collection
-    - Service lifecycle management
-    - Chat message processing for service communications
     """
 
     def __init__(self, service_url: str | None = None, api_key: str | None = None):
         """
-        Initialize SLM client.
+        Initialize LLM adapter.
 
         Args:
-            service_url: Optional base URL for the SLM/LLM provider. Can be overridden per call.
+            service_url: Optional base URL for the LLM provider. Can be overridden per call.
             api_key: Optional API key; can be injected per request when secrets are fetched at runtime.
         """
         # Accept absence of service_url so callers can supply per-call base_url.
@@ -54,7 +57,7 @@ class SLMClient:
 
     def _build_url(self, base_url: str | None, api_path: str | None) -> str:
         if not base_url and not self.service_url:
-            raise RuntimeError("base_url is required for SLM requests (no fallbacks).")
+            raise RuntimeError("base_url is required for LLM requests (no fallbacks).")
         base = (base_url or self.service_url or "").rstrip("/")
         path = (api_path or "").lstrip("/") or "v1/chat/completions"
         return f"{base}/{path}"
@@ -65,14 +68,14 @@ class SLMClient:
         return resp.json()
 
     async def send_message(self, message: ChatMessage) -> Dict[str, Any]:
-        """Send a chat message through the SLM client using the service_url."""
+        """Send a chat message through the adapter using the service_url."""
         url = self._build_url(self.service_url, "messages")
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         payload = {"role": message.role, "content": message.content, "metadata": message.metadata or {}}
         return await self._post_json(url, payload, headers)
 
     async def get_service_health(self, service_name: str) -> Dict[str, Any]:
-        """Query health endpoint of the configured SLM service."""
+        """Query health endpoint of the configured LLM service."""
         url = self._build_url(self.service_url, f"health/{service_name}")
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         resp = await self._client.get(url, headers=headers)
@@ -113,7 +116,7 @@ class SLMClient:
         """
         url = self._build_url(base_url, api_path)
         if not self.api_key:
-            raise RuntimeError("SLMClient.chat requires an API key (none configured).")
+            raise RuntimeError("LLMAdapter.chat requires an API key (none configured).")
 
         # Normalise messages to dicts accepted by OpenAI-compatible APIs.
         def _to_dict(msg: ChatMessage | dict[str, Any]) -> dict[str, Any]:

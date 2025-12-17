@@ -18,6 +18,7 @@ from uuid import UUID
 from services.common.asset_store import AssetStore, AssetType, AssetFormat
 from services.common.asset_critic import AssetCritic, AssetRubric, evaluation_status
 from services.common.soma_brain_client import SomaBrainClient, MultimodalOutcome
+from services.common.portfolio_ranker import PortfolioRanker
 from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
 from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
 from services.multimodal.base_provider import (
@@ -79,13 +80,14 @@ class MultimodalExecutor:
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
         self._soma_brain_client = soma_brain_client or SomaBrainClient()
+        self._portfolio_ranker = PortfolioRanker(self._soma_brain_client)
         
-        # Initialize SLM Client for AssetCritic if needed
+        # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
-        from services.common.slm_client import SLMClient
-        self._slm_client = SLMClient() if cfg.settings().llm.openai_api_key else None
+        from services.common.llm_adapter import LLMAdapter
+        self._llm_adapter = LLMAdapter() if cfg.settings().llm.openai_api_key else None
         
-        self._asset_critic = asset_critic or AssetCritic(slm_client=self._slm_client)
+        self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)
         
         # Initialize providers registry
         self._providers: Dict[str, MultimodalProvider] = {}
@@ -392,19 +394,46 @@ class MultimodalExecutor:
         return False
 
     def _select_provider(self, task: TaskStep) -> Optional[MultimodalProvider]:
-        """Select appropriate provider for task."""
-        # Simple selection logic for now
-        # In future: use constraints, checking availability, costs, etc.
+        """Select appropriate provider for task using PortfolioRanker."""
+        candidates = []
         
+        # Build candidate list based on step type
         if task.step_type == StepType.GENERATE_DIAGRAM:
-            return self._providers.get("mermaid_diagram")
+            if "mermaid_diagram" in self._providers:
+                candidates.append(("mermaid_diagram", "codex")) # Implicit model for now
+                
         elif task.step_type == StepType.GENERATE_IMAGE:
-            # Prefer DALL-E if available
-            return self._providers.get("dalle3_image_gen")
+             # Basic discovery - check capabilities
+             # For now hardcoding registered names, but ideal is to iterate capabilities
+             if "dalle3_image_gen" in self._providers:
+                 candidates.append(("dalle3_image_gen", "dall-e-3"))
+             
+             # Fallback/alternative (hypothetical for ranking demo)
+             if "stable_diffusion" in self._providers:
+                 candidates.append(("stable_diffusion", "sdxl"))
+
         elif task.step_type == StepType.CAPTURE_SCREENSHOT:
-            return self._providers.get("playwright_screenshot")
+             if "playwright_screenshot" in self._providers:
+                 candidates.append(("playwright_screenshot", "chromium"))
+        
+        if not candidates:
+            return None
             
-        return None
+        # Optimization: Single candidate? Skip ranking
+        if len(candidates) == 1:
+            return self._providers.get(candidates[0][0])
+            
+        # Use Ranker
+        ranked = self._portfolio_ranker.rank_providers(
+            candidates, 
+            task.step_type.value
+        )
+        
+        if not ranked:
+            return None
+            
+        best_provider_name, _ = ranked[0]
+        return self._providers.get(best_provider_name)
 
     def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
         """Resolve dependency placeholders in prompt.

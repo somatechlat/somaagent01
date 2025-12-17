@@ -73,10 +73,10 @@ def get_api_key_store() -> ApiKeyStore:
     return _repo_get()
 
 
-def get_slm_client():
-    """Get the SLM client instance for the gateway."""
-    from services.common.slm_client import SLMClient
+def get_llm_adapter():
+    """Get the LLM adapter instance for the gateway."""
+    from services.common.llm_adapter import LLMAdapter
 
     base_url = cfg.env("SA01_SLM_BASE_URL") or cfg.env("SA01_LLM_BASE_URL") or None
     api_key = cfg.env("SA01_LLM_API_KEY") or cfg.env("OPENAI_API_KEY") or None
-    return SLMClient(service_url=base_url, api_key=api_key)
+    return LLMAdapter(service_url=base_url, api_key=api_key)

@@ -97,6 +97,64 @@ class SomaBrainClient:
             # Never block execution flow on metrics recording
             logger.warning("Failed to record SomaBrain outcome: %s", exc)
 
+    def fetch_outcomes(
+        self,
+        step_type: Optional[str] = None,
+        limit: int = 100
+    ) -> list[MultimodalOutcome]:
+        """Fetch recent execution outcomes.
+        
+        Args:
+            step_type: Filter by step type (e.g., 'generate_image')
+            limit: Max records to return
+            
+        Returns:
+            List of MultimodalOutcome objects, sorted by timestamp desc.
+        """
+        outcomes: list[MultimodalOutcome] = []
+        
+        try:
+            if not os.path.exists(self._fallback_file):
+                return []
+                
+            # Read file in reverse to get newest first (efficient for append-only logs)
+            # For small files, reading all lines is fine. For large logs, we might want `tail`.
+            # Given explicit requirement for "Real Implementation" without over-engineering:
+            with open(self._fallback_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                
+            for line in reversed(lines):
+                if len(outcomes) >= limit:
+                    break
+                    
+                try:
+                    data = json.loads(line)
+                    # Filter matching
+                    if step_type and data.get("step_type") != step_type:
+                        continue
+                        
+                    outcome = MultimodalOutcome(
+                        plan_id=data.get("plan_id", ""),
+                        task_id=data.get("task_id", ""),
+                        step_type=data.get("step_type", ""),
+                        provider=data.get("provider", "unknown"),
+                        model=data.get("model", "unknown"),
+                        success=data.get("success", False),
+                        latency_ms=data.get("latency_ms", 0.0),
+                        cost_cents=data.get("cost_cents", 0.0),
+                        quality_score=data.get("quality_score"),
+                        feedback=data.get("feedback"),
+                        timestamp=data.get("timestamp")
+                    )
+                    outcomes.append(outcome)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                    
+        except Exception as exc:
+            logger.error("Error fetching outcomes: %s", exc)
+            
+        return outcomes
+
     def _write_to_local(self, outcome: MultimodalOutcome) -> None:
         """Write outcome to local JSONL file.
         
@@ -113,3 +171,4 @@ class SomaBrainClient:
                 
         except Exception as exc:
             logger.error("Error writing to local SomaBrain fallback: %s", exc)
+

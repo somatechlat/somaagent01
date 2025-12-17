@@ -17,6 +17,8 @@ from uuid import UUID
 
 from services.common.asset_store import AssetRecord, AssetType
 
+from services.common.llm_adapter import LLMAdapter
+
 __all__ = [
     "AssetCritic",
     "AssetRubric",
@@ -88,11 +90,9 @@ class AssetCritic:
         result = await critic.evaluate(asset, rubric)
     """
 
-    def __init__(self, slm_client: Optional[Any] = None) -> None:
-        """Initialize with optional SLM client."""
-        # We import here to avoid circular dependencies if any, but strictly typing as Any for now
-        # to avoid import issues at module level if not needed.
-        self._slm_client = slm_client
+    def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
+        """Initialize with optional LLM adapter."""
+        self._llm_adapter = llm_adapter
 
     async def evaluate(
         self,
@@ -141,7 +141,7 @@ class AssetCritic:
             score = max(0.0, score - 0.2)
             
         # 4. LLM Semantic Checks (Only if heuristics pass and client available)
-        if not failed and self._slm_client and rubric.min_quality_score > 0:
+        if not failed and self._llm_adapter and rubric.min_quality_score > 0:
             if asset.asset_type == AssetType.IMAGE:
                 llm_score, llm_feedback, llm_passed = await self._evaluate_image_llm(asset, rubric, context)
                 if not llm_passed:
@@ -154,6 +154,8 @@ class AssetCritic:
                 else:
                     # Average with heuristic score if passed
                     score = (score + llm_score) / 2
+                    if llm_feedback:
+                         feedback.append(f"LLM Feedback: {llm_feedback}")
 
         # Determine status
         if failed:
@@ -223,18 +225,69 @@ class AssetCritic:
         rubric: AssetRubric,
         context: Optional[Dict[str, Any]] = None,
     ) -> tuple[float, Optional[str], bool]:
-        """Evaluate image using Vision LLM (if available).
+        """Evaluate image using Vision LLM.
         
-        Note: Current SLMClient is text-only. This is a placeholder for 
-        Vision-capable SLM extension. For now, we simulate semantic checks
-        based on metadata or available text context, or skip.
-        
-        If we had a Vision client:
-        response = await self._slm_client.chat(
-            model="gpt-4-vision-preview",
-            messages=[...]
-        )
+        Constructs a multimodal payload with base64-encoded image and defined criteria.
+        Expects LLM to return JSON with score/feedback.
         """
-        # Placeholder: Assume 0.9 score if we reached here
-        # In a real implementation with Vision support, we would send the image bytes/URL
-        return 0.9, None, True
+        if not self._llm_adapter or not asset.content:
+            return 0.5, "Skipped check (no client or content)", True
+            
+        import base64
+        import json
+        
+        # 1. Base64 Encode
+        try:
+            b64_content = base64.b64encode(asset.content).decode("utf-8")
+        except Exception:
+            return 0.5, "Failed to encode image", True
+            
+        data_uri = f"data:image/{asset.format.lower()};base64,{b64_content}"
+        
+        # 2. Construct Prompt
+        system_prompt = (
+            "You are an expert design critic. Evaluate the provided image against these criteria:\n"
+            f"- Minimum Quality Score: {rubric.min_quality_score}\n"
+            f"- Keywords: {', '.join(rubric.required_keywords or [])}\n"
+            "Return JSON only: { \"pass\": bool, \"score\": float(0.0-1.0), \"feedback\": \"string\" }"
+        )
+        
+        user_content = [
+            {"type": "text", "text": "Please evaluate this image."},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": data_uri,
+                    "detail": "low" # Low detail for speed/cost efficiency
+                }
+            }
+        ]
+        
+        # 3. Call LLMAdapter
+        try:
+            from services.common.llm_adapter import ChatMessage
+            
+            messages = [
+                ChatMessage(role="system", content=system_prompt),
+                ChatMessage(role="user", content=user_content),
+            ]
+            
+            response_text, _ = await self._llm_adapter.chat(
+                messages,
+                model="gpt-4o", # Model with vision capabilities
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            # 4. Parse Response
+            result = json.loads(response_text)
+            passed = result.get("pass", False)
+            score = float(result.get("score", 0.0))
+            feedback = result.get("feedback", "")
+            
+            return score, feedback, passed
+            
+        except Exception as e:
+            logger.warning("Vision LLM check failed: %s", e)
+            return 0.5, "Vision check error (defaulted pass)", True
+
