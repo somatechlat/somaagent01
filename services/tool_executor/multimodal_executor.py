@@ -14,8 +14,10 @@ import logging
 from typing import Any, Dict, List, Optional, Set
 from uuid import UUID
 
+
 from services.common.asset_store import AssetStore, AssetType, AssetFormat
 from services.common.asset_critic import AssetCritic, AssetRubric, evaluation_status
+from services.common.soma_brain_client import SomaBrainClient, MultimodalOutcome
 from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
 from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
 from services.multimodal.base_provider import (
@@ -59,6 +61,7 @@ class MultimodalExecutor:
         job_planner: Optional[JobPlanner] = None,
         execution_tracker: Optional[ExecutionTracker] = None,
         asset_critic: Optional[AssetCritic] = None,
+        soma_brain_client: Optional[SomaBrainClient] = None,
     ) -> None:
         """Initialize executor with services.
         
@@ -68,12 +71,14 @@ class MultimodalExecutor:
             job_planner: JobPlanner instance
             execution_tracker: ExecutionTracker instance
             asset_critic: AssetCritic instance for quality gating
+            soma_brain_client: SomaBrainClient instance for learning
         """
         self._dsn = dsn or cfg.settings().database.dsn
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
         self._asset_critic = asset_critic or AssetCritic()
+        self._soma_brain_client = soma_brain_client or SomaBrainClient()
         
         # Initialize providers registry
         self._providers: Dict[str, MultimodalProvider] = {}
@@ -346,6 +351,30 @@ class MultimodalExecutor:
                     error_message=str(exc),
                 )
                 prompt_feedback = f"System error: {str(exc)}"
+                
+            finally:
+                # NEW: Record outcome for learning
+                if 'result' in locals() and result:  # Check if result was assigned
+                     # Calculate quality score (default 0.0 if failed, or passed eval score)
+                    q_score = 0.0
+                    explanation = None
+                    if 'evaluation' in locals() and evaluation:
+                        q_score = evaluation.score
+                        explanation = "; ".join(evaluation.feedback) if evaluation.feedback else None
+                    
+                    outcome = MultimodalOutcome(
+                        plan_id=str(plan.id),
+                        task_id=task.task_id,
+                        step_type=task.step_type.value,
+                        provider=provider.name,
+                        model=getattr(provider, "model", "unknown"),
+                        success=result.success if result else False,
+                        latency_ms=result.latency_ms if result else 0.0,
+                        cost_cents=result.cost_cents if result else 0.0,
+                        quality_score=q_score,
+                        feedback=explanation or (result.error_message if result and not result.success else None)
+                    )
+                    await self._soma_brain_client.record_outcome(outcome)
                 
         # If loop finishes without returning True, we failed
         logger.error("Step %s failed after %d attempts", task.task_id, max_attempts)
