@@ -530,6 +530,7 @@
   - [x] Playwright screenshot adapter
     - [x] File: `services/multimodal/playwright_provider.py`
     - [x] Viewport config, full-page capture
+```
   - [ ] Stability AI adapter — Future
   - [ ] PlantUML diagram adapter — Future
 - [x] Unit tests: `tests/unit/test_multimodal_providers.py` (30 tests)

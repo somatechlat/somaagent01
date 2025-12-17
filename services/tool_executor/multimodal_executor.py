@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Set
 from uuid import UUID
 
 from services.common.asset_store import AssetStore, AssetType, AssetFormat
+from services.common.asset_critic import AssetCritic, AssetRubric, evaluation_status
 from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
 from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
 from services.multimodal.base_provider import (
@@ -57,6 +58,7 @@ class MultimodalExecutor:
         asset_store: Optional[AssetStore] = None,
         job_planner: Optional[JobPlanner] = None,
         execution_tracker: Optional[ExecutionTracker] = None,
+        asset_critic: Optional[AssetCritic] = None,
     ) -> None:
         """Initialize executor with services.
         
@@ -65,11 +67,13 @@ class MultimodalExecutor:
             asset_store: AssetStore instance
             job_planner: JobPlanner instance
             execution_tracker: ExecutionTracker instance
+            asset_critic: AssetCritic instance for quality gating
         """
         self._dsn = dsn or cfg.settings().database.dsn
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
+        self._asset_critic = asset_critic or AssetCritic()
         
         # Initialize providers registry
         self._providers: Dict[str, MultimodalProvider] = {}
@@ -133,20 +137,21 @@ class MultimodalExecutor:
             for i, task in enumerate(plan.tasks):
                 # Skip if already completed (resumption logic)
                 latest_exec = await self._execution_tracker.get_latest_for_step(plan.id, i)
+                # Check for cached asset in store
                 if latest_exec and latest_exec.status == ExecutionStatus.SUCCESS:
                     logger.info("Step %d (%s) already completed", i, task.task_id)
-                    # Load asset into context if needed by dependents
                     if latest_exec.asset_id:
                         asset = await self._asset_store.get(latest_exec.asset_id)
                         if asset:
                             context[task.task_id] = asset
                     continue
                 
-                # Execute step
+                # Execute step with retry loop
                 success = await self._execute_step(plan, i, task, context)
                 if not success:
                     failed = True
-                    error_msg = f"Step {task.task_id} failed"
+                    # Check if failure was due to quality gate exhaustion
+                    error_msg = f"Step {task.task_id} failed after max attempts"
                     break
                     
                 # Update progress
@@ -181,7 +186,7 @@ class MultimodalExecutor:
         task: TaskStep,
         context: Dict[str, Any],
     ) -> bool:
-        """Execute a single task step.
+        """Execute a single task step with rework/retry loop.
         
         Args:
             plan: Parent plan
@@ -190,97 +195,161 @@ class MultimodalExecutor:
             context: Execution context (results of previous steps)
             
         Returns:
-            True if successful
+            True if successful, False if all attempts failed
         """
         # Resolve provider
         provider = self._select_provider(task)
         if not provider:
             msg = f"No provider found for step type {task.step_type}"
             logger.error(msg)
-            # Record failure
             await self._execution_tracker.start(
                 plan.id, step_index, plan.tenant_id, "unknown", "unknown"
             )
             return False
             
-        # Prepare request
-        prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
-        request = GenerationRequest(
-            tenant_id=plan.tenant_id,
-            session_id=plan.session_id,
-            modality=task.modality,
-            prompt=prompt,
-            request_id=plan.request_id,
-            format=task.params.get("format", "png"),
-            dimensions=task.params.get("dimensions"),
-            parameters=task.params,
-        )
+        # Determine retry limits
+        max_attempts = 1
+        gate_config = task.quality_gate
+        if gate_config.get("enabled", True):
+            max_attempts = gate_config.get("max_reworks", 2) + 1  # 2 reworks = 3 attempts total
+
+        # Rework loop
+        attempt = 0
+        prompt_feedback = ""
         
-        # Start tracking
-        exec_record = await self._execution_tracker.start(
-            plan.id,
-            step_index,
-            plan.tenant_id,
-            provider.name,
-            provider.provider_id,
-        )
-        
-        try:
-            # Generate
-            result = await provider.generate(request)
+        while attempt < max_attempts:
+            attempt += 1
+            is_retry = attempt > 1
             
-            if not result.success:
+            # Prepare request with injected feedback if retry
+            base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
+            if is_retry and prompt_feedback:
+                # Basic prompt injection logic for V1
+                full_prompt = (
+                    f"{base_prompt}\n\n"
+                    f"IMPORTANT: The previous attempt failed quality checks. "
+                    f"Please address this feedback: {prompt_feedback}"
+                )
+            else:
+                full_prompt = base_prompt
+                
+            request = GenerationRequest(
+                tenant_id=plan.tenant_id,
+                session_id=plan.session_id,
+                modality=task.modality,
+                prompt=full_prompt,
+                request_id=plan.request_id,
+                format=task.params.get("format", "png"),
+                dimensions=task.params.get("dimensions"),
+                parameters=task.params,
+            )
+            
+            # Start tracking execution
+            exec_record = await self._execution_tracker.start(
+                plan.id,
+                step_index,
+                plan.tenant_id,
+                provider.name,
+                provider.provider_id,
+                attempt_number=attempt,
+            )
+            
+            try:
+                # Generate
+                result = await provider.generate(request)
+                
+                if not result.success:
+                    # Provider error (e.g. timeout, rate limit)
+                    # We treat provider errors as attempt failures too for now
+                    logger.warning(
+                        "Step %s attempt %d failed: %s", 
+                        task.task_id, attempt, result.error_message
+                    )
+                    await self._execution_tracker.complete(
+                        exec_record.id,
+                        ExecutionStatus.FAILED,
+                        error_code=result.error_code,
+                        error_message=result.error_message,
+                    )
+                    prompt_feedback = f"Provider error: {result.error_message}"
+                    # Could add exponential backoff here if needed
+                    continue
+
+                # Map content type to asset type
+                asset_type = AssetType.IMAGE
+                if result.content_type and "svg" in result.content_type:
+                    asset_type = AssetType.DIAGRAM
+                elif result.content_type and "pdf" in result.content_type:
+                    asset_type = AssetType.DOCUMENT
+                
+                # Create temporary asset object for evaluation (or persist first?)
+                # Persisting first allows lineage tracking of failed attempts
+                asset = await self._asset_store.create(
+                    tenant_id=plan.tenant_id,
+                    asset_type=asset_type,
+                    asset_format=AssetFormat(result.format) if result.format else AssetFormat.PNG,
+                    content=result.content,
+                    metadata={
+                        "plan_id": str(plan.id),
+                        "task_id": task.task_id,
+                        "provider": provider.name,
+                        "dimensions": result.dimensions,
+                        "attempt": attempt,
+                    }
+                )
+                
+                # Quality Gate Check
+                if gate_config.get("enabled", True):
+                    rubric = AssetRubric(
+                         # TODO: Map from task.params/constraints to rubric
+                         min_width=task.constraints.get("min_width"),
+                         min_height=task.constraints.get("min_height"),
+                         max_size_bytes=task.constraints.get("max_size_bytes"),
+                    )
+                    evaluation = await self._asset_critic.evaluate(asset, rubric)
+                    
+                    if not evaluation.passed:
+                        logger.warning(
+                            "Step %s attempt %d failed quality gate: %s",
+                            task.task_id, attempt, evaluation.failed_criteria
+                        )
+                        # Mark execution as failed due to quality
+                        await self._execution_tracker.complete(
+                            exec_record.id,
+                            ExecutionStatus.FAILED,
+                            asset_id=asset.id,
+                            error_code="QUALITY_GATE_FAILED",
+                            error_message=f"Quality check failed: {evaluation.failed_criteria}",
+                            latency_ms=result.latency_ms,
+                            cost_estimate_cents=result.cost_cents,
+                        )
+                        
+                        prompt_feedback = "; ".join(evaluation.feedback)
+                        continue
+                        
+                # Success!
+                context[task.task_id] = asset
+                await self._execution_tracker.complete(
+                    exec_record.id,
+                    ExecutionStatus.SUCCESS,
+                    asset_id=asset.id,
+                    latency_ms=result.latency_ms,
+                    cost_estimate_cents=result.cost_cents,
+                )
+                return True
+                
+            except Exception as exc:
+                logger.exception("Step execution attempt %d error: %s", attempt, exc)
                 await self._execution_tracker.complete(
                     exec_record.id,
                     ExecutionStatus.FAILED,
-                    error_code=result.error_code,
-                    error_message=result.error_message,
+                    error_message=str(exc),
                 )
-                return False
+                prompt_feedback = f"System error: {str(exc)}"
                 
-            # Store asset
-            # Map content type to asset type
-            asset_type = AssetType.IMAGE
-            if result.content_type and "svg" in result.content_type:
-                asset_type = AssetType.DIAGRAM
-            elif result.content_type and "pdf" in result.content_type:
-                asset_type = AssetType.DOCUMENT
-            
-            asset = await self._asset_store.create(
-                tenant_id=plan.tenant_id,
-                asset_type=asset_type,
-                asset_format=AssetFormat(result.format) if result.format else AssetFormat.PNG,
-                content=result.content,
-                metadata={
-                    "plan_id": str(plan.id),
-                    "task_id": task.task_id,
-                    "provider": provider.name,
-                    "dimensions": result.dimensions,
-                }
-            )
-            
-            # Update context
-            context[task.task_id] = asset
-            
-            # Complete tracking
-            await self._execution_tracker.complete(
-                exec_record.id,
-                ExecutionStatus.SUCCESS,
-                asset_id=asset.id,
-                latency_ms=result.latency_ms,
-                cost_estimate_cents=result.cost_cents,
-            )
-            
-            return True
-            
-        except Exception as exc:
-            logger.exception("Step execution error: %s", exc)
-            await self._execution_tracker.complete(
-                exec_record.id,
-                ExecutionStatus.FAILED,
-                error_message=str(exc),
-            )
-            return False
+        # If loop finishes without returning True, we failed
+        logger.error("Step %s failed after %d attempts", task.task_id, max_attempts)
+        return False
 
     def _select_provider(self, task: TaskStep) -> Optional[MultimodalProvider]:
         """Select appropriate provider for task."""
