@@ -15,6 +15,8 @@ from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+from src.core.config import cfg
+
 LOGGER = logging.getLogger(__name__)
 
 # Circuit Breaker for SomaBrain
@@ -145,6 +147,11 @@ class ContextBuilder:
                 LOGGER.debug(
                     "Somabrain DOWN – skipping retrieval", extra={"session": turn.get("session_id")}
                 )
+
+            # Multimodal Instructions Injection
+            mm_instruction = self._build_multimodal_instructions()
+            if mm_instruction:
+                system_prompt += mm_instruction
 
             with self.metrics.time_tokenisation():
                 system_tokens = self.count_tokens(system_prompt)
@@ -549,3 +556,34 @@ class ContextBuilder:
             if len(" | ".join(parts)) > 1024:
                 break
         return " | ".join(parts)[:1024]
+
+    def _build_multimodal_instructions(self) -> str:
+        """Build system prompt instructions for multimodal capabilities."""
+        if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() != "true":
+            return ""
+
+        return (
+            "\n\nMULTIMODAL CAPABILITIES:\n"
+            "You have access to tools that can generate images, diagrams (Mermaid/PlantUML), "
+            "and capture screenshots. If the user explicitly asks for these, or if "
+            "visual aids would significantly enhance the response, you MUST output a JSON "
+            "block at the END of your response (after all text) in the following format:\n\n"
+            "```json\n"
+            "{\n"
+            '  "multimodal_plan": {\n'
+            '    "tasks": [\n'
+            "      {\n"
+            '        "step_type": "generate_image",\n'
+            '        "modality": "image",\n'
+            '        "params": {\n'
+            '          "prompt": "Detailed description of the image to generate",\n'
+            '          "aspect_ratio": "16:9"\n'
+            "        }\n"
+            "      }\n"
+            "    ]\n"
+            "  }\n"
+            "}\n"
+            "```\n\n"
+            "Supported step_types: generate_image, generate_diagram, capture_screenshot.\n"
+            "Do NOT ask for confirmation. Just output the JSON block to trigger execution."
+        )

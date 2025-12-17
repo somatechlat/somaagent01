@@ -18,6 +18,13 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+import asyncio
+import json
+import re
+
+from services.common.job_planner import JobPlanner, JobPlan
+from services.tool_executor.multimodal_executor import MultimodalExecutor
+from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -178,6 +185,10 @@ class ProcessMessageUseCase:
             response_text, usage, path = await self._generate_response(
                 event, session_id, persona_id, tenant, enriched_metadata, analysis_dict
             )
+            
+            # VIBE: Intercept Multimodal Plans
+            if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+                response_text = await self._handle_multimodal_plan(response_text, session_id, tenant)
         except Exception as e:
             LOGGER.exception("Response generation failed")
             return ProcessMessageOutput(
@@ -424,3 +435,66 @@ class ProcessMessageUseCase:
             "version": "sa01-v1",
             "type": "assistant.final",
         }
+
+    async def _handle_multimodal_plan(
+        self,
+        response_text: str,
+        session_id: str,
+        tenant: str,
+    ) -> str:
+        """Extract and execute multimodal plan if present."""
+        # Regex to find JSON block at end of message
+        # We look for ```json { ... } ``` or just { ... } at the end
+        pattern = r"```json\s*(\{.*?\})\s*```\s*$"
+        match = re.search(pattern, response_text, re.DOTALL)
+        
+        if not match:
+            # Try matching raw JSON at end if no blocks
+            pattern_raw = r"(\{.*?\})\s*$"
+            match = re.search(pattern_raw, response_text, re.DOTALL)
+
+        if not match:
+            return response_text
+
+        json_str = match.group(1)
+        try:
+            data = json.loads(json_str)
+            if "multimodal_plan" not in data:
+                return response_text
+                
+            plan_data = data["multimodal_plan"]
+            
+            # Clean response text (remove the JSON block)
+            clean_text = response_text.replace(match.group(0), "").strip()
+            
+            # Validate/Compile Plan
+            planner = JobPlanner()
+            # We construct a JobPlan object (or let planner parse dict)
+            # JobPlanner.create_plan expects task list
+            job_plan = planner.create_plan(
+                session_id=session_id,
+                tasks=plan_data.get("tasks", []),
+            )
+            
+            # Execute Plan (Async/Background)
+            # We don't await full execution to keep chat responsive, 
+            # OR we await submission?
+            # For V1, we'll fire-and-forget via asyncio.create_task but log errors
+            executor = MultimodalExecutor()
+            asyncio.create_task(self._safe_execute_plan(executor, job_plan))
+            
+            return clean_text
+            
+        except json.JSONDecodeError:
+            LOGGER.warning("Failed to decode extracted JSON plan")
+            return response_text
+        except Exception as e:
+            LOGGER.warning(f"Failed to process multimodal plan: {e}")
+            return response_text
+
+    async def _safe_execute_plan(self, executor: MultimodalExecutor, plan: JobPlan) -> None:
+        """Safely execute plan in background."""
+        try:
+            await executor.execute_plan(plan)
+        except Exception as e:
+            LOGGER.exception(f"Background multimodal execution failed for plan {plan.id}")

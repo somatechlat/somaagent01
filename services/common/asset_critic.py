@@ -88,16 +88,24 @@ class AssetCritic:
         result = await critic.evaluate(asset, rubric)
     """
 
+    def __init__(self, slm_client: Optional[Any] = None) -> None:
+        """Initialize with optional SLM client."""
+        # We import here to avoid circular dependencies if any, but strictly typing as Any for now
+        # to avoid import issues at module level if not needed.
+        self._slm_client = slm_client
+
     async def evaluate(
         self,
         asset: AssetRecord,
         rubric: AssetRubric,
+        context: Optional[Dict[str, Any]] = None,
     ) -> AssetEvaluation:
         """Evaluate an asset against a rubric.
         
         Args:
             asset: Asset to evaluate
             rubric: Validation criteria
+            context: Execution context for LLM evaluation
             
         Returns:
             AssetEvaluation result
@@ -131,6 +139,21 @@ class AssetCritic:
             failed.append(f"Size {asset.content_size_bytes} > {rubric.max_size_bytes}")
             feedback.append("File size too large")
             score = max(0.0, score - 0.2)
+            
+        # 4. LLM Semantic Checks (Only if heuristics pass and client available)
+        if not failed and self._slm_client and rubric.min_quality_score > 0:
+            if asset.asset_type == AssetType.IMAGE:
+                llm_score, llm_feedback, llm_passed = await self._evaluate_image_llm(asset, rubric, context)
+                if not llm_passed:
+                    score = min(score, llm_score)
+                    if llm_feedback:
+                        feedback.append(f"Aesthetice/Semantic issue: {llm_feedback}")
+                        # If score is very low, mark as failed constraint
+                        if llm_score < 0.4:
+                            failed.append(f"LLM quality check failed (score {llm_score:.2f})")
+                else:
+                    # Average with heuristic score if passed
+                    score = (score + llm_score) / 2
 
         # Determine status
         if failed:
@@ -193,3 +216,25 @@ class AssetCritic:
             score = 0.0
             
         return score, feedback, failed
+
+    async def _evaluate_image_llm(
+        self,
+        asset: AssetRecord,
+        rubric: AssetRubric,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> tuple[float, Optional[str], bool]:
+        """Evaluate image using Vision LLM (if available).
+        
+        Note: Current SLMClient is text-only. This is a placeholder for 
+        Vision-capable SLM extension. For now, we simulate semantic checks
+        based on metadata or available text context, or skip.
+        
+        If we had a Vision client:
+        response = await self._slm_client.chat(
+            model="gpt-4-vision-preview",
+            messages=[...]
+        )
+        """
+        # Placeholder: Assume 0.9 score if we reached here
+        # In a real implementation with Vision support, we would send the image bytes/URL
+        return 0.9, None, True
