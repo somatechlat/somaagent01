@@ -1,6 +1,6 @@
 # Software Requirements Specification (SRS)
 ## SomaAgent01 - Enterprise AI Agent Framework
-### Version 2.0 | December 2025
+### Version 3.0 | December 2025
 
 ---
 
@@ -9,8 +9,8 @@
 | Item | Value |
 |------|-------|
 | Document ID | SA01-SRS-2025-12 |
-| Version | 2.0 |
-| Status | VERIFIED |
+| Version | 3.0 |
+| Status | VERIFIED + MULTIMODAL EXTENSION PLANNED |
 | Classification | Internal |
 | Compliance | ISO/IEC/IEEE 29148:2018 |
 
@@ -767,6 +767,412 @@ See `.kiro/steering/somabrain-api.md` for complete API documentation.
 ### Appendix C: Environment Variables
 
 See `.kiro/steering/tech.md` for complete environment variable reference.
+
+---
+
+## 16. Multimodal Capabilities Extension (SRS‑MMX‑2025‑12‑16)
+
+### 16.1 Overview
+
+**Document ID:** SRS‑MMX‑2025‑12‑16  
+**Version:** 1.0  
+**Status:** PLANNED  
+**Feature Flag:** `SA01_ENABLE_multimodal_capabilities` (default: false)
+
+This section extends SomaAgent01 with **multimodal generation and consumption capabilities** (images, diagrams, screenshots, video) while preserving existing provider integrations and operational guarantees.
+
+**Multimodal Scope**:
+- **Asset Creation**: Images, diagrams, annotated screenshots, short videos (provider-dependent)
+- **Asset Consumption**: Attaching and referencing images/video frames as context (vision models)
+- **SRS Authoring**: Generating ISO 29148-style documents with embedded/linked assets
+
+**Architecture Components** (A–E):
+- **A — Policy Graph Router**: Deterministic routing + fallback ladders (always-on)
+- **E — Capability Registry**: Tool/model discovery substrate (always-on)
+- **C — Producer + Critic**: Quality gating loop (policy-gated, off by default)
+- **D — Task DSL + Compiler**: Structured job plan format + compilation (always-on)
+- **B — Portfolio Selector**: Ranking optimizer using SomaBrain outcomes (shadow mode → opt-in)
+
+### 16.2 Component Architecture
+
+```
+User Request → Context Builder (multimodal-aware) → LLM Plan Extraction → Task DSL JSON
+   ↓
+Plan Compiler (D) → Executable DAG → For each step:
+   ↓
+Capability Registry (E).find_candidates(modality, constraints)
+   ↓
+Policy Graph Router (A): OPA filter + budget + fallback ladder
+   ↓
+Portfolio Ranker (B): SomaBrain outcomes → ranked list (shadow/active)
+   ↓
+ToolExecutor.multimodal_dispatch(): Execute with fallback
+   ↓
+Asset Created → AssetStore → Provenance Recorded
+   ↓
+[Optional] Asset Critic (C): Quality evaluation → Pass/Rework/Fail
+   ↓
+Outcome Feedback → SomaBrain
+   ↓
+All Steps Complete → SRS Composer → Document + Asset Bundle + Provenance
+```
+
+### 16.3 Data Model
+
+#### 16.3.1 New Database Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `multimodal_assets` | Asset storage (image/video/diagram) | id, tenant_id, asset_type, format, storage_path, content (bytea), checksum, metadata |
+| `multimodal_capabilities` | Tool/model registry | id, tool_id, provider, modalities[], input_schema, output_schema, constraints, cost_tier, health_status |
+| `multimodal_job_plans` | Task DSL storage | id, tenant_id, plan_json, status, created_at |
+| `multimodal_executions` | Execution history | id, plan_id, step_index, tool_id, provider, status, asset_id, latency_ms, cost_estimate, quality_score |
+| `asset_provenance` | Audit trail | asset_id, request_id, execution_id, prompt_summary, generation_params, user_id |
+
+#### 16.3.2 Storage Strategy
+
+- **Primary**: S3-compatible object storage (scalable, cost-effective)
+- **Fallback**: PostgreSQL `bytea` column (MVP/dev environments)
+- **Deduplication**: SHA256 checksums prevent duplicate storage
+- **Versioning**: Same content = same hash; regenerations create new versions
+
+### 16.4 Component A: Policy Graph Router
+
+**Deterministic Fallback Ladders** per modality + task type:
+
+| Ladder Key | Primary | Fallback 1 | Fallback 2 | Fallback 3 | Terminal |
+|-----------|---------|------------|------------|------------|----------|
+| `image_diagram` | `mermaid_svg` | `plantuml_png` | `matplotlib_png` | `dalle_raster` | controlled_failure |
+| `image_photo` | `dalle3` | `dalle2` | `stable_diffusion` | — | controlled_failure |
+| `screenshot` | `playwright_capture` | `selenium_screenshot` | user_upload | — | controlled_failure |
+| `video_short` | `runway_gen2` | `pika_labs` | `storyboard_frames` | — | controlled_failure |
+
+**OPA Integration**:
+- Action: `multimodal.tool.execute`
+- Filters: Provider allowlists, budget constraints, data classification
+- Enforcement: Pre-execution + per-fallback-attempt
+
+### 16.5 Component B: Portfolio Selector (Learning)
+
+**Ranking Algorithm**:
+1. Query SomaBrain for historical outcomes (`task_type`, `modality`)
+2. Compute metrics: `success_rate`, `avg_latency`, `avg_quality`, `avg_cost`
+3. Weighted score:
+   ```
+   score = 0.4·success_rate + 0.2·(1-norm_latency) + 0.3·quality + 0.1·(1-norm_cost)
+   ```
+4. Sort candidates by score (descending)
+
+**Modes**:
+- **Shadow Mode** (default): Ranks but doesn't decide; logs divergence
+- **Active Mode** (opt-in): Ranking used as tie-breaker within policy-allowed set
+
+**Safety**: B never overrides hard constraints (A's OPA/budgets/health).
+
+### 16.6 Component C: Producer + Critic (Quality Gating)
+
+**Quality Evaluation Flow**:
+1. **Producer** generates asset (image/diagram/video)
+2. **Critic** evaluates against rubric (vision model for images, heuristics for diagrams)
+3. **Pass** → Store asset, continue
+4. **Fail** → Re-prompt with feedback (bounded attempts: MAX_REWORK=2)
+5. **Exhausted** → Advance to fallback ladder
+
+**Vision Model Integration**:
+- Primary: GPT-4 Vision
+- Fallback: Claude 3 Opus (vision)
+- Fallback: Heuristics (resolution, file size, metadata)
+
+**Rubric Schema**:
+```json
+{
+  "criteria": [
+    {"dimension": "clarity", "weight": 0.4, "threshold": 0.7},
+    {"dimension": "relevance", "weight": 0.3, "threshold": 0.6},
+    {"dimension": "aesthetic", "weight": 0.3, "threshold": 0.5}
+  ],
+  "min_overall_score": 0.65
+}
+```
+
+### 16.7 Component D: Task DSL & Compiler
+
+**Task DSL v1.0 JSON Schema** (simplified):
+```json
+{
+  "version": "1.0",
+  "tasks": [
+    {
+      "task_id": "step_00",
+      "step_type": "generate_diagram",
+      "modality": "image",
+      "depends_on": [],
+      "description": "System architecture diagram",
+      "constraints": {"max_resolution": 1920, "format": "svg"},
+      "quality_gate": {"enabled": true, "rubric": {...}},
+      "user_defaults": {"provider": "mermaid"}
+    }
+  ],
+  "budget": {"max_cost_cents": 500, "max_duration_sec": 300}
+}
+```
+
+**Compiler Output**: Executable DAG with topological ordering of steps.
+
+**Validation**:
+- No circular dependencies
+- All `depends_on` references exist
+- Modality + step_type compatibility
+- Positive budgets
+
+### 16.8 Component E: Capability Registry
+
+**Registration Example**:
+```python
+await registry.register(
+    tool_id="dalle3_image_gen",
+    provider="openai",
+    modalities=["image"],
+    input_schema={"type": "object", "required": ["prompt"], ...},
+    output_schema={"type": "object", "properties": {"format": "png", ...}},
+    constraints={"max_resolution": 1792, "supported_formats": ["png"]},
+    cost_tier="high"
+)
+```
+
+**Health Checks**: Periodic (60s cron) + on-demand + circuit breaker triggers.
+
+### 16.9 Integration with Existing Architecture
+
+#### 16.9.1 Gateway Service Extensions
+
+**New Routes** (`services/gateway/main.py`):
+- `GET /v1/multimodal/capabilities` → List tools/models by modality
+- `POST /v1/multimodal/jobs` → Submit job plan
+- `GET /v1/multimodal/jobs/{id}` → Job status
+- `GET /v1/multimodal/assets/{id}` → Download asset
+- `GET /v1/multimodal/provenance/{asset_id}` → Audit trail
+
+#### 16.9.2 ToolExecutor Extensions
+
+**New Method**: `multimodal_dispatch(tool_name, args, tenant_id, session_id, execution_id)`
+- Routes to image_gen, diagram_gen, screenshot, video tools
+- Integrates PolicyGraphRouter for fallbacks
+- Records executions to `multimodal_executions` table
+- Triggers AssetCritic if quality gates enabled
+
+#### 16.9.3 Provider Cards UI Extensions
+
+**Existing `ui_settings` Extended**:
+```json
+{
+  "provider_id": "openai",
+  "modalities": ["text", "image"],
+  "recommended_for": ["diagrams", "photorealistic images"],
+  "multimodal_models": {
+    "image": ["dall-e-3", "dall-e-2"],
+    "vision": ["gpt-4-vision-preview"]
+  }
+}
+```
+
+### 16.10 Security & Governance
+
+#### 16.10.1 OPA Policies
+
+**File**: `policy/multimodal.rego`
+```rego
+package multimodal
+
+allow_multimodal {
+    input.tenant_plan in ["enterprise", "pro"]
+}
+
+allow_provider {
+    input.modality == "image"
+    input.provider in ["openai", "stability"]
+}
+
+allow_provider {
+    input.modality == "video"
+    input.provider in ["runway", "pika"]
+    input.tenant_plan == "enterprise"  # Video enterprise-only
+}
+
+within_budget {
+    input.cost_tier in ["free", "low"]
+}
+```
+
+#### 16.10.2 Asset Encryption (Optional)
+
+**Envelope Encryption**:
+1. Generate Data Key (DEK) via KMS
+2. Encrypt asset: `AES-256-GCM(content, DEK)`
+3. Encrypt DEK: `KMS.encrypt(DEK, tenant_key_id)`
+4. Store: `encrypted_content` + `encrypted_dek` in metadata
+
+**Policy-Gated**: Enabled for data classification = "sensitive" or "confidential".
+
+#### 16.10.3 Provenance Redaction
+
+- **Full Prompts**: Redacted if policy denies `provenance.store_full_prompt`
+- **Sensitive Params**: API keys, internal model IDs stripped
+- **User Context**: PII scrubbed per GDPR/compliance rules
+
+### 16.11 Observability & Metrics
+
+#### 16.11.1 Prometheus Metrics
+
+| Metric | Type | Labels | Purpose |
+|--------|------|--------|---------|
+| `multimodal_capability_selection_total` | Counter | modality, tool_id, provider, decision_source | Track tool selection |
+| `multimodal_execution_latency_seconds` | Histogram | modality, tool_id, provider, status | Execution duration |
+| `multimodal_execution_cost_estimate_cents` | Histogram | modality, tool_id, provider | Cost tracking |
+| `multimodal_fallback_total` | Counter | modality, tool_id, fallback_reason | Fallback frequency |
+| `multimodal_quality_score` | Histogram | modality, tool_id | Critic scores |
+| `multimodal_rework_attempts_total` | Counter | modality, reason | Quality rework |
+| `portfolio_ranker_shadow_divergence_total` | Counter | modality, task_type | Shadow mode deviation |
+
+#### 16.11.2 OpenTelemetry Traces
+
+**Span Structure**:
+```
+multimodal_job (root)
+├── plan_extraction
+│   └── llm_invoke
+├── plan_compilation
+├── step_00_generate_diagram
+│   ├── capability_discovery
+│   ├── policy_routing
+│   ├── portfolio_ranking (optional)
+│   ├── execution_attempt_0
+│   │   ├── provider_api_call
+│   │   └── asset_store_create
+│   ├── provenance_record
+│   └── quality_evaluation (optional)
+└── srs_composition
+```
+
+### 16.12 Verification & Testing
+
+#### 16.12.1 Unit Tests
+
+- `test_capability_registry.py`: Modality matching, constraint filtering
+- `test_policy_graph_router.py`: Fallback ladder construction, OPA integration
+- `test_asset_store.py`: S3 + PostgreSQL hybrid storage
+- `test_asset_critic.py`: Vision model evaluation, rubric scoring
+- `test_portfolio_ranker.py`: SomaBrain outcomes ranking
+
+#### 16.12.2 Integration Tests
+
+- `test_multimodal_providers.py`: OpenAI DALL-E, Stability, Mermaid adapters
+- `test_multimodal_job.py`: End-to-end job execution with assets
+- `test_soma_outcomes.py`: Feedback loop to SomaBrain
+
+#### 16.12.3 E2E Golden Tests
+
+1. **"Generate SRS with Diagrams"**
+   - Input: "Create ISO SRS with 2 architecture diagrams"
+   - Verify: Plan extracted, diagrams generated, SRS markdown with embedded SVGs
+
+2. **"Provider Failure → Fallback"**
+   - Setup: Mock DALL-E 503 error
+   - Verify: Fallback to Stability AI, success, fallback metric incremented
+
+3. **"Quality Gate Rework"**
+   - Setup: Mock Critic fails first attempt
+   - Verify: Re-prompt, second attempt passes, rework metric = 1
+
+#### 16.12.4 Chaos Tests
+
+- **Circuit Breaker**: Repeated failures open circuit, skip primary provider
+- **Partial Resume**: Kill process mid-job, resume from checkpoint
+
+### 16.13 Performance Budgets
+
+| Operation | P95 Target | P99 Max | Notes |
+|-----------|------------|---------|-------|
+| Capability Discovery | 50ms | 100ms | DB query |
+| Policy Routing | 100ms | 200ms | Includes OPA |
+| Portfolio Ranking | 200ms | 400ms | SomaBrain recall |
+| Image Generation (DALL-E) | 15s | 30s | Provider latency |
+| Diagram Rendering (Mermaid) | 2s | 5s | Local rendering |
+| Quality Evaluation | 5s | 10s | Vision LLM call |
+| SRS Composition (5 assets) | 3s | 7s | Asset retrieval + markdown |
+
+### 16.14 Rollout Plan
+
+1. **v1.0-alpha** (Dev/Test only)
+   - Feature flag: `SA01_ENABLE_multimodal_capabilities=true` (default: false)
+   - Components: A, D, E (Foundation, execution, registry)
+   - Quality gates disabled
+
+2. **v1.1-beta** (Single tenant pilot)
+   - Enable for 1 enterprise pilot tenant
+   - Add Component C (Quality Gates)
+   - Portfolio Ranker (B) in shadow mode
+
+3. **v1.2-rc** (Multi-tenant staging)
+   - Enable for all test/staging tenants
+   - Portfolio Ranker → active mode (opt-in)
+   - Full SRS generation operational
+
+4. **v2.0-prod** (General availability)
+   - Gradual rollout: 10% → 50% → 100% production tenants
+   - Monitor error rates, fallback counts, costs
+   - Feature flag remains (per-tenant disable supported)
+
+### 16.15 Dependencies & Prerequisites
+
+- **PostgreSQL 14+**: For new tables (5 tables, 8 indexes)
+- **S3-Compatible Storage**: MinIO/AWS S3 for asset storage (optional, PostgreSQL fallback)
+- **Provider API Keys**: OpenAI (DALL-E, GPT-4V), Stability AI, Runway/Pika (video, optional)
+- **OPA 0.40+**: For multimodal policy enforcement
+- **SomaBrain v2.0+**: For outcome feedback and ranking
+- **Existing Services**: Gateway, ToolExecutor, ConversationWorker (extended, not replaced)
+
+### 16.16 Cost & Resource Implications
+
+> [!WARNING]
+> **Provider API Costs**: Image/video generation significantly higher than text.
+> - DALL-E 3: $0.04-0.12 per image
+> - Runway Gen-2: $0.05 per second of video
+> - Per-tenant budgets enforced via OPA policies
+
+**Object Storage**: Estimate 5-50 MB per job (images), 100-500 MB (videos).  
+**Recommended**: S3 lifecycle policies (archive after 90 days, delete after 365 days).
+
+### 16.17 Open Items (v1.0 Out of Scope)
+
+- **Real-time Streaming Video**: Not supported (only short clips)
+- **Arbitrary Long-Form Video Editing**: Out of scope
+- **GPU-Heavy Local Rendering**: Requires deployment infrastructure changes
+- **Multi-Asset Composition**: No inter-asset dependencies (e.g., overlay screenshot on diagram)
+
+### 16.18 Acceptance Criteria
+
+- [ ] All 5 database tables created with migrations
+- [ ] CapabilityRegistry discovers tools by modality and constraints
+- [ ] PolicyGraphRouter routes with fallback ladders (tested with chaos scenarios)
+- [ ] AssetStore creates/retrieves assets from S3 or PostgreSQL
+- [ ] Provenance recorded for every generated asset
+- [ ] At least 3 provider adapters implemented (OpenAI DALL-E, Stability, Mermaid)
+- [ ] Quality Critic evaluates image quality with vision model
+- [ ] Portfolio Ranker queries SomaBrain outcomes (shadow mode functional)
+- [ ] SRSComposer generates markdown with embedded images
+- [ ] All API endpoints functional and tested
+- [ ] OPA policies enforce modality permissions
+- [ ] Unit tests: 90%+ coverage for new modules
+- [ ] E2E golden test: "Generate SRS with diagrams" succeeds
+- [ ] Chaos test: circuit breaker prevents cascade failures
+- [ ] Zero VIBE violations (no TODO/stub/placeholder keywords)
+
+### 16.19 Related Documents
+
+- [MULTIMODAL_DESIGN.md](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/docs/architecture/MULTIMODAL_DESIGN.md) — Detailed design
+- [Implementation Plan](file:///Users/macbookpro201916i964gb1tb/.gemini/antigravity/brain/7ffdc83a-c828-4d31-afa5-ce22734eb669/implementation_plan.md) — Phased rollout plan
+- [Task Breakdown](file:///Users/macbookpro201916i964gb1tb/.gemini/antigravity/brain/7ffdc83a-c828-4d31-afa5-ce22734eb669/task.md) — 12-phase implementation tasks
 
 ---
 

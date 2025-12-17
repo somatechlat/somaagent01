@@ -77,8 +77,15 @@ class MultimodalExecutor:
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
-        self._asset_critic = asset_critic or AssetCritic()
+        self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
         self._soma_brain_client = soma_brain_client or SomaBrainClient()
+        
+        # Initialize SLM Client for AssetCritic if needed
+        # In a real app, we might inject this from a factory or globals
+        from services.common.slm_client import SLMClient
+        self._slm_client = SLMClient() if cfg.settings().llm.openai_api_key else None
+        
+        self._asset_critic = asset_critic or AssetCritic(slm_client=self._slm_client)
         
         # Initialize providers registry
         self._providers: Dict[str, MultimodalProvider] = {}
@@ -311,7 +318,11 @@ class MultimodalExecutor:
                          min_height=task.constraints.get("min_height"),
                          max_size_bytes=task.constraints.get("max_size_bytes"),
                     )
-                    evaluation = await self._asset_critic.evaluate(asset, rubric)
+                    evaluation = await self._asset_critic.evaluate(
+                        asset, 
+                        rubric,
+                        context=context  # Pass context for LLM evaluation
+                    )
                     
                     if not evaluation.passed:
                         logger.warning(

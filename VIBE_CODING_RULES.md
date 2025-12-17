@@ -137,6 +137,7 @@ Before touching code, confirm:
 - Document everything clearly  
 - Follow all Vibe Coding Rules  
 - Deliver honest, real, complete solutions  
+-after every TASK or milestone proposed , I will always run a second inspection to the code i have deloped for vibe coding rules Violations
 
 ===============================================================
                 📚 ISO-STYLE DOCUMENTATION NOTE
@@ -155,3 +156,4 @@ We ONLY follow ISO-style structure because it produces the clearest and most pro
 4. Confirm once you understand the ENTIRE system.  
 
 NO CODING until the entire architecture + flow is understood.
+IF YO ARE FINISHING ANY TAKS, MILESTOBE OR AYHTING LIKE THAT , REVIEW THE CODE YOU HAVE JUST FIH=NISHED FOR VIOLATIONS OPF THE VIBE CODING RULES AND CONOTNUE 

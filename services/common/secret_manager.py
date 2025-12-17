@@ -79,9 +79,18 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
+        # VIBE Rule #1: NO FALLBACKS - Fail fast if Redis unavailable
         redis_url = cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL")
-        # Redis is an optional cache; Vault is the source of truth.
-        self._redis = redis.from_url(redis_url, decode_responses=True) if redis_url else None
+        if not redis_url:
+            raise RuntimeError(
+                "SA01_REDIS_URL or REDIS_URL environment variable required for SecretManager. "
+                "Redis is REQUIRED for encrypted secret storage in production. "
+                "No fallbacks per VIBE Coding Rules. "
+                "Set SA01_REDIS_URL=redis://host:6379/0 in your environment."
+            )
+        
+        self._redis = redis.from_url(redis_url, decode_responses=True)
+        
         # Defer Fernet creation until first use. This allows the manager to be
         # instantiated in test environments where the encryption key may be
         # intentionally omitted.
