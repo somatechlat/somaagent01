@@ -129,8 +129,8 @@ class TestExecutorRework:
         )
         mock_asset_critic.evaluate.side_effect = [fail_eval, pass_eval]
         
-        # Patch config to allow SLMClient init or just ignore it implies we need it for critic?
-        # Critic is passed in, so SLMClient init in executor might be redundant strictly for this test,
+        # Patch config to allow LLMAdapter init or just ignore it implies we need it for critic?
+        # Critic is passed in, so LLMAdapter init in executor might be redundant strictly for this test,
         # but the code runs it.
         with patch("services.tool_executor.multimodal_executor.cfg") as mock_cfg:
             mock_cfg.settings.return_value.llm.openai_api_key = "test-key"
