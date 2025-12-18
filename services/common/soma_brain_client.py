@@ -1,8 +1,7 @@
 """SomaBrain Client for recording execution outcomes.
 
 Provides an interface to send multimodal task execution data to SomaBrain (learning system).
-Includes a local fallback to filesystem logging to ensure data capture when the
-remote service is unavailable.
+Stores outcomes directly in PostgreSQL for learning and portfolio ranking.
 
 SRS Reference: Section 16.8 (Learning & Ranking)
 Feature Flag: SA01_ENABLE_multimodal_capabilities
@@ -10,13 +9,13 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Any, Dict, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
+
+import asyncpg
 
 from src.core.config import cfg
 
@@ -62,24 +61,32 @@ class MultimodalOutcome:
 class SomaBrainClient:
     """Client for interacting with SomaBrain learning system.
     
-    Handlers recording of execution outcomes to support future ranking optimization.
-    Falls back to local generic JSONL logging if remote endpoint is not configured.
+    Stores execution outcomes in PostgreSQL for learning and portfolio ranking.
+    VIBE COMPLIANT: Uses database, no file storage.
     """
 
-    def __init__(self, output_dir: Optional[str] = None) -> None:
-        """Initialize client.
+    def __init__(self, dsn: Optional[str] = None) -> None:
+        """Initialize client with database connection.
         
         Args:
-            output_dir: Directory for local fallback logs. 
-                        Defaults to cfg.paths.logs_dir or current dir.
+            dsn: PostgreSQL connection string. Defaults to cfg.settings().database.dsn
         """
-        # In a real app, we'd check cfg.services.soma_brain.url
-        # For now, we default to local fallback for VIBE compliance (Real Implementation)
-        self._output_dir = output_dir or os.getcwd()
-        self._fallback_file = os.path.join(self._output_dir, "soma_brain_outcomes.jsonl")
+        self._dsn = dsn or cfg.settings().database.dsn
+        self._pool: Optional[asyncpg.Pool] = None
+
+    async def _ensure_pool(self) -> asyncpg.Pool:
+        """Ensure connection pool is initialized."""
+        if self._pool is None:
+            self._pool = await asyncpg.create_pool(
+                self._dsn,
+                min_size=1,
+                max_size=5,
+                command_timeout=10.0
+            )
+        return self._pool
 
     async def record_outcome(self, outcome: MultimodalOutcome) -> None:
-        """Record an execution outcome.
+        """Record an execution outcome to PostgreSQL.
         
         This method is designed to be safe and non-blocking. FAIL_OPEN strategy.
         
@@ -87,22 +94,42 @@ class SomaBrainClient:
             outcome: Outcome data object
         """
         try:
-            # Future: HTTP request to SomaBrain API
-            # await self._send_to_api(outcome)
+            pool = await self._ensure_pool()
             
-            # Current: Local Fallback
-            self._write_to_local(outcome)
-            
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO multimodal_outcomes (
+                        id, plan_id, task_id, step_type, provider, model,
+                        success, latency_ms, cost_cents, quality_score, feedback, timestamp
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+                    )
+                    """,
+                    uuid4(),
+                    UUID(outcome.plan_id) if outcome.plan_id else None,
+                    outcome.task_id,
+                    outcome.step_type,
+                    outcome.provider,
+                    outcome.model,
+                    outcome.success,
+                    outcome.latency_ms,
+                    outcome.cost_cents,
+                    outcome.quality_score,
+                    outcome.feedback,
+                    datetime.fromisoformat(outcome.timestamp) if outcome.timestamp else datetime.now().astimezone()
+                )
+                
         except Exception as exc:
             # Never block execution flow on metrics recording
-            logger.warning("Failed to record SomaBrain outcome: %s", exc)
+            logger.warning("Failed to record SomaBrain outcome to DB: %s", exc)
 
-    def fetch_outcomes(
+    async def fetch_outcomes(
         self,
         step_type: Optional[str] = None,
         limit: int = 100
     ) -> list[MultimodalOutcome]:
-        """Fetch recent execution outcomes.
+        """Fetch recent execution outcomes from PostgreSQL.
         
         Args:
             step_type: Filter by step type (e.g., 'generate_image')
@@ -114,61 +141,58 @@ class SomaBrainClient:
         outcomes: list[MultimodalOutcome] = []
         
         try:
-            if not os.path.exists(self._fallback_file):
-                return []
+            pool = await self._ensure_pool()
+            
+            async with pool.acquire() as conn:
+                if step_type:
+                    rows = await conn.fetch(
+                        """
+                        SELECT plan_id, task_id, step_type, provider, model,
+                               success, latency_ms, cost_cents, quality_score, feedback, timestamp
+                        FROM multimodal_outcomes
+                        WHERE step_type = $1
+                        ORDER BY timestamp DESC
+                        LIMIT $2
+                        """,
+                        step_type,
+                        limit
+                    )
+                else:
+                    rows = await conn.fetch(
+                        """
+                        SELECT plan_id, task_id, step_type, provider, model,
+                               success, latency_ms, cost_cents, quality_score, feedback, timestamp
+                        FROM multimodal_outcomes
+                        ORDER BY timestamp DESC
+                        LIMIT $1
+                        """,
+                        limit
+                    )
                 
-            # Read file in reverse to get newest first (efficient for append-only logs)
-            # For small files, reading all lines is fine. For large logs, we might want `tail`.
-            # Given explicit requirement for "Real Implementation" without over-engineering:
-            with open(self._fallback_file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                
-            for line in reversed(lines):
-                if len(outcomes) >= limit:
-                    break
-                    
-                try:
-                    data = json.loads(line)
-                    # Filter matching
-                    if step_type and data.get("step_type") != step_type:
-                        continue
-                        
+                for row in rows:
                     outcome = MultimodalOutcome(
-                        plan_id=data.get("plan_id", ""),
-                        task_id=data.get("task_id", ""),
-                        step_type=data.get("step_type", ""),
-                        provider=data.get("provider", "unknown"),
-                        model=data.get("model", "unknown"),
-                        success=data.get("success", False),
-                        latency_ms=data.get("latency_ms", 0.0),
-                        cost_cents=data.get("cost_cents", 0.0),
-                        quality_score=data.get("quality_score"),
-                        feedback=data.get("feedback"),
-                        timestamp=data.get("timestamp")
+                        plan_id=str(row["plan_id"]) if row["plan_id"] else "",
+                        task_id=row["task_id"],
+                        step_type=row["step_type"],
+                        provider=row["provider"],
+                        model=row["model"],
+                        success=row["success"],
+                        latency_ms=float(row["latency_ms"]),
+                        cost_cents=float(row["cost_cents"]),
+                        quality_score=float(row["quality_score"]) if row["quality_score"] is not None else None,
+                        feedback=row["feedback"],
+                        timestamp=row["timestamp"].isoformat()
                     )
                     outcomes.append(outcome)
-                except (json.JSONDecodeError, TypeError):
-                    continue
                     
         except Exception as exc:
-            logger.error("Error fetching outcomes: %s", exc)
+            logger.error("Error fetching outcomes from DB: %s", exc)
             
         return outcomes
 
-    def _write_to_local(self, outcome: MultimodalOutcome) -> None:
-        """Write outcome to local JSONL file.
-        
-        Note: This is synchronous I/O. For high throughput, this should be offloaded
-        to a background queue/worker. For current scale, direct append is acceptable.
-        """
-        try:
-            data = asdict(outcome)
-            line = json.dumps(data)
-            
-            # Append to file
-            with open(self._fallback_file, "a", encoding="utf-8") as f:
-                f.write(line + "\n")
-                
-        except Exception as exc:
-            logger.error("Error writing to local SomaBrain fallback: %s", exc)
+    async def close(self) -> None:
+        """Close database connection pool."""
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
 

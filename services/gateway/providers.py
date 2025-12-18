@@ -50,7 +50,9 @@ def get_publisher() -> DurablePublisher:
         else:
             loop.run_until_complete(_ensure())
     except Exception:
-        pass
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("Failed to ensure outbox schema", exc_info=True)
     return DurablePublisher(bus=bus, outbox=outbox)
 
 
@@ -80,3 +82,25 @@ def get_llm_adapter():
     base_url = cfg.env("SA01_SLM_BASE_URL") or cfg.env("SA01_LLM_BASE_URL") or None
     api_key = cfg.env("SA01_LLM_API_KEY") or cfg.env("OPENAI_API_KEY") or None
     return LLMAdapter(service_url=base_url, api_key=api_key)
+
+
+def get_asset_store():
+    """Get the AssetStore instance for multimodal assets."""
+    from services.common.asset_store import AssetStore
+    
+    return AssetStore(dsn=cfg.settings().database.dsn)
+
+
+def get_multimodal_executor():
+    """Get the MultimodalExecutor instance for multimodal job execution."""
+    from services.tool_executor.multimodal_executor import MultimodalExecutor
+    
+    return MultimodalExecutor(dsn=cfg.settings().database.dsn)
+
+
+def get_session_store():
+    """Get session store for compatibility."""
+    from services.common.session_repository import SessionStore
+    
+    return SessionStore(dsn=cfg.settings().database.dsn)
+

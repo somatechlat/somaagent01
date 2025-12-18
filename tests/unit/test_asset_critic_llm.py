@@ -11,7 +11,7 @@ from uuid import uuid4
 from services.common.asset_critic import AssetCritic, AssetRubric, evaluation_status
 from services.common.asset_store import AssetRecord, AssetType, AssetFormat
 from services.common.llm_adapter import LLMAdapter
-
+    
 def make_asset(
     content_size=1024,
     width=1024,

@@ -177,6 +177,7 @@ class PolicyGraphRouter:
         budget_used_cents: int = 0,
         user_override: Optional[Tuple[str, str]] = None,
         context: Optional[Dict[str, Any]] = None,
+        excluded_options: Optional[List[Tuple[str, str]]] = None,
     ) -> RoutingDecision:
         """Route a multimodal request to the best available capability.
         
@@ -191,11 +192,13 @@ class PolicyGraphRouter:
             budget_used_cents: Budget already consumed
             user_override: Optional (tool_id, provider) to force selection
             context: Additional context for OPA policy evaluation
+            excluded_options: List of (tool_id, provider) to skip (e.g. previous failures)
             
         Returns:
             RoutingDecision with selected capability or failure details
         """
         context = context or {}
+        excluded_options = excluded_options or []
         ladder = self._get_fallback_ladder(modality)
         
         if not ladder:
@@ -225,6 +228,11 @@ class PolicyGraphRouter:
         denied_options: List[Tuple[str, str, str]] = []
         
         for position, (tool_id, provider) in enumerate(ladder):
+            # Check exclusions
+            if (tool_id, provider) in excluded_options:
+                denied_options.append((tool_id, provider, "excluded_by_retry"))
+                continue
+
             # Get capability from registry
             capability = await self._registry.get(tool_id, provider)
             

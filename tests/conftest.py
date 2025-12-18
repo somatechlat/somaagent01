@@ -7,18 +7,8 @@ import sys
 import types
 import warnings
 
+# FAISS REMOVED: Use SomaBrain for all memory operations.
+# Legacy FAISS stub removed. If tests fail, they must be updated to use SomaBrain.
 
-# Stub faiss to prevent SWIG deprecation warnings in environments without the
-# native library; tests that need real FAISS should override this.
-if "faiss" not in sys.modules:
-    dummy = types.ModuleType("faiss")
-
-    class _IndexFlatIP:
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError("faiss not available in test stub")
-
-    dummy.IndexFlatIP = _IndexFlatIP
-    sys.modules["faiss"] = dummy
-
-# Suppress upstream SWIG deprecation noise from FAISS bindings
+# Suppress upstream SWIG deprecation noise
 warnings.filterwarnings("ignore", message="builtin type SwigPy.*", category=DeprecationWarning)

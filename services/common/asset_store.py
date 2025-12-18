@@ -201,8 +201,11 @@ class AssetStore:
         if not content:
             raise ValueError("Content cannot be empty")
         
+        # Ensure content is bytes for hashing
+        content_bytes = content.encode('utf-8') if isinstance(content, str) else content
+
         # Compute checksum for deduplication
-        checksum = hashlib.sha256(content).hexdigest()
+        checksum = hashlib.sha256(content_bytes).hexdigest()
         
         # Check for existing duplicate
         existing = await self.get_by_checksum(tenant_id, checksum)
@@ -244,7 +247,7 @@ class AssetStore:
                 asset_type.value,
                 format,
                 storage_path,
-                content,
+                content_bytes,
                 content_size,
                 checksum,
                 original_filename,

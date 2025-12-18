@@ -13,6 +13,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Set
 from uuid import UUID
+from datetime import datetime
 
 
 from services.common.asset_store import AssetStore, AssetType, AssetFormat
@@ -21,6 +22,7 @@ from services.common.soma_brain_client import SomaBrainClient, MultimodalOutcome
 from services.common.portfolio_ranker import PortfolioRanker
 from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
 from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
+from services.common.policy_graph_router import PolicyGraphRouter
 from services.multimodal.base_provider import (
     MultimodalProvider,
     GenerationRequest,
@@ -40,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 class ExecutorError(Exception):
     """Base exception for executor errors."""
-    pass
 
 
 class MultimodalExecutor:
@@ -63,6 +64,7 @@ class MultimodalExecutor:
         execution_tracker: Optional[ExecutionTracker] = None,
         asset_critic: Optional[AssetCritic] = None,
         soma_brain_client: Optional[SomaBrainClient] = None,
+        policy_router: Optional[PolicyGraphRouter] = None,
     ) -> None:
         """Initialize executor with services.
         
@@ -73,19 +75,21 @@ class MultimodalExecutor:
             execution_tracker: ExecutionTracker instance
             asset_critic: AssetCritic instance for quality gating
             soma_brain_client: SomaBrainClient instance for learning
+            policy_router: PolicyGraphRouter instance for provider selection
         """
         self._dsn = dsn or cfg.settings().database.dsn
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
-        self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
         self._soma_brain_client = soma_brain_client or SomaBrainClient()
         self._portfolio_ranker = PortfolioRanker(self._soma_brain_client)
+        self._policy_router = policy_router or PolicyGraphRouter(dsn=self._dsn)
         
         # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
         from services.common.llm_adapter import LLMAdapter
-        self._llm_adapter = LLMAdapter() if cfg.settings().llm.openai_api_key else None
+        api_key = cfg.env("SA01_OPENAI_API_KEY")
+        self._llm_adapter = LLMAdapter(api_key=str(api_key)) if api_key else None
         
         self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)
         
@@ -161,11 +165,11 @@ class MultimodalExecutor:
                     continue
                 
                 # Execute step with retry loop
-                success = await self._execute_step(plan, i, task, context)
+                success, step_error = await self._execute_step(plan, i, task, context)
                 if not success:
                     failed = True
                     # Check if failure was due to quality gate exhaustion
-                    error_msg = f"Step {task.task_id} failed after max attempts"
+                    error_msg = step_error or f"Step {task.task_id} failed after max attempts"
                     break
                     
                 # Update progress
@@ -199,7 +203,7 @@ class MultimodalExecutor:
         step_index: int,
         task: TaskStep,
         context: Dict[str, Any],
-    ) -> bool:
+    ) -> Tuple[bool, Optional[str]]:
         """Execute a single task step with rework/retry loop.
         
         Args:
@@ -209,189 +213,247 @@ class MultimodalExecutor:
             context: Execution context (results of previous steps)
             
         Returns:
-            True if successful, False if all attempts failed
+            Tuple of (Success boolean, Error message if failed)
         """
-        # Resolve provider
-        provider = self._select_provider(task)
-        if not provider:
-            msg = f"No provider found for step type {task.step_type}"
-            logger.error(msg)
-            await self._execution_tracker.start(
-                plan.id, step_index, plan.tenant_id, "unknown", "unknown"
-            )
-            return False
-            
-        # Determine retry limits
-        max_attempts = 1
-        gate_config = task.quality_gate
-        if gate_config.get("enabled", True):
-            max_attempts = gate_config.get("max_reworks", 2) + 1  # 2 reworks = 3 attempts total
-
-        # Rework loop
-        attempt = 0
-        prompt_feedback = ""
+        # Provider Fallback Loop
+        # We try providers in order from the PolicyGraphRouter
+        # If a provider fails (error or quality), we add it to exclusions and try next
         
-        while attempt < max_attempts:
-            attempt += 1
-            is_retry = attempt > 1
-            
-            # Prepare request with injected feedback if retry
-            base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
-            if is_retry and prompt_feedback:
-                # Basic prompt injection logic for V1
-                full_prompt = (
-                    f"{base_prompt}\n\n"
-                    f"IMPORTANT: The previous attempt failed quality checks. "
-                    f"Please address this feedback: {prompt_feedback}"
-                )
-            else:
-                full_prompt = base_prompt
-                
-            request = GenerationRequest(
+        failed_providers: List[Tuple[str, str]] = []
+        last_error_message = ""
+        
+        # Infinite loop, broken by success or router exhaustion
+        while True:
+            # 1. Select Provider
+            decision = await self._policy_router.route(
+                modality=self._map_step_type_to_modality(task.step_type),
                 tenant_id=plan.tenant_id,
-                session_id=plan.session_id,
-                modality=task.modality,
-                prompt=full_prompt,
-                request_id=plan.request_id,
-                format=task.params.get("format", "png"),
-                dimensions=task.params.get("dimensions"),
-                parameters=task.params,
+                budget_used_cents=0,
+                excluded_options=failed_providers,
+                context={"intent": task.step_type.value}
             )
             
-            # Start tracking execution
-            exec_record = await self._execution_tracker.start(
-                plan.id,
-                step_index,
-                plan.tenant_id,
-                provider.name,
-                provider.provider_id,
-                attempt_number=attempt,
-            )
-            
+            # --- SHADOW MODE RANKING ---
             try:
-                # Generate
-                result = await provider.generate(request)
+                 shadow_candidates = []
+                 if decision.success:
+                     shadow_candidates.append((decision.tool_id, decision.model or "default"))
+                 
+                 ranked = self._portfolio_ranker.rank(shadow_candidates, task.step_type.value)
+                 
+                 if ranked and decision.success:
+                     top_pick_id = ranked[0][0]
+                     if top_pick_id != decision.tool_id:
+                         logger.info(f"SHADOW DIVERGENCE: Policy={decision.tool_id}, Ranker={top_pick_id}")
+            except Exception as e:
+                logger.warning(f"Shadow ranking failed: {e}")
+            # ---------------------------
+            
+            if not decision.success:
+                # No more providers avaiable
+                error_msg = f"No capability available. Exhausted: {failed_providers}. Last error: {last_error_message}"
+                logger.error(
+                    "Step %s failed: %s", 
+                    task.task_id, error_msg
+                )
+                # Ensure we record a failure event if we haven't already
+                if not failed_providers:
+                     await self._execution_tracker.start(
+                        plan.id, step_index, plan.tenant_id, "unknown", "unknown"
+                    )
+                return False, error_msg
                 
-                if not result.success:
-                    # Provider error (e.g. timeout, rate limit)
-                    # We treat provider errors as attempt failures too for now
-                    logger.warning(
-                        "Step %s attempt %d failed: %s", 
-                        task.task_id, attempt, result.error_message
-                    )
-                    await self._execution_tracker.complete(
-                        exec_record.id,
-                        ExecutionStatus.FAILED,
-                        error_code=result.error_code,
-                        error_message=result.error_message,
-                    )
-                    prompt_feedback = f"Provider error: {result.error_message}"
-                    # Could add exponential backoff here if needed
-                    continue
+            provider = self._providers.get(decision.tool_id)
+            if not provider:
+                # Should not happen if registry and executor are in sync
+                logger.error("Provider %s approved by router but not loaded in executor", decision.tool_id)
+                failed_providers.append((decision.tool_id, decision.provider))
+                continue
 
-                # Map content type to asset type
-                asset_type = AssetType.IMAGE
-                if result.content_type and "svg" in result.content_type:
-                    asset_type = AssetType.DIAGRAM
-                elif result.content_type and "pdf" in result.content_type:
-                    asset_type = AssetType.DOCUMENT
+            logger.info("Step %s selected provider %s (tool: %s)", task.task_id, decision.provider, decision.tool_id)
+
+            # 2. Rework/Retry Loop (Same Provider)
+            # Determines how many times we try THIS provider before falling back
+            max_attempts = 1
+            gate_config = task.quality_gate
+            if gate_config.get("enabled", True):
+                max_attempts = gate_config.get("max_reworks", 2) + 1
+            
+            attempt = 0
+            prompt_feedback = ""
+            provider_success = False
+            
+            while attempt < max_attempts:
+                attempt += 1
+                is_retry = attempt > 1
                 
-                # Create temporary asset object for evaluation (or persist first?)
-                # Persisting first allows lineage tracking of failed attempts
-                asset = await self._asset_store.create(
+                # Prepare prompt
+                base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
+                if is_retry and prompt_feedback:
+                    full_prompt = (
+                        f"{base_prompt}\n\n"
+                        f"CRITIC FEEDBACK: {prompt_feedback}"
+                    )
+                else:
+                    full_prompt = base_prompt
+                
+                request = GenerationRequest(
                     tenant_id=plan.tenant_id,
-                    asset_type=asset_type,
-                    asset_format=AssetFormat(result.format) if result.format else AssetFormat.PNG,
-                    content=result.content,
-                    metadata={
-                        "plan_id": str(plan.id),
-                        "task_id": task.task_id,
-                        "provider": provider.name,
-                        "dimensions": result.dimensions,
-                        "attempt": attempt,
-                    }
+                    session_id=plan.session_id,
+                    modality=task.modality,
+                    prompt=full_prompt,
+                    request_id=plan.request_id,
+                    format=task.params.get("format", "png"),
+                    dimensions=task.params.get("dimensions"),
+                    parameters=task.params,
                 )
                 
-                # Quality Gate Check
-                if gate_config.get("enabled", True):
-                    rubric = AssetRubric(
-                         # TODO: Map from task.params/constraints to rubric
-                         min_width=task.constraints.get("min_width"),
-                         min_height=task.constraints.get("min_height"),
-                         max_size_bytes=task.constraints.get("max_size_bytes"),
-                    )
-                    evaluation = await self._asset_critic.evaluate(
-                        asset, 
-                        rubric,
-                        context=context  # Pass context for LLM evaluation
-                    )
+                # Track Execution
+                exec_record = await self._execution_tracker.start(
+                    plan.id,
+                    step_index,
+                    plan.tenant_id,
+                    provider.name,
+                    provider.provider_id,
+                    attempt_number=attempt,
+                )
+                
+                try:
+                    result = await provider.generate(request)
                     
-                    if not evaluation.passed:
+                    if not result.success:
+                        # Provider runtime error
                         logger.warning(
-                            "Step %s attempt %d failed quality gate: %s",
-                            task.task_id, attempt, evaluation.failed_criteria
+                            "Step %s provider %s attempt %d failure: %s",
+                            task.task_id, provider.name, attempt, result.error_message
                         )
-                        # Mark execution as failed due to quality
+                        last_error_message = result.error_message
                         await self._execution_tracker.complete(
                             exec_record.id,
                             ExecutionStatus.FAILED,
-                            asset_id=asset.id,
-                            error_code="QUALITY_GATE_FAILED",
-                            error_message=f"Quality check failed: {evaluation.failed_criteria}",
-                            latency_ms=result.latency_ms,
-                            cost_estimate_cents=result.cost_cents,
+                            error_code=result.error_code,
+                            error_message=result.error_message,
                         )
-                        
-                        prompt_feedback = "; ".join(evaluation.feedback)
+                        prompt_feedback = f"Provider error: {result.error_message}"
+                        # Try next attempt with same provider? Or fail provider immediately?
+                        # Strategy: Runtime errors might be transient, retry unless critical.
                         continue
                         
-                # Success!
-                context[task.task_id] = asset
-                await self._execution_tracker.complete(
-                    exec_record.id,
-                    ExecutionStatus.SUCCESS,
-                    asset_id=asset.id,
-                    latency_ms=result.latency_ms,
-                    cost_estimate_cents=result.cost_cents,
-                )
-                return True
-                
-            except Exception as exc:
-                logger.exception("Step execution attempt %d error: %s", attempt, exc)
-                await self._execution_tracker.complete(
-                    exec_record.id,
-                    ExecutionStatus.FAILED,
-                    error_message=str(exc),
-                )
-                prompt_feedback = f"System error: {str(exc)}"
-                
-            finally:
-                # NEW: Record outcome for learning
-                if 'result' in locals() and result:  # Check if result was assigned
-                     # Calculate quality score (default 0.0 if failed, or passed eval score)
-                    q_score = 0.0
-                    explanation = None
-                    if 'evaluation' in locals() and evaluation:
-                        q_score = evaluation.score
-                        explanation = "; ".join(evaluation.feedback) if evaluation.feedback else None
-                    
-                    outcome = MultimodalOutcome(
-                        plan_id=str(plan.id),
-                        task_id=task.task_id,
-                        step_type=task.step_type.value,
-                        provider=provider.name,
-                        model=getattr(provider, "model", "unknown"),
-                        success=result.success if result else False,
-                        latency_ms=result.latency_ms if result else 0.0,
-                        cost_cents=result.cost_cents if result else 0.0,
-                        quality_score=q_score,
-                        feedback=explanation or (result.error_message if result and not result.success else None)
+                    # Asset Creation
+                    asset_type = AssetType.IMAGE
+                    if result.content_type and "svg" in result.content_type:
+                        asset_type = AssetType.DIAGRAM
+                    elif result.content_type and "pdf" in result.content_type:
+                        asset_type = AssetType.DOCUMENT
+                        
+                    asset = await self._asset_store.create(
+                        tenant_id=plan.tenant_id,
+                        asset_type=asset_type,
+                        format=AssetFormat(result.format).value if result.format else AssetFormat.PNG.value,
+                        content=result.content,
+                        dimensions=result.dimensions,
+                        metadata={
+                            "plan_id": str(plan.id),
+                            "task_id": task.task_id,
+                            "provider": provider.name,
+                            "attempt": attempt,
+                        }
                     )
-                    await self._soma_brain_client.record_outcome(outcome)
-                
-        # If loop finishes without returning True, we failed
-        logger.error("Step %s failed after %d attempts", task.task_id, max_attempts)
-        return False
+                    
+                    # Quality Gate
+                    if gate_config.get("enabled", True):
+                        # Construct Rubric from Task Constraints + Presets
+                        if task.step_type == StepType.GENERATE_DIAGRAM:
+                            rubric = AssetRubric.technical_diagram()
+                        else:
+                            rubric = AssetRubric.default_image()
+                        
+                        # Apply overrides
+                        if task.constraints.get("min_width"):
+                            rubric.min_width = task.constraints.get("min_width")
+                        
+                        evaluation = await self._asset_critic.evaluate(
+                            asset, rubric, context=context
+                        )
+                        
+                        if not evaluation.passed:
+                             logger.warning(
+                                "Step %s provider %s validation failed: %s",
+                                task.task_id, provider.name, evaluation.failed_criteria
+                             )
+                             await self._execution_tracker.complete(
+                                exec_record.id,
+                                ExecutionStatus.FAILED,
+                                asset_id=asset.id,
+                                error_code="QUALITY_GATE_FAILED",
+                                error_message=str(evaluation.failed_criteria),
+                                latency_ms=result.latency_ms,
+                                cost_estimate_cents=result.cost_cents
+                            )
+                             prompt_feedback = "; ".join(evaluation.feedback)
+                             last_error_message = f"Quality Gate: {prompt_feedback}"
+                             continue
+                    
+                    # Success
+                    context[task.task_id] = asset
+                    await self._execution_tracker.complete(
+                        exec_record.id,
+                        ExecutionStatus.SUCCESS,
+                        asset_id=asset.id,
+                        latency_ms=result.latency_ms,
+                        cost_estimate_cents=result.cost_cents
+                    )
+                    provider_success = True
+                    break # Break retry loop
+                    
+                except Exception as e:
+                    logger.exception("Provider exception: %s", e)
+                    last_error_message = str(e)
+                    await self._execution_tracker.complete(
+                        exec_record.id, ExecutionStatus.FAILED, error_message=str(e)
+                    )
+
+                finally:
+                    # RECORD OUTCOME (Learning)
+                    try:
+                        # Re-calculate success for record
+                        final_success = provider_success
+                        
+                        # Latency calc (assuming started_at is datetime)
+                        latency = 0.0
+                        if exec_record.started_at:
+                            delta = datetime.now(exec_record.started_at.tzinfo) - exec_record.started_at
+                            latency = delta.total_seconds() * 1000
+
+                        outcome = MultimodalOutcome(
+                            plan_id=str(plan.id),
+                            task_id=task.task_id,
+                            step_type=task.step_type.value,
+                            provider=provider.name if provider else "unknown",
+                            model="default",
+                            success=final_success,
+                            latency_ms=latency,
+                            cost_cents=0.0, # TODO: Propagate from result
+                            quality_score=None, # Updated if critic ran?
+                            feedback=prompt_feedback if is_retry else None
+                        )
+                        # Avoid blocking
+                        await self._soma_brain_client.record_outcome(outcome)
+                    except Exception as ex:
+                        logger.warning(f"Failed to record outcome: {ex}")
+            
+            # End of Retry Loop
+            if provider_success:
+                return True, None
+            else:
+                # This provider failed all attempts. Add to excluded list and Fallback.
+                logger.warning(
+                    "Provider %s failed all attempts for step %s. Falling back.", 
+                    decision.provider, task.task_id
+                )
+                failed_providers.append((decision.tool_id, decision.provider))
+                # Continue outer loop -> Select new provider
+
 
     def _select_provider(self, task: TaskStep) -> Optional[MultimodalProvider]:
         """Select appropriate provider for task using PortfolioRanker."""
@@ -447,3 +509,13 @@ class MultimodalExecutor:
                 # Basic substitution, relying on string repr or ID
                 resolved = resolved.replace(f"{{{{{task_id}}}}}", str(asset.id))
         return resolved
+
+    def _map_step_type_to_modality(self, step_type: StepType) -> str:
+        """Map step type to router modality keys."""
+        if step_type == StepType.GENERATE_DIAGRAM:
+            return "image_diagram"
+        if step_type == StepType.GENERATE_IMAGE:
+            return "image_photo" # Default strict
+        if step_type == StepType.CAPTURE_SCREENSHOT:
+            return "screenshot"
+        return "image" # Fallback
