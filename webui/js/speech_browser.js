@@ -219,7 +219,8 @@ class MicrophoneInput {
                 this.silenceStartTime = null;
 
                 if (this.status === Status.LISTENING || this.status === Status.WAITING) {
-                    if (!speech.isSpeaking()) // TODO? a better way to ignore agent's voice?
+                    // Only activate recording when agent is not speaking to avoid echo
+                    if (!speech.isSpeaking())
                         this.status = Status.RECORDING;
                 }
             } else if (this.status === Status.RECORDING) {
