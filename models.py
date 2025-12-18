@@ -919,13 +919,16 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
             model = kwargs.pop("model", None)
             kwrgs = {**self._wrapper.kwargs, **kwargs}
 
-            # hack from browser-use to fix json schema for gemini (additionalProperties, $defs, $ref)
+            # Apply Gemini-specific schema compatibility if needed
+            from services.common.llm_compatibility import fix_gemini_schema, should_apply_gemini_compat
+            
             if (
-                "response_format" in kwrgs
+                should_apply_gemini_compat()
+                and "response_format" in kwrgs
                 and "json_schema" in kwrgs["response_format"]
                 and model.startswith("gemini/")
             ):
-                kwrgs["response_format"]["json_schema"] = ChatGoogle("")._fix_gemini_schema(
+                kwrgs["response_format"]["json_schema"] = fix_gemini_schema(
                     kwrgs["response_format"]["json_schema"]
                 )
 
@@ -936,11 +939,13 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
                 **kwrgs,
             )
 
-            # Gemini: strip triple backticks and conform schema
+            # Apply Gemini JSON response cleaning if needed
+            from services.common.llm_compatibility import clean_gemini_json_response
+            
             try:
                 msg = resp.choices[0].message  # type: ignore
                 if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
-                    cleaned = browser_use_monkeypatch.gemini_clean_and_conform(msg.content)  # type: ignore
+                    cleaned = clean_gemini_json_response(msg.content)  # type: ignore
                     if cleaned:
                         msg.content = cleaned
             except Exception:
@@ -949,18 +954,20 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
         except Exception as e:
             raise e
 
-        # another hack for browser-use post process invalid jsons
-        try:
-            if (
-                "response_format" in kwrgs
-                and "json_schema" in kwrgs["response_format"]
-                or "json_object" in kwrgs["response_format"]
-            ):
-                if resp.choices[0].message.content is not None and not resp.choices[0].message.content.startswith("{"):  # type: ignore
-                    js = dirty_json.parse(resp.choices[0].message.content)  # type: ignore
-                    resp.choices[0].message.content = dirty_json.stringify(js)  # type: ignore
-        except Exception:
-            pass
+        # Apply lenient JSON parsing for malformed responses
+        from services.common.llm_compatibility import clean_invalid_json, should_apply_json_cleaning
+        
+        if should_apply_json_cleaning():
+            try:
+                if (
+                    "response_format" in kwrgs
+                    and ("json_schema" in kwrgs["response_format"] or "json_object" in kwrgs["response_format"])
+                ):
+                    content = resp.choices[0].message.content  # type: ignore
+                    if content is not None and not content.startswith("{"):
+                        resp.choices[0].message.content = clean_invalid_json(content)  # type: ignore
+            except Exception:
+                pass
 
         return resp
 
