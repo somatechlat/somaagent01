@@ -4,6 +4,8 @@ import math
 import threading
 from typing import Any, Dict, List, Tuple
 
+from src.core.config import cfg
+
 # Metrics are mandatory; fail fast if prometheus_client is unavailable.
 try:
     from prometheus_client import Counter, Gauge, Histogram
@@ -32,10 +34,12 @@ _LOCK = threading.RLock()
 
 
 class SemanticRecallIndex:
-    """In-memory vector index for semantic recall (prototype).
-
-    Stores (vector, metadata) tuples and performs naive cosine similarity.
-    This is a prototype; later phases should persist embeddings and move to an ANN structure.
+    """In-memory vector index for semantic recall.
+    
+    This is a PROTOTYPE implementation using naive cosine similarity and FIFO eviction.
+    Production systems should use persistent vector stores (e.g., pgvector, Pinecone).
+    
+    Enable with: SA01_SEMANTIC_RECALL_PROTOTYPE=true (development only)
     """
 
     def __init__(self, max_items: int = 10000) -> None:
@@ -87,7 +91,22 @@ _GLOBAL_INDEX: SemanticRecallIndex | None = None
 
 
 def get_index() -> SemanticRecallIndex:
+    """Get global semantic recall index.
+    
+    Raises:
+        RuntimeError: If prototype is not explicitly enabled via feature flag
+    """
     global _GLOBAL_INDEX
+    
+    # Security: Require explicit opt-in for prototype code
+    prototype_enabled = cfg.env("SA01_SEMANTIC_RECALL_PROTOTYPE", "false").lower() in {"true", "1", "yes", "on"}
+    if not prototype_enabled:
+        raise RuntimeError(
+            "Semantic recall prototype is not enabled. "
+            "Set SA01_SEMANTIC_RECALL_PROTOTYPE=true to use in-memory index, "
+            "or implement persistent vector store for production."
+        )
+    
     if _GLOBAL_INDEX is None:
         _GLOBAL_INDEX = SemanticRecallIndex()
     return _GLOBAL_INDEX
