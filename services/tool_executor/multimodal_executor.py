@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 from datetime import datetime
 
@@ -430,11 +430,11 @@ class MultimodalExecutor:
                             task_id=task.task_id,
                             step_type=task.step_type.value,
                             provider=provider.name if provider else "unknown",
-                            model="default",
+                            model=decision.model or "default",
                             success=final_success,
                             latency_ms=latency,
-                            cost_cents=0.0, # TODO: Propagate from result
-                            quality_score=None, # Updated if critic ran?
+                            cost_cents=result.cost_cents if result and result.cost_cents else 0.0,
+                            quality_score=evaluation.overall_score if gate_config.get("enabled", True) else None,
                             feedback=prompt_feedback if is_retry else None
                         )
                         # Avoid blocking
@@ -456,27 +456,31 @@ class MultimodalExecutor:
 
 
     def _select_provider(self, task: TaskStep) -> Optional[MultimodalProvider]:
-        """Select appropriate provider for task using PortfolioRanker."""
-        candidates = []
+        """Select appropriate provider for task by iterating registered capabilities.
         
-        # Build candidate list based on step type
-        if task.step_type == StepType.GENERATE_DIAGRAM:
-            if "mermaid_diagram" in self._providers:
-                candidates.append(("mermaid_diagram", "codex")) # Implicit model for now
-                
-        elif task.step_type == StepType.GENERATE_IMAGE:
-             # Basic discovery - check capabilities
-             # For now hardcoding registered names, but ideal is to iterate capabilities
-             if "dalle3_image_gen" in self._providers:
-                 candidates.append(("dalle3_image_gen", "dall-e-3"))
-             
-             # Fallback/alternative (hypothetical for ranking demo)
-             if "stable_diffusion" in self._providers:
-                 candidates.append(("stable_diffusion", "sdxl"))
-
-        elif task.step_type == StepType.CAPTURE_SCREENSHOT:
-             if "playwright_screenshot" in self._providers:
-                 candidates.append(("playwright_screenshot", "chromium"))
+        Uses the capability map built during provider registration to find
+        all providers that can handle the required task type.
+        """
+        # Determine required capability from step type
+        required_capability = self._step_type_to_capability(task.step_type)
+        if not required_capability:
+            logger.warning("No capability mapping for step type: %s", task.step_type)
+            return None
+            
+        # Get all providers that support this capability
+        provider_names = self._capability_map.get(required_capability, [])
+        if not provider_names:
+            logger.warning("No providers registered for capability: %s", required_capability)
+            return None
+            
+        # Build candidates from registered providers
+        candidates = []
+        for name in provider_names:
+            provider = self._providers.get(name)
+            if provider:
+                # Use provider's advertised model or 'default'
+                model = getattr(provider, 'default_model', 'default')
+                candidates.append((name, model))
         
         if not candidates:
             return None
@@ -485,7 +489,7 @@ class MultimodalExecutor:
         if len(candidates) == 1:
             return self._providers.get(candidates[0][0])
             
-        # Use Ranker
+        # Use Ranker for multiple candidates
         ranked = self._portfolio_ranker.rank_providers(
             candidates, 
             task.step_type.value
@@ -496,6 +500,15 @@ class MultimodalExecutor:
             
         best_provider_name, _ = ranked[0]
         return self._providers.get(best_provider_name)
+    
+    def _step_type_to_capability(self, step_type: StepType) -> Optional[ProviderCapability]:
+        """Map step type to provider capability."""
+        mapping = {
+            StepType.GENERATE_DIAGRAM: ProviderCapability.DIAGRAM,
+            StepType.GENERATE_IMAGE: ProviderCapability.IMAGE,
+            StepType.CAPTURE_SCREENSHOT: ProviderCapability.SCREENSHOT,
+        }
+        return mapping.get(step_type)
 
     def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
         """Resolve dependency placeholders in prompt.
