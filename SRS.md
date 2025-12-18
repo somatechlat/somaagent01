@@ -1,6 +1,6 @@
 # Software Requirements Specification (SRS) for SomaAgent01 (Spring Boot Migration)
 
-**Version:** 2.0 (Detailed Specification)
+**Version:** 3.0 (The Monolith)
 **Status:** DRAFT
 **Date:** 2024-05-22
 **Compliance:** ISO/IEC/IEEE 29148:2018 (Tailored)
@@ -10,12 +10,12 @@
 ## 1. Introduction
 
 ### 1.1 Purpose
-The purpose of this document is to provide an exhaustive technical blueprint for migrating the **SomaAgent01** platform from Python (FastAPI/Celery) to **Java 21 (Spring Boot 3.3+)**. This document serves as the "Source of Truth" for all data structures, API contracts, and business logic algorithms.
+The purpose of this document is to provide an **exhaustive technical blueprint** for migrating the SomaAgent01 platform from Python (FastAPI/Celery) to **Java 21 (Spring Boot 3.3+)**. This document serves as the "Source of Truth" for all data structures, API contracts, and business logic algorithms.
 
 ### 1.2 Scope
 The system is an Enterprise AI Agent Platform providing:
 -   **Conversation Orchestration:** RAG-based chat with history and memory management.
--   **Tool Execution:** Secure execution of tasks (Python/Java) via sandboxed workers.
+-   **Tool Execution:** Secure execution of tasks via sandboxed workers.
 -   **Administration:** Tenant management, policy enforcement (OPA), and audit logging.
 
 ### 1.3 Technology Stack Constraints
@@ -53,6 +53,7 @@ graph TD
 
         W_Conv -->|Call| LLM[External LLM Providers]
         W_Conv -->|Query| Vector[Vector DB]
+        W_Conv -->|Policy| OPA[Open Policy Agent]
 
         W_Tool -->|Execute| Sandbox[Docker Sandbox]
     end
@@ -62,6 +63,7 @@ graph TD
 -   **Authentication:** JWT (RFC 7519) validation via Spring Security OAuth2 Resource Server.
 -   **Authorization:** Fine-grained access control using **Open Policy Agent (OPA)** sidecars.
 -   **Secrets:** HashiCorp Vault integration via Spring Cloud Vault. API Keys must NEVER be stored in the DB in plain text.
+-   **mTLS:** Required for all internal service-to-service communication.
 
 ---
 
@@ -102,7 +104,9 @@ Configuration storage.
 | Key Pattern | Type | TTL | Description |
 | :--- | :--- | :--- | :--- |
 | `session:{id}:meta` | `String` (JSON) | 900s | Cached session metadata for quick lookups. |
-| `ratelimit:{tenant}:{ip}` | `String` (Int) | 60s | API Rate limiting counters. |
+| `budget:tokens:{tenant}:{persona}:{date}` | `String` (Int) | 24h | Daily token usage counter. |
+| `tus:upload:{id}:meta` | `Hash` | 24h | TUS upload metadata (offset, size). |
+| `tus:upload:{id}:content` | `String` (Bin) | 24h | TUS upload content buffer. |
 
 ---
 
@@ -110,7 +114,13 @@ Configuration storage.
 
 ### 4.1 Conversation Logic (`ConversationWorkflow`)
 
-#### 4.1.1 Context Construction Algorithm
+#### 4.1.1 Policy Check
+**Before** processing any message:
+1.  Construct `PolicyRequest`: `{ tenant, persona_id, action="conversation.send", resource="message", context={ length: len(msg) } }`.
+2.  Call OPA.
+3.  If Denied: Return `403 Forbidden` immediately.
+
+#### 4.1.2 Context Construction Algorithm
 **Input:** `UserMessage`, `History`, `Settings`
 **Output:** `BuiltContext`
 
@@ -131,7 +141,7 @@ Configuration storage.
     -   Inject `Snippet Block` as a System Message.
     -   Inject `History` (Last-N messages fitting remaining budget).
 
-#### 4.1.2 Multimodal Plan Execution
+#### 4.1.3 Multimodal Plan Execution
 **Trigger:** LLM Response contains JSON block with `multimodal_plan`.
 **Action:**
 1.  Parse JSON: `{ "multimodal_plan": { "tasks": [...] } }`.
@@ -141,86 +151,62 @@ Configuration storage.
 
 ### 4.2 Tool Execution Logic (`ToolWorker`)
 
-#### 4.2.1 Execution
+#### 4.2.1 Execution Protocol
 **Input:** `ToolName`, `Args`, `SessionID`
 **Action:**
-1.  **Validation:** Validate `Args` against JSON Schema in `ToolCatalog`.
-2.  **Policy:** Check OPA if `ToolName` is allowed for `Tenant`.
-3.  **Sandboxing:**
-    -   Spin up ephemeral Docker container (or isolate ClassLoader for Java tools).
-    -   Inject `Args`.
-    -   Set Hard Timeout (e.g., 30s).
-4.  **Result:** Capture `STDOUT`, `STDERR`, and `Return Value`.
+1.  **Circuit Breaker:** Check `ToolCircuitBreaker` (Threshold 5 failures, Reset 30s).
+2.  **Validation:** Validate `Args` against JSON Schema in `ToolCatalog`.
+3.  **Policy:** Check OPA (`action="tool.request"`).
+4.  **Sandboxing:**
+    -   Spin up ephemeral Docker container (Java/Python).
+    -   Inject `Args` via Environment/Stdin.
+    -   Set Hard Timeout (default 60s).
+5.  **Result:** Capture `STDOUT`, `STDERR`, and `Return Value`.
 
 ---
 
 ## 5. Interface Requirements (API)
 
-### 5.1 Chat & Sessions
+### 5.1 Attachments (`/v1/attachments`)
+-   `GET /{id}`: Public download.
+-   `GET /internal/{id}/binary`: Internal download (requires `X-Internal-Token`).
 
-#### `GET /v1/chat/session/{session_id}`
-Returns session metadata.
--   **Response:**
-    ```json
-    {
-      "session_id": "uuid",
-      "persona_id": "string",
-      "tenant": "string"
-    }
-    ```
+### 5.2 Capsules (`/v1/capsules`)
+-   `GET /`: List capsules.
+-   `GET /{id}`: Get capsule definition.
+-   `POST /`: Create capsule (Draft).
+-   `POST /{id}/install`: Install capsule.
+-   `POST /{id}/publish`: Publish capsule.
 
-#### `GET /v1/session/{session_id}/events`
-Returns events stream.
--   **Query:** `stream=true` (SSE) or `false` (JSON).
--   **SSE Format:** `data: { "type": "...", "payload": ... }\n\n`
--   **Keepalive:** Every 10s send `type: "system.keepalive"`.
+### 5.3 Chat & Sessions (`/v1/session`)
+-   `GET /{id}`: Get session envelope.
+-   `GET /{id}/events`: SSE Stream (`text/event-stream`).
+-   `POST /message`: Send message. Returns `{ session_id, event_id }`.
 
-#### `POST /v1/session/message`
-Submit a user message.
--   **Body:**
-    ```json
-    {
-      "session_id": "uuid",
-      "message": "Hello",
-      "tenant": "default",
-      "persona_id": "default"
-    }
-    ```
--   **Response:** `{ "session_id": "...", "event_id": "..." }`
+### 5.4 Admin (`/v1/admin`)
+-   `GET /kafka/status`: Topic/Group Lag metrics.
+-   `POST /kafka/seek_to_end`: Reset consumer group.
+-   `GET /memory`: List memory replicas.
+-   `POST /migrate/export`: Export tenant data.
+-   `POST /migrate/import`: Import tenant data.
 
-### 5.2 Admin & Config
+### 5.5 Tools (`/v1/tool-catalog`, `/v1/tool`)
+-   `GET /v1/tool-catalog`: List enabled tools.
+-   `PUT /v1/tool-catalog/{name}`: Upsert tool definition.
+-   `POST /v1/tool/request`: Manually trigger tool.
 
-#### `GET /v1/feature-flags`
-Get effective feature flags.
--   **Response:**
-    ```json
-    {
-      "profile": "standard",
-      "flags": {
-        "sse_enabled": { "enabled": true, "source": "local" }
-      },
-      "tenant": "default"
-    }
-    ```
+### 5.6 Uploads (`/v1/uploads`)
+-   `POST /`: Multipart upload (Legacy).
+-   `POST /tus`: Create TUS upload.
+-   `PATCH /tus/{id}`: Append TUS chunk.
+-   `HEAD /tus/{id}`: Get TUS offset.
+-   `DELETE /tus/{id}`: Abort TUS upload.
 
-#### `GET /v1/settings`
-Get full UI settings schema.
--   **Response:** Large JSON with `sections`, `fields`, and enriched feature flag values.
-
-#### `POST /v1/admin/migrate/export`
-Export tenant data.
--   **Body:** `{ "include_wm": true, "wm_limit": 100 }`
--   **Response:** JSON Blob of memories and settings.
-
-### 5.3 Tools
-
-#### `GET /v1/tool-catalog`
-List available tools.
--   **Response:** `[ { "name": "web_search", "enabled": true, "tags": ["search"] } ]`
-
-#### `POST /v1/tool/request`
-Manually trigger a tool (Debug/Admin).
--   **Body:** `{ "tool_name": "...", "args": {} }`
+### 5.7 Miscellaneous
+-   `GET /v1/feature-flags`: List feature flags.
+-   `GET /v1/settings`: Get UI settings.
+-   `GET /v1/notifications`: Get user notifications.
+-   `GET /v1/weights`: Get model weights.
 
 ---
 
