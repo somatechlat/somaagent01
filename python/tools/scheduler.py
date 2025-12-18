@@ -142,9 +142,10 @@ class SchedulerTool(Tool):
             return Response(message=f"Task failed to delete: {task_uuid}", break_loop=False)
 
     async def create_scheduled_task(self, **kwargs) -> Response:
-        # "name": "XXX",
+        # Example task creation:
+        # "name": "WeeklyEmailGreeting",
         #   "system_prompt": "You are a software developer",
-        #   "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: xxx@yyy.zzz",
+        #   "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: user@example.com",
         #   "attachments": [],
         #   "schedule": {
         #       "minute": "*/20",

@@ -173,9 +173,9 @@ The scheduled type of tasks is being run by a cron schedule that you must provid
     "headline": "Creating recurring cron-scheduled email task",
     "tool_name": "scheduler:create_scheduled_task",
     "tool_args": {
-        "name": "XXX",
+        "name": "WeeklyEmailGreeting",
         "system_prompt": "You are a software developer",
-        "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: xxx@yyy.zzz",
+        "prompt": "Send the user an email with a greeting using python and smtp. The user's address is: user@example.com",
         "attachments": [],
         "schedule": {
             "minute": "*/20",
