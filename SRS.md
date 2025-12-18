@@ -1,22 +1,24 @@
 # Software Requirements Specification (SRS) for SomaAgent01 (Spring Boot Migration)
 
-**Version:** 3.0 (The Monolith)
+**Version:** 4.0 (The Monolith)
 **Status:** DRAFT
 **Date:** 2024-05-22
 **Compliance:** ISO/IEC/IEEE 29148:2018 (Tailored)
+**Author:** Jules (PhD Software Analyst)
 
 ---
 
 ## 1. Introduction
 
 ### 1.1 Purpose
-The purpose of this document is to provide an **exhaustive technical blueprint** for migrating the SomaAgent01 platform from Python (FastAPI/Celery) to **Java 21 (Spring Boot 3.3+)**. This document serves as the "Source of Truth" for all data structures, API contracts, and business logic algorithms.
+The purpose of this document is to provide an **exhaustive technical blueprint** for migrating the SomaAgent01 platform from Python (FastAPI/Celery) to **Java 21 (Spring Boot 3.3+)**. This document serves as the "Source of Truth" for all data structures, API contracts, and business logic algorithms. It is derived from a file-by-file reverse engineering of the legacy codebase.
 
 ### 1.2 Scope
 The system is an Enterprise AI Agent Platform providing:
 -   **Conversation Orchestration:** RAG-based chat with history and memory management.
 -   **Tool Execution:** Secure execution of tasks via sandboxed workers.
 -   **Administration:** Tenant management, policy enforcement (OPA), and audit logging.
+-   **Real-time Voice:** SSE/WebSocket pipelines for STT (Kokoro) and TTS (Whisper/OpenAI).
 
 ### 1.3 Technology Stack Constraints
 -   **Language:** Java 21 LTS (Strict).
@@ -26,6 +28,7 @@ The system is an Enterprise AI Agent Platform providing:
 -   **Cache/Broker:** Redis 7+ (Spring Data Redis), RabbitMQ/Kafka (Spring Cloud Stream).
 -   **Orchestration:** Temporal.io (Java SDK).
 -   **AI:** Spring AI (0.8.x+) for LLM abstraction.
+-   **Secrets:** HashiCorp Vault (Spring Cloud Vault).
 
 ---
 
@@ -44,6 +47,7 @@ graph TD
         API -->|Read/Write| DB[(PostgreSQL)]
         API -->|Cache| Redis[(Redis)]
         API -->|Event| Broker[RabbitMQ/Kafka]
+        API -->|Secrets| Vault[HashiCorp Vault]
     end
 
     subgraph "Worker Cluster"
@@ -62,7 +66,7 @@ graph TD
 ### 2.2 Security Architecture
 -   **Authentication:** JWT (RFC 7519) validation via Spring Security OAuth2 Resource Server.
 -   **Authorization:** Fine-grained access control using **Open Policy Agent (OPA)** sidecars.
--   **Secrets:** HashiCorp Vault integration via Spring Cloud Vault. API Keys must NEVER be stored in the DB in plain text.
+-   **Secrets:** HashiCorp Vault integration. API Keys must NEVER be stored in the DB in plain text.
 -   **mTLS:** Required for all internal service-to-service communication.
 
 ---
@@ -99,6 +103,17 @@ Configuration storage.
 | `key` | `TEXT` | `PRIMARY KEY` | Setting key (e.g., 'global'). |
 | `value` | `JSONB` | `NOT NULL` | The configuration object. |
 | `updated_at` | `TIMESTAMPTZ` | | Last modification. |
+
+#### 3.1.4 Table: `feature_flags`
+Feature toggle state.
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `SERIAL` | `PRIMARY KEY` | ID. |
+| `tenant` | `TEXT` | `NOT NULL` | Tenant scope. |
+| `key` | `TEXT` | `NOT NULL` | Flag key (e.g., 'sse_enabled'). |
+| `enabled` | `BOOLEAN` | `DEFAULT FALSE` | State. |
+| `profile_override` | `TEXT` | | Profile name (minimal/standard/max). |
+| `UNIQUE` | | `(tenant, key)` | Constraint. |
 
 ### 3.2 Redis Data Structures
 | Key Pattern | Type | TTL | Description |
@@ -167,46 +182,72 @@ Configuration storage.
 
 ## 5. Interface Requirements (API)
 
-### 5.1 Attachments (`/v1/attachments`)
--   `GET /{id}`: Public download.
--   `GET /internal/{id}/binary`: Internal download (requires `X-Internal-Token`).
+### 5.1 Chat & Sessions (`/v1/session`, `/v1/chat`)
 
-### 5.2 Capsules (`/v1/capsules`)
--   `GET /`: List capsules.
--   `GET /{id}`: Get capsule definition.
--   `POST /`: Create capsule (Draft).
--   `POST /{id}/install`: Install capsule.
--   `POST /{id}/publish`: Publish capsule.
+#### `GET /v1/chat/session/{session_id}`
+Returns session metadata.
+-   **Response:** `{ "session_id": "uuid", "persona_id": "string", "tenant": "string" }`
 
-### 5.3 Chat & Sessions (`/v1/session`)
--   `GET /{id}`: Get session envelope.
--   `GET /{id}/events`: SSE Stream (`text/event-stream`).
--   `POST /message`: Send message. Returns `{ session_id, event_id }`.
+#### `GET /v1/session/{session_id}/events`
+Returns events stream.
+-   **Query:** `stream=true` (SSE) or `false` (JSON).
+-   **SSE Format:** `data: { "type": "...", "payload": ... }\n\n`
+-   **Keepalive:** Every 10s send `type: "system.keepalive"`.
 
-### 5.4 Admin (`/v1/admin`)
--   `GET /kafka/status`: Topic/Group Lag metrics.
--   `POST /kafka/seek_to_end`: Reset consumer group.
--   `GET /memory`: List memory replicas.
--   `POST /migrate/export`: Export tenant data.
--   `POST /migrate/import`: Import tenant data.
+#### `POST /v1/session/message`
+Submit a user message.
+-   **Body:** `{ "session_id": "uuid", "message": "Hello", "tenant": "default", "persona_id": "default" }`
+-   **Response:** `{ "session_id": "...", "event_id": "..." }`
 
-### 5.5 Tools (`/v1/tool-catalog`, `/v1/tool`)
--   `GET /v1/tool-catalog`: List enabled tools.
--   `PUT /v1/tool-catalog/{name}`: Upsert tool definition.
--   `POST /v1/tool/request`: Manually trigger tool.
+### 5.2 Admin & Config (`/v1/admin`, `/v1/settings`)
 
-### 5.6 Uploads (`/v1/uploads`)
--   `POST /`: Multipart upload (Legacy).
--   `POST /tus`: Create TUS upload.
--   `PATCH /tus/{id}`: Append TUS chunk.
--   `HEAD /tus/{id}`: Get TUS offset.
--   `DELETE /tus/{id}`: Abort TUS upload.
+#### `GET /v1/feature-flags`
+Get effective feature flags.
+-   **Response:** `{ "profile": "standard", "flags": { "sse_enabled": { "enabled": true, "source": "local" } }, "tenant": "default" }`
 
-### 5.7 Miscellaneous
--   `GET /v1/feature-flags`: List feature flags.
--   `GET /v1/settings`: Get UI settings.
--   `GET /v1/notifications`: Get user notifications.
--   `GET /v1/weights`: Get model weights.
+#### `GET /v1/settings`
+Get full UI settings schema.
+-   **Response:** Large JSON with `sections`, `fields`, and enriched feature flag values.
+
+#### `POST /v1/admin/migrate/export`
+Export tenant data.
+-   **Body:** `{ "include_wm": true, "wm_limit": 100 }`
+-   **Response:** JSON Blob of memories and settings.
+
+### 5.3 Tools (`/v1/tool-catalog`, `/v1/tool`)
+
+#### `GET /v1/tool-catalog`
+List available tools.
+-   **Response:** `[ { "name": "web_search", "enabled": true, "tags": ["search"] } ]`
+
+#### `POST /v1/tool/request`
+Manually trigger a tool (Debug/Admin).
+-   **Body:** `{ "tool_name": "...", "args": {} }`
+
+### 5.4 Uploads (`/v1/uploads`)
+
+#### `POST /v1/uploads/tus`
+Create TUS upload session.
+-   **Body:** `{ "filename": "doc.pdf", "size": 1024, "mime_type": "application/pdf" }`
+-   **Response:** `{ "upload_id": "uuid", "upload_url": "/v1/uploads/tus/{uuid}", "offset": 0 }`
+
+#### `PATCH /v1/uploads/tus/{id}`
+Append chunk.
+-   **Header:** `Upload-Offset: 0`
+-   **Body:** Binary content.
+
+#### `HEAD /v1/uploads/tus/{id}`
+Get status.
+-   **Header:** `Upload-Offset: 1024`
+
+### 5.5 Advanced
+
+#### `GET /v1/capsules`
+List agent capability definitions.
+
+#### `POST /v1/tasks/register`
+Register dynamic task.
+-   **Body:** `{ "name": "my.task", "callable": "path.to.func" }`
 
 ---
 
@@ -226,3 +267,19 @@ Configuration storage.
 -   **Metrics:** Expose `/actuator/prometheus`.
 -   **Tracing:** Implement OpenTelemetry (Zipkin/Jaeger compatible).
 -   **Logs:** JSON structured logging with `trace_id` and `span_id` injected.
+
+---
+
+## 7. Configuration
+
+### 7.1 Environment Variables
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `SA01_POSTGRES_DSN` | `postgresql://localhost:5432/soma` | Database Connection |
+| `SA01_REDIS_URL` | `redis://localhost:6379/0` | Cache Connection |
+| `SA01_KAFKA_BOOTSTRAP_SERVERS` | `kafka:9092` | Event Bus |
+| `SA01_OPA_URL` | `http://openfga:8080` | Policy Engine |
+| `SA01_SOMA_BASE_URL` | *Required* | SomaBrain AI Service |
+| `SA01_VAULT_ADDR` | *Required* | Secret Store |
+| `SA01_AUTH_REQUIRED` | `true` | Enforce JWT |
+| `SA01_UPLOAD_MAX_SIZE` | `104857600` | Max upload bytes (100MB) |
