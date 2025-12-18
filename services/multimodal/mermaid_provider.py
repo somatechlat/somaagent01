@@ -327,8 +327,8 @@ class MermaidProvider(MultimodalProvider):
             if process.returncode == 0:
                 return stdout.decode().strip()
         except Exception:
-            pass
-        return None
+            # Ignore version check failures
+            return None
 
     def _detect_diagram_type(self, code: str) -> str:
         """Detect the type of Mermaid diagram from code."""

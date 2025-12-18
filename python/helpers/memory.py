@@ -9,13 +9,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Sequence
 
-try:
-    import faiss
-
-    FAISS_AVAILABLE = True
-except Exception:
-    faiss = None
-    FAISS_AVAILABLE = False
+# FAISS REMOVED: Use SomaBrain for all memory operations.
+# Legacy Agent Zero local FAISS memory is deprecated.
 
 LC_AVAILABLE = True
 try:
@@ -25,13 +20,13 @@ try:
         from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
     from langchain.storage import InMemoryByteStore, LocalFileStore
     from langchain_community.docstore.in_memory import InMemoryDocstore
-    from langchain_community.vectorstores import FAISS
+    # from langchain_community.vectorstores import FAISS # FAISS REMOVED
     from langchain_community.vectorstores.utils import DistanceStrategy
     from langchain_core.documents import Document
 except Exception:
     LC_AVAILABLE = False
     LC_CacheBackedEmbeddings = InMemoryByteStore = LocalFileStore = None
-    InMemoryDocstore = FAISS = DistanceStrategy = None
+    InMemoryDocstore = DistanceStrategy = None # FAISS REMOVED
 
     class Document:
         def __init__(self, page_content: str = "", metadata: dict | None = None):
@@ -83,24 +78,35 @@ class MemoryArea(Enum):
     INSTRUMENTS = "instruments"
 
 
-if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None:
+# if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None: # FAISS REMOVED
+if LC_AVAILABLE: # FAISS REMOVED
+    class MyFaiss: # FAISS REMOVED: This class is now a stub
+        def get_by_ids(self, ids: list[str], /) -> List[Document]:
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
 
-    class MyFaiss(FAISS):
-        def get_by_ids(self, ids: Sequence[str], /) -> List[Document]:
-            return [
-                self.docstore._dict[id]
-                for id in (ids if isinstance(ids, list) else [ids])
-                if id in self.docstore._dict
-            ]
-
-        async def aget_by_ids(self, ids: Sequence[str], /) -> List[Document]:
-            return self.get_by_ids(ids)
+        async def aget_by_ids(self, ids: list[str], /) -> List[Document]:
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
 
         def get_all_docs(self):
-            return self.docstore._dict
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
+
+        async def asearch(self, query: str, search_type: str, k: int, score_threshold: float, filter: Any):
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
+
+        async def adelete(self, ids: list[str]):
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
+
+        async def aadd_documents(self, documents: list[Document], ids: list[str]):
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
+
+        def save_local(self, folder_path: str):
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
+
+        @staticmethod
+        def load_local(folder_path: str, embeddings: Any, allow_dangerous_deserialization: bool, distance_strategy: Any, relevance_score_fn: Any):
+            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
 
 else:
-
     class MyFaiss:
         pass
 
@@ -125,19 +131,21 @@ class Memory:
         memory_subdir = agent.config.memory_subdir or "default"
         if SOMABRAIN_ENABLED:
             return Memory._get_soma(agent, memory_subdir)
-        if Memory.index.get(memory_subdir) is None:
-            log_item = agent.context.log.log(
-                type="util", heading=f"Initializing VectorDB in '/{memory_subdir}'"
-            )
-            db, _ = Memory.initialize(log_item, agent.config.embeddings_model, memory_subdir, False)
-            Memory.index[memory_subdir] = db
-            wrap = Memory(db, memory_subdir=memory_subdir)
-            if agent.config.knowledge_subdirs:
-                await wrap.preload_knowledge(
-                    log_item, agent.config.knowledge_subdirs, memory_subdir
-                )
-            return wrap
-        return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
+        # FAISS REMOVED: Local FAISS is deprecated.
+        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        # if Memory.index.get(memory_subdir) is None:
+        #     log_item = agent.context.log.log(
+        #         type="util", heading=f"Initializing VectorDB in '/{memory_subdir}'"
+        #     )
+        #     db, _ = Memory.initialize(log_item, agent.config.embeddings_model, memory_subdir, False)
+        #     Memory.index[memory_subdir] = db
+        #     wrap = Memory(db, memory_subdir=memory_subdir)
+        #     if agent.config.knowledge_subdirs:
+        #         await wrap.preload_knowledge(
+        #             log_item, agent.config.knowledge_subdirs, memory_subdir
+        #         )
+        #     return wrap
+        # return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
 
     @staticmethod
     async def get_by_subdir(
@@ -145,18 +153,20 @@ class Memory:
     ):
         if SOMABRAIN_ENABLED:
             return Memory._get_soma(None, memory_subdir)
-        if not Memory.index.get(memory_subdir):
-            import initialize
+        # FAISS REMOVED: Local FAISS is deprecated.
+        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        # if not Memory.index.get(memory_subdir):
+        #     import initialize
 
-            agent_config = initialize.initialize_agent()
-            db, _ = Memory.initialize(log_item, agent_config.embeddings_model, memory_subdir, False)
-            wrap = Memory(db, memory_subdir=memory_subdir)
-            if preload_knowledge and agent_config.knowledge_subdirs:
-                await wrap.preload_knowledge(
-                    log_item, agent_config.knowledge_subdirs, memory_subdir
-                )
-            Memory.index[memory_subdir] = db
-        return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
+        #     agent_config = initialize.initialize_agent()
+        #     db, _ = Memory.initialize(log_item, agent_config.embeddings_model, memory_subdir, False)
+        #     wrap = Memory(db, memory_subdir=memory_subdir)
+        #     if preload_knowledge and agent_config.knowledge_subdirs:
+        #         await wrap.preload_knowledge(
+        #             log_item, agent_config.knowledge_subdirs, memory_subdir
+        #         )
+        #     Memory.index[memory_subdir] = db
+        # return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
 
     @staticmethod
     async def reload(agent: Agent):
@@ -166,8 +176,10 @@ class Memory:
                 await Memory._remote_instances[memory_subdir].refresh()
                 return Memory._remote_instances[memory_subdir]
             return await Memory.get(agent)
-        Memory.index.pop(memory_subdir, None)
-        return await Memory.get(agent)
+        # FAISS REMOVED: Local FAISS is deprecated.
+        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        # Memory.index.pop(memory_subdir, None)
+        # return await Memory.get(agent)
 
     @staticmethod
     def initialize(
@@ -176,9 +188,8 @@ class Memory:
         memory_subdir: str,
         in_memory=False,
     ) -> tuple[MyFaiss, bool]:
-        PrintStyle.standard("Initializing VectorDB...")
-        if log_item:
-            log_item.stream(progress="\nInitializing VectorDB")
+        # DEPRECATED: Local VectorDB/FAISS is not supported
+        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
 
         em_dir = files.get_abs_path("memory/embeddings")
         db_dir = Memory._abs_db_dir(memory_subdir)
@@ -227,24 +238,6 @@ class Memory:
                     emb_ok = True
             if db and not emb_ok:
                 db = None
-
-        if not db:
-            if not FAISS_AVAILABLE:
-                raise RuntimeError(
-                    "Local FAISS library not installed. Set SOMABRAIN_ENABLED=true for remote memory."
-                )
-            index = faiss.IndexFlatIP(len(embedder.embed_query("example")))
-            db = MyFaiss(
-                embedding_function=embedder,
-                index=index,
-                docstore=(InMemoryDocstore() if LC_AVAILABLE and InMemoryDocstore else None),
-                index_to_docstore_id={},
-                distance_strategy=DistanceStrategy.COSINE,
-                relevance_score_fn=Memory._cosine_normalizer,
-            )
-            created = True
-
-        return db, created
 
     def __init__(self, db: MyFaiss, memory_subdir: str):
         self.db = db

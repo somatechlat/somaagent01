@@ -104,9 +104,72 @@ class TestAssetCritic:
         assert "Diagram content too small" in result.failed_criteria[0]
 
     @pytest.mark.asyncio
-    async def test_evaluate_score_warning(self, critic):
-        # Setup scenario where strict fail conditions aren't met, but score drops
-        # For now, heuristics are mostly pass/fail in current implementation code
-        # except score deduction logic which leads to FAIL if failed list populated.
-        # Let's verify behavior.
-        pass # Placeholder for testing complex scoring if implemented
+    async def test_evaluate_diagram_svg_parsing_valid(self, critic):
+        """Test that a valid SVG with enough elements passes."""
+        valid_svg = b"""
+        <svg height="100" width="100">
+          <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
+          <rect width="100" height="100" />
+          <path d="M 10 10 H 90 V 90 H 10 L 10 10" />
+        </svg>
+        """
+        asset = create_asset(
+            asset_type=AssetType.DIAGRAM,
+            format="svg",
+            size=len(valid_svg)
+        )
+        asset.content = valid_svg
+        rubric = AssetRubric()
+        
+        result = await critic.evaluate(asset, rubric)
+        
+        assert result.passed
+        assert result.score == 1.0
+
+    @pytest.mark.asyncio
+    async def test_evaluate_diagram_svg_parsing_sparse(self, critic):
+        """Test that an SVG with too few elements fails heuristic."""
+        # Pad with spaces to pass size check (>100 bytes)
+        padding = " " * 100
+        sparse_svg = f"""
+        <svg height="100" width="100">
+          <circle cx="50" cy="50" r="40" />
+          <!-- {padding} -->
+        </svg>
+        """.encode('utf-8')
+        
+        asset = create_asset(
+            asset_type=AssetType.DIAGRAM,
+            format="svg",
+            size=len(sparse_svg)
+        )
+        asset.content = sparse_svg
+        rubric = AssetRubric()
+        
+        result = await critic.evaluate(asset, rubric)
+        
+        # Should fail element count < 3 check (circle=1)
+        assert result.status == evaluation_status.FAILED
+        assert "Diagram has too few elements" in result.failed_criteria[0]
+        assert result.score == 0.5
+
+    @pytest.mark.asyncio
+    async def test_evaluate_diagram_svg_malformed(self, critic):
+        """Test handling of malformed SVG."""
+        # Pad to pass size check
+        padding = " " * 100
+        bad_svg = f"<svg>unclosed tag <!-- {padding} -->".encode('utf-8')
+        
+        asset = create_asset(
+            asset_type=AssetType.DIAGRAM,
+            format="svg",
+            size=len(bad_svg)
+        )
+        asset.content = bad_svg
+        rubric = AssetRubric()
+        
+        result = await critic.evaluate(asset, rubric)
+        
+        assert result.status == evaluation_status.FAILED
+        assert "Invalid SVG content" in result.failed_criteria[0]
+

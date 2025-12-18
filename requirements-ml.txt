@@ -5,8 +5,10 @@
 langchain-unstructured==0.1.6
 
 # Embeddings, vector search, tokenization (pulls torch via sentence-transformers)
-sentence-transformers==3.0.1
-faiss-cpu==1.11.0
+# DEPRECATED: FAISS is legacy (Agent Zero compat only). Use SomaBrain for memory.
+# sentence-transformers==3.0.1
+# faiss-cpu==1.11.0
+
 
 # Speech-to-text and audio processing
 faster-whisper==1.0.3

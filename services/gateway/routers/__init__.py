@@ -23,6 +23,7 @@ from . import (
     llm,
     memory_exports,
     memory_mutations,
+    multimodal,
     notifications,
     profiles,
     requeue,
@@ -86,6 +87,7 @@ def build_router() -> APIRouter:
         sessions.router,
         runtime_config.router,
         tasks.router,
+        multimodal.router,
     ):
         router.include_router(sub)
     return router
