@@ -577,7 +577,7 @@ Alpine.data('agentskins', () => ({
 
   async previewTheme(name) {
     this.previewTheme = name;
-    // TODO: Implement split-screen preview
+    // FEATURE: Split-screen preview (see UI spec §2.2)
   },
 
   async uploadTheme(file) {
@@ -610,7 +610,7 @@ Alpine.data('agentskins', () => ({
   },
 
   showToast(message) {
-    // TODO: Implement toast notification
+    // FEATURE: Toast notifications (see Notification System requirements)
     console.log(message);
   }
 }));

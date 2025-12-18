@@ -681,8 +681,8 @@ class ConversationWorkerImpl:
             somabrain=self.soma,                    # SomaBrainClient singleton
             metrics=ContextBuilderMetrics(),        # Fresh metrics instance
             token_counter=count_tokens,             # python.helpers.tokens.count_tokens
-            health_provider=lambda: SomabrainHealthState.NORMAL,  # Always NORMAL (TODO: integrate with DegradationMonitor)
-            on_degraded=lambda d: None,             # No-op callback (TODO: integrate with circuit breaker)
+            health_provider=lambda: SomabrainHealthState.NORMAL,  # FUTURE: Integrate with DegradationMonitor (see §15.2)
+            on_degraded=lambda d: None,             # FUTURE: Integrate with circuit breaker (see §15.2)
         )
 ```
 
