@@ -15,28 +15,6 @@ REQUIRE_AUTH = None
 _policy_client: PolicyClient | None = None
 
 
-class SomaBrainClient:
-    """SomaBrain client for constitution operations."""
-
-    def __init__(self):
-        self.regen_called = False
-
-    async def constitution_version(self):
-        return {"checksum": "abc123", "version": 7}
-
-    async def constitution_validate(self, payload):
-        return {"ok": True}
-
-    async def constitution_load(self, payload):
-        return {"loaded": True}
-
-    async def update_opa_policy(self):
-        self.regen_called = True
-
-    @classmethod
-    def get(cls):
-        return cls()
-
 
 async def _resolve_signing_key(header: dict) -> str:
     """Resolve signing key from JWT header."""

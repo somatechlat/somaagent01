@@ -16,7 +16,7 @@ The existing four‑week roadmap defines a solid end‑to‑end pipeline (retrie
 ## 2️⃣ Production‑Readiness Checklist
 | Area | Required Item | Current Status | Action to Reach ✅ |
 |------|---------------|----------------|-------------------|
-| **Code base** | `python/context_builder.py` exists and imports without errors | ✅ Implemented (stub) | Ensure full pipeline code is merged (see §3) |
+| **Code base** | `python/context_builder.py` exists and imports without errors | ✅ Implemented | Production implementation complete |
 | **Templates** | `templates/context_prompt.j2` present and renderable | ✅ Created | Add Jinja2 auto‑escape config and test rendering |
 | **Preload** | `preload.py` imports and instantiates `ContextBuilder` | ❌ Missing | Add import + singleton creation (see §3.7) |
 | **Dependencies** | All runtime packages listed in `requirements.txt` (presidio‑analyzer, presidio‑anonymizer, tiktoken, jinja2, httpx, prometheus‑client, fastapi, uvicorn) | ✅ Partially listed | Append missing `presidio-analyzer` and pin exact versions |
