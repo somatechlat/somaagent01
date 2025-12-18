@@ -59,7 +59,7 @@ import * as bus from "./event-bus.js";
 // }
 
 // Add this near the top of the scheduler.js file, outside of any function
-const showToast = function(message, type = 'info') {
+const showToast = function (message, type = 'info') {
     // Use new frontend notification system
     if (window.Alpine && window.Alpine.store && window.Alpine.store('notificationStore')) {
         const store = window.Alpine.store('notificationStore');
@@ -86,7 +86,7 @@ const showToast = function(message, type = 'info') {
 };
 
 // Define the full component implementation
-const fullComponentImplementation = function() {
+const fullComponentImplementation = function () {
     return {
         tasks: [],
         isLoading: true,
@@ -222,7 +222,7 @@ const fullComponentImplementation = function() {
                         if (t.startsWith('task.') || t === 'tool.result' || t === 'assistant.final') {
                             this.fetchTasks();
                         }
-                    } catch {}
+                    } catch { }
                 })
             );
 
@@ -230,7 +230,7 @@ const fullComponentImplementation = function() {
             this.$cleanup = () => {
                 console.log('Cleaning up schedulerSettings component');
                 if (Array.isArray(this._busUnsubs)) {
-                    this._busUnsubs.forEach((u) => { try { u(); } catch {} });
+                    this._busUnsubs.forEach((u) => { try { u(); } catch { } });
                     this._busUnsubs = [];
                 }
 
@@ -346,8 +346,8 @@ const fullComponentImplementation = function() {
         showTaskDetail(taskId) {
             const task = this.tasks.find(t => t.uuid === taskId);
             if (!task) {
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.notFound', 'Task not found'), 'error');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.notFound', 'Task not found'), 'error');
                 return;
             }
 
@@ -469,8 +469,8 @@ const fullComponentImplementation = function() {
         async startEditTask(taskId) {
             const task = this.tasks.find(t => t.uuid === taskId);
             if (!task) {
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.notFound', 'Task not found'), 'error');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.notFound', 'Task not found'), 'error');
                 return;
             }
 
@@ -541,7 +541,7 @@ const fullComponentImplementation = function() {
                     this.editingTask.token = '';
                 }
 
-                // Initialize plan stub for scheduled tasks to prevent undefined errors
+                // Initialize plan structure for scheduled tasks to prevent undefined errors
                 if (!this.editingTask.plan) {
                     this.editingTask.plan = {
                         todo: [],
@@ -558,7 +558,7 @@ const fullComponentImplementation = function() {
 
                 console.log('Setting token for adhoc task:', this.editingTask.token);
 
-                // Initialize plan stub for adhoc tasks to prevent undefined errors
+                // Initialize plan structure for adhoc tasks to prevent undefined errors
                 if (!this.editingTask.plan) {
                     this.editingTask.plan = {
                         todo: [],
@@ -801,8 +801,8 @@ const fullComponentImplementation = function() {
                 const responseData = await response.json();
 
                 // Show success message
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(this.isCreating ? t('scheduler.created', 'Task created successfully') : t('scheduler.updated', 'Task updated successfully'), 'success');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(this.isCreating ? t('scheduler.created', 'Task created successfully') : t('scheduler.updated', 'Task updated successfully'), 'success');
 
                 // Immediately update the UI if the response includes the task
                 if (responseData && responseData.task) {
@@ -868,8 +868,8 @@ const fullComponentImplementation = function() {
                 document.querySelector('[x-data="schedulerSettings"]')?.removeAttribute('data-editing-state');
             } catch (error) {
                 console.error('Error saving task:', error);
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.saveError', 'Failed to save task: ') + error.message, 'error');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.saveError', 'Failed to save task: ') + error.message, 'error');
             }
         },
 
@@ -892,15 +892,15 @@ const fullComponentImplementation = function() {
                     throw new Error(errorData.error || 'Failed to run task');
                 }
 
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.startSuccess', 'Task started successfully'), 'success');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.startSuccess', 'Task started successfully'), 'success');
 
                 // Refresh task list
                 this.fetchTasks();
             } catch (error) {
                 console.error('Error running task:', error);
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.runError', 'Failed to run task: ') + error.message, 'error');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.runError', 'Failed to run task: ') + error.message, 'error');
             }
         },
 
@@ -909,15 +909,15 @@ const fullComponentImplementation = function() {
             try {
                 const task = this.tasks.find(t => t.uuid === taskId);
                 if (!task) {
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.notFound', 'Task not found'), 'error');
+                    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                    showToast(t('scheduler.notFound', 'Task not found'), 'error');
                     return;
                 }
 
                 // Check if task is already in idle state
                 if (task.state === 'idle') {
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.alreadyIdle', 'Task is already in idle state'), 'info');
+                    const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                    showToast(t('scheduler.alreadyIdle', 'Task is already in idle state'), 'info');
                     return;
                 }
 
@@ -941,16 +941,16 @@ const fullComponentImplementation = function() {
                     throw new Error(errorData.error || 'Failed to reset task state');
                 }
 
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.resetState', 'Task state reset to idle'), 'success');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.resetState', 'Task state reset to idle'), 'success');
 
                 // Refresh task list
                 await this.fetchTasks();
                 this.showLoadingState = false;
             } catch (error) {
                 console.error('Error resetting task state:', error);
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.resetError', 'Failed to reset task state: ') + error.message, 'error');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.resetError', 'Failed to reset task state: ') + error.message, 'error');
                 this.showLoadingState = false;
             }
         },
@@ -983,8 +983,8 @@ const fullComponentImplementation = function() {
                     throw new Error(errorData.error || 'Failed to delete task');
                 }
 
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.deleteSuccess', 'Task deleted successfully'), 'success');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.deleteSuccess', 'Task deleted successfully'), 'success');
 
                 // If we were viewing the detail of the deleted task, close the detail view
                 if (this.selectedTaskForDetail && this.selectedTaskForDetail.uuid === taskId) {
@@ -998,8 +998,8 @@ const fullComponentImplementation = function() {
                 this.updateTasksUI();
             } catch (error) {
                 console.error('Error deleting task:', error);
-        const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
-        showToast(t('scheduler.deleteError', 'Failed to delete task: ') + error.message, 'error');
+                const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
+                showToast(t('scheduler.deleteError', 'Failed to delete task: ') + error.message, 'error');
             }
         },
 
@@ -1324,7 +1324,7 @@ const fullComponentImplementation = function() {
                     theme: "scheduler-theme",
                     allowInput: true,
                     positionElement: wrapper, // Position relative to wrapper
-                    onOpen: function(selectedDates, dateStr, instance) {
+                    onOpen: function (selectedDates, dateStr, instance) {
                         // Ensure calendar is properly positioned and visible
                         instance.calendarContainer.style.zIndex = '9999';
                         instance.calendarContainer.style.position = 'absolute';
@@ -1335,7 +1335,7 @@ const fullComponentImplementation = function() {
                         instance.calendarContainer.classList.add('scheduler-theme');
                     },
                     // Set default date to 30 minutes from now if no date selected
-                    onReady: function(selectedDates, dateStr, instance) {
+                    onReady: function (selectedDates, dateStr, instance) {
                         if (!dateStr) {
                             const now = new Date();
                             now.setMinutes(now.getMinutes() + 30);
@@ -1345,7 +1345,7 @@ const fullComponentImplementation = function() {
                 };
 
                 // Merge options
-                const mergedOptions = {...defaultOptions, ...options};
+                const mergedOptions = { ...defaultOptions, ...options };
 
                 // Initialize flatpickr
                 const fp = flatpickr(input, mergedOptions);
@@ -1440,15 +1440,15 @@ if (!window.schedulerSettings) {
     const originalSchedulerSettings = window.schedulerSettings;
 
     // Replace with enhanced version that merges the pre-initialized stub with the full implementation
-    window.schedulerSettings = function() {
+    window.schedulerSettings = function () {
         // Get the base pre-initialized component
         const baseComponent = originalSchedulerSettings();
 
         // Create a backup of the original init function
-        const originalInit = baseComponent.init || function() {};
+        const originalInit = baseComponent.init || function () { };
 
         // Create our enhanced init function that adds the missing functionality
-        baseComponent.init = function() {
+        baseComponent.init = function () {
             // Call the original init if it exists
             originalInit.call(this);
 
@@ -1490,7 +1490,7 @@ if (!window.schedulerSettings) {
             // Make sure attachmentsText getter/setter are defined
             if (!Object.getOwnPropertyDescriptor(this, 'attachmentsText')?.get) {
                 Object.defineProperty(this, 'attachmentsText', {
-                    get: function() {
+                    get: function () {
                         // Ensure we always have an array to work with
                         const attachments = Array.isArray(this.editingTask?.attachments)
                             ? this.editingTask.attachments
@@ -1499,7 +1499,7 @@ if (!window.schedulerSettings) {
                         // Join array items with newlines
                         return attachments.join('\n');
                     },
-                    set: function(value) {
+                    set: function (value) {
                         if (!this.editingTask) {
                             this.editingTask = { attachments: [] };
                         }
@@ -1517,7 +1517,7 @@ if (!window.schedulerSettings) {
 
             // Add methods for updating filteredTasks directly
             if (typeof this.updateFilteredTasks !== 'function') {
-                this.updateFilteredTasks = function() {
+                this.updateFilteredTasks = function () {
                     // Make sure we have tasks to filter
                     if (!Array.isArray(this.tasks)) {
                         this.filteredTasks = [];
@@ -1635,7 +1635,7 @@ if (window.Alpine) {
 }
 
 // Add a document ready event handler to ensure the scheduler tab can be clicked on first load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('DOMContentLoaded - setting up scheduler tab click handler');
     // Setup scheduler tab click handling
     const setupSchedulerTab = () => {
@@ -1646,7 +1646,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Create a global event listener for clicks on the scheduler tab
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             // Find if the click was on the scheduler tab or its children
             const schedulerTab = e.target.closest('.settings-tab[title="Task Scheduler"]');
             if (!schedulerTab) return;
