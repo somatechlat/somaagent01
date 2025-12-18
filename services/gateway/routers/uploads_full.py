@@ -254,10 +254,9 @@ class TUSUploadHandler:
                 else:
                     raise RuntimeError(scan_result.error_message or "clamav_unavailable")
             elif scan_result.status == ScanStatus.SCAN_PENDING:
-                 # What to do if pending? Assume clean or error? 
-                 # Given current logic, we probably treat as error-ish or bypass if not critical.
-                 # Let's trust ClamAVScanner returns explicit status.
-                 pass
+                # Quarantine with pending status until scan completes
+                status = "quarantined"
+                reason = "antivirus_scan_in_progress"
 
         att_id = await self._store.create(
             tenant=sess.tenant_id,

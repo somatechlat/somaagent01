@@ -35,13 +35,13 @@ async def get_chat_session(
     """Fetch chat session metadata (minimal example to start decomposition)."""
     try:
         await ensure_session_schema(store)
-        session = await store.get(session_id)
-        if session is None:
+        envelope = await store.get_envelope(session_id)
+        if envelope is None:
             raise HTTPException(status_code=404, detail="session_not_found")
         return {
             "session_id": session_id,
-            "persona_id": session.persona_id,
-            "tenant": session.tenant,
+            "persona_id": envelope.persona_id,
+            "tenant": envelope.tenant,
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"session_error: {type(exc).__name__}")

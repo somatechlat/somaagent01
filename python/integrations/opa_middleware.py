@@ -38,7 +38,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
         # previous behaviour where the service being unavailable would not block
         # the request. This can be overridden via the ``SA01_OPA_FAIL_OPEN``
         # environment variable ("true"/"1" enables fail‑open).
-        env_fail_open = (cfg.env("SA01_OPA_FAIL_OPEN", "true") or "true").lower()
+        env_fail_open = (cfg.env("SA01_OPA_FAIL_OPEN", "false") or "false").lower()
         self.fail_open = env_fail_open in {"true", "1", "yes", "on"}
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
@@ -97,17 +97,8 @@ def enforce_policy() -> EnforcePolicy:  # pragma: no cover – thin wrapper
     # FastAPI will pass the app when adding middleware; returning the class is fine
     return EnforcePolicy  # type: ignore[return-value]
 
-    return EnforcePolicy  # type: ignore[return-value]
 
 
-def opa_client():
-    """Return a no‑op client placeholder.
-
-    The original module exported ``opa_client`` but the implementation was
-    missing, leading to an undefined‑name lint error. Providing this stub
-    satisfies imports without adding runtime behavior.
-    """
-    return None
 
 
-__all__ = ["enforce_policy", "EnforcePolicy", "opa_client"]
+__all__ = ["enforce_policy", "EnforcePolicy"]
