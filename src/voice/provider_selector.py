@@ -1,11 +1,9 @@
 """Factory for selecting the appropriate voice provider implementation.
 
-The real implementation will eventually instantiate either :class:`OpenAIClient`
-or :class:`LocalClient` based on the ``voice.provider`` field from the global
-configuration model (:class:`src.core.config.models.VoiceConfig`).  For the
-purpose of incremental development we provide lightweight stub classes with the
-expected public interface so that the rest of the codebase can import them without
-runtime errors.
+Selects and instantiates either :class:`OpenAIClient` or :class:`LocalClient` 
+based on the ``voice.provider`` field from the global configuration model 
+(:class:`src.core.config.models.VoiceConfig`). All providers implement the 
+:class:`_BaseClient` protocol for type safety.
 
 All errors are expressed via :class:`ProviderNotSupportedError` defined in
 ``src.voice.exceptions``.
