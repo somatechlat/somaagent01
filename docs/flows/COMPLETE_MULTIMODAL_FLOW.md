@@ -77,7 +77,7 @@ sequenceDiagram
     Gateway->>Kafka: 4. PUBLISH file.uploaded event
     Gateway-->>User: 200 OK {id, sha256, download_url}
     
-    User->>Gateway: 5. POST /v1/session/message<br/>{message: "What's in this image?",<br/> attachments: ["att-123"]}
+    User->>Gateway: 5. POST /v1/sessions/message<br/>{message: "What's in this image?",<br/> attachments: ["att-123"]}
     Gateway->>PostgreSQL: 6. INSERT user message event<br/>WITH attachments array
     Gateway->>Kafka: 7. PUBLISH conversation.inbound<br/>{message, attachments: ["att-123"]}
     Gateway-->>User: 200 OK {session_id, event_id}
@@ -245,7 +245,7 @@ sequenceDiagram
             STT-->>WS: {type: "transcript", text: "Hello"}
             WS-->>Browser: Transcription result
             
-            Browser->>Gateway: POST /v1/session/message<br/>{message: "Hello", source: "voice"}
+            Browser->>Gateway: POST /v1/sessions/message<br/>{message: "Hello", source: "voice"}
             Gateway->>Kafka: conversation.inbound
         end
     end
@@ -401,7 +401,7 @@ async def execute(self, input: ProcessMessageInput):
 
 | Input Type | Protocol | Endpoint | Storage | Processing | Output |
 |------------|----------|----------|---------|------------|--------|
-| **Text** | HTTP POST | /v1/session/message | event_log (JSONB) | Text-only LLM | Text response |
+| **Text** | HTTP POST | /v1/sessions/message | event_log (JSONB) | Text-only LLM | Text response |
 | **File** | TUS/HTTP | /v1/uploads(/tus) | attachments (BYTEA) | ClamAV scan | Stored ref |
 | **Image** | TUS + POST | /uploads + /message | attachments (BYTEA) | Vision LLM | Image description |
 | **Voice (STT)** | WebSocket | /v1/speech/realtime/ws | Transcribed to text | gpt-4o-realtime | Text message |

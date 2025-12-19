@@ -11,7 +11,7 @@ Specialist in event propagation and real-time data flow.
 
 ## Key Endpoints
 - `/v1/sessions/{id}/events?stream=true`
-- `/v1/session/message`
+- `/v1/sessions/message`
 
 ## Monitoring
 - `gateway_sse_connections`

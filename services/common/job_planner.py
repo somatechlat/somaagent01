@@ -611,6 +611,51 @@ class JobPlanner:
         finally:
             await conn.close()
 
+    async def claim_next_pending(self) -> Optional[JobPlan]:
+        """Atomically claim the next pending plan for execution.
+
+        Uses SELECT ... FOR UPDATE SKIP LOCKED to avoid double-claiming
+        across multiple workers.
+
+        Returns:
+            JobPlan marked as RUNNING, or None if no pending plans.
+        """
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    SELECT * FROM multimodal_job_plans
+                    WHERE status = $1
+                    ORDER BY created_at ASC
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT 1
+                    """,
+                    JobStatus.PENDING.value,
+                )
+                if not row:
+                    return None
+
+                await conn.execute(
+                    """
+                    UPDATE multimodal_job_plans
+                    SET status = $2,
+                        started_at = COALESCE(started_at, NOW()),
+                        updated_at = NOW()
+                    WHERE id = $1
+                    """,
+                    row["id"],
+                    JobStatus.RUNNING.value,
+                )
+
+                plan = self._row_to_plan(row)
+                plan.status = JobStatus.RUNNING
+                if not plan.started_at:
+                    plan.started_at = datetime.now()
+                return plan
+        finally:
+            await conn.close()
+
     def _row_to_plan(self, row: asyncpg.Record) -> JobPlan:
         """Convert database row to JobPlan.
         

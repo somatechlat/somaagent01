@@ -18,7 +18,7 @@ async def speech_realtime_ws(ws: WebSocket):
         await ws.close()
 
 
-@router.websocket("/v1/session/{session_id}/stream")
+@router.websocket("/v1/sessions/{session_id}/stream")
 async def session_stream(ws: WebSocket, session_id: str):
     await ws.accept()
     try:

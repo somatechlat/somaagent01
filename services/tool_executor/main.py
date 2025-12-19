@@ -43,6 +43,7 @@ from services.tool_executor.result_publisher import ResultPublisher
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.tool_executor.tool_registry import ToolRegistry
+from services.tool_executor.multimodal_executor import MultimodalExecutor
 from src.core.config import cfg
 
 setup_logging()
@@ -76,6 +77,8 @@ class ToolExecutor:
         self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         self.streams = get_stream_config()
         self._audit_store: _AuditStore | None = None
+        self._multimodal_task: asyncio.Task | None = None
+        self._multimodal_executor: MultimodalExecutor | None = None
 
         # Initialize handlers
         self._request_handler = RequestHandler(self)
@@ -121,6 +124,23 @@ class ToolExecutor:
             await self.get_audit_store().ensure_schema()
         except Exception:
             LOGGER.debug("Audit store schema ensure failed (tool-executor)", exc_info=True)
+
+        # Multimodal job executor (polling pending plans)
+        if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+            try:
+                self._multimodal_executor = MultimodalExecutor(dsn=cfg.settings().database.dsn)
+                await self._multimodal_executor.initialize()
+                poll_raw = cfg.env("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
+                try:
+                    poll_interval = float(poll_raw)
+                except ValueError:
+                    poll_interval = 2.0
+                self._multimodal_task = asyncio.create_task(
+                    self._multimodal_executor.run_pending(poll_interval=poll_interval)
+                )
+                LOGGER.info("Multimodal executor started (poll_interval=%s)", poll_interval)
+            except Exception:
+                LOGGER.exception("Failed to start multimodal executor loop")
 
         # Start consuming
         await self.bus.consume(

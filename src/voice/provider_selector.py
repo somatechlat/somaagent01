@@ -28,7 +28,7 @@ class _BaseClient(Protocol):
     The concrete clients must implement an async ``process`` method that accepts
     an async generator of raw PCM bytes and returns an async generator yielding
     response objects (the exact type is provider‑specific).  This protocol is
-    deliberately minimal to keep the stub implementation simple.
+    deliberately minimal to keep the provider contract focused and stable.
     """
 
     async def process(self, audio_stream: "AsyncGenerator[bytes, None]") -> "AsyncGenerator[object, None]":

@@ -22,7 +22,7 @@ This document defines the RBAC matrix for SomaAgent01, specifying permissions fo
 |----------|-------|------|------------|-------|----------|
 | `GET /v1/health` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `GET /v1/healthz` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `POST /v1/session/message` | ❌ | ✅ | ✅ | ✅ | ❌ |
+| `POST /v1/sessions/message` | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `GET /v1/sessions/{id}/events` | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `GET /v1/sessions/{id}/history` | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `DELETE /v1/sessions/{id}` | ❌ | ✅ | ✅ | ✅ | ❌ |
@@ -94,7 +94,7 @@ allow {
 
 # Allow authenticated users to send messages
 allow {
-    input.path == "/v1/session/message"
+    input.path == "/v1/sessions/message"
     input.method == "POST"
     input.user.role in ["user", "power_user", "admin"]
 }

@@ -891,18 +891,10 @@
         }
 
         async function createSession() {
-            try {
-                const res = await fetch('http://127.0.0.1:21016/v1/sessions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: 'New Chat' })
-                });
-                const data = await res.json();
-                currentSessionId = data.id;
-                console.log('Session created:', currentSessionId);
-            } catch (err) {
-                console.error('Failed to create session:', err);
+            if (!currentSessionId) {
+                currentSessionId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
             }
+            return currentSessionId;
         }
 
         async function sendChatMessage() {
@@ -924,7 +916,13 @@
             }
 
             try {
-                eventSource = new EventSource(`http://127.0.0.1:21016/v1/sessions/${currentSessionId}/chat?message=${encodeURIComponent(message)}`);
+                await fetch('http://127.0.0.1:21016/v1/sessions/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId, message })
+                });
+
+                eventSource = new EventSource(`http://127.0.0.1:21016/v1/sessions/${currentSessionId}/events?stream=true`);
 
                 let agentMessage = '';
                 let agentBubble = null;

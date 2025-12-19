@@ -571,16 +571,23 @@ class ContextBuilder:
             "```json\n"
             "{\n"
             '  "multimodal_plan": {\n'
+            '    "version": "1.0",\n'
             '    "tasks": [\n'
             "      {\n"
+            '        "task_id": "step_00",\n'
             '        "step_type": "generate_image",\n'
             '        "modality": "image",\n'
+            '        "depends_on": [],\n'
             '        "params": {\n'
             '          "prompt": "Detailed description of the image to generate",\n'
-            '          "aspect_ratio": "16:9"\n'
-            "        }\n"
+            '          "format": "png",\n'
+            '          "dimensions": {"width": 1920, "height": 1080}\n'
+            "        },\n"
+            '        "constraints": {"max_cost_cents": 50},\n'
+            '        "quality_gate": {"enabled": true, "min_score": 0.7, "max_reworks": 2}\n'
             "      }\n"
-            "    ]\n"
+            "    ],\n"
+            '    "budget": {"max_cost_cents": 500}\n'
             "  }\n"
             "}\n"
             "```\n\n"

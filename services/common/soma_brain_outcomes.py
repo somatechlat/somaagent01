@@ -1,4 +1,4 @@
-"""SomaBrain Client for recording execution outcomes.
+"""SomaBrain outcomes store for recording execution outcomes.
 
 Provides an interface to send multimodal task execution data to SomaBrain (learning system).
 Stores outcomes directly in PostgreSQL for learning and portfolio ranking.
@@ -10,7 +10,7 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
@@ -19,7 +19,7 @@ import asyncpg
 
 from src.core.config import cfg
 
-__all__ = ["SomaBrainClient", "MultimodalOutcome"]
+__all__ = ["SomaBrainOutcomesStore", "MultimodalOutcome"]
 
 logger = logging.getLogger(__name__)
 
@@ -58,15 +58,15 @@ class MultimodalOutcome:
             self.timestamp = datetime.now().astimezone().isoformat()
 
 
-class SomaBrainClient:
-    """Client for interacting with SomaBrain learning system.
+class SomaBrainOutcomesStore:
+    """Store for multimodal outcomes used by the SomaBrain learning system.
     
     Stores execution outcomes in PostgreSQL for learning and portfolio ranking.
     VIBE COMPLIANT: Uses database, no file storage.
     """
 
     def __init__(self, dsn: Optional[str] = None) -> None:
-        """Initialize client with database connection.
+        """Initialize store with database connection.
         
         Args:
             dsn: PostgreSQL connection string. Defaults to cfg.settings().database.dsn
@@ -195,4 +195,3 @@ class SomaBrainClient:
         if self._pool:
             await self._pool.close()
             self._pool = None
-

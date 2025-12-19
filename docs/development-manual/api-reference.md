@@ -14,14 +14,14 @@ http://localhost:${GATEWAY_PORT:-21016}
 
 ```bash
 curl -H "Authorization: Bearer <jwt-token>" \
-  http://localhost:${GATEWAY_PORT:-21016}/v1/session/message
+  http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/message
 ```
 
 ### API Key
 
 ```bash
 curl -H "Authorization: Bearer sk-soma-<key>" \
-  http://localhost:${GATEWAY_PORT:-21016}/v1/session/message
+  http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/message
 ```
 
 ## Endpoints
@@ -45,7 +45,7 @@ Check service health.
 
 ### Start a Session (first message)
 
-**POST** `/v1/session/message`
+**POST** `/v1/sessions/message`
 
 Send the first message with `session_id` omitted or null to create a session.
 
@@ -69,7 +69,7 @@ Send the first message with `session_id` omitted or null to create a session.
 
 ### Send Message
 
-**POST** `/v1/session/message`
+**POST** `/v1/sessions/message`
 
 Send a message to the agent.
 
@@ -255,7 +255,7 @@ The UI uses Server-Sent Events for streaming responses.
 ### Subscribe
 
 ```javascript
-const es = new EventSource(`http://localhost:${GATEWAY_PORT || 21016}/v1/session/${sessionId}/events`);
+const es = new EventSource(`http://localhost:${GATEWAY_PORT || 21016}/v1/sessions/${sessionId}/events`);
 es.onmessage = (evt) => {
   const payload = JSON.parse(evt.data);
   // Handle assistant/tool/util events
@@ -365,7 +365,7 @@ curl -L http://localhost:${GATEWAY_PORT:-21016}/v1/memory/export/jobs/$JOB_ID/do
 
 | Endpoint | Limit | Window |
 |----------|-------|--------|
-| `/v1/session/message` | 60 requests | 1 minute |
+| `/v1/sessions/message` | 60 requests | 1 minute |
 | `/v1/memory/search` | 100 requests | 1 minute |
 | `/v1/uploads` | 10 requests | 1 minute |
 | All others | 300 requests | 1 minute |
@@ -468,13 +468,13 @@ console.log(response.content);
 
 ```bash
 # 1. Create session
-SESSION_ID=$(curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/session/message \
+SESSION_ID=$(curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/message \
   -H "Content-Type: application/json" \
   -d '{"message":"Hello"}' \
   | jq -r '.session_id')
 
 # 2. Send message
-curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/session/message \
+curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/message \
   -H "Content-Type: application/json" \
   -d "{\"session_id\":\"$SESSION_ID\",\"message\":\"What is 2+2?\"}" \
   | jq '.response'
@@ -497,7 +497,7 @@ ATT_ID=$(curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/uploads \
   | jq -r '.[0].id')
 
 # 2. Query document
-curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/session/message \
+curl -X POST http://localhost:${GATEWAY_PORT:-21016}/v1/sessions/message \
   -H "Content-Type: application/json" \
   -d "{\"session_id\":\"$SESSION_ID\",\"message\":\"Summarize the document\",\"attachments\":[\"$ATT_ID\"]}"
 ```

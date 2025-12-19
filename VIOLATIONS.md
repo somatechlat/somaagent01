@@ -216,8 +216,8 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Rule**: Architecture duplication (SSE endpoint duplication)
 - **File**: `src/gateway/routers/sse.py`, `services/gateway/routers/sessions.py`
 - **Location**: `src/gateway/routers/sse.py:38-75`, `services/gateway/routers/sessions.py:22,89-113`
-- **Finding**: Two independent implementations expose the same SSE endpoint path `/v1/session/{session_id}/events` with different backends (Kafka consumer vs Postgres polling). This duplicates effort and can produce inconsistent semantics, scaling behaviour, and operational flags.
-- **Evidence**: `@router.get("/v1/session/{session_id}/events")` (Kafka) vs `router = APIRouter(prefix="/v1/session"...); @router.get("/{session_id}/events")` (Postgres SSE via `stream=true`).
+- **Finding**: Two independent implementations expose the same SSE endpoint path `/v1/sessions/{session_id}/events` with different backends (Kafka consumer vs Postgres polling). This duplicates effort and can produce inconsistent semantics, scaling behaviour, and operational flags.
+- **Evidence**: `@router.get("/v1/sessions/{session_id}/events")` (Kafka) vs `router = APIRouter(prefix="/v1/sessions"...); @router.get("/{session_id}/events")` (Postgres SSE via `stream=true`).
 - **Suggested fix**: Choose ONE canonical streaming source for session events (Kafka OR Postgres polling), delete/disable the other endpoint, and standardize feature flags (currently `SA01_SSE_ENABLED` exists in one path but not the other).
 
 #### VCR-2025-12-18-023
@@ -255,3 +255,32 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Finding**: Multiple classes named `SomaBrainClient` exist across layers with different responsibilities (auth/constitution, HTTP API wrapper, compatibility alias, and DB-backed multimodal outcomes). This duplicates effort and creates high risk of importing the wrong client in production code.
 - **Evidence**: Same class name appears in multiple modules with different behaviour and storage backends.
 - **Suggested fix**: Rename clients by responsibility (e.g., `SomabrainHttpClient`, `SomabrainOutcomesStore`, `ConstitutionClient`) and enforce a single import path per responsibility via the repository/provider layer.
+
+### 2025-12-19 — Sweep #2 (targeted fixes)
+
+#### VCR-2025-12-19-001
+- **Date**: 2025-12-19
+- **Rule**: Rule 1 — NO BULLSHIT (broken control flow)
+- **File**: `services/gateway/routers/uploads_full.py`
+- **Location**: `TUSUploadHandler.finalize_upload` / `delete_upload`
+- **Finding**: The finalize path returned without persisting an attachment because the hashing/scan/storage block was accidentally moved under `delete_upload`, where it referenced undefined variables.
+- **Evidence**: `sha256_hex = hashlib.sha256(content).hexdigest()` inside `delete_upload` with no `content` in scope.
+- **Suggested fix**: Move hash/scan/persist logic back into `finalize_upload`, keep `delete_upload` as a pure cleanup method, and ensure SCAN_PENDING is explicitly handled.
+
+#### VCR-2025-12-19-002
+- **Date**: 2025-12-19
+- **Rule**: Rule 5 — DOCUMENTATION = TRUTH
+- **File**: `ONBOARDING_AGENT.md`
+- **Location**: Gateway & Routers file lists
+- **Finding**: Documentation still listed `services/gateway/routers/sessions_full.py` after the router was removed, creating a mismatch between doc and code.
+- **Evidence**: `services/gateway/routers/sessions_full.py` referenced in two catalog sections.
+- **Suggested fix**: Remove the stale reference and update file counts to reflect the canonical `services/gateway/routers/sessions.py` only.
+
+#### VCR-2025-12-19-003
+- **Date**: 2025-12-19
+- **Rule**: Rule 1 — NO mocks / NO fakes / NO stubs (tests)
+- **File**: `tests/` (multiple)
+- **Location**: N/A (multiple files)
+- **Finding**: The test suite relied on mock frameworks, monkeypatch fixtures, fake providers, and stub classes, which violates the VIBE rule scope for this project.
+- **Evidence**: `tests/` contained `monkeypatch`, `unittest.mock`, `MagicMock`, `AsyncMock`, `respx`, and fake/stub class usage across unit/integration tests.
+- **Suggested fix**: Remove all test files that include mocks/fakes/stubs and reintroduce only real-infra integration tests where needed.

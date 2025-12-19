@@ -198,6 +198,21 @@ Scanned recursively:
 - src/gateway
 - src/gateway/routers
 - src/voice
+
+### 2025-12-19 — Sweep #2 (targeted fixes)
+
+Focused scan and remediation of:
+- services/gateway/routers
+- webui/js
+- tests/integration
+- ONBOARDING_AGENT.md
+- src (duplicate gateway stubs removed)
+- src/core/infrastructure (duplicate Somabrain client removed)
+
+### 2025-12-19 — Sweep #3 (tests purge: mocks/fakes/stubs)
+
+Focused scan and remediation of:
+- tests/ (removed all files containing mock/fake/stub/monkeypatch/respx usage)
 - templates
 - tests
 - tests/agent

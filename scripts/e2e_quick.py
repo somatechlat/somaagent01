@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Minimal end-to-end check:
-- POST /v1/session/message
+- POST /v1/sessions/message
 - Open SSE /v1/sessions/{id}/events?stream=true
 - Print first assistant event snippet then exit 0
 
@@ -34,12 +34,12 @@ async def main() -> int:
     base = _get_base_url()
     async with httpx.AsyncClient(timeout=10.0) as client:
         r = await client.post(
-            base + "/v1/session/message",
+            base + "/v1/sessions/message",
             headers={"Content-Type": "application/json"},
             json={"message": "hello from e2e_quick.py"},
         )
         if not r.is_success:
-            print("POST /v1/session/message failed:", r.status_code, r.text[:200])
+            print("POST /v1/sessions/message failed:", r.status_code, r.text[:200])
             return 2
         data = {}
         try:

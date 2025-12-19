@@ -112,7 +112,7 @@ async def test_error_normalization_read_upgrade(store: PostgresSessionStore):
 @pytest.mark.asyncio
 async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
     # This test assumes gateway streaming endpoint transforms tokens to assistant.delta and final
-    # We invoke a minimal /v1/session/message then read SSE for a short duration.
+    # We invoke a minimal /v1/sessions/message then read SSE for a short duration.
     sid = str(uuid.uuid4())
     message_body = {
         "session_id": sid,
@@ -122,7 +122,7 @@ async def test_stream_transform_canonical_mode(store: PostgresSessionStore):
     }
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.post(f"{GATEWAY_BASE}/v1/session/message", json=message_body)
+            resp = await client.post(f"{GATEWAY_BASE}/v1/sessions/message", json=message_body)
         assert resp.status_code == 200
     except Exception:
         pytest.skip("gateway not reachable for stream test")

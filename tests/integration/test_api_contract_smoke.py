@@ -10,7 +10,7 @@ from services.gateway import main as gateway_main
 @pytest.mark.asyncio
 async def test_sse_api_contract_smoke():
     """API contract smoke:
-    - POST /v1/session/message to create/queue a message
+    - POST /v1/sessions/message to create/queue a message
     - Open SSE /v1/sessions/{id}/events?stream=true and assert we observe an assistant event
 
     Notes: This is a smoke test intended for local/dev runs where the Gateway and workers
@@ -25,13 +25,13 @@ async def test_sse_api_contract_smoke():
         async with httpx.AsyncClient(timeout=10.0) as client:
             payload = {"message": "smoke-test: hello from pytest"}
             r = await client.post(
-                f"{BASE}/v1/session/message", headers={"Content-Type": "application/json"}, json=payload
+                f"{BASE}/v1/sessions/message", headers={"Content-Type": "application/json"}, json=payload
             )
             assert r.status_code in (
                 200,
                 201,
                 202,
-            ), f"POST /v1/session/message failed: {r.status_code} {r.text[:200]}"
+            ), f"POST /v1/sessions/message failed: {r.status_code} {r.text[:200]}"
             data = r.json()
             session_id = data.get("session_id") or data.get("id") or data.get("session")
             assert session_id, f"No session_id in response: {data}"
@@ -71,7 +71,7 @@ async def test_sse_api_contract_smoke():
         transport = httpx.ASGITransport(app=gateway_main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=10.0) as client:
             payload = {"message": "smoke-test: hello from pytest"}
-            r = await client.post("/v1/session/message", json=payload)
+            r = await client.post("/v1/sessions/message", json=payload)
             assert r.status_code in (200, 201, 202), f"POST failed: {r.status_code} {r.text[:200]}"
             data = r.json()
             session_id = data.get("session_id") or data.get("id") or data.get("session")

@@ -45,7 +45,7 @@ export function start(sessionId) {
   currentSessionId = sessionId;
   close();
 
-  const url = `/v1/session/${encodeURIComponent(sessionId)}/events?stream=true`;
+  const url = `/v1/sessions/${encodeURIComponent(sessionId)}/events?stream=true`;
   try {
     sse = new EventSource(url);
   } catch (e) {

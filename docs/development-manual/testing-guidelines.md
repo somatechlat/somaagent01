@@ -253,7 +253,7 @@ async def test_message_processing_end_to_end():
     async with httpx.AsyncClient() as client:
         # Start a session by sending the first message (session created if omitted)
         response = await client.post(
-          f"http://localhost:{int(os.getenv('GATEWAY_PORT', '21016'))}/v1/session/message",
+          f"http://localhost:{int(os.getenv('GATEWAY_PORT', '21016'))}/v1/sessions/message",
           json={"session_id": None, "message": "What is 2+2?"}
         )
         
@@ -297,7 +297,7 @@ export let options = {
 
 export default function () {
   let response = http.post(
-    `http://localhost:${__ENV.GATEWAY_PORT || 21016}/v1/session/message`,
+    `http://localhost:${__ENV.GATEWAY_PORT || 21016}/v1/sessions/message`,
     JSON.stringify({ message: 'Hello' }),
     { headers: { 'Content-Type': 'application/json' } }
   );

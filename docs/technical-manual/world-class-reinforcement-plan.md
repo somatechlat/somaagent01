@@ -297,7 +297,7 @@ class ConversationUser(HttpUser):
     @task(3)
     def send_message(self):
         """Simulate conversation message."""
-        self.client.post("/v1/session/message", json={
+        self.client.post("/v1/sessions/message", json={
             "session_id": self.session_id,
             "message": "Analyze this data...",
             "metadata": {}
@@ -397,8 +397,8 @@ class RegressionDetector:
     """Real regression detection - no mocks."""
     
     BUDGETS = {
-        "/v1/session/message": PerformanceBudget(
-            endpoint="/v1/session/message",
+        "/v1/sessions/message": PerformanceBudget(
+            endpoint="/v1/sessions/message",
             p50_ms=500,
             p95_ms=2000,
             p99_ms=5000,

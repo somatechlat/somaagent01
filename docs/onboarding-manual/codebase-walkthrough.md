@@ -14,7 +14,7 @@ See [Project Context](./project-context.md) for the complete structure.
 
 ## Code Flow
 1. User sends message via UI
-2. Gateway receives POST `/v1/session/message`
+2. Gateway receives POST `/v1/sessions/message`
 3. Message published to Kafka
 4. Conversation worker processes message
 5. LLM invoked via Gateway

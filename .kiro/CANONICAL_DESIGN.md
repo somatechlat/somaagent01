@@ -102,7 +102,7 @@ src/
 
 #### C. Communication
 *   **REST:** Standard JSON APIs for CRUD.
-*   **SSE:** `/v1/session/{id}/events` for chat streaming and live updates.
+*   **SSE:** `/v1/sessions/{id}/events` for chat streaming and live updates.
 
 ---
 

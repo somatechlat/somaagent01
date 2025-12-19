@@ -12,7 +12,7 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 - **Port**: 21016 (default)
 - **Role**: FastAPI edge API handling HTTP/WebSocket/SSE
 - **Responsibilities**:
-  - User message ingestion (`POST /v1/session/message`)
+  - User message ingestion (`POST /v1/sessions/message`)
   - SSE streaming (`GET /v1/sessions/{session_id}/events?stream=true`)
   - Settings management (UI-driven, encrypted in Redis)
   - LLM credential storage (encrypted with `SA01_CRYPTO_FERNET_KEY`)
@@ -74,7 +74,7 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 
 1. **User Message Ingestion**:
    ```
-   UI → Gateway POST /v1/session/message → Kafka (conversation.inbound)
+   UI → Gateway POST /v1/sessions/message → Kafka (conversation.inbound)
    ```
 
 2. **Conversation Processing**:

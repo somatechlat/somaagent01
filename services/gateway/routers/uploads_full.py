@@ -221,28 +221,13 @@ class TUSUploadHandler:
                 raise ValueError("upload_exceeds_stream_limit")
             content = bytes(sess.buffer)
 
-    async def get_offset(self, upload_id: str) -> Optional[int]:
-        if self._redis:
-            meta = await self._redis.hgetall(f"tus:upload:{upload_id}:meta")
-            if not meta:
-                return None
-            return int(meta.get(b"offset", b"0"))
-        sess = self._uploads.get(upload_id)
-        return sess.offset if sess else None
-
-    async def delete_upload(self, upload_id: str) -> None:
-        if self._redis:
-            await self._redis.delete(f"tus:upload:{upload_id}:meta", f"tus:upload:{upload_id}:content")
-        else:
-            self._uploads.pop(upload_id, None)
-
         sha256_hex = hashlib.sha256(content).hexdigest()
 
         scan_result = self._scanner.scan_bytes(content) if self._clamav_enabled else None
-        
+
         status = "clean"
         reason = None
-        
+
         if scan_result:
             if scan_result.status == ScanStatus.QUARANTINED:
                 status = "quarantined"
@@ -286,16 +271,30 @@ class TUSUploadHandler:
         self._uploads.pop(upload_id, None)
         return record
 
+    async def get_offset(self, upload_id: str) -> Optional[int]:
+        if self._redis:
+            meta = await self._redis.hgetall(f"tus:upload:{upload_id}:meta")
+            if not meta:
+                return None
+            return int(meta.get(b"offset", b"0"))
+        sess = self._uploads.get(upload_id)
+        return sess.offset if sess else None
 
-
+    async def delete_upload(self, upload_id: str) -> None:
+        if self._redis:
+            await self._redis.delete(
+                f"tus:upload:{upload_id}:meta",
+                f"tus:upload:{upload_id}:content",
+            )
+        else:
+            self._uploads.pop(upload_id, None)
     async def health(self) -> dict:
         """Return health snapshot including clamd reachability."""
-        scan = "disabled"
         error = None
         scan_ok = self._scanner.ping() if self._clamav_enabled else True
         if not scan_ok and self._clamav_enabled:
-             error = "ClamAV Unreachable"
-        
+            error = "ClamAV Unreachable"
+
         return {
             "status": "ok" if scan_ok else "degraded",
             "clamav": "ok" if scan_ok else "error",

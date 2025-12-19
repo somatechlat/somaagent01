@@ -34,7 +34,7 @@ async def call_gateway(persona: str, gateway: str, message: str) -> None:
             "message": message,
             "metadata": {"tenant": "training", "source": "training_cli"},
         }
-        await client.post(f"{gateway}/v1/session/message", json=payload)
+        await client.post(f"{gateway}/v1/sessions/message", json=payload)
 
 
 async def post_persona_notes(persona: str, notes: str, repository: str) -> None:

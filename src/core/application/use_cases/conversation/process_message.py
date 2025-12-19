@@ -18,12 +18,10 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-import asyncio
 import json
 import re
 
-from services.common.job_planner import JobPlanner, JobPlan
-from services.tool_executor.multimodal_executor import MultimodalExecutor
+from services.common.job_planner import JobPlanner, PlanValidationError
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -469,32 +467,23 @@ class ProcessMessageUseCase:
             
             # Validate/Compile Plan
             planner = JobPlanner()
-            # We construct a JobPlan object (or let planner parse dict)
-            # JobPlanner.create_plan expects task list
-            job_plan = planner.create_plan(
+            request_id = plan_data.get("request_id") or data.get("request_id")
+            job_plan = planner.compile(
+                tenant_id=tenant,
                 session_id=session_id,
-                tasks=plan_data.get("tasks", []),
+                dsl=plan_data,
+                request_id=request_id,
             )
-            
-            # Execute Plan (Async/Background)
-            # We don't await full execution to keep chat responsive, 
-            # OR we await submission?
-            # For V1, we'll fire-and-forget via asyncio.create_task but log errors
-            executor = MultimodalExecutor()
-            asyncio.create_task(self._safe_execute_plan(executor, job_plan))
-            
+            await planner.create(job_plan)
+            LOGGER.info("Created multimodal plan %s for session %s", job_plan.id, session_id)
             return clean_text
             
         except json.JSONDecodeError:
             LOGGER.warning("Failed to decode extracted JSON plan")
             return response_text
+        except PlanValidationError as e:
+            LOGGER.warning("Invalid multimodal plan: %s", e.errors)
+            return response_text
         except Exception as e:
             LOGGER.warning(f"Failed to process multimodal plan: {e}")
             return response_text
-
-    async def _safe_execute_plan(self, executor: MultimodalExecutor, plan: JobPlan) -> None:
-        """Safely execute plan in background."""
-        try:
-            await executor.execute_plan(plan)
-        except Exception as e:
-            LOGGER.exception(f"Background multimodal execution failed for plan {plan.id}")

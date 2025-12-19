@@ -82,10 +82,3 @@ allow if {
 allow if {
     input.action in ["task.view", "tool.view"]
 }
-
-# Multimodal capability execution
-allow if {
-    input.action == "multimodal.capability.execute"
-    # tool_enabled_for_tenant
-    # not tool_in_deny_list
-}
