@@ -41,11 +41,11 @@ class GatewayStream(ApiHandler):
                 "Set it to your Gateway service URL (e.g., http://gateway:21016)"
             )
         base = base.rstrip("/")
-        primary = f"{base}/v1/session/{session_id}/events"
+        primary = f"{base}/v1/sessions/{session_id}/events"
         host_alias = cfg.env("SA01_CONTAINER_HOST_ALIAS")
         gw_port = cfg.env("SA01_GATEWAY_PORT")
         fallback = (
-            f"http://{host_alias}:{gw_port}/v1/session/{session_id}/events"
+            f"http://{host_alias}:{gw_port}/v1/sessions/{session_id}/events"
             if host_alias and gw_port
             else None
         )

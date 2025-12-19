@@ -30,7 +30,7 @@ sequenceDiagram
     participant Redis as 🔴 Redis Cache
     
     Note over User,Redis: STEP 1-2: User Message → Gateway (HTTP POST)
-    User->>Gateway: POST /v1/session/message<br/>{message, session_id, persona_id}
+    User->>Gateway: POST /v1/sessions/message<br/>{message, session_id, persona_id}
     Gateway->>PostgreSQL: INSERT INTO session_events<br/>(user message)
     Gateway->>Redis: CACHE persona_id, tenant
     
@@ -39,7 +39,7 @@ sequenceDiagram
     Gateway-->>User: 200 OK {session_id, event_id}
     
     Note over User,Redis: User opens SSE stream for real-time updates
-    User->>Gateway: GET /v1/session/{session_id}/events?stream=true
+    User->>Gateway: GET /v1/sessions/{session_id}/events?stream=true
     Gateway-->>User: SSE Stream (keepalive every 10s)
     
     Note over Kafka,Worker: STEP 4: Kafka → ConversationWorker (Consumer)

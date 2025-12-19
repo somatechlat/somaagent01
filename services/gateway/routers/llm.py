@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from integrations.repositories import get_audit_store
+from src.core.config import cfg
 
 router = APIRouter(prefix="/v1/llm", tags=["llm"])
 
@@ -24,6 +25,39 @@ class LlmInvokeRequest(BaseModel):
     tenant: Optional[str] = None
     overrides: Optional[Dict[str, Any]] = None
     metadata: dict | None = None
+    multimodal: bool = False
+
+
+def _multimodal_instructions() -> str:
+    return (
+        "MULTIMODAL CAPABILITIES:\n"
+        "If the user asks for images, diagrams, screenshots, or other visuals, "
+        "output a JSON block at the END of your response containing a "
+        "`multimodal_plan` that follows Task DSL v1.0. Example:\n\n"
+        "{\n"
+        '  "multimodal_plan": {\n'
+        '    "version": "1.0",\n'
+        '    "tasks": [\n'
+        "      {\n"
+        '        "task_id": "step_00",\n'
+        '        "step_type": "generate_image",\n'
+        '        "modality": "image",\n'
+        '        "depends_on": [],\n'
+        '        "params": {\n'
+        '          "prompt": "Describe the image",\n'
+        '          "format": "png",\n'
+        '          "dimensions": {"width": 1920, "height": 1080}\n'
+        "        },\n"
+        '        "constraints": {"max_cost_cents": 50},\n'
+        '        "quality_gate": {"enabled": true, "min_score": 0.7, "max_reworks": 2}\n'
+        "      }\n"
+        "    ],\n"
+        '    "budget": {"max_cost_cents": 500}\n'
+        "  }\n"
+        "}\n\n"
+        "Supported step_types: generate_image, generate_diagram, capture_screenshot.\n"
+        "Do NOT ask for confirmation. Return the JSON block after your text."
+    )
 
 
 @router.post("/invoke")
@@ -50,9 +84,13 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     base_url = req.overrides.get("base_url", "https://api.openai.com/v1") if req.overrides else "https://api.openai.com/v1"
     temperature = req.overrides.get("temperature") if req.overrides else None
 
+    messages = req.messages or [{"role": "user", "content": req.prompt}]
+    if req.multimodal and cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+        messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
+
     try:
         content, usage = await slm_client.chat(
-            messages=req.messages or [{"role": "user", "content": req.prompt}],
+            messages=messages,
             model=model,
             base_url=base_url,
             temperature=temperature,
@@ -115,9 +153,13 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
     base_url = req.overrides.get("base_url", "https://api.openai.com/v1") if req.overrides else "https://api.openai.com/v1"
     temperature = req.overrides.get("temperature") if req.overrides else None
 
+    messages = req.messages or [{"role": "user", "content": req.prompt}]
+    if req.multimodal and cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+        messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
+
     try:
         content, usage = await slm_client.chat(
-            messages=req.messages or [{"role": "user", "content": req.prompt}],
+            messages=messages,
             model=model,
             base_url=base_url,
             temperature=temperature,

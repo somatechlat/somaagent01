@@ -1,11 +1,9 @@
 """Integration test for the FastAPI health endpoint.
 
-The gateway registers a tiny ``/v1/health`` route via the ``src.gateway.routers.health``
-router. This test spins up the FastAPI app with a ``TestClient`` and verifies that the
-endpoint returns a 200 status and the expected JSON payload.
+The gateway exposes the production health router under ``/v1/health``. This test
+spins up the FastAPI app with a ``TestClient`` and verifies that the endpoint
+returns a 200 status and the expected JSON payload shape.
 """
-
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,9 +19,6 @@ def test_health_endpoint() -> None:
     response = client.get("/v1/health")
     assert response.status_code == 200, "Health endpoint should be reachable"
     data = response.json()
-    # Basic sanity checks – the payload must contain the keys we set.
-    assert data.get("status") == "ok"
-    assert data.get("service") == "gateway"
-    # The deployment mode should reflect the env var or default to "development".
-    expected_mode = os.getenv("DEPLOYMENT_MODE", "development")
-    assert data.get("deployment_mode") == expected_mode
+    # Basic sanity checks – the payload must contain the keys exposed by the router.
+    assert data.get("status") in {"ok", "degraded", "down"}
+    assert isinstance(data.get("components"), dict)

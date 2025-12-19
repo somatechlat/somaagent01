@@ -54,7 +54,7 @@ Assistant: [Saves to SomaBrain via memory_save tool]
 
 ## Understanding the Flow
 
-1. **Message Sent**: UI → Gateway `/v1/session/message` → Kafka `conversation.inbound`
+1. **Message Sent**: UI → Gateway `/v1/sessions/message` → Kafka `conversation.inbound`
 2. **Processing**: Conversation Worker consumes message → Calls Gateway `/v1/llm/invoke/stream`
 3. **Streaming**: Assistant response → Kafka `conversation.outbound` → Gateway SSE → UI
 4. **Memory**: All messages written to SomaBrain for perfect recall

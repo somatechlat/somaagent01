@@ -319,7 +319,7 @@ def build_router() -> APIRouter:
     for sub in (
         admin.router,              # /v1/admin
         ui_settings.router,        # /v1/settings
-        sessions.router,           # /v1/session
+        sessions.router,           # /v1/sessions
         uploads_full.router,       # /v1/uploads
         features.router,           # /v1/features
         health.router,             # /v1/health
@@ -1513,7 +1513,6 @@ orchestrator.attach()
 - `services/gateway/routers/__init__.py` (95 lines)
 - `services/gateway/routers/ui_settings.py`
 - `services/gateway/routers/sessions.py`
-- `services/gateway/routers/sessions_full.py` (54 lines)
 - `services/gateway/routers/uploads_full.py`
 - `services/gateway/routers/features.py` (150 lines)
 - `services/gateway/routers/admin.py` (61 lines)
@@ -2973,12 +2972,11 @@ Reports average and P95 latency with `top_k` confirmation.
 - `services/common/authorization.py` (187 lines)
 - `services/common/` directory (63 files cataloged)
 
-### Phase 5: Gateway & Routers (12 files)
+### Phase 5: Gateway & Routers (11 files)
 - `services/gateway/main.py` (113 lines)
 - `services/gateway/routers/__init__.py` (95 lines)
 - `services/gateway/routers/ui_settings.py`
 - `services/gateway/routers/sessions.py`
-- `services/gateway/routers/sessions_full.py` (54 lines)
 - `services/gateway/routers/uploads_full.py`
 - `services/gateway/routers/features.py` (150 lines)
 - `services/gateway/routers/admin.py` (61 lines)

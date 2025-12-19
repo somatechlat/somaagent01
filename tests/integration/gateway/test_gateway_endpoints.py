@@ -93,7 +93,7 @@ async def test_enqueue_and_list_via_gateway():
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         # post a user message
-        r = await ac.post("/v1/session/message", json={"message": "Hello there"})
+        r = await ac.post("/v1/sessions/message", json={"message": "Hello there"})
         assert r.status_code == 200
         data = r.json()
         assert "session_id" in data and "event_id" in data

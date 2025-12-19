@@ -34,12 +34,13 @@ _LOCK = threading.RLock()
 
 
 class SemanticRecallIndex:
-    """In-memory vector index for semantic recall.
+    """Experimental in-memory vector index for semantic recall.
     
-    This is a PROTOTYPE implementation using naive cosine similarity and FIFO eviction.
-    Production systems should use persistent vector stores (e.g., pgvector, Pinecone).
+    Uses naive cosine similarity with bounded FIFO eviction and is intended
+    for development or controlled experiments only. Production deployments
+    should use a persistent vector store (e.g., pgvector).
     
-    Enable with: SA01_SEMANTIC_RECALL_PROTOTYPE=true (development only)
+    Enable with: SA01_SEMANTIC_RECALL_PROTOTYPE=true (dev-only)
     """
 
     def __init__(self, max_items: int = 10000) -> None:
@@ -61,7 +62,7 @@ class SemanticRecallIndex:
             return
         with _LOCK:
             if len(self._items) >= self.max_items:
-                # FIFO eviction for prototype simplicity
+                # FIFO eviction to bound memory in experimental mode
                 self._items.pop(0)
             self._items.append((list(vector), dict(metadata)))
             SEMANTIC_RECALL_INDEX_SIZE.set(len(self._items))

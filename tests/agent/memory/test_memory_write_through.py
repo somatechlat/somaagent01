@@ -19,7 +19,7 @@ def test_chat_message_persists_to_somabrain() -> None:
     Proof that chat messages are persisted to SomaBrain via Gateway write-through:
     - Verify write-through is enabled (via /ui/config.json); skip with guidance if disabled
     - Upload a tiny attachment via /v1/uploads
-    - POST /v1/session/message with a unique body and the uploaded attachment path
+    - POST /v1/sessions/message with a unique body and the uploaded attachment path
     - Poll /v1/admin/memory until a conversation_event with role=user appears containing the unique text
       and the attachment reference for the same session
     """
@@ -79,7 +79,7 @@ def test_chat_message_persists_to_somabrain() -> None:
             "attachments": attachment_paths,
             "metadata": {"tenant": TENANT},
         }
-        resp = client.post(f"{BASE_URL}/v1/session/message", json=payload)
+        resp = client.post(f"{BASE_URL}/v1/sessions/message", json=payload)
         assert resp.status_code == 200, f"message send failed: HTTP {resp.status_code} {resp.text}"
         body = resp.json() or {}
         assert body.get("session_id") == session_id and body.get(

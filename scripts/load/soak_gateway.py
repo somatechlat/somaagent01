@@ -2,13 +2,13 @@
 """
 Lightweight load/soak harness for the Gateway write path.
 
-- Uses httpx.AsyncClient to POST /v1/session/message at a target rate.
+- Uses httpx.AsyncClient to POST /v1/sessions/message at a target rate.
 - Env-configurable; no extra dependencies beyond repository requirements.
 - Outputs latency stats (p50/p95/p99), error rates, and throughput.
 
 Env vars (with defaults):
   TARGET_URL: Base URL for gateway (default http://127.0.0.1:8010)
-  PATH: Request path (default /v1/session/message)
+  PATH: Request path (default /v1/sessions/message)
   RPS: Target requests per second (float, default 5)
   DURATION: Test duration in seconds (int, default 30)
   CONCURRENCY: Max in-flight requests (int, default 20)
@@ -124,7 +124,7 @@ async def _worker(
 
 async def main() -> None:
     base_url = cfg.env("TARGET_URL", "http://127.0.0.1:8010") or "http://127.0.0.1:8010"
-    path = cfg.env("PATH", "/v1/session/message") or "/v1/session/message"
+    path = cfg.env("PATH", "/v1/sessions/message") or "/v1/sessions/message"
     rps = _env_float("RPS", 5.0)
     duration = _env_int("DURATION", 30)
     concurrency = _env_int("CONCURRENCY", 20)

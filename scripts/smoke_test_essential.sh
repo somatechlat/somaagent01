@@ -22,7 +22,7 @@ else
 fi
 GATEWAY_URL=${GATEWAY_URL:-http://localhost:${HOST_PORT}}
 HEALTH_URL="$GATEWAY_URL/health"
-MSG_URL="$GATEWAY_URL/v1/session/message"
+MSG_URL="$GATEWAY_URL/v1/sessions/message"
 
 echo "Waiting for gateway health... ($HEALTH_URL)"
 for i in {1..60}; do

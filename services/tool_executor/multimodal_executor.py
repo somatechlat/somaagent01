@@ -11,14 +11,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 from datetime import datetime
 
 
-from services.common.asset_store import AssetStore, AssetType, AssetFormat
-from services.common.asset_critic import AssetCritic, AssetRubric, evaluation_status
-from services.common.soma_brain_client import SomaBrainClient, MultimodalOutcome
+from services.common.asset_store import AssetStore, AssetType
+from services.common.asset_critic import AssetCritic, AssetRubric
+from services.common.provenance_recorder import ProvenanceRecorder
+from services.common.soma_brain_outcomes import SomaBrainOutcomesStore, MultimodalOutcome
 from services.common.portfolio_ranker import PortfolioRanker
 from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
 from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
@@ -27,7 +28,6 @@ from services.multimodal.base_provider import (
     MultimodalProvider,
     GenerationRequest,
     GenerationResult,
-    ProviderError,
     ProviderCapability,
 )
 from services.multimodal.dalle_provider import DalleProvider
@@ -63,7 +63,7 @@ class MultimodalExecutor:
         job_planner: Optional[JobPlanner] = None,
         execution_tracker: Optional[ExecutionTracker] = None,
         asset_critic: Optional[AssetCritic] = None,
-        soma_brain_client: Optional[SomaBrainClient] = None,
+        soma_brain_client: Optional[SomaBrainOutcomesStore] = None,
         policy_router: Optional[PolicyGraphRouter] = None,
     ) -> None:
         """Initialize executor with services.
@@ -74,16 +74,18 @@ class MultimodalExecutor:
             job_planner: JobPlanner instance
             execution_tracker: ExecutionTracker instance
             asset_critic: AssetCritic instance for quality gating
-            soma_brain_client: SomaBrainClient instance for learning
+            soma_brain_client: SomaBrainOutcomesStore instance for learning
             policy_router: PolicyGraphRouter instance for provider selection
         """
         self._dsn = dsn or cfg.settings().database.dsn
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
-        self._soma_brain_client = soma_brain_client or SomaBrainClient()
+        self._soma_brain_client = soma_brain_client or SomaBrainOutcomesStore()
         self._portfolio_ranker = PortfolioRanker(self._soma_brain_client)
         self._policy_router = policy_router or PolicyGraphRouter(dsn=self._dsn)
+        self._provenance_recorder = ProvenanceRecorder(dsn=self._dsn)
+        self._initialized = False
         
         # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
@@ -99,6 +101,16 @@ class MultimodalExecutor:
 
     async def initialize(self) -> None:
         """Initialize providers and verify dependencies."""
+        if self._initialized:
+            return
+
+        # Ensure schemas exist before execution
+        await self._asset_store.ensure_schema()
+        await self._job_planner.ensure_schema()
+        await self._execution_tracker.ensure_schema()
+        await self._provenance_recorder.ensure_schema()
+        await self._policy_router.ensure_schema()
+
         # Register default providers
         await self.register_provider(MermaidProvider())
         await self.register_provider(PlaywrightProvider())
@@ -109,6 +121,8 @@ class MultimodalExecutor:
             await self.register_provider(dalle)
         else:
             logger.warning("DALL-E provider not available (missing API key?)")
+
+        self._initialized = True
 
     async def register_provider(self, provider: MultimodalProvider) -> None:
         """Register a provider instance.
@@ -126,6 +140,27 @@ class MultimodalExecutor:
             
         logger.info("Registered provider: %s", provider.name)
 
+    async def run_pending(self, poll_interval: float = 2.0) -> None:
+        """Continuously execute pending multimodal job plans.
+
+        This loop claims pending plans atomically to avoid duplicate execution
+        across multiple workers.
+        """
+        await self.initialize()
+        while True:
+            try:
+                plan = await self._job_planner.claim_next_pending()
+                if not plan:
+                    await asyncio.sleep(poll_interval)
+                    continue
+
+                await self.execute_plan(plan.id)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.exception("Multimodal job loop error: %s", exc)
+                await asyncio.sleep(poll_interval)
+
     async def execute_plan(self, plan_id: UUID) -> bool:
         """Execute a full job plan.
         
@@ -135,6 +170,7 @@ class MultimodalExecutor:
         Returns:
             True if execution completed successfully
         """
+        await self.initialize()
         plan = await self._job_planner.get(plan_id)
         if not plan:
             raise ExecutorError(f"Plan {plan_id} not found")
@@ -149,6 +185,7 @@ class MultimodalExecutor:
         context: Dict[str, Any] = {}
         failed = False
         error_msg = None
+        budget_used_cents = plan.budget_used_cents or 0
         
         try:
             # Execute tasks in order (plan.tasks is already topologically sorted)
@@ -165,18 +202,29 @@ class MultimodalExecutor:
                     continue
                 
                 # Execute step with retry loop
-                success, step_error = await self._execute_step(plan, i, task, context)
+                success, step_error, step_cost = await self._execute_step(plan, i, task, context)
                 if not success:
                     failed = True
                     # Check if failure was due to quality gate exhaustion
                     error_msg = step_error or f"Step {task.task_id} failed after max attempts"
                     break
                     
+                if step_cost:
+                    budget_used_cents += step_cost
+                    plan.budget_used_cents = budget_used_cents
+                    if plan.budget_limit_cents is not None and budget_used_cents > plan.budget_limit_cents:
+                        failed = True
+                        error_msg = (
+                            f"budget_exceeded: used {budget_used_cents} > limit {plan.budget_limit_cents}"
+                        )
+                        break
+
                 # Update progress
                 await self._job_planner.update_status(
                     plan.id,
                     JobStatus.RUNNING,
-                    completed_steps=i + 1
+                    completed_steps=i + 1,
+                    budget_used_cents=budget_used_cents,
                 )
             
             # Final status update
@@ -184,7 +232,8 @@ class MultimodalExecutor:
             await self._job_planner.update_status(
                 plan.id,
                 status,
-                error_message=error_msg
+                error_message=error_msg,
+                budget_used_cents=budget_used_cents,
             )
             return not failed
             
@@ -193,7 +242,8 @@ class MultimodalExecutor:
             await self._job_planner.update_status(
                 plan.id,
                 JobStatus.FAILED,
-                error_message=str(exc)
+                error_message=str(exc),
+                budget_used_cents=budget_used_cents,
             )
             return False
 
@@ -203,100 +253,110 @@ class MultimodalExecutor:
         step_index: int,
         task: TaskStep,
         context: Dict[str, Any],
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> Tuple[bool, Optional[str], Optional[int]]:
         """Execute a single task step with rework/retry loop.
-        
-        Args:
-            plan: Parent plan
-            step_index: Index of step
-            task: Task definition
-            context: Execution context (results of previous steps)
-            
+
         Returns:
-            Tuple of (Success boolean, Error message if failed)
+            Tuple of (success, error_message, cost_cents_used)
         """
-        # Provider Fallback Loop
-        # We try providers in order from the PolicyGraphRouter
-        # If a provider fails (error or quality), we add it to exclusions and try next
-        
         failed_providers: List[Tuple[str, str]] = []
         last_error_message = ""
-        
-        # Infinite loop, broken by success or router exhaustion
+        step_cost_cents = 0
+        budget_used_cents = plan.budget_used_cents or 0
+        budget_limit_cents = plan.budget_limit_cents
+
+        # Provider Fallback Loop
         while True:
-            # 1. Select Provider
             decision = await self._policy_router.route(
                 modality=self._map_step_type_to_modality(task.step_type),
                 tenant_id=plan.tenant_id,
-                budget_used_cents=0,
+                budget_limit_cents=budget_limit_cents,
+                budget_used_cents=budget_used_cents,
                 excluded_options=failed_providers,
-                context={"intent": task.step_type.value}
+                context={"intent": task.step_type.value},
             )
-            
+
             # --- SHADOW MODE RANKING ---
             try:
-                 shadow_candidates = []
-                 if decision.success:
-                     shadow_candidates.append((decision.tool_id, decision.model or "default"))
-                 
-                 ranked = self._portfolio_ranker.rank(shadow_candidates, task.step_type.value)
-                 
-                 if ranked and decision.success:
-                     top_pick_id = ranked[0][0]
-                     if top_pick_id != decision.tool_id:
-                         logger.info(f"SHADOW DIVERGENCE: Policy={decision.tool_id}, Ranker={top_pick_id}")
-            except Exception as e:
-                logger.warning(f"Shadow ranking failed: {e}")
-            # ---------------------------
-            
-            if not decision.success:
-                # No more providers avaiable
-                error_msg = f"No capability available. Exhausted: {failed_providers}. Last error: {last_error_message}"
-                logger.error(
-                    "Step %s failed: %s", 
-                    task.task_id, error_msg
+                shadow_candidates: List[Tuple[str, str]] = []
+                seen: set[str] = set()
+                if decision.ladder_considered:
+                    for _, provider_id in decision.ladder_considered:
+                        if provider_id and provider_id not in seen:
+                            shadow_candidates.append((provider_id, "default"))
+                            seen.add(provider_id)
+                elif decision.provider:
+                    shadow_candidates.append((decision.provider, "default"))
+
+                ranked = await self._portfolio_ranker.rank(
+                    shadow_candidates,
+                    task.step_type.value,
                 )
-                # Ensure we record a failure event if we haven't already
+                if ranked and decision.success and decision.provider:
+                    top_pick_id = ranked[0][0]
+                    if top_pick_id != decision.provider:
+                        logger.info(
+                            "SHADOW DIVERGENCE: Policy=%s, Ranker=%s",
+                            decision.provider,
+                            top_pick_id,
+                        )
+            except Exception as e:
+                logger.warning("Shadow ranking failed: %s", e)
+            # ---------------------------
+
+            if not decision.success or not decision.tool_id:
+                error_msg = (
+                    f"No capability available. Exhausted: {failed_providers}. "
+                    f"Last error: {last_error_message}"
+                )
+                logger.error("Step %s failed: %s", task.task_id, error_msg)
                 if not failed_providers:
-                     await self._execution_tracker.start(
+                    await self._execution_tracker.start(
                         plan.id, step_index, plan.tenant_id, "unknown", "unknown"
                     )
-                return False, error_msg
-                
+                return False, error_msg, step_cost_cents
+
             provider = self._providers.get(decision.tool_id)
             if not provider:
-                # Should not happen if registry and executor are in sync
-                logger.error("Provider %s approved by router but not loaded in executor", decision.tool_id)
+                logger.error(
+                    "Provider %s approved by router but not loaded in executor",
+                    decision.tool_id,
+                )
                 failed_providers.append((decision.tool_id, decision.provider))
                 continue
 
-            logger.info("Step %s selected provider %s (tool: %s)", task.task_id, decision.provider, decision.tool_id)
+            logger.info(
+                "Step %s selected provider %s (tool: %s)",
+                task.task_id,
+                decision.provider,
+                decision.tool_id,
+            )
 
-            # 2. Rework/Retry Loop (Same Provider)
-            # Determines how many times we try THIS provider before falling back
             max_attempts = 1
             gate_config = task.quality_gate
             if gate_config.get("enabled", True):
                 max_attempts = gate_config.get("max_reworks", 2) + 1
-            
+
             attempt = 0
             prompt_feedback = ""
             provider_success = False
-            
+
             while attempt < max_attempts:
                 attempt += 1
                 is_retry = attempt > 1
-                
-                # Prepare prompt
+                result = None
+                evaluation_score = None
+                evaluation_feedback: Dict[str, Any] | None = None
+                quality_gate_passed = None
+
                 base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
                 if is_retry and prompt_feedback:
-                    full_prompt = (
-                        f"{base_prompt}\n\n"
-                        f"CRITIC FEEDBACK: {prompt_feedback}"
-                    )
+                    full_prompt = f"{base_prompt}
+
+CRITIC FEEDBACK: {prompt_feedback}"
                 else:
                     full_prompt = base_prompt
-                
+
                 request = GenerationRequest(
                     tenant_id=plan.tenant_id,
                     session_id=plan.session_id,
@@ -307,8 +367,10 @@ class MultimodalExecutor:
                     dimensions=task.params.get("dimensions"),
                     parameters=task.params,
                 )
-                
-                # Track Execution
+
+                fallback_reason = decision.fallback_reason.value if decision.fallback_reason else None
+                original_provider = decision.ladder_considered[0][1] if decision.ladder_considered else None
+
                 exec_record = await self._execution_tracker.start(
                     plan.id,
                     step_index,
@@ -316,18 +378,24 @@ class MultimodalExecutor:
                     provider.name,
                     provider.provider_id,
                     attempt_number=attempt,
+                    fallback_reason=fallback_reason,
+                    original_provider=original_provider,
                 )
-                
+
                 try:
                     result = await provider.generate(request)
-                    
+                    if result and result.cost_cents:
+                        step_cost_cents += int(result.cost_cents)
+
                     if not result.success:
-                        # Provider runtime error
                         logger.warning(
                             "Step %s provider %s attempt %d failure: %s",
-                            task.task_id, provider.name, attempt, result.error_message
+                            task.task_id,
+                            provider.name,
+                            attempt,
+                            result.error_message,
                         )
-                        last_error_message = result.error_message
+                        last_error_message = result.error_message or "provider_error"
                         await self._execution_tracker.complete(
                             exec_record.id,
                             ExecutionStatus.FAILED,
@@ -335,21 +403,33 @@ class MultimodalExecutor:
                             error_message=result.error_message,
                         )
                         prompt_feedback = f"Provider error: {result.error_message}"
-                        # Try next attempt with same provider? Or fail provider immediately?
-                        # Strategy: Runtime errors might be transient, retry unless critical.
                         continue
-                        
-                    # Asset Creation
+
                     asset_type = AssetType.IMAGE
-                    if result.content_type and "svg" in result.content_type:
+                    if task.step_type == StepType.CAPTURE_SCREENSHOT or task.modality == "screenshot":
+                        asset_type = AssetType.SCREENSHOT
+                    elif task.step_type == StepType.GENERATE_DIAGRAM or task.modality in {"diagram", "image_diagram"}:
                         asset_type = AssetType.DIAGRAM
-                    elif result.content_type and "pdf" in result.content_type:
+                    elif task.step_type == StepType.GENERATE_VIDEO or task.modality.startswith("video"):
+                        asset_type = AssetType.VIDEO
+                    elif task.step_type == StepType.COMPOSE_DOCUMENT or task.modality == "document":
                         asset_type = AssetType.DOCUMENT
-                        
+
+                    if result.content_type:
+                        lowered = result.content_type.lower()
+                        if "svg" in lowered:
+                            asset_type = AssetType.DIAGRAM
+                        elif "pdf" in lowered:
+                            asset_type = AssetType.DOCUMENT
+
+                    result_format = (
+                        (result.format or task.params.get("format") or "png").lower()
+                    )
                     asset = await self._asset_store.create(
                         tenant_id=plan.tenant_id,
+                        session_id=plan.session_id,
                         asset_type=asset_type,
-                        format=AssetFormat(result.format).value if result.format else AssetFormat.PNG.value,
+                        format=result_format,
                         content=result.content,
                         dimensions=result.dimensions,
                         metadata={
@@ -357,55 +437,101 @@ class MultimodalExecutor:
                             "task_id": task.task_id,
                             "provider": provider.name,
                             "attempt": attempt,
-                        }
+                        },
                     )
-                    
-                    # Quality Gate
+
                     if gate_config.get("enabled", True):
-                        # Construct Rubric from Task Constraints + Presets
                         if task.step_type == StepType.GENERATE_DIAGRAM:
                             rubric = AssetRubric.technical_diagram()
                         else:
                             rubric = AssetRubric.default_image()
-                        
-                        # Apply overrides
+
                         if task.constraints.get("min_width"):
                             rubric.min_width = task.constraints.get("min_width")
-                        
-                        evaluation = await self._asset_critic.evaluate(
-                            asset, rubric, context=context
-                        )
-                        
+
+                        evaluation = await self._asset_critic.evaluate(asset, rubric, context=context)
+                        quality_gate_passed = evaluation.passed
+                        evaluation_score = evaluation.score
+                        evaluation_feedback = {
+                            "feedback": evaluation.feedback,
+                            "failed_criteria": evaluation.failed_criteria,
+                        }
+
                         if not evaluation.passed:
-                             logger.warning(
+                            logger.warning(
                                 "Step %s provider %s validation failed: %s",
-                                task.task_id, provider.name, evaluation.failed_criteria
-                             )
-                             await self._execution_tracker.complete(
+                                task.task_id,
+                                provider.name,
+                                evaluation.failed_criteria,
+                            )
+                            await self._execution_tracker.complete(
                                 exec_record.id,
                                 ExecutionStatus.FAILED,
                                 asset_id=asset.id,
                                 error_code="QUALITY_GATE_FAILED",
                                 error_message=str(evaluation.failed_criteria),
                                 latency_ms=result.latency_ms,
-                                cost_estimate_cents=result.cost_cents
+                                cost_estimate_cents=result.cost_cents,
+                                quality_score=evaluation_score,
+                                quality_feedback=evaluation_feedback,
                             )
-                             prompt_feedback = "; ".join(evaluation.feedback)
-                             last_error_message = f"Quality Gate: {prompt_feedback}"
-                             continue
-                    
-                    # Success
+                            prompt_feedback = "; ".join(evaluation.feedback)
+                            last_error_message = f"Quality Gate: {prompt_feedback}"
+
+                            try:
+                                await self._provenance_recorder.record(
+                                    asset_id=asset.id,
+                                    tenant_id=plan.tenant_id,
+                                    tool_id=provider.name,
+                                    provider=provider.provider_id,
+                                    request_id=plan.request_id,
+                                    execution_id=exec_record.id,
+                                    plan_id=plan.id,
+                                    session_id=plan.session_id,
+                                    prompt_summary=full_prompt,
+                                    generation_params=request.parameters,
+                                    model_version=result.model_version,
+                                    quality_gate_passed=False,
+                                    quality_score=evaluation_score,
+                                    rework_count=attempt - 1,
+                                )
+                            except Exception as exc:
+                                logger.warning("Failed to record provenance: %s", exc)
+                            continue
+
+                    try:
+                        await self._provenance_recorder.record(
+                            asset_id=asset.id,
+                            tenant_id=plan.tenant_id,
+                            tool_id=provider.name,
+                            provider=provider.provider_id,
+                            request_id=plan.request_id,
+                            execution_id=exec_record.id,
+                            plan_id=plan.id,
+                            session_id=plan.session_id,
+                            prompt_summary=full_prompt,
+                            generation_params=request.parameters,
+                            model_version=result.model_version,
+                            quality_gate_passed=quality_gate_passed,
+                            quality_score=evaluation_score,
+                            rework_count=attempt - 1,
+                        )
+                    except Exception as exc:
+                        logger.warning("Failed to record provenance: %s", exc)
+
                     context[task.task_id] = asset
                     await self._execution_tracker.complete(
                         exec_record.id,
                         ExecutionStatus.SUCCESS,
                         asset_id=asset.id,
                         latency_ms=result.latency_ms,
-                        cost_estimate_cents=result.cost_cents
+                        cost_estimate_cents=result.cost_cents,
+                        quality_score=evaluation_score,
+                        quality_feedback=evaluation_feedback,
                     )
                     provider_success = True
-                    break # Break retry loop
-                    
+                    break
+
                 except Exception as e:
                     logger.exception("Provider exception: %s", e)
                     last_error_message = str(e)
@@ -414,101 +540,45 @@ class MultimodalExecutor:
                     )
 
                 finally:
-                    # RECORD OUTCOME (Learning)
                     try:
-                        # Re-calculate success for record
                         final_success = provider_success
-                        
-                        # Latency calc (assuming started_at is datetime)
                         latency = 0.0
                         if exec_record.started_at:
                             delta = datetime.now(exec_record.started_at.tzinfo) - exec_record.started_at
                             latency = delta.total_seconds() * 1000
 
+                        if result and result.model_version:
+                            model_name = result.model_version
+                        else:
+                            model_name = provider.get_model_version() if provider else "unknown"
+
                         outcome = MultimodalOutcome(
                             plan_id=str(plan.id),
                             task_id=task.task_id,
                             step_type=task.step_type.value,
-                            provider=provider.name if provider else "unknown",
-                            model=decision.model or "default",
+                            provider=provider.provider_id if provider else "unknown",
+                            model=model_name,
                             success=final_success,
                             latency_ms=latency,
-                            cost_cents=result.cost_cents if result and result.cost_cents else 0.0,
-                            quality_score=evaluation.overall_score if gate_config.get("enabled", True) else None,
-                            feedback=prompt_feedback if is_retry else None
+                            cost_cents=float(result.cost_cents) if result and result.cost_cents else 0.0,
+                            quality_score=evaluation_score if gate_config.get("enabled", True) else None,
+                            feedback=prompt_feedback if is_retry else None,
                         )
-                        # Avoid blocking
                         await self._soma_brain_client.record_outcome(outcome)
                     except Exception as ex:
-                        logger.warning(f"Failed to record outcome: {ex}")
-            
-            # End of Retry Loop
+                        logger.warning("Failed to record outcome: %s", ex)
+
             if provider_success:
-                return True, None
-            else:
-                # This provider failed all attempts. Add to excluded list and Fallback.
-                logger.warning(
-                    "Provider %s failed all attempts for step %s. Falling back.", 
-                    decision.provider, task.task_id
-                )
-                failed_providers.append((decision.tool_id, decision.provider))
-                # Continue outer loop -> Select new provider
+                return True, None, step_cost_cents
 
+            logger.warning(
+                "Provider %s failed all attempts for step %s. Falling back.",
+                decision.provider,
+                task.task_id,
+            )
+            failed_providers.append((decision.tool_id, decision.provider))
 
-    def _select_provider(self, task: TaskStep) -> Optional[MultimodalProvider]:
-        """Select appropriate provider for task by iterating registered capabilities.
-        
-        Uses the capability map built during provider registration to find
-        all providers that can handle the required task type.
-        """
-        # Determine required capability from step type
-        required_capability = self._step_type_to_capability(task.step_type)
-        if not required_capability:
-            logger.warning("No capability mapping for step type: %s", task.step_type)
-            return None
-            
-        # Get all providers that support this capability
-        provider_names = self._capability_map.get(required_capability, [])
-        if not provider_names:
-            logger.warning("No providers registered for capability: %s", required_capability)
-            return None
-            
-        # Build candidates from registered providers
-        candidates = []
-        for name in provider_names:
-            provider = self._providers.get(name)
-            if provider:
-                # Use provider's advertised model or 'default'
-                model = getattr(provider, 'default_model', 'default')
-                candidates.append((name, model))
-        
-        if not candidates:
-            return None
-            
-        # Optimization: Single candidate? Skip ranking
-        if len(candidates) == 1:
-            return self._providers.get(candidates[0][0])
-            
-        # Use Ranker for multiple candidates
-        ranked = self._portfolio_ranker.rank_providers(
-            candidates, 
-            task.step_type.value
-        )
-        
-        if not ranked:
-            return None
-            
-        best_provider_name, _ = ranked[0]
-        return self._providers.get(best_provider_name)
-    
-    def _step_type_to_capability(self, step_type: StepType) -> Optional[ProviderCapability]:
-        """Map step type to provider capability."""
-        mapping = {
-            StepType.GENERATE_DIAGRAM: ProviderCapability.DIAGRAM,
-            StepType.GENERATE_IMAGE: ProviderCapability.IMAGE,
-            StepType.CAPTURE_SCREENSHOT: ProviderCapability.SCREENSHOT,
-        }
-        return mapping.get(step_type)
+        return False, last_error_message, step_cost_cents
 
     def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
         """Resolve dependency placeholders in prompt.
@@ -531,4 +601,8 @@ class MultimodalExecutor:
             return "image_photo" # Default strict
         if step_type == StepType.CAPTURE_SCREENSHOT:
             return "screenshot"
+        if step_type == StepType.GENERATE_VIDEO:
+            return "video_short"
+        if step_type == StepType.COMPOSE_DOCUMENT:
+            return "document"
         return "image" # Fallback

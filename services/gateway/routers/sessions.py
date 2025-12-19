@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, List
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from services.common.session_repository import ensure_schema, PostgresSessionStore
 from services.gateway import providers
@@ -19,11 +20,17 @@ from services.gateway import providers
 # Legacy admin settings replaced – use central cfg singleton.
 from src.core.config import cfg
 
-router = APIRouter(prefix="/v1/session", tags=["sessions"])
+router = APIRouter(prefix="/v1/sessions", tags=["sessions"])
 
 # SSE polling interval in seconds
 SSE_POLL_INTERVAL = 2.0
 SSE_KEEPALIVE_INTERVAL = 10.0
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    persona_id: str | None = None
+    tenant: str | None = None
 
 
 async def _get_store() -> PostgresSessionStore:
@@ -86,6 +93,31 @@ async def _sse_event_generator(
             await asyncio.sleep(SSE_POLL_INTERVAL)
 
 
+@router.get("", response_model=List[SessionSummary])
+async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> List[SessionSummary]:
+    """List recent sessions."""
+    store = await _get_store()
+    rows = await store.list_sessions(limit=limit)
+    return [
+        SessionSummary(
+            session_id=str(r.session_id),
+            persona_id=getattr(r, "persona_id", None),
+            tenant=getattr(r, "tenant", None),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/{session_id}/history")
+async def session_history(session_id: str, limit: int = Query(100, ge=1, le=500)) -> Any:
+    """Return session history events."""
+    store = await _get_store()
+    events = await store.list_events(session_id=session_id, limit=limit)
+    if events is None:
+        raise HTTPException(status_code=404, detail="session_not_found")
+    return {"session_id": session_id, "events": events}
+
+
 @router.get("/{session_id}/events")
 async def session_events_sse(
     session_id: str,
@@ -126,8 +158,7 @@ async def post_session_message(
 ):
     """Enqueue a user message and persist a session event.
 
-    This endpoint mirrors the legacy contract used by integration tests:
-    it returns ``session_id`` and ``event_id`` for the enqueued message.
+    Returns ``session_id`` and ``event_id`` for the enqueued message.
     """
     message = payload.get("message", "")
     if not isinstance(message, str) or not message.strip():

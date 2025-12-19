@@ -10,7 +10,7 @@ import logging
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 
-from services.common.soma_brain_client import SomaBrainClient, MultimodalOutcome
+from services.common.soma_brain_outcomes import SomaBrainOutcomesStore, MultimodalOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +23,22 @@ class CandidateScore:
 class PortfolioRanker:
     """Ranks provider candidates based on historical performance."""
 
-    def __init__(self, soma_client: SomaBrainClient) -> None:
+    def __init__(self, soma_client: SomaBrainOutcomesStore) -> None:
         self.client = soma_client
 
-    def rank(
-        self, 
-        candidates: List[Tuple[str, str]], 
+    async def rank(
+        self,
+        candidates: List[Tuple[str, str]],
         step_type: str,
-        context: Optional[Dict] = None
+        context: Optional[Dict] = None,
     ) -> List[Tuple[str, str]]:
         """Rank candidates by performance score.
-        
+
         Args:
             candidates: List of (provider_name, model_name) tuples.
             step_type: The type of step (e.g., 'generate_image').
             context: Additional context (optional).
-            
+
         Returns:
             Reordered list of candidates (best first).
         """
@@ -47,16 +47,16 @@ class PortfolioRanker:
 
         # Fetch history for this step type
         # In a real heavy-load system, this would be cached or aggregated asynchronously.
-        history = self.client.fetch_outcomes(step_type=step_type, limit=100)
-        
+        history = await self.client.fetch_outcomes(step_type=step_type, limit=100)
+
         scores: List[Tuple[Tuple[str, str], float]] = []
-        
+
         for prov, model in candidates:
             prov_key = prov  # Providers are identified by unique name in capabilities
             stats = self._aggregate_stats(history, prov_key)
             score = self._calculate_score(stats)
             scores.append(((prov, model), score))
-            
+
             # Log shadow mode details
             logger.info(
                 f"ShadowRanker: {prov} Score={score:.3f} "
@@ -67,7 +67,7 @@ class PortfolioRanker:
 
         # Sort by score descending
         scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         return [item[0] for item in scores]
 
     def _aggregate_stats(self, history: List[MultimodalOutcome], provider: str) -> Dict[str, float]:

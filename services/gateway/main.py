@@ -19,7 +19,6 @@ from fastapi.staticfiles import StaticFiles
 # Re-exports for test compatibility
 # Re-export auth and providers for backward compatibility
 from services.gateway.routers import build_router
-from services.gateway.routers import build_router
 from services.gateway import providers
 from services.gateway.limiter import limiter
 from slowapi.errors import RateLimitExceeded

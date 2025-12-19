@@ -161,6 +161,10 @@ class PolicyGraphRouter:
         self._policy_client = policy_client
         self._policy_initialized = False
 
+    async def ensure_schema(self) -> None:
+        """Ensure the capability registry schema exists."""
+        await self._registry.ensure_schema()
+
     async def _get_policy_client(self) -> PolicyClient:
         """Lazy-initialize policy client."""
         if self._policy_client is None:
@@ -250,6 +254,7 @@ class PolicyGraphRouter:
                 continue
 
             # Check budget
+            estimated_cost = self._estimate_cost(capability)
             budget_ok, budget_reason = self._check_budget(
                 capability=capability,
                 budget_limit_cents=budget_limit_cents,
@@ -260,13 +265,24 @@ class PolicyGraphRouter:
                 continue
 
             # Check OPA policy
+            policy_context = {
+                "modality": modality,
+                "tool_id": tool_id,
+                "provider": provider,
+                "cost_tier": capability.cost_tier.value,
+                "estimated_cost_cents": estimated_cost,
+                **context,
+            }
+            if budget_limit_cents is not None:
+                policy_context["budget_limit_cents"] = budget_limit_cents
+                policy_context["budget_used_cents"] = budget_used_cents
+                policy_context["budget_remaining_cents"] = budget_limit_cents - budget_used_cents
             policy_ok, policy_reason = await self._check_policy(
                 tool_id=tool_id,
                 provider=provider,
                 tenant_id=tenant_id,
                 persona_id=persona_id,
-                modality=modality,
-                context=context,
+                policy_context=policy_context,
             )
             if not policy_ok:
                 denied_options.append((tool_id, provider, policy_reason))
@@ -280,7 +296,6 @@ class PolicyGraphRouter:
             
             budget_remaining = None
             if budget_limit_cents is not None:
-                estimated_cost = self._estimate_cost(capability)
                 budget_remaining = budget_limit_cents - budget_used_cents - estimated_cost
 
             logger.info(
@@ -298,7 +313,7 @@ class PolicyGraphRouter:
                 ladder_considered=ladder,
                 denied_options=denied_options,
                 budget_remaining_cents=budget_remaining,
-                policy_context={"modality": modality, **context},
+                policy_context=policy_context,
             )
 
         # All options exhausted
@@ -338,13 +353,25 @@ class PolicyGraphRouter:
             )
 
         # Still check policy and budget for override
+        estimated_cost = self._estimate_cost(capability)
+        policy_context = {
+            "modality": "user_override",
+            "tool_id": tool_id,
+            "provider": provider,
+            "cost_tier": capability.cost_tier.value,
+            "estimated_cost_cents": estimated_cost,
+            **context,
+        }
+        if budget_limit_cents is not None:
+            policy_context["budget_limit_cents"] = budget_limit_cents
+            policy_context["budget_used_cents"] = budget_used_cents
+            policy_context["budget_remaining_cents"] = budget_limit_cents - budget_used_cents
         policy_ok, policy_reason = await self._check_policy(
             tool_id=tool_id,
             provider=provider,
             tenant_id=tenant_id,
             persona_id=persona_id,
-            modality="user_override",
-            context=context,
+            policy_context=policy_context,
         )
         if not policy_ok:
             return RoutingDecision(
@@ -352,7 +379,7 @@ class PolicyGraphRouter:
                 fallback_reason=FallbackReason.POLICY_DENIED,
                 ladder_considered=ladder,
                 denied_options=[(tool_id, provider, policy_reason)],
-                policy_context=context,
+                policy_context=policy_context,
             )
 
         budget_ok, budget_reason = self._check_budget(
@@ -366,7 +393,7 @@ class PolicyGraphRouter:
                 fallback_reason=FallbackReason.OVER_BUDGET,
                 ladder_considered=ladder,
                 denied_options=[(tool_id, provider, budget_reason)],
-                policy_context=context,
+                policy_context=policy_context,
             )
 
         # Override accepted
@@ -383,7 +410,7 @@ class PolicyGraphRouter:
             fallback_position=position if position >= 0 else 0,
             ladder_considered=ladder,
             denied_options=[],
-            policy_context=context,
+            policy_context=policy_context,
         )
 
     def _get_fallback_ladder(self, modality: str) -> List[Tuple[str, str]]:
@@ -445,8 +472,7 @@ class PolicyGraphRouter:
         provider: str,
         tenant_id: str,
         persona_id: Optional[str],
-        modality: str,
-        context: Dict[str, Any],
+        policy_context: Dict[str, Any],
     ) -> Tuple[bool, str]:
         """Check OPA policy for capability authorization.
         
@@ -461,12 +487,7 @@ class PolicyGraphRouter:
                 persona_id=persona_id,
                 action="multimodal.capability.execute",
                 resource=f"{tool_id}/{provider}",
-                context={
-                    "modality": modality,
-                    "tool_id": tool_id,
-                    "provider": provider,
-                    **context,
-                },
+                context=policy_context,
             )
             
             allowed = await policy_client.evaluate(request)

@@ -44,7 +44,7 @@ export async function fetchApi(url, request) {
     // disabled (REQUIRE_AUTH=false) the gateway does not attach tenant/persona metadata
     // automatically, leading to 403 (policy_denied) responses. We inject stable
     // headers here unless caller already provided them.
-    // Tenant precedence: explicit header > localStorage override > fallback > default.
+    // Tenant precedence: explicit header > localStorage override > default.
     try {
       if (!finalRequest.headers['X-Tenant-Id'] && !finalRequest.headers['x-tenant-id']) {
         const storedTenant = (globalThis.localStorage && localStorage.getItem('tenant')) || '';
