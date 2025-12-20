@@ -27,7 +27,7 @@ except ValueError:  # reuse existing collector if re-imported under tests
 
 # NOTE: ``observability.metrics`` already registers a histogram named
 # ``auth_duration_seconds`` with a ``source`` label.  Creating another
-# histogram with a different label set raises a ``ValueError`` and the fallback
+# histogram with a different label set raises a ``ValueError`` and the existing
 # collector would have mismatched label names, causing runtime errors when we
 # call ``labels(action=…)``.  To stay compatible with the existing metric we
 # reuse the already‑registered collector and label it with ``source`` – the
@@ -54,30 +54,12 @@ async def authorize(
     context: Dict[str, Any] | None = None,
     client: PolicyClient | None = None,
 ) -> Dict[str, Any]:
-    """Authorize a request using policy evaluation.
-
-    The function now respects the global ``auth_required`` flag from the
-    canonical ``SA01Settings``. When authentication is disabled (the flag is
-    ``False``), the policy check is bypassed and the request is allowed.
-    This aligns test expectations where ``SA01_AUTH_REQUIRED`` is set to
-    ``false`` and admin endpoints should be reachable without a policy
-    service running.
-    """
+    """Authorize a request using policy evaluation."""
     start = time.perf_counter()
     ctx = context or {}
     tenant = request.headers.get("X-Tenant-Id", "default")
     persona = request.headers.get("X-Persona-Id")
 
-    # Short‑circuit when authentication/policy enforcement is disabled.
-    from src.core.config import cfg
-
-    if not cfg.settings().auth_required:
-        # Record a successful (allowed) decision for observability.
-        AUTH_DECISIONS.labels(action=action, result="allow").inc()
-        AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
-        return {"tenant": tenant, "persona_id": persona, "action": action, "resource": resource}
-
-    # Hard delete of test bypass: always evaluate real policy when auth is required.
     policy_req = PolicyRequest(
         tenant=tenant,
         persona_id=persona,

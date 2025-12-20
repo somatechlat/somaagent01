@@ -9,7 +9,4 @@ keywords:
   - runtime
   - services
 type: application
-dependencies:
-  - name: outbox-sync
-    version: 0.1.0
-    repository: file://../outbox-sync
+dependencies: []

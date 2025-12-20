@@ -17,25 +17,10 @@ try:
     )
 except Exception:  # pragma: no cover - optional dependency
     KNOWLEDGE_AVAILABLE = False
-
-    # Define no-op placeholders to avoid NameError at module import-time.
-    class CSVLoader:
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError("langchain_community not installed; CSVLoader unavailable")
-
-    class PyPDFLoader:
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError("langchain_community not installed; PyPDFLoader unavailable")
-
-    class TextLoader:
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError("langchain_community not installed; TextLoader unavailable")
-
-    class UnstructuredHTMLLoader:
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError(
-                "langchain_community not installed; UnstructuredHTMLLoader unavailable"
-            )
+    CSVLoader = None
+    PyPDFLoader = None
+    TextLoader = None
+    UnstructuredHTMLLoader = None
 
 
 from python.helpers.log import LogItem
@@ -74,20 +59,14 @@ def load_knowledge(
     intelligent memory consolidation system.
     """
 
-    # If langchain_community isn't available, skip knowledge loading to allow
-    # the UI and other services to start in minimal/dev containers.
     if not KNOWLEDGE_AVAILABLE:
-        if log_item:
-            log_item.stream(
-                progress="\nKnowledge loading skipped: langchain_community not installed"
-            )
-        PrintStyle(font_color="yellow").print(
-            "Knowledge loading skipped: langchain_community not installed"
-        )
-        return index
+        raise RuntimeError("langchain_community not installed; knowledge loading unavailable")
 
     # Mapping file extensions to corresponding loader classes
     # Note: Using TextLoader for JSON and MD to avoid parsing issues with consolidation
+    if not KNOWLEDGE_AVAILABLE:
+        raise RuntimeError("langchain_community not installed; knowledge import unavailable")
+
     file_types_loaders = {
         "txt": TextLoader,
         "pdf": PyPDFLoader,

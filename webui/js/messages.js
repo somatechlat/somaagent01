@@ -927,7 +927,7 @@ function mapImgUrl(val) {
     const id = raw.replace(/^attachment\/?|^att:|^att\//, "");
     // If id looks like UUID, map to attachments endpoint
     if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return `${API.BASE}${API.ATTACHMENTS}/${id}`;
-    // Fallback: encode safely
+    // Encode safely for non-UUID identifiers
     return `${API.BASE}${API.ATTACHMENTS}/${encodeURIComponent(id)}`;
   } catch { return ""; }
 }

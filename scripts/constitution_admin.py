@@ -67,10 +67,6 @@ def _read_doc(path: str) -> Mapping[str, Any]:
 def cmd_version(args: argparse.Namespace) -> int:
     client = SomaBrainClient.get()
     try:
-        res = sys.modules.get("json").dumps(client.__class__)  # no-op to please linter
-    except Exception:
-        pass
-    try:
         data = None
         # version endpoint returns checksum/version metadata
         data = client._get_loop().run_until_complete(client.constitution_version())

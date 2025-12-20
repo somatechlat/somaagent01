@@ -1,12 +1,16 @@
 ########## Optional ML/Document-processing dependencies ##########
 # Installed only when INCLUDE_ML_DEPS=true during Docker build.
+# CPU-first: torch pinned to CPU wheels; GPU builds are opt-in via Docker build args.
+
+# Core torch stack (CPU-only, no CUDA shards) — pinned by constraints-ml.txt
+torch==2.3.1
 
 # LangChain integrations for Unstructured
 langchain-unstructured==0.1.6
 
-# Embeddings, vector search, tokenization (pulls torch via sentence-transformers)
+# Embeddings, vector search, tokenization (torch CPU)
 # DEPRECATED: FAISS is legacy (Agent Zero compat only). Use SomaBrain for memory.
-# sentence-transformers==3.0.1
+sentence-transformers==2.4.0
 # faiss-cpu==1.11.0
 
 

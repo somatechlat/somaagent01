@@ -220,7 +220,7 @@ File Upload → Gateway → AttachmentsStore → Kafka → Processing
 | Component | Implementation | VIBE Status |
 |-----------|----------------|-------------|
 | AttachmentsStore | PostgreSQL-backed | ✅ Real |
-| DurablePublisher | Kafka + Outbox | ✅ Real |
+| DurablePublisher | Kafka | ✅ Real |
 | SessionCache | Redis | ✅ Real |
 | SessionStore | PostgreSQL | ✅ Real |
 
@@ -515,8 +515,6 @@ CircuitBreaker(
 | dlq_messages | Dead letter queue | topic, event, error, created_at |
 | attachments | File storage | id, filename, sha256, content |
 | audit_events | Audit log | action, tenant, session_id, timestamp |
-| outbox | Transactional outbox | topic, payload, status |
-| memory_write_outbox | Memory retry queue | payload, tenant, status |
 
 ### 10.2 Redis Usage
 
@@ -572,7 +570,7 @@ CircuitBreaker(
 
 ### 11.4 Security & Transmission Hardening
 
-- **Transport**: TLS 1.3 only; disable TLS 1.2/weak ciphers; enforce HSTS and OCSP stapling; no plaintext fallbacks.
+- **Transport**: TLS 1.3 only; disable TLS 1.2/weak ciphers; enforce HSTS and OCSP stapling; no plaintext alternatives.
 - **Mutual TLS**: All service-to-service calls (Agent ↔ Hub ↔ Providers) use mTLS with short-lived client certificates from an internal CA; pin server certificates in the agent to prevent MITM.
 - **Request Signing**: Every API request is JWS-signed (with `kid`, nonce, timestamp). Enforce tight replay window; validate both TLS client identity and signature.
 - **Capsule Supply Chain**: Require SHA-256 checksum and detached signature (cosign/sigstore) before install/upgrade/rollback; optional transparency log; reject unsigned or incompatible capsules in Production.
@@ -787,7 +785,7 @@ This section extends SomaAgent01 with **multimodal generation and consumption ca
 - **SRS Authoring**: Generating ISO 29148-style documents with embedded/linked assets
 
 **Architecture Components** (A–E):
-- **A — Policy Graph Router**: Deterministic routing + fallback ladders (always-on)
+- **A — Policy Graph Router**: Deterministic provider selection (always-on)
 - **E — Capability Registry**: Tool/model discovery substrate (always-on)
 - **C — Producer + Critic**: Quality gating loop (policy-gated, off by default)
 - **D — Task DSL + Compiler**: Structured job plan format + compilation (always-on)
@@ -802,11 +800,11 @@ Plan Compiler (D) → Executable DAG → For each step:
    ↓
 Capability Registry (E).find_candidates(modality, constraints)
    ↓
-Policy Graph Router (A): OPA filter + budget + fallback ladder
+Policy Graph Router (A): OPA filter + budget + provider selection
    ↓
 Portfolio Ranker (B): SomaBrain outcomes → ranked list (shadow/active)
    ↓
-ToolExecutor.multimodal_dispatch(): Execute with fallback
+ToolExecutor.multimodal_dispatch(): Execute with single provider
    ↓
 Asset Created → AssetStore → Provenance Recorded
    ↓
@@ -831,26 +829,18 @@ All Steps Complete → SRS Composer → Document + Asset Bundle + Provenance
 
 #### 16.3.2 Storage Strategy
 
-- **Primary**: S3-compatible object storage (scalable, cost-effective)
-- **Fallback**: PostgreSQL `bytea` column (MVP/dev environments)
+- **Storage**: S3-compatible object storage (scalable, cost-effective)
+- **PostgreSQL bytea**: Not used for multimodal asset storage
 - **Deduplication**: SHA256 checksums prevent duplicate storage
 - **Versioning**: Same content = same hash; regenerations create new versions
 
 ### 16.4 Component A: Policy Graph Router
 
-**Deterministic Fallback Ladders** per modality + task type:
+**Deterministic Selection** per modality + task type:
 
-| Ladder Key | Primary | Fallback 1 | Fallback 2 | Fallback 3 | Terminal |
-|-----------|---------|------------|------------|------------|----------|
-| `image_diagram` | `mermaid_svg` | `plantuml_png` | `matplotlib_png` | `dalle_raster` | controlled_failure |
-| `image_photo` | `dalle3` | `dalle2` | `stable_diffusion` | — | controlled_failure |
-| `screenshot` | `playwright_capture` | `selenium_screenshot` | user_upload | — | controlled_failure |
-| `video_short` | `runway_gen2` | `pika_labs` | `storyboard_frames` | — | controlled_failure |
-
-**OPA Integration**:
-- Action: `multimodal.tool.execute`
-- Filters: Provider allowlists, budget constraints, data classification
-- Enforcement: Pre-execution + per-fallback-attempt
+- **Selection Order**: first eligible provider by registry priority
+- **OPA Integration**: pre-execution policy checks
+- **Enforcement**: single provider execution per step
 
 ### 16.5 Component B: Portfolio Selector (Learning)
 
@@ -876,12 +866,10 @@ All Steps Complete → SRS Composer → Document + Asset Bundle + Provenance
 2. **Critic** evaluates against rubric (vision model for images, heuristics for diagrams)
 3. **Pass** → Store asset, continue
 4. **Fail** → Re-prompt with feedback (bounded attempts: MAX_REWORK=2)
-5. **Exhausted** → Advance to fallback ladder
+5. **Exhausted** → Mark step failed
 
 **Vision Model Integration**:
-- Primary: GPT-4 Vision
-- Fallback: Claude 3 Opus (vision)
-- Fallback: Heuristics (resolution, file size, metadata)
+- Single configured vision model per task type
 
 **Rubric Schema**:
 ```json
@@ -957,7 +945,7 @@ await registry.register(
 
 **New Method**: `multimodal_dispatch(tool_name, args, tenant_id, session_id, execution_id)`
 - Routes to image_gen, diagram_gen, screenshot, video tools
-- Integrates PolicyGraphRouter for fallbacks
+- Integrates PolicyGraphRouter for provider selection
 - Records executions to `multimodal_executions` table
 - Triggers AssetCritic if quality gates enabled
 
@@ -1029,7 +1017,7 @@ within_budget {
 | `multimodal_capability_selection_total` | Counter | modality, tool_id, provider, decision_source | Track tool selection |
 | `multimodal_execution_latency_seconds` | Histogram | modality, tool_id, provider, status | Execution duration |
 | `multimodal_execution_cost_estimate_cents` | Histogram | modality, tool_id, provider | Cost tracking |
-| `multimodal_fallback_total` | Counter | modality, tool_id, fallback_reason | Fallback frequency |
+| `multimodal_provider_errors_total` | Counter | modality, tool_id, error_reason | Provider error frequency |
 | `multimodal_quality_score` | Histogram | modality, tool_id | Critic scores |
 | `multimodal_rework_attempts_total` | Counter | modality, reason | Quality rework |
 | `portfolio_ranker_shadow_divergence_total` | Counter | modality, task_type | Shadow mode deviation |
@@ -1059,8 +1047,8 @@ multimodal_job (root)
 #### 16.12.1 Unit Tests
 
 - `test_capability_registry.py`: Modality matching, constraint filtering
-- `test_policy_graph_router.py`: Fallback ladder construction, OPA integration
-- `test_asset_store.py`: S3 + PostgreSQL hybrid storage
+- `test_policy_graph_router.py`: Deterministic selection, OPA integration
+- `test_asset_store.py`: S3 asset storage
 - `test_asset_critic.py`: Vision model evaluation, rubric scoring
 - `test_portfolio_ranker.py`: SomaBrain outcomes ranking
 
@@ -1076,9 +1064,9 @@ multimodal_job (root)
    - Input: "Create ISO SRS with 2 architecture diagrams"
    - Verify: Plan extracted, diagrams generated, SRS markdown with embedded SVGs
 
-2. **"Provider Failure → Fallback"**
+2. **"Provider Failure → Error"**
    - Setup: Mock DALL-E 503 error
-   - Verify: Fallback to Stability AI, success, fallback metric incremented
+   - Verify: Provider error surfaces and error metric increments
 
 3. **"Quality Gate Rework"**
    - Setup: Mock Critic fails first attempt
@@ -1086,7 +1074,7 @@ multimodal_job (root)
 
 #### 16.12.4 Chaos Tests
 
-- **Circuit Breaker**: Repeated failures open circuit, skip primary provider
+- **Circuit Breaker**: Repeated failures open circuit and fail fast
 - **Partial Resume**: Kill process mid-job, resume from checkpoint
 
 ### 16.13 Performance Budgets
@@ -1120,13 +1108,13 @@ multimodal_job (root)
 
 4. **v2.0-prod** (General availability)
    - Gradual rollout: 10% → 50% → 100% production tenants
-   - Monitor error rates, fallback counts, costs
+   - Monitor error rates and costs
    - Feature flag remains (per-tenant disable supported)
 
 ### 16.15 Dependencies & Prerequisites
 
 - **PostgreSQL 14+**: For new tables (5 tables, 8 indexes)
-- **S3-Compatible Storage**: MinIO/AWS S3 for asset storage (optional, PostgreSQL fallback)
+- **S3-Compatible Storage**: MinIO/AWS S3 for asset storage; PostgreSQL for local-only usage
 - **Provider API Keys**: OpenAI (DALL-E, GPT-4V), Stability AI, Runway/Pika (video, optional)
 - **OPA 0.40+**: For multimodal policy enforcement
 - **SomaBrain v2.0+**: For outcome feedback and ranking
@@ -1154,7 +1142,7 @@ multimodal_job (root)
 
 - [ ] All 5 database tables created with migrations
 - [ ] CapabilityRegistry discovers tools by modality and constraints
-- [ ] PolicyGraphRouter routes with fallback ladders (tested with chaos scenarios)
+- [ ] PolicyGraphRouter routes with deterministic provider selection (tested with chaos scenarios)
 - [ ] AssetStore creates/retrieves assets from S3 or PostgreSQL
 - [ ] Provenance recorded for every generated asset
 - [ ] At least 3 provider adapters implemented (OpenAI DALL-E, Stability, Mermaid)
@@ -1166,7 +1154,7 @@ multimodal_job (root)
 - [ ] Unit tests: 90%+ coverage for new modules
 - [ ] E2E golden test: "Generate SRS with diagrams" succeeds
 - [ ] Chaos test: circuit breaker prevents cascade failures
-- [ ] Zero VIBE violations (no TODO/stub/placeholder keywords)
+- [ ] Zero VIBE violations (no task markers or test doubles)
 
 ### 16.19 Related Documents
 

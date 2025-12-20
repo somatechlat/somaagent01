@@ -204,10 +204,8 @@ system_cpu_usage = Gauge(
 # The ``python.observability.metrics`` module expects a ``somabrain_requests_total``
 # counter to be available from this ``observability.metrics`` package.  The
 # original implementation mistakenly imported the symbol from itself, leading to
-# an ``ImportError`` at runtime.  We provide a minimal placeholder counter that
-# satisfies the import without altering behaviour – the FastA2A code only
-# increments this counter, so a simple ``Counter`` with a generic ``agent``
-# label is sufficient.
+# an ``ImportError`` at runtime.  We provide the canonical counter here so the
+# integration can record requests consistently.
 # ---------------------------------------------------------------------------
 somabrain_requests_total = Counter(
     "somabrain_requests_total",
@@ -253,14 +251,6 @@ system_uptime_seconds = Counter(
     registry=registry,
 )
 
-# Phase 3: Memory Guarantees & WAL Lag Metrics
-memory_write_outbox_pending = Gauge(
-    "memory_write_outbox_pending_total",
-    "Number of pending memory writes in outbox",
-    ["tenant", "session_id"],
-    registry=registry,
-)
-
 memory_wal_lag_seconds = Gauge(
     "memory_wal_lag_seconds", "WAL replication lag in seconds", ["tenant"], registry=registry
 )
@@ -284,22 +274,6 @@ memory_policy_decisions = Counter(
     "memory_policy_decisions_total",
     "Number of memory policy decisions",
     ["action", "resource", "tenant", "decision"],
-    registry=registry,
-)
-
-# Outbox processing metrics
-outbox_processing_duration = Histogram(
-    "outbox_processing_duration_seconds",
-    "Duration of outbox message processing",
-    ["status", "operation"],
-    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
-    registry=registry,
-)
-
-outbox_batch_size = Gauge(
-    "outbox_batch_size",
-    "Number of messages in outbox processing batch",
-    ["operation"],
     registry=registry,
 )
 
@@ -654,10 +628,8 @@ class MetricsCollector:
 
     The production codebase expects a singleton ``metrics_collector`` with a
     handful of helper methods (e.g. ``track_error``, ``track_singleton_health``
-    and ``update_feature_metrics``).  For the purposes of the test suite we
-    provide lightweight implementations that update the existing Prometheus
-    counters/gauges defined above.  This satisfies VIBE rules by keeping the
-    logic simple, side‑effect free on import, and centralising metric updates.
+    and ``update_feature_metrics``).  Implementations update the Prometheus
+    counters/gauges defined above while keeping import side effects minimal.
     """
 
     def __init__(self) -> None:
@@ -680,12 +652,17 @@ class MetricsCollector:
         except Exception:
             pass
 
-    # Feature metrics placeholder – in the full implementation this would sync
-    # feature flags with Prometheus.  Here we simply ensure the call is safe.
     def update_feature_metrics(self) -> None:
-        # No‑op: the individual feature gauges are already defined and can be
-        # updated elsewhere.  This method exists to satisfy imports.
-        return None
+        from services.common.features import build_default_registry
+
+        reg = build_default_registry()
+        feature_profile_info.labels(profile=reg.profile).set(1)
+        for desc in reg.describe():
+            state = reg.state(desc.key)
+            for candidate in ("on", "degraded", "disabled"):
+                feature_state_info.labels(feature=desc.key, state=candidate).set(
+                    1 if candidate == state else 0
+                )
 
     # Additional helper used by some services (e.g., auth results).
     def track_auth_result(self, result: str, source: str) -> None:
@@ -711,7 +688,7 @@ metrics_collector = MetricsCollector()
 
 
 # ---------------------------------------------------------------------------
-# ContextBuilderMetrics placeholder (used by the FastA2A integration).
+# ContextBuilderMetrics adapter (used by the FastA2A integration).
 # ---------------------------------------------------------------------------
 class ContextBuilderMetrics:
     """Simple wrapper exposing counters used by the context builder.

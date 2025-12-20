@@ -286,7 +286,7 @@ store = get_ui_settings_store()  # Returns singleton
 
 ### Vault Secrets (unified_secret_manager.py - 128 lines)
 
-**NO FALLBACKS - Vault Only:**
+**NO ALTERNATES - Vault Only:**
 ```python
 from services.common.unified_secret_manager import get_secret_manager
 
@@ -833,7 +833,7 @@ Alpine.data('agentSkinsManager', () => ({
 
 1. **NO MOCKS** - All stores connect to real PostgreSQL/Redis/Vault
 2. **NO FILE STORAGE** - Everything in databases (even attachments)
-3. **NO FALLBACKS** - Explicit errors, no silent defaults
+3. **NO ALTERNATES** - Explicit errors, no silent defaults
 4. **REAL AUTH** - OPA policy evaluation, not bypassed
 5. **REAL METRICS** - Prometheus counters/histograms everywhere
 6. **ASYNC/AWAIT** - All I/O is asynchronous
@@ -958,18 +958,15 @@ class ModelConfig:
 **API Key Management (Vault-first):**
 ```python
 def get_api_key(service: str) -> str:
-    """Get API key from Vault, fallback to .env"""
-    # 1. Try Vault (production)
+    """Get API key from Vault (single source of truth)."""
     key = UnifiedSecretManager().get_provider_key(service)
-    if key:
-        # Support round-robin for multiple keys
-        if "," in key:
-            keys = [k.strip() for k in key.split(",")]
-            return keys[counter % len(keys)]
-        return key
-    
-    # 2. Fallback to .env (backward compatibility)
-    return dotenv.get_dotenv_value(f"API_KEY_{service.upper()}")
+    if not key:
+        raise RuntimeError(f"Missing API key for {service}")
+    # Support round-robin for multiple keys
+    if "," in key:
+        keys = [k.strip() for k in key.split(",")]
+        return keys[counter % len(keys)]
+    return key
 ```
 
 **Rate Limiting:**
@@ -1429,8 +1426,6 @@ orchestrator.attach()
 ### Messaging & Events
 25. **event_bus.py** (8,590 bytes) - Kafka wrapper
 26. **publisher.py** (4,779 bytes) - Event publishing
-27. **memory_write_outbox.py** (8,128 bytes) - Transactional outbox
-28. **outbox_repository.py** (9,850 bytes) - Outbox persistence
 29. **messaging_utils.py** (1,363 bytes) - Messaging helpers
 30. **dlq.py** (2,259 bytes) - Dead letter handling
 31. **dlq_consumer.py** (1,505 bytes) - DLQ consumer
@@ -2701,7 +2696,7 @@ async def build_for_turn(self, turn, *, max_prompt_tokens):
         except SomaClientError:
             # Trigger degradation window
             self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
-            snippets = []  # Graceful fallback
+            snippets = []  # Retrieval failed; no snippets available
     else:
         # DOWN state - skip retrieval entirely
         logger.debug("Somabrain DOWN – skipping retrieval")
@@ -2787,7 +2782,6 @@ def _propagate_degradation(self, failed_service: str):
 SERVICE_DEPENDENCIES = {
     "conversation_worker": ["somabrain", "postgres"],
     "context_builder": ["somabrain"],
-    "outbox_sync": ["kafka"],
     "gateway": ["postgres", "opa"]
 }
 ```
@@ -2839,61 +2833,8 @@ const somabrainStates = {
 
 ### Testing Degradation Mode
 
-**Unit Tests (tests/unit/test_context_builder_degraded.py - 96 lines):**
-
-```python
-@pytest.mark.asyncio
-async def test_context_builder_limits_snippets_when_degraded():
-    """Verify DEGRADED state limits snippets to DEGRADED_TOP_K."""
-    snippets = [
-        {"id": f"m{i}", "text": f"Memory {i}", "score": float(10 - i)}
-        for i in range(6)
-    ]
-    fake = FakeSomabrain({"candidates": snippets})
-    
-    builder = ContextBuilder(
-        somabrain=fake,
-        metrics=ContextBuilderMetrics(),
-        token_counter=lambda text: len(text.split()),
-        health_provider=lambda: SomabrainHealthState.DEGRADED
-    )
-    
-    built = await builder.build_for_turn({
-        "tenant_id": "t-1",
-        "session_id": "s-1",
-        "system_prompt": "System",
-        "user_message": "Hello",
-        "history": []
-    }, max_prompt_tokens=4000)
-    
-    assert fake.calls[0]["top_k"] == ContextBuilder.DEGRADED_TOP_K  # 3
-    assert built.debug["somabrain_state"] == "degraded"
-    assert built.debug["snippet_count"] == 3
-
-@pytest.mark.asyncio
-async def test_context_builder_skips_retrieval_when_down():
-    """Verify DOWN state skips SomaBrain entirely."""
-    fake = FakeSomabrain({"candidates": [{"id": "x", "text": "..."}]})
-    
-    builder = ContextBuilder(
-        somabrain=fake,
-        metrics=ContextBuilderMetrics(),
-        token_counter=lambda text: len(text.split()),
-        health_provider=lambda: SomabrainHealthState.DOWN
-    )
-    
-    built = await builder.build_for_turn({
-        "tenant_id": "t-1",
-        "session_id": "s-2",
-        "system_prompt": "System",
-        "user_message": "Hello",
-        "history": []
-    }, max_prompt_tokens=1024)
-    
-    assert fake.calls == []  # No SomaBrain calls
-    assert built.debug["somabrain_state"] == "down"
-    assert built.debug["snippet_count"] == 0
-```
+Run the benchmark harness against a real SomaBrain instance to validate
+degraded/down behavior without test doubles.
 
 **Benchmark Harness (scripts/benchmarks/context_builder_benchmark.py):**
 

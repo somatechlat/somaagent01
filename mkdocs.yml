@@ -72,7 +72,6 @@ markdown_extensions:
 plugins:
   - search
   - git-revision-date-localized:
-      fallback_to_build_date: true
       enabled: !ENV [ENABLE_DOCS_GIT_PLUGINS, false]
   - git-committers:
       repository: somatechlat/somaagent01

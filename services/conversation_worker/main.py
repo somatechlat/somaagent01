@@ -20,9 +20,7 @@ from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
-from services.common.memory_write_outbox import ensure_schema as ensure_mw_schema, MemoryWriteOutbox
 from services.common.model_profiles import ModelProfileStore
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
@@ -81,8 +79,7 @@ class ConversationWorkerImpl:
         }
         # Infrastructure
         self.bus = KafkaEventBus(self.kafka)
-        self.outbox = OutboxStore(dsn=APP.database.dsn)
-        self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
+        self.publisher = DurablePublisher(bus=self.bus)
         self.dlq = DeadLetterQueue(self.topics["in"], bus=self.bus)
         self.cache = RedisSessionCache(url=APP.redis.url)
         self.store = PostgresSessionStore(dsn=APP.database.dsn)
@@ -99,7 +96,6 @@ class ConversationWorkerImpl:
             publisher=self.publisher, store=TelemetryStore.from_settings(APP)
         )
         self.soma = SomaBrainClient.get()
-        self.mem_outbox = MemoryWriteOutbox(dsn=APP.database.dsn)
         self.router = RouterClient(base_url=cfg.env("ROUTER_URL") or APP.extra.get("router_url"))
         # Context builder
         self.ctx_builder = ContextBuilder(
@@ -107,7 +103,6 @@ class ConversationWorkerImpl:
             metrics=ContextBuilderMetrics(),
             token_counter=count_tokens,
             health_provider=self._get_somabrain_health,
-            on_degraded=lambda d: None,
             use_optimal_budget=cfg.env("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
         )
 
@@ -127,11 +122,11 @@ class ConversationWorkerImpl:
             return SomabrainHealthState.DEGRADED
             
         return SomabrainHealthState.NORMAL
-        # Use Cases - all config from env, no hardcoded fallbacks per VIBE rules
+        # Use Cases - all config from env, no hardcoded defaults per VIBE rules
         gateway_base = cfg.env("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
             raise ValueError(
-                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded fallbacks per VIBE rules."
+                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
             )
         self._gen = GenerateResponseUseCase(
             gateway_base=gateway_base,
@@ -154,8 +149,6 @@ class ConversationWorkerImpl:
         await degradation_monitor.initialize()
         await degradation_monitor.start_monitoring()
         await ensure_schema(self.store)
-        await ensure_outbox_schema(self.outbox)
-        await ensure_mw_schema(self.mem_outbox)
         await self.profiles.ensure_schema()
         await self.store.append_event(
             "system", {"type": "worker_start", "event_id": str(uuid.uuid4()), "message": "online"}

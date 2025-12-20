@@ -6,8 +6,8 @@ the project's existing Python version.  All fields are typed and the
 ``asdict`` helper from ``dataclasses`` can be used to serialize them for
 logging or Prometheus label values.
 
-The VIBE coding rules require **real implementations** – no stubs or
-placeholders – and the models must be importable from anywhere in the
+The VIBE coding rules require **real implementations** – no test doubles –
+and the models must be importable from anywhere in the
 codebase without side effects.
 """
 

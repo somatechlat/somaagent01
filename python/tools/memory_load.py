@@ -72,37 +72,10 @@ class MemoryLoad(Tool):
                 continue
 
             message: str | None = None
-            # Prefer explicit content fields in payload
             if payload:
                 content = payload.get("content")
                 if isinstance(content, str) and content.strip():
                     message = content.strip()
-                else:
-                    text = payload.get("text")
-                    if isinstance(text, str) and text.strip():
-                        message = text.strip()
-                    else:
-                        # New fallback for 'what' field in payload
-                        what = payload.get("what")
-                        if isinstance(what, str) and what.strip():
-                            message = what.strip()
-            else:
-                # Fallback to top‑level content fields
-                content = entry.get("content")
-                if isinstance(content, str) and content.strip():
-                    message = content.strip()
-
-            # Additional fallback: use common metadata keys if no explicit content
-            if not message:
-                for key in ["fact", "summary", "value", "title", "text", "what"]:
-                    val = entry.get(key)
-                    if isinstance(val, str) and val.strip():
-                        message = val.strip()
-                        break
-
-            # If still no message, serialize the entry for debugging
-            if not message:
-                message = str(entry)
 
             if message:
                 if filter_text and filter_text not in message.lower():

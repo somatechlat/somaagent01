@@ -53,15 +53,7 @@ bus = KafkaEventBus(
     )
 )
 
-_outbox = None
-try:
-    from services.common.outbox_repository import OutboxStore
-
-    _outbox = OutboxStore(dsn=cfg.settings().database.dsn)
-except Exception:
-    pass
-
-publisher = DurablePublisher(bus=bus, outbox=_outbox) if _outbox else None
+publisher = DurablePublisher(bus=bus)
 saga_manager = SagaManager(dsn=cfg.settings().database.dsn)
 _saga_schema_ready = False
 _saga_lock = asyncio.Lock()

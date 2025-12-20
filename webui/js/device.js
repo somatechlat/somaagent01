@@ -40,12 +40,12 @@ export function determineInputType() {
 
     // Step 2: Check for pointer/hover capability (pointerOnly or hybrid)
     const hasPointer = () => {
-      if (window.matchMedia) {
-        const finePointer = window.matchMedia("(any-pointer: fine)").matches;
-        const hover = window.matchMedia("(any-hover: hover)").matches;
-        return finePointer || hover;
+      if (!window.matchMedia) {
+        throw new Error("Pointer detection requires window.matchMedia");
       }
-      return false; // Fallback: Assume no pointer if media queries unavailable
+      const finePointer = window.matchMedia("(any-pointer: fine)").matches;
+      const hover = window.matchMedia("(any-hover: hover)").matches;
+      return finePointer || hover;
     };
 
     const touchSupported = hasTouch();
@@ -64,16 +64,16 @@ export function determineInputType() {
       document.addEventListener("touchstart", onTouch, { passive: true });
       document.addEventListener("mousemove", onMouse, { passive: true });
       document.addEventListener("mouseenter", onMouse, { passive: true });
-      // Optional: Timeout fallback (e.g., after 10s, assume pointer for hybrids)
-      setTimeout(() => resolveType("pointer"), 10000);
     } else {
-      // Rare fallback: No touch or pointer detected (assume pointer)
-      resolveType("pointer");
+      throw new Error("Unable to determine input type");
     }
   });
 }
 
-// Exported function to get the detected input type (defaults to 'pointer' if undetermined)
+// Exported function to get the detected input type (throws if undetermined)
 export function getInputType() {
-  return detectedInputType || "pointer";
+  if (!detectedInputType) {
+    throw new Error("Input type has not been determined yet");
+  }
+  return detectedInputType;
 }

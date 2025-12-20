@@ -16,8 +16,8 @@ This document provides the detailed technical design for extending SomaAgent01 w
 ### 1.1 Design Principles
 
 1. **Clean Architecture**: All components follow Repository/Use Case/Adapter patterns
-2. **VIBE Compliance**: Zero stubs/TODOs, real implementations only
-3. **Fail-Safe Fallbacks**: Deterministic degradation ladders per modality
+2. **VIBE Compliance**: Zero test doubles or task markers, real implementations only
+3. **Deterministic Selection**: Single-provider execution per modality
 4. **Learning-Enhanced**: SomaBrain feedback loop improves tool selection over time
 5. **Security-First**: OPA policies, encryption, audit trails
 6. **Observable**: Comprehensive metrics, traces, structured logs
@@ -46,7 +46,7 @@ This document provides the detailed technical design for extending SomaAgent01 w
 │  │  JSON Plan → DAG with:                                                 │ │
 │  │  - steps (dependencies, modality, constraints)                         │ │
 │  │  - quality gates (rubrics, acceptance criteria)                        │ │
-│  │  - fallback policies                                                   │ │
+│  │  - failure policy                                                      │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────┬───────────────────────────────────────────────────┘
                            │
@@ -66,11 +66,11 @@ This document provides the detailed technical design for extending SomaAgent01 w
 │  │  PolicyGraphRouter (A):                                                │ │
 │  │  - Filter via OPA (allow/deny)                                         │ │
 │  │  - Apply budget/quota constraints                                      │ │
-│  │  - Build fallback ladder                                               │ │
+│  │  - Select provider                                                     │ │
 │  │  PortfolioRanker (B) - shadow/active:                                  │ │
 │  │  - Query SomaBrain outcomes                                            │ │
 │  │  - Rank by success/latency/cost/quality                                │ │
-│  │  → Decision{chosen, fallbacks[], rationale}                            │ │
+│  │  → Decision{chosen, rationale}                                         │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────┬───────────────────────────────────────────────────┘
                            │
@@ -78,7 +78,7 @@ This document provides the detailed technical design for extending SomaAgent01 w
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  PHASE 5: EXECUTION (ToolExecutor extended)                                 │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  FOR attempt IN [chosen] + fallbacks:                                  │ │
+│  │  FOR attempt IN [chosen]:                                              │ │
 │  │    TRY:                                                                 │ │
 │  │      provider_adapter.execute(tool, args) → asset_content              │ │
 │  │      AssetStore.create(...) → asset_id                                 │ │
@@ -90,7 +90,7 @@ This document provides the detailed technical design for extending SomaAgent01 w
 │  │      BREAK (success)                                                    │ │
 │  │    EXCEPT error:                                                        │ │
 │  │      record_failure(attempt)                                            │ │
-│  │      CONTINUE (try next fallback)                                       │ │
+│  │      FAIL                                                               │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────┬───────────────────────────────────────────────────┘
                            │
@@ -173,7 +173,6 @@ erDiagram
         int latency_ms
         numeric cost_estimate
         numeric quality_score
-        text fallback_reason
         timestamptz created_at
     }
     
@@ -203,10 +202,9 @@ erDiagram
 
 ### 2.2 Key Design Decisions
 
-**Storage Strategy**: Hybrid S3 + PostgreSQL
-- **Primary**: S3-compatible object storage for assets (scalable, cost-effective)
-- **Fallback**: PostgreSQL `bytea` column for MVP/dev environments
-- **Tradeoff**: Accepts dual-path complexity for operational flexibility
+**Storage Strategy**: S3-only
+- **Storage**: S3-compatible object storage for assets (scalable, cost-effective)
+- **PostgreSQL bytea**: Not used for multimodal assets
 
 **Checksum Deduplication**: SHA256-based
 - Prevents duplicate storage of identical assets
@@ -219,23 +217,21 @@ erDiagram
 
 ---
 
-## 3. Component A: Policy Graph Router (Deterministic Fallbacks)
+## 3. Component A: Policy Graph Router (Deterministic Provider Selection)
 
-### 3.1 Fallback Ladder Specification
+### 3.1 Provider Ordering Specification
 
-Explicit, versioned fallback chains per modality + task type combination:
+Explicit, versioned provider ordering per modality + task type combination:
 
-| Ladder Key | Primary | Fallback 1 | Fallback 2 | Fallback 3 | Terminal |
-|-----------|---------|------------|------------|------------|----------|
-| `image_diagram` | `mermaid_svg` | `plantuml_png` | `matplotlib_png` | `dalle_raster` | controlled_failure |
-| `image_photo` | `dalle3` | `dalle2` | `stable_diffusion` | — | controlled_failure |
-| `image_annotated_screenshot` | `playwright_annotate` | `selenium_screenshot` + `pil_annotate` | user_upload | — | controlled_failure |
-| `video_short` | `runway_gen2` | `pika_labs` | `storyboard_frames` (fallback to images) | — | controlled_failure |
-| `diagram_architecture` | `mermaid_svg` | `plantuml_png` | `graphviz_dot` | — | controlled_failure |
+| Order Key | Provider 1 | Provider 2 | Provider 3 | Provider 4 |
+|-----------|------------|------------|------------|------------|
+| `image_diagram` | `mermaid_svg` | `plantuml_png` | `matplotlib_png` | `dalle_raster` |
+| `image_photo` | `dalle3` | `dalle2` | `stable_diffusion` | — |
+| `image_annotated_screenshot` | `playwright_annotate` | `selenium_screenshot` + `pil_annotate` | user_upload | — |
+| `video_short` | `runway_gen2` | `pika_labs` | `storyboard_frames` | — |
+| `diagram_architecture` | `mermaid_svg` | `plantuml_png` | `graphviz_dot` | — |
 
-**Controlled Failure**: Not a hard crash; returns structured error with:
-- `{success: false, reason: "all_fallbacks_exhausted", attempts: N, errors: [...]}`
-- Allows job to continue or halt based on policy
+If no eligible provider is available, the router returns a structured error.
 
 ### 3.2 OPA Integration Points
 
@@ -263,7 +259,7 @@ Explicit, versioned fallback chains per modality + task type combination:
 
 **Policy Enforcement Points**:
 1. **Pre-Execution**: Before first attempt, filter capabilities
-2. **Fallback**: Before each fallback attempt, re-check policy
+2. **Selection**: Before provider selection, re-check policy
 3. **Budget**: Deduct estimated cost; block if exhausted
 4. **Data Classification**: Block high-risk tools for sensitive tenants
 
@@ -372,16 +368,14 @@ async def evaluate_with_rework(asset, rubric, max_attempts=2):
             new_prompt = f"{original_prompt}\n\nPrevious attempt failed: {feedback}\nImprove: {rubric['criteria']}"
             asset = await producer.generate(new_prompt)
         else:
-            # Exhausted attempts; advance to fallback
+            # Exhausted attempts; mark failed
             raise QualityGateFailure(f"Failed after {max_attempts} attempts: {feedback}")
 ```
 
 ### 5.3 Vision Model Integration
 
 For image quality evaluation:
-- **Primary**: GPT-4 Vision (if available)
-- **Fallback 1**: Claude 3 Opus (vision)
-- **Fallback 2**: Heuristics (resolution, file size, metadata checks)
+- **Provider**: GPT-4 Vision
 
 **Prompt Template**:
 ```
@@ -696,7 +690,7 @@ async def create_provenance(asset_id: str, prompt: str, params: dict, user_id: s
 | `multimodal_capability_selection_total` | Counter | modality, tool_id, provider, decision_source | Track which tools selected |
 | `multimodal_execution_latency_seconds` | Histogram | modality, tool_id, provider, status | Execution duration |
 | `multimodal_execution_cost_estimate_cents` | Histogram | modality, tool_id, provider | Cost tracking |
-| `multimodal_fallback_total` | Counter | modality, tool_id, fallback_reason | Fallback frequency |
+| `multimodal_provider_errors_total` | Counter | modality, tool_id, error_reason | Provider error frequency |
 | `multimodal_quality_score` | Histogram | modality, tool_id | Critic scores |
 | `multimodal_rework_attempts_total` | Counter | modality, reason | Quality gate rework |
 | `portfolio_ranker_shadow_divergence_total` | Counter | modality, task_type | Shadow mode divergence |
@@ -731,7 +725,6 @@ multimodal_job (root span)
 - `multimodal.modality`
 - `multimodal.tool_id`
 - `multimodal.provider`
-- `multimodal.fallback_attempt`
 - `multimodal.quality_score`
 
 ---
@@ -755,25 +748,25 @@ multimodal_job (root span)
 1. **"Generate SRS with Architecture Diagrams"**
    - Input: Natural language SRS request mentioning "include system architecture diagram and deployment diagram"
    - Expected: Plan with 2+ diagram tasks, execution succeeds, SRS markdown contains embedded SVGs
-   - Assertions: Assets created, provenance recorded, no fallbacks triggered
+   - Assertions: Assets created, provenance recorded, policy enforced
 
-2. **"Provider Failure → Fallback → Success"**
-   - Setup: Mock DALL-E to return 503
+2. **"Provider Failure → Explicit Error"**
+   - Setup: Configure a provider endpoint to return 503
    - Input: Image generation request
-   - Expected: Router falls back to Stability AI, execution succeeds
-   - Assertions: `multimodal_fallback_total{fallback_reason="provider_error"}` incremented
+   - Expected: Execution fails with a clear provider_error surfaced to the caller
+   - Assertions: Error metrics incremented and failure recorded in provenance
 
 3. **"Quality Gate Rejection → Rework → Pass"**
-   - Setup: First attempt produces low-quality diagram (mock Critic to fail first, pass second)
+   - Setup: First attempt uses a deliberately low-quality diagram prompt; second attempt uses a refined prompt
    - Input: Diagram with quality gate enabled
-   - Expected: First attempt re-prompted, second attempt passes
+   - Expected: First attempt rejected, second attempt passes
    - Assertions: `multimodal_rework_attempts_total` = 1, final quality_score ≥ threshold
 
 ### 11.3 Chaos Engineering Scenarios
 
 1. **Circuit Breaker Cascade Prevention**
    - Trigger: Repeated failures on primary provider (5 failures in 10 sec)
-   - Expect: Circuit opens, future requests skip primary, use fallback directly
+   - Expect: Circuit opens, future requests reject the primary provider and surface a provider_unavailable error
    - Recovery: After cooldown (60s), circuit half-opens, attempts primary again
 
 2. **Partial Job Resume**
@@ -797,7 +790,7 @@ multimodal_job (root span)
 
 **Budget Enforcement**:
 - Timeouts per step (configurable in plan)
-- If step exceeds timeout, advance to fallback
+- If step exceeds timeout, mark the step failed and surface a timeout error
 - Overall job timeout (sum of step budgets + 20% buffer)
 
 ---
@@ -874,7 +867,7 @@ multimodal_job (root span)
 |----------|-----------|--------|
 | **Data Model** | 5 tables created with migrations | Planned |
 | **Capability Registry** | Discover tools by modality + constraints | Planned |
-| **Policy Router** | Deterministic fallback ladders per modality | Planned |
+| **Policy Router** | Deterministic provider ordering per modality | Planned |
 | **Asset Store** | S3 + PostgreSQL hybrid storage | Planned |
 | **Provenance** | All assets have provenance records | Planned |
 | **Provider Adapters** | 3+ adapters (OpenAI, Stability, Mermaid) | Planned |
@@ -886,7 +879,7 @@ multimodal_job (root span)
 | **Observability** | Prometheus + OpenTelemetry traces | Planned |
 | **Testing** | 90%+ coverage, E2E golden tests pass | Planned |
 | **Deployment** | Feature flag, rollout plan | Planned |
-| **VIBE Compliance** | Zero stubs/TODOs in production code | Planned |
+| **VIBE Compliance** | Zero test doubles or task markers in production code | Planned |
 
 ---
 

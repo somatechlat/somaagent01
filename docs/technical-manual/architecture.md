@@ -40,8 +40,6 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 
 ### Memory Services
 - **Memory Replicator** (`services/memory_replicator/main.py`): Consumes `memory.wal`, replicates to Postgres
-- **Memory Sync** (`services/memory_sync/main.py`): Retry failed SomaBrain writes from outbox
-- **Outbox Sync** (`services/outbox_sync/main.py`): Ensures at-least-once Kafka delivery
 
 ## Infrastructure
 
@@ -58,7 +56,7 @@ SomaAgent01 is a microservices-based conversational AI platform built on event-d
 ### PostgreSQL
 - **Port**: 20002
 - **Databases**: `somaagent01`, `openfga`
-- **Tables**: `sessions`, `session_events`, `memory_replica`, `attachments`, `outbox`, `audit_log`
+- **Tables**: `sessions`, `session_events`, `memory_replica`, `attachments`, `audit_log`
 
 ### OPA (Open Policy Agent)
 - **Port**: 20009

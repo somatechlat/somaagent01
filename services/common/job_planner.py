@@ -73,7 +73,7 @@ class TaskStep:
         params: Step-specific parameters (prompt, format, etc.)
         constraints: Execution constraints (provider, cost, timeout)
         quality_gate: Quality check configuration
-        on_failure: Action on failure (fail, skip, fallback)
+        on_failure: Action on failure (fail, skip)
         metadata: Additional task metadata
     """
     task_id: str
@@ -85,7 +85,7 @@ class TaskStep:
     quality_gate: Dict[str, Any] = field(default_factory=lambda: {
         "enabled": True, "min_score": 0.7, "max_reworks": 2
     })
-    on_failure: str = "fallback"
+    on_failure: str = "fail"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -236,7 +236,7 @@ class JobPlanner:
                 quality_gate=task_dict.get("quality_gate", {
                     "enabled": True, "min_score": 0.7, "max_reworks": 2
                 }),
-                on_failure=task_dict.get("on_failure", "fallback"),
+                on_failure=task_dict.get("on_failure", "fail"),
                 metadata=task_dict.get("metadata", {}),
             )
             tasks.append(step)
@@ -678,7 +678,7 @@ class JobPlanner:
                 params=task_dict.get("params", {}),
                 constraints=task_dict.get("constraints", {}),
                 quality_gate=task_dict.get("quality_gate", {}),
-                on_failure=task_dict.get("on_failure", "fallback"),
+                on_failure=task_dict.get("on_failure", "fail"),
                 metadata=task_dict.get("metadata", {}),
             )
             tasks.append(step)

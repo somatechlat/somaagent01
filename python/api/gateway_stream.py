@@ -42,14 +42,6 @@ class GatewayStream(ApiHandler):
             )
         base = base.rstrip("/")
         primary = f"{base}/v1/sessions/{session_id}/events"
-        host_alias = cfg.env("SA01_CONTAINER_HOST_ALIAS")
-        gw_port = cfg.env("SA01_GATEWAY_PORT")
-        fallback = (
-            f"http://{host_alias}:{gw_port}/v1/sessions/{session_id}/events"
-            if host_alias and gw_port
-            else None
-        )
-
         headers = {}
         if bearer := cfg.env("UI_GATEWAY_BEARER"):
             headers["Authorization"] = f"Bearer {bearer}"
@@ -66,18 +58,9 @@ class GatewayStream(ApiHandler):
                 yield from stream_from(primary)
                 return
             except Exception as exc:
-                if fallback and fallback.rstrip("/") != primary.rstrip("/"):
-                    try:
-                        yield from stream_from(fallback)
-                        return
-                    except Exception as exc2:
-                        msg = f"event: error\ndata: {type(exc2).__name__}: {str(exc2)}\n\n"
-                        PrintStyle.error(f"GatewayStream error: {exc}; fallback: {exc2}")
-                        yield msg.encode("utf-8")
-                else:
-                    msg = f"event: error\ndata: {type(exc).__name__}: {str(exc)}\n\n"
-                    PrintStyle.error(f"GatewayStream error: {exc}")
-                    yield msg.encode("utf-8")
+                msg = f"event: error\ndata: {type(exc).__name__}: {str(exc)}\n\n"
+                PrintStyle.error(f"GatewayStream error: {exc}")
+                yield msg.encode("utf-8")
 
         headers_resp = {
             "Content-Type": "text/event-stream",

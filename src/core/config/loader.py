@@ -8,13 +8,11 @@ order required by the roadmap:
 
 1. **Environment variables** – ``SA01_*`` variables are read directly by the
    ``Config`` model via the ``env_prefix`` mechanism.
-2. **Plain environment variables** – values without the ``SA01_`` prefix are
-   considered as a fallback.
-3. **YAML/JSON file** – if a ``config.yaml`` (or ``config.json``) exists in the
+2. **YAML/JSON file** – if a ``config.yaml`` (or ``config.json``) exists in the
    repository root it is parsed and merged.
-4. **Defaults** – any field that still lacks a value after the previous steps
+3. **Defaults** – any field that still lacks a value after the previous steps
    will raise a ``ValidationError``; the model’s own defaults (e.g. ``log_level``)
-   are the only allowed fall‑backs.
+   are the only allowed defaults.
 
 The loader is deliberately *side‑effect free*: calling :func:`load_config`
 returns a fresh ``Config`` instance without mutating global state.  For
@@ -22,7 +20,7 @@ convenience, :func:`get_config` caches the most recent successful load so that
 the rest of the codebase can import ``cfg`` from ``src.core.config`` and rely on
 the same instance throughout the process lifecycle.
 
-All code follows the VIBE coding rules – no shims, no hidden fall‑backs, no
+All code follows the VIBE coding rules – no shims, no hidden defaults, no
 duplicate logic, and full type safety.
 """
 
@@ -101,13 +99,10 @@ def load_config() -> Config:
     The precedence order is:
 
     1. Environment variables (handled by ``Config`` via ``env_prefix='SA01_'``).
-    2. Plain env vars – we inject them into a temporary dict that is merged
-       *after* the model has been instantiated, allowing users to override any
-       field without the ``SA01_`` prefix.
-    3. ``config.yaml`` *or* ``config.json`` located at the repository root.
+    2. ``config.yaml`` *or* ``config.json`` located at the repository root.
 
     If validation fails a :class:`pydantic.ValidationError` is raised – this is
-    intentional because silent fallback would violate the VIBE rule *NO FALLBACKS*.
+    intentional because silent handling would violate the VIBE rules.
     """
     # 1️⃣ Load from environment via the Pydantic model – this respects the
     #    ``SA01_`` prefix automatically.
@@ -216,20 +211,12 @@ def load_config() -> Config:
     cfg = Config.model_validate(default_cfg_dict)
 
     # 2️⃣ Process environment variables
-    plain_env: dict[str, Any] = {}
     feature_flags: dict[str, bool] = {}
 
     for key, value in os.environ.items():
         if key.startswith("SA01_ENABLE_"):
-            # Extract feature flag name and convert to boolean
             flag_name = key[len("SA01_ENABLE_") :].lower()
             feature_flags[flag_name] = str(value).lower() in {"true", "1", "yes", "on"}
-        elif not key.startswith("SA01_"):
-            plain_env[key] = value
-
-    # Add feature flags to the configuration
-    if feature_flags:
-        plain_env["feature_flags"] = feature_flags
 
     # 3️⃣ File‑based configuration – try YAML first, then JSON.
     repo_root = Path(__file__).resolve().parents[3]
@@ -241,8 +228,9 @@ def load_config() -> Config:
     elif json_path.is_file():
         file_cfg = _load_json_file(json_path)
 
-    # Merge in the correct precedence (env > plain > file).
-    merged = _merge_dicts(file_cfg, plain_env)
+    merged = dict(file_cfg)
+    if feature_flags:
+        merged = _merge_dicts(merged, {"feature_flags": feature_flags})
     # ``Config`` accepts a dict via ``parse_obj`` – this re‑validates everything.
     # Re‑validate the merged configuration; any validation errors will be
     # propagated directly.
@@ -281,7 +269,7 @@ class EnvironmentMapping:
     The loader respects the ``SA01_`` prefix via the Pydantic model.
     This helper provides ``env_mapping.get_env_value`` for callers.
 
-    VIBE COMPLIANT: Only SA01_ prefix is supported. No legacy fallbacks.
+    VIBE COMPLIANT: Only SA01_ prefix is supported. No legacy support.
     """
 
     sa01_prefix: str = "SA01_"
@@ -289,7 +277,7 @@ class EnvironmentMapping:
     def get_env_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """Get environment variable with SA01_ prefix.
 
-        VIBE: No fallbacks. Only canonical SA01_ prefix supported.
+        VIBE: Only canonical SA01_ prefix supported.
         """
         prefixed = f"{self.sa01_prefix}{key}"
         value = os.getenv(prefixed)

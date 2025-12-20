@@ -251,7 +251,7 @@ def test_process_message_empty_input_raises_value_error():
 def test_fetch_session_not_found_returns_none():
     pass
 
-def test_publish_event_kafka_down_uses_outbox():
+def test_publish_event_kafka_down_raises_error():
     pass
 ```
 

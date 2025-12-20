@@ -198,10 +198,6 @@ function showUserFeedback(errorData) {
       });
     } catch (notificationError) {
       console.warn('Failed to show error notification:', notificationError);
-      // Fallback to alert
-      if (errorData.severity === ErrorSeverity.CRITICAL || errorData.severity === ErrorSeverity.HIGH) {
-        alert(errorData.userMessage);
-      }
     }
   }
 }
@@ -343,7 +339,7 @@ export async function handleError(error, context = {}) {
 }
 
 // Error boundary for components
-export function createErrorBoundary(componentName, fallbackUI = null) {
+export function createErrorBoundary(componentName) {
   return {
     async withErrorHandling(fn, context = {}) {
       try {
@@ -353,11 +349,7 @@ export function createErrorBoundary(componentName, fallbackUI = null) {
           component: componentName,
           ...context
         });
-        
-        if (fallbackUI) {
-          return fallbackUI(errorData);
-        }
-        
+
         throw error;
       }
     },
@@ -373,11 +365,7 @@ export function createErrorBoundary(componentName, fallbackUI = null) {
             args: args.length,
             ...context
           });
-          
-          if (fallbackUI) {
-            return fallbackUI(errorData);
-          }
-          
+
           throw error;
         }
       };
@@ -409,11 +397,7 @@ export function createErrorBoundary(componentName, fallbackUI = null) {
           
           logError(errorData);
           emitErrorEvent(errorData);
-          
-          if (fallbackUI) {
-            return fallbackUI(errorData);
-          }
-          
+
           throw error;
         }
       };

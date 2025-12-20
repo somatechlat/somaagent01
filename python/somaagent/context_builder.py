@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol
 
 from observability.metrics import ContextBuilderMetrics
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from services.common import degradation_monitor
 from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -111,8 +113,22 @@ class ContextBuilder:
         self.count_tokens = token_counter
         self.redactor = redactor or RealPresidioRedactor()
         self.health_provider = health_provider or (lambda: SomabrainHealthState.NORMAL)
-        self.on_degraded = on_degraded or (lambda _duration: None)
+        self.on_degraded = on_degraded or self._default_on_degraded
         self.use_optimal_budget = use_optimal_budget
+
+    @staticmethod
+    def _default_on_degraded(duration: float) -> None:
+        """Record Somabrain degradation in the system monitor."""
+        if not degradation_monitor.is_monitoring():
+            LOGGER.warning("Somabrain degraded for %.1fs (monitor disabled)", duration)
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            LOGGER.warning("Somabrain degraded for %.1fs (no running loop)", duration)
+            return
+        err = RuntimeError(f"Somabrain degraded for {duration:.1f}s")
+        loop.create_task(degradation_monitor.record_component_failure("somabrain", err))
 
     async def build_for_turn(
         self,

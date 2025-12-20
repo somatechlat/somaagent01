@@ -46,12 +46,12 @@ class OpenFGAClient:
         self.base_url = base_url or cfg.env("SA01_OPENFGA_API_URL")
         if not self.base_url:
             raise ValueError(
-                "SA01_OPENFGA_API_URL is required. No hardcoded fallbacks per VIBE rules."
+                "SA01_OPENFGA_API_URL is required. No hardcoded defaults per VIBE rules."
             )
         self.store_id = store_id or cfg.env("SA01_OPENFGA_STORE_ID")
         if not self.store_id:
             raise ValueError(
-                "SA01_OPENFGA_STORE_ID is required. No hardcoded fallbacks per VIBE rules."
+                "SA01_OPENFGA_STORE_ID is required. No hardcoded defaults per VIBE rules."
             )
         self.user_namespace = user_namespace
         self.tenant_namespace = tenant_namespace

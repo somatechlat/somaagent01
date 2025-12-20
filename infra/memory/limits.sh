@@ -13,8 +13,6 @@ MEMORY_ALLOCATIONS=(
     "conversation-worker:1024:256"
     "tool-executor:1024:256"
     "memory-replicator:512:128"
-    "memory-sync:512:128"
-    "outbox-sync:512:128"
 )
 
 case "${1:-check}" in

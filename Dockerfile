@@ -3,6 +3,8 @@
 FROM python:3.11-slim AS builder
 
 ARG INCLUDE_ML_DEPS=false
+ARG TORCH_VARIANT=cpu
+ARG TORCH_VERSION=2.3.1
 
 ENV PYTHONUNBUFFERED=1 \
         PYTHONDONTWRITEBYTECODE=1 \
@@ -23,13 +25,23 @@ RUN python -m venv "$VENV_PATH" && \
 WORKDIR /opt/build
 
 # Copy only essential dependency files
-COPY requirements.txt requirements-dev.txt requirements-ml.txt ./
+COPY requirements.txt requirements-dev.txt requirements-ml.txt constraints-ml.txt ./
 
 # Install core dependencies for development (no ML deps by default)
 RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
                 echo "Installing full dependencies with ML/document-processing deps" && \
                 "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-ml.txt; \
+                if [ "${TORCH_VARIANT}" = "cpu" ]; then \
+                        TORCH_INDEX="https://download.pytorch.org/whl/cpu"; \
+                        TORCH_SPEC="torch==${TORCH_VERSION}"; \
+                        CONSTRAINT_OPT="--constraint constraints-ml.txt"; \
+                else \
+                        TORCH_INDEX="https://download.pytorch.org/whl/${TORCH_VARIANT}"; \
+                        TORCH_SPEC="torch==${TORCH_VERSION}+${TORCH_VARIANT}"; \
+                        CONSTRAINT_OPT=""; \
+                fi; \
+                "$VENV_PATH/bin/pip" install --no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX} ${TORCH_SPEC} && \
+                "$VENV_PATH/bin/pip" install --no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX} -r requirements-ml.txt ${CONSTRAINT_OPT}; \
         else \
                 echo "Installing essential dev dependencies (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})" && \
                 "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-dev.txt; \

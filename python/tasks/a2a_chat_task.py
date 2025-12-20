@@ -302,8 +302,7 @@ async def _extract_reply_from_response(response: Dict[str, Any]) -> str:
                             text_parts.append(part.get("text", ""))
                     return "\n".join(text_parts)
 
-        # Fallback: return string representation
-        return str(response)
+        raise RuntimeError("No reply extracted from response")
 
     except Exception as e:
         increment_counter(
@@ -314,7 +313,7 @@ async def _extract_reply_from_response(response: Dict[str, Any]) -> str:
                 "method": "celery_task",
             },
         )
-        return f"Error extracting reply: {str(e)}"
+        raise RuntimeError(f"Error extracting reply: {str(e)}") from e
 
 
 async def _store_conversation_in_redis(

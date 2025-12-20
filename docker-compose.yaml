@@ -303,57 +303,6 @@ services:
     mem_reservation: 96m
     cpus: "0.25"
 
-  memory-sync:
-    <<: *agent-service
-    container_name: somaAgent01_memory-sync
-    profiles: ["dev"]
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-    command:
-      - python3
-      - -m
-      - services.memory_sync.main
-    environment:
-      <<: *agent-env
-      MEMORY_SYNC_METRICS_PORT: "9413"
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    mem_limit: 256m
-    mem_reservation: 96m
-    cpus: "0.25"
-
-  outbox-sync:
-    <<: *agent-service
-    container_name: somaAgent01_outbox-sync
-    profiles: ["dev"]
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-    command:
-      - python3
-      - -m
-      - services.outbox_sync.main
-    environment:
-      <<: *agent-env
-      OUTBOX_SYNC_BATCH_SIZE: "200"
-      OUTBOX_SYNC_INTERVAL_SECONDS: "1.0"
-      OUTBOX_SYNC_MAX_RETRIES: "8"
-      OUTBOX_SYNC_BACKOFF_BASE_SECONDS: "1.0"
-      OUTBOX_SYNC_BACKOFF_MAX_SECONDS: "60.0"
-      OUTBOX_SYNC_METRICS_PORT: "9469"
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    mem_limit: 256m
-    mem_reservation: 96m
-    cpus: "0.25"
-
   # ===========================================================================
   # FASTA2A SERVICES (Agent-to-Agent Communication)
   # ===========================================================================

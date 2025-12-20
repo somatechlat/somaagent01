@@ -73,7 +73,7 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **File**: `services/tool_executor/multimodal_executor.py`
 - **Location**: 469-475
 - **Finding**: Provider selection is explicitly “for now hardcoding” and includes “hypothetical for ranking demo”, indicating non-production selection logic.
-- **Evidence**: `# For now hardcoding registered names ...` + `# Fallback/alternative (hypothetical for ranking demo)`
+- **Evidence**: `# For now hardcoding registered names ...` + `# Alternate (hypothetical for ranking demo)`
 - **Suggested fix**: Derive candidates from the real registry/capability metadata (single source of truth) and remove “demo/hypothetical” branches or gate them behind a clearly defined, documented dev-mode flag.
 
 #### VCR-2025-12-18-007
@@ -284,3 +284,113 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Finding**: The test suite relied on mock frameworks, monkeypatch fixtures, fake providers, and stub classes, which violates the VIBE rule scope for this project.
 - **Evidence**: `tests/` contained `monkeypatch`, `unittest.mock`, `MagicMock`, `AsyncMock`, `respx`, and fake/stub class usage across unit/integration tests.
 - **Suggested fix**: Remove all test files that include mocks/fakes/stubs and reintroduce only real-infra integration tests where needed.
+
+### 2025-12-20 — Sweep #4 (runtime no-op/stub cleanup)
+
+#### VCR-2025-12-20-001
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO stubs / NO no-op alternates
+- **File**: `services/conversation_worker/main.py`, `python/somaagent/context_builder.py`
+- **Location**: ContextBuilder `on_degraded` wiring
+- **Finding**: `on_degraded` was wired to a no-op lambda and the ContextBuilder default also used a no-op, so degradation events were discarded.
+- **Evidence**: `on_degraded=lambda d: None` and default `lambda _duration: None`.
+- **Suggested fix**: Wire `on_degraded` to a real handler that records Somabrain degradation via `degradation_monitor.record_component_failure`, and remove the no-op default.
+
+#### VCR-2025-12-20-002
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO stubs / Rule 3 — NO shims
+- **File**: `python/helpers/browser_use_monkeypatch.py`
+- **Location**: conditional “lightweight developer alternative”
+- **Finding**: The module defined stub `ChatGoogle`/`ChatOpenRouter` classes and exported a shim when the feature flag was disabled, which hid missing dependencies.
+- **Evidence**: `class ChatGoogle` / `class ChatOpenRouter` in the disabled-feature branch.
+- **Suggested fix**: Require `browser_use` explicitly and remove the shim/stub branch.
+
+#### VCR-2025-12-20-003
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO placeholders / NO no-op alternates
+- **File**: `python/helpers/knowledge_import.py`, `python/helpers/tunnel_manager.py`
+- **Location**: optional dependency alternates
+- **Finding**: Placeholder loader classes and no-op tunnel methods were used when optional dependencies were missing.
+- **Evidence**: “no-op placeholders to avoid NameError” and “no-op methods” branches.
+- **Suggested fix**: Remove placeholder classes and require real dependencies; raise clear errors when missing.
+
+#### VCR-2025-12-20-004
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO stubs / NO no-op stores
+- **File**: `services/common/audit_store.py`
+- **Location**: `InMemoryAuditStore`
+- **Finding**: In-memory audit store (with a no-op schema method) allowed bypassing the real audit persistence layer.
+- **Evidence**: `AUDIT_STORE_MODE=memory` and `ensure_schema` returning `None`.
+- **Suggested fix**: Remove the in-memory store and force Postgres-backed audit persistence.
+
+#### VCR-2025-12-20-005
+- **Date**: 2025-12-20
+- **Rule**: Rule 5 — DOCUMENTATION = TRUTH
+- **File**: `docs/technical-manual/context-builder-flow.md`
+- **Location**: §15.2 Current Limitations
+- **Finding**: Documentation claimed `health_provider` and `on_degraded` were no-ops, which no longer matched runtime behavior.
+- **Evidence**: “health_provider always returns NORMAL” / “on_degraded is a no-op”.
+- **Suggested fix**: Update the snippet and notes to reflect the real health provider and degradation handler.
+
+#### VCR-2025-12-20-006
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO mocks / NO fakes (docs)
+- **File**: `ONBOARDING_AGENT.md`
+- **Location**: “Testing Degradation Mode” section
+- **Finding**: Documentation included unit-test examples using `FakeSomabrain`, which conflicts with the no-mocks rule.
+- **Evidence**: `fake = FakeSomabrain(...)` and assertions against `fake.calls`.
+- **Suggested fix**: Remove mock-based examples and point to real benchmark or integration validation.
+
+#### VCR-2025-12-20-007
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO mocks (production comments)
+- **File**: `src/voice/audio_capture.py`, `src/voice/speaker.py`
+- **Location**: exception handlers
+- **Finding**: Comments referenced “mock” execution in CI, which contradicts the no-mocks rule in production code commentary.
+- **Evidence**: `# pragma: no cover – exercised ... via mock`
+- **Suggested fix**: Remove “mock” wording from comments.
+
+#### VCR-2025-12-20-008
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO shims / NO placeholders
+- **File**: `sitecustomize.py`
+- **Location**: pytest.Request alias block
+- **Finding**: A compatibility shim injected a synthetic `pytest.Request` type with a placeholder class substitute.
+- **Evidence**: `_PlaceholderRequest` and assignment to `pytest.Request`.
+- **Suggested fix**: Remove the shim and rely on the real pytest API.
+
+#### VCR-2025-12-20-009
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO bypasses
+- **File**: `services/common/authorization.py`
+- **Location**: `authorize` auth_required short-circuit
+- **Finding**: Policy evaluation was skipped when `auth_required` was false, allowing requests without policy enforcement.
+- **Evidence**: Early return path before `PolicyRequest` evaluation.
+- **Suggested fix**: Always evaluate policy and remove the short-circuit.
+
+#### VCR-2025-12-20-010
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO alternates / Rule 3 — NO legacy aliases
+- **File**: `services/common/requeue_store.py`
+- **Location**: constructor and alias methods
+- **Finding**: The store used an in-memory alternate when Redis URLs were invalid and kept backward-compatibility alias methods.
+- **Evidence**: `_use_redis` branch with `_mem_store` + `list_requeue/get_requeue/delete_requeue/list_items` aliases.
+- **Suggested fix**: Require a valid Redis URL and keep a single canonical method set.
+
+#### VCR-2025-12-20-011
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO bypasses
+- **File**: `services/tool_executor/request_handler.py`
+- **Location**: policy check gate
+- **Finding**: Tool policy evaluation could be skipped by setting `requeue_override=True` in metadata.
+- **Evidence**: `if not metadata.get("requeue_override")` guard around `_check_policy`.
+- **Suggested fix**: Always enforce policy and remove the override path.
+
+#### VCR-2025-12-20-012
+- **Date**: 2025-12-20
+- **Rule**: Rule 1 — NO no-op implementations
+- **File**: `observability/metrics.py`
+- **Location**: `MetricsCollector.update_feature_metrics`
+- **Finding**: Feature metrics updater was a no-op, leaving feature gauges stale.
+- **Evidence**: Method returned `None` without touching `feature_profile_info` or `feature_state_info`.
+- **Suggested fix**: Populate feature profile/state gauges from `services.common.features.build_default_registry`.

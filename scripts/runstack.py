@@ -72,8 +72,6 @@ def _process_specs(enable_reload: bool, host: str, port: str) -> List[ProcessSpe
         ("conversation-worker", ["python", "-m", "services.conversation_worker.main"]),
         ("tool-executor", ["python", "-m", "services.tool_executor.main"]),
         ("memory-replicator", ["python", "-m", "services.memory_replicator.main"]),
-        ("memory-sync", ["python", "-m", "services.memory_sync.main"]),
-        ("outbox-sync", ["python", "-m", "services.outbox_sync.main"]),
     ]
 
 

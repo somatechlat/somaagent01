@@ -12,8 +12,6 @@
 | Conversation Worker | 9601 | `/metrics` |
 | Tool Executor | 9602 | `/metrics` |
 | Memory Replicator | 9603 | `/metrics` |
-| Memory Sync | 9604 | `/metrics` |
-| Outbox Sync | 9415 | `/metrics` |
 | Circuit Breaker | 9610 | `/metrics` |
 
 ### Key Metrics
@@ -232,8 +230,6 @@ curl http://localhost:${GATEWAY_PORT:-21016}/v1/health/live
 
 - Gateway: `/metrics` on `GATEWAY_METRICS_PORT` (default 8000)
 - Other services: `/metrics` on their `*_METRICS_PORT` env (see service code). Example defaults observed in-code:
-  - Outbox Sync: `${OUTBOX_SYNC_METRICS_PORT:-9469}`
-  - Memory Sync: `${MEMORY_SYNC_METRICS_PORT:-9471}`
   - Replicator: `${REPLICATOR_METRICS_PORT}` (env-driven)
   - Circuit Breakers exporter: `${CIRCUIT_BREAKER_METRICS_PORT:-9610}`
 # Readiness (K8s)

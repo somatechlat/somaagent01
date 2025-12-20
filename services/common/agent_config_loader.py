@@ -55,16 +55,11 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
     if isinstance(knowledge_subdirs, str):
         try:
             knowledge_subdirs = json.loads(knowledge_subdirs)
-        except:
-            knowledge_subdirs = ["default"]
-            
-    # Validate directories
-    try:
-        await validate_knowledge_subdirs(knowledge_subdirs)
-    except ValueError as e:
-        LOGGER.error(f"Agent config validation failed: {e}")
-        # Fallback to default
-        knowledge_subdirs = ["default"]
+        except Exception as exc:
+            raise ValueError("Invalid knowledge_subdirs JSON") from exc
+
+    # Validate directories (fail fast)
+    await validate_knowledge_subdirs(knowledge_subdirs)
 
     memory_subdir = _get_field(agent_config_section, "memory_subdir", "")
     

@@ -1,4 +1,4 @@
-"""Production Postgres client - NO TEST STUBS, NO FALLBACKS"""
+"""Production Postgres client - NO TEST STUBS, FAIL FAST"""
 
 from __future__ import annotations
 

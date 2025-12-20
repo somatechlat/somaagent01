@@ -21,11 +21,12 @@ Why we need it
 
 from __future__ import annotations
 
-import base64
 from typing import List, Optional
 
 import redis.asyncio as redis
 from cryptography.fernet import Fernet, InvalidToken
+
+import os
 
 from src.core.config import cfg
 
@@ -37,27 +38,18 @@ def _load_fernet_key() -> Fernet:
     """Load the Fernet instance from ``SA01_CRYPTO_FERNET_KEY``.
 
     The environment variable must contain a url‑safe base64‑encoded 32‑byte key.
-    If a plain string is provided we attempt to base64‑encode it – this mirrors
-    the behaviour of the previous implementation but raises a clear error if
-    the resulting key is invalid.
     """
-    raw_key = cfg.env("SA01_CRYPTO_FERNET_KEY")
+    raw_key = os.environ.get("SA01_CRYPTO_FERNET_KEY") or cfg.env("SA01_CRYPTO_FERNET_KEY")
     if not raw_key:
         raise RuntimeError(
             "SA01_CRYPTO_FERNET_KEY is required – provide a urlsafe base64 32‑byte key"
         )
 
-    # If the value already looks like base64 we try to use it directly.
     try:
         # ``Fernet`` validates length internally.
         return Fernet(raw_key.encode())
-    except Exception:
-        # Fallback: encode the raw string as base64 and try again.
-        try:
-            encoded = base64.urlsafe_b64encode(raw_key.encode())
-            return Fernet(encoded)
-        except Exception as exc:
-            raise RuntimeError("Invalid SA01_CRYPTO_FERNET_KEY supplied") from exc
+    except Exception as exc:
+        raise RuntimeError("Invalid SA01_CRYPTO_FERNET_KEY supplied") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -79,13 +71,13 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
-        # VIBE Rule #1: NO FALLBACKS - Fail fast if Redis unavailable
-        redis_url = cfg.env("SA01_REDIS_URL") or cfg.env("REDIS_URL")
+        # VIBE Rule #1: NO ALTERNATES - Fail fast if Redis unavailable
+        redis_url = os.environ.get("SA01_REDIS_URL") or cfg.env("SA01_REDIS_URL")
         if not redis_url:
             raise RuntimeError(
-                "SA01_REDIS_URL or REDIS_URL environment variable required for SecretManager. "
+                "SA01_REDIS_URL environment variable required for SecretManager. "
                 "Redis is REQUIRED for encrypted secret storage in production. "
-                "No fallbacks per VIBE Coding Rules. "
+                "No alternate sources per VIBE Coding Rules. "
                 "Set SA01_REDIS_URL=redis://host:6379/0 in your environment."
             )
         

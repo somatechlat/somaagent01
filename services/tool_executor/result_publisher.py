@@ -269,16 +269,5 @@ class ResultPublisher:
                     "error": str(exc),
                 },
             )
-            try:
-                await self._executor.mem_outbox.enqueue(
-                    payload=memory_payload,
-                    tenant=tenant,
-                    session_id=result_event.get("session_id"),
-                    persona_id=persona_id,
-                    idempotency_key=memory_payload.get("idempotency_key"),
-                    dedupe_key=str(memory_payload.get("id")) if memory_payload.get("id") else None,
-                )
-            except Exception:
-                LOGGER.debug("Failed to enqueue memory write for retry (tool)", exc_info=True)
         except Exception:
             LOGGER.debug("SomaBrain remember (tool result) unexpected error", exc_info=True)

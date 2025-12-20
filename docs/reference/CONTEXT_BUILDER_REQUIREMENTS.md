@@ -21,13 +21,13 @@ The existing four‑week roadmap defines a solid end‑to‑end pipeline (retrie
 | **Preload** | `preload.py` imports and instantiates `ContextBuilder` | ❌ Missing | Add import + singleton creation (see §3.7) |
 | **Dependencies** | All runtime packages listed in `requirements.txt` (presidio‑analyzer, presidio‑anonymizer, tiktoken, jinja2, httpx, prometheus‑client, fastapi, uvicorn) | ✅ Partially listed | Append missing `presidio-analyzer` and pin exact versions |
 | **Docker / CI** | Dockerfile installs new deps, CI spins up Somabrain service, runs unit/integration/E2E tests | ❌ Not verified | Update Dockerfile, add Docker‑compose service in CI workflow |
-| **Error handling** | Retries / circuit‑breaker for all external calls, graceful fallback when Somabrain unavailable | ❌ Not defined | Wrap each `SomaClient` call in `try/except` with exponential back‑off; fallback to minimal prompt |
+| **Error handling** | Retries / circuit‑breaker for all external calls, explicit failure when Somabrain unavailable | ❌ Not defined | Wrap each `SomaClient` call in `try/except` with exponential back‑off; return a clear error when unavailable |
 | **Token budgeting** | Greedy selection may drop high‑value snippets; need optimal selection option | ❌ Not implemented | Add optional knapsack‑style budgeting (`_budget_optimal`) and config flag |
 | **Feedback payload** | Includes `doc_id`, `success`, `tenant`; missing score & timestamp for learning | ❌ Not implemented | Extend payload to `{doc_id, success, score, timestamp, tenant}` |
 | **Security** | API keys injected via env vars, never logged; secrets masked in logs | ❌ Not verified | Ensure `SOMA_API_KEY` is read from env, add `logging.Filter` to strip it |
 | **Observability** | Prometheus metrics defined, exported at `/metrics`, alerts for latency & error rate | ✅ Defined | Verify metrics are registered in the global registry and scraped by Prometheus |
 | **Documentation** | MkDocs builds, includes architecture diagram, config table, usage examples | ✅ Drafted | Add Mermaid diagram, env‑var table, and quick‑start snippet; run `mkdocs build` |
-| **Compliance** | No mock frameworks used; all tests hit a real Somabrain instance | ✅ Planned | Ensure CI starts Somabrain container and waits for health endpoint |
+| **Compliance** | No test‑double frameworks used; all tests hit a real Somabrain instance | ✅ Planned | Ensure CI starts Somabrain container and waits for health endpoint |
 | **Release checklist** | Version bump, changelog, Docker image tag, smoke test in staging | ❌ Not created | Create `CHANGELOG.md` entry and a staging deployment script |
 
 ---
@@ -45,10 +45,10 @@ The existing four‑week roadmap defines a solid end‑to‑end pipeline (retrie
 - **Add logging of scores** (`logger.info(f"Doc {id} score={composite:.3f}")`).
 
 ### Week 3 – Guardrails & Rendering
-- **OPA policy** – add `SomaClient.evaluate_policy()` and unit‑test it against a mock policy JSON.
+- **OPA policy** – add `SomaClient.evaluate_policy()` and unit‑test it against a real policy bundle in `policy/`.
 - **Presidio redaction** – instantiate `AnalyzerEngine` & `AnonymizerEngine`; cache analyzer results per document to reduce latency.
 - **Token budgeting** – implement both greedy (`_budget`) and optimal (`_budget_optimal`) algorithms; expose `USE_OPTIMAL_BUDGET` env flag.
-- **Jinja2 rendering** – create `templates/context_prompt.j2` with proper auto‑escape and a fallback if template missing.
+- **Jinja2 rendering** – create `templates/context_prompt.j2` with proper auto‑escape and validate template presence at startup.
 - **Preload integration** – modify `/root/somaagent01/python/preload.py`:
   ```python
   from python.context_builder import ContextBuilder
@@ -76,7 +76,7 @@ The existing four‑week roadmap defines a solid end‑to‑end pipeline (retrie
 ---
 
 ## 4️⃣ Acceptance Criteria (Production Ready)
-1. **All unit, integration, and E2E tests pass** on a clean CI runner (no mock libraries).
+1. **All unit, integration, and E2E tests pass** on a clean CI runner (no test‑double libraries).
 2. **Docker image builds** without errors and size increase ≤ 100 MB.
 3. **Prometheus metrics** are exposed at `/metrics` and can be scraped.
 4. **No PII leakage** – automated regex scan of generated prompts returns zero matches.
@@ -102,9 +102,9 @@ The existing four‑week roadmap defines a solid end‑to‑end pipeline (retrie
 ## 6️⃣ Risk Register & Mitigations
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|------------|------------|
-| Somabrain service unavailable during request | Service outage | Medium | Circuit‑breaker with fallback to static system prompt. |
+| Somabrain service unavailable during request | Service outage | Medium | Circuit‑breaker with explicit error response and incident logging. |
 | Presidio latency > 500 ms per document | Increased latency | Low | Cache analyzer results; run redaction in a thread pool. |
-| OPA policy mis‑configuration blocks all docs | Zero context | Low | Include a health‑check endpoint that returns policy status; default‑allow mode for emergency. |
+| OPA policy mis‑configuration blocks all docs | Zero context | Low | Include a health‑check endpoint that returns policy status; require manual remediation. |
 | Token‑budget algorithm drops high‑value snippet | Reduced relevance | Medium | Provide optimal budgeting flag; monitor `snippets_total` per stage. |
 | Dependency version conflict (e.g., httpx vs fastapi) | Build failure | Low | Pin exact versions in `requirements.txt` and run `pip check` in CI. |
 

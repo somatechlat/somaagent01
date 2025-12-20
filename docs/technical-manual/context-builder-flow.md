@@ -681,15 +681,14 @@ class ConversationWorkerImpl:
             somabrain=self.soma,                    # SomaBrainClient singleton
             metrics=ContextBuilderMetrics(),        # Fresh metrics instance
             token_counter=count_tokens,             # python.helpers.tokens.count_tokens
-            health_provider=lambda: SomabrainHealthState.NORMAL,  # FUTURE: Integrate with DegradationMonitor (see §15.2)
-            on_degraded=lambda d: None,             # FUTURE: Integrate with circuit breaker (see §15.2)
+            health_provider=self._get_somabrain_health,
         )
 ```
 
-**Current Limitations:**
-1. `health_provider` always returns NORMAL - not integrated with `DegradationMonitor`
-2. `on_degraded` is a no-op - should trigger circuit breaker state change
-3. No redactor configured - PII passes through unredacted
+**Current Notes:**
+1. `health_provider` is wired to the degradation monitor via `_get_somabrain_health`.
+2. `on_degraded` uses the ContextBuilder default, which records Somabrain degradation events.
+3. Redaction uses Presidio; missing dependencies will raise and must be installed for production.
 
 ### 15.3 Integration with ProcessMessageUseCase
 

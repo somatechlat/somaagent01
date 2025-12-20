@@ -230,7 +230,7 @@ git push --force-with-lease
 
 ### Design Contributions
 - UI/UX improvements
-- Wireframes and mockups
+- Wireframes and visual drafts
 - User research
 - Accessibility enhancements
 

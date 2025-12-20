@@ -141,7 +141,7 @@
 3. **Metrics Extension** (Prometheus for Somabrain)
 4. **Specialized Audit Logging** (somabrain_events topic)
 5. **Database Schema** (`somabrain_code` table)
-6. **Redis Caching** (for circuit breaker fallback per FR-6)
+6. **Redis Caching** (for circuit breaker resilience per FR-6)
 
 ---
 
@@ -183,8 +183,8 @@
    - `somabrain_events` Kafka topic not created
    - `tool_audit` table may exist but not SomaBrain-specific
 
-5. **No Redis Fallback**
-   - Circuit breaker exists but no cache fallback (FR-6)
+5. **No Redis Cache**
+   - Circuit breaker exists but no cache layer (FR-6)
 
 ### Low Priority
 

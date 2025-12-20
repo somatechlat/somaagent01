@@ -70,28 +70,6 @@ class ServiceRegistry:
             )
         )
 
-        self.register(
-            ServiceDefinition(
-                name="memory-sync",
-                module_path="services.memory_sync.__main__",
-                startup_order=30,
-                dependencies={"gateway", "memory-replicator"},
-                critical=True,
-                port=9413,
-            )
-        )
-
-        self.register(
-            ServiceDefinition(
-                name="outbox-sync",
-                module_path="services.outbox_sync.__main__",
-                startup_order=40,
-                dependencies={"gateway"},
-                critical=True,
-                port=9469,
-            )
-        )
-
         # Processing services
         self.register(
             ServiceDefinition(

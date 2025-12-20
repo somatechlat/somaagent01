@@ -47,7 +47,7 @@ class RepositoryManager:
     def get_audit_store(self) -> _AuditStore:
         """Get singleton instance of AuditStore.
 
-        Respects AUDIT_STORE_MODE and SA01_DB_DSN via services.common.audit_store.from_env().
+        Uses the configured Postgres DSN via services.common.audit_store.from_env().
         """
         if self._audit_store is None:
             self._audit_store = _audit_store_from_env()

@@ -18,7 +18,7 @@ from typing import (
 feature_ai_env = os.environ.get("FEATURE_AI", "").lower()
 _enable_ai = feature_ai_env not in ("none", "false", "0")
 
-# Production requires LiteLLM/OpenAI - no fallbacks
+# Production requires LiteLLM/OpenAI
 import litellm
 import openai
 from litellm import acompletion, completion, embedding
@@ -29,7 +29,7 @@ litellm_exceptions = getattr(litellm, "exceptions", None)
 import time
 import uuid
 
-from browser_use import ChatGoogle  # type: ignore
+from browser_use.llm import ChatGoogle, ChatOpenRouter  # type: ignore
 from langchain_core.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
@@ -49,8 +49,7 @@ from langchain_core.outputs.chat_generation import ChatGenerationChunk
 # sentence-transformers is a required dependency
 from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
-from python.helpers import browser_use_monkeypatch, dirty_json, dotenv
-from python.helpers.dotenv import load_dotenv
+from python.helpers import browser_use_monkeypatch, dirty_json
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
@@ -84,12 +83,8 @@ if not llm_logger.handlers:
 
 
 # init
-load_dotenv()
 turn_off_logging()
-try:
-    browser_use_monkeypatch.apply()
-except Exception:
-    pass
+browser_use_monkeypatch.apply()
 
 if litellm is not None:
     try:
@@ -383,26 +378,9 @@ def _get_secret_manager():
 
 def get_api_key(service: str) -> str:
     """Get API key from Vault (single source of truth)."""
-    # Try Vault first (production)
-    try:
-        key = _get_secret_manager().get_provider_key(service.lower())
-        if key:
-            # Support round-robin for comma-separated keys
-            if "," in key:
-                api_keys = [k.strip() for k in key.split(",") if k.strip()]
-                api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
-                return api_keys[api_keys_round_robin[service] % len(api_keys)]
-            return key
-    except Exception:
-        pass
-
-    # Fallback to dotenv for backward compatibility during migration
-    key = (
-        dotenv.get_dotenv_value(f"API_KEY_{service.upper()}")
-        or dotenv.get_dotenv_value(f"{service.upper()}_API_KEY")
-        or dotenv.get_dotenv_value(f"{service.upper()}_API_TOKEN")
-        or "None"
-    )
+    key = _get_secret_manager().get_provider_key(service.lower())
+    if not key:
+        raise RuntimeError(f"Missing API key for provider '{service}' in secret manager")
     if "," in key:
         api_keys = [k.strip() for k in key.split(",") if k.strip()]
         api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
@@ -453,7 +431,6 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
             "BadGatewayError",
             "GatewayTimeoutError",
             "RateLimitError",
-            "MidStreamFallbackError",
             "GroqException",
         )
         if hasattr(litellm_exceptions, name)

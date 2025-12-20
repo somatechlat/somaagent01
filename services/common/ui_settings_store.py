@@ -25,18 +25,7 @@ class UiSettingsStore:
         self._pool: Optional[asyncpg.Pool] = None
 
     async def _pool_ensure(self) -> asyncpg.Pool:
-        """Create (or retrieve) an ``asyncpg`` connection pool.
-
-        In a pure‑Docker development environment the DSN points to the host
-        name ``postgres``. When the service is started directly on the host
-        machine (e.g. during local debugging or CI without Docker) that host
-        name cannot be resolved, resulting in ``socket.gaierror``. Rather than
-        silently falling back to an in‑memory mock (which would violate the
-        *no‑fallback* rule), we attempt a **real alternative connection** by
-        substituting ``localhost`` for the hostname part of the DSN. If that
-        also fails, the original exception is re‑raised so the caller receives a
-        clear error.
-        """
+        """Create (or retrieve) an ``asyncpg`` connection pool."""
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
@@ -52,11 +41,8 @@ class UiSettingsStore:
         deterministic default settings row is present.
 
         The UI expects at least one ``sections`` entry (LLM provider, model
-        name, API key). Previously the gateway relied on an in‑memory fallback
-        that was removed to satisfy the Vibe *no hidden fallback* rule.  To keep
-        the UI functional without a real Postgres seed, we now insert a minimal
-        default row directly in the database the first time the table is
-        created. This is a **real implementation** – the data lives in the
+        name, API key). We insert a deterministic default row directly in the
+        database the first time the table is created. This data lives in the
         persistent store and will be returned by :meth:`get`.
         """
         pool = await self._pool_ensure()

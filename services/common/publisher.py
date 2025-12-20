@@ -1,14 +1,14 @@
-"""Health-aware publisher with durable outbox fallback.
+"""Health-aware publisher.
 
 Usage:
-        publisher = DurablePublisher(bus=KafkaEventBus(...), outbox=OutboxStore(...))
+        publisher = DurablePublisher(bus=KafkaEventBus(...))
         await publisher.publish("topic", payload, dedupe_key=event_id, session_id=..., tenant=...)
 
 Notes:
 - In unstable broker scenarios AIOKafka's producer.start()/send can hang awaiting
-    metadata. To avoid blocking HTTP request handlers, we enforce a short, configurable
-    timeout on the Kafka publish attempt and fall back to the Postgres outbox when it
-    elapses. Control via env PUBLISH_KAFKA_TIMEOUT_SECONDS (default: 2.0 seconds).
+  metadata. To avoid blocking HTTP request handlers, we enforce a short,
+  configurable timeout on the Kafka publish attempt. Control via env
+  PUBLISH_KAFKA_TIMEOUT_SECONDS (default: 2.0 seconds).
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers
-from services.common.outbox_repository import OutboxStore
 from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
@@ -35,9 +34,8 @@ PUBLISH_EVENTS = Counter(
 
 
 class DurablePublisher:
-    def __init__(self, *, bus: KafkaEventBus, outbox: OutboxStore) -> None:
+    def __init__(self, *, bus: KafkaEventBus) -> None:
         self.bus = bus
-        self.outbox = outbox
 
     async def publish(
         self,
@@ -49,14 +47,12 @@ class DurablePublisher:
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
-        fallback: bool = True,
         correlation: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Try Kafka first, then fallback to Outbox if enabled.
+        """Publish a Kafka event.
 
         Returns a dict with {"published": bool, "enqueued": bool, "id": Optional[int]}.
         """
-        # Apply a bounded timeout to avoid hanging request paths on metadata waits
         timeout_s: float
         raw_timeout = cfg.env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
         try:
@@ -64,7 +60,6 @@ class DurablePublisher:
         except (TypeError, ValueError):
             timeout_s = 2.0
         try:
-            # Build standard event headers expected by downstream consumers and tests
             hdrs = build_headers(
                 tenant=tenant or (payload.get("metadata") or {}).get("tenant"),
                 session_id=session_id or payload.get("session_id"),
@@ -80,33 +75,9 @@ class DurablePublisher:
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:
-            if not fallback:
-                PUBLISH_EVENTS.labels("failed").inc()
-                raise
-            # Fallback to outbox – ensure the same header mapping used for Kafka
-            # is persisted so downstream consumers can rely on it.
-            # Build the same hdr dict as above (but keep original keys as str).
-            outbox_hdrs = build_headers(
-                tenant=tenant or (payload.get("metadata") or {}).get("tenant"),
-                session_id=session_id or payload.get("session_id"),
-                persona_id=payload.get("persona_id"),
-                event_type=payload.get("type"),
-                event_id=payload.get("event_id"),
-                schema=payload.get("version") or payload.get("schema"),
-                correlation=correlation or payload.get("correlation_id"),
-            )
-            msg_id = await self.outbox.enqueue(
-                topic=topic,
-                payload=payload,
-                partition_key=partition_key,
-                headers=outbox_hdrs,
-                dedupe_key=dedupe_key,
-                session_id=session_id,
-                tenant=tenant,
-            )
-            PUBLISH_EVENTS.labels("enqueued").inc()
+            PUBLISH_EVENTS.labels("failed").inc()
             LOGGER.warning(
-                "Kafka publish failed or timed out; enqueued to outbox",
+                "Kafka publish failed",
                 extra={
                     "error": str(exc),
                     "topic": topic,
@@ -116,4 +87,4 @@ class DurablePublisher:
                     "timeout_seconds": timeout_s,
                 },
             )
-            return {"published": False, "enqueued": True, "id": msg_id}
+            raise

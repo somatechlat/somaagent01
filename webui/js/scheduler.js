@@ -75,14 +75,8 @@ const showToast = function (message, type = 'info') {
             default:
                 return store.frontendInfo(message, title, 3);
         }
-    } else {
-        // Fallback to global toast function or console
-        if (typeof window.toast === 'function') {
-            window.toast(message, type);
-        } else {
-            console.log(`SCHEDULER ${type.toUpperCase()}: ${message}`);
-        }
     }
+    throw new Error("Notification store not available for scheduler toasts");
 };
 
 // Define the full component implementation
@@ -822,8 +816,7 @@ const fullComponentImplementation = function () {
                     // Update UI using the shared function
                     this.updateTasksUI();
                 } else {
-                    // Fallback to fetching tasks if no task in response
-                    await this.fetchTasks();
+                    throw new Error("Task response missing updated task payload");
                 }
 
                 // Clean up Flatpickr instances
@@ -1118,8 +1111,7 @@ const fullComponentImplementation = function () {
                 // Just split by newlines without filtering to preserve editing experience
                 this.editingTask.attachments = value.split('\n');
             } else {
-                // Fallback to empty array if not a string
-                this.editingTask.attachments = [];
+                throw new TypeError("attachmentsText must be a string");
             }
         },
 
@@ -1290,18 +1282,10 @@ const fullComponentImplementation = function () {
          */
         initFlatpickr(mode = 'all') {
             const initPicker = (inputId, refName, wrapperClass, options = {}) => {
-                // Try to get input using Alpine.js x-ref first (more reliable)
-                let input = this.$refs[refName];
-
-                // Fall back to getElementById if x-ref is not available
+                // Get input using Alpine.js x-ref
+                const input = this.$refs[refName];
                 if (!input) {
-                    input = document.getElementById(inputId);
-                    console.log(`Using getElementById fallback for ${inputId}`);
-                }
-
-                if (!input) {
-                    console.warn(`Input element ${inputId} not found by ID or ref`);
-                    return null;
+                    throw new Error(`Input element ref '${refName}' not found`);
                 }
 
                 // Create a wrapper around the input

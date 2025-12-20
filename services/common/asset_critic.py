@@ -148,19 +148,11 @@ class AssetCritic:
             if prompt:
                 self._CRITIC_PROMPT_TEMPLATE = prompt
             else:
-                logger.warning("Critic prompt 'multimodal_critic' not found in DB, using fallback.")
-                self._use_fallback_prompt()
+                raise RuntimeError("Critic prompt 'multimodal_critic' not found in DB.")
                 
         except Exception as e:
             logger.error(f"Failed to load critic prompt from DB: {e}")
-            self._use_fallback_prompt()
-
-    def _use_fallback_prompt(self) -> None:
-        self._CRITIC_PROMPT_TEMPLATE = (
-            "You are an expert design critic. Evaluate the provided image against these criteria:\n"
-            "{criteria}"
-            "Return JSON only: {{ \"pass\": bool, \"score\": float(0.0-1.0), \"feedback\": \"string\" }}"
-        )
+            raise
 
     async def evaluate(
         self,
@@ -410,4 +402,3 @@ class AssetCritic:
             # VIBE Rule: "Say EXACTLY what is true." -> It failed to check. 
             # Returning 0.5 + Warning status is a safe middle ground.
             return 0.5, f"Vision check error: {str(e)}", True
-

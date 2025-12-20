@@ -59,8 +59,6 @@ class ExecutionRecord:
         quality_feedback: Feedback from quality check
         error_code: Error code (if failed)
         error_message: Error message (if failed)
-        fallback_reason: Why fallback was triggered
-        original_provider: Original provider before fallback
         started_at: Execution start time
         completed_at: Execution completion time
         created_at: Record creation time
@@ -80,8 +78,6 @@ class ExecutionRecord:
     quality_feedback: Optional[Dict[str, Any]] = None
     error_code: Optional[str] = None
     error_message: Optional[str] = None
-    fallback_reason: Optional[str] = None
-    original_provider: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
@@ -149,8 +145,6 @@ class ExecutionTracker:
         tool_id: str,
         provider: str,
         attempt_number: int = 1,
-        fallback_reason: Optional[str] = None,
-        original_provider: Optional[str] = None,
     ) -> ExecutionRecord:
         """Start tracking a step execution.
         
@@ -161,9 +155,6 @@ class ExecutionTracker:
             tool_id: Tool being used
             provider: Provider of the tool
             attempt_number: Attempt number (1 = first attempt)
-            fallback_reason: Why this provider was chosen (if fallback)
-            original_provider: Original provider before fallback
-            
         Returns:
             ExecutionRecord with assigned ID
         """
@@ -175,9 +166,8 @@ class ExecutionTracker:
             await conn.execute("""
                 INSERT INTO multimodal_executions (
                     id, plan_id, step_index, tenant_id, tool_id, provider,
-                    status, attempt_number, fallback_reason, original_provider,
-                    started_at, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    status, attempt_number, started_at, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             """,
                 execution_id,
                 plan_id,
@@ -187,8 +177,6 @@ class ExecutionTracker:
                 provider,
                 ExecutionStatus.RUNNING.value,
                 attempt_number,
-                fallback_reason,
-                original_provider,
                 now,
                 now,
             )
@@ -207,8 +195,6 @@ class ExecutionTracker:
                 provider=provider,
                 status=ExecutionStatus.RUNNING,
                 attempt_number=attempt_number,
-                fallback_reason=fallback_reason,
-                original_provider=original_provider,
                 started_at=now,
                 created_at=now,
             )
@@ -436,8 +422,6 @@ class ExecutionTracker:
             quality_feedback=quality_feedback,
             error_code=row.get("error_code"),
             error_message=row.get("error_message"),
-            fallback_reason=row.get("fallback_reason"),
-            original_provider=row.get("original_provider"),
             started_at=row.get("started_at"),
             completed_at=row.get("completed_at"),
             created_at=row.get("created_at"),

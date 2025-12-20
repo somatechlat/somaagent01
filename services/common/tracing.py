@@ -32,7 +32,7 @@ def setup_tracing(
     Returns the configured TracerProvider, or None if disabled.
     """
     if not endpoint and not disable_exporter:
-        # No endpoint and no need to create a provider: leave default (no-op) provider in place
+        # No endpoint and no need to create a provider: leave the default provider in place
         return None
 
     # Accept http(s)://host:port or host:port; exporter handles both

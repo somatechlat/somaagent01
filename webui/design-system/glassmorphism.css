@@ -293,19 +293,3 @@
         /* Backdrop filter supported */
     }
 }
-
-/* Fallback for browsers without backdrop-filter */
-@supports not ((-webkit-backdrop-filter: none) or (backdrop-filter: none)) {
-
-    .glass,
-    .glass-light,
-    .glass-medium,
-    .glass-strong {
-        background: rgba(255, 255, 255, 0.95);
-    }
-
-    .glass-card,
-    .glass-modal {
-        background: rgba(255, 255, 255, 0.98);
-    }
-}

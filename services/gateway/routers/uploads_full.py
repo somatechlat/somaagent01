@@ -18,7 +18,6 @@ from services.common.authorization import authorize_request
 from services.common.clamav_scanner import ClamAVScanner, ScanStatus
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import get_logger
-from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.publisher import DurablePublisher
 from services.gateway.limiter import limiter
 from src.core.config import cfg
@@ -312,7 +311,7 @@ def _publisher() -> Optional[DurablePublisher]:
     """Create a durable publisher for upload events."""
     try:
         bus = KafkaEventBus(KafkaSettings.from_env())
-        return DurablePublisher(bus=bus, outbox=MemoryWriteOutbox(dsn=cfg.settings().database.dsn))
+        return DurablePublisher(bus=bus)
     except Exception:
         return None
 

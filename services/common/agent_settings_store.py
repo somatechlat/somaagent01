@@ -4,7 +4,7 @@ Single source of truth:
 - Non-sensitive settings → PostgreSQL (agent_settings table)
 - Secrets/API keys → Vault via UnifiedSecretManager
 
-No Redis secrets, no .env files, no fallbacks.
+No Redis secrets, no .env files.
 """
 
 from __future__ import annotations
@@ -37,21 +37,11 @@ class AgentSettingsStore:
         if self._pool is None:
             min_size = int(cfg.env("PG_POOL_MIN_SIZE", "1") or "1")
             max_size = int(cfg.env("PG_POOL_MAX_SIZE", "2") or "2")
-            try:
-                self._pool = await asyncpg.create_pool(
-                    self.dsn,
-                    min_size=max(0, min_size),
-                    max_size=max(1, max_size),
-                )
-            except OSError:
-                import re
-
-                fallback_dsn = re.sub(r"@[^:/]+", "@127.0.0.1", self.dsn)
-                self._pool = await asyncpg.create_pool(
-                    fallback_dsn,
-                    min_size=max(0, min_size),
-                    max_size=max(1, max_size),
-                )
+            self._pool = await asyncpg.create_pool(
+                self.dsn,
+                min_size=max(0, min_size),
+                max_size=max(1, max_size),
+            )
         return self._pool
 
     async def ensure_schema(self) -> None:

@@ -25,7 +25,7 @@ class RequeueItem(BaseModel):
 
 @router.get("")
 async def list_requeue():
-    return await STORE.list_items()
+    return await STORE.list()
 
 
 @router.post("/{requeue_id}/resolve")

@@ -123,7 +123,7 @@ def _default_base_url() -> str:
     url = cfg.env("SA01_SOMA_BASE_URL")
     if not url:
         raise RuntimeError(
-            "SA01_SOMA_BASE_URL must be set explicitly. No fallbacks allowed per VIBE rules."
+            "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per VIBE rules."
         )
     return str(url).rstrip("/")
 
@@ -439,7 +439,7 @@ class SomaClient:
                         # Retry-After can be seconds or HTTP-date; try seconds first
                         ra_s = float(ra)
                     except ValueError:
-                        # Fallback: parse HTTP-date to seconds delta (simple/lenient)
+                        # Parse HTTP-date to seconds delta (simple/lenient)
                         try:
                             import email.utils as _eutils
                             import time as _time
@@ -570,36 +570,11 @@ class SomaClient:
         tracer = trace.get_tracer(__name__)
         start_ts = time.perf_counter()
         with tracer.start_as_current_span("somabrain.remember"):
-            # Prefer new endpoint; if unavailable (404) we fall back below.
-            # Additionally, tolerate certain 4xx responses (e.g. "memory pool unavailable")
-            # by treating them as a signal to attempt the legacy endpoint.
-            try:
-                response = await self._request(
-                    "POST",
-                    "/memory/remember",
-                    json={k: v for k, v in body.items() if v is not None},
-                    allow_404=True,
-                )
-            except SomaClientError as exc:
-                msg = str(exc).lower()
-                # Some deployments respond 400 with detail "memory pool unavailable"
-                # while the legacy /remember path continues to work. Fall back in that case.
-                if "memory pool unavailable" in msg or " 400 " in msg:
-                    response = None
-                else:
-                    raise
-        if response is None:
-            legacy_payload: Dict[str, Any] = {"payload": dict(payload)}
-            if coord:
-                legacy_payload["coord"] = coord
-            # Use logical universe fallback, not memory namespace
-            if universe or self.universe:
-                resolved_universe = universe or self.universe
-                if resolved_universe:
-                    legacy_payload["universe"] = resolved_universe
-                    legacy_payload.setdefault("payload", {})
-                    legacy_payload["payload"]["universe"] = resolved_universe
-            response = await self._request("POST", "/remember", json=legacy_payload)
+            response = await self._request(
+                "POST",
+                "/memory/remember",
+                json={k: v for k, v in body.items() if v is not None},
+            )
         duration = time.perf_counter() - start_ts
         MEMORY_WRITE_TOTAL.labels("ok").inc()
         MEMORY_WRITE_SECONDS.labels("ok").observe(duration)
@@ -623,11 +598,7 @@ class SomaClient:
         chunk_size: Optional[int] = None,
         chunk_index: Optional[int] = None,
     ) -> Mapping[str, Any]:
-        """Recall memories for a query.
-
-        Prefer the richer `/memory/recall` endpoint but tolerate the legacy
-        `/recall` surface to remain compatible with older deployments.
-        """
+        """Recall memories for a query."""
 
         body: Dict[str, Any] = {
             "tenant": tenant or (cfg.env("SA01_TENANT_ID", "") or "").strip() or "default",
@@ -635,7 +606,7 @@ class SomaClient:
             "query": query,
             "top_k": top_k,
         }
-        # Use logical universe fallback, not memory namespace
+        # Use explicit universe when provided.
         if universe or self.universe:
             body["universe"] = universe or self.universe
         if layer:
@@ -657,18 +628,11 @@ class SomaClient:
         if chunk_index is not None:
             body["chunk_index"] = int(chunk_index)
 
-        response = await self._request(
+        return await self._request(
             "POST",
             "/memory/recall",
             json={k: v for k, v in body.items() if v is not None},
-            allow_404=True,
         )
-        if response is None:
-            legacy_body = {"query": query, "top_k": top_k}
-            if universe or self.universe:
-                legacy_body["universe"] = universe or self.universe
-            return await self._request("POST", "/recall", json=legacy_body)
-        return response
 
     async def recall_stream(
         self,

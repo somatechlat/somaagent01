@@ -127,12 +127,7 @@ up:
 	# either remove them automatically (default) or require manual removal
 	# depending on `FORCE_CLEAN`.
 	@echo "Checking for existing project-prefixed containers for $(COMPOSE_PROJECT_NAME)..."
-	@# First try to find containers by the compose project label (reliable)
 	@existing_ids=$$(docker ps -a --filter "label=com.docker.compose.project=$(COMPOSE_PROJECT_NAME)" -q 2>/dev/null || true); \
-	# If none found via label, fallback to a case-insensitive name match (handles prior/mixed-case names)
-	@if [ -z "$$existing_ids" ]; then \
-		existing_ids=$$(docker ps -a --format '{{.ID}} {{.Names}}' 2>/dev/null | grep -i "$(COMPOSE_PROJECT_NAME)_" | awk '{print $$1}' || true;); \
-	fi; \
 	if [ -n "$$existing_ids" ]; then \
 		echo "Found existing containers: $$existing_ids"; \
 		if [ "$(FORCE_CLEAN)" = "1" ]; then \
@@ -207,23 +202,6 @@ dev-up:
 dev-down:
 	@echo "Stopping lightweight developer stack..."
 	$(MAKE) down COMPOSE_FILE=$(DEV_COMPOSE_FILE) COMPOSE_PROJECT_NAME=somaagent01_dev REMOVE_VOLUMES=$(DEV_REMOVE_VOLUMES)
-	@# Fallback: in some Docker Compose versions, containers with explicit container_name or external networks
-	@# might not be removed by `compose down` reliably. Ensure the dev project containers are gone.
-	@echo "Ensuring all dev containers are removed (fallback)..."
-	@ids=$$(docker ps -aq --filter "label=com.docker.compose.project=somaagent01_dev"); \
-	if [ -n "$$ids" ]; then \
-	  echo "Forcibly removing containers: $$ids"; \
-	  docker rm -f $$ids >/dev/null 2>&1 || true; \
-	else \
-	  echo "No leftover dev containers found."; \
-	fi
-	@# Additional fallback: if the stack was started without the dev project name, also clear default project containers
-	@echo "Checking for default project containers (somaagent01) ...";
-	@ids=$$(docker ps -aq --filter "label=com.docker.compose.project=somaagent01"); \
-	if [ -n "$$ids" ]; then \
-	  echo "Removing default project containers (somaagent01): $$ids"; \
-	  docker rm -f $$ids >/dev/null 2>&1 || true; \
-	fi
 	@if [ "$(DEV_REMOVE_NETWORK)" = "1" ]; then \
 	  echo "Removing dev network 'somaagent01_dev'..."; \
 	  docker network rm somaagent01_dev >/dev/null 2>&1 || true; \

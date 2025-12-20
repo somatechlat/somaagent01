@@ -68,18 +68,23 @@ def test_fetch_session_not_found_returns_none():
     pass
 ```
 
-### Mocking
+### Live Integration Example
 
 ```python
-from unittest.mock import AsyncMock, patch
+import os
 
-async def test_llm_call_timeout_raises_timeout_error():
-    """Test LLM call timeout handling."""
-    with patch('httpx.AsyncClient.post') as mock_post:
-        mock_post.side_effect = httpx.TimeoutException("Timeout")
-        
-        with pytest.raises(TimeoutError):
-            await call_llm("test prompt")
+import httpx
+import pytest
+
+BASE_URL = os.environ["SA01_GATEWAY_BASE_URL"]
+
+def test_gateway_health_endpoint():
+    """Verify live gateway health endpoint responds."""
+    try:
+        resp = httpx.get(f"{BASE_URL}/v1/health", timeout=5.0)
+    except Exception as exc:
+        pytest.skip(f"Gateway not reachable at {BASE_URL}: {exc}")
+    assert resp.status_code == 200
 ```
 
 ### Fixtures

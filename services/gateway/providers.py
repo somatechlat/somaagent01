@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio as _asyncio
-
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.outbox_repository import ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.session_repository import RedisSessionCache
 from src.core.config import cfg
@@ -38,22 +35,7 @@ def get_bus() -> KafkaEventBus:
 def get_publisher() -> DurablePublisher:
     """Provide a DurablePublisher instance for FastAPI dependency injection."""
     bus = get_bus()
-    outbox = OutboxStore(dsn=cfg.settings().database.dsn)
-    try:
-
-        async def _ensure():
-            await ensure_outbox_schema(outbox)
-
-        loop = _asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(_ensure())
-        else:
-            loop.run_until_complete(_ensure())
-    except Exception:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error("Failed to ensure outbox schema", exc_info=True)
-    return DurablePublisher(bus=bus, outbox=outbox)
+    return DurablePublisher(bus=bus)
 
 
 def get_session_cache() -> RedisSessionCache:
@@ -103,4 +85,3 @@ def get_session_store():
     from services.common.session_repository import SessionStore
     
     return SessionStore(dsn=cfg.settings().database.dsn)
-

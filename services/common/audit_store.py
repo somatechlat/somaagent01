@@ -1,8 +1,7 @@
 """Audit event store.
 
 Provides an append-only audit log in Postgres with simple filters and
-export helpers. A lightweight in-memory implementation is available
-for tests via AUDIT_STORE_MODE=memory.
+export helpers.
 """
 
 from __future__ import annotations
@@ -83,7 +82,7 @@ class AuditStore:
 class PostgresAuditStore(AuditStore):
     def __init__(self, dsn: Optional[str] = None) -> None:
         # Prefer admin-wide Postgres DSN when not explicitly provided.
-        # Use the admin-wide Postgres DSN singleton; it already handles env fallback.
+        # Use the admin-wide Postgres DSN singleton.
         raw_dsn = dsn or cfg.settings().database.dsn
         self.dsn = os.path.expandvars(raw_dsn)
         self._pool: Optional[asyncpg.Pool] = None
@@ -208,62 +207,6 @@ class PostgresAuditStore(AuditStore):
         return out
 
 
-class InMemoryAuditStore(AuditStore):
-    def __init__(self) -> None:
-        self._rows: list[AuditEvent] = []
-        self._next_id = 1
-
-    async def ensure_schema(self) -> None:  # no-op
-        return None
-
-    async def log(self, **kwargs: Any) -> int:
-        evt = AuditEvent(
-            id=self._next_id,
-            ts=datetime.utcnow(),
-            request_id=kwargs.get("request_id"),
-            trace_id=kwargs.get("trace_id"),
-            session_id=kwargs.get("session_id"),
-            tenant=kwargs.get("tenant"),
-            subject=kwargs.get("subject"),
-            action=kwargs.get("action") or "",
-            resource=kwargs.get("resource") or "",
-            target_id=kwargs.get("target_id"),
-            details=kwargs.get("details"),
-            diff=kwargs.get("diff"),
-            ip=kwargs.get("ip"),
-            user_agent=kwargs.get("user_agent"),
-        )
-        self._rows.append(evt)
-        self._next_id += 1
-        return evt.id
-
-    async def list(
-        self,
-        *,
-        request_id: str | None = None,
-        session_id: str | None = None,
-        tenant: str | None = None,
-        action: str | None = None,
-        limit: int = 1000,
-        after_id: int | None = None,
-    ) -> list[AuditEvent]:
-        rows = [
-            r
-            for r in self._rows
-            if (
-                (request_id is None or r.request_id == request_id)
-                and (session_id is None or r.session_id == session_id)
-                and (tenant is None or r.tenant == tenant)
-                and (action is None or r.action == action)
-                and (after_id is None or r.id > after_id)
-            )
-        ]
-        return rows[:limit]
-
-
 def from_env() -> AuditStore:
-    mode = cfg.env("AUDIT_STORE_MODE", "postgres").lower()
-    if mode == "memory":
-        return InMemoryAuditStore()
     # Use admin-wide Postgres DSN when not explicitly provided.
     return PostgresAuditStore(dsn=cfg.settings().database.dsn)

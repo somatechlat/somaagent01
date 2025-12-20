@@ -1,7 +1,7 @@
 """Store memory use case.
 
 This use case handles storing conversation events to SomaBrain memory
-with policy enforcement and fallback to outbox on failure.
+with policy enforcement.
 """
 
 from __future__ import annotations
@@ -25,20 +25,6 @@ class PolicyClientProtocol(Protocol):
     """Protocol for policy evaluation."""
 
     async def evaluate(self, request: Any) -> bool: ...
-
-
-class OutboxProtocol(Protocol):
-    """Protocol for memory write outbox."""
-
-    async def enqueue(
-        self,
-        payload: Dict[str, Any],
-        tenant: str,
-        session_id: str,
-        persona_id: Optional[str],
-        idempotency_key: Optional[str],
-        dedupe_key: Optional[str],
-    ) -> None: ...
 
 
 class PublisherProtocol(Protocol):
@@ -85,20 +71,18 @@ class StoreMemoryUseCase:
         self,
         memory_client: MemoryClientProtocol,
         policy_client: PolicyClientProtocol,
-        outbox: OutboxProtocol,
         publisher: PublisherProtocol,
         wal_topic: str = "memory.wal",
         namespace: str = "default",
     ):
         self._memory_client = memory_client
         self._policy_client = policy_client
-        self._outbox = outbox
         self._publisher = publisher
         self._wal_topic = wal_topic
         self._namespace = namespace
 
     async def execute(self, input_data: StoreMemoryInput) -> StoreMemoryOutput:
-        """Store memory with policy check and fallback."""
+        """Store memory with policy check."""
         # Build payload
         payload = self._build_payload(input_data)
 
@@ -123,20 +107,6 @@ class StoreMemoryUseCase:
 
         except Exception as e:
             LOGGER.warning(f"Memory store failed: {e}")
-
-            # Enqueue for retry
-            try:
-                await self._outbox.enqueue(
-                    payload=payload,
-                    tenant=input_data.tenant,
-                    session_id=input_data.session_id,
-                    persona_id=input_data.persona_id,
-                    idempotency_key=payload.get("idempotency_key"),
-                    dedupe_key=str(payload.get("id")),
-                )
-            except Exception:
-                LOGGER.debug("Failed to enqueue memory write for retry", exc_info=True)
-
             return StoreMemoryOutput(success=False, error=str(e))
 
     def _build_payload(self, input_data: StoreMemoryInput) -> Dict[str, Any]:

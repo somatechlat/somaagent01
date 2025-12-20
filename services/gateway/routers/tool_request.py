@@ -8,7 +8,6 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.memory_write_outbox import MemoryWriteOutbox
 from services.common.publisher import DurablePublisher
 
 router = APIRouter(prefix="/v1/tool", tags=["tools"])
@@ -23,8 +22,7 @@ class ToolRequest(BaseModel):
 
 def _publisher() -> DurablePublisher:
     bus = KafkaEventBus(KafkaSettings.from_env())
-    outbox = MemoryWriteOutbox()
-    return DurablePublisher(bus=bus, outbox=outbox)
+    return DurablePublisher(bus=bus)
 
 
 @router.post("/request")
